@@ -24,207 +24,207 @@ Group pills/sidebar: enable under Guide settings; Up from the first channel
 or * -> Channel groups enters it. List fallback stays available under *.
 
 A. AUDIO COMPATIBILITY / BASIC PLAYBACK
-[     ] A01 App reconnects and opens the guide without diagnostic autoplay.
-[     ] A02 ESPN plays picture AND audible sound in Automatic audio mode.
-[     ] A03 If initially silent, one AAC compatibility retry restores audio.
-[     ] A04 Return to ESPN later/relaunch: learned compatibility still works.
-[     ] A05 ESPN2, Food Network and other previously working channels work.
-[     ] A06 Audio compatibility -> Always AAC works; Direct is selectable.
-[     ] A07 Mode preference survives relaunch and does not change other viewers.
-[     ] A08 Short pause/resume works in direct and AAC playback.
-[     ] A09 Switching channels, Stop and Home clean up the Roku connection.
-[     ] A10 Sustained playback has no repeated compatibility-retry loop.
+[  PASS   ] A01 App reconnects and opens the guide without diagnostic autoplay.
+[  PASS   ] A02 ESPN plays picture AND audible sound in Automatic audio mode.
+[  SKIP   ] A03 If initially silent, one AAC compatibility retry restores audio.
+[  PASS   ] A04 Return to ESPN later/relaunch: learned compatibility still works.
+[  PASS   ] A05 ESPN2, Food Network and other previously working channels work.
+[  PASS   ] A06 Audio compatibility -> Always AAC works; Direct is selectable.
+[  SKIP   ] A07 Mode preference survives relaunch and does not change other viewers.
+[  PASS   ] A08 Short pause/resume works in direct and AAC playback.
+[  PASS   ] A09 Switching channels, Stop and Home clean up the Roku connection.
+[  PASS   ] A10 Sustained playback has no repeated compatibility-retry loop.
 Note: Compatibility uses an existing active copy-video/AAC Dispatcharr
 output profile. No new service/profile is created. A first-time retry retunes
 this client. Profiles require permission to discover; metadata may be absent.
 Channels/modes/notes: __________________________________________________
 
 B. PLAYER MENU AND FOCUS (ihp.15/.16)
-[     ] B01 * opens AerioTV player options, not Roku Volume Mode/Accessibility.
-[     ] B02 Audio, scale, Hide picture, sleep, clock and Stream Info are reachable.
-[     ] B03 Authorized admin can reach Switch stream source.
-[     ] B04 OK -> Up -> Down reaches transport from bare fullscreen.
-[     ] B05 OK -> Left -> Down reaches transport from bare fullscreen.
-[     ] B06 OK -> Right -> Down reaches transport from bare fullscreen.
-[     ] B07 Transport Up returns to info; Down re-enters repeatedly.
-[     ] B08 Explicit info stays open beyond 10 seconds; OK/Back dismiss it.
-[     ] B09 Automatic tune-in info still disappears after about 8 seconds.
-[     ] B10 Transport Play/Pause, Channels, Recent, Minimize, Options, Stop work.
-[     ] B11 Back returns to parent menu/option; * closes player menus.
-[     ] B12 Rapid Back/input does not strand focus or retune unexpectedly.
+[  FAIL   ] B01 * opens AerioTV player options, not Roku Volume Mode/Accessibility.
+[  PASS, via Options when I hit OK then Up. ] B02 Audio, scale, Hide picture, sleep, clock and Stream Info are reachable.
+[  PASS - Caveat: video was frozen after switching, audio continued   ] B03 Authorized admin can reach Switch stream source.
+[  PASS   ] B04 OK -> Up -> Down reaches transport from bare fullscreen.
+[  PASS   ] B05 OK -> Left -> Down reaches transport from bare fullscreen.
+[  PASS   ] B06 OK -> Right -> Down reaches transport from bare fullscreen.
+[  PASS   ] B07 Transport Up returns to info; Down re-enters repeatedly.
+[  PASS   ] B08 Explicit info stays open beyond 10 seconds; OK/Back dismiss it.
+[  PASS   ] B09 Automatic tune-in info still disappears after about 8 seconds.
+[  PASS   ] B10 Transport Play/Pause, Channels, Recent, Minimize, Options, Stop work.
+[  PASS   ] B11 Back returns to parent menu/option; * closes player menus.
+[  PASS   ] B12 Rapid Back/input does not strand focus or retune unexpectedly.
 Notes: _______________________________________________________________
 
 C. HELD NAVIGATION, HISTORY AND LOGOS
-[     ] C01 Default Up next/Down previous and alternate direction both work.
-[     ] C02 Holding a direction advances previews repeatedly.
-[     ] C03 Releasing settles on the intended channel, without tuning every preview.
-[     ] C04 Back/another action cancels a held preview; menus isolate arrows.
-[     ] C05 Endpoints do not wrap; a stuck hold stops after the 10-second guard.
-[     ] C06 Right alternates the last two watched channels.
-[     ] C07 Replay shows newest-first, deduplicated recents (maximum 25).
-[     ] C08 Only actual playback updates history; relaunch preserves it.
-[     ] C09 Channel-browser groups remain local to that browser.
-[     ] C10 Logos stay correct while scrolling; reopening retains loaded logos.
-[     ] C11 Missing/failed logos leave readable rows and can retry on reopen.
-[     ] C12 Watching marker and cached/loading/missing program labels are correct.
+[  PASS   ] C01 Default Up next/Down previous and alternate direction both work.
+[  PASS   ] C02 Holding a direction advances previews repeatedly.
+[  SKIP   ] C03 Releasing settles on the intended channel, without tuning every preview.
+[  PASS   ] C04 Back/another action cancels a held preview; menus isolate arrows.
+[  PASS   ] C05 Endpoints do not wrap; a stuck hold stops after the 10-second guard.
+[  PASS   ] C06 Right alternates the last two watched channels.
+[  PASS   ] C07 Replay shows newest-first, deduplicated recents (maximum 25).
+[  PASS   ] C08 Only actual playback updates history; relaunch preserves it.
+[  PASS   ] C09 Channel-browser groups remain local to that browser.
+[  FAIL - Logos reload on reopen   ] C10 Logos stay correct while scrolling; reopening retains loaded logos.
+[  PASS   ] C11 Missing/failed logos leave readable rows and can retry on reopen.
+[   PASS  ] C12 Watching marker and cached/loading/missing program labels are correct.
 Cold/warm logo observations: ___________________________________________
 
 D. MINI-PLAYER / HIDE PICTURE / SLEEP
-[     ] D01 Back minimizes without interrupting picture/audio.
-[     ] D02 Caption is above the timeline; long names do not overlap the guide.
-[     ] D03 Back, Play, or OK on the current channel expands without retuning.
-[     ] D04 Pause survives minimize/expand; repeated transitions keep one client.
-[     ] D05 Guide options can open player options or explicitly Stop playback.
-[     ] D06 Hide picture covers video; audio continues and hint fades in ~6 seconds.
-[     ] D07 Hidden-picture Play/Pause works; first navigation restores only picture.
-[     ] D08 Held wake key does not immediately tune/minimize; captions behave.
-[     ] D09 Sleep offers 30/60/90/120 minutes, remaining time and cancellation.
-[     ] D10 Sleep deadline survives channel/mini/hidden-picture changes.
-[     ] D11 Cancel/Stop/Home clear the sleep timer.
-[     ] D12 Normal 30-minute expiry stops playback once, including paused/hidden.
+[  PASS   ] D01 Back minimizes without interrupting picture/audio.
+[  PASS   ] D02 Caption is above the timeline; long names do not overlap the guide.
+[  PASS   ] D03 Back, Play, or OK on the current channel expands without retuning.
+[  PASS   ] D04 Pause survives minimize/expand; repeated transitions keep one client.
+[  PASS   ] D05 Guide options can open player options or explicitly Stop playback.
+[  FAIL   ] D06 Hide picture covers video; audio continues and hint fades in ~6 seconds.
+[  FAIL   ] D07 Hidden-picture Play/Pause works; first navigation restores only picture.
+[  FAIL   ] D08 Held wake key does not immediately tune/minimize; captions behave.
+[  PASS   ] D09 Sleep offers 30/60/90/120 minutes, remaining time and cancellation.
+[  PASS   ] D10 Sleep deadline survives channel/mini/hidden-picture changes.
+[  FAIL - Don't see this option anywhere   ] D11 Cancel/Stop/Home clear the sleep timer.
+[  PASS   ] D12 Normal 30-minute expiry stops playback once, including paused/hidden.
 Note: Hide picture and reminders are foreground-only, not background/TV-off services.
 Notes: _______________________________________________________________
 
 E. SCALE, TRACKS, DIAGNOSTICS AND SOURCE SWITCH
-[     ] E01 Fit preserves proportions on 4:3, 16:9 and letterboxed samples.
-[     ] E02 Fill crops uniformly after setting the correct channel source aspect.
-[     ] E03 Stretch fills with expected distortion; mini-player stays clipped.
-[     ] E04 Scale/aspect persist per documented device/account scope.
-[     ] E05 Unknown/cleared aspect uses native Fit safely.
-[     ] E06 Available audio/subtitle selections and system caption modes work.
-[     ] E07 Stream Info scrolls/refreshes without losing the focused row.
-[     ] E08 Native/server facts are distinct; unavailable facts are labeled.
-[     ] E09 Retune/source change clears stale facts; no secrets/addresses shown.
-[     ] E10 Source list shows members and active/reported-active states.
-[     ] E11 Cancel changes nothing; already-active selection sends no change.
-[     ] E12 Different source works; preserved/changed/unknown client message is accurate.
-[     ] E13 Delayed requests, Back and menu reopen do not apply stale UI state.
-[     ] E14 With an intentional second viewer, source change preserves both clients.
+[  PASS   ] E01 Fit preserves proportions on 4:3, 16:9 and letterboxed samples.
+[  PASS   ] E02 Fill crops uniformly after setting the correct channel source aspect.
+[  PASS   ] E03 Stretch fills with expected distortion; mini-player stays clipped.
+[  PASS   ] E04 Scale/aspect persist per documented device/account scope.
+[  PASS   ] E05 Unknown/cleared aspect uses native Fit safely.
+[  PASS   ] E06 Available audio/subtitle selections and system caption modes work.
+[  PASS   ] E07 Stream Info scrolls/refreshes without losing the focused row.
+[  PASS   ] E08 Native/server facts are distinct; unavailable facts are labeled.
+[  PASS   ] E09 Retune/source change clears stale facts; no secrets/addresses shown.
+[  PASS   ] E10 Source list shows members and active/reported-active states.
+[  PASS   ] E11 Cancel changes nothing; already-active selection sends no change.
+[  PASS   ] E12 Different source works; preserved/changed/unknown client message is accurate.
+[  PASS   ] E13 Delayed requests, Back and menu reopen do not apply stale UI state.
+[  PASS   ] E14 With an intentional second viewer, source change preserves both clients.
 Source changes affect ALL viewers on that shared channel. Compare client IDs,
 not just counts. Use a suitable test channel and coordinate the second viewer.
 Channels/aspects/notes: ________________________________________________
 
 F. CLOCK FORMAT
-[     ] F01 Guide * -> Clock format offers System, 12-hour and 24-hour.
-[     ] F02 Player clock menu offers the same choices; selection survives restart.
-[     ] F03 Guide ticks, details, player and search use the chosen format.
-[     ] F04 Midnight/noon and AM/PM are correct; UTC references remain explicit.
+[  PASS   ] F01 Guide * -> Clock format offers System, 12-hour and 24-hour.
+[  PASS   ] F02 Player clock menu offers the same choices; selection survives restart.
+[  PASS   ] F03 Guide ticks, details, player and search use the chosen format.
+[  PASS   ] F04 Midnight/noon and AM/PM are correct; UTC references remain explicit.
 Notes: _______________________________________________________________
 
 G. GROUP VISIBILITY, ORDER AND STARTUP
-[     ] G01 Manage groups can show/hide groups, including built-in selectors.
-[     ] G02 Hiding the last visible group cannot trap navigation.
-[     ] G03 Default, alphabetical and manual order work and persist.
-[     ] G04 Move earlier/later works; new/deleted groups reconcile sensibly.
-[     ] G05 Startup group is independent of last browsing; Last browsed also works.
-[     ] G06 Selecting a hidden startup group makes it available.
-[     ] G07 Top pills display and Left/Right browse groups; Down/OK returns to grid.
-[     ] G08 Sidebar overlay previews groups after a short delay; Right/OK returns.
-[     ] G09 Back dismisses navigation correctly, including rapid preview changes.
-[     ] G10 The modal list fallback remains usable in either navigation mode.
-[     ] G11 Long names and empty groups remain readable/recoverable.
-Notes: _______________________________________________________________
+[   PASS  ] G01 Manage groups can show/hide groups, including built-in selectors.
+[   PASS  ] G02 Hiding the last visible group cannot trap navigation.
+[   PASS - Caveat: Default should order it by the server group order, it does not currently  ] G03 Default, alphabetical and manual order work and persist.
+[   PASS  ] G04 Move earlier/later works; new/deleted groups reconcile sensibly.
+[   PASS ] G05 Startup group is independent of last browsing; Last browsed also works.
+[   PASS  ] G06 Selecting a hidden startup group makes it available.
+[   FAIL - no top pills  ] G07 Top pills display and Left/Right browse groups; Down/OK returns to grid.
+[   FAIL - no sidebar  ] G08 Sidebar overlay previews groups after a short delay; Right/OK returns.
+[   PASS  ] G09 Back dismisses navigation correctly, including rapid preview changes.
+[   PASS  ] G10 The modal list fallback remains usable in either navigation mode.
+[   PASS  ] G11 Long names and empty groups remain readable/recoverable.
+Notes: ________Modal is the only menu type; sidebar doesn't exist at all.____________________
 
 H. CHANNEL SORT / FAVORITE ORDER / RECENT GROUP
-[     ] H01 Number/name/ID sorting works without losing the selected channel.
-[     ] H02 Decimal numbers and equal-value ties are stable.
-[     ] H03 Favorite ordering moves a selected favorite earlier/later and persists.
-[     ] H04 Favorites retain membership after sort changes and lineup refresh.
-[     ] H05 Recently Watched guide group uses the same recency order as the player.
-[     ] H06 Recent group can be ordered/hidden/defaulted like other groups.
-[     ] H07 Browser lists follow sort preferences; Recent remains recency-ordered.
+[  PASS   ] H01 Number/name/ID sorting works without losing the selected channel.
+[  PASS   ] H02 Decimal numbers and equal-value ties are stable.
+[  PASS   ] H03 Favorite ordering moves a selected favorite earlier/later and persists.
+[  PASS   ] H04 Favorites retain membership after sort changes and lineup refresh.
+[  PASS   ] H05 Recently Watched guide group uses the same recency order as the player.
+[  PASS   ] H06 Recent group can be ordered/hidden/defaulted like other groups.
+[  PASS   ] H07 Browser lists follow sort preferences; Recent remains recency-ordered.
 Notes: _______________________________________________________________
 
 I. NAMED COLLECTIONS
-[     ] I01 Create a collection; add/remove the currently selected guide channel.
-[     ] I02 Collection selector displays only its authorized member channels.
-[     ] I03 Rename, reorder collections, and reorder their members work.
-[     ] I04 First/Last placement works independently of ordinary group sorting.
-[     ] I05 Membership/order/names survive restart and stay account-scoped.
-[     ] I06 Deleted/unavailable channels do not break collection browsing.
-[     ] I07 Delete a collection without deleting channels/favorites.
+[  PASS   ] I01 Create a collection; add/remove the currently selected guide channel.
+[  PASS   ] I02 Collection selector displays only its authorized member channels.
+[  PASS   ] I03 Rename, reorder collections, and reorder their members work.
+[  PASS   ] I04 First/Last placement works independently of ordinary group sorting.
+[  PASS   ] I05 Membership/order/names survive restart and stay account-scoped.
+[  PASS   ] I06 Deleted/unavailable channels do not break collection browsing.
+[  PASS   ] I07 Delete a collection without deleting channels/favorites.
 Limits: 20 collections; registry capacity is bounded. A failed save must be
 reported; never assume a session-only change survived a storage error.
 Notes: _______________________________________________________________
 
 J. RICH DETAILS / BADGES / CATEGORY COLORS
-[     ] J01 Past/future program details show title, times, episode and available facts.
-[     ] J02 Description, rating, year, quality, language/country and cast are sensible.
-[     ] J03 Lazy enrichment does not stall navigation or steal focus.
-[     ] J04 Watch LIVE tunes live, not an implied archive/recording action.
-[     ] J05 Back restores the exact guide channel/time selection.
-[     ] J06 Missing/dummy-program metadata leaves useful text and live tuning.
-[     ] J07 New/Live/Premiere/Finale/Episode badges show only reported facts.
-[     ] J08 Each badge toggle works and persists; narrow cells remain readable.
-[     ] J09 Colors appear progressively for available categories; unknown is neutral.
-[     ] J10 Focus/current selection remains clear above category tint.
-[     ] J11 Enable/disable, palette choices, custom category words and reset work.
+[  PASS   ] J01 Past/future program details show title, times, episode and available facts.
+[  PASS   ] J02 Description, rating, year, quality, language/country and cast are sensible.
+[  PASS   ] J03 Lazy enrichment does not stall navigation or steal focus.
+[  PASS   ] J04 Watch LIVE tunes live, not an implied archive/recording action.
+[  PASS   ] J05 Back restores the exact guide channel/time selection.
+[  PASS   ] J06 Missing/dummy-program metadata leaves useful text and live tuning.
+[  PASS   ] J07 New/Live/Premiere/Finale/Episode badges show only reported facts.
+[  PASS   ] J08 Each badge toggle works and persists; narrow cells remain readable.
+[  PASS   ] J09 Colors appear progressively for available categories; unknown is neutral.
+[  PASS   ] J10 Focus/current selection remains clear above category tint.
+[  PASS   ] J11 Enable/disable, palette choices, custom category words and reset work.
 Default category priority starts Kids > Sports > News > Movies. Metadata is
 loaded lazily for selected/limited visible airings, not the whole catalog.
 Notes: _______________________________________________________________
 
 K. ARTWORK / OPTIONAL TMDB
-[     ] K01 Provider poster/landscape art preserves aspect in details.
-[     ] K02 Missing/failing artwork leaves text and controls usable.
-[     ] K03 Navigating detail buttons does not continually reload the same image.
-[     ] K04 Optional TMDB API-key test rejects bad keys and saves a valid key.
-[     ] K05 Enable/disable/forget-key works; TMDB remains optional.
-[     ] K06 Missing provider art can use an unambiguous exact-title TMDB match.
-[     ] K07 TMDB-supplied art shows its logo and non-endorsement attribution.
+[   PASS  ] K01 Provider poster/landscape art preserves aspect in details.
+[   PASS  ] K02 Missing/failing artwork leaves text and controls usable.
+[   PASS  ] K03 Navigating detail buttons does not continually reload the same image.
+[   PASS  ] K04 Optional TMDB API-key test rejects bad keys and saves a valid key.
+[   PASS  ] K05 Enable/disable/forget-key works; TMDB remains optional.
+[   PASS  ] K06 Missing provider art can use an unambiguous exact-title TMDB match.
+[   PASS  ] K07 TMDB-supplied art shows its logo and non-endorsement attribution.
 SKIP K04–K07 if you do not have a TMDB v3 API key. It is stored in the Roku
 registry; fallback opt-in is per account. Queries send program titles to TMDB.
 Dispatcharr credentials must never be sent to external artwork/TMDB hosts.
 Notes: _______________________________________________________________
 
 L. SEARCH / PAGING / DIRECT NUMBER
-[     ] L01 Channel search finds all authorized matches regardless of active group.
-[     ] L02 Clear search restores the selected group's normal filter.
-[     ] L03 Program Title/Description queries, phrases and AND/OR still work.
-[     ] L04 Search paging, edit, empty/error states and cancellation work.
-[     ] L05 Search results open correct guide row/time, including hidden-All cases.
-[     ] L06 Guide Fast Forward/Rewind page down/up by visible row count.
-[     ] L07 Jump to Top works at all positions.
-[     ] L08 Go to channel number handles exact decimal numbers and no-match feedback.
-[     ] L09 Jump-to-number stays scoped to the current visible channel list.
+[  PASS   ] L01 Channel search finds all authorized matches regardless of active group.
+[  PASS   ] L02 Clear search restores the selected group's normal filter.
+[  PASS   ] L03 Program Title/Description queries, phrases and AND/OR still work.
+[  PASS   ] L04 Search paging, edit, empty/error states and cancellation work.
+[  PASS   ] L05 Search results open correct guide row/time, including hidden-All cases.
+[  PASS   ] L06 Guide Fast Forward/Rewind page down/up by visible row count.
+[  PASS   ] L07 Jump to Top works at all positions.
+[  PASS   ] L08 Go to channel number handles exact decimal numbers and no-match feedback.
+[  PASS   ] L09 Jump-to-number stays scoped to the current visible channel list.
 Notes: _______________________________________________________________
 
 M. DEPTH / DATE JUMP / CACHE MAINTENANCE
-[     ] M01 History/future choices (1/3/7/14/30 days) persist.
-[     ] M02 All available is explicitly bounded to 30 days each way.
-[     ] M03 Depth changes clamp time sensibly and preserve channel selection.
-[     ] M04 Today/Upcoming/Previous date groups and Jump to Now work.
-[     ] M05 Local times and UTC references distinguish DST repeated hours.
-[     ] M06 Missing server guide data has honest empty/unavailable states.
-[     ] M07 Refresh guide updates visible metadata without interrupting video.
-[     ] M08 Refresh channel lineup preserves group/channel/time when possible.
-[     ] M09 A removed/no-longer-authorized playing channel stops with a clear message.
-[     ] M10 Clear guide/detail cache reloads metadata without retuning.
+[  PASS   ] M01 History/future choices (1/3/7/14/30 days) persist.
+[  PASS   ] M02 All available is explicitly bounded to 30 days each way.
+[  PASS   ] M03 Depth changes clamp time sensibly and preserve channel selection.
+[  PASS   ] M04 Today/Upcoming/Previous date groups and Jump to Now work.
+[  PASS   ] M05 Local times and UTC references distinguish DST repeated hours.
+[  PASS   ] M06 Missing server guide data has honest empty/unavailable states.
+[  PASS   ] M07 Refresh guide updates visible metadata without interrupting video.
+[  PASS   ] M08 Refresh channel lineup preserves group/channel/time when possible.
+[  PASS   ] M09 A removed/no-longer-authorized playing channel stops with a clear message.
+[  PASS   ] M10 Clear guide/detail cache reloads metadata without retuning.
 Only a bounded set of windows/details is resident; increasing depth does not
 download the entire 30-day guide. Server search may omit unindexed/dummy EPG.
 Notes: _______________________________________________________________
 
 N. FOREGROUND REMINDERS
-[     ] N01 Future program details can save a reminder and show Cancel reminder.
-[     ] N02 Guide REM marker and Program reminders menu reflect saved state.
-[     ] N03 Cancel from details or the reminders menu removes it.
-[     ] N04 A reminder alerts about 5 minutes before start while AerioTV is open.
-[     ] N05 It alerts once, not on every clock tick; relaunch does not duplicate it.
-[     ] N06 Expired entries are cleaned up; schedule updates retain identity.
-[     ] N07 Reminders persist per account and removed channels are reconciled.
+[  PASS   ] N01 Future program details can save a reminder and show Cancel reminder.
+[  PASS   ] N02 Guide REM marker and Program reminders menu reflect saved state.
+[  PASS   ] N03 Cancel from details or the reminders menu removes it.
+[  PASS   ] N04 A reminder alerts about 5 minutes before start while AerioTV is open.
+[  PASS   ] N05 It alerts once, not on every clock tick; relaunch does not duplicate it.
+[  PASS   ] N06 Expired entries are cleaned up; schedule updates retain identity.
+[  PASS   ] N07 Reminders persist per account and removed channels are reconciled.
 There are up to 50 reminders. No alert is promised while the app is closed.
 If relaunched during an unnotified program, a late foreground reminder may appear.
 Notes: _______________________________________________________________
 
 O. PERSISTENCE / ACCOUNT / ENDURANCE — DO LAST
-[     ] O01 Relaunch preserves guide groups, sorts, collections, badges, colors and clocks.
-[     ] O02 Another account/server cannot see the previous account's history/collections.
-[     ] O03 Restricted accounts have only authorized lineup/features.
-[     ] O04 Remember Off stays Off; Remember On reconnects after successful save.
-[     ] O05 Offline/invalid credentials/loading cancellation remain recoverable.
-[     ] O06 Extended guide browsing and playback stay responsive without duplicate clients.
-[     ] O07 Long labels, posters, focus and mini bounds are readable at viewing distance.
-[     ] O08 Forget clears saved connection/account preferences and preserves device policy.
-[     ] O09 No unexpected app/device restart during extended use. If one occurs,
+[  PASS   ] O01 Relaunch preserves guide groups, sorts, collections, badges, colors and clocks.
+[  PASS   ] O02 Another account/server cannot see the previous account's history/collections.
+[  PASS   ] O03 Restricted accounts have only authorized lineup/features.
+[  PASS   ] O04 Remember Off stays Off; Remember On reconnects after successful save.
+[  PASS   ] O05 Offline/invalid credentials/loading cancellation remain recoverable.
+[  PASS   ] O06 Extended guide browsing and playback stay responsive without duplicate clients.
+[  PASS   ] O07 Long labels, posters, focus and mini bounds are readable at viewing distance.
+[  PASS   ] O08 Forget clears saved connection/account preferences and preserves device policy.
+[  PASS   ] O09 No unexpected app/device restart during extended use. If one occurs,
            record the approximate time and what was on screen (rgs.13).
 Session duration: __________ Channels tested: _________________________
 Notes: _______________________________________________________________
@@ -240,6 +240,6 @@ Repeatable? __________  Photo/video filename: __________________________
 SUMMARY
 ========
 PASS: ______  FAIL: ______  SKIP: ______  Untested: ______
-Most important problems: ______________________________________________
+Most important problems: ____Navigation in "Channel Groups" in the guide, the tooltips at the bottom are overlapping the list.________________
 ______________________________________________________________________
 ______________________________________________________________________
