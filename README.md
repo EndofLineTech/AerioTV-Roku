@@ -2,8 +2,9 @@
 
 <img src="images/channel-icon-fhd.png" alt="AerioTV Roku preview icon" width="270" />
 
-Native BrightScript/SceneGraph port of AerioTV, targeting the **Roku Streaming
-Stick 4K and Dispatcharr 0.31.0**. The product goal is Apple TV visual/behavioral
+Native BrightScript/SceneGraph port of AerioTV for Roku. So far, it has been
+**tested only using the Roku Streaming Stick 4K with Dispatcharr 0.31.0**.
+The product goal is Apple TV visual/behavioral
 parity with deliberate Roku remote adaptations. Distribution starts with personal
 sideloading. The deployment consists of the Roku and the existing Dispatcharr
 instance; no additional service/container is required by this build.
@@ -97,7 +98,9 @@ If Developer Mode is already enabled, proceed to the next step.
 
 ### 2. Open the Roku's installer in your browser
 
-1. On your computer, open **`http://<roku-ip>`**, using the address from step 1.
+1. On your computer, open **`http://<your Roku IP>`**, replacing `<your Roku IP>`
+   with the address from step 1. For example, if it is `192.168.1.50`, open
+   **`http://192.168.1.50`**.
    Enter **HTTP**, not HTTPS. This is the Roku's address, not Dispatcharr's.
 2. When the browser asks for credentials, use:
 
@@ -188,15 +191,10 @@ restores normal sizing. It does not run automatically.
 | Picture but no sound | Player options → Audio compatibility. AAC requires the existing server profile described above; unavailable-profile errors have Automatic/Direct/Cancel choices. |
 | `*` opens Roku settings | This is the known fullscreen issue. Use **OK → Up → Options**. |
 
-## Help test
+## Feedback
 
-The self-contained [testing worksheet](docs/RETEST-0.3.7.txt), also applicable to
-0.3.8 (branding/docs release; enter your actual app version), includes button
-paths for the pending checks. Channel numbers in it refer to the baseline test
-lineup; use equivalent channels on your server where necessary.
-
-Share results with the maintainer, including **release version, Roku model/OS,
-Dispatcharr version, test ID, exact buttons, expected/actual result**, and a photo
+If you encounter a problem, share **release version, Roku model/OS,
+Dispatcharr version, steps to reproduce, and expected/actual behavior**, plus a photo
 or exact error text when useful. Omit passwords, API keys and provider URLs.
 
 <details>
@@ -250,8 +248,6 @@ Automatic, Direct or Cancel choices; Cancel preserves Always AAC.
 The startup watchdog starts only after media playback is requested. Native
 validation observed deferred startup with no media content, then AAC-profile
 playback reporting `aac_adts`, plus timeout-dialog cancellation without retune.
-Use [RETEST-0.3.7.txt](docs/RETEST-0.3.7.txt) when physical testing is available;
-all pending startup/star/held-channel paths are included.
 
 ## 0.3.6 — Bounded startup recovery
 
@@ -265,16 +261,13 @@ fallback within a tune and resets for a new explicit tune.
 
 Buffering stalls are no longer labeled as proof of an unsupported codec. The
 Always-AAC-before-profile-discovery race is separately tracked as `ihp.34`.
-Use [RETEST-0.3.6.txt](docs/RETEST-0.3.6.txt) when physical testing is available;
-it includes the remaining star and held-channel-release checks in one document.
 
 ## 0.3.5 — Direct diagnostic case selection
 
 The diagnostic menu now lists all six cases for direct selection. Scene key-up
 routing is fixed, and a bounded debounce prevents missing release events from
 permanently blocking Fast Forward. Cases 1 and 2 recorded zero star presses in
-the PO's 0.3.4 test. Continue with cases 3–6 using
-[STAR-DIAGNOSTIC-0.3.5.txt](docs/STAR-DIAGNOSTIC-0.3.5.txt); Fast Forward is optional.
+the maintainer's 0.3.4 test. Later cases remain under investigation.
 
 ## 0.3.4 — Focused fullscreen Options diagnostic
 
@@ -282,25 +275,18 @@ Player options now includes **Fullscreen * diagnostic (temporary test)**.
 Enter through OK -> Up -> Options. It compares focus, post-start override and
 video geometry on the existing stream, with physical star press/release counters.
 Fast Forward/Rewind changes cases; Back exits and restores normal geometry.
-It is opt-in, session-only, and is not a claimed interception fix. Use
-[STAR-DIAGNOSTIC-0.3.4.txt](docs/STAR-DIAGNOSTIC-0.3.4.txt).
+It is opt-in, session-only, and is not a claimed interception fix.
 
 ## 0.3.3 — Immediate guide layout and pills access
 
-All 15 checks in the completed 0.3.3 worksheet passed PO acceptance. The earlier
-0.3.2 checks were not run. Their pending coverage is consolidated, with full
-button paths, in [RETEST-0.3.3-REMAINING.txt](docs/RETEST-0.3.3-REMAINING.txt).
+Immediate layout switching and group access passed maintainer acceptance.
 
 Layout selection explicitly replaces the live navigator presentation and clears
 stale group focus. Modal, Pills and Sidebar should switch without relaunch.
 **Hold Left** from any guide row focuses groups in either pills or sidebar mode;
-a short Left tap still navigates the timeline on release. Use
-[RETEST-0.3.3.txt](docs/RETEST-0.3.3.txt) to verify these corrected paths.
+a short Left tap still navigates the timeline on release.
 
 ## 0.3.2 — Remote input and guide retest
-
-Use [RETEST-0.3.2.txt](docs/RETEST-0.3.2.txt) for starting screens, button paths
-and individual PASS/FAIL/SKIP checks. Completed 0.3.1 results are preserved.
 
 - Selection-event guards prevent the initiating OK from waking hidden picture
   or tuning the guide after a layout picker closes.
@@ -319,9 +305,7 @@ and individual PASS/FAIL/SKIP checks. Completed 0.3.1 results are preserved.
 
 ## 0.3.1 — Acceptance fixes (historical candidate)
 
-The 12 reported 0.3.0 failures/caveats have candidate fixes. Use
-[RETEST-0.3.1.txt](docs/RETEST-0.3.1.txt) for focused acceptance; retain the completed
-0.3.0 results as historical evidence.
+This historical candidate addressed the 12 reported 0.3.0 failures/caveats.
 
 - Video-owned Options handling; OK → Up or Down → Options is also supported.
 - Hidden picture suppresses the video plane and captions while retaining audio;
@@ -339,14 +323,13 @@ Native probes verified local decoder restart back to playing with unchanged
 upstream URL, hidden-picture audio advancement/pause/restore, actual layout-menu
 selection, and eight cached logos reopening in 231 ms versus 7,020 ms cold.
 Physical star interception, actual frozen-source recovery, other-viewer continuity,
-and perceived picture/caption behavior still require the worksheet checks.
+and perceived picture/caption behavior required further physical verification.
 
 ## 0.3.0 — Live TV compatibility and Guide discovery
 
-The implementation pass for the Live TV and Guide epics is ready for combined
-acceptance. Use [FINAL-TEST-RESULTS-0.3.0.txt](docs/FINAL-TEST-RESULTS-0.3.0.txt)
-for PASS/FAIL/SKIP results. Physical acceptance remains separate from automated
-and scripted-device evidence; Beads records the outstanding acceptance gates.
+This implementation pass combined the Live TV and Guide epics. Physical
+acceptance is separate from automated and scripted-device evidence; Beads
+records the outstanding work.
 
 ### Live TV changes
 
@@ -449,7 +432,7 @@ The mini-player is 400×225 at [1424,16]. Its single-line caption ends at y=267,
 above the guide timeline at y=270. A device screenshot confirms the separation.
 Twelve suites and compiler/build checks pass. Installed 0.2.13 launches normally;
 temporary native probe code is removed. Physical star-key interception and the
-reported sequences need the [focused retest](docs/RETEST-0.2.13.txt).
+reported sequences required further physical verification.
 
 ## 0.2.12 — Source-switch continuity checks
 

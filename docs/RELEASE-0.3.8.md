@@ -12,7 +12,9 @@ Do not use GitHub's automatic **Source code (zip)** as the install package.
 1. From Roku Home, press **Home ×3, Up ×2, Right, Left, Right, Left, Right**.
 2. Enable the Development Application Installer, accept Roku's developer license,
    choose a developer password, and let the Roku restart.
-3. From a computer on the same network, open **http://<roku-ip>**.
+3. From a computer on the same network, open **`http://<your Roku IP>`**.
+   Replace `<your Roku IP>` with the address shown by your Roku—for example,
+   **`http://192.168.1.50`**. You can find it under **Settings → Network → About**.
 4. Sign in as **rokudev**, using the developer password you chose.
 5. Upload **aeriotv-roku-v0.3.8.zip** and choose **Install / Install with zip**.
 6. In AerioTV, enter the reachable Dispatcharr base URL and your Dispatcharr
@@ -21,7 +23,7 @@ Do not use GitHub's automatic **Source code (zip)** as the install package.
 Only one development app can be sideloaded; installing this replaces the existing
 development-slot app. No Node.js/compiler is needed to install the provided ZIP.
 
-[Full installation guide, troubleshooting and platform comparison](https://github.com/EndofLineTech/AerioTV-Roku/blob/v0.3.8/README.md)
+[Full installation guide, troubleshooting and platform comparison](https://github.com/EndofLineTech/AerioTV-Roku/blob/dev/README.md)
 
 ## Included
 
@@ -35,7 +37,7 @@ development-slot app. No Node.js/compiler is needed to install the provided ZIP.
 - Authorized Dispatcharr source switching and local frozen-picture recovery.
 - AerioTV's upstream Apple TV icon adapted for Roku launcher/splash artwork.
 
-## Known limitations / what to test
+## Known limitations
 
 - **Fullscreen star is unresolved on the tested Stick.** Open app options with
   **OK → Up (or Down) → Options**, using Left/Right to select Options, then OK.
@@ -50,12 +52,8 @@ development-slot app. No Node.js/compiler is needed to install the provided ZIP.
 - No direct Xtream/M3U setup, VOD, DVR, multiview, cloud sync, or guaranteed live
   rewind/catch-up in this Roku preview. Hide picture is foreground-only.
 
-Baseline: **Roku Streaming Stick 4K 3820RW2 / OS 15.3.4 / 1080p**, with
-**Dispatcharr 0.31.0**. Other Roku models and servers need testing.
-
-[Self-contained test worksheet](https://github.com/EndofLineTech/AerioTV-Roku/blob/v0.3.8/docs/RETEST-0.3.7.txt)
-also applies to 0.3.8 (branding/documentation release). Enter your actual version
-and substitute channel numbers from your lineup where needed.
+Tested only using the **Roku Streaming Stick 4K 3820RW2 / OS 15.3.4 / 1080p**,
+with **Dispatcharr 0.31.0**. Other models may work but have not been verified.
 
 ## Verification and source
 
