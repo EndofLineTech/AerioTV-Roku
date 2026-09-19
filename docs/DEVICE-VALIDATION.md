@@ -1,5 +1,31 @@
 # Device acceptance — EPG/live builds
 
+## 0.2.12 installed — 2026-09-19 02:08 UTC
+
+Installer success; native compile/launch completed around 02:08:49 UTC followed
+by successful capability refresh. No new runtime error appeared in the final
+20-second capture. Twelve suites, compiler check and package build pass.
+
+Before final installation, a temporary read-only probe tuned the saved channel
+(408), reached playing (431 ms startup beacon), and ran the actual StreamSourceTask
+list operation. It returned six member streams and one connected client. The
+probe then stopped playback. No source-switch POST was exercised in that native
+check. All temporary autoplay/timer/probe code was removed from the final package.
+
+The new Task-flow suite executes the production Task body with scripted HTTP
+responses: authorization/identity rejection, member validation, read-only list,
+one POST plus URL confirmation, equal-count client replacement, already-active
+no-op, failed mutation without retry, invalid operation/ID and exhausted deadline.
+Model cases cover joined viewers, missing/duplicate/truncated lists, empty initial
+clients and case-sensitive IDs. Scene-handler tests cover stale metadata Task
+cancellation. These are HTTP-boundary tests, not native network emulation.
+
+Client continuity now means all original IDs remain present in a complete
+confirmation list; it does not promise uninterrupted audio/video. Final acceptance
+must still include a real member-source change with another viewer, already-active
+selection, permission revocation, and clear preserved/changed/unknown messaging.
+Confirm old Stream Info does not return after a source change and menu close/reopen.
+
 ## 0.2.11 installed — 2026-09-19 01:29 UTC
 
 Final app installation succeeded, native compile/launch completed around

@@ -526,7 +526,7 @@ sub startPlayback(channel as object)
     content = CreateObject("roSGNode", "ContentNode")
     content.setFields(descriptor)
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.2.11"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.2.12"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true
@@ -1051,6 +1051,15 @@ sub onPlayerOption(event as object)
 end sub
 
 sub cancelSourceOperation()
+    clearServerStreamInfo()
+    if m.sourceTask <> invalid
+        m.sourceTask.unobserveField("result")
+        m.sourceTask.control = "STOP"
+        m.sourceTask = invalid
+    end if
+end sub
+
+sub clearServerStreamInfo()
     if m.streamInfoTask <> invalid
         m.streamInfoTask.unobserveField("result")
         m.streamInfoTask.control = "STOP"
@@ -1058,11 +1067,6 @@ sub cancelSourceOperation()
     end if
     m.serverStreamInfo = invalid
     m.serverStreamMessage = ""
-    if m.sourceTask <> invalid
-        m.sourceTask.unobserveField("result")
-        m.sourceTask.control = "STOP"
-        m.sourceTask = invalid
-    end if
 end sub
 
 sub loadServerStreamInfo()
@@ -1109,6 +1113,7 @@ sub beginSourceOperation(operation as string, streamId as string)
     m.playerOptions.menu = {title: "Stream sources", note: note, items: [{title: "Close", action: "close"}]}
     m.playerOptions.active = true
     if m.sourceTask <> invalid then return
+    if operation = "switch" then clearServerStreamInfo()
     m.sourceTask = CreateObject("roSGNode", "StreamSourceTask")
     m.sourceTask.baseUrl = m.baseUrl
     m.sourceTask.apiKey = m.apiKey
@@ -1137,7 +1142,15 @@ sub onSourceResult(event as object)
     end if
     if result.operation = "switch"
         print "[source-switch] confirmed id="; result.streamId; " clients="; result.clientCountBefore; "->"; result.clientCountAfter
-        showNotice("Stream source changed. The existing Roku connection was retained.")
+        continuity = result.continuity.state
+        print "[source-switch] client identity snapshot="; continuity
+        message = "Source changed. Server client continuity could not be verified."
+        if continuity = "preserved" then message = "Source changed. All original clients are still listed by the server."
+        if continuity = "changed" then message = "Source changed, but some original clients are no longer listed by the server."
+        if result.unchanged = true then message = "This source is already active. No source-change request was sent."
+        showNotice(message)
+        clearServerStreamInfo()
+        if m.playerOptions.active and m.optionKind = "streamInfo" then openPlayerOptions("streamInfo")
         if m.playerOptions.active and m.playerOptions.menu.title = "Stream sources" then loadStreamSources()
         return
     end if

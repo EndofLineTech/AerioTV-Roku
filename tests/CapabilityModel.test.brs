@@ -21,6 +21,19 @@ sub main()
     assertEqual(choices[0].active, true, "exact URL confirms source despite stale stream ID")
     assertEqual(choices[1].reported, true, "reported source is labeled separately")
     assertEqual(choices[0].doesExist("url"), false, "provider URLs never enter menu data")
+    original = {client_count: 2, clients: [{client_id: "roku"}, {client_id: "other"}]}
+    preserved = sourceClientContinuity(original, {client_count: 3, clients: [{client_id: "other"}, {client_id: "new"}, {client_id: "roku"}]})
+    assertEqual(preserved.state, "preserved", "new viewer does not invalidate original continuity")
+    changed = sourceClientContinuity(original, {client_count: 2, clients: [{client_id: "replacement"}, {client_id: "other"}]})
+    assertEqual(changed.state, "changed", "equal counts cannot conceal replacement connection")
+    assertEqual(changed.missingCount, 1, "identify missing original count without leaking IDs")
+    assertEqual(sourceClientContinuity(original, {client_count: 2}).state, "unknown", "counts alone are not evidence")
+    assertEqual(sourceClientContinuity(original, {client_count: 2, clients: [{client_id: "roku"}]}).state, "unknown", "truncated list is unknown")
+    assertEqual(sourceClientContinuity(original, {client_count: 2, clients: [{client_id: "roku"}, {client_id: "roku"}]}).state, "unknown", "duplicate list is unknown")
+    assertEqual(sourceClientContinuity({client_count: 0, clients: []}, original).state, "unknown", "no initial client cannot prove continuity")
+    assertEqual(sourceClientContinuity(original, {client_count: 0, clients: []}).missingCount, 2, "all original clients disappeared")
+    assertEqual(sourceClientContinuity({client_count: 1, clients: [{client_id: "A"}]}, {client_count: 1, clients: [{client_id: "a"}]}).state, "changed", "opaque client IDs are case-sensitive")
+    assertEqual(preserved.doesExist("clients"), false, "no client identity data in UI result")
     print "ALL TESTS PASSED"
 end sub
 

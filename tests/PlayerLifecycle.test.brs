@@ -58,6 +58,16 @@ sub main()
     assertEqual(m.playerOptions.menu.title, "Player options", "Back returns to parent")
     assertEqual(m.playerOptions.menu.items[m.playerOptions.menu.focusIndex].action, "audioMenu", "parent focus restored")
     assertEqual(m.video.content.programId, "a", "submenu Back does not retune")
+    infoTask = {control: "RUN", unobserved: false, unobserveField: sub(field as string)
+        m.unobserved = true
+    end sub}
+    m.streamInfoTask = infoTask
+    m.serverStreamInfo = {resolution: "old source"}
+    clearServerStreamInfo()
+    assertEqual(infoTask.control, "STOP", "source transition cancels old metadata request")
+    assertEqual(infoTask.unobserved, true, "old metadata callback detached")
+    assertEqual(m.streamInfoTask, invalid, "stale Task no longer current")
+    assertEqual(m.serverStreamInfo, invalid, "old source facts cleared")
     print "ALL TESTS PASSED"
 end sub
 

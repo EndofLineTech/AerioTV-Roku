@@ -38,6 +38,26 @@ reviewable backup, not automatic Beads synchronization; the live Dolt database
 and runtime files are ignored by Git. A remote Dolt destination and restore drill
 remain tracked under `AerioTV-Roku-rgs.11`.
 
+## 0.2.12 — Source-switch continuity checks
+
+Source changes now compare the original Dispatcharr client identities against
+the confirmation snapshot. Messages distinguish clients still listed, clients
+missing, and insufficient data. Equal client counts alone are not treated as
+continuity evidence; client identifiers/IPs stay out of UI results and logs.
+This is a point-in-time check, not proof of uninterrupted viewing.
+
+Selecting the URL-confirmed active source sends no mutation. Invalid operations,
+changed account identity, revoked admin permission and non-member sources are
+rejected; mutation failures are not automatically retried. Confirmation polling
+respects the overall Task deadline. Source transitions also cancel old server
+metadata requests so late callbacks cannot repopulate obsolete Stream Info.
+
+Twelve automated suites pass, including the actual source Task body with scripted
+HTTP responses. A separate native read-only probe successfully fetched six member
+sources and one active client on the target device. Real source mutation and
+multi-viewer continuity remain part of final acceptance. The diagnostic autoplay
+was removed; the installed 0.2.12 app launches normally into the guide.
+
 ## 0.2.11 — Scaling preview and server-reported stream details
 
 Installed on the target Stick. **Player options → Video scale preference** offers

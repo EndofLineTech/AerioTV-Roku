@@ -10348,6 +10348,20 @@
         "id": 22,
         "issue_id": "AerioTV-Roku-rgs.11",
         "text": "PO authorized creating the EndofLine GitHub repository and committing all current work to dev. Created private https://github.com/EndofLineTech/AerioTV-Roku with origin configured. Initial import targets dev; repository previously had no commits. Added a read-only archival snapshot script for issues/dependencies/comments/labels because installed bd has no export command and sync is deprecated/no-op. Live Dolt remote and full restore drill remain separate unfinished acceptance; no database credentials or live Dolt files are included."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T02:10:13Z",
+        "id": 23,
+        "issue_id": "AerioTV-Roku-ihp.12",
+        "text": "0.2.12 installed. Source Task now compares complete before/after client identity sets (case-sensitive), distinguishing preserved/changed/unknown; equal counts alone cannot prove continuity. Only counts/state leave normalization, not IDs/IPs. URL-confirmed active source is a no-op with no POST. Reject unknown operations/invalid IDs; cap confirmation at overall deadline; failed mutations not retried. Clear/cancel stale server-info Tasks on source transitions. New suite executes actual Task body with scripted HTTP responses covering authorization, identity, membership, list, mutation confirmation, connection replacement, no-op and deadline/failure paths. Native read-only probe on saved channel 408 reached playing and returned 6 sources / 1 client. No actual source-switch POST in native probe. Temporary probe removed; final app launch/capability refresh passed. Twelve suites/check/build pass; real switch with another viewer and final UI acceptance remain deferred."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T02:10:13Z",
+        "id": 24,
+        "issue_id": "AerioTV-Roku-ihp",
+        "text": "Latest installed 0.2.12 (~2026-09-19 02:08:49 UTC). Source-switch client identity checks and production Task-flow regression suite added; native source-list HTTP path verified (6 sources, 1 client). Twelve suites and build pass. Deferred test record expanded in DEVICE-VALIDATION: preserved/changed/unknown messages, active-source no-op, real shared-source mutation with another viewer, revoked permission and stale metadata cancellation. Epic remains in progress pending those final native/PO checks."
       }
     ],
     "labels": [

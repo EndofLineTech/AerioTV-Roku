@@ -12,6 +12,16 @@ sub runSourceOperation()
     m.clock = CreateObject("roTimespan")
     m.clock.mark()
     m.deadlineMs = 30000
+    if m.operation <> "list" and m.operation <> "switch"
+        failSource("Unsupported source operation.")
+        return
+    end if
+    if m.operation = "switch"
+        if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(streamId) or streamId.toInt() <= 0
+            failSource("Invalid source identifier.")
+            return
+        end if
+    end if
     if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(channelId) or not CreateObject("roRegex", "^[A-Za-z0-9-]+$", "").isMatch(m.uuid)
         failSource("Invalid channel identifier.")
         return
@@ -40,14 +50,22 @@ sub runSourceOperation()
         return
     end if
     valid = false
+    alreadyActive = false
     for each choice in choices
-        if choice.id = streamId then valid = true
+        if choice.id = streamId
+            valid = true
+            alreadyActive = choice.active
+        end if
     end for
     if not valid
         failSource("That source is no longer a member of this channel. Refresh the source list.")
         return
     end if
     beforeClients = textValue(status.client_count).toInt()
+    if alreadyActive
+        completeSource({ok: true, unchanged: true, streamId: streamId, clientCountBefore: beforeClients, clientCountAfter: beforeClients, continuity: sourceClientContinuity(status, status)})
+        return
+    end if
     response = requestJson(m.base + "/proxy/ts/change_stream/" + m.uuid, {stream_id: streamId.toInt()})
     if type(response) <> "roAssociativeArray"
         failSource("The source change failed or could not be confirmed. " + m.failure)
@@ -60,6 +78,7 @@ sub runSourceOperation()
     end if
     confirmed = false
     untilMs = m.clock.totalMilliseconds() + 6000
+    if untilMs > m.deadlineMs then untilMs = m.deadlineMs
     m.timeout = 1500
     while m.clock.totalMilliseconds() < untilMs
         current = requestJson(m.base + "/proxy/ts/status/" + m.uuid)
@@ -77,7 +96,7 @@ sub runSourceOperation()
         return
     end if
     ' No video control/content changes: the shared TS connection follows the swap.
-    completeSource({ok: true, streamId: streamId, clientCountBefore: beforeClients, clientCountAfter: textValue(current.client_count).toInt()})
+    completeSource({ok: true, streamId: streamId, clientCountBefore: beforeClients, clientCountAfter: textValue(current.client_count).toInt(), continuity: sourceClientContinuity(status, current)})
 end sub
 
 sub failSource(message as string)

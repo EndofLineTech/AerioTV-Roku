@@ -67,6 +67,42 @@ function normalizeChannelCapabilities(rows as dynamic) as object
     return result
 end function
 
+function sourceClientSnapshot(status as dynamic) as dynamic
+    if type(status) <> "roAssociativeArray" then return invalid
+    if type(status.clients) <> "roArray" then return invalid
+    count = textValue(status.client_count)
+    if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(count) then return invalid
+    clients = {}
+    clients.setModeCaseSensitive()
+    for each client in status.clients
+        if type(client) <> "roAssociativeArray" then return invalid
+        id = textValue(client.client_id)
+        if id = "" then return invalid
+        clients[id] = true
+    end for
+    ' A truncated, duplicate or malformed list cannot establish continuity.
+    if clients.count() <> count.toInt() then return invalid
+    return clients
+end function
+
+function sourceClientContinuity(before as dynamic, after as dynamic) as object
+    result = {state: "unknown", beforeCount: -1, afterCount: -1, missingCount: -1}
+    original = sourceClientSnapshot(before)
+    current = sourceClientSnapshot(after)
+    if original = invalid or current = invalid then return result
+    result.beforeCount = original.count()
+    result.afterCount = current.count()
+    if original.count() = 0 then return result
+    result.missingCount = 0
+    for each id in original
+        if not current.doesExist(id) then result.missingCount++
+    end for
+    result.state = "preserved"
+    if result.missingCount > 0 then result.state = "changed"
+    ' Only counts/state leave this function. Do not expose client IPs or IDs.
+    return result
+end function
+
 function normalizeStreamChoices(rows as dynamic, status as dynamic) as object
     result = []
     if type(rows) <> "roArray" then return result
