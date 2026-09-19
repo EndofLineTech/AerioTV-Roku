@@ -1,0 +1,313 @@
+AerioTV Roku 0.2.12 — Manual Test Results
+======================================
+
+Date: ____________________   Tester: _________________________________
+Roku model / OS: _____________________________________________________
+Dispatcharr version: __________   App version tested: _________________
+
+Replace each [     ] with PASS, FAIL, or SKIP.
+Leave untested items blank. Use SKIP when a scenario is unavailable.
+For failures, record the test ID, channel, buttons pressed, expected result,
+actual result, and any photo/video filename in the notes section below.
+
+Start with sections 1–6. Save Forget Connection (14.08) for last.
+This is an acceptance-results worksheet, not a separate issue backlog.
+Issues and acceptance status remain tracked in Beads (AerioTV-Roku-ihp).
+
+
+1. LAUNCH AND BASIC PLAYBACK
+---------------------------
+[   PASS  ] 1.01 Launch reconnects and opens a populated guide.
+[  FAIL  (Audio not playing when I choose some channels, work fine on other TV devices.  ESPN is example) ] 1.02 Several channels play with both picture and audio.
+[  PASS   ] 1.03 Startup is reasonable; buffering does not persist.
+[  SKIP   ] 1.04 Different channel/codec types play where available.
+[  PASS   ] 1.05 Play/Pause, a short wait, and resume recover picture/audio.
+[  PASS   ] 1.06 Home exits; relaunch operates normally.
+
+Channels / codecs / notes: ____________________________________________
+_____________________________________________________________________
+
+
+2. INFORMATION PANEL AND CHANNEL SWITCHING
+-----------------------------------------
+[  PASS   ] 2.01 OK shows/hides program information without pausing.
+[  PASS   ] 2.02 Up selects next channel; Down selects previous by default.
+[  PASS (However, holding up/down didn't change channels repeatedly)   ] 2.03 Held/rapid Up/Down stays responsive and settles correctly.
+[  PASS   ] 2.04 Lineup endpoints do not wrap or unnecessarily retune.
+[  PASS (Need to allow for 12/24 hour time options though)   ] 2.05 Channel name, logo, current program, synopsis and times match.
+[  PASS   ] 2.06 Next-program information is correct.
+[  PASS   ] 2.07 Automatic tune-in information fades after about 8 seconds.
+[  PASS   ] 2.08 Information updates across a real program boundary.
+[  PASS   ] 2.09 While paused, schedule progress still follows broadcast time.
+[  PASS   ] 2.10 Alternate Channel direction setting reverses Up/Down.
+[  PASS   ] 2.11 Channel direction preference survives relaunch.
+
+Note: With information explicitly opened using OK, Down enters controls
+instead of changing channels. Restore your preferred direction afterward.
+
+Notes: ______________________________________________________________
+
+
+3. TRANSPORT CONTROLS AND PLAYER MENUS
+-------------------------------------
+[  FAIL - Pushing the wrong direction confuses the UI and I can't get to the transport menu anymore  ] 3.01 OK, then Down enters the transport row.
+[  PASS   ] 3.02 Left/Right moves focus without changing channels.
+[  PASS   ] 3.03 Transport Play/Pause works.
+[  PASS   ] 3.04 Transport Channels and Recent actions open their browsers.
+[  PASS   ] 3.05 Transport Minimize and Options work.
+[  PASS   ] 3.06 Transport Stop ends playback and returns to the guide.
+[  PASS   ] 3.07 Up returns to information; Back dismisses controls.
+[  PASS   ] 3.08 Submenu Back returns to its parent with correct option focus.
+[  PASS   ] 3.09 Star (*) within a player submenu returns to playback.
+[  PASS   ] 3.10 Rapid Back presses do not lose focus or accidentally stop/tune.
+
+Notes: ______________________________________________________________
+
+
+4. CHANNELS BROWSER
+-------------------
+Open with Left during bare fullscreen playback.
+
+[  PASS   ] 4.01 Picture/audio continue behind the browser.
+[  PASS - However, slow to load logos   ] 4.02 Logos, program titles and Watching marker are correct.
+[  PASS   ] 4.03 Focus is clear; long lists scroll responsively.
+[  PASS   ] 4.04 Empty groups have a useful empty state and can be exited.
+[  PASS   ] 4.05 Left opens groups; group selection changes the browser list.
+[  PASS   ] 4.06 Browser-local group changes do not change the guide filter.
+[  PASS   ] 4.07 OK on another channel tunes it.
+[  PASS   ] 4.08 Back closes groups, then the browser, one layer at a time.
+[  PASS   ] 4.09 Up/Down outside the guide filter explains the limitation.
+
+Notes: ______________________________________________________________
+
+
+5. LAST CHANNEL AND RECENTLY WATCHED
+----------------------------------
+Watch A, then B; allow both to start playing. Then watch C.
+
+[  PASS   ] 5.01 Right repeatedly alternates between the last two channels.
+[  PASS   ] 5.02 Replay opens Recently Watched.
+[  PASS   ] 5.03 Recent channels are newest first with no duplicate entries.
+[  PASS   ] 5.04 Choosing a recent tunes it and moves it to the front.
+[  PASS   ] 5.05 Pause/resume does not duplicate or corrupt history.
+[  PASS   ] 5.06 Preview-only channels that never played do not enter history.
+[  PASS   ] 5.07 History survives Home and relaunch.
+[  PASS   ] 5.08 More than 25 watched channels leaves a maximum of 25 recents.
+
+A: ESPN B: ESPN2 C: Big Ten Network
+Notes: ______________________________________________________________
+
+
+6. MINI-PLAYER AND BACK
+----------------------
+[  PASS - Caveat; the channel title below the mini player overlaps the guide   ] 6.01 Back from bare fullscreen minimizes into the guide.
+[  PASS   ] 6.02 Video/audio continue while browsing the guide.
+[  FAIL, see 6.01   ] 6.03 Corner video does not obscure focused guide content.
+[  PASS  ] 6.04 Back from the mini-guide expands without restarting playback.
+[  PASS   ] 6.05 Play/Pause from the mini-guide expands without restarting.
+[  PASS   ] 6.06 OK on the playing channel's current airing expands, no retune.
+[  PASS   ] 6.07 Minimize/expand preserves an existing paused state.
+[  PASS   ] 6.08 Choosing another channel from the mini-guide tunes normally.
+[  PASS   ] 6.09 Guide options > Stop playback ends playback.
+[  PASS  ] 6.10 Repeated minimize/expand has no buffering, audio or focus loss.
+[  PASS  ] 6.11 Dispatcharr retains the same Roku client during transitions.
+[  PASS   ] 6.12 Stop/Home releases the Roku client without stopping others.
+
+Tests 6.11–6.12 need Dispatcharr's connection monitor.
+Notes: ______________________________________________________________
+
+
+7. AUDIO AND CAPTIONS
+--------------------
+Use player Star (*) options. Restore your preferred caption mode afterward;
+caption mode changes Roku's system-wide setting.
+
+[  SKIP   ] 7.01 Selecting another audio track actually changes the audio.
+[  SKIP   ] 7.02 Caption On/Off works.
+[  SKIP   ] 7.03 Selecting another available subtitle track works.
+[  PASS   ] 7.04 Missing audio/subtitle choices have sensible messages.
+[  SKIP   ] 7.05 Captions are readable and positioned correctly fullscreen.
+[  SKIP   ] 7.06 Captions behave correctly in mini-player and scaling modes.
+
+Channels / languages tested: _____None, no CC channels_____
+Notes: ______________________________________________________________
+
+
+8. FIT / FILL / STRETCH PREVIEWS
+------------------------------
+Open Star (*) > Video scale preference. Set each channel's source aspect
+correctly. Use the whole encoded frame's aspect, including baked-in bars.
+
+Source / channel                     Fit        Fill       Stretch
+4:3 _____________________________    [  FAIL   ]    [ FAIL    ]    [  FAIL   ]
+16:9 ____________________________    [  FAIL   ]    [  FAIL   ]    [   FAIl  ]
+Widescreen ______________________    [  FAIL   ]    [  FAIL   ]    [  FAIL   ]
+Letterboxed _____________________    [  FAIL   ]    [  FAIL   ]    [  FAIL   ]
+
+Fit: correct proportions; bars allowed.
+Fill: fills viewport by cropping edges, without distortion.
+Stretch: fills viewport with expected distortion.
+
+[ FAIL    ] 8.01 All available sample types behave as described above.
+[ FAIL    ] 8.02 Mini-player scaling stays inside the corner rectangle.
+[ FAIL    ] 8.03 Changing scale does not restart playback.
+[  FAIL   ] 8.04 Preferred scale survives relaunch.
+[ FAIL    ] 8.05 Each configured channel's source aspect survives relaunch.
+[ FAIL    ] 8.06 Unconfigured channels fall back to native Fit.
+[ FAIL    ] 8.07 Automatic / unknown clears the override and restores fallback.
+[ FAIL    ] 8.08 Captions are not unexpectedly cropped, enlarged or misplaced.
+
+Notes: ____All of 8 fail.  None of these options appeared.____
+
+
+9. HIDE PICTURE / FOREGROUND LISTENING
+------------------------------------
+Open Star (*) > Hide picture. AerioTV must remain open; this is not
+background playback or a TV power-off feature.
+
+[  FAIL   ] 9.01 Picture is covered while audio continues.
+[  FAIL   ] 9.02 Explanation fades after about 6 seconds.
+[  FAIL   ] 9.03 Play/Pause works while the picture is hidden.
+[  FAIL   ] 9.04 First navigation press restores picture without another action.
+[  FAIL   ] 9.05 Holding the wake key does not change channel or minimize.
+[  FAIL   ] 9.06 Captions/player chrome do not unexpectedly remain over black.
+[  FAIL   ] 9.07 After restoring, navigation, minimize and Stop work normally.
+[  FAIL   ] 9.08 Home exits normally.
+
+Notes: _____None of these options appeared in the * menu____________
+
+
+10. SLEEP TIMER
+---------------
+Open Star (*) > Sleep timer. A shortened native expiry probe already passed;
+the normal user-facing duration and cancellation still need this pass.
+
+[  FAIL   ] 10.01 Menu offers 30, 60, 90 and 120 minutes.
+[  FAIL   ] 10.02 Reopening the menu shows sensible remaining time.
+[  FAIL   ] 10.03 Changing channels preserves the deadline.
+[  FAIL   ] 10.04 Minimize/expand preserves the deadline.
+[  FAIL   ] 10.05 Cancel clears the timer and it stays cancelled.
+[  FAIL   ] 10.06 Stop, then tune again, does not retain the old timer.
+[  FAIL   ] 10.07 Home/relaunch clears the timer.
+[  FAIL   ] 10.08 A normal 30-minute timer expires and stops playback once.
+[  FAIL   ] 10.09 Expiry works while paused or picture-hidden.
+
+Timer started: __________ Expected expiry: __________ Actual: __________
+Notes: _____None of these options appeared in the * menu
+
+11. STREAM INFO
+---------------
+Open Star (*) > Stream Info. Native resolution/FPS may legitimately be
+Unavailable. Server metadata may be absent or cached.
+
+[  FAIL   ] 11.01 All rows are readable and the list scrolls correctly.
+[  FAIL   ] 11.02 Native facts/counters show values or explicit Unavailable.
+[  FAIL   ] 11.03 OK refreshes without moving focus to a different row.
+[  FAIL   ] 11.04 Retuning does not leave old-channel facts on screen.
+[  FAIL   ] 11.05 Server resolution/FPS/codecs/pixel format appear if available.
+[  FAIL   ] 11.06 Server-reported facts are clearly distinct from native facts.
+[  FAIL   ] 11.07 No credentials, provider URLs or client addresses are exposed.
+
+Channels / reported values: __________________________________________
+_____________________________________________________________________
+Notes: ____None of these items appear in the * menu____
+
+
+12. STREAM SOURCE SWITCHING
+--------------------------
+Use an admin account and a channel with multiple sources.
+IMPORTANT: This changes the shared channel upstream for all its viewers.
+For multi-viewer tests, deliberately use a second player and monitor it.
+
+[  FAIL   ] 12.01 Source list loads and shows active/reported-active labels.
+[  FAIL   ] 12.02 Cancel/Back from confirmation returns without changing source.
+[  FAIL   ] 12.03 Selecting the active source reports no change request sent.
+[  FAIL   ] 12.04 Confirming a different source changes the actual upstream.
+[  FAIL   ] 12.05 Roku playback continues or recovers after the source change.
+[  FAIL   ] 12.06 Client-continuity result message matches server observations.
+[  FAIL   ] 12.07 Closing/reopening while loading does not lose focus or stall.
+[  FAIL   ] 12.08 Stream Info refresh reflects the new source when available.
+[  FAIL   ] 12.09 A second viewer continues through the source change.
+[  FAIL   ] 12.10 Original client IDs remain; no duplicate Roku clients appear.
+
+Channel: _________________ Source before/after: ______________________
+Client counts before/after: __________ Same original IDs? _____________
+Do not paste private provider URLs, credentials or client addresses here.
+Notes: ______No idea where these settings are.__________
+
+
+13. GUIDE AND PROGRAM SEARCH
+---------------------------
+[  PASS   ] 13.01 Guide groups and favorite toggling work.
+[  PASS - caveat, should search all, not have to deal with selecting a group   ] 13.02 Channel name/number search and Clear search work.
+[  PASS   ] 13.03 Past/future navigation and Jump to date/time work.
+[  PASS   ] 13.04 Jump to Now returns correctly.
+[  PASS   ] 13.05 Available guide data spans 3 days back / 7 days forward.
+[  PASS   ] 13.06 Program details and Watch channel live work.
+[  PASS   ] 13.07 Search programs by Title returns appropriate results.
+[  PASS   ] 13.08 Search programs by Description returns appropriate results.
+[  PASS   ] 13.09 Quoted phrase and AND/OR queries work.
+[  PASS   ] 13.10 Result channel/time/description/Past/Now/Upcoming are correct.
+[  PASS   ] 13.11 Next/Previous result pages work.
+[  PASS   ] 13.12 No-match state, Edit and Retry work.
+[  PASS   ] 13.13 Back during loading cancels without stale results reopening.
+[  PASS   ] 13.14 Past/current/future selections open the correct guide row/time.
+[  PASS   ] 13.15 Selecting a search result does not immediately tune it.
+[  PASS   ] 13.16 Outside-filter results clear filters so their row is visible.
+[  PASS   ] 13.17 Mini-player playback continues during program search.
+
+Some unindexed/dummy/overridden schedules may be absent from server search.
+Queries / notes: _____________________________________________________
+_____________________________________________________________________
+
+
+14. CONNECTION, PERSISTENCE AND RECOVERY — DO LAST
+------------------------------------------------
+[  SKIP   ] 14.01 Remember Off remains Off after relaunch; saved key is not used.
+[  SKIP   ] 14.02 Remember On + successful connection enables auto-reconnect.
+[  SKIP   ] 14.03 Another account/server has isolated favorites/history/aspects.
+[  SKIP   ] 14.04 Restricted account sees only its permitted channels.
+[  SKIP   ] 14.05 Restricted account cannot perform admin source switching.
+[   SKIP  ] 14.06 Failed channel and bad credentials show useful recovery paths.
+[   SKIP  ] 14.07 Cancelling connection/loading restores usable focus.
+[  SKIP   ] 14.08 Forget removes connection/account data, retaining Remember policy.
+
+Notes: ______________________________________________________________
+
+
+15. OVERALL READABILITY AND ENDURANCE
+-----------------------------------
+[  PASS   ] 15.01 Text and focus indicators are readable at viewing distance.
+[  PASS   ] 15.02 Long names, descriptions and menus have no harmful clipping.
+[  PASS   ] 15.03 No blank menus, stuck loading indicators or trapped focus.
+[  PASS   ] 15.04 Long-list scrolling remains responsive.
+[  PASS   ] 15.05 Sustained playback has no increasing buffering or audio loss.
+[  PASS   ] 15.06 Repeated tuning does not accumulate duplicate connections.
+
+Approximate session duration: __________ Channels tuned: ______________
+Notes: ______________________________________________________________
+
+
+FAILURE / SKIP DETAILS
+=====================
+Copy this block for each failure or scenario you could not test.
+
+Test ID(s): _________________________________________________________
+PASS / FAIL / SKIP: __________________________________________________
+Channel / source / account type: _____________________________________
+Buttons / steps: _____________________________________________________
+_____________________________________________________________________
+Expected: ___________________________________________________________
+Actual: _____________________________________________________________
+_____________________________________________________________________
+Photo/video filename (optional): _____________________________________
+Reproducible? Always / Sometimes / Once: ______________________________
+
+
+FINAL SUMMARY
+=============
+Passed: __________ Failed: __________ Skipped: __________
+Untested items remaining: ____________________________________________
+Most important problems: _____________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
