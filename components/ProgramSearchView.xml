@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ProgramSearchView" extends="Group">
+  <interface>
+    <field id="active" type="boolean" value="false" onChange="onActive" />
+    <field id="model" type="assocarray" onChange="setModel" />
+    <field id="selection" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/ProgramSearchModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="ProgramSearchView.brs" />
+</component>

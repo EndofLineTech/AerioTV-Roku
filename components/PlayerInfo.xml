@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="PlayerInfo" extends="Group">
+  <interface>
+    <field id="session" type="assocarray" onChange="configureSession" />
+    <field id="channel" type="assocarray" onChange="renderInfo" />
+    <field id="info" type="assocarray" onChange="renderInfo" />
+    <field id="now" type="integer" alwaysNotify="true" onChange="renderInfo" />
+    <field id="hint" type="string" onChange="renderInfo" />
+    <field id="playbackState" type="string" onChange="renderInfo" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="pkg:/source/NowNextModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="PlayerInfo.brs" />
+  <children>
+    <Group id="canvas" />
+    <Poster id="logo" translation="[126,707]" width="96" height="66"
+      loadWidth="192" loadHeight="132" loadDisplayMode="scaleToFit" />
+  </children>
+</component>

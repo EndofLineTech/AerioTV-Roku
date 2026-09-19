@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ChannelBrowser" extends="Group">
+  <interface>
+    <field id="model" type="assocarray" onChange="configure" />
+    <field id="active" type="boolean" value="false" onChange="onActive" />
+    <field id="playingUuid" type="string" onChange="draw" />
+    <field id="nowTitles" type="assocarray" onChange="updateTitles" />
+    <field id="infoRequest" type="array" alwaysNotify="true" />
+    <field id="channelSelected" type="assocarray" alwaysNotify="true" />
+    <field id="closed" type="boolean" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="ChannelBrowser.brs" />
+  <children>
+    <Group id="canvas" />
+    <Timer id="refresh" duration="30" repeat="true" />
+  </children>
+</component>

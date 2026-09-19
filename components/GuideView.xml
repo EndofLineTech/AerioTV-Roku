@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="GuideView" extends="Group">
+  <interface>
+    <field id="config" type="assocarray" onChange="configure" />
+    <field id="active" type="boolean" value="false" onChange="onActive" />
+    <field id="watchChannel" type="assocarray" alwaysNotify="true" />
+    <field id="exitRequested" type="boolean" alwaysNotify="true" />
+    <field id="preferences" type="assocarray" alwaysNotify="true" />
+    <field id="playbackChannel" type="assocarray" onChange="onPlaybackChannel" />
+    <field id="playbackInfo" type="assocarray" alwaysNotify="true" />
+    <field id="miniActive" type="boolean" onChange="updateMiniLayout" />
+    <field id="playerRequest" type="string" alwaysNotify="true" />
+    <function name="adjacentPlayingChannel" />
+    <function name="selectPlayingChannel" />
+    <function name="cachedPlaybackInfo" />
+    <function name="playerBrowserData" />
+    <function name="browserNowTitles" />
+    <function name="channelByUuid" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/NowNextModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="GuideView.brs" />
+  <children>
+    <Group id="canvas" />
+    <ProgramSearchView id="programSearch" visible="false" />
+    <Timer id="loadDelay" duration="0.15" repeat="false" />
+    <Timer id="clock" duration="30" repeat="true" />
+    <Timer id="saveDelay" duration="0.8" repeat="false" />
+  </children>
+</component>

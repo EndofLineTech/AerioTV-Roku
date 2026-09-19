@@ -1,0 +1,344 @@
+# Device acceptance — EPG/live builds
+
+## 0.2.11 installed — 2026-09-19 01:29 UTC
+
+Final app installation succeeded, native compile/launch completed around
+01:29:45 UTC, and Dispatcharr capability refresh succeeded. No runtime error was
+observed during the 22-second capture. Eleven automated suites and the build's
+compiler checks passed. The standalone native test-pattern app was replaced by
+the normal guide-launch app.
+
+Internet research identified existing Dispatcharr status fields for source
+resolution/FPS/codecs/pixel format. A read-only metadata Task now supplies clearly
+labeled server facts in Stream Info; populated live-server responses and role/error
+paths still need validation. The native decoder fields remain independent.
+
+Scaling geometry, preferences and menus are implemented as preview controls.
+Native fixture results and links are in VIDEO-ASPECT-RESEARCH.md. Extend the
+deferred visual pass with 4:3, 16:9, 21:9 and baked-in-letterbox samples; compare
+Fit/Fill/Stretch in fullscreen and mini-player, check caption placement/clipping,
+same-session continuity, saved mode/aspect after relaunch, and account isolation.
+For channels with no aspect override, verify native Fit fallback. Confirm source
+metadata refresh preserves the currently focused Stream Info row.
+
+## 0.2.10 installed — 2026-09-19 01:06 UTC
+
+Installer success; native compile/launch completed at approximately 01:06:51 UTC,
+followed by a successful Dispatcharr 0.31.0/admin permission refresh. No runtime
+error appeared in the final 22-second capture. Normal guide launch was restored;
+the temporary diagnostic autoplay and timers are absent from source/final package.
+Ten automated suites, compiler validation and package build pass.
+
+### Short native playback investigation
+
+Temporary diagnostic builds selected the saved channel (404), waited 12 seconds,
+inspected native fields, and stopped playback. The extended probe then exercised
+the actual minimize, expand, Hide picture and sleep-expiry handlers, with three
+seconds between observations. Native results at approximately 01:00:46–01:01:06 UTC:
+
+- Initial stream reached `playing`; Roku startup beacon measured 1,951 ms.
+- `decoderStats`: `renderCount=600`, `frameDropCount=0`, `repeatCount=0`,
+  `streamErrorCount=0` at the first sample.
+- `resolution=""`, `videoTrack=""`, `tracks=[]`; `videoFormat="mpeg4_10b"`,
+  `audioFormat="none"`. These are native reports, not perceptual audio confirmation.
+- Mini-player: `state=playing`, same ContentNode (`isSameNode=true`),
+  `renderCount=780`.
+- Expanded then covered picture: `state=playing`, same ContentNode,
+  cover visible, `renderCount=960`.
+- Sleep deadline set to one second ahead for the diagnostic only. One expiry
+  message followed; final `state=stopped`, playing channel cleared, cover false.
+
+The measured decoder counters are now included in Stream Info. Render counts are
+not interpreted as source FPS. No decoded dimensions were returned for this
+sample. Public Group transforms and the native field inventory do not establish
+a working Fit/Fill/Stretch implementation, so ihp.10 is explicitly blocked on
+a supported/measured mapping. This is not a claim that every possible Roku
+rendering approach is impossible.
+
+Physical audio/picture/caption confirmation, alternative codecs/aspects,
+Dispatcharr connection identities and multi-viewer source switching remain
+deferred. Add to the final pass: decoder values after retune/pause/Stop; readable
+menu counters; mini-guide footer; missing/cached browser metadata; explanatory
+out-of-filter channel-surfing behavior; and source-operation close semantics.
+
+## 0.2.9 installed — 2026-09-19 00:51 UTC
+
+Following the owner's instruction to install finished builds and defer physical
+validation to the end, installed 0.2.9 (including all 0.2.8 additions). Installer
+reported success. Native compile/launch completed at approximately 00:51:42 UTC;
+the subsequent permission refresh reported admin level 10 / Dispatcharr 0.31.0.
+No runtime error appeared in the 30-second capture. Ten off-device suites and
+compiler/package checks pass. This supersedes the installed-version entries below.
+
+The foreground Hide picture mode overlays black over the existing Video and
+fades its explanatory hint after six seconds. Handler-level regression tests
+exercise the actual Scene functions using field adapters: content/control,
+visibility and mute are preserved when covering; pending preview tuning is
+cancelled; sleep deadline survives; Play/Pause stays routed to Video; wake-key
+press/repeat/release is consumed; the cover cannot open over the mini-guide.
+These checks do not establish native audio continuity, video-plane occlusion or
+caption behavior. No screensaver setting is changed. Physical validation must
+include captions, paused/buffering/error states, sleep expiry, Home/exit and TV
+power behavior; the feature is explicitly foreground-only.
+
+Player submenu Back behavior now returns to the parent option with restored
+focus; source confirmation returns to the source list; star dismisses to playback.
+Native acceptance must include pending source requests while leaving/reopening
+menus, rapid Back, and confirming that cancellation does not issue a source change.
+
+## 0.2.8 local build — program search and persistence
+
+The owner is remote; physical acceptance is deferred. This version was built
+locally and subsequently included in the installed 0.2.9 package. Acceptance is tracked on
+`AerioTV-Roku-5tg.11` and `AerioTV-Roku-b17.3`; the deferred-test record on ihp
+also references these additions.
+
+Program search uses the v0.31.0 `ProgramViewSet.search` route and
+`ProgramSearchResultSerializer` source contract: separate title/description
+filters, time bounds, field selection, pagination and channel associations.
+The server filters user-level/adult access, and the Roku additionally intersects
+returned IDs and EPG mappings with its connected summary lineup. Server search
+uses base EPG assignments, so overridden/unindexed/dummy schedules may be absent.
+No full ten-day EPG is downloaded to construct a local index.
+
+Model coverage includes time boundaries, malformed rows, unauthorized/unmapped
+channel exclusion, effective-name selection, chronological order, deduplication,
+page/display bounds, and Past/Now/Upcoming classification. Registry-adapter tests
+cover the legacy default, Off/key deletion/reload, malformed policy, On without
+saving an unvalidated key, and flush failure. These are off-device checks, not
+proof of HTTP Task execution, focus routing or actual registry persistence.
+
+The deferred native procedure is to search both titles and descriptions, navigate
+pages, cancel during loading, edit and replace a query, and select past/current/
+future results under All/Favorites/group/channel-search filters. Verify correct
+guide row/time, unchanged playback while searching in mini-player mode, useful
+empty/error/permission states, and no stale results following account changes.
+Repeat Remember Off/relaunch, On/successful-connect/relaunch, and Forget while Off;
+confirm the chosen policy and saved-key behavior on the real device.
+
+## 0.2.7 Live TV integration — 2026-09-18 local / 2026-09-19 UTC
+
+Developer installer accepted the 50,050-byte archive (MD5
+`87d2db908e2919017fdeb9b429f62216`). Native compilation and launch completed on
+the 3820RW2 / OS 15.3.4 build 2402 at approximately 00:21:56 UTC. No new runtime
+error appeared during the 35-second capture. The new capability Task completed
+with `level=10`, `source-switch=allowed`, and `version=0.31.0`. Eight off-device
+test suites and the compiler/package build passed; these do not prove the new
+remote interactions or media continuity.
+
+The build includes schema-versioned preferences/history, Channels and Recently
+Watched overlays, previous-channel toggle, mini-player/Back routing, transport,
+sleep timer, source picker, and the initial Stream Info snapshot. Device ECP
+remains in Limited mode, so physical-remote verification is required. Existing
+0.2.6 evidence below must not be treated as acceptance of the changed bindings.
+
+Source-switch acceptance requires comparing Dispatcharr client identities/counts
+before and after a confirmed change, including another viewer. Client counts
+alone do not prove connection identity or uninterrupted playback. The app does
+not issue player stop/play when switching the shared upstream, but that code
+property is not a substitute for observing server and device behavior.
+
+### Native scaling and stream-metric findings
+
+The OS's actual Video field inventory includes `width`, `height`, `translation`,
+`scale`, `clippingRect`, `resolution`, and `decoderStats`. It does **not** include
+`videoDisplayMode` or `scaleMode`. The public Video/content-metadata references
+checked in this session do not establish a SceneGraph Fit/Fill/Stretch mapping.
+Generic Group transforms are not yet proven to crop/stretch the hardware video
+plane correctly. No unverified rendering mode is exposed or written.
+
+Stream Info currently reads documented `videoFormat`, `audioFormat`,
+`streamInfo.measuredBitrate`, `streamInfo.streamBitrate`, and
+`bufferingStatus.percentage`. Network selection bitrate is labeled separately
+from stream bitrate; the latter's units are not assumed. URLs/headers are excluded
+from the report. Retuning clears readiness before the new player reaches playing.
+Resolution/frame rate remain `Unavailable`: the native `resolution` field exists,
+but its semantics and decoder-stat schema still require playback measurements.
+The build logs decoder-stat key names once per tune for that investigation.
+
+### Audio-only feasibility findings
+
+The [Video reference](https://developer.roku.com/dev/docs/video) documents
+`enableScreenSaverWhilePlaying=false` by default. Enabling it permits a
+screensaver only when playing video occupies less than 50% of the screen.
+For genuinely audio-only streams that flag has no effect; `disableScreenSaver`
+controls suppression instead. An opaque foreground screen over the existing
+Video is a possible listening experience, but would still receive/decode the
+video and would not establish bandwidth savings, power savings, TV power-off
+behavior, or playback after leaving AerioTV.
+
+The [Audio node reference](https://developer.roku.com/dev/docs/audio) describes
+streaming audio playback, not extraction of audio from this already-verified
+continuous MPEG-TS video connection. Changing player type would need separate
+compatibility and session-lifecycle tests. Neither background playback nor an
+audio-only control is claimed by this build. A foreground listening-mode scope
+decision and physical-device demonstration remain required for ihp.13.
+
+Hardware result for 0.2.0: installation succeeded, but setup showed six focusable
+boxes with no app-drawn text; native URL/API-key dialogs remained usable. The
+shared helper assigned a Font with no URI. Build 0.2.1 preserves the default
+Label font; the user confirmed that fix on the device.
+
+## Verified hardware session — 2026-09-18
+
+- Device: Streaming Stick 4K **3820RW2**, Roku OS **15.3.4 build 2402**, 1080p UI.
+- 0.2.1 debug console confirmed `onChannelsLoaded` failed at the expression
+  `event.getRoSGNode() <> m.task`: operator `<>` cannot compare two roSGNodes.
+  The task had already successfully returned **1,335 channels**.
+- 0.2.2 uses `isSameNode()` in both connection and guide completion callbacks.
+- Developer installer reported Install Success. Observed launch and loading on
+  the debug console; captured a populated guide showing 1,335 channels, real
+  logos, schedule times and program titles. No new runtime crash was observed
+  during the capture interval.
+- Preserved the already-selected Remember API key behavior before reinstalling;
+  the new build reconnected using that saved key without re-entering credentials.
+- ECP keypress returned HTTP 403 under the device's current remote-control policy.
+  Navigation, redesigned setup buttons, cancellation and timeout remain unverified
+  by remote automation. No device remote-control setting was changed.
+- Console reported one oversized logo texture (3200×2400). Decode-size bounds
+  remain a memory/performance follow-up; a populated screenshot is not a memory test.
+
+### Live playback investigation
+
+- 0.2.2 playback failed with Roku error -1, category `http`, internal code 2,
+  source `buffer:reader`: **Full-content response on a range request:200**.
+  Authentication had succeeded. The MP4 reader requested byte ranges while
+  Dispatcharr's live fMP4 endpoint emitted an HTTP 200 continuous response.
+- Tested existing `/proxy/ts/stream/<uuid>?output_format=mpegts` with Roku
+  `streamFormat="mpegts"`. At 20:57:12 UTC the native player reported `playing`;
+  its start-complete beacon recorded 1,633 ms. The user confirmed **Picture and audio**.
+- No additional service or Dispatcharr configuration change was made.
+- The developer screenshot captured a black video plane and is not visual
+  playback proof. Picture/audio confirmation came from the user at the TV.
+- A temporary compile-time autoplay smoke test selected the saved channel for
+  this investigation; it was removed for the normal 0.2.3 package.
+- Tested one channel/device combination. Codec inventory, sustained playback,
+  repeated tune/stop and pause/seek behavior remain to be verified.
+
+### Physical remote channel switching — 0.2.4
+
+- User confirmed various channels already played from the 0.2.3 guide, and
+  native Options and Back worked before this change.
+- Installed 0.2.4 and asked the user to test Down, Up, `*` and Back during playback.
+  User reported **All four work**.
+- Native logs confirmed `[player-input] down`, tuning 404 → 405, then
+  `[player-input] up`, tuning 405 → 404, each reaching `playing`.
+- Additional rapid Up/Down presses tuned channels in the 401–409 range and
+  recovered to `playing`. This does not establish server-side connection cleanup
+  timing or long-duration playback reliability.
+- Guide filter order, missing current IDs, singleton/empty lineups, non-wrapping
+  endpoints and rapid candidate advancement have off-device model regression tests.
+- Native Video keeps focus. No UI-disable/focus handoff was needed to receive
+  otherwise-unhandled directional events while preserving Roku Options.
+
+### Live information overlay and remote focus — 0.2.6
+
+- 0.2.5 displayed the information panel, but the user reported OK did not toggle
+  it. Console showed native paused/playing transitions and no app OK callback:
+  Video consumed OK even with `enableUI=false`.
+- 0.2.6 gives the Scene playback key focus. It handles OK and Play/Pause separately
+  and provides an app-owned `*` audio/caption menu using native Video track fields.
+  This intentionally replaces the native Roku Options panel.
+- User reported **Everything works** for information correctness, OK recall,
+  Up/Down, the new audio/caption menu, Back and Play/Pause.
+- Console confirmed three `[player-input] OK info` events without corresponding
+  pause, then a successful channel switch, followed by explicit Play/Pause pause.
+- Captured the paused overlay on channel 240 / Freeform: current program
+  “10 Things I Hate About You” (14:55–16:55), synopsis, schedule progress with
+  eight minutes remaining, and “Freaky Friday” next (16:55–19:00). The clock and
+  paused badge were visible. The channel number is duplicated in the header when
+  the provider embeds it in its channel name; cosmetic cleanup remains.
+- No oversized-logo warning appeared in this session after setting load sizes.
+  Peak texture/application memory has not been measured.
+- Rollover and metadata-failure recovery have deterministic model tests; an
+  actual program-boundary transition and server outage during playback still
+  need hardware acceptance. Track menus were user-verified at the control level;
+  a multi-language/audio-codec matrix remains to be tested.
+
+Off-device model tests include a synthetic
+1,400-channel window; they do not simulate Roku rendering, network or video playback.
+
+Record Roku model number and OS build, output resolution, remote type,
+Dispatcharr 0.31.0 connection/proxy configuration, channel count, and stream codecs.
+
+## First smoke test
+
+- [x] In 0.2.1, confirm AerioTV title, setup field names/values and status text appear (user report).
+- [x] Install 0.2.2 `out/aeriotv-roku.zip`; check console for runtime/XML errors during launch/loading.
+- [ ] Connect with API key; repeat with dashboard username/password.
+- [x] Confirm the guide opens at Now with real logos/programs (device screenshot).
+- [ ] Confirm Connect and Forget Connection are distinct action buttons, with visible focus.
+- [ ] Move down/up through channels and left/right through programs.
+- [ ] Open `*`: groups, favorites, search, date/time, refresh and settings.
+- [ ] Browse to three days back and seven days forward where data exists.
+- [x] Tune the previously failing channel via MPEG-TS and confirm picture/audio (user report).
+- [ ] Record actual codecs and expand the sample to representative H.264/AAC and other channels.
+- [x] Back from playback returns to the guide (user confirmation).
+- [ ] Verify exact row/time focus restoration across filtered-lineup switches.
+- [x] Up/Down change live channels and `*`/Back continue working (0.2.4 physical remote test).
+
+## Authentication, storage and account scope
+
+- [ ] Keyboard Save/Cancel/Back restore focus and secret fields are masked.
+- [ ] Wrong credentials, denied permissions, offline server and timeout recover.
+- [ ] Back cancels connecting; a later response cannot apply stale data.
+- [ ] Remember on reconnects after relaunch; off requires credentials again.
+- [ ] No dashboard password is persisted; the API key is registry-local.
+- [ ] Changing the server URL clears entered credentials.
+- [ ] Favorites/group/channel survive relaunch on the same account.
+- [ ] Account changes cannot restore the previous account's preferences/lineup.
+- [ ] Forget removes saved connection/preferences and releases in-memory guide data.
+- [ ] Restricted accounts match Dispatcharr's visible-channel output, including
+  hidden/adult restrictions, profile unions, and effective overrides.
+
+## Guide correctness and navigation
+
+- [ ] Decimal channel numbers, effective names/logos and assigned EPG sources match.
+- [ ] Shared TVG IDs and dummy UUID programs map correctly; missing mappings do
+  not guess by name or expose another channel's schedule.
+- [ ] No-guide channels remain tuneable; loading and failed guide states differ.
+- [ ] Current OK tunes; past/future OK shows details with an explicit Watch live action.
+- [ ] Group/search empty states recover through `*`; removing the last favorite works.
+- [ ] Date/time choices represent local time correctly, including DST transitions.
+- [ ] Left/right boundaries respect the requested history/future horizon.
+- [ ] Held remote navigation stays responsive across a 1,400-channel lineup.
+- [ ] Refresh replaces metadata while preserving channel/time focus.
+- [ ] Window failures back off; Refresh permits an explicit retry.
+- [ ] Navigating away from an in-flight window cancels/coalesces correctly.
+- [ ] Opening/closing menus or program details restores focus reliably.
+
+## Playback compatibility — architecture decision point
+
+- [x] Test fMP4/MP4 compatibility: failed due to HTTP range semantics; route replaced.
+- [x] `/proxy/ts/stream/<uuid>?output_format=mpegts` plays through the actual server on the target Stick.
+- [ ] Authentication, TLS, redirects and any output profile behave correctly.
+- [ ] Record video/audio codec and whether the Roku reports unsupported media.
+- [ ] Repeated tuning/stopping leaves only one active Dispatcharr connection.
+- [ ] Native controls/options and error dialogs preserve expected focus.
+- [x] 0.2.6 OK toggles on-air information without pausing (user and console).
+- [x] 0.2.6 app-owned audio/caption menu, channel switching and Back work (user).
+- [x] Current/next data, logo, schedule progress and paused indicator render (screenshot).
+- [ ] Confirm live rollover at a real program boundary and refresh-failure recovery.
+- [ ] Home exits and Dispatcharr releases the stream.
+- [ ] If playback fails, capture the numeric player error and redacted console
+  output. Evaluate existing output configuration; do not assume or add an HLS route.
+
+## Performance and visual acceptance
+
+- [ ] Capture setup, populated guide, details, menus, and player banner at 1080p.
+- [ ] Check safe areas, long titles, focus visibility and living-room readability.
+- [ ] Measure connection time, initial guide time, cached navigation, tune latency.
+- [ ] Measure peak memory during a guide response, mapping load, logo loads,
+  cache replacement and simultaneous video/guide state.
+- [ ] Prolonged navigation does not grow row/cell/cache counts without bound.
+- [ ] Repeat after invalid/large responses and account changes.
+
+## Later time-shift investigation (not implemented in this build)
+
+- [ ] Establish the native retained/seekable live range, rather than assume 60 minutes.
+- [ ] Test a completed catch-up program and an in-progress restart separately.
+- [ ] Record provider archive lag, retention, permissions and supported seeking.
+- [ ] Define expiry, channel-change and Go Live behavior before implementation.
+
+Roku debug console: TCP port 8085. Redact credentials and any credential-bearing
+URLs from platform logs before sharing. Screenshots should omit setup secrets.

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="PlayerControls" extends="Group">
+  <interface>
+    <field id="active" type="boolean" value="false" onChange="onActive" />
+    <field id="paused" type="boolean" onChange="draw" />
+    <field id="action" type="string" alwaysNotify="true" />
+    <field id="dismissed" type="boolean" alwaysNotify="true" />
+    <field id="infoFocus" type="boolean" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="PlayerControls.brs" />
+</component>

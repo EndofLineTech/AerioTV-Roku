@@ -1,0 +1,8 @@
+{
+  "rootDir": ".",
+  "files": ["manifest", "source/**/*", "components/**/*", "fixtures/*.mp4"],
+  "stagingDir": "../../out/native-staging",
+  "outFile": "../../out/native-checks.zip",
+  "createPackage": true,
+  "sourceMap": false
+}

@@ -1,0 +1,1351 @@
+sub init()
+    m.top.backgroundColor = "0x0A1628FF"
+    m.top.backgroundUri = ""
+    m.screen = m.top.findNode("screen")
+    m.guide = m.top.findNode("guide")
+    m.video = m.top.findNode("video")
+    m.videoViewport = m.top.findNode("videoViewport")
+    m.pendingScale = ""
+    m.banner = m.top.findNode("playerBanner")
+    m.transport = m.top.findNode("transport")
+    m.transport.observeField("action", "onTransportAction")
+    m.transport.observeField("dismissed", "onTransportDismissed")
+    m.transport.observeField("infoFocus", "onTransportInfoFocus")
+    m.browser = m.top.findNode("channelBrowser")
+    m.browser.observeField("channelSelected", "onBrowserSelected")
+    m.browser.observeField("closed", "onBrowserClosed")
+    m.browser.observeField("infoRequest", "onBrowserInfoRequest")
+    m.miniFrame = m.top.findNode("miniFrame")
+    m.miniCaption = m.top.findNode("miniCaption")
+    m.mini = false
+    m.userInfoOpen = false
+    m.sleepDeadline = 0
+    m.bannerTimer = m.top.findNode("bannerTimer")
+    m.bannerTimer.observeField("fire", "hideBanner")
+    m.playerClock = m.top.findNode("playerClock")
+    m.playerClock.observeField("fire", "onPlayerClock")
+    m.playerOptions = m.top.findNode("playerOptions")
+    m.playerOptions.observeField("selection", "onPlayerOption")
+    m.playerOptions.observeField("closed", "onPlayerOptionsClosed")
+    m.playerOptions.observeField("backRequested", "onPlayerOptionsBack")
+    m.optionKind = "main"
+    m.optionReturnAction = ""
+    m.pictureCover = m.top.findNode("pictureCover")
+    m.pictureHint = m.top.findNode("pictureHint")
+    m.pictureHintTimer = m.top.findNode("pictureHintTimer")
+    m.pictureHintTimer.observeField("fire", "hidePictureHint")
+    m.pictureWakeKey = ""
+    m.connectionClock = m.top.findNode("connectionClock")
+    m.connectionClock.observeField("fire", "onConnectionTick")
+    m.channelTuneTimer = m.top.findNode("channelTuneTimer")
+    m.channelTuneTimer.observeField("fire", "commitChannelSwitch")
+    m.playingChannel = invalid
+    m.pendingChannel = invalid
+    m.video.observeField("state", "onVideoState")
+    m.video.enableDecoderStats = true
+    print "[video] native fields="; FormatJson(m.video.getFields().keys())
+    m.video.observeField("decoderStats", "onDecoderStats")
+    m.streamReady = false
+    m.decoderKeysReported = false
+    m.decoderSnapshot = {}
+    m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
+    m.channelFacts = {}
+    m.capabilityTask = invalid
+    m.sourceTask = invalid
+    m.streamInfoTask = invalid
+    m.serverStreamInfo = invalid
+    m.serverStreamMessage = ""
+    m.sourceChoices = []
+    m.sourceClientCount = 0
+    m.serverAccountId = ""
+    m.capabilityClock = m.top.findNode("capabilityClock")
+    m.capabilityClock.observeField("fire", "refreshCapabilities")
+    m.guide.observeField("watchChannel", "onWatchChannel")
+    m.guide.observeField("exitRequested", "showConnection")
+    m.guide.observeField("preferences", "onPreferences")
+    m.guide.observeField("playbackInfo", "onPlaybackInfo")
+    m.guide.observeField("playerRequest", "onGuidePlayerRequest")
+    m.registry = CreateObject("roRegistrySection", "AerioTV")
+    m.preferenceStore = loadPreferenceStore(m.registry)
+    m.devicePreferences = m.preferenceStore.device
+    m.accountPreferences = normalizeAccountPreferences(invalid)
+    m.recordedChannel = ""
+    m.notice = m.top.findNode("notice")
+    m.noticeText = m.top.findNode("noticeText")
+    m.noticeTimer = m.top.findNode("noticeTimer")
+    m.noticeTimer.observeField("fire", "hideNotice")
+    m.baseUrl = m.registry.read("serverUrl")
+    m.remember = loadRememberPolicy(m.registry)
+    m.apiKey = ""
+    if m.remember then m.apiKey = m.registry.read("apiKey")
+    m.username = ""
+    m.password = ""
+    m.authMode = "key"
+    m.setupIndex = 0
+    m.busy = false
+    m.task = invalid
+    m.accountIdentity = ""
+    m.status = "Dispatcharr 0.31  |  Live TV and guide"
+    m.page = "setup"
+    drawSetup()
+    m.top.setFocus(true)
+    if m.baseUrl <> "" and m.apiKey <> "" then connectServer()
+end sub
+
+sub drawSetup()
+    m.screen.removeChildrenIndex(m.screen.getChildCount(), 0)
+    uiLabel(m.screen, "AerioTV", 160, 70, 1600, 86, 64)
+    uiLabel(m.screen, "Dispatcharr Direct Connect", 164, 171, 1500, 50, 34, "0x1AC4D8FF")
+    uiLabel(m.screen, "Your Live TV guide. Three days back, seven days ahead.", 164, 233, 1500, 42, 26, "0x9EB5C9FF")
+    method = "API key"
+    if m.authMode = "password" then method = "Dashboard username and password"
+    urlText = m.baseUrl
+    if urlText = "" then urlText = "http://your-dispatcharr-server:9191"
+    m.setupRows = [
+        {field: "url", title: "Server URL", value: urlText}
+        {field: "method", title: "Sign-in method", value: method}
+    ]
+    if m.authMode = "password"
+        m.setupRows.push({field: "username", title: "Username", value: m.username})
+        value = "Select to enter"
+        if m.password <> "" then value = "****************"
+        m.setupRows.push({field: "password", title: "Dashboard password", value: value})
+    else
+        value = "Select to enter"
+        if m.apiKey <> "" then value = "****************"
+        m.setupRows.push({field: "key", title: "API key", value: value})
+    end if
+    remember = "Off — this session only"
+    if m.remember then remember = "On — stored in this Roku's app registry"
+    m.setupRows.push({field: "remember", title: "Remember API key", value: remember})
+    connect = "CONNECT TO DISPATCHARR"
+    if m.busy then connect = "CONNECTING..."
+    m.setupRows.push({field: "connect", title: "Connect", value: connect})
+    m.setupRows.push({field: "forget", title: "Forget connection", value: "Remove saved credentials and preferences"})
+    if m.setupIndex >= m.setupRows.count() then m.setupIndex = m.setupRows.count() - 1
+    for i = 0 to m.setupRows.count() - 1
+        row = m.setupRows[i]
+        if row.field = "connect" or row.field = "forget" then exit for
+        y = 310 + i * 78
+        border = "0x17344AFF"
+        fill = "0x0D1E35FF"
+        if i = m.setupIndex
+            border = "0x1AC4D8FF"
+            fill = "0x10344AFF"
+        end if
+        uiRect(m.screen, 160, y, 1600, 68, border)
+        uiRect(m.screen, 162, y + 2, 1596, 64, fill)
+        uiLabel(m.screen, row.title, 186, y + 18, 380, 40, 25, "0x1AC4D8FF")
+        uiLabel(m.screen, row.value, 570, y + 18, 1155, 40, 25)
+    end for
+    actionY = 310 + (m.setupRows.count() - 2) * 78 + 22
+    uiRect(m.screen, 160, actionY - 12, 1600, 1, "0x17344AFF")
+    focusedConnect = m.setupIndex = m.setupRows.count() - 2
+    focusedForget = m.setupIndex = m.setupRows.count() - 1
+    connectBorder = "0x1AC4D8FF"
+    connectFill = "0x1A8FA8FF"
+    if focusedConnect
+        connectBorder = "0xFFFFFFFF"
+        connectFill = "0x1AC4D8FF"
+    end if
+    uiRect(m.screen, 160, actionY, 990, 90, connectBorder)
+    uiRect(m.screen, 164, actionY + 4, 982, 82, connectFill)
+    buttonLabel = uiLabel(m.screen, connect, 172, actionY + 24, 966, 46, 30, "0x0A1628FF")
+    buttonLabel.horizAlign = "center"
+    forgetBorder = "0xAA7381FF"
+    forgetFill = "0x291E30FF"
+    if focusedForget
+        forgetBorder = "0xFFFFFFFF"
+        forgetFill = "0x704151FF"
+    end if
+    uiRect(m.screen, 1182, actionY, 578, 90, forgetBorder)
+    uiRect(m.screen, 1186, actionY + 4, 570, 82, forgetFill)
+    buttonLabel = uiLabel(m.screen, "FORGET CONNECTION", 1194, actionY + 26, 554, 42, 25, "0xFFE3E8FF")
+    buttonLabel.horizAlign = "center"
+    hint = "Connect opens your guide. Forget removes saved credentials and preferences."
+    if m.busy then hint = "Connecting to your server. Press Back to cancel."
+    uiLabel(m.screen, hint, 164, actionY + 106, 1590, 42, 23, "0x9EB5C9FF")
+    m.statusLabel = uiLabel(m.screen, m.status, 164, actionY + 164, 1590, 100, 24, "0x9EB5C9FF")
+    m.statusLabel.wrap = true
+end sub
+
+sub editSetupField()
+    field = m.setupRows[m.setupIndex].field
+    if field = "connect"
+        connectServer()
+        return
+    else if field = "remember"
+        m.remember = not m.remember
+        if not saveRememberPolicy(m.registry, m.remember) then showNotice("Could not save the Remember API key policy or remove its saved key. The choice is active for this session; retry before exiting.")
+        drawSetup()
+        return
+    else if field = "method"
+        if m.authMode = "key" then m.authMode = "password" else m.authMode = "key"
+        drawSetup()
+        return
+    else if field = "forget"
+        forgetConnection()
+        return
+    end if
+    m.editingField = field
+    dialog = CreateObject("roSGNode", "KeyboardDialog")
+    dialog.buttons = ["Save", "Cancel"]
+    dialog.title = m.setupRows[m.setupIndex].title
+    if field = "url" then dialog.text = m.baseUrl
+    if field = "username" then dialog.text = m.username
+    if field = "password" then dialog.text = m.password
+    if field = "key" then dialog.text = m.apiKey
+    if field = "password" or field = "key" then dialog.keyboard.textEditBox.secureMode = true
+    dialog.observeField("buttonSelected", "onKeyboardButton")
+    dialog.observeField("wasClosed", "onDialogClosed")
+    m.top.dialog = dialog
+end sub
+
+sub onKeyboardButton(event as object)
+    dialog = event.getRoSGNode()
+    if event.getData() = 0
+        if m.editingField = "url"
+            base = normalizeBaseUrl(dialog.text)
+            if base = ""
+                m.status = "Enter an http:// or https:// URL without credentials or query parameters."
+            else
+                if m.baseUrl <> base
+                    ' Never silently reuse the old server's credential at a new URL.
+                    m.apiKey = ""
+                    m.password = ""
+                end if
+                m.baseUrl = base
+                m.status = "Server URL updated. Enter credentials for this server."
+            end if
+        else if m.editingField = "username"
+            m.username = dialog.text.trim()
+        else if m.editingField = "password"
+            m.password = dialog.text
+        else if m.editingField = "key"
+            m.apiKey = dialog.text.trim()
+        end if
+    end if
+    dialog.close = true
+    drawSetup()
+end sub
+
+sub onDialogClosed()
+    if m.page = "setup" then m.top.setFocus(true)
+    if m.page = "guide" then m.guide.setFocus(true)
+    if m.page = "player" then m.top.setFocus(true)
+end sub
+
+sub connectServer()
+    if m.busy then return
+    if m.playingChannel <> invalid then stopPlayback()
+    cancelCapabilityRefresh()
+    m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
+    m.channelFacts = {}
+    validCredential = m.apiKey <> ""
+    if m.authMode = "password" then validCredential = m.username <> "" and m.password <> ""
+    if normalizeBaseUrl(m.baseUrl) = "" or not validCredential
+        m.status = "Enter a valid server URL and credentials for the selected sign-in method."
+        drawSetup()
+        return
+    end if
+    m.busy = true
+    m.connectionStage = "Starting connection"
+    m.connectionElapsed = CreateObject("roTimespan")
+    m.connectionElapsed.mark()
+    m.status = "Starting connection..."
+    drawSetup()
+    m.task = CreateObject("roSGNode", "DispatcharrTask")
+    m.task.baseUrl = m.baseUrl
+    m.task.apiKey = m.apiKey
+    if m.authMode = "password"
+        m.task.username = m.username
+        m.task.password = m.password
+    end if
+    m.task.observeField("result", "onChannelsLoaded")
+    m.task.observeField("progress", "onConnectionProgress")
+    m.connectionClock.control = "start"
+    m.task.control = "RUN"
+end sub
+
+sub onChannelsLoaded(event as object)
+    if not isCurrentTaskEvent(event, m.task) then return
+    completeConnection(event.getData())
+end sub
+
+sub onConnectionProgress(event as object)
+    if not isCurrentTaskEvent(event, m.task) then return
+    m.connectionStage = event.getData()
+    updateConnectionStatus()
+end sub
+
+sub updateConnectionStatus()
+    m.status = m.connectionStage + "..." + chr(10) + m.connectionElapsed.totalSeconds().toStr() + " seconds elapsed. Back to cancel."
+    m.statusLabel.text = m.status
+end sub
+
+sub onConnectionTick()
+    if not m.busy or m.task = invalid then return
+    ' Read terminal state as well as observing results: a task that exits without
+    ' publishing must not strand the screen in its busy state.
+    if m.task.state = "done" or m.task.state = "stop"
+        if type(m.task.result) = "roAssociativeArray"
+            completeConnection(m.task.result)
+        else
+            failConnection("Connection task stopped during: " + m.connectionStage + ". Please retry.")
+        end if
+        return
+    end if
+    if connectionTimedOut(m.connectionElapsed.totalSeconds())
+        failConnection("Connection exceeded 120 seconds during: " + m.connectionStage + ". Please retry.")
+        return
+    end if
+    updateConnectionStatus()
+end sub
+
+sub failConnection(message as string)
+    m.connectionClock.control = "stop"
+    if m.task <> invalid
+        m.task.unobserveField("result")
+        m.task.unobserveField("progress")
+        m.task.control = "STOP"
+        m.task = invalid
+    end if
+    m.busy = false
+    m.status = message
+    drawSetup()
+end sub
+
+sub completeConnection(result as dynamic)
+    m.connectionClock.control = "stop"
+    m.task.unobserveField("result")
+    m.task.unobserveField("progress")
+    m.task = invalid
+    m.busy = false
+    m.password = ""
+    if type(result) <> "roAssociativeArray"
+        m.status = "Unexpected connection result. Please retry."
+        drawSetup()
+        return
+    end if
+    if not result.ok
+        m.status = result.message
+        drawSetup()
+        return
+    end if
+    m.apiKey = result.apiKey
+    m.serverAccountId = result.accountId
+    m.authMode = "key"
+    m.accountIdentity = m.baseUrl + "|" + result.accountId
+    legacy = invalid
+    legacyJson = m.registry.read("preferences")
+    if legacyJson <> "" then legacy = ParseJson(legacyJson)
+    prefs = accountPreferences(m.preferenceStore, m.accountIdentity, m.registry.read("accountIdentity"), legacy)
+    m.accountPreferences = reconcileWatchHistory(prefs, result.channels)
+    prefs = m.accountPreferences
+    if persistAccountPreferences() then m.registry.delete("preferences")
+    savedUrl = m.registry.write("serverUrl", m.baseUrl)
+    savedIdentity = m.registry.write("accountIdentity", m.accountIdentity)
+    savedKey = true
+    if m.remember then savedKey = m.registry.write("apiKey", m.apiKey)
+    savedPolicy = saveRememberPolicy(m.registry, m.remember)
+    if not savedUrl or not savedIdentity or not savedKey or not savedPolicy
+        result.warning = "Could not save this connection. Check Roku app storage."
+    end if
+    m.guide.config = {
+        channels: result.channels, groups: result.groups, warning: result.warning
+        baseUrl: m.baseUrl, apiKey: m.apiKey, preferences: prefs
+    }
+    m.banner.session = {baseUrl: m.baseUrl, apiKey: m.apiKey}
+    m.page = "guide"
+    m.screen.visible = false
+    m.guide.visible = true
+    m.guide.active = true
+    refreshCapabilities()
+    m.capabilityClock.control = "start"
+end sub
+
+sub cancelCapabilityRefresh()
+    m.capabilityClock.control = "stop"
+    if m.capabilityTask <> invalid
+        m.capabilityTask.unobserveField("result")
+        m.capabilityTask.control = "STOP"
+        m.capabilityTask = invalid
+    end if
+end sub
+
+sub refreshCapabilities()
+    if m.page = "setup" or m.apiKey = "" or m.serverAccountId = "" then return
+    if m.capabilityTask <> invalid then return
+    m.capabilityTask = CreateObject("roSGNode", "CapabilityTask")
+    m.capabilityTask.baseUrl = m.baseUrl
+    m.capabilityTask.apiKey = m.apiKey
+    m.capabilityTask.accountId = m.serverAccountId
+    m.capabilityTask.observeField("result", "onCapabilities")
+    m.capabilityTask.control = "RUN"
+end sub
+
+sub onCapabilities(event as object)
+    if not isCurrentTaskEvent(event, m.capabilityTask) then return
+    result = event.getData()
+    m.capabilityTask.unobserveField("result")
+    m.capabilityTask = invalid
+    if result.ok
+        m.capabilities = result.capabilities
+        m.channelFacts = result.channelFacts
+        print "[capabilities] level="; m.capabilities.level; " source-switch="; m.capabilities.switchStreams; " version="; m.capabilities.version
+    else
+        m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
+        m.channelFacts = {}
+        if result.identityChanged = true
+            if m.playingChannel <> invalid then stopPlayback()
+            showConnection()
+            m.status = result.message
+            drawSetup()
+        end if
+    end if
+end sub
+
+sub onPreferences(event as object)
+    if m.accountIdentity = "" then return
+    m.accountPreferences = mergeAccountPreferences(m.accountPreferences, event.getData())
+    persistAccountPreferences()
+end sub
+
+function persistAccountPreferences() as boolean
+    if m.accountIdentity = "" then return false
+    m.preferenceStore.accounts[preferenceScope(m.accountIdentity)] = m.accountPreferences
+    return persistPreferences()
+end function
+
+function persistPreferences() as boolean
+    m.preferenceStore.device = m.devicePreferences
+    if savePreferenceStore(m.registry, m.preferenceStore) then return true
+    showNotice("Your change is active for this session but could not be saved. Local storage is full, unavailable, or uses a newer settings format.")
+    return false
+end function
+
+sub showNotice(message as string)
+    m.noticeText.text = message
+    m.notice.visible = true
+    m.noticeTimer.control = "stop"
+    m.noticeTimer.control = "start"
+end sub
+
+sub hideNotice()
+    m.notice.visible = false
+end sub
+
+sub showConnection()
+    m.guide.active = false
+    m.guide.visible = false
+    m.screen.visible = true
+    m.page = "setup"
+    m.status = "Edit connection settings, or select Connect to reload."
+    drawSetup()
+    m.top.setFocus(true)
+end sub
+
+sub forgetConnection()
+    cancelCapabilityRefresh()
+    m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
+    m.serverAccountId = ""
+    m.channelFacts = {}
+    if m.playingChannel <> invalid then stopPlayback()
+    if m.accountIdentity <> ""
+        m.preferenceStore.accounts.delete(preferenceScope(m.accountIdentity))
+        persistPreferences()
+    end if
+    for each key in ["serverUrl", "apiKey", "accountIdentity", "preferences"]
+        m.registry.delete(key)
+    end for
+    m.registry.flush()
+    m.baseUrl = ""
+    m.apiKey = ""
+    m.username = ""
+    m.password = ""
+    m.accountIdentity = ""
+    m.accountPreferences = normalizeAccountPreferences(invalid)
+    m.guide.active = false
+    ' Recreate the guide to release account data, cached programs and HTTP agent.
+    m.top.removeChild(m.guide)
+    m.guide = CreateObject("roSGNode", "GuideView")
+    m.guide.visible = false
+    m.top.insertChild(m.guide, 1)
+    m.guide.observeField("watchChannel", "onWatchChannel")
+    m.guide.observeField("exitRequested", "showConnection")
+    m.guide.observeField("preferences", "onPreferences")
+    m.guide.observeField("playbackInfo", "onPlaybackInfo")
+    m.guide.observeField("playerRequest", "onGuidePlayerRequest")
+    m.banner.session = invalid
+    m.banner.channel = invalid
+    m.banner.info = invalid
+    m.status = "Saved connection and preferences removed."
+    drawSetup()
+end sub
+
+sub onWatchChannel(event as object)
+    startPlayback(event.getData())
+end sub
+
+sub startPlayback(channel as object)
+    restorePicture()
+    cancelSourceOperation()
+    m.channelTuneTimer.control = "stop"
+    m.pendingChannel = invalid
+    if m.playingChannel <> invalid
+        if m.playingChannel.uuid = channel.uuid and m.video.state <> "error" and m.video.state <> "finished"
+            expandPlayback()
+            return
+        end if
+    end if
+    descriptor = livePlaybackDescriptor(m.baseUrl, channel)
+    if descriptor = invalid
+        showPlaybackFailure(-4, "Channel or server information is missing or invalid.")
+        return
+    end if
+    m.guide.active = false
+    m.guide.visible = false
+    m.screen.visible = false
+    m.browser.active = false
+    m.playerOptions.active = false
+    m.transport.active = false
+    m.transport.visible = false
+    m.userInfoOpen = false
+    m.mini = false
+    m.miniFrame.visible = false
+    m.guide.miniActive = false
+    m.video.control = "stop"
+    m.streamReady = false
+    m.decoderKeysReported = false
+    m.decoderSnapshot = {}
+    m.playingChannel = channel
+    applyVideoLayout()
+    m.recordedChannel = ""
+    m.guide.callFunc("selectPlayingChannel", channel.uuid)
+    m.guide.playbackChannel = channel
+    content = CreateObject("roSGNode", "ContentNode")
+    content.setFields(descriptor)
+    content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.2.11"]
+    m.video.content = content
+    m.page = "player"
+    m.video.visible = true
+    ' Video consumes OK as pause even with enableUI=false. The Scene owns
+    ' playback keys; the app's Options menu controls the native track fields.
+    m.top.setFocus(true)
+    print "[playback] tuning channel "; channel.number
+    m.video.control = "play"
+    m.playerClock.control = "start"
+    showChannelBanner(channel, playerInfoHint())
+end sub
+
+sub showChannelBanner(channel as object, hint as string)
+    if m.mini or m.pictureCover.visible then return
+    m.banner.channel = channel
+    m.banner.info = m.guide.callFunc("cachedPlaybackInfo", channel, uiNow())
+    m.banner.hint = hint
+    m.banner.playbackState = m.video.state
+    if m.pendingChannel <> invalid then m.banner.playbackState = "preview"
+    m.banner.visible = true
+    m.banner.now = uiNow()
+    m.bannerTimer.control = "stop"
+    if not m.transport.active then m.bannerTimer.control = "start"
+end sub
+
+function playerInfoHint() as string
+    hint = "OK  Info    Up/Down  Channel    Left  Channels    Right  Last    Replay  Recent    *  Options    Back  Minimize"
+    if m.userInfoOpen then hint = "OK  Hide info    Down  Controls    Back  Hide info    *  Options"
+    remaining = sleepTimerRemaining(m.sleepDeadline, uiNow())
+    if remaining > 0 then hint += "    Sleep " + ((remaining + 59) \ 60).toStr() + "m"
+    return hint
+end function
+
+sub onPlaybackInfo(event as object)
+    if not m.guide.isSameNode(event.getRoSGNode()) then return
+    if m.page <> "player" or m.playingChannel = invalid or m.pendingChannel <> invalid then return
+    info = event.getData()
+    if type(info) <> "roAssociativeArray" then return
+    if info.channelUuid <> m.playingChannel.uuid then return
+    ' Never reopen a dismissed overlay or steal focus when metadata arrives.
+    m.banner.info = info
+    m.banner.now = uiNow()
+end sub
+
+sub onPlayerClock()
+    if m.page = "player" then m.banner.now = uiNow()
+    if m.playingChannel <> invalid
+        if sleepTimerRemaining(m.sleepDeadline, uiNow()) = 0
+            m.sleepDeadline = 0
+            stopPlayback()
+            showNotice("Sleep timer finished. Playback stopped.")
+            print "[player] sleep timer expired"
+        else if m.banner.visible
+            m.banner.hint = playerInfoHint()
+        end if
+    end if
+end sub
+
+sub togglePlayerInfo()
+    if m.pendingChannel <> invalid then return
+    if m.userInfoOpen
+        m.bannerTimer.control = "stop"
+        hideBanner()
+    else if m.playingChannel <> invalid
+        m.userInfoOpen = true
+        m.transport.visible = true
+        showChannelBanner(m.playingChannel, playerInfoHint())
+    end if
+end sub
+
+sub queueChannelSwitch(direction as integer)
+    if m.playingChannel = invalid then return
+    current = m.playingChannel
+    if m.pendingChannel <> invalid then current = m.pendingChannel
+    selection = m.guide.callFunc("adjacentPlayingChannel", current.uuid, direction)
+    if selection = invalid
+        showNotice("This channel is outside the guide's current filter. Use Channels or change the guide group to continue browsing.")
+        return
+    end if
+    if not selection.changed
+        hint = "First channel in this list"
+        if direction > 0 then hint = "Last channel in this list"
+        showChannelBanner(selection.channel, hint)
+        return
+    end if
+    m.pendingChannel = selection.channel
+    showChannelBanner(m.pendingChannel, "Switching channel...  |  Up/Down to choose  |  Back to guide")
+    ' Coalesce key repeats so rapidly browsing doesn't open every intermediate stream.
+    m.channelTuneTimer.control = "stop"
+    m.channelTuneTimer.control = "start"
+end sub
+
+sub commitChannelSwitch()
+    if m.page <> "player" or m.pendingChannel = invalid then return
+    channel = m.pendingChannel
+    m.pendingChannel = invalid
+    if m.playingChannel <> invalid
+        if m.playingChannel.uuid = channel.uuid
+            showChannelBanner(channel, playerInfoHint())
+            return
+        end if
+    end if
+    startPlayback(channel)
+end sub
+
+sub hideBanner()
+    if m.transport.active then return
+    m.banner.visible = false
+    m.userInfoOpen = false
+    m.transport.visible = false
+end sub
+
+sub stopPlayback()
+    restorePicture()
+    cancelSourceOperation()
+    wasSetup = m.page = "setup"
+    m.browser.active = false
+    m.transport.active = false
+    m.transport.visible = false
+    m.userInfoOpen = false
+    m.mini = false
+    m.miniFrame.visible = false
+    m.guide.miniActive = false
+    m.sleepDeadline = 0
+    m.playerOptions.active = false
+    m.playerClock.control = "stop"
+    m.channelTuneTimer.control = "stop"
+    m.pendingChannel = invalid
+    m.playingChannel = invalid
+    m.streamReady = false
+    m.decoderSnapshot = {}
+    m.page = "guide"
+    m.video.control = "stop"
+    m.video.visible = false
+    m.video.content = invalid
+    m.bannerTimer.control = "stop"
+    m.banner.visible = false
+    m.banner.channel = invalid
+    m.banner.info = invalid
+    m.guide.playbackChannel = invalid
+    m.guide.visible = true
+    m.guide.active = true
+    if wasSetup
+        m.guide.active = false
+        m.guide.visible = false
+        m.page = "setup"
+        m.screen.visible = true
+        m.top.setFocus(true)
+    end if
+end sub
+
+sub minimizePlayback()
+    restorePicture()
+    if m.playingChannel = invalid then return
+    m.channelTuneTimer.control = "stop"
+    m.pendingChannel = invalid
+    m.playerOptions.active = false
+    m.browser.active = false
+    m.transport.active = false
+    hideBanner()
+    m.bannerTimer.control = "stop"
+    m.mini = true
+    m.page = "guide"
+    applyVideoLayout()
+    m.miniCaption.text = m.playingChannel.name + "  |  Back: Fullscreen"
+    m.miniFrame.visible = true
+    m.guide.miniActive = true
+    m.screen.visible = false
+    m.guide.visible = true
+    m.guide.active = true
+    print "[player] minimized without retune"
+end sub
+
+sub expandPlayback()
+    restorePicture()
+    if m.playingChannel = invalid then return
+    m.mini = false
+    m.page = "player"
+    m.miniFrame.visible = false
+    m.guide.miniActive = false
+    m.guide.active = false
+    m.guide.visible = false
+    m.screen.visible = false
+    applyVideoLayout()
+    m.top.setFocus(true)
+    m.userInfoOpen = false
+    showChannelBanner(m.playingChannel, playerInfoHint())
+    print "[player] expanded without retune"
+end sub
+
+function currentVideoAspect() as string
+    if m.playingChannel = invalid then return ""
+    if m.accountPreferences.videoAspects.doesExist(m.playingChannel.uuid) then return m.accountPreferences.videoAspects[m.playingChannel.uuid]
+    return ""
+end function
+
+sub applyVideoLayout()
+    width = 1920.0
+    height = 1080.0
+    origin = [0, 0]
+    if m.mini
+        width = 464.0
+        height = 261.0
+        origin = [1360, 24]
+    end if
+    layout = videoGeometry(width, height, m.devicePreferences.videoScale, currentVideoAspect())
+    m.videoViewport.translation = origin
+    m.videoViewport.clippingRect = [0, 0, width, height]
+    m.video.width = layout.width
+    m.video.height = layout.height
+    m.video.scale = layout.scale
+    m.video.translation = layout.translation
+end sub
+
+sub onGuidePlayerRequest(event as object)
+    if event.getData() = "expandPlayer" then expandPlayback()
+    if event.getData() = "stopPlayer" then stopPlayback()
+end sub
+
+sub openChannelBrowser(mode = "channels" as string)
+    if m.playingChannel = invalid then return
+    m.channelTuneTimer.control = "stop"
+    m.pendingChannel = invalid
+    m.transport.active = false
+    hideBanner()
+    m.playerOptions.active = false
+    model = m.guide.callFunc("playerBrowserData")
+    model.mode = mode
+    model.recent = m.accountPreferences.recent
+    model.baseUrl = m.baseUrl
+    model.apiKey = m.apiKey
+    m.browser.playingUuid = m.playingChannel.uuid
+    m.browser.model = model
+    m.browser.active = true
+end sub
+
+sub onBrowserSelected(event as object)
+    if m.page <> "player" then return
+    m.browser.active = false
+    startPlayback(event.getData())
+end sub
+
+sub onBrowserClosed()
+    if m.page = "player" then m.top.setFocus(true)
+end sub
+
+sub onBrowserInfoRequest(event as object)
+    if not m.browser.active then return
+    m.browser.nowTitles = m.guide.callFunc("browserNowTitles", event.getData())
+end sub
+
+sub zapPreviousChannel()
+    if m.playingChannel = invalid then return
+    id = previousWatched(m.accountPreferences, m.playingChannel.uuid)
+    channel = m.guide.callFunc("channelByUuid", id)
+    if channel = invalid
+        showNotice("No previous channel is available in this account.")
+        return
+    end if
+    startPlayback(channel)
+end sub
+
+sub onTransportAction(event as object)
+    action = event.getData()
+    if action = "play"
+        togglePause()
+    else if action = "channels"
+        openChannelBrowser()
+    else if action = "recent"
+        openChannelBrowser("recent")
+    else if action = "minimize"
+        minimizePlayback()
+    else if action = "options"
+        openPlayerOptions()
+    else if action = "stop"
+        stopPlayback()
+    end if
+end sub
+
+sub onTransportDismissed()
+    hideBanner()
+    if m.page = "player" then m.top.setFocus(true)
+end sub
+
+sub onTransportInfoFocus()
+    m.userInfoOpen = true
+    if m.page = "player" then m.top.setFocus(true)
+    m.bannerTimer.control = "start"
+end sub
+
+sub togglePause()
+    if m.video.state = "paused"
+        m.video.control = "resume"
+    else if m.video.state = "playing"
+        m.video.control = "pause"
+    end if
+end sub
+
+sub openPlayerOptions(kind = "main" as string)
+    previousKind = m.optionKind
+    previousFocus = m.playerOptions.focusedIndex
+    m.optionKind = kind
+    if kind <> "aspect" then m.pendingScale = ""
+    m.transport.active = false
+    m.browser.active = false
+    m.channelTuneTimer.control = "stop"
+    m.pendingChannel = invalid
+    m.bannerTimer.control = "stop"
+    hideBanner()
+    title = "Player options"
+    note = "Back returns to the parent menu; * returns to playback."
+    if kind = "main" then note = "Back or * returns to playback."
+    items = [
+        {title: "Audio track", action: "audioMenu"}
+        {title: "Captions: " + m.video.globalCaptionMode, action: "captionsMenu"}
+        {title: "Subtitle track", action: "subtitleMenu"}
+        {title: "Stream Info", action: "streamInfo"}
+        {title: "Video scale preference: " + m.devicePreferences.videoScale, action: "scaleMenu"}
+        {title: "Channels", action: "channels"}
+        {title: "Recently Watched", action: "recent"}
+        {title: "Last channel", action: "last"}
+        {title: "Minimize to guide", action: "minimize"}
+        {title: "Hide picture (foreground listening)", action: "hidePicture"}
+        {title: "Sleep timer", action: "sleepMenu"}
+        {title: "Channel direction", action: "directionMenu"}
+        {title: "Stop playback", action: "stop"}
+        {title: "Close", action: "close"}
+    ]
+    if m.capabilities.switchStreams = "allowed"
+        items.unshift({title: "Switch stream source", action: "sourceMenu"})
+    else if m.capabilities.switchStreams = "unknown"
+        items.unshift({title: "Refresh source-switch permissions", action: "refreshCapabilities"})
+    end if
+    if kind = "scale"
+        title = "Video scale"
+        aspect = currentVideoAspect()
+        note = "Source aspect for this channel: " + aspect + ". Transforms keep the same player session."
+        if aspect = "" then note = "Source aspect unknown: using native Fit. Fill/Stretch require a per-channel aspect setting."
+        items = []
+        for each mode in ["fit", "fill", "stretch"]
+            label = mode
+            if mode = "fit" then label = "Fit — preserve native aspect"
+            if mode = "fill" then label = "Fill — crop edges (preview)"
+            if mode = "stretch" then label = "Stretch — distortion (preview)"
+            if mode = m.devicePreferences.videoScale then label = "[Preferred] " + label
+            items.push({title: label, action: "scale", value: mode})
+        end for
+        items.push({title: "Set this channel's source aspect", action: "aspectMenu"})
+    else if kind = "aspect"
+        title = "Source aspect for this channel"
+        note = "Use the full encoded picture's aspect, including baked-in black bars. Saved only for this account/channel."
+        items = [{title: "Automatic / unknown — native Fit", action: "aspect", value: ""}]
+        for each aspect in ["4:3", "16:9", "21:9"]
+            label = aspect
+            if aspect = currentVideoAspect() then label = "[Selected] " + aspect
+            items.push({title: label, action: "aspect", value: aspect})
+        end for
+    else if kind = "streamInfo"
+        title = "Stream Info"
+        note = "Native and server-reported snapshots. OK refreshes; Back returns to options."
+        if m.serverStreamInfo = invalid then loadServerStreamInfo()
+        if m.serverStreamMessage <> "" then note = m.serverStreamMessage
+        snapshot = invalid
+        if m.streamReady
+            snapshot = {videoFormat: m.video.videoFormat, audioFormat: m.video.audioFormat, streamInfo: m.video.streamInfo, bufferingStatus: m.video.bufferingStatus, decoderStats: m.decoderSnapshot}
+        end if
+        facts = nativeStreamDetails(snapshot, m.apiKey)
+        items = []
+        for each entry in [{label: "Video codec", key: "video"}, {label: "Audio codec", key: "audio"}, {label: "Decoded resolution", key: "resolution"}, {label: "Frame rate", key: "frameRate"}, {label: "Stream bitrate", key: "bitrate"}, {label: "Network estimate", key: "network"}, {label: "Buffering progress", key: "buffering"}]
+            items.push({title: entry.label + ": " + facts[entry.key], action: "streamInfo"})
+        end for
+        items.push({title: "State: " + m.video.state + "  |  Transport: MPEG-TS", action: "streamInfo"})
+        for each entry in [{label: "Rendered frames", key: "rendered"}, {label: "Dropped frames", key: "dropped"}, {label: "Repeated frames", key: "repeated"}, {label: "Stream errors", key: "errors"}]
+            items.push({title: entry.label + ": " + facts[entry.key], action: "streamInfo"})
+        end for
+        server = m.serverStreamInfo
+        if server = invalid then server = serverStreamDetails(invalid)
+        for each entry in [{label: "Server resolution", key: "resolution"}, {label: "Server source frame rate", key: "frameRate"}, {label: "Server video codec", key: "video"}, {label: "Server audio codec", key: "audio"}, {label: "Server pixel format", key: "pixels"}]
+            items.push({title: entry.label + ": " + server[entry.key], action: "streamInfo"})
+        end for
+    else if kind = "sleep"
+        title = "Sleep timer"
+        items = []
+        remaining = sleepTimerRemaining(m.sleepDeadline, uiNow())
+        if remaining >= 0
+            note = ((remaining + 59) \ 60).toStr() + " minutes remaining"
+            items.push({title: "Cancel timer", action: "sleep", minutes: 0})
+        else
+            note = "Stops playback; continues across channel changes and mini-player."
+        end if
+        for each minutes in [30, 60, 90, 120]
+            items.push({title: minutes.toStr() + " minutes", action: "sleep", minutes: minutes})
+        end for
+    else if kind = "direction"
+        title = "Channel direction"
+        note = "Saved device preference; full remote customization is tracked separately."
+        items = []
+        for each choice in [{value: "apple", title: "Up next / Down previous (Apple TV)"}, {value: "guide", title: "Up previous / Down next (guide order)"}]
+            titleText = choice.title
+            if choice.value = m.devicePreferences.channelDirection then titleText = "[Selected] " + titleText
+            items.push({title: titleText, action: "direction", value: choice.value})
+        end for
+    else if kind = "audio"
+        title = "Audio track"
+        items = playbackTrackChoices(m.video.availableAudioTracks, "audio", m.video.audioTrack)
+        if items.count() = 0 then items.push({title: "No audio tracks reported by this stream", action: "close"})
+    else if kind = "subtitle"
+        title = "Subtitle track"
+        note = "Current caption mode: " + m.video.globalCaptionMode
+        items = playbackTrackChoices(m.video.availableSubtitleTracks, "subtitle", m.video.subtitleTrack)
+        if items.count() = 0 then items.push({title: "No subtitle tracks reported by this stream", action: "close"})
+    else if kind = "captions"
+        title = "Captions"
+        note = "This changes Roku's system-wide caption mode."
+        items = []
+        for each mode in ["Off", "On", "Instant replay"]
+            text = mode
+            if mode = m.video.globalCaptionMode then text = "[Selected] " + mode
+            items.push({title: text, action: "captions", mode: mode})
+        end for
+    end if
+    focusIndex = 0
+    if kind = "streamInfo" and previousKind = kind and previousFocus <> invalid then focusIndex = previousFocus
+    if kind = "main"
+        for i = 0 to items.count() - 1
+            if items[i].action = m.optionReturnAction then focusIndex = i
+        end for
+    end if
+    m.playerOptions.menu = {title: title, note: note, items: items, focusIndex: focusIndex}
+    m.playerOptions.active = true
+end sub
+
+sub onPlayerOption(event as object)
+    if m.page <> "player" then return
+    item = event.getData()
+    if m.optionKind = "main" then m.optionReturnAction = item.action
+    if item.action = "scaleMenu"
+        openPlayerOptions("scale")
+        return
+    else if item.action = "aspectMenu"
+        openPlayerOptions("aspect")
+        return
+    else if item.action = "scale"
+        if item.value <> "fit" and currentVideoAspect() = ""
+            m.pendingScale = item.value
+            openPlayerOptions("aspect")
+            return
+        end if
+        m.devicePreferences.videoScale = item.value
+        applyVideoLayout()
+        persistPreferences()
+    else if item.action = "aspect"
+        id = m.playingChannel.uuid
+        if item.value = ""
+            m.accountPreferences.videoAspects.delete(id)
+        else
+            if not m.accountPreferences.videoAspects.doesExist(id) and m.accountPreferences.videoAspects.count() >= 100
+                showNotice("The 100-channel aspect limit is reached. Clear an existing channel's aspect before adding another.")
+                return
+            end if
+            m.accountPreferences.videoAspects[id] = item.value
+            if m.pendingScale <> "" then m.devicePreferences.videoScale = m.pendingScale
+        end if
+        m.pendingScale = ""
+        applyVideoLayout()
+        persistAccountPreferences()
+    else if item.action = "streamInfo"
+        m.serverStreamInfo = invalid
+        openPlayerOptions("streamInfo")
+        return
+    else if item.action = "sleepMenu"
+        openPlayerOptions("sleep")
+        return
+    else if item.action = "directionMenu"
+        openPlayerOptions("direction")
+        return
+    else if item.action = "sourceMenu"
+        loadStreamSources()
+        return
+    else if item.action = "sourceSelect"
+        m.optionKind = "sourceConfirm"
+        note = "Shared upstream: affects ALL viewers (" + m.sourceClientCount.toStr() + " clients reported). Roku stays connected."
+        m.playerOptions.menu = {title: "Switch shared stream source?", note: note, items: [{title: "Switch to " + item.title, action: "sourceConfirm", id: item.id}, {title: "Cancel", action: "sourceMenu"}]}
+        return
+    else if item.action = "sourceConfirm"
+        beginSourceOperation("switch", item.id)
+        return
+    else if item.action = "audioMenu"
+        openPlayerOptions("audio")
+        return
+    else if item.action = "subtitleMenu"
+        openPlayerOptions("subtitle")
+        return
+    else if item.action = "captionsMenu"
+        openPlayerOptions("captions")
+        return
+    else if item.action = "audio"
+        m.video.audioTrack = item.track
+    else if item.action = "subtitle"
+        m.video.subtitleTrack = item.track
+    else if item.action = "captions"
+        m.video.globalCaptionMode = item.mode
+    else if item.action = "sleep"
+        m.sleepDeadline = 0
+        if item.minutes > 0 then m.sleepDeadline = uiNow() + item.minutes * 60
+    else if item.action = "direction"
+        m.devicePreferences.channelDirection = item.value
+        persistPreferences()
+    end if
+    m.playerOptions.active = false
+    onPlayerOptionsClosed()
+    if item.action = "channels" then openChannelBrowser()
+    if item.action = "recent" then openChannelBrowser("recent")
+    if item.action = "last" then zapPreviousChannel()
+    if item.action = "minimize" then minimizePlayback()
+    if item.action = "stop" then stopPlayback()
+    if item.action = "hidePicture" then hidePicture()
+    if item.action = "refreshCapabilities"
+        refreshCapabilities()
+        showNotice("Refreshing account permissions. Reopen player options shortly.")
+    end if
+end sub
+
+sub cancelSourceOperation()
+    if m.streamInfoTask <> invalid
+        m.streamInfoTask.unobserveField("result")
+        m.streamInfoTask.control = "STOP"
+        m.streamInfoTask = invalid
+    end if
+    m.serverStreamInfo = invalid
+    m.serverStreamMessage = ""
+    if m.sourceTask <> invalid
+        m.sourceTask.unobserveField("result")
+        m.sourceTask.control = "STOP"
+        m.sourceTask = invalid
+    end if
+end sub
+
+sub loadServerStreamInfo()
+    if m.streamInfoTask <> invalid or m.playingChannel = invalid then return
+    if m.capabilities.switchStreams <> "allowed"
+        m.serverStreamMessage = "Server diagnostics require verified Dispatcharr admin access. Native metrics remain available."
+        m.serverStreamInfo = serverStreamDetails(invalid)
+        return
+    end if
+    m.serverStreamMessage = "Loading server metadata; native facts remain available."
+    m.streamInfoTask = CreateObject("roSGNode", "StreamInfoTask")
+    m.streamInfoTask.baseUrl = m.baseUrl
+    m.streamInfoTask.apiKey = m.apiKey
+    m.streamInfoTask.channelUuid = m.playingChannel.uuid
+    m.streamInfoTask.observeField("result", "onServerStreamInfo")
+    m.streamInfoTask.control = "RUN"
+end sub
+
+sub onServerStreamInfo(event as object)
+    if not isCurrentTaskEvent(event, m.streamInfoTask) then return
+    result = event.getData()
+    m.streamInfoTask.unobserveField("result")
+    m.streamInfoTask = invalid
+    if m.playingChannel = invalid then return
+    if result.channelUuid <> m.playingChannel.uuid then return
+    m.serverStreamInfo = result.details
+    m.serverStreamMessage = "Server values describe upstream metadata, which may be cached. OK refreshes."
+    if not result.ok then m.serverStreamMessage = "Server diagnostics unavailable. " + result.message
+    if m.playerOptions.active and m.optionKind = "streamInfo" then openPlayerOptions("streamInfo")
+end sub
+
+sub loadStreamSources()
+    beginSourceOperation("list", "")
+end sub
+
+sub beginSourceOperation(operation as string, streamId as string)
+    if m.playingChannel = invalid or m.capabilities.switchStreams <> "allowed"
+        showNotice("Stream source changes require verified admin permission.")
+        return
+    end if
+    m.optionKind = "source"
+    note = "Checking current permission and source state..."
+    if operation = "switch" then note = "Switching shared source. Closing this menu does not undo the request."
+    m.playerOptions.menu = {title: "Stream sources", note: note, items: [{title: "Close", action: "close"}]}
+    m.playerOptions.active = true
+    if m.sourceTask <> invalid then return
+    m.sourceTask = CreateObject("roSGNode", "StreamSourceTask")
+    m.sourceTask.baseUrl = m.baseUrl
+    m.sourceTask.apiKey = m.apiKey
+    m.sourceTask.accountId = m.serverAccountId
+    m.sourceTask.channelId = m.playingChannel.id
+    m.sourceTask.channelUuid = m.playingChannel.uuid
+    m.sourceTask.streamId = streamId
+    m.sourceTask.operation = operation
+    m.sourceTask.observeField("result", "onSourceResult")
+    m.sourceTask.control = "RUN"
+end sub
+
+sub onSourceResult(event as object)
+    if not isCurrentTaskEvent(event, m.sourceTask) then return
+    result = event.getData()
+    m.sourceTask.unobserveField("result")
+    m.sourceTask = invalid
+    if m.playingChannel = invalid then return
+    if result.channelUuid <> m.playingChannel.uuid then return
+    if not result.ok
+        showNotice(result.message)
+        if m.playerOptions.active and m.playerOptions.menu.title = "Stream sources"
+            m.playerOptions.menu = {title: "Stream sources", note: result.message, items: [{title: "Refresh", action: "sourceMenu"}, {title: "Close", action: "close"}]}
+        end if
+        return
+    end if
+    if result.operation = "switch"
+        print "[source-switch] confirmed id="; result.streamId; " clients="; result.clientCountBefore; "->"; result.clientCountAfter
+        showNotice("Stream source changed. The existing Roku connection was retained.")
+        if m.playerOptions.active and m.playerOptions.menu.title = "Stream sources" then loadStreamSources()
+        return
+    end if
+    m.sourceChoices = result.choices
+    m.sourceClientCount = result.clientCount
+    items = []
+    for each choice in result.choices
+        items.push({title: choice.title + "  (#" + choice.id + ")", action: "sourceSelect", id: choice.id})
+    end for
+    if items.count() = 0 then items.push({title: "No sources returned", action: "close"})
+    if m.playerOptions.active and m.playerOptions.menu.title = "Stream sources"
+        m.playerOptions.menu = {title: "Stream sources", note: "Active = URL-confirmed. Reported active = server ID (may lag). Changes affect ALL viewers.", items: items}
+    end if
+end sub
+
+sub onPlayerOptionsClosed()
+    if m.page = "player" then m.top.setFocus(true)
+end sub
+
+sub onPlayerOptionsBack()
+    if m.page <> "player" then return
+    if m.optionKind = "main"
+        onPlayerOptionsClosed()
+    else if m.optionKind = "aspect"
+        openPlayerOptions("scale")
+    else if m.optionKind = "sourceConfirm"
+        loadStreamSources()
+    else
+        openPlayerOptions()
+    end if
+end sub
+
+sub hidePicture()
+    if m.playingChannel = invalid or m.mini then return
+    m.channelTuneTimer.control = "stop"
+    m.pendingChannel = invalid
+    m.browser.active = false
+    m.playerOptions.active = false
+    m.transport.active = false
+    hideBanner()
+    m.bannerTimer.control = "stop"
+    ' Cover the same Video session. Do not stop, hide, mute or reconnect it.
+    m.pictureCover.visible = true
+    m.pictureHint.visible = true
+    m.pictureHintTimer.control = "stop"
+    m.pictureHintTimer.control = "start"
+    m.top.setFocus(true)
+end sub
+
+sub hidePictureHint()
+    m.pictureHint.visible = false
+end sub
+
+sub restorePicture()
+    m.pictureHintTimer.control = "stop"
+    m.pictureCover.visible = false
+end sub
+
+sub onDecoderStats()
+    if not m.streamReady then return
+    stats = m.video.decoderStats
+    if type(stats) <> "roAssociativeArray" then return
+    if stats.count() = 0 then return
+    m.decoderSnapshot = stats
+    if m.decoderKeysReported then return
+    ' Schema discovery only: no URLs, headers, or arbitrary native values logged.
+    print "[decoder] available keys="; FormatJson(stats.keys())
+    m.decoderKeysReported = true
+end sub
+
+sub onVideoState()
+    if m.playingChannel = invalid then return
+    if m.video.state = "playing" then m.streamReady = true
+    m.transport.paused = m.video.state = "paused"
+    print "[playback] state="; m.video.state
+    if m.pendingChannel = invalid then m.banner.playbackState = m.video.state
+    if m.video.state = "error"
+        code = m.video.errorCode
+        ' Collect diagnostics before stop/content reset. Do not log media URLs.
+        detail = m.video.errorStr
+        if detail = "" then detail = m.video.errorMsg
+        detail = sanitizePlaybackDiagnostic(detail, m.apiKey)
+        print "[playback] code="; code; " detail="; detail
+        stopPlayback()
+        showPlaybackFailure(code, detail)
+    else if m.video.state = "finished"
+        stopPlayback()
+    else if m.video.state = "buffering" or m.video.state = "paused"
+        if m.pendingChannel = invalid and m.playingChannel <> invalid
+            showChannelBanner(m.playingChannel, playerInfoHint())
+            m.bannerTimer.control = "stop"
+        end if
+    else if m.video.state = "playing"
+        if m.playingChannel <> invalid
+            if m.recordedChannel <> m.playingChannel.uuid
+                m.accountPreferences = recordWatched(m.accountPreferences, m.playingChannel.uuid)
+                m.recordedChannel = m.playingChannel.uuid
+                persistAccountPreferences()
+            end if
+        end if
+        if m.banner.visible
+            m.bannerTimer.control = "stop"
+            if not m.transport.active then m.bannerTimer.control = "start"
+        end if
+    end if
+end sub
+
+sub showPlaybackFailure(code as integer, detail as string)
+    dialog = CreateObject("roSGNode", "Dialog")
+    dialog.title = "Unable to play this channel"
+    dialog.message = playbackFailureText(code, sanitizePlaybackDiagnostic(detail, m.apiKey))
+    dialog.buttons = ["Close"]
+    dialog.observeField("buttonSelected", "closeMessage")
+    dialog.observeField("wasClosed", "onDialogClosed")
+    m.top.dialog = dialog
+end sub
+
+sub closeMessage(event as object)
+    event.getRoSGNode().close = true
+end sub
+
+function onKeyEvent(key as string, press as boolean) as boolean
+    ' A held wake key must not turn into a channel change after uncovering video.
+    if m.pictureWakeKey <> "" and key = m.pictureWakeKey
+        if not press then m.pictureWakeKey = ""
+        return true
+    end if
+    if not press then return false
+    if m.top.dialog <> invalid
+        if not m.top.dialog.wasClosed then return false
+    end if
+    if m.page = "player"
+        if m.pictureCover.visible
+            if key = "play"
+                togglePause()
+            else if key = "playonly"
+                if m.video.state = "paused" then m.video.control = "resume"
+            else
+                restorePicture()
+                m.pictureWakeKey = key
+            end if
+            return true
+        end if
+        if m.playerOptions.active or m.browser.active or m.transport.active then return false
+        if key = "back"
+            if m.userInfoOpen then hideBanner() else minimizePlayback()
+            return true
+        end if
+        if key = "OK"
+            print "[player-input] OK info"
+            togglePlayerInfo()
+            return true
+        else if key = "options"
+            print "[player-input] options"
+            openPlayerOptions()
+            return true
+        else if key = "play"
+            togglePause()
+            return true
+        else if key = "playonly"
+            if m.video.state = "paused" then m.video.control = "resume"
+            return true
+        end if
+        if m.userInfoOpen
+            if key = "down"
+                m.bannerTimer.control = "stop"
+                m.transport.active = true
+            end if
+            return true
+        end if
+        if key = "left"
+            openChannelBrowser()
+            return true
+        else if key = "right"
+            zapPreviousChannel()
+            return true
+        else if key = "replay"
+            openChannelBrowser("recent")
+            return true
+        end if
+        direction = playerChannelDirection(key, m.devicePreferences.channelDirection)
+        if direction <> 0
+            print "[player-input] "; key
+            queueChannelSwitch(direction)
+            return true
+        end if
+        return false
+    end if
+    if m.page <> "setup" then return false
+    if m.busy
+        if key = "back"
+            failConnection("Connection cancelled.")
+        end if
+        return true
+    end if
+    if key = "up"
+        if m.setupIndex > 0 then m.setupIndex--
+    else if key = "down"
+        if m.setupIndex < m.setupRows.count() - 1 then m.setupIndex++
+    else if key = "left" or key = "right"
+        if m.setupIndex < m.setupRows.count() - 2 then return false
+        if key = "left" then m.setupIndex = m.setupRows.count() - 2 else m.setupIndex = m.setupRows.count() - 1
+    else if key = "OK"
+        editSetupField()
+        return true
+    else
+        return false
+    end if
+    drawSetup()
+    return true
+end function

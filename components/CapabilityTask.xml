@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="CapabilityTask" extends="Task">
+  <interface>
+    <field id="baseUrl" type="string" />
+    <field id="apiKey" type="string" />
+    <field id="accountId" type="string" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/CapabilityModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
+  <script type="text/brightscript" uri="CapabilityTask.brs" />
+</component>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ProgramSearchTask" extends="Task">
+  <interface>
+    <field id="baseUrl" type="string" />
+    <field id="apiKey" type="string" />
+    <field id="query" type="string" />
+    <field id="searchField" type="string" value="title" />
+    <field id="page" type="integer" value="1" />
+    <field id="now" type="integer" />
+    <field id="channels" type="array" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/ProgramSearchModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
+  <script type="text/brightscript" uri="ProgramSearchTask.brs" />
+</component>

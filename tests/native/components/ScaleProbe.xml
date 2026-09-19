@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ScaleProbe" extends="Scene">
+  <script type="text/brightscript" uri="ScaleProbe.brs" />
+  <children>
+    <Group id="viewport" translation="[200,200]" clippingRect="[0,0,800,450]">
+      <Video id="video" width="800" height="450" enableUI="false" enableDecoderStats="true" />
+    </Group>
+    <Label id="label" translation="[100,50]" width="1720" height="100" wrap="true" font="font:MediumSystemFont" />
+    <Timer id="step" duration="8" repeat="true" />
+  </children>
+</component>
