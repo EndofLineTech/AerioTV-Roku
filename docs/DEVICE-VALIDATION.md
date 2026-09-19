@@ -1,5 +1,34 @@
 # Device acceptance — EPG/live builds
 
+## 0.2.13 installed — 2026-09-19 03:19 UTC
+
+Addresses acceptance defects ihp.15/.16/.17. Final installer reported success;
+native compile/launch completed around 03:19:03 UTC and capability refresh passed.
+No new runtime error appeared in the 18-second launch capture. Twelve suites and
+compiler/package checks pass. Temporary autoplay/probe timers were removed.
+
+An initial native scripted probe showed Scene.hasFocus=false even after prior
+Scene focus requests; transport remained in the focus chain after Up. Added an
+explicit focusable player-input Group and routed bare-player focus handoffs there.
+The second probe reported inputFocus=true before entry and after each Up handoff,
+and transportFocus=true after Down following Up, Left and Right. It also tested
+the queued banner-timeout handler against explicitly opened information.
+
+Video field readback confirmed allowOptionsKeyOverride=true and focusable=false.
+The app menu opened with 15 entries, title AerioTV player options, and menu focus
+true. This directly exercised application handlers, not a physical star press;
+OS-level interception still requires retest. The Options-override investigation
+also consulted https://forum.developer.roku.com/t/options-key-override-not-working-on-express-4k-model/10137;
+historical device differences are why field readback alone is not acceptance.
+
+Native caption bounds were {x:1424,y:245,width:400,height:22}; a screenshot showed
+the channel caption clear of the y=270 timeline and guide rows. Video is now
+400×225 at [1424,16]. The video plane is black in developer screenshots, so the
+capture establishes UI layout, not audiovisual quality.
+
+Focused physical checks are in RETEST-0.2.13.txt. Preserve the original completed
+0.2.12 worksheet; after menu access passes, resume its blocked sections 8–12.
+
 ## 0.2.12 installed — 2026-09-19 02:08 UTC
 
 Installer success; native compile/launch completed around 02:08:49 UTC followed

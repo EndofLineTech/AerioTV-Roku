@@ -6,6 +6,7 @@
     <field id="action" type="string" alwaysNotify="true" />
     <field id="dismissed" type="boolean" alwaysNotify="true" />
     <field id="infoFocus" type="boolean" alwaysNotify="true" />
+    <function name="handlePlayerKey" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="PlayerControls.brs" />

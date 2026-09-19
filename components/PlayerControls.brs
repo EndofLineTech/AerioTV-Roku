@@ -16,6 +16,7 @@ end sub
 
 sub onActive()
     if m.top.active
+        m.top.visible = true
         m.index = 0
         m.top.setFocus(true)
     end if
@@ -36,6 +37,10 @@ sub draw()
     m.cells[0].label.text = "Pause"
     if m.top.paused then m.cells[0].label.text = "Play"
 end sub
+
+function handlePlayerKey(key as string, press as boolean) as boolean
+    return onKeyEvent(key, press)
+end function
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if not press or not m.top.active then return false

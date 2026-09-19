@@ -5,6 +5,7 @@ sub main()
         m.focused = value
         return true
     end function}
+    m.playerInput = m.top
     m.page = "player"
     m.playingChannel = {uuid: "a"}
     m.video = {state: "playing", control: "play", content: {programId: "a"}, visible: true, mute: false}
@@ -17,7 +18,13 @@ sub main()
     m.pendingChannel = {uuid: "b"}
     m.browser = {active: true}
     m.playerOptions = {active: true}
-    m.transport = {active: true, visible: true}
+    m.transport = {active: true, visible: true, focused: false, setFocus: function(value as boolean) as boolean
+        m.focused = value
+        return true
+    end function, callFunc: function(name as string, key as string, press as boolean) as boolean
+        m.forwarded = key
+        return true
+    end function}
     m.banner = {visible: true}
     m.bannerTimer = {control: "start"}
     m.userInfoOpen = true
@@ -55,7 +62,7 @@ sub main()
     openPlayerOptions("audio")
     assertEqual(m.playerOptions.menu.title, "Audio track", "audio submenu opens")
     onPlayerOptionsBack()
-    assertEqual(m.playerOptions.menu.title, "Player options", "Back returns to parent")
+    assertEqual(m.playerOptions.menu.title, "AerioTV player options", "Back returns to parent")
     assertEqual(m.playerOptions.menu.items[m.playerOptions.menu.focusIndex].action, "audioMenu", "parent focus restored")
     assertEqual(m.video.content.programId, "a", "submenu Back does not retune")
     infoTask = {control: "RUN", unobserved: false, unobserveField: sub(field as string)
@@ -68,6 +75,37 @@ sub main()
     assertEqual(infoTask.unobserved, true, "old metadata callback detached")
     assertEqual(m.streamInfoTask, invalid, "stale Task no longer current")
     assertEqual(m.serverStreamInfo, invalid, "old source facts cleared")
+    m.playerOptions.active = false
+    m.browser.active = false
+    m.transport.active = false
+    m.userInfoOpen = true
+    m.banner.visible = true
+    for each key in ["up", "left", "right"]
+        assertEqual(onKeyEvent(key, true), true, "explicit info owns direction: " + key)
+        onBannerTimeout()
+        assertEqual(m.userInfoOpen, true, "queued auto timeout cannot dismiss explicit info")
+        m.transport.focused = false
+        assertEqual(onKeyEvent("down", true), true, "controls remain reachable after " + key)
+        assertEqual(m.transport.focused, true, "Down explicitly restores focus")
+        assertEqual(m.transport.visible, true, "active controls visible")
+        onTransportInfoFocus()
+        assertEqual(m.transport.active, false, "Up handoff clears active control state")
+        assertEqual(m.bannerTimer.control, "stop", "explicit info never auto-expires")
+    end for
+    m.transport.active = true
+    m.transport.focused = false
+    m.transport.visible = false
+    assertEqual(onKeyEvent("left", true), true, "stranded active controls recover")
+    assertEqual(m.transport.forwarded, "left", "key dispatched to active controls")
+    assertEqual(m.transport.focused, true, "displaced focus restored")
+    assertEqual(onKeyEvent("options", true), true, "star recovery opens application menu")
+    assertEqual(m.playerOptions.menu.title, "AerioTV player options", "clearly branded app menu")
+    assertEqual(m.video.content.programId, "a", "focus repair preserves content")
+    m.userInfoOpen = false
+    m.transport.active = false
+    m.banner.visible = true
+    onBannerTimeout()
+    assertEqual(m.banner.visible, false, "automatic tune banner still expires")
     print "ALL TESTS PASSED"
 end sub
 

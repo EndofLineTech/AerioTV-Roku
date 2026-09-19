@@ -38,6 +38,26 @@ reviewable backup, not automatic Beads synchronization; the live Dolt database
 and runtime files are ignored by Git. A remote Dolt destination and restore drill
 remain tracked under `AerioTV-Roku-rgs.11`.
 
+## 0.2.13 — Player-menu, transport-focus and mini-caption fixes
+
+The Video now requests Options-key override and is non-focusable. Bare playback
+uses a dedicated input Group whose keys bubble to the Scene. This corrects the
+native focus handoff observed when trying to focus the Scene itself. The app menu
+is branded **AerioTV player options**, with another entry in the mini-guide's
+options menu. OK → Down → Options remains an alternate route.
+
+Explicitly opened information stays visible until dismissed; the automatic
+tune-in banner still expires after eight seconds. Entering transport reasserts
+visibility and focus, and keys reaching the Scene while controls are active are
+routed back to them. Native scripted Up/Left/Right transitions now return to the
+input Group correctly and re-enter transport consistently.
+
+The mini-player is 400×225 at [1424,16]. Its single-line caption ends at y=267,
+above the guide timeline at y=270. A device screenshot confirms the separation.
+Twelve suites and compiler/build checks pass. Installed 0.2.13 launches normally;
+temporary native probe code is removed. Physical star-key interception and the
+reported sequences need the [focused retest](docs/RETEST-0.2.13.txt).
+
 ## 0.2.12 — Source-switch continuity checks
 
 Source changes now compare the original Dispatcharr client identities against

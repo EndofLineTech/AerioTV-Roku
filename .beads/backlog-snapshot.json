@@ -7532,7 +7532,7 @@
         "target": "",
         "timeout_ns": 0,
         "title": "Roku system Options opens instead of Aerio player menu",
-        "updated_at": "2026-09-19T03:05:54Z",
+        "updated_at": "2026-09-19T03:09:17Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -7638,11 +7638,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Up, Left or Right can strand player transport focus",
-        "updated_at": "2026-09-19T03:05:54Z",
+        "updated_at": "2026-09-19T03:09:17Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -7913,11 +7913,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Keep mini-player caption clear of guide content",
-        "updated_at": "2026-09-19T03:05:54Z",
+        "updated_at": "2026-09-19T03:09:17Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -11019,6 +11019,34 @@
         "id": 28,
         "issue_id": "AerioTV-Roku-ihp.16",
         "text": "PO clarification: the directions that trigger the transport problem are Up, Left or Right. Reproduce each around the info-to-transport path; exact starting focus and timing remain to be established. Do not narrow the fix to Down-only happy-path navigation."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T03:20:54Z",
+        "id": 29,
+        "issue_id": "AerioTV-Roku-ihp.15",
+        "text": "Candidate fix installed in 0.2.13: Video allowOptionsKeyOverride=true/focusable=false; dedicated player-input Group rather than Scene focus; menu branded AerioTV player options; mini-guide options includes route to same menu. Native field readback confirmed both flags, scripted app handler opened 15 entries with menu focus true. Physical star interception still needs M1 retest; do not close from direct-handler evidence. See docs/RETEST-0.2.13.txt."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T03:20:54Z",
+        "id": 30,
+        "issue_id": "AerioTV-Roku-ihp.16",
+        "text": "Native probe exposed failed Scene-focus handoff: Scene.hasFocus=false and inactive transport still in focus chain after Up. Added concrete playerInput Group for all player focus returns. Explicit info no longer auto-expires; queued timeout is guarded; Down reasserts visible/active/focus and stranded keys are forwarded to actual controls. Second native probe alternated inputFocus=true and transportFocus=true correctly across Up/Left/Right -> Down paths. Handler regression tests pass; candidate fix installed 0.2.13, pending PO retest."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T03:20:54Z",
+        "id": 31,
+        "issue_id": "AerioTV-Roku-ihp.17",
+        "text": "0.2.13 shrinks/repositions mini video to 400x225 at [1424,16]; single-line 18px-font caption bounds native-reported [1424,245,400,22], bottom267 before timeline270. Device screenshot confirms no caption/timeline overlap on tested channel239. Fullscreen/mini share same Video; no new tune path. Long-name/readability and repeated-transition PO retest remains in RETEST-0.2.13.txt."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T03:20:54Z",
+        "id": 32,
+        "issue_id": "AerioTV-Roku-ihp",
+        "text": "Latest installed 0.2.13 (~2026-09-19 03:19:03 UTC). Candidate fixes for menu interception, transport focus and mini-caption overlap. Native scripted focus checks and caption screenshot succeeded; physical star/menu and reported-key retest still required. Twelve suites/check/build pass; probe autoplay removed. Added docs/RETEST-0.2.13.txt, preserving original results. Audio, held repeat, logo loading, global channel search and clock defects remain open."
       }
     ],
     "labels": [

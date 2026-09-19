@@ -1,0 +1,41 @@
+AerioTV Roku 0.2.13 — Focused Retest
+==================================
+Date: __________________  Tester: __________________
+Replace [     ] with PASS, FAIL, or SKIP. Keep the 0.2.12 results unchanged.
+
+PLAYER MENU — ihp.15
+[     ] M1 During fullscreen playback, * opens "AerioTV player options",
+           rather than Roku's Volume Mode / Accessibility & Language.
+[     ] M2 The menu includes Video scale preference, Hide picture,
+           Sleep timer and Stream Info. Scroll down for additional entries.
+[     ] M3 With the admin account, Switch stream source is present.
+[     ] M4 OK -> Down -> Options opens the same Aerio menu.
+[     ] M5 Back to mini-guide -> * -> AerioTV player options opens it too,
+           expanding the existing player without restarting the stream.
+[     ] M6 Back through submenus and * to dismiss restore usable controls.
+
+TRANSPORT FOCUS — ihp.16
+[     ] F1 OK -> Up -> Down reaches transport controls.
+[     ] F2 OK -> Left -> Down reaches transport controls.
+[     ] F3 OK -> Right -> Down reaches transport controls.
+           Start each sequence from bare fullscreen (dismiss prior info).
+[     ] F4 From transport, Up returns to info; Down re-enters. Repeat 5 times.
+[     ] F5 Leave explicitly opened info visible for 10 seconds. It remains
+           open, and Down still enters controls. OK/Back dismiss it.
+[     ] F6 The automatic tune-in banner still fades after about 8 seconds.
+[     ] F7 Menu/browser/pause transitions do not strand focus or retune.
+
+MINI-PLAYER LAYOUT — ihp.17
+[     ] L1 Minimize: channel caption is above, not on, the timeline/guide.
+[     ] L2 A long channel name truncates without wrapping into the guide.
+[     ] L3 Repeated minimize/expand preserves playback and pause state.
+
+After menu access passes, resume sections 8–12 of the original worksheet.
+Record those results separately so the original failures remain evidence.
+Audio, held-key repeat, logo latency, global search and clock-format defects
+are separate open beads; this build does not establish their resolution.
+
+FAILURE NOTES (test ID, channel, exact sequence, observed result/photo):
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________

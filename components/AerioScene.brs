@@ -1,9 +1,11 @@
 sub init()
+    m.top.focusable = true
     m.top.backgroundColor = "0x0A1628FF"
     m.top.backgroundUri = ""
     m.screen = m.top.findNode("screen")
     m.guide = m.top.findNode("guide")
     m.video = m.top.findNode("video")
+    m.playerInput = m.top.findNode("playerInput")
     m.videoViewport = m.top.findNode("videoViewport")
     m.pendingScale = ""
     m.banner = m.top.findNode("playerBanner")
@@ -17,11 +19,14 @@ sub init()
     m.browser.observeField("infoRequest", "onBrowserInfoRequest")
     m.miniFrame = m.top.findNode("miniFrame")
     m.miniCaption = m.top.findNode("miniCaption")
+    captionFont = m.miniCaption.font
+    captionFont.size = 18
+    m.miniCaption.font = captionFont
     m.mini = false
     m.userInfoOpen = false
     m.sleepDeadline = 0
     m.bannerTimer = m.top.findNode("bannerTimer")
-    m.bannerTimer.observeField("fire", "hideBanner")
+    m.bannerTimer.observeField("fire", "onBannerTimeout")
     m.playerClock = m.top.findNode("playerClock")
     m.playerClock.observeField("fire", "onPlayerClock")
     m.playerOptions = m.top.findNode("playerOptions")
@@ -232,7 +237,7 @@ end sub
 sub onDialogClosed()
     if m.page = "setup" then m.top.setFocus(true)
     if m.page = "guide" then m.guide.setFocus(true)
-    if m.page = "player" then m.top.setFocus(true)
+    if m.page = "player" then focusPlaybackInput()
 end sub
 
 sub connectServer()
@@ -526,14 +531,14 @@ sub startPlayback(channel as object)
     content = CreateObject("roSGNode", "ContentNode")
     content.setFields(descriptor)
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.2.12"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.2.13"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true
     ' Video consumes OK as pause even with enableUI=false. The Scene owns
     ' playback keys; the app's Options menu controls the native track fields.
-    m.top.setFocus(true)
     print "[playback] tuning channel "; channel.number
+    focusPlaybackInput()
     m.video.control = "play"
     m.playerClock.control = "start"
     showChannelBanner(channel, playerInfoHint())
@@ -549,7 +554,7 @@ sub showChannelBanner(channel as object, hint as string)
     m.banner.visible = true
     m.banner.now = uiNow()
     m.bannerTimer.control = "stop"
-    if not m.transport.active then m.bannerTimer.control = "start"
+    if not m.transport.active and not m.userInfoOpen then m.bannerTimer.control = "start"
 end sub
 
 function playerInfoHint() as string
@@ -591,9 +596,11 @@ sub togglePlayerInfo()
         m.bannerTimer.control = "stop"
         hideBanner()
     else if m.playingChannel <> invalid
+        m.transport.active = false
         m.userInfoOpen = true
         m.transport.visible = true
         showChannelBanner(m.playingChannel, playerInfoHint())
+        focusPlaybackInput()
     end if
 end sub
 
@@ -630,6 +637,23 @@ sub commitChannelSwitch()
         end if
     end if
     startPlayback(channel)
+end sub
+
+sub onBannerTimeout()
+    ' Explicitly summoned chrome belongs to the viewer, not the tune-in timer.
+    ' Also guard an expiry event already queued before the timer was stopped.
+    if m.userInfoOpen or m.transport.active then return
+    hideBanner()
+end sub
+
+sub enterPlayerControls()
+    m.bannerTimer.control = "stop"
+    m.userInfoOpen = true
+    m.banner.visible = true
+    m.transport.visible = true
+    m.transport.active = true
+    ' Reassert focus even when active was already true after an interrupted handoff.
+    m.transport.setFocus(true)
 end sub
 
 sub hideBanner()
@@ -691,7 +715,7 @@ sub minimizePlayback()
     m.mini = true
     m.page = "guide"
     applyVideoLayout()
-    m.miniCaption.text = m.playingChannel.name + "  |  Back: Fullscreen"
+    m.miniCaption.text = m.playingChannel.name
     m.miniFrame.visible = true
     m.guide.miniActive = true
     m.screen.visible = false
@@ -711,7 +735,7 @@ sub expandPlayback()
     m.guide.visible = false
     m.screen.visible = false
     applyVideoLayout()
-    m.top.setFocus(true)
+    focusPlaybackInput()
     m.userInfoOpen = false
     showChannelBanner(m.playingChannel, playerInfoHint())
     print "[player] expanded without retune"
@@ -728,9 +752,9 @@ sub applyVideoLayout()
     height = 1080.0
     origin = [0, 0]
     if m.mini
-        width = 464.0
-        height = 261.0
-        origin = [1360, 24]
+        width = 400.0
+        height = 225.0
+        origin = [1424, 16]
     end if
     layout = videoGeometry(width, height, m.devicePreferences.videoScale, currentVideoAspect())
     m.videoViewport.translation = origin
@@ -744,6 +768,10 @@ end sub
 sub onGuidePlayerRequest(event as object)
     if event.getData() = "expandPlayer" then expandPlayback()
     if event.getData() = "stopPlayer" then stopPlayback()
+    if event.getData() = "optionsPlayer"
+        expandPlayback()
+        openPlayerOptions()
+    end if
 end sub
 
 sub openChannelBrowser(mode = "channels" as string)
@@ -770,7 +798,7 @@ sub onBrowserSelected(event as object)
 end sub
 
 sub onBrowserClosed()
-    if m.page = "player" then m.top.setFocus(true)
+    if m.page = "player" then focusPlaybackInput()
 end sub
 
 sub onBrowserInfoRequest(event as object)
@@ -808,13 +836,17 @@ end sub
 
 sub onTransportDismissed()
     hideBanner()
-    if m.page = "player" then m.top.setFocus(true)
+    if m.page = "player" then focusPlaybackInput()
 end sub
 
 sub onTransportInfoFocus()
+    if m.page <> "player" then return
+    m.transport.active = false
+    m.transport.visible = true
+    m.banner.visible = true
     m.userInfoOpen = true
-    if m.page = "player" then m.top.setFocus(true)
-    m.bannerTimer.control = "start"
+    focusPlaybackInput()
+    m.bannerTimer.control = "stop"
 end sub
 
 sub togglePause()
@@ -836,7 +868,7 @@ sub openPlayerOptions(kind = "main" as string)
     m.pendingChannel = invalid
     m.bannerTimer.control = "stop"
     hideBanner()
-    title = "Player options"
+    title = "AerioTV player options"
     note = "Back returns to the parent menu; * returns to playback."
     if kind = "main" then note = "Back or * returns to playback."
     items = [
@@ -1167,7 +1199,13 @@ sub onSourceResult(event as object)
 end sub
 
 sub onPlayerOptionsClosed()
-    if m.page = "player" then m.top.setFocus(true)
+    if m.page = "player" then focusPlaybackInput()
+end sub
+
+sub focusPlaybackInput()
+    ' A concrete child Group owns bare-player focus. Keys bubble to the Scene;
+    ' focusing the Scene itself did not release its focused child on this Stick.
+    m.playerInput.setFocus(true)
 end sub
 
 sub onPlayerOptionsBack()
@@ -1197,7 +1235,7 @@ sub hidePicture()
     m.pictureHint.visible = true
     m.pictureHintTimer.control = "stop"
     m.pictureHintTimer.control = "start"
-    m.top.setFocus(true)
+    focusPlaybackInput()
 end sub
 
 sub hidePictureHint()
@@ -1253,7 +1291,7 @@ sub onVideoState()
         end if
         if m.banner.visible
             m.bannerTimer.control = "stop"
-            if not m.transport.active then m.bannerTimer.control = "start"
+            if not m.transport.active and not m.userInfoOpen then m.bannerTimer.control = "start"
         end if
     end if
 end sub
@@ -1294,7 +1332,18 @@ function onKeyEvent(key as string, press as boolean) as boolean
             end if
             return true
         end if
-        if m.playerOptions.active or m.browser.active or m.transport.active then return false
+        if m.playerOptions.active or m.browser.active then return false
+        if key = "options"
+            print "[player-input] Aerio options"
+            openPlayerOptions()
+            return true
+        end if
+        if m.transport.active
+            ' A key reaching the Scene instead of active controls means focus
+            ' was displaced. Repair it and dispatch to the intended owner.
+            enterPlayerControls()
+            return m.transport.callFunc("handlePlayerKey", key, press)
+        end if
         if key = "back"
             if m.userInfoOpen then hideBanner() else minimizePlayback()
             return true
@@ -1302,10 +1351,6 @@ function onKeyEvent(key as string, press as boolean) as boolean
         if key = "OK"
             print "[player-input] OK info"
             togglePlayerInfo()
-            return true
-        else if key = "options"
-            print "[player-input] options"
-            openPlayerOptions()
             return true
         else if key = "play"
             togglePause()
@@ -1316,8 +1361,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         end if
         if m.userInfoOpen
             if key = "down"
-                m.bannerTimer.control = "stop"
-                m.transport.active = true
+                enterPlayerControls()
             end if
             return true
         end if

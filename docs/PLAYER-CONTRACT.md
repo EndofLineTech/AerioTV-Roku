@@ -17,6 +17,10 @@ the implementation contract to verify during device acceptance.
   the focusable transport row; Left/Right then move between controls and OK
   activates one. Up returns to the information panel. Auto tune-in information
   does not capture channel-surfing keys.
+- Explicit information remains open until dismissed; only automatic tune-in
+  information expires. A concrete player-input Group owns bare-playback focus,
+  while the Scene handles bubbled keys. Video is non-focusable and requests
+  Options-key override. The mini-guide also exposes AerioTV player options.
 - Back dismisses the innermost menu/browser group/list first. Back from explicit
   information/controls hides the chrome. Back from bare fullscreen minimizes the
   same Video session into the guide. Back from the mini-player guide expands it.
@@ -56,7 +60,7 @@ Source evidence: `Design/ThemeManager.swift`, `Design/Typography.swift`,
 | Transport | Source: focusable Pause, Options and capability-sensitive actions | Supported controls above info; no fake seek/record/multiview actions |
 | Channels/recents | Source: left-side list over video; nested local group selection | Bounded rows with logos/now-airing and a Watching badge; right side remains visible |
 | Options | Source: compact floating focusable options | App-owned menus, required because native Video consumes OK |
-| Mini-player | Source: corner video while browsing, sharing one playback session | Top-right 464×261 viewport; guide text reserves the area |
+| Mini-player | Source: corner video while browsing, sharing one playback session | Top-right 400×225 viewport; caption ends above the guide timeline |
 | Settings | Source: categorized split view | Connection screen remains current; the full settings hub is a separate story |
 
 Known facts: palette and source layout constants, plus existing Roku screenshots.

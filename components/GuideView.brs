@@ -583,6 +583,7 @@ sub openOptions()
     ]
     if m.top.miniActive
         items.unshift({title: "Stop playback", action: "stopPlayer"})
+        items.unshift({title: "AerioTV player options", action: "optionsPlayer"})
         items.unshift({title: "Return to fullscreen", action: "expandPlayer"})
     end if
     openPicker("Guide options", items, "options")
@@ -609,7 +610,7 @@ sub onPickerSelected(event as object)
         return
     else
         action = item.action
-        if action = "expandPlayer" or action = "stopPlayer"
+        if action = "expandPlayer" or action = "stopPlayer" or action = "optionsPlayer"
             m.top.playerRequest = action
             return
         else if action = "details"
