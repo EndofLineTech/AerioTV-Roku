@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="LogoCacheTask" extends="Task">
+  <interface>
+    <field id="baseUrl" type="string" />
+    <field id="apiKey" type="string" />
+    <field id="prefix" type="string" />
+    <field id="ids" type="array" />
+    <field id="cancelled" type="boolean" />
+    <field id="asset" type="assocarray" alwaysNotify="true" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="LogoCacheTask.brs" />
+</component>

@@ -1,0 +1,203 @@
+AerioTV Roku 0.3.1 — Focused Retest
+==================================
+Date: ____________________  Tester: _________________________________
+Roku model/OS: ____________________ App version: _____________________
+Dispatcharr version: _____________
+
+Mark each [     ] PASS, FAIL, or SKIP. Leave untested items blank.
+For failures, record the test ID, channel, exact buttons, expected/actual
+result and photo filename in FAILURE NOTES below. Keep the completed
+FINAL-TEST-RESULTS-0.3.0.txt unchanged.
+
+BUTTON PATHS / STARTING SCREENS
+-----------------------------
+"Select <label>" means Up/Down to highlight that label, then OK. In the
+horizontal transport row, use Left/Right to highlight an action, then OK.
+Menu positions vary with account permissions and playback state, so follow
+labels rather than a fixed number of arrow presses.
+
+Guide: the channel/program grid. Select a live channel with arrows -> OK
+to start playback. Bare fullscreen: playing video with all app menus and
+information dismissed. If a menu is open, Back dismisses its inner layers;
+Back from bare fullscreen minimizes to the guide instead.
+
+PLAYER OPTIONS: bare fullscreen -> *.
+Fallback: bare fullscreen -> OK -> Up -> Left/Right to Options -> OK.
+OK -> Down -> Left/Right to Options -> OK is also supported.
+Use the fallback after a failed * test so remaining tests can continue.
+
+MINI-GUIDE: bare fullscreen -> Back. Back or Play expands it again.
+GUIDE OPTIONS: from the guide or mini-guide -> *.
+RELAUNCH: Home -> open the installed AerioTV app again.
+
+A. PLAYER MENU AND ROUTES — ihp.22 / ihp.23
+Start: tune a channel; wait for tune-in information to disappear.
+Path: bare fullscreen -> physical *.
+[  FAIL   ] A01 While playing, * opens AerioTV player options, not Roku's menu.
+[  FAIL   ] A02 Dismiss options, press Play/Pause, then *: Aerio options still open.
+[  PASS   ] A03 From the guide, * opens guide options instead of player options.
+Path: bare fullscreen -> OK -> Up -> Left/Right to Options -> OK.
+[  PASS   ] A04 The Up route reaches transport and opens Aerio player options.
+Path: bare fullscreen -> OK -> Down -> Left/Right to Options -> OK.
+[  PASS   ] A05 The Down route reaches transport and opens the same options.
+[  PASS   ] A06 Displayed navigation hints agree with the working button routes.
+[  PASS   ] A07 Bare fullscreen Up/Down still change channels in the chosen direction.
+Notes: ___The tooltips are just one font and one font type, so all standard.  So it looks like "OK Info Up/Down Channel" - it all mixes together.  Some bolding or surrounding what is supposed to be a button with a pill would be more useful to the user's eye.___
+
+B. SOURCE-SWITCH FROZEN PICTURE — ihp.24
+Start: admin account, playing the channel/source pair that froze in 0.3.0.
+Path: PLAYER OPTIONS -> select Switch stream source -> select a different
+member source -> read and accept the displayed confirmation.
+Source changes affect all viewers on that shared channel. Coordinate the
+second-viewer test. Record channel/source names, not private provider URLs.
+[ PASS    ] B01 After switching, moving picture and synchronized audio return.
+[ PASS    ] B02 If picture freezes with advancing audio, automatic recovery restores
+            moving picture without another button press. SKIP if no freeze occurs.
+Path if still frozen: PLAYER OPTIONS -> select Recover frozen picture
+(this player). Record this separately from automatic recovery.
+[ PASS    ] B03 Manual recovery restores moving picture and synchronized audio.
+[ PASS    ] B04 Recovery leaves the selected upstream source unchanged.
+Repeat with a second viewer watching the same channel; inspect Dispatcharr
+client status before/after. Compare client IDs, not only client counts.
+[ PASS    ] B05 The other viewer retains moving picture/audio through local recovery.
+[ PASS    ] B06 The other viewer's client identity remains present after recovery.
+[ PASS    ] B07 After recovery settles, its temporary extra client is gone.
+[ PASS    ] B08 Back during pending recovery leaves usable navigation/playback.
+[ PASS    ] B09 Explicit Stop during pending recovery stops this player's playback
+            without restarting it later or stopping the other viewer.
+For B09: PLAYER OPTIONS -> select Stop playback (or transport -> Stop).
+A temporary extra client and replacement local Roku session are expected
+during recovery. A healthy-stream restart alone does not pass B02/B03.
+Channel/source pair and time to moving picture: _______________
+Notes: _______________________________________________________________
+
+C. BROWSER LOGO REUSE — ihp.25
+Start: bare fullscreen playback.
+Path: Left -> Channels browser; wait for visible logos to finish loading.
+Then Back -> Left to reopen the same rows; repeat twice.
+[ PASS.  Caveat: Would like to see transparency on the menu when I hit left.    ] C01 Reopening reuses correct logos without the cold network-loading delay.
+[ Pass    ] C02 Up/Down through other rows and back keeps logos correct and readable.
+Path: bare fullscreen -> Replay -> Recently Watched; let logos load, then
+Back -> Replay to reopen the same rows.
+[  PASS   ] C03 Recently Watched also reuses loaded logos on reopen.
+This cache lasts for the app session; a fresh launch may fetch logos again.
+Cold/warm delay, flicker or missing logos: _____________________________
+
+D. HIDE PICTURE / WAKE CONTROLS — ihp.26 / ihp.27 / ihp.28
+Start: playing channel with audible sound.
+Path: PLAYER OPTIONS -> select Hide picture (foreground listening).
+[  FAIL - does nothing, just goes back to the active picture   ] D01 Video becomes black while audio continues.
+[  SKIP   ] D02 The explanation fades after approximately 6 seconds.
+[   SKIP  ] D03 Play/Pause pauses and resumes audio without revealing the picture.
+[  SKIP   ] D04 A single Left wakes the picture without opening Channels.
+[  SKIP   ] D05 A second, separate Left press opens Channels normally.
+Repeat the Hide picture path before each wake-key test below.
+[  SKIP   ] D06 Holding Up wakes picture without tuning; release, then a fresh Up
+            press works normally.
+[  SKIP   ] D07 Holding Down wakes picture without tuning; release, then a fresh
+            Down press works normally.
+[  SKIP   ] D08 Holding * wakes picture without opening a menu; release, then a
+            fresh * press works normally.
+Caption setup: PLAYER OPTIONS -> select Captions -> select On.
+Use a channel known to supply visible captions, then Hide picture.
+[  SKIP   ] D09 Captions are absent while hidden and return after waking.
+Paused setup: bare fullscreen -> Play/Pause to pause -> PLAYER OPTIONS ->
+Hide picture -> Left to wake.
+[  SKIP   ] D10 Hiding/waking paused video preserves pause and the current channel.
+Hide picture is foreground listening, not a TV-off/background audio service.
+Notes: _______________________________________________________________
+
+E. SLEEP CANCELLATION — ihp.29
+Start: playing channel.
+Path: PLAYER OPTIONS -> select Sleep timer -> select 30 minutes.
+Reopen PLAYER OPTIONS -> select Cancel sleep timer.
+[  PASS   ] E01 Cancel sleep timer is visible while a timer is active.
+[  PASS   ] E02 Selecting it cancels the timer; reopening shows Sleep timer: Off.
+Set 30 minutes again. Dismiss player menus -> Back to mini-guide -> * ->
+select Cancel sleep timer. Reopen player options to inspect the timer.
+[  PASS   ] E03 Mini-guide cancellation also leaves Sleep timer: Off.
+Set a timer again -> PLAYER OPTIONS -> select Stop playback; tune again.
+[  PASS   ] E04 Explicit Stop clears the timer.
+Set a timer again -> Home -> relaunch -> tune -> inspect Sleep timer.
+[  PASS   ] E05 Home/relaunch does not restore the previous sleep deadline.
+Separate expiry test: set 30 minutes, optionally pause or Hide picture,
+and leave the app open until the deadline. Do not cancel this timer.
+[  PASS   ] E06 Expiry stops playback once and clears any hidden-picture cover.
+Cancellation and expiry are separate checks; mark an unwaited expiry SKIP.
+Notes: _______________________________________________________________
+
+F. DEFAULT GROUP ORDER — 5tg.17
+Start: guide (Back from bare fullscreen if currently playing).
+Path: * -> select Guide settings -> select Group order -> select default.
+Then return to guide -> * -> select Channel groups (list fallback).
+[  PASS - caveat: We should have groups ordered by channel numbers, not by alphabetical   ] F01 Real groups match Dispatcharr 0.31's alphabetical guide order.
+[  PASS   ] F02 App collections/built-in selectors remain usable alongside groups.
+Repeat Group order with alpha, then manual; inspect the group list each time.
+[  PASS   ] F03 Alphabetical and existing manual orders still work.
+[  PASS   ] F04 Selected ordering survives Home -> relaunch.
+Mismatched group names/order: _________________________________________
+
+G. TOP PILLS — 5tg.18
+Start: guide.
+Path: * -> select Group navigation layout -> select Top group pills
+(always visible).
+[  FAIL  ] G01 Group pills are visible above the guide.
+Path to focus pills: * -> select Channel groups (or Up from first channel).
+Then Left/Right to another group -> Down or OK to return to the grid.
+[ SKIP    ] G02 Pills navigate groups; returning to the grid shows the chosen group.
+[  SKIP   ] G03 Home -> relaunch retains the pills layout.
+Notes: _______________________________________________________________
+
+H. DOCKED SIDEBAR — 5tg.19
+Start: guide.
+Path: * -> select Group navigation layout -> select Docked group sidebar
+(always visible).
+[  PASS   ] H01 Sidebar stays visible; the guide shifts right without overlap.
+Path to focus sidebar: * -> select Channel groups. Use Up/Down to choose
+a group; Right or OK returns to the guide grid.
+[  FAIL - this is counterintuitive, if I have the sidebar selection there, let me hold left to get to it, pressing left moves backward in the timeline on the guide.   ] H02 Sidebar selection updates the group and returns usable grid focus.
+[  PASS   ] H03 Home -> relaunch retains the sidebar layout.
+Path: * -> Group navigation layout -> Modal group list.
+[ PASS    ] H04 Switching back to modal restores guide width and usable focus.
+Notes: _____If I choose * > Channel Groups, I cannot hit * again to bring the menu back up, that should still bring the menu up, I have to choose a group first.  Another item: I should be able to hold Up or Down in the guide and move faster through the guide._____
+
+I. GROUP-LIST FOOTER — 5tg.20
+Start: guide with enough visible groups to scroll.
+Path: * -> select Channel groups (list fallback).
+[ PASS    ] I01 Rows and selection highlight do not overlap the footer.
+[ PASS    ] I02 Up/Down to first and last entries keeps the footer readable.
+[ PASS    ] I03 Back closes the list and restores guide focus.
+Notes: _______________________________________________________________
+
+J. REGRESSION SMOKE
+Start: guide; use channel rows to tune each named channel below.
+Audio setup: PLAYER OPTIONS -> Audio compatibility -> select Automatic
+AAC fallback.
+[ PASS    ] J01 ESPN 408 has moving picture and audible, synchronized sound.
+[ PASS    ] J02 Big Ten Network 404 has moving picture and synchronized sound.
+[ PASS    ] J03 CBS Sports Network 406 has moving picture and synchronized sound.
+Path: bare fullscreen -> Back (mini-guide) -> Back or Play (expand).
+[ PASS    ] J04 Minimize/expand keeps the current playback session working.
+Tune two channels, then from bare fullscreen press Right; press Replay
+separately to open Recently Watched.
+[  PASS   ] J05 Right returns to last channel; Replay opens correct recent history.
+Path: PLAYER OPTIONS -> Stop playback; then Home -> relaunch.
+[  PASS   ] J06 Stop works and relaunch opens the guide without diagnostic autoplay.
+Notes: _______________________________________________________________
+
+FAILURE NOTES (test ID, channel, exact buttons, expected/actual, photo)
+-------------------------------------------------------------------
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+
+SKIPPED TESTS / REASONS
+----------------------
+_____________________________________________________________________
+_____________________________________________________________________
+
+This worksheet is acceptance evidence; Beads remains the issue backlog.
+Native probe evidence is recorded separately in docs/DEVICE-VALIDATION.md.

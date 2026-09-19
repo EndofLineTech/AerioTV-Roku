@@ -1,0 +1,112 @@
+AerioTV Roku 0.3.6 — Startup Recovery and Pending Live TV Checks
+==============================================================
+Date: ____________________  Tester: _________________________________
+Roku model/OS: ____________________ App version: _____________________
+Channel(s): ______________________ Audio mode: _______________________
+
+For when you are back at the Roku. No immediate physical testing is needed
+while remote. Mark [     ] PASS, FAIL, or SKIP; leave untested items blank.
+Keep completed earlier worksheets unchanged. These are the pending checks,
+not a request to repeat the already accepted guide/browser/clock features.
+
+BUTTON PATHS
+------------
+Select = Up/Down to the named menu entry, then OK.
+Tune = guide arrows to live channel -> OK.
+PLAYER OPTIONS = bare fullscreen -> OK -> Up -> Left/Right to Options -> OK.
+Use this known-working route; ordinary fullscreen * remains unresolved.
+MINI-GUIDE = Back from bare fullscreen. Back or Play expands again.
+STOP = PLAYER OPTIONS -> Stop playback (or mini-guide * -> Stop playback).
+
+A. STARTUP RECOVERY — ihp.32
+Start with your existing Always use AAC compatibility setting.
+Tune 2101 NCAAF | EMU/WIS if it is still available, then a known-good channel
+such as ESPN 408. A changed/unavailable event feed is not proof of a Roku bug.
+[     ] A01 Normal startup still produces moving video and synchronized audio.
+If an actual startup stall occurs, wait without manually retuning. The app
+should retry this local connection once on the native buffering-stall error,
+or after approximately 25 seconds without reaching playback.
+[     ] A02 One startup-retry notice appears and the stream recovers without input.
+[     ] A03 Audio mode remains unchanged after recovery.
+If the retry also stalls, wait for the final error. The retry budget is one
+per explicit tune; it is not a continuous reconnect loop.
+[     ] A04 A second failure ends with an error instead of repeated retries.
+[     ] A05 A buffering-stall error says buffering stalled, not unsupported codec.
+Mark A02-A05 SKIP with a reason if the corresponding failure did not occur.
+Do not interrupt a shared server/other viewers just to manufacture a failure.
+
+During startup buffering: open PLAYER OPTIONS -> Stop playback. Wait 30 seconds.
+[     ] A06 Stop remains stopped; an old watchdog does not restart video.
+During startup buffering: choose another channel through Channels or the guide.
+[     ] A07 The previous channel does not return later from a stale retry.
+Start a channel -> Back to mini-guide while still buffering, if possible.
+[     ] A08 Startup/retry can complete in mini-guide without forcing fullscreen.
+After successful playback, pause for at least 30 seconds -> resume.
+[     ] A09 The startup watchdog does not retune paused/established playback.
+If coordinated with another viewer on that channel:
+[     ] A10 Local startup recovery does not stop the other viewer.
+Times, channel, error text and whether a retry occurred: _______________
+_____________________________________________________________________
+
+B. REMAINING STAR DIAGNOSTIC — ihp.22 / ihp.33
+Cases 1 and 2 previously recorded zero star presses; continue with 3-6.
+Start a working channel -> PLAYER OPTIONS -> Fullscreen * diagnostic
+(temporary test) -> select the numbered case directly. No Fast Forward needed.
+Wait one second -> press/release * -> record the menu -> Back closes it.
+Read the counters -> Back again exits the diagnostic and restores sizing.
+Repeat the entry path for each case. PASS means Aerio menu WITHOUT Roku menu.
+
+[     ] B03 Case 3/6: Full size / re-arm override after playback starts.
+        Menu (Aerio/Roku/both/nothing): __________ Presses: ___ Releases: ___
+[     ] B04 Case 4/6: Slightly inset picture / sibling focus.
+        Menu: _________________________________ Presses: ___ Releases: ___
+[     ] B05 Case 5/6: Half-size picture / sibling focus.
+        Menu: _________________________________ Presses: ___ Releases: ___
+[     ] B06 Case 6/6: Half-size Video scaled back to fullscreen / sibling focus.
+        Menu: _________________________________ Presses: ___ Releases: ___
+[     ] B07 Exiting restores normal sizing and controls without a retune.
+If a fullscreen case works: Home -> relaunch -> tune -> select that case
+directly using the path above, without testing earlier cases first.
+[     ] B08 The working fullscreen case repeats after fresh launch/tune.
+Case / observations: __________________________________________________
+The inset/half-size cases are diagnostic only, not saved picture preferences.
+
+C. POST-WAKE STAR — ihp.28
+Other hidden-picture controls/captions already passed. This remaining check
+is specifically the corrected C05 failure, not a full hide-picture retest.
+Path: PLAYER OPTIONS -> Hide picture (foreground listening) -> release OK.
+Hold * to wake, release it, then press * separately after picture returns.
+[     ] C01 The fresh post-wake * opens Aerio options without Roku's menu.
+Notes: _______________________________________________________________
+
+D. HELD FULLSCREEN CHANNEL RELEASE — ihp.18
+This differs from the accepted accelerated GUIDE scrolling.
+Start bare fullscreen, dismiss all menus/info. Hold Up to advance channel
+previews, then release; repeat with Down.
+[     ] D01 Release tunes the final previewed channel without tuning each preview.
+Path: PLAYER OPTIONS -> Channel direction -> choose the alternate direction.
+[     ] D02 Hold/release works with that direction too; endpoints do not wrap.
+Hold to preview again, then press Back; open Options and use its arrows.
+[     ] D03 Cancelling/menu navigation does not commit a stale channel preview.
+Restore your preferred Channel direction afterward.
+Notes: _______________________________________________________________
+
+KNOWN SEPARATE FOLLOW-UP
+-----------------------
+ihp.34 tracks an initial profile-discovery race: Always AAC can start direct
+when its existing server profile has not yet been discovered. This build's
+startup retry preserves the actual playback URL/profile; it does not fix
+that discovery race or create server profiles. Record any such observation.
+
+FAILURE NOTES (ID, channel, exact buttons, expected/actual, photo)
+---------------------------------------------------------------
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+SKIPPED TESTS / REASONS: _______________________________________________
+_____________________________________________________________________
+
+Automated evidence is in DEVICE-VALIDATION.md. A startup fault was injected
+on-device to test the retry path; this does not prove the intermittent
+original channel-2101 failure has been reproduced and eliminated.

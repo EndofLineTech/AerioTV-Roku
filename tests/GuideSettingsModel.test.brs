@@ -1,5 +1,21 @@
 sub main()
+    numbered = channelOrderedGroups([{id: "a", name: "Alpha"}, {id: "z", name: "Zulu"}, {id: "e", name: "Empty"}], [{groupId: "a", number: "100"}, {groupId: "z", number: "2.1"}, {groupId: "a", number: "3"}])
+    assertEqual(numbered[0].id, "z", "default groups use minimum numeric channel, not name")
+    assertEqual(numbered[1].id, "a", "minimum member beats first member")
+    assertEqual(numbered[2].id, "e", "empty groups last")
+    numbered = channelOrderedGroups([{id: "a", name: "Alpha"}, {id: "z", name: "Zulu"}], [{groupId: "a", number: "N/A"}, {groupId: "z", number: " 02.1 "}])
+    assertEqual(numbered[0].id, "z", "invalid channel numbers do not sort ahead of numbered groups")
+    numbered = channelOrderedGroups([{id: "z", name: "Zulu"}, {id: "a", name: "Alpha"}], [{groupId: "a", number: "2.10"}, {groupId: "z", number: "2.1"}])
+    assertEqual(numbered[0].id, "a", "equal decimal minima use deterministic name tie-break")
+    assertEqual(guideHoldStep(0), 1, "single step")
+    assertEqual(guideHoldStep(1600), 3, "held guide accelerates")
+    assertEqual(guideHoldStep(3200), 7, "long hold pages")
     settings = normalizeGuideSettings(invalid)
+    parsed = {}
+    parsed.setModeCaseSensitive()
+    parsed["grouplayout"] = "modal"
+    parsed["groupLayout"] = "pills"
+    assertEqual(normalizeGuideSettings(parsed).groupLayout, "pills", "migrate case-sensitive dynamic layout selection")
     server = [{id: "1", name: "Sports"}, {id: "2", name: "News"}]
     settings.hiddenGroups = ["group:1"]
     groups = organizedGroups(server, [], settings)

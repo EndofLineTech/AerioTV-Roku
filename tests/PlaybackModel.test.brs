@@ -14,7 +14,13 @@ sub main()
     assertEqual(sanitizePlaybackDiagnostic("Authorization: ApiKey secret"), "[credential header]", "redact credential header")
     message = playbackFailureText(-1, "reader pick stream error:HTTP error:Full-content response on a range request:200")
     assertEqual(instr(1, message, "byte-range") > 0, true, "explain measured HTTP failure")
-    assertEqual(instr(1, playbackFailureText(-5, ""), "format") > 0, true, "explain unsupported media")
+    assertEqual(instr(1, playbackFailureText(-5, ""), "media playback error") > 0, true, "generic media error is not proof of unsupported codec")
+    stalled = playbackFailureText(-5, "buffering is stalled:extra:err_clip_idx:0")
+    assertEqual(instr(1, stalled, "stalled while buffering") > 0, true, "report native buffering stall accurately")
+    assertEqual(instr(1, stalled, "could not decode"), 0, "stall is not an unsupported codec claim")
+    assertEqual(isStartupBufferingStall(-5, "BUFFERING IS STALLED"), true, "native stall matching ignores case")
+    assertEqual(isStartupBufferingStall(-5, "unsupported video codec"), false, "do not retry permanent format errors")
+    assertEqual(isStartupBufferingStall(-1, "HTTP 401"), false, "do not retry authentication errors")
     assertEqual(instr(1, playbackFailureText(-2, ""), "timed out") > 0, true, "explain timeout")
     lineup = [
         {uuid: "first", name: "First"}
@@ -77,6 +83,12 @@ sub main()
     assertEqual(server.frameRate, "29.97 fps", "server fractional frame rate")
     assertEqual(server.doesExist("aspect"), false, "pixel dimensions do not imply display aspect")
     assertEqual(server.doesExist("url"), false, "no provider URL copied")
+    assertEqual(sourceVideoStalled({audio: 1.0, video: 1.0}, {audio: 4.0, video: 1.0}), true, "audio-only progress detects frozen picture")
+    assertEqual(sourceVideoStalled({audio: 1.0, video: 1.0}, {audio: 4.0, video: 4.0}), false, "healthy source does not restart")
+    assertEqual(sourceVideoStalled({audio: 1.0, video: 1.0}, {audio: 1.0, video: 1.0}), false, "paused stream is not frozen-video evidence")
+    assertEqual(sourceVideoStalled(invalid, {audio: 4.0, video: 1.0}), false, "unknown metrics cannot trigger recovery")
+    assertEqual(sleepTimerLabel(0, 100), "Off", "timer off is explicit")
+    assertEqual(sleepTimerLabel(161, 100), "2 min remaining", "timer remaining rounds up")
     print "ALL TESTS PASSED"
 end sub
 

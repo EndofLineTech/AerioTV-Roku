@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="RemoteHints" extends="Group">
+  <interface>
+    <field id="text" type="string" onChange="renderHints" />
+    <field id="width" type="float" value="1728" />
+    <field id="height" type="float" value="36" />
+    <field id="fontSize" type="integer" value="22" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="RemoteHints.brs" />
+</component>

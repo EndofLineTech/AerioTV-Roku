@@ -9,6 +9,8 @@
     <field id="playbackChannel" type="assocarray" onChange="onPlaybackChannel" />
     <field id="playbackInfo" type="assocarray" alwaysNotify="true" />
     <field id="miniActive" type="boolean" onChange="updateMiniLayout" />
+    <field id="sleepActive" type="boolean" />
+    <field id="pendingTune" type="boolean" />
     <field id="playerRequest" type="string" alwaysNotify="true" />
     <field id="devicePreference" type="assocarray" alwaysNotify="true" />
     <function name="adjacentPlayingChannel" />
@@ -20,6 +22,7 @@
     <field id="recentIds" type="array" onChange="updateHistory" />
     <function name="applyRefreshedLineup" />
     <function name="refreshPresentation" />
+    <function name="handleOptionsShortcut" />
     <field id="reminderState" type="array" onChange="updateReminders" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
@@ -43,5 +46,6 @@
     <Timer id="loadDelay" duration="0.15" repeat="false" />
     <Timer id="clock" duration="30" repeat="true" />
     <Timer id="saveDelay" duration="0.8" repeat="false" />
+    <Timer id="holdTimer" duration="0.4" repeat="true" />
   </children>
 </component>

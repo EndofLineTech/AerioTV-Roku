@@ -1,0 +1,70 @@
+AerioTV Roku 0.3.4 — Fullscreen Star Diagnostic
+==============================================
+Date: ____________________  Tester: _________________________________
+Channel: ____________________ Roku model/OS: ________________________
+
+This is a focused diagnostic, not a claim that star is fixed.
+Mark [     ] PASS only if * opens Aerio options WITHOUT Roku's menu.
+Otherwise mark FAIL and record Roku / both / nothing. SKIP if untested.
+Also record the displayed press/release counters. A release alone does not
+mean the app received the press. No other acceptance tests are required here.
+
+START
+-----
+1. Tune a working channel and wait for moving video/audio.
+2. OK -> Up -> Left/Right to Options -> OK.
+3. Up/Down to Fullscreen * diagnostic (temporary test) -> OK.
+4. The top banner should show OPTIONS KEY TEST 1/6.
+
+FOR EACH CASE
+-------------
+Wait one second after changing cases, then press physical * once and release
+it. Record which menu opens.
+Press Back ONCE to dismiss that menu. Read the counters in the banner.
+Press/release Fast Forward to advance ONE case; Rewind goes back a case.
+Do not press Back when no menu is open unless you want to exit the test.
+If the banner disappears, re-enter through the START path and use Fast
+Forward to reach the next case. Always verify its number before pressing *.
+
+[     ] A01 1/6: Full size / Video focus
+        Menu (Aerio/Roku/both/nothing): __________ Presses: ___ Releases: ___
+[     ] A02 2/6: Full size / sibling focus
+        Menu (Aerio/Roku/both/nothing): __________ Presses: ___ Releases: ___
+[     ] A03 3/6: Full size / re-arm override after playback started
+        Menu (Aerio/Roku/both/nothing): __________ Presses: ___ Releases: ___
+[     ] A04 4/6: Inset 1888 x 1062 / sibling focus
+        Menu (Aerio/Roku/both/nothing): __________ Presses: ___ Releases: ___
+[     ] A05 5/6: Half size 960 x 540 / sibling focus
+        Menu (Aerio/Roku/both/nothing): __________ Presses: ___ Releases: ___
+[     ] A06 6/6: Half size scaled 2x back to fullscreen / sibling focus
+        Menu (Aerio/Roku/both/nothing): __________ Presses: ___ Releases: ___
+
+The inset/half-size cases intentionally change picture size for diagnosis.
+They are not permanent settings or proposed visual compromises. The last
+case asks whether native size or the final displayed size controls interception.
+All cases use the same Video/content and make no shared-source change.
+
+EXIT / RESTORATION
+------------------
+Close any open menu with Back, then Back again while the diagnostic banner
+is visible. The banner should disappear and your normal scale should return.
+[     ] B01 Exiting restores normal picture geometry and usable controls.
+[     ] B02 Audio/video continue without a retune throughout the experiment.
+
+IF ANY FULLSCREEN CASE WORKS
+---------------------------
+Record its number: ____
+Home -> relaunch -> tune the same channel -> enter diagnostic -> use Fast
+Forward to select that case directly, without pressing * in earlier cases.
+[     ] C01 The working case still works after a fresh launch/tune.
+Menu/counters: ________________________________________________________
+If none worked, mark C01 SKIP. Case order and firmware state may influence
+results; one successful sequential trial is not proof of the cause.
+
+FAILURE NOTES (case, exact buttons, observed menu/picture/audio, photo)
+-------------------------------------------------------------------
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+
+Beads: ihp.22 / ihp.33. Existing completed acceptance worksheets are preserved.

@@ -5,6 +5,7 @@
     <field id="apiKey" type="string" />
     <field id="accountId" type="string" />
     <field id="result" type="assocarray" alwaysNotify="true" />
+    <field id="profileResult" type="assocarray" alwaysNotify="true" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/CapabilityModel.brs" />

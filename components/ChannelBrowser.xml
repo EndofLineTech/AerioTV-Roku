@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="ChannelBrowser" extends="Group">
   <interface>
+    <function name="invalidateLogos" />
+    <function name="handleOptionsShortcut" />
     <field id="model" type="assocarray" onChange="configure" />
     <field id="active" type="boolean" value="false" onChange="onActive" />
     <field id="playingUuid" type="string" onChange="draw" />
@@ -15,6 +17,7 @@
   <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideSettingsModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="ChannelBrowser.brs" />
   <children>

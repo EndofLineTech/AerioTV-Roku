@@ -23,6 +23,10 @@ sub main()
     assertEqual(filterChannels(channels, "group:9", {}).count(), 1, "group filter")
     assertEqual(filterChannels(channels, "favorites", {"abc-123": true}).count(), 1, "favorites")
     assertEqual(filterChannels(channels, "favorites", {}).count(), 0, "empty favorites")
+    groups = serverGroupOrder([{id: "9", name: "Zulu"}, {id: "1", name: "alpha"}, {id: "4", name: "Sports"}])
+    assertEqual(groups[0].name, "alpha", "0.31 server guide name ordering")
+    groups = serverGroupOrder([{id: "9", name: "Zulu", order: 0}, {id: "1", name: "alpha", order: 2}])
+    assertEqual(groups[0].name, "Zulu", "explicit server rank overrides name")
     print "ALL TESTS PASSED"
 end sub
 

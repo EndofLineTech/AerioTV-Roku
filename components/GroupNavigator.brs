@@ -3,20 +3,26 @@ sub init()
     m.delay = m.top.findNode("previewDelay")
     m.delay.observeField("fire", "publishPreview")
     m.rows = []
+    m.caption = invalid
     m.groups = []
     m.index = 0
     m.layout = "modal"
 end sub
 
 sub configure()
-    if m.top.model = invalid then return
-    m.groups = m.top.model.groups
-    m.layout = m.top.model.layout
+    applyPresentation(m.top.model)
+end sub
+
+sub applyPresentation(model as dynamic)
+    if model = invalid then return
+    m.groups = model.groups
+    m.layout = model.layout
     m.index = 0
     for i = 0 to m.groups.count() - 1
-        if m.groups[i].id = m.top.model.selected then m.index = i
+        if m.groups[i].id = model.selected then m.index = i
     end for
     m.canvas.removeChildrenIndex(m.canvas.getChildCount(), 0)
+    m.caption = invalid
     m.rows = []
     count = 3
     if m.layout = "sidebar" then count = 7
@@ -28,13 +34,15 @@ sub configure()
         if m.layout = "sidebar"
             x = 96
             y = 306 + i * 96
-            width = 330
+            width = 280
             height = 94
         end if
         bg = uiRect(m.canvas, x, y, width, height, "0x0D1E35FF")
         label = uiLabel(m.canvas, "", x + 12, y + 16, width - 24, height - 18, 23)
         m.rows.push({bg: bg, label: label})
     end for
+    if m.layout = "sidebar" then uiLabel(m.canvas, "Groups", 96, 270, 280, 32, 22, "0x1AC4D8FF")
+    if m.layout = "pills" then m.caption = uiLabel(m.canvas, "", 580, 38, 740, 28, 18, "0x1AC4D8FF")
     draw()
 end sub
 
@@ -44,9 +52,14 @@ sub onActive()
 end sub
 
 sub draw()
-    m.top.visible = m.layout = "pills" or (m.layout = "sidebar" and m.top.active)
+    m.top.visible = m.layout = "pills" or m.layout = "sidebar"
     first = 0
     if m.index >= m.rows.count() then first = m.index - m.rows.count() + 1
+    if m.caption <> invalid
+        last = first + m.rows.count()
+        if last > m.groups.count() then last = m.groups.count()
+        m.caption.text = "CHANNEL GROUPS   <   " + (first + 1).toStr() + "-" + last.toStr() + " of " + m.groups.count().toStr() + "   >"
+    end if
     for i = 0 to m.rows.count() - 1
         row = m.rows[i]
         row.bg.visible = first + i < m.groups.count()
@@ -73,6 +86,12 @@ end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if not press or not m.top.active then return false
+    if key = "options"
+        m.delay.control = "stop"
+        m.top.active = false
+        m.top.optionsRequested = true
+        return true
+    end if
     if key = "back" or key = "OK" or (m.layout = "pills" and key = "down") or (m.layout = "sidebar" and key = "right")
         if key <> "back" then publishPreview()
         m.top.active = false

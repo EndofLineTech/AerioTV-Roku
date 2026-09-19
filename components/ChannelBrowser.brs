@@ -4,6 +4,18 @@ sub init()
     m.refresh = m.top.findNode("refresh")
     m.refresh.observeField("fire", "requestInfo")
     m.top.visible = false
+    m.logoFiles = {}
+    m.logoOrder = []
+    m.logoBytes = 0
+    m.logoFallback = {}
+    m.logoTask = invalid
+    m.logoCleanupTask = invalid
+    m.logoCleanupPaths = []
+    m.logoAccepted = {}
+    m.logoBatchSequence = 0
+    m.logoDelay = m.top.createChild("Timer")
+    m.logoDelay.duration = 0.15
+    m.logoDelay.observeField("fire", "requestLogos")
 end sub
 
 sub configure()
@@ -35,6 +47,8 @@ sub configure()
     m.filtered = []
     m.top.nowTitles = {}
     if not sameConnection
+        clearLogoCache()
+        m.logoPrefix = "tmp:/aeriotv-logos-" + CreateObject("roDeviceInfo").getRandomUUID()
         agent = CreateObject("roHttpAgent")
         agent.setCertificatesFile("common:/certs/ca-bundle.crt")
         agent.setHeaders({"X-API-Key": data.apiKey, "Authorization": "ApiKey " + data.apiKey})
@@ -52,7 +66,7 @@ sub configure()
 end sub
 
 sub buildBrowserCanvas()
-    m.backdrop = uiRect(m.canvas, 0, 0, 890, 1080, "0x071426ED")
+    m.backdrop = uiRect(m.canvas, 0, 0, 890, 1080, "0x071426B0")
     m.title = uiLabel(m.canvas, "", 60, 70, 740, 58, 36)
     m.summary = uiLabel(m.canvas, "", 60, 133, 740, 36, 23, "0x1AC4D8FF")
     m.empty = uiLabel(m.canvas, "No channels in this list", 80, 270, 730, 70, 28)
@@ -61,14 +75,14 @@ sub buildBrowserCanvas()
     for i = 0 to 7
         group = m.canvas.createChild("Group")
         group.translation = [40, 202 + i * 84]
-        bg = uiRect(group, 0, 0, 295, 78, "0x0D1E35FF")
+        bg = uiRect(group, 0, 0, 295, 78, "0x0D1E3540")
         title = uiLabel(group, "", 14, 16, 267, 58, 23)
         title.wrap = true
         m.groupRows.push({root: group, bg: bg, title: title})
         row = m.canvas.createChild("Group")
         row.translation = [60, 202 + i * 90]
-        border = uiRect(row, 0, 0, 760, 84, "0x17344AFF")
-        fill = uiRect(row, 2, 2, 756, 80, "0x0D1E35FF")
+        border = uiRect(row, 0, 0, 760, 84, "0x17344A20")
+        fill = uiRect(row, 2, 2, 756, 80, "0x0D1E3530")
         logo = row.createChild("Poster")
         logo.translation = [10, 14]
         logo.width = 76
@@ -82,7 +96,7 @@ sub buildBrowserCanvas()
         watching = uiLabel(row, "", 614, 14, 135, 29, 18, "0x1AC4D8FF")
         m.rows.push({root: row, border: border, fill: fill, logo: logo, name: name, now: nowTitle, watching: watching, uuid: ""})
     end for
-    m.hint = uiLabel(m.canvas, "", 60, 953, 1150, 62, 22, "0x9EB5C9FF")
+    m.hint = uiRemoteHints(m.canvas, 60, 953, 1100, 34, 21)
 end sub
 
 sub filterList()
@@ -130,7 +144,7 @@ sub draw()
         group.root.visible = m.groupsOpen and groupStart + i < m.groups.count()
         if group.root.visible
             group.title.text = m.groups[groupStart + i].name
-            group.bg.color = "0x0D1E35FF"
+            group.bg.color = "0x0D1E3540"
             if groupStart + i = m.groupIndex then group.bg.color = "0x10344AFF"
             group.title.color = "0xE8F3FAFF"
             if groupStart + i = m.groupIndex and m.focus = "groups" then group.title.color = "0x1AC4D8FF"
@@ -139,19 +153,26 @@ sub draw()
         row.root.translation = [x, 202 + i * 90]
         row.root.visible = m.start + i < m.filtered.count()
         row.uuid = ""
+        row.logoId = ""
         if row.root.visible
             channel = m.filtered[m.start + i]
+            row.logoId = channel.logoId
             row.uuid = channel.uuid
             row.name.text = channel.name
             row.now.text = ""
             row.watching.text = ""
             if channel.uuid = m.top.playingUuid then row.watching.text = "WATCHING"
             uri = ""
-            if channel.logoId <> "" then uri = m.base + "/api/channels/logos/" + channel.logoId + "/cache/"
+            if m.logoFiles.doesExist(channel.logoId)
+                uri = m.logoFiles[channel.logoId].uri
+                touchLogo(channel.logoId)
+            else if m.logoFallback.doesExist(channel.logoId)
+                uri = m.base + "/api/channels/logos/" + channel.logoId + "/cache/"
+            end if
             if m.resetFailed and row.logo.loadStatus = "failed" then row.logo.uri = ""
             if row.logo.uri <> uri then row.logo.uri = uri
-            row.border.color = "0x17344AFF"
-            row.fill.color = "0x0D1E35FF"
+            row.border.color = "0x17344A20"
+            row.fill.color = "0x0D1E3530"
             if m.focus = "channels" and m.start + i = m.selected
                 row.border.color = "0x1AC4D8FF"
                 row.fill.color = "0x10344AFF"
@@ -165,6 +186,147 @@ sub draw()
     requestInfo()
     m.resetFailed = false
     reportLogoLoad()
+    m.logoDelay.control = "stop"
+    m.logoDelay.control = "start"
+end sub
+
+sub clearLogoCache()
+    m.logoDelay.control = "stop"
+    if m.logoTask <> invalid
+        m.logoTask.unobserveField("asset")
+        m.logoTask.unobserveField("result")
+        m.logoTask.cancelled = true
+        for each id in m.logoTask.ids
+            for each ext in [".part", ".jpg", ".png", ".webp"]
+                m.logoCleanupPaths.push(m.logoTask.prefix + "-" + id + ext)
+            end for
+        end for
+        m.logoTask = invalid
+    end if
+    for each id in m.logoFiles
+        m.logoCleanupPaths.push(m.logoFiles[id].uri)
+    end for
+    m.logoFiles = {}
+    m.logoOrder = []
+    m.logoBytes = 0
+    m.logoFallback = {}
+    m.logoAccepted = {}
+    cleanupLogoFiles()
+end sub
+
+sub cleanupLogoFiles()
+    if m.logoCleanupTask <> invalid or m.logoCleanupPaths.count() = 0 then return
+    m.logoCleanupTask = CreateObject("roSGNode", "LogoCleanupTask")
+    m.logoCleanupTask.paths = m.logoCleanupPaths
+    m.logoCleanupPaths = []
+    m.logoCleanupTask.observeField("done", "onLogoCleanup")
+    m.logoCleanupTask.control = "RUN"
+end sub
+
+sub onLogoCleanup(event as object)
+    if not isCurrentTaskEvent(event, m.logoCleanupTask) then return
+    m.logoCleanupTask.unobserveField("done")
+    m.logoCleanupTask = invalid
+    cleanupLogoFiles()
+end sub
+
+sub invalidateLogos()
+    clearLogoCache()
+    m.logoPrefix = "tmp:/aeriotv-logos-" + CreateObject("roDeviceInfo").getRandomUUID()
+    if m.rows <> invalid
+        for each row in m.rows
+            row.logo.uri = ""
+        end for
+    end if
+    if m.top.active then draw()
+end sub
+
+sub touchLogo(id as string)
+    order = []
+    for each old in m.logoOrder
+        if old <> id then order.push(old)
+    end for
+    order.push(id)
+    m.logoOrder = order
+end sub
+
+sub requestLogos()
+    if not m.top.active or m.logoTask <> invalid then return
+    ids = []
+    seen = {}
+    for each row in m.rows
+        id = row.logoId
+        if row.root.visible and id <> "" and not m.logoFiles.doesExist(id) and not m.logoFallback.doesExist(id) and not seen.doesExist(id)
+            ids.push(id)
+            seen[id] = true
+        end if
+    end for
+    if ids.count() = 0 then return
+    m.logoAccepted = {}
+    m.logoTask = CreateObject("roSGNode", "LogoCacheTask")
+    m.logoTask.baseUrl = m.base
+    m.logoTask.apiKey = m.key
+    m.logoTask.ids = ids
+    m.logoBatchSequence++
+    m.logoTask.prefix = m.logoPrefix + "-" + m.logoBatchSequence.toStr()
+    m.logoTask.observeField("asset", "onLogoAsset")
+    m.logoTask.observeField("result", "onLogoBatch")
+    m.logoTask.control = "RUN"
+end sub
+
+sub storeLogo(asset as object)
+    if m.logoAccepted.doesExist(asset.id) then return
+    m.logoAccepted[asset.id] = true
+    if m.logoFiles.doesExist(asset.id) then return
+    m.logoFiles[asset.id] = asset
+    m.logoBytes += asset.bytes
+    touchLogo(asset.id)
+    while m.logoOrder.count() > 32 or m.logoBytes > 16777216
+        victim = ""
+        for each id in m.logoOrder
+            visible = false
+            for each row in m.rows
+                if row.root.visible and row.logoId = id then visible = true
+            end for
+            if not visible
+                victim = id
+                exit for
+            end if
+        end for
+        if victim = "" then exit while ' Eight visible files are individually capped at 2 MiB.
+        m.logoBytes -= m.logoFiles[victim].bytes
+        m.logoCleanupPaths.push(m.logoFiles[victim].uri)
+        m.logoFiles.delete(victim)
+        order = []
+        for each id in m.logoOrder
+            if id <> victim then order.push(id)
+        end for
+        m.logoOrder = order
+    end while
+    for each row in m.rows
+        if row.root.visible and row.logoId = asset.id then row.logo.uri = asset.uri
+    end for
+    cleanupLogoFiles()
+end sub
+
+sub onLogoAsset(event as object)
+    if not isCurrentTaskEvent(event, m.logoTask) then return
+    storeLogo(event.getData())
+end sub
+
+sub onLogoBatch(event as object)
+    if not isCurrentTaskEvent(event, m.logoTask) then return
+    result = event.getData()
+    m.logoTask.unobserveField("asset")
+    m.logoTask.unobserveField("result")
+    m.logoTask = invalid
+    for each asset in result.assets
+        storeLogo(asset)
+    end for
+    for each id in result.failed
+        m.logoFallback[id] = true
+    end for
+    if m.top.active then draw()
 end sub
 
 sub reportLogoLoad()
@@ -172,7 +334,8 @@ sub reportLogoLoad()
     loaded = 0
     failed = 0
     for each row in m.rows
-        if row.root.visible and row.logo.uri <> ""
+        if row.root.visible and row.logoId <> ""
+            if row.logo.uri = "" then return
             if row.logo.loadStatus = "ready"
                 loaded++
             else if row.logo.loadStatus = "failed"
@@ -249,3 +412,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
     draw()
     return true
 end function
+
+sub handleOptionsShortcut()
+    onKeyEvent("options", true)
+end sub

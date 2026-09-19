@@ -1,0 +1,55 @@
+AerioTV Roku 0.3.3 — Immediate Guide Layout / Pills Access
+========================================================
+Date: ____________________  Tester: _________________________________
+Roku model/OS: ____________________ App version: _____________________
+
+Mark each [     ] PASS, FAIL, or SKIP. Leave untested items blank.
+Keep completed earlier worksheets unchanged. Do not use Home/relaunch
+between layout selections: immediate changes are what this retest checks.
+Select a menu label = Up/Down to highlight it, then OK.
+
+A. IMMEDIATE LAYOUT SWITCHING — 5tg.18
+Start: guide. From bare fullscreen playback, Back opens the mini-guide.
+Path: * -> Group navigation layout -> Modal group list.
+[  PASS   ] A01 Modal takes effect immediately; pills/sidebar are absent.
+Path: * -> Group navigation layout -> Top group pills (always visible).
+[  PASS   ] A02 Pills appear immediately beside AerioTV, without Home/relaunch.
+Path: * -> Group navigation layout -> Docked group sidebar (always visible).
+[  PASS  ] A03 Sidebar appears immediately and the guide shifts right.
+Repeat Sidebar -> Pills -> Modal -> Pills using the same menu path.
+[  PASS    ] A04 Every change applies immediately; no stale layout remains visible.
+[  PASS   ] A05 Selecting a layout does not tune or stop the playing channel.
+Notes: _______________________________________________________________
+
+B. PILLS FROM ANY CHANNEL ROW — 5tg.25
+Start: pills layout; scroll well below the first channel in a large group.
+Path: hold Left for at least half a second, then release.
+[ PASS    ] B01 Focus moves to pills without first scrolling to channel one.
+[ PASS    ] B02 Entering pills does not move backward through the guide timeline.
+Use Left/Right to another group -> Down or OK to return to the grid.
+[ PASS    ] B03 Group selection works and returns usable grid focus.
+Repeat hold Left -> Back without changing groups.
+[ PASS    ] B04 Back returns to the same channel/time selection.
+From the grid, briefly tap Left and release (less than half a second).
+[ PASS    ] B05 Short Left still navigates to the earlier program.
+[ PASS    ] B06 The footer displays Hold Left / Groups.
+Path: hold Left -> * -> Group navigation layout -> choose another layout.
+[ PASS    ] B07 Options from focused pills still work; the new layout appears at once.
+Notes: _______________________________________________________________
+
+C. SIDEBAR / MINI-GUIDE REGRESSION
+Path: * -> Group navigation layout -> Docked group sidebar.
+[ PASS    ] C01 Hold Left enters sidebar from any row; Right/OK returns to the grid.
+Tune a channel -> Back to mini-guide -> change layout through guide options.
+[ PASS    ] C02 Layout changes immediately while mini-player audio/video continue.
+Only after A-C are complete: Home -> reopen AerioTV.
+[ PASS    ] C03 The last selected layout is retained after relaunch.
+
+FAILURE NOTES (ID, exact buttons, expected/actual, photo filename)
+---------------------------------------------------------------
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+
+Continue other pending 0.3.2 worksheet checks on this build; these checks
+replace its pills-access steps. Beads remains the issue backlog.

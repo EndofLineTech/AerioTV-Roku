@@ -1,4 +1,29 @@
 ' Runs in GuideView's component scope.
+sub handleOptionsShortcut()
+    if not m.top.active then return
+    cancelGuideHold()
+    if m.searchView.active
+        editProgramSearch()
+    else if m.picker <> invalid
+        closePicker()
+        m.top.setFocus(true)
+    else if not m.details.active
+        m.navigator.active = false
+        openOptions()
+    end if
+end sub
+
+sub openNavigationLayout()
+    m.settingField = "groupLayout"
+    items = []
+    for each choice in [{value: "modal", title: "Modal group list"}, {value: "pills", title: "Top group pills (always visible)"}, {value: "sidebar", title: "Docked group sidebar (always visible)"}]
+        label = choice.title
+        if m.settings.groupLayout = choice.value then label = "[Selected] " + label
+        items.push({title: label, value: choice.value})
+    end for
+    openPicker("Group navigation layout", items, "settingValue")
+end sub
+
 sub refreshPresentation()
     if not m.ready then return
     if m.top.active then drawGuide()
@@ -23,7 +48,7 @@ sub onNavigatorClosed()
 end sub
 sub rebuildGuideGroups()
     old = m.groups[m.groupIndex].id
-    m.groups = organizedGroups(m.serverGroups, m.collections, m.settings)
+    m.groups = organizedGroups(m.serverGroups, m.collections, m.settings, false, m.channels)
     m.groupIndex = 0
     for i = 0 to m.groups.count() - 1
         if m.groups[i].id = old then m.groupIndex = i
@@ -88,7 +113,7 @@ sub openGuideSetting(kind as string)
         for each id in m.settings.hiddenGroups
             hidden[id] = true
         end for
-        for each g in organizedGroups(m.serverGroups, m.collections, m.settings, true)
+        for each g in organizedGroups(m.serverGroups, m.collections, m.settings, true, m.channels)
             title = g.name
             if hidden.doesExist(g.id) then title = "[Hidden] " + title
             items.push({title: title, groupId: g.id})
@@ -141,6 +166,10 @@ end sub
 function handleGuideSetting(kind as string, item as object) as boolean
     if kind = "guideSettings"
         if item.field <> invalid
+            if item.field = "groupLayout"
+                openNavigationLayout()
+                return true
+            end if
             m.settingField = item.field
             items = []
             for each value in item.choices
@@ -155,7 +184,14 @@ function handleGuideSetting(kind as string, item as object) as boolean
             openGuideSetting(item.action)
         end if
     else if kind = "settingValue"
-        m.settings[m.settingField] = item.value
+        m.settings[lcase(m.settingField)] = item.value
+        if m.settingField = "groupLayout"
+            ' A layout switch must replace the current presentation even when
+            ' the old navigator still owns active state. Ordinary redraws avoid
+            ' reconfiguring an active navigator to preserve its preview focus.
+            m.navigator.active = false
+            m.navigator.callFunc("applyPresentation", {groups: m.groups, layout: item.value, selected: m.groups[m.groupIndex].id})
+        end if
         m.anchor = guideTimeClamp(m.anchor, uiNow(), m.settings)
         keepAnchorVisible()
         rebuildGuideGroups()
@@ -192,7 +228,7 @@ function handleGuideSetting(kind as string, item as object) as boolean
                 end for
             else
                 ids = []
-                for each g in organizedGroups(m.serverGroups, m.collections, m.settings, true)
+                for each g in organizedGroups(m.serverGroups, m.collections, m.settings, true, m.channels)
                     ids.push(g.id)
                 end for
                 m.settings.groupOrder = moveGuideId(ids, m.editGroup, item.delta)

@@ -13,14 +13,15 @@ the implementation contract to verify during device acceptance.
   filter does not silently rewrite the guide's group.
 - Bare fullscreen: Left opens Channels; Right toggles the last channel; Replay
   opens Recently Watched. Held Up/Down repeats are coalesced before tuning.
-- OK shows/hides information. Down from explicitly summoned information enters
+- OK shows/hides information. Up or Down from explicitly summoned information enters
   the focusable transport row; Left/Right then move between controls and OK
   activates one. Up returns to the information panel. Auto tune-in information
   does not capture channel-surfing keys.
 - Explicit information remains open until dismissed; only automatic tune-in
-  information expires. A concrete player-input Group owns bare-playback focus,
-  while the Scene handles bubbled keys. Video is non-focusable and requests
-  Options-key override. The mini-guide also exposes AerioTV player options.
+  information expires. The custom Video owns bare-playback focus and forwards
+  keys to the Scene; hidden-picture mode uses a separate input Group. Video
+  requests Options-key override, pending physical-remote acceptance on the Stick.
+  The mini-guide also exposes AerioTV player options.
 - Back dismisses the innermost menu/browser group/list first. Back from explicit
   information/controls hides the chrome. Back from bare fullscreen minimizes the
   same Video session into the guide. Back from the mini-player guide expands it.
@@ -32,7 +33,8 @@ the implementation contract to verify during device acceptance.
 - Player submenu Back returns to its parent option; source-change confirmation
   returns to the source list. Star closes the entire options menu to playback.
 - Hide picture is a foreground-only player option. The explanation fades after
-  six seconds; the existing video connection continues behind an opaque cover.
+  six seconds; the existing connection continues with video/captions suppressed.
+  The selecting OK gesture is consumed through release before a new wake gesture.
   Play/Pause remains functional. The first navigation key restores the picture
   and is consumed, including repeats until release. Later Back follows the normal
   ladder. Stop, errors, retune and mini-player transitions remove the cover.
@@ -40,9 +42,27 @@ the implementation contract to verify during device acceptance.
 - Sleep timer follows the viewing session across channel changes and minimize/
   expand; explicit Stop, logout or process exit clears it. It is not a device
   power-off timer or a background service.
+- Before first playback, a confirmed native buffering stall or a 25-second
+  startup timeout permits one local retry with the exact content/profile. A
+  second failure stops with an error; successful or paused playback ends the
+  watchdog. This is not midstream recovery. Stop/retune/account teardown cancels
+  the old watch, and sleep expiry takes priority over a startup retry.
+- Always AAC/explicit AAC requests wait at most 20 seconds for a discovered
+  existing profile before opening media. Optional channel facts do not delay
+  profile publication. Discovery failure never silently starts direct playback;
+  choosing Automatic or Direct is explicit, and Cancel preserves the setting.
+  Back or guide options can cancel the pending tune. If another channel is already
+  playing, it remains intact during discovery. Stop/retune/account changes cancel
+  the wait; late callbacks cannot resurrect it. Startup timing begins afterward.
 - Menus own their directional input; data refreshes never steal focus. All
   playback modes use a single Video node; unsupported seek/record/multiview
   features are not advertised as working controls.
+- Guide Up/Down holds accelerate after 1.5 and 3 seconds and stop on release.
+  In pills/sidebar modes, a 400ms Left hold enters groups from any channel row
+  without changing time; a shorter tap moves backward in time on release.
+  Down/OK returns from pills; Right/OK returns from sidebar. Layout selections
+  apply to the current guide immediately, without requiring Home/relaunch.
+  Star from focused pills/sidebar opens guide options without selecting a group.
 
 ## Source-based visual baseline (`AerioTV-Roku-faa.1`)
 

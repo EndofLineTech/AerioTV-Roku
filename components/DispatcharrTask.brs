@@ -84,14 +84,14 @@ sub loadChannels()
         for each row in groupRows
             if type(row) = "roAssociativeArray"
                 if usedGroups.doesExist(textValue(row.id)) and textValue(row.name) <> ""
-                    groups.push({id: textValue(row.id), name: textValue(row.name)})
+                    groups.push({id: textValue(row.id), name: textValue(row.name), order: row.order, position: row.position})
                 end if
             end if
         end for
     else
         warning = warning + " Groups unavailable; All Channels remains accessible."
     end if
-    m.top.result = {ok: true, channels: channels, groups: groups, warning: warning, apiKey: m.key, accountId: textValue(user.id)}
+    m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id)}
     m.key = ""
     m.top.apiKey = ""
 end sub

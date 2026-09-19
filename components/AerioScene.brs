@@ -5,6 +5,14 @@ sub init()
     m.screen = m.top.findNode("screen")
     m.guide = m.top.findNode("guide")
     m.video = m.top.findNode("video")
+    m.optionsProbeActive = false
+    m.optionsProbeHud = m.top.findNode("optionsProbeHud")
+    m.optionsProbeText = m.top.findNode("optionsProbeText")
+    m.optionsProbeRearm = m.top.findNode("optionsProbeRearm")
+    m.optionsProbeRearm.observeField("fire", "finishOptionsProbeRearm")
+    m.video.observeField("optionsKeyPress", "onNativeVideoOptions")
+    m.video.observeField("playerKey", "onNativePlayerKey")
+    m.hiddenCaptionMode = false
     m.playerInput = m.top.findNode("playerInput")
     m.videoViewport = m.top.findNode("videoViewport")
     m.audioCheck = m.top.findNode("audioCheck")
@@ -13,7 +21,20 @@ sub init()
     m.reminderClock.observeField("fire", "checkReminders")
     m.refreshTask = invalid
     m.aacProfile = invalid
+    m.aacDiscoveryState = "idle"
+    m.aacDiscoveryMessage = ""
+    m.pendingAacTune = invalid
+    m.aacFailureDialog = invalid
+    m.aacFailureRequest = invalid
+    m.aacWaitTimer = m.top.findNode("aacWaitTimer")
+    m.aacWaitTimer.observeField("fire", "processAacWait")
     m.activeAudioProfile = ""
+    m.sourceWatch = m.top.findNode("sourceWatch")
+    m.sourceWatch.observeField("fire", "checkSourceVideo")
+    m.sourceWatchState = invalid
+    m.recoveryTask = invalid
+    m.recoveryIssued = false
+    m.recoveryPausePending = false
     m.pendingScale = ""
     m.banner = m.top.findNode("playerBanner")
     m.transport = m.top.findNode("transport")
@@ -55,6 +76,8 @@ sub init()
     m.heldZapTimer.observeField("fire", "repeatHeldZap")
     m.heldZap = ""
     m.playingChannel = invalid
+    m.startupWatch = invalid
+    m.startupRetryCount = 0
     m.pendingChannel = invalid
     m.video.observeField("state", "onVideoState")
     m.video.enableDecoderStats = true
@@ -385,6 +408,9 @@ sub completeConnection(result as dynamic)
 end sub
 
 sub cancelCapabilityRefresh()
+    cancelAacWait()
+    cancelAacFailure()
+    m.aacDiscoveryState = "idle"
     if m.refreshTask <> invalid
         m.refreshTask.unobserveField("result")
         m.refreshTask.control = "STOP"
@@ -393,6 +419,7 @@ sub cancelCapabilityRefresh()
     m.aacProfile = invalid
     m.capabilityClock.control = "stop"
     if m.capabilityTask <> invalid
+        m.capabilityTask.unobserveField("profileResult")
         m.capabilityTask.unobserveField("result")
         m.capabilityTask.control = "STOP"
         m.capabilityTask = invalid
@@ -402,28 +429,50 @@ end sub
 sub refreshCapabilities()
     if m.page = "setup" or m.apiKey = "" or m.serverAccountId = "" then return
     if m.capabilityTask <> invalid then return
+    m.aacDiscoveryState = "pending"
     m.capabilityTask = CreateObject("roSGNode", "CapabilityTask")
     m.capabilityTask.baseUrl = m.baseUrl
     m.capabilityTask.apiKey = m.apiKey
     m.capabilityTask.accountId = m.serverAccountId
     m.capabilityTask.observeField("result", "onCapabilities")
+    m.capabilityTask.observeField("profileResult", "onAacProfileDiscovered")
     m.capabilityTask.control = "RUN"
+end sub
+
+sub onAacProfileDiscovered(event as object)
+    if not isCurrentTaskEvent(event, m.capabilityTask) then return
+    result = event.getData()
+    if result.accountId <> m.serverAccountId then return
+    m.aacProfile = result.profile
+    m.aacDiscoveryState = result.state
+    m.aacDiscoveryMessage = result.message
+    print "[aac-profile] discovery="; result.state
+    processAacWait()
 end sub
 
 sub onCapabilities(event as object)
     if not isCurrentTaskEvent(event, m.capabilityTask) then return
     result = event.getData()
+    m.capabilityTask.unobserveField("profileResult")
     m.capabilityTask.unobserveField("result")
     m.capabilityTask = invalid
     if result.ok
         m.capabilities = result.capabilities
         m.aacProfile = result.audioProfile
+        if m.aacProfile <> invalid
+            m.aacDiscoveryState = "ready"
+        else if m.aacDiscoveryState = "pending"
+            m.aacDiscoveryState = "unavailable"
+            m.aacDiscoveryMessage = "No active copy-video/AAC output profile is available for this account."
+        end if
         if m.playingChannel <> invalid then m.audioCheck.control = "start"
         m.channelFacts = result.channelFacts
         print "[capabilities] level="; m.capabilities.level; " source-switch="; m.capabilities.switchStreams; " version="; m.capabilities.version
     else
         m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
         m.aacProfile = invalid
+        m.aacDiscoveryState = "error"
+        m.aacDiscoveryMessage = result.message
         m.channelFacts = {}
         if result.identityChanged = true
             if m.playingChannel <> invalid then stopPlayback()
@@ -432,6 +481,7 @@ sub onCapabilities(event as object)
             drawSetup()
         end if
     end if
+    processAacWait()
 end sub
 
 sub onPreferences(event as object)
@@ -464,6 +514,52 @@ sub hideNotice()
     m.notice.visible = false
 end sub
 
+sub showAacUnavailable(request as object, message as string)
+    if request.account <> m.accountIdentity then return
+    cancelAacFailure()
+    m.aacFailureRequest = request
+    dialog = CreateObject("roSGNode", "Dialog")
+    dialog.title = "AAC compatibility unavailable"
+    dialog.message = sanitizePlaybackDiagnostic(message, m.apiKey) + chr(10) + "No direct stream was started for this request. Choose another audio mode for this Roku, or Cancel to keep Always AAC."
+    dialog.buttons = ["Use Automatic", "Use Direct", "Cancel"]
+    dialog.observeField("buttonSelected", "onAacFailureChoice")
+    dialog.observeField("wasClosed", "onAacFailureClosed")
+    m.aacFailureDialog = dialog
+    m.top.dialog = dialog
+end sub
+
+sub cancelAacFailure()
+    if m.aacFailureDialog <> invalid
+        m.aacFailureDialog.unobserveField("buttonSelected")
+        m.aacFailureDialog.unobserveField("wasClosed")
+        m.aacFailureDialog.close = true
+    end if
+    m.aacFailureDialog = invalid
+    m.aacFailureRequest = invalid
+end sub
+
+sub onAacFailureChoice(event as object)
+    if m.aacFailureDialog = invalid then return
+    if not m.aacFailureDialog.isSameNode(event.getRoSGNode()) then return
+    request = m.aacFailureRequest
+    choice = event.getData()
+    if choice < 0 or choice > 2 then return
+    cancelAacFailure()
+    onDialogClosed()
+    if request = invalid or choice = 2 then return
+    if request.account <> m.accountIdentity then return
+    if choice = 0 then m.devicePreferences.audioMode = "auto" else m.devicePreferences.audioMode = "direct"
+    persistPreferences()
+    startPlayback(request.channel, true)
+end sub
+
+sub onAacFailureClosed(event as object)
+    if m.aacFailureDialog = invalid or event.getData() <> true then return
+    if not m.aacFailureDialog.isSameNode(event.getRoSGNode()) then return
+    cancelAacFailure()
+    onDialogClosed()
+end sub
+
 sub showConnection()
     m.guide.active = false
     m.guide.visible = false
@@ -475,6 +571,7 @@ sub showConnection()
 end sub
 
 sub forgetConnection()
+    m.browser.callFunc("invalidateLogos")
     cancelCapabilityRefresh()
     m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
     m.serverAccountId = ""
@@ -517,7 +614,10 @@ sub onWatchChannel(event as object)
     startPlayback(event.getData())
 end sub
 
-sub startPlayback(channel as object, forceRetune = false as boolean, useAac = false as boolean)
+sub startPlayback(channel as object, forceRetune = false as boolean, useAac = false as boolean, preserveStartupBudget = false as boolean)
+    cancelAacWait()
+    cancelAacFailure()
+    endOptionsProbe()
     cancelHeldZap()
     m.audioCheck.control = "stop"
     restorePicture()
@@ -535,6 +635,8 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         showPlaybackFailure(-4, "Channel or server information is missing or invalid.")
         return
     end if
+    cancelStartupWatch()
+    if deferRequiredAacTune(channel, forceRetune, useAac, preserveStartupBudget) then return
     m.guide.active = false
     m.guide.visible = false
     m.screen.visible = false
@@ -546,6 +648,8 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     m.mini = false
     m.miniFrame.visible = false
     m.guide.miniActive = false
+    cancelStartupWatch()
+    if not preserveStartupBudget then m.startupRetryCount = 0
     m.video.control = "stop"
     m.streamReady = false
     m.decoderKeysReported = false
@@ -571,14 +675,14 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         content.url += "&output_profile=0"
     end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.0"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.8"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true
-    ' Video consumes OK as pause even with enableUI=false. The Scene owns
-    ' playback keys; the app's Options menu controls the native track fields.
+    ' AerioVideo forwards keys to the Scene instead of native transport actions.
     print "[playback] tuning channel "; channel.number
     focusPlaybackInput()
+    beginStartupWatch(content)
     m.video.control = "play"
     m.playerClock.control = "start"
     showChannelBanner(channel, playerInfoHint())
@@ -599,7 +703,7 @@ end sub
 
 function playerInfoHint() as string
     hint = "OK  Info    Up/Down  Channel    Left  Channels    Right  Last    Replay  Recent    *  Options    Back  Minimize"
-    if m.userInfoOpen then hint = "OK  Hide info    Down  Controls    Back  Hide info    *  Options"
+    if m.userInfoOpen then hint = "OK  Hide info    Up/Down  Controls    Back  Hide info    Options button  App settings"
     remaining = sleepTimerRemaining(m.sleepDeadline, uiNow())
     if remaining > 0 then hint += "    Sleep " + ((remaining + 59) \ 60).toStr() + "m"
     return hint
@@ -617,6 +721,7 @@ sub onPlaybackInfo(event as object)
 end sub
 
 sub onPlayerClock()
+    m.guide.sleepActive = m.sleepDeadline > uiNow()
     if m.page = "player" then m.banner.now = uiNow()
     if m.playingChannel <> invalid
         if sleepTimerRemaining(m.sleepDeadline, uiNow()) = 0
@@ -628,6 +733,7 @@ sub onPlayerClock()
             m.banner.hint = playerInfoHint()
         end if
     end if
+    checkStartupPlayback()
 end sub
 
 sub togglePlayerInfo()
@@ -705,6 +811,10 @@ sub hideBanner()
 end sub
 
 sub stopPlayback()
+    cancelAacWait()
+    cancelAacFailure()
+    cancelStartupWatch()
+    endOptionsProbe()
     cancelHeldZap()
     m.audioCheck.control = "stop"
     restorePicture()
@@ -719,6 +829,7 @@ sub stopPlayback()
     m.guide.miniActive = false
     m.sleepDeadline = 0
     m.playerOptions.active = false
+    m.guide.sleepActive = false
     m.playerClock.control = "stop"
     m.channelTuneTimer.control = "stop"
     m.pendingChannel = invalid
@@ -746,6 +857,7 @@ sub stopPlayback()
 end sub
 
 sub minimizePlayback()
+    endOptionsProbe()
     cancelHeldZap()
     restorePicture()
     if m.playingChannel = invalid then return
@@ -810,6 +922,15 @@ sub applyVideoLayout()
 end sub
 
 sub onGuidePlayerRequest(event as object)
+    if event.getData() = "cancelPendingTune"
+        cancelAacWait()
+        showNotice("Pending channel tune cancelled.")
+        return
+    end if
+    if event.getData() = "cancelSleep"
+        cancelSleepTimer()
+        return
+    end if
     if event.getData() = "refreshChannels"
         refreshChannelLineup()
         return
@@ -823,6 +944,7 @@ sub onGuidePlayerRequest(event as object)
 end sub
 
 sub openChannelBrowser(mode = "channels" as string)
+    endOptionsProbe()
     cancelHeldZap()
     if m.playingChannel = invalid then return
     m.channelTuneTimer.control = "stop"
@@ -927,24 +1049,35 @@ sub openPlayerOptions(kind = "main" as string)
         {title: "Captions: " + m.video.globalCaptionMode, action: "captionsMenu"}
         {title: "Subtitle track", action: "subtitleMenu"}
         {title: "Stream Info", action: "streamInfo"}
+        {title: "Fullscreen * diagnostic (temporary test)", action: "optionsProbe"}
         {title: "Video scale preference: " + m.devicePreferences.videoScale, action: "scaleMenu"}
         {title: "Channels", action: "channels"}
         {title: "Recently Watched", action: "recent"}
         {title: "Last channel", action: "last"}
         {title: "Minimize to guide", action: "minimize"}
         {title: "Hide picture (foreground listening)", action: "hidePicture"}
-        {title: "Sleep timer", action: "sleepMenu"}
+        {title: "Sleep timer: " + sleepTimerLabel(m.sleepDeadline, uiNow()), action: "sleepMenu"}
         {title: "Channel direction", action: "directionMenu"}
         {title: "Clock format: " + m.devicePreferences.clockFormat, action: "clockMenu"}
         {title: "Stop playback", action: "stop"}
         {title: "Close", action: "close"}
     ]
+    if m.sleepDeadline > 0 then items.unshift({title: "Cancel sleep timer", action: "cancelSleep"})
     if m.capabilities.switchStreams = "allowed"
+        items.unshift({title: "Recover frozen picture (this player)", action: "recoverPicture"})
         items.unshift({title: "Switch stream source", action: "sourceMenu"})
     else if m.capabilities.switchStreams = "unknown"
         items.unshift({title: "Refresh source-switch permissions", action: "refreshCapabilities"})
     end if
-    if kind = "clock"
+    if kind = "optionsProbeCases"
+        title = "Choose fullscreen * test"
+        note = "Select any case directly. Press * once, close its menu with Back, then Back exits the test."
+        items = []
+        names = optionsProbeNames()
+        for i = 0 to names.count() - 1
+            items.push({title: (i + 1).toStr() + "/6: " + names[i], action: "optionsProbeCase", index: i})
+        end for
+    else if kind = "clock"
         title = "Clock format"
         items = []
         for each mode in ["system", "12", "24"]
@@ -1062,7 +1195,10 @@ sub onPlayerOption(event as object)
     if m.page <> "player" then return
     item = event.getData()
     if m.optionKind = "main" then m.optionReturnAction = item.action
-    if item.action = "clockMenu"
+    if item.action = "optionsProbe"
+        openPlayerOptions("optionsProbeCases")
+        return
+    else if item.action = "clockMenu"
         openPlayerOptions("clock")
         return
     else if item.action = "clock"
@@ -1073,8 +1209,8 @@ sub onPlayerOption(event as object)
         openPlayerOptions("audioMode")
         return
     else if item.action = "audioMode"
-        if item.value = "aac" and m.aacProfile = invalid
-            showNotice("No active copy-video/AAC output profile was returned by Dispatcharr.")
+        if item.value = "aac" and m.aacProfile = invalid and m.aacDiscoveryState <> "pending"
+            showNotice("No active copy-video/AAC output profile is available. Refresh the connection or choose Automatic/Direct.")
             return
         end if
         m.devicePreferences.audioMode = item.value
@@ -1151,6 +1287,10 @@ sub onPlayerOption(event as object)
     else if item.action = "sleep"
         m.sleepDeadline = 0
         if item.minutes > 0 then m.sleepDeadline = uiNow() + item.minutes * 60
+        m.guide.sleepActive = m.sleepDeadline > 0
+        if item.minutes = 0 then showNotice("Sleep timer cancelled.")
+    else if item.action = "cancelSleep"
+        cancelSleepTimer()
     else if item.action = "direction"
         m.devicePreferences.channelDirection = item.value
         persistPreferences()
@@ -1162,7 +1302,14 @@ sub onPlayerOption(event as object)
     if item.action = "last" then zapPreviousChannel()
     if item.action = "minimize" then minimizePlayback()
     if item.action = "stop" then stopPlayback()
-    if item.action = "hidePicture" then hidePicture()
+    if item.action = "recoverPicture" then recoverFrozenPicture()
+    if item.action = "optionsProbeCase" then beginOptionsProbe(item.index)
+    if item.action = "hidePicture"
+        hidePicture()
+        ' LabelList selection can transfer focus during the initiating OK event.
+        ' Consume that press/repeats/release before allowing a new wake gesture.
+        m.pictureWakeKey = "OK"
+    end if
     if item.action = "refreshCapabilities"
         refreshCapabilities()
         showNotice("Refreshing account permissions. Reopen player options shortly.")
@@ -1170,6 +1317,16 @@ sub onPlayerOption(event as object)
 end sub
 
 sub cancelSourceOperation()
+    m.sourceWatch.control = "stop"
+    m.sourceWatchState = invalid
+    m.recoveryContent = invalid
+    m.recoveryPausePending = false
+    if m.recoveryTask <> invalid
+        m.recoveryTask.unobserveField("ready")
+        m.recoveryTask.unobserveField("result")
+        m.recoveryTask.release = true
+        m.recoveryTask = invalid
+    end if
     clearServerStreamInfo()
     if m.sourceTask <> invalid
         m.sourceTask.unobserveField("result")
@@ -1267,6 +1424,10 @@ sub onSourceResult(event as object)
         if continuity = "preserved" then message = "Source changed. All original clients are still listed by the server."
         if continuity = "changed" then message = "Source changed, but some original clients are no longer listed by the server."
         if result.unchanged = true then message = "This source is already active. No source-change request was sent."
+        if result.unchanged <> true
+            m.sourceWatchState = {content: m.video.content, previous: m.video.positionInfo, ticks: 0, stalls: 0}
+            m.sourceWatch.control = "start"
+        end if
         showNotice(message)
         clearServerStreamInfo()
         if m.playerOptions.active and m.optionKind = "streamInfo" then openPlayerOptions("streamInfo")
@@ -1290,9 +1451,20 @@ sub onPlayerOptionsClosed()
 end sub
 
 sub focusPlaybackInput()
-    ' A concrete child Group owns bare-player focus. Keys bubble to the Scene;
-    ' focusing the Scene itself did not release its focused child on this Stick.
-    m.playerInput.setFocus(true)
+    ' Give the Video override an actual input owner. The hidden Video cannot
+    ' receive focus, so foreground listening uses the separate input Group.
+    probeSibling = false
+    if m.optionsProbeActive = true then probeSibling = m.optionsProbeMode <> 0
+    if m.pictureCover.visible or probeSibling
+        m.playerInput.setFocus(true)
+    else
+        m.video.setFocus(true)
+    end if
+end sub
+
+sub onNativePlayerKey(event as object)
+    input = event.getData()
+    onKeyEvent(input.key, input.press)
 end sub
 
 sub onPlayerOptionsBack()
@@ -1309,7 +1481,10 @@ sub onPlayerOptionsBack()
 end sub
 
 sub hidePicture()
+    endOptionsProbe()
     if m.playingChannel = invalid or m.mini then return
+    if m.pictureCover.visible then return
+    cancelHeldZap()
     m.channelTuneTimer.control = "stop"
     m.pendingChannel = invalid
     m.browser.active = false
@@ -1317,7 +1492,12 @@ sub hidePicture()
     m.transport.active = false
     hideBanner()
     m.bannerTimer.control = "stop"
-    ' Cover the same Video session. Do not stop, hide, mute or reconnect it.
+    ' Opaque graphics alone do not suppress every device's hardware video plane.
+    ' Visibility/caption suppression changes rendering, not the playback session.
+    m.hiddenCaptionMode = m.video.suppressCaptions
+    m.video.suppressCaptions = true
+    m.video.alwaysShowVideoPlanes = false
+    m.video.visible = false
     m.pictureCover.visible = true
     m.pictureHint.visible = true
     m.pictureHintTimer.control = "stop"
@@ -1330,8 +1510,40 @@ sub hidePictureHint()
 end sub
 
 sub restorePicture()
+    m.pictureWakeKey = ""
     m.pictureHintTimer.control = "stop"
+    wasHidden = m.pictureCover.visible
+    if m.pictureCover.visible
+        m.video.suppressCaptions = m.hiddenCaptionMode
+        if m.playingChannel <> invalid then m.video.visible = true
+    end if
     m.pictureCover.visible = false
+    if wasHidden and m.page = "player" and m.playingChannel <> invalid then focusPlaybackInput()
+end sub
+
+sub onNativeVideoOptions(event as object)
+    recordOptionsProbeKey("video", event.getData())
+    if not event.getData()
+        if m.pictureWakeKey = "options" then m.pictureWakeKey = ""
+        return
+    end if
+    if m.pictureWakeKey = "options" then return
+    if m.top.dialog <> invalid
+        if not m.top.dialog.wasClosed then return
+    end if
+    if m.pictureCover.visible
+        restorePicture()
+        m.pictureWakeKey = "options"
+    else if m.playerOptions.active
+        m.playerOptions.active = false
+        onPlayerOptionsClosed()
+    else if m.browser.active
+        m.browser.callFunc("handleOptionsShortcut")
+    else if m.page = "player"
+        openPlayerOptions()
+    else if m.page = "guide"
+        m.guide.callFunc("handleOptionsShortcut")
+    end if
 end sub
 
 sub onDecoderStats()
@@ -1348,6 +1560,7 @@ end sub
 
 sub onVideoState()
     if m.playingChannel = invalid then return
+    if m.video.state = "playing" or m.video.state = "paused" then completeStartupWatch()
     if m.video.state = "playing" then m.streamReady = true
     m.transport.paused = m.video.state = "paused"
     print "[playback] state="; m.video.state
@@ -1359,6 +1572,8 @@ sub onVideoState()
         if detail = "" then detail = m.video.errorMsg
         detail = sanitizePlaybackDiagnostic(detail, m.apiKey)
         print "[playback] code="; code; " detail="; detail
+        if handleStartupFailure(code, detail) then return
+        if m.startupWatch <> invalid and m.startupRetryCount > 0 then detail += chr(10) + "One startup retry was already attempted."
         stopPlayback()
         showPlaybackFailure(code, detail)
     else if m.video.state = "finished"
@@ -1369,6 +1584,11 @@ sub onVideoState()
             m.bannerTimer.control = "stop"
         end if
     else if m.video.state = "playing"
+        if m.recoveryTask <> invalid and m.recoveryIssued then m.recoveryTask.release = true
+        if m.recoveryPausePending
+            m.recoveryPausePending = false
+            m.video.control = "pause"
+        end if
         m.audioCheck.control = "start"
         if m.playingChannel <> invalid
             if m.recordedChannel <> m.playingChannel.uuid
@@ -1382,6 +1602,87 @@ sub onVideoState()
             m.bannerTimer.control = "stop"
             if not m.transport.active and not m.userInfoOpen then m.bannerTimer.control = "start"
         end if
+    end if
+end sub
+
+sub checkSourceVideo()
+    if m.sourceWatchState = invalid or m.playingChannel = invalid
+        m.sourceWatch.control = "stop"
+        return
+    end if
+    state = m.sourceWatchState
+    if not state.content.isSameNode(m.video.content)
+        m.sourceWatch.control = "stop"
+        m.sourceWatchState = invalid
+        return
+    end if
+    state.ticks++
+    if m.video.state = "playing" and not m.pictureCover.visible
+        if sourceVideoStalled(state.previous, m.video.positionInfo) then state.stalls++ else state.stalls = 0
+    else
+        state.stalls = 0
+    end if
+    state.previous = m.video.positionInfo
+    if state.stalls >= 2
+        m.sourceWatch.control = "stop"
+        m.sourceWatchState = invalid
+        recoverFrozenPicture()
+    else if state.ticks >= 10
+        m.sourceWatch.control = "stop"
+        m.sourceWatchState = invalid
+    end if
+end sub
+
+sub recoverFrozenPicture()
+    if m.playingChannel = invalid or m.video.content = invalid or m.recoveryTask <> invalid then return
+    m.sourceWatch.control = "stop"
+    m.sourceWatchState = invalid
+    m.recoveryContent = m.video.content
+    m.recoveryPaused = m.video.state = "paused"
+    m.recoveryIssued = false
+    m.recoveryTask = CreateObject("roSGNode", "PlaybackBridgeTask")
+    m.recoveryTask.url = m.video.content.url
+    m.recoveryTask.baseUrl = m.baseUrl
+    m.recoveryTask.channelUuid = m.playingChannel.uuid
+    m.recoveryTask.apiKey = m.apiKey
+    m.recoveryTask.observeField("ready", "onRecoveryReady")
+    m.recoveryTask.observeField("result", "onRecoveryFinished")
+    m.recoveryTask.control = "RUN"
+    showNotice("Recovering this player's picture while retaining the shared source...")
+end sub
+
+sub onRecoveryReady(event as object)
+    if not isCurrentTaskEvent(event, m.recoveryTask) then return
+    if not event.getData() or not m.recoveryTask.ready or m.recoveryIssued then return
+    if m.playingChannel = invalid then return
+    if not m.recoveryContent.isSameNode(m.video.content) then return
+    replacement = m.video.content.clone(false)
+    m.recoveryIssued = true
+    m.recoveryPausePending = m.recoveryPaused
+    m.video.control = "stop"
+    m.streamReady = false
+    m.decoderSnapshot = {}
+    m.video.content = replacement
+    m.video.control = "play"
+    print "[picture-recovery] local decoder restarted"
+end sub
+
+sub onRecoveryFinished(event as object)
+    if not isCurrentTaskEvent(event, m.recoveryTask) then return
+    result = event.getData()
+    m.recoveryTask.unobserveField("ready")
+    m.recoveryTask.unobserveField("result")
+    m.recoveryTask = invalid
+    m.recoveryContent = invalid
+    if m.recoveryIssued
+        print "[picture-recovery] source="; result.source; " clients="; result.beforeCount; "->"; result.afterCount
+        message = "This player's decoder was restarted. No shared-source change was requested."
+        if result.source = "same" then message = "This player's decoder restarted; the server reports the same upstream source."
+        if result.source = "changed" then message = "Decoder restarted, but the server source changed. Refresh the source list."
+        showNotice(message)
+    else
+        print "[picture-recovery] unavailable: "; result.message
+        showNotice("Could not safely restart the decoder. " + result.message)
     end if
 end sub
 
@@ -1420,7 +1721,7 @@ sub checkPlaybackAudio()
         wasInfo = m.userInfoOpen
         channel = m.playingChannel
         showNotice("No native audio detected. Retrying this channel with AAC compatibility.")
-        startPlayback(channel, true, true)
+        startPlayback(channel, true, true, true)
         if wasMini then minimizePlayback()
         if wasHidden then hidePicture()
         if wasInfo then togglePlayerInfo()
@@ -1428,6 +1729,7 @@ sub checkPlaybackAudio()
 end sub
 
 sub refreshChannelLineup()
+    cancelAacWait()
     if m.refreshTask <> invalid then return
     showNotice("Refreshing authorized channels; current playback continues.")
     m.refreshTask = CreateObject("roSGNode", "DispatcharrTask")
@@ -1469,6 +1771,7 @@ sub onLineupRefresh(event as object)
     end if
     result.preferences = m.accountPreferences
     m.guide.callFunc("applyRefreshedLineup", result)
+    m.browser.callFunc("invalidateLogos")
     m.guide.recentIds = m.accountPreferences.recent
     persistAccountPreferences()
     showNotice("Channel lineup refreshed.")
@@ -1506,6 +1809,7 @@ sub closeMessage(event as object)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    if key = "options" then recordOptionsProbeKey("scene", press)
     if key = m.heldZap and not press
         cancelHeldZap()
         m.channelTuneTimer.control = "stop"
@@ -1523,10 +1827,20 @@ function onKeyEvent(key as string, press as boolean) as boolean
         if not press then m.pictureWakeKey = ""
         return true
     end if
-    if not press then return false
     if m.top.dialog <> invalid
         if not m.top.dialog.wasClosed then return false
     end if
+    if m.page = "player"
+        if key = "back" and press and m.pendingAacTune <> invalid
+            cancelAacWait()
+            showNotice("Pending channel tune cancelled.")
+            return true
+        end if
+        if not m.playerOptions.active and not m.browser.active
+            if handleOptionsProbeKey(key, press) then return true
+        end if
+    end if
+    if not press then return false
     if m.page = "player"
         if m.pictureCover.visible
             if key = "play"
@@ -1567,7 +1881,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
             return true
         end if
         if m.userInfoOpen
-            if key = "down"
+            if key = "down" or key = "up"
                 enterPlayerControls()
             end if
             return true
@@ -1622,6 +1936,12 @@ end function
 sub cancelHeldZap()
     m.heldZap = ""
     m.heldZapTimer.control = "stop"
+end sub
+
+sub cancelSleepTimer()
+    m.sleepDeadline = 0
+    m.guide.sleepActive = false
+    showNotice("Sleep timer cancelled.")
 end sub
 
 sub repeatHeldZap()

@@ -1,6 +1,16 @@
 function normalizeGuideSettings(raw as dynamic) as object
     p = {}
-    if type(raw) = "roAssociativeArray" then p = copyJson(raw)
+    if type(raw) = "roAssociativeArray"
+        ' ParseJson uses case-sensitive maps on device. Normalize schema keys
+        ' into a fresh case-insensitive map; preserve nested ID/value data.
+        for each key in raw
+            p[lcase(key)] = copyGuideValue(raw[key])
+        end for
+        ' Recover a previous dynamic camel-case selection over an older default.
+        for each key in ["groupSort", "channelSort", "groupLayout", "startupGroup", "collectionsPosition", "historyDays", "futureDays", "hiddenGroups", "groupOrder", "favoriteOrder", "categoryColors", "categoryRules", "tmdbFallback"]
+            if raw.doesExist(key) then p[lcase(key)] = copyGuideValue(raw[key])
+        end for
+    end if
     for each field in ["groupSort", "channelSort", "groupLayout", "startupGroup", "collectionsPosition"]
         p[field] = textValue(p[field])
     end for
@@ -27,6 +37,11 @@ function normalizeGuideSettings(raw as dynamic) as object
     return p
 end function
 
+function copyGuideValue(value as dynamic) as dynamic
+    if type(value) = "roAssociativeArray" or type(value) = "roArray" then return copyJson(value)
+    return value
+end function
+
 function orderGuideIds(preferred as object, available as object) as object
     result = []
     seen = {}
@@ -46,14 +61,16 @@ function orderGuideIds(preferred as object, available as object) as object
     return result
 end function
 
-function organizedGroups(server as object, collections as object, settings as object, includeHidden = false as boolean) as object
+function organizedGroups(server as object, collections as object, settings as object, includeHidden = false as boolean, channels = invalid as dynamic) as object
     groups = [{id: "all", name: "All Channels"}, {id: "favorites", name: "Favorites"}, {id: "recent", name: "Recently Watched"}]
     extras = []
     for each c in collections
         extras.push({id: "collection:" + c.id, name: c.name})
     end for
     if settings.collectionsPosition = "first" then groups.append(extras)
-    for each g in server
+    orderedServer = server
+    if settings.groupSort = "default" and type(channels) = "roArray" then orderedServer = channelOrderedGroups(server, channels)
+    for each g in orderedServer
         groups.push({id: "group:" + g.id, name: g.name})
     end for
     if settings.collectionsPosition = "last" then groups.append(extras)
@@ -92,6 +109,42 @@ function organizedGroups(server as object, collections as object, settings as ob
     end for
     if result.count() = 0 then result.push({id: "all", name: "All Channels"})
     return result
+end function
+
+function channelOrderedGroups(groups as object, channels as object) as object
+    minima = {}
+    numeric = CreateObject("roRegex", "^[0-9]+([.][0-9]+)?$", "")
+    for each channel in channels
+        number = textValue(channel.number).trim()
+        if numeric.isMatch(number)
+            key = channelNumberSortKey(number)
+            id = textValue(channel.groupId)
+            if not minima.doesExist(id)
+                minima[id] = key
+            else if key < minima[id]
+                minima[id] = key
+            end if
+        end if
+    end for
+    rows = []
+    for each group in groups
+        key = "1|"
+        id = textValue(group.id)
+        if minima.doesExist(id) then key = "0|" + minima[id] + "|"
+        rows.push({group: group, sortKey: key + lcase(group.name) + "|" + id})
+    end for
+    rows.sortBy("sortKey")
+    result = []
+    for each row in rows
+        result.push(row.group)
+    end for
+    return result
+end function
+
+function guideHoldStep(elapsedMs as integer) as integer
+    if elapsedMs >= 3000 then return 7
+    if elapsedMs >= 1500 then return 3
+    return 1
 end function
 
 function organizedChannels(channels as object, group as string, favorites as object, recent as object, collections as object, settings as object, query as string) as object

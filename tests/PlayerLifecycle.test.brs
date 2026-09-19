@@ -10,7 +10,8 @@ sub main()
     m.heldZap = ""
     m.heldZapTimer = {control: "stop"}
     m.playingChannel = {uuid: "a"}
-    m.video = {state: "playing", control: "play", content: {programId: "a"}, visible: true, mute: false}
+    m.video = {state: "playing", control: "play", content: {programId: "a"}, visible: true, mute: false, suppressCaptions: false}
+    m.video.setFocus = m.top.setFocus
     m.mini = false
     m.pictureWakeKey = ""
     m.pictureCover = {visible: false}
@@ -31,11 +32,21 @@ sub main()
     m.bannerTimer = {control: "start"}
     m.userInfoOpen = true
     m.sleepDeadline = 123
+    m.guide = {sleepActive: false}
+    onPlayerOption({getData: function() as object
+        return {action: "hidePicture"}
+    end function})
+    onKeyEvent("OK", true)
+    assertEqual(m.pictureCover.visible, true, "selecting OK cannot immediately wake hidden picture")
+    onKeyEvent("OK", false)
+    assertEqual(m.pictureCover.visible, true, "selection release leaves picture hidden")
+    restorePicture()
     hidePicture()
     assertEqual(m.pictureCover.visible, true, "foreground cover opens")
     assertEqual(m.video.control, "play", "cover does not stop or retune player")
     assertEqual(m.video.content.programId, "a", "content identity preserved")
-    assertEqual(m.video.visible, true, "native Video stays visible behind cover")
+    assertEqual(m.video.visible, false, "native video plane hidden without stopping")
+    assertEqual(m.video.suppressCaptions, true, "captions suppressed while hidden")
     assertEqual(m.video.mute, false, "audio remains enabled")
     assertEqual(m.pendingChannel, invalid, "cancel pending tune preview")
     assertEqual(m.sleepDeadline, 123, "sleep timer preserved")
@@ -46,6 +57,8 @@ sub main()
     assertEqual(m.pictureCover.visible, true, "pause does not uncover picture")
     assertEqual(onKeyEvent("right", true), true, "navigation wakes picture")
     assertEqual(m.pictureCover.visible, false, "picture restored")
+    assertEqual(m.video.visible, true, "native plane restored")
+    assertEqual(m.video.suppressCaptions, false, "caption suppression restored")
     assertEqual(onKeyEvent("right", true), true, "held wake key consumed")
     assertEqual(m.video.content.programId, "a", "held wake key does not zap")
     assertEqual(onKeyEvent("right", false), true, "wake key release consumed")
@@ -60,6 +73,9 @@ sub main()
     m.capabilities = {switchStreams: "allowed"}
     m.devicePreferences = normalizeDevicePreferences(invalid)
     m.accountPreferences = {videoAspects: {}}
+    openPlayerOptions("optionsProbeCases")
+    assertEqual(m.playerOptions.menu.items.count(), 6, "all diagnostic cases directly selectable")
+    assertEqual(m.playerOptions.menu.items[5].index, 5, "scaled fullscreen case reachable without Fast Forward")
     m.optionReturnAction = "audioMenu"
     openPlayerOptions("audio")
     assertEqual(m.playerOptions.menu.title, "Audio track", "audio submenu opens")
@@ -84,6 +100,7 @@ sub main()
     m.banner.visible = true
     for each key in ["up", "left", "right"]
         assertEqual(onKeyEvent(key, true), true, "explicit info owns direction: " + key)
+        if key = "up" then onTransportInfoFocus()
         onBannerTimeout()
         assertEqual(m.userInfoOpen, true, "queued auto timeout cannot dismiss explicit info")
         m.transport.focused = false
@@ -127,8 +144,54 @@ sub main()
     assertEqual(onKeyEvent("up", false), true, "release captured")
     assertEqual(m.heldZap, "", "release clears held state")
     assertEqual(m.channelTuneTimer.control, "start", "one deferred tune after release")
+    m.optionsProbeActive = true
+    m.optionsProbeHeldKey = "fastforward"
+    assertEqual(onKeyEvent("fastforward", false), true, "Scene delivers diagnostic key-up before general release return")
+    assertEqual(m.optionsProbeHeldKey, "", "Scene release clears diagnostic latch")
+    m.optionsProbeActive = false
+    m.pendingChannel = invalid
+    m.apiKey = "test-only"
+    m.video.content = lifecycleRetryContent(1)
+    m.video.state = "error"
+    m.video.errorCode = -5
+    m.video.errorStr = "buffering is stalled"
+    m.audioCheck = {control: "stop"}
+    m.noticeText = {text: ""}
+    m.notice = {visible: false}
+    m.noticeTimer = {control: "stop"}
+    m.startupRetryCount = 0
+    beginStartupWatch(m.video.content)
+    onVideoState()
+    assertEqual(m.startupRetryCount, 1, "actual Video error handler routes startup stall to bounded retry")
+    assertEqual(m.video.content.serial, 2, "actual error path replaces local content")
+    assertEqual(m.video.content.url, "https://example.test/live?output_profile=7", "error path retains audio profile")
+    assertEqual(m.top.dialog, invalid, "retry does not open terminal failure dialog")
+    m.playingChannel = invalid
+    m.video.state = "stopped"
+    m.sourceWatch = {control: "stop"}
+    m.baseUrl = "https://example.test"
+    m.accountIdentity = "account-one"
+    m.devicePreferences.audioMode = "aac"
+    m.aacProfile = invalid
+    m.aacDiscoveryState = "pending"
+    m.capabilityTask = {}
+    m.aacWaitTimer = {control: "stop"}
+    startPlayback({uuid: "waiting-id", name: "Waiting channel"})
+    assertEqual(m.pendingAacTune.channel.uuid, "waiting-id", "actual tune path defers mandatory AAC")
+    assertEqual(m.video.content.serial, 2, "no replacement/direct media content created while profile pending")
+    assertEqual(m.startupWatch, invalid, "startup-recovery clock does not run during profile discovery")
+    assertEqual(onKeyEvent("back", true), true, "Back cancels deferred AAC tune")
+    assertEqual(m.pendingAacTune, invalid, "cancelled profile wait cannot tune later")
     print "ALL TESTS PASSED"
 end sub
+
+function lifecycleRetryContent(serial as integer) as object
+    return {serial: serial, url: "https://example.test/live?output_profile=7", isSameNode: function(other as object) as boolean
+        return m.serial = other.serial
+    end function, clone: function(deep as boolean) as object
+        return lifecycleRetryContent(m.serial + 1)
+    end function}
+end function
 
 sub assertEqual(actual as dynamic, expected as dynamic, label as string)
     if actual <> expected

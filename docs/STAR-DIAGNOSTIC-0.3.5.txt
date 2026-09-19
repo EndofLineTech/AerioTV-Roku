@@ -1,0 +1,58 @@
+AerioTV Roku 0.3.5 — Direct Star Test Selection
+==============================================
+Date: ____________________  Tester: _________________________________
+Channel: ____________________ Roku model/OS: ________________________
+
+Cases 1/6 and 2/6 previously recorded zero star presses in 0.3.4.
+This build fixes the stuck Fast Forward latch and adds direct selection.
+You can start with case 3. No Fast Forward is required for this procedure.
+
+ENTER EACH CASE
+---------------
+1. Tune a working channel; wait for moving video/audio.
+2. OK -> Up -> Left/Right to Options -> OK.
+3. Up/Down to Fullscreen * diagnostic (temporary test) -> OK.
+4. Up/Down to the desired numbered case -> OK.
+5. Verify the number in the top banner and wait one second.
+6. Press/release physical *. Record the menu that appears.
+7. Back ONCE closes that menu. Record the banner's press/release counters.
+8. Back again, with no menu open, exits and restores normal picture sizing.
+9. Repeat steps 2-8 to select the next case directly.
+
+Mark [     ] PASS only if Aerio options open without Roku's menu. Otherwise
+FAIL and record Roku / both / nothing. SKIP if not tested. A release alone
+is not a successful intercepted press. Existing accepted features need no retest.
+
+[     ] A03 3/6: Full size / re-arm override after playback starts
+        Menu: _____________________ Presses: ____ Releases: ____
+[     ] A04 4/6: Slightly inset picture / sibling focus
+        Menu: _____________________ Presses: ____ Releases: ____
+[     ] A05 5/6: Half-size picture / sibling focus
+        Menu: _____________________ Presses: ____ Releases: ____
+[     ] A06 6/6: Half-size Video scaled back to fullscreen / sibling focus
+        Menu: _____________________ Presses: ____ Releases: ____
+
+Cases 4/5 intentionally reduce picture size; case 6 should fill the screen.
+These are temporary experiments on the same stream, not saved preferences.
+
+[     ] B01 Back exits the diagnostic and restores normal picture sizing.
+[     ] B02 Video/audio continue without a retune during the tests.
+
+If a fullscreen case works: Home -> relaunch -> tune the same channel ->
+select that case directly using the menu above, then press * again.
+[     ] C01 Successful fullscreen case repeats after a fresh launch/tune.
+Case number / menu / counters: ________________________________________
+If none worked, mark C01 SKIP.
+
+Optional navigation check: enter case 1 and tap/release Fast Forward twice,
+pausing at least one second between taps. It should reach case 3 even if a
+release event was lost when focus changed. Do not hold Fast Forward/Rewind.
+[     ] N01 Fast Forward can advance past case 2.
+
+FAILURE NOTES (case, exact buttons, menu/picture/audio, photo filename)
+-------------------------------------------------------------------
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+
+Beads: ihp.22 / ihp.33. This is a diagnostic, not a claimed star fix.

@@ -25,7 +25,7 @@ sub init()
     m.nextTitle.maxLines = 2
     m.nextTimes = uiLabel(canvas, "", 1272, 885, 516, 34, 22, "0x9EB5C9FF")
     m.dataStatus = uiLabel(canvas, "", 1272, 936, 516, 34, 20, "0x9EB5C9FF")
-    m.hint = uiLabel(canvas, "", 128, 981, 1664, 28, 19, "0x1AC4D8FF")
+    m.hint = uiRemoteHints(canvas, 128, 978, 1664, 30, 19)
     m.ready = true
 end sub
 

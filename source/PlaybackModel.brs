@@ -99,6 +99,19 @@ function sleepTimerRemaining(deadline as integer, now as integer) as integer
     return deadline - now
 end function
 
+function sleepTimerLabel(deadline as integer, now as integer) as string
+    remaining = sleepTimerRemaining(deadline, now)
+    if remaining <= 0 then return "Off"
+    return ((remaining + 59) \ 60).toStr() + " min remaining"
+end function
+
+function sourceVideoStalled(previous as dynamic, current as dynamic) as boolean
+    if type(previous) <> "roAssociativeArray" or type(current) <> "roAssociativeArray" then return false
+    if previous.audio = invalid or current.audio = invalid or previous.video = invalid or current.video = invalid then return false
+    if current.audio <= previous.audio + 0.5 then return false
+    return abs(current.video - previous.video) < 0.01
+end function
+
 function sanitizePlaybackDiagnostic(detail as string, apiKey = "" as string) as string
     if apiKey <> ""
         offset = instr(1, detail, apiKey)
@@ -175,11 +188,18 @@ function playbackFailureText(code as integer, detail as string) as string
     reason = "The Roku could not play this channel."
     if code = -1 then reason = "The Roku could not read the channel's media response."
     if code = -2 then reason = "The channel request timed out. Check the server and network."
-    if code = -5 then reason = "The Roku could not decode this channel's media format."
+    if code = -5 then reason = "The Roku reported a media playback error."
+    if isStartupBufferingStall(code, detail) then reason = "Playback stalled while buffering. Try this channel again."
+    if instr(1, lcase(detail), "startup buffering timed out") > 0 then reason = "The channel did not start after one automatic retry. Try again or choose another channel."
     if instr(1, lcase(detail), "full-content response on a range request") > 0
         reason = "The server returned a continuous stream to a byte-range request. The playback transport is incompatible."
     end if
     message = reason + chr(10) + "Roku error " + code.toStr()
     if detail <> "" then message += chr(10) + detail
     return message
+end function
+
+function isStartupBufferingStall(code as integer, detail as string) as boolean
+    if code <> -5 then return false
+    return instr(1, lcase(detail), "buffering is stalled") > 0
 end function

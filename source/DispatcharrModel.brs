@@ -59,6 +59,23 @@ function normalizeChannel(raw as dynamic) as dynamic
     }
 end function
 
+function serverGroupOrder(groups as object) as object
+    ' 0.31 Guide getGroupOptions sorts provider names (no persisted rank field).
+    ' Honor explicit ranks when supplied and keep stable name ties.
+    result = []
+    for i = 0 to groups.count() - 1
+        g = groups[i]
+        name = lcase(textValue(g.name))
+        rank = textValue(g.order)
+        if rank = "" then rank = textValue(g.position)
+        key = "1|" + name
+        if CreateObject("roRegex", "^[0-9]+$", "").isMatch(rank) then key = "0|" + right("0000000000" + rank, 10) + "|" + name
+        result.push({id: textValue(g.id), name: textValue(g.name), sortKey: key + "|" + right("000000" + i.toStr(), 6)})
+    end for
+    result.sortBy("sortKey")
+    return result
+end function
+
 function effectiveChannelValue(raw as object, field as string) as dynamic
     if raw.doesExist("effective_" + field) then return raw["effective_" + field]
     return raw[field]

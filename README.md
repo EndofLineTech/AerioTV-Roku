@@ -1,5 +1,7 @@
 # AerioTV for Roku
 
+<img src="images/channel-icon-fhd.png" alt="AerioTV Roku preview icon" width="270" />
+
 Native BrightScript/SceneGraph port of AerioTV, targeting the **Roku Streaming
 Stick 4K and Dispatcharr 0.31.0**. The product goal is Apple TV visual/behavioral
 parity with deliberate Roku remote adaptations. Distribution starts with personal
@@ -8,6 +10,197 @@ instance; no additional service/container is required by this build.
 
 For the current feature-by-feature comparison against upstream AerioTV, see the
 [parity audit and remaining-work inventory](docs/PARITY-AUDIT.md).
+
+## Download the testing build
+
+**[Download v0.3.8 — testing prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.8)**
+
+Under **Assets**, download **`aeriotv-roku-v0.3.8.zip`**. Keep it zipped.
+Do **not** download GitHub's automatically generated **Source code (zip)** for
+installation; that is the repository, not the Roku application package.
+
+You do not need Node.js, npm, Git, or a compiler to install the release ZIP.
+This is a sideloaded testing preview, not a Roku Streaming Store release.
+
+## Roku vs. Apple TV and Android TV
+
+**Roku currently delivers the Dispatcharr live-TV/guide experience, not full
+feature parity with the upstream Apple TV and Android TV apps.** In particular,
+movies/series, DVR, multiview and a guaranteed live rewind buffer are not available
+in this Roku preview. A working Pause button is not a promised rewind window.
+
+| Feature | Roku — this preview | Apple TV — upstream | Android TV / Google TV — upstream |
+| --- | --- | --- | --- |
+| Dispatcharr connection | **Available** — API key or dashboard login | Available | Available |
+| Direct Xtream Codes connection | **Not implemented**; import through Dispatcharr instead | Available | Available |
+| Direct M3U + XMLTV connection | **Not implemented**; import through Dispatcharr instead | Available | Available |
+| Live TV and EPG grid | **Available** | Available | Available |
+| Favorites, group visibility and channel sorting | **Available** | Available | Available |
+| Mini-player while browsing the guide | **Available** — same playback session | Available | Available |
+| Audio/subtitle selection and sleep timer | **Available**, limited to tracks Roku exposes | Available | Available |
+| Video scaling | **Fit / Fill / Stretch**; source-aspect setting may be required | Available | Available |
+| Programme reminders | **Foreground alerts only**, while the app is open | Saved reminder state; background delivery not established on tvOS | Documented reminders; notification delivery depends on device |
+| Movies/series and Continue Watching | **Not implemented** | Available with supported providers | Available with supported providers |
+| DVR scheduling and recording management | **Not implemented** | Available; server-side DVR uses Dispatcharr | Available; server-side DVR uses Dispatcharr |
+| Multiview | **Not implemented** | Up to 9 streams, device/resource dependent | Up to 9 streams, device/resource dependent |
+| Live rewind / completed-program catch-up | **Not implemented**; native pause only | Implemented, subject to settings/provider support | Not verified in this comparison |
+| Cross-device preference/watch-progress sync | **Not implemented**; local Roku preferences only | iCloud | Optional Google Drive sync |
+| Playback compatibility | Native Roku MPEG-TS player; optional existing server AAC profile | Apple/native and mpv playback routes | Media3/ExoPlayer plus bundled FFmpeg audio decoders |
+| Distribution | **Developer Mode ZIP / testing prerelease** | App Store, TestFlight and upstream sideload releases | APK releases; upstream documents invite-only Google Play testing |
+
+"Available" in the upstream columns means documented or source-established,
+not independently device-tested here. Store builds can differ from repository
+versions; provider permissions and device capabilities still apply. "Not verified"
+is not a claim that the feature is absent. Mobile-only features are not assumed
+to be available on a TV.
+
+Comparison sources, reviewed 2026-09-19:
+- [Apple upstream README, pinned revision](https://github.com/jonzey231/AerioTV/blob/8d5818456e0f4421d93b8ff120ad878d63331091/README.md)
+  and the [source-level tvOS audit](docs/PARITY-AUDIT.md). The audit's Roku column
+  is an older baseline; the table above describes this release.
+- [Android upstream README, pinned revision](https://github.com/jonzey231/AerioTV-Android/blob/7bf4a2ddad9dd6d58152eee5b4eee08873c1da3b/README.md).
+- [Roku device evidence and limitations](docs/DEVICE-VALIDATION.md).
+
+## What you need
+
+- A Roku player or Roku TV with a remote. The tested baseline is a **Streaming
+  Stick 4K (3820RW2), Roku OS 15.3.4, at 1080p**; other models are not yet verified.
+- A Roku account. Follow Roku's [free developer enrollment](https://developer.roku.com/enrollment/standard)
+  and [official Developer Mode setup guide](https://developer.roku.com/docs/developer-program/getting-started/developer-setup.md).
+- A computer with a web browser on the **same local network as the Roku**.
+- A running **Dispatcharr server** reachable from the Roku, with working channels
+  and an account/API key. This build has been tested with Dispatcharr **0.31.0**.
+  No additional AerioTV service or container is required.
+
+Roku allows **one sideloaded development app at a time**. Installing this ZIP
+replaces the development app already in that slot, if any.
+
+## Install on your Roku
+
+### 1. Enable Developer Mode
+
+1. Turn on the Roku and start from its **Home screen**.
+2. On the remote, tap this sequence in order, at a steady pace:
+
+   **Home → Home → Home → Up → Up → Right → Left → Right → Left → Right**
+
+   These are individual button presses; do not hold the buttons down.
+3. The **Developer Settings** screen should appear. Write down the Roku's
+   displayed IP address/web address.
+4. Choose **Enable installer** / **Enable installer and restart** (wording varies
+   by Roku OS), accept the Developer Tools License Agreement, and set a
+   **developer password** when prompted. The password is case-sensitive.
+5. Let the Roku restart. Developer Mode is now enabled.
+
+If you need to find its IP address again, use **Settings → Network → About**.
+If Developer Mode is already enabled, proceed to the next step.
+
+### 2. Open the Roku's installer in your browser
+
+1. On your computer, open **`http://<roku-ip>`**, using the address from step 1.
+   Enter **HTTP**, not HTTPS. This is the Roku's address, not Dispatcharr's.
+2. When the browser asks for credentials, use:
+
+   | Field | Value |
+   | --- | --- |
+   | Username | **`rokudev`** |
+   | Password | The developer password you just set on the Roku |
+
+   This password is **not** your Roku account password or Dispatcharr password.
+3. You should see the **Development Application Installer** page.
+
+### 3. Upload and install the release ZIP
+
+1. Click **Upload** / **Choose File** and select **`aeriotv-roku-v0.3.8.zip`**.
+2. Click **Install** or **Install with zip**, depending on the installer version.
+   Some versions also offer **Install with squashfs**.
+3. Wait for **Install Success**. AerioTV should launch on the TV automatically.
+4. To open it later, find **AerioTV Roku Preview** on the Roku Home screen,
+   usually near the end of the app list.
+
+Upload the ZIP itself—do not extract it first. The release package has its
+`manifest` at the ZIP root. If your browser automatically extracts ZIP downloads,
+disable that behavior or download it again using a browser that preserves ZIPs.
+
+### 4. Connect to Dispatcharr
+
+On the Roku's AerioTV connection screen:
+
+1. Enter your **Dispatcharr base URL**, such as `http://<dispatcharr-host>:9191`.
+   Use the final URL your Roku can reach; `localhost` would refer to the Roku,
+   and a Docker-internal hostname may not be reachable from your home network.
+2. Choose **API key** or **Dashboard username and password**, then enter the
+   credentials for your Dispatcharr account. These are **Dispatcharr dashboard
+   credentials**, not provider/Xtream Codes credentials or the `rokudev` login.
+3. Choose whether to enable **Remember API key**. See [connection storage](#connection-storage)
+   for what is saved on the device.
+4. Select **Connect**. The guide opens after the authorized lineup loads.
+5. Highlight a currently airing channel/program and press **OK** to watch.
+
+## Essential controls and known testing limitations
+
+- **OK** shows player information. **OK → Up (or Down) → Options** opens the
+  application menu; use Left/Right to highlight Options, then OK.
+- **Fullscreen `*` is a known unresolved issue on the tested Stick**: it may open
+  Roku's system menu instead of AerioTV options. Use the route above. Guide `*`
+  works for guide settings and group navigation.
+- **Back** from bare fullscreen minimizes the same player into the guide;
+  Back or Play expands it. To end playback, select **Stop playback** in player
+  options or mini-guide options.
+- **Up/Down** change channels in fullscreen (default: Up next, Down previous).
+  **Left** opens Channels, **Right** returns to the last channel, and **Replay**
+  opens Recently Watched.
+- In pills/sidebar guide layouts, **hold Left** to focus groups from any row.
+- **AAC compatibility needs an existing active copy-video/AAC output profile**
+  visible to the Dispatcharr account. The app does not create server profiles.
+  Always AAC waits for discovery and offers explicit alternatives if unavailable.
+- Startup-stall recovery retries once; it is not a guarantee that every provider
+  stream will play. The intermittent channel-startup issue remains under testing.
+- **Switch stream source** is an admin action affecting everyone watching that
+  shared Dispatcharr channel; the menu explains this before confirmation.
+- Hide picture is **foreground listening only**. VOD, catch-up and a guaranteed
+  long rewind buffer are not delivered by this live-TV testing preview.
+
+The opt-in **Fullscreen * diagnostic** menu is for the current investigation.
+It intentionally changes picture geometry during its tests; Back exits and
+restores normal sizing. It does not run automatically.
+
+## Update or remove the sideloaded app
+
+- **Update:** download a newer release's application ZIP, return to the same
+  browser installer, upload it, and install it over the current development app.
+  You may need to reconnect if saved app data changes or is removed.
+- **Remove:** use **Delete** in the Development Application Installer.
+- **Identical package:** Roku may reject reinstalling the exact same ZIP as an
+  identical version. If it is already installed, open it from Home; delete and
+  reinstall only if you actually need to reset the development installation.
+
+## Troubleshooting installation
+
+| Problem | What to check |
+| --- | --- |
+| Developer Settings never opens | Start at Home and repeat the exact remote sequence above, using separate taps. |
+| Browser cannot reach the installer | Confirm the Roku IP, Developer Mode and same-network connectivity. Guest Wi-Fi/client isolation or a VPN may prevent access. Use `http://`, not `https://`. |
+| Installer login fails | Username is `rokudev`; use the case-sensitive password created in Developer Mode, not another account's password. |
+| Missing manifest / invalid ZIP | Download the named application asset, not **Source code (zip)**; do not upload an extracted folder or a ZIP with an extra outer directory. |
+| Compilation/install error | Record the exact installer error and release version; confirm you selected the intended release asset. |
+| App installs but cannot connect | Check the Dispatcharr URL from the Roku's network and use Dispatcharr dashboard credentials/API key. |
+| Picture but no sound | Player options → Audio compatibility. AAC requires the existing server profile described above; unavailable-profile errors have Automatic/Direct/Cancel choices. |
+| `*` opens Roku settings | This is the known fullscreen issue. Use **OK → Up → Options**. |
+
+## Help test
+
+The self-contained [testing worksheet](docs/RETEST-0.3.7.txt), also applicable to
+0.3.8 (branding/docs release; enter your actual app version), includes button
+paths for the pending checks. Channel numbers in it refer to the baseline test
+lineup; use equivalent channels on your server where necessary.
+
+Share results with the maintainer, including **release version, Roku model/OS,
+Dispatcharr version, test ID, exact buttons, expected/actual result**, and a photo
+or exact error text when useful. Omit passwords, API keys and provider URLs.
+
+<details>
+<summary>Development notes, work tracking, and historical releases</summary>
 
 ## Work tracking
 
@@ -37,6 +230,116 @@ and labels from the local Dolt database. Refresh it with
 reviewable backup, not automatic Beads synchronization; the live Dolt database
 and runtime files are ignored by Git. A remote Dolt destination and restore drill
 remain tracked under `AerioTV-Roku-rgs.11`.
+
+## 0.3.8 — Tester distribution and upstream branding
+
+Adds the upstream Apple TV AerioTV icon adapted to Roku launcher/splash sizes,
+installation instructions, and a sourced platform comparison. Playback behavior
+matches 0.3.7. Artwork source, license and regeneration steps are retained in
+`images/upstream/` and `scripts/generate-branding.py`.
+
+## 0.3.7 — Strict AAC startup discovery
+
+Always AAC and explicit AAC retries now wait up to 20 seconds for the existing
+account-authorized profile before opening a new stream. Profile discovery is
+published immediately after account validation, ahead of optional channel facts.
+There is no silent direct fallback for these requests. Back/Stop, retuning and
+account changes cancel pending work. A discovery failure offers explicit
+Automatic, Direct or Cancel choices; Cancel preserves Always AAC.
+
+The startup watchdog starts only after media playback is requested. Native
+validation observed deferred startup with no media content, then AAC-profile
+playback reporting `aac_adts`, plus timeout-dialog cancellation without retune.
+Use [RETEST-0.3.7.txt](docs/RETEST-0.3.7.txt) when physical testing is available;
+all pending startup/star/held-channel paths are included.
+
+## 0.3.6 — Bounded startup recovery
+
+A confirmed native `buffering is stalled` error before first playback, or a
+25-second startup watchdog expiry, retries this local player once. The retry
+clones the exact playback content, preserving its URL, credentials and output
+profile. It does not request a shared-source switch/Stop. A second failure ends
+with an error. Successful/paused playback, explicit Stop, retuning and account
+teardown prevent stale startup recovery. The budget survives automatic AAC
+fallback within a tune and resets for a new explicit tune.
+
+Buffering stalls are no longer labeled as proof of an unsupported codec. The
+Always-AAC-before-profile-discovery race is separately tracked as `ihp.34`.
+Use [RETEST-0.3.6.txt](docs/RETEST-0.3.6.txt) when physical testing is available;
+it includes the remaining star and held-channel-release checks in one document.
+
+## 0.3.5 — Direct diagnostic case selection
+
+The diagnostic menu now lists all six cases for direct selection. Scene key-up
+routing is fixed, and a bounded debounce prevents missing release events from
+permanently blocking Fast Forward. Cases 1 and 2 recorded zero star presses in
+the PO's 0.3.4 test. Continue with cases 3–6 using
+[STAR-DIAGNOSTIC-0.3.5.txt](docs/STAR-DIAGNOSTIC-0.3.5.txt); Fast Forward is optional.
+
+## 0.3.4 — Focused fullscreen Options diagnostic
+
+Player options now includes **Fullscreen * diagnostic (temporary test)**.
+Enter through OK -> Up -> Options. It compares focus, post-start override and
+video geometry on the existing stream, with physical star press/release counters.
+Fast Forward/Rewind changes cases; Back exits and restores normal geometry.
+It is opt-in, session-only, and is not a claimed interception fix. Use
+[STAR-DIAGNOSTIC-0.3.4.txt](docs/STAR-DIAGNOSTIC-0.3.4.txt).
+
+## 0.3.3 — Immediate guide layout and pills access
+
+All 15 checks in the completed 0.3.3 worksheet passed PO acceptance. The earlier
+0.3.2 checks were not run. Their pending coverage is consolidated, with full
+button paths, in [RETEST-0.3.3-REMAINING.txt](docs/RETEST-0.3.3-REMAINING.txt).
+
+Layout selection explicitly replaces the live navigator presentation and clears
+stale group focus. Modal, Pills and Sidebar should switch without relaunch.
+**Hold Left** from any guide row focuses groups in either pills or sidebar mode;
+a short Left tap still navigates the timeline on release. Use
+[RETEST-0.3.3.txt](docs/RETEST-0.3.3.txt) to verify these corrected paths.
+
+## 0.3.2 — Remote input and guide retest
+
+Use [RETEST-0.3.2.txt](docs/RETEST-0.3.2.txt) for starting screens, button paths
+and individual PASS/FAIL/SKIP checks. Completed 0.3.1 results are preserved.
+
+- Selection-event guards prevent the initiating OK from waking hidden picture
+  or tuning the guide after a layout picker closes.
+- Bare playback focuses the custom Video input owner and forwards keys to the app.
+  Physical fullscreen star interception still needs confirmation on the target.
+- Pills have an explicit CHANNEL GROUPS heading and range count. Scripted rendering
+  is verified; the reported normal-menu-path failure stays open pending retest.
+- Hold Left for 400ms to enter the docked sidebar; a short tap navigates time on
+  release. Star opens guide options from either group navigation mode.
+- Held guide Up/Down accelerates after 1.5 and 3 seconds, stops on release, and
+  defers metadata loads while scrolling.
+- Default real-group order uses each group's lowest numeric channel number;
+  alphabetical/manual modes remain available.
+- Player, guide and browser hints use button keycaps. Browser backgrounds and
+  unselected rows are translucent while focused rows retain strong contrast.
+
+## 0.3.1 — Acceptance fixes (historical candidate)
+
+The 12 reported 0.3.0 failures/caveats have candidate fixes. Use
+[RETEST-0.3.1.txt](docs/RETEST-0.3.1.txt) for focused acceptance; retain the completed
+0.3.0 results as historical evidence.
+
+- Video-owned Options handling; OK → Up or Down → Options is also supported.
+- Hidden picture suppresses the video plane and captions while retaining audio;
+  sleep cancellation is directly available in player and mini-guide options.
+- Browser logos use a bounded app-session local cache (32 files / 16 MiB).
+- Group settings survive parsed-preference key casing; top pills and a docked
+  sidebar have explicit selectors. Default group order matches Dispatcharr 0.31's
+  alphabetical guide order, and group-list/footer geometry is separated.
+- Guarded local decoder recovery follows detected post-switch timestamp stalls;
+  admins can also select **Recover frozen picture (this player)**. A temporary,
+  bounded extra server client holds the upstream during restart. This changes the
+  local playback session; it never requests a shared-channel Stop.
+
+Native probes verified local decoder restart back to playing with unchanged
+upstream URL, hidden-picture audio advancement/pause/restore, actual layout-menu
+selection, and eight cached logos reopening in 231 ms versus 7,020 ms cold.
+Physical star interception, actual frozen-source recovery, other-viewer continuity,
+and perceived picture/caption behavior still require the worksheet checks.
 
 ## 0.3.0 — Live TV compatibility and Guide discovery
 
@@ -134,7 +437,7 @@ The Video now requests Options-key override and is non-focusable. Bare playback
 uses a dedicated input Group whose keys bubble to the Scene. This corrects the
 native focus handoff observed when trying to focus the Scene itself. The app menu
 is branded **AerioTV player options**, with another entry in the mini-guide's
-options menu. OK → Down → Options remains an alternate route.
+options menu. OK → Up or Down → Options remains an alternate route.
 
 Explicitly opened information stays visible until dismissed; the automatic
 tune-in banner still expires after eight seconds. Entering transport reasserts
@@ -382,7 +685,9 @@ catch-up/restart, and a verified 60-minute pause/rewind window remain on the
 [port plan](docs/PORT-PLAN.md). Past-program details currently offer **Watch channel
 live**, explicitly; selecting past guide data does not play its archive.
 
-## Build
+</details>
+
+## Build from source (optional)
 
 Use Node.js 22 or newer and npm:
 
@@ -397,19 +702,14 @@ Sideload archive: **`out/aeriotv-roku.zip`**. The package contains the manifest,
 application scripts/components, and license/attribution notices. Build tools,
 tests, and credentials are excluded.
 
-## Install
+Install your locally built ZIP using the [same browser steps](#install-on-your-roku).
 
-1. Enable Roku developer mode: from Home press **Home three times, Up twice,
-   Right, Left, Right, Left, Right**. Follow the setup and record the Roku IP.
-2. From the same network, open `http://<roku-ip>`; log in as `rokudev` with the
-   developer password.
-3. Upload the ZIP and choose **Install**. This replaces any existing sideloaded
-   development channel on that Roku.
-4. Enter the final Dispatcharr base URL and choose **API key** or **Dashboard
-   username and password**. These are dashboard credentials, not XC credentials.
-5. Select **Connect**. The guide opens around Now after channels and EPG mappings load.
+Maintainers can run `npm run release:prepare` to build and copy a versioned ZIP
+plus `SHA256SUMS` into `out/release/`. This does not publish a release or embed
+device/server credentials. Artwork regeneration is optional; see
+[the source-artwork notes](images/upstream/README.md).
 
-### Connection storage
+## Connection storage
 
 **Remember API key** is on by default and can be turned off before connecting.
 The key is stored in the Roku app registry, not Apple Keychain or an encrypted
@@ -429,19 +729,21 @@ credentials, preventing accidental reuse at a different server.
 | Connection | Up/Down, OK | Edit fields, switch sign-in method, connect |
 | Connecting | Back | Cancel |
 | Guide | Up/Down | Change channel while retaining selected time |
-| Guide | Left/Right | Move to previous/next program or missing-data interval |
+| Guide | Left/Right | Move through programs; a short Left tap navigates on release in pills/sidebar mode |
+| Guide, pills/sidebar | Hold Left | Focus groups from any channel row |
 | Guide | OK on current program or no-data cell | Watch channel live |
 | Guide | OK on past/future program | Program details; explicit Watch channel live action |
 | Guide | `*` | Details, favorites, groups, search, date/time, Now, refresh, settings |
 | Guide | Instant Replay | Jump to Now |
-| Guide | Back | Connection settings |
+| Guide | Back | Cancel a pending AAC tune, expand an active mini-player, or otherwise open connection settings |
 | Menu | Back | Close and restore guide focus |
 | Player | OK | Show/hide now/next information without pausing |
 | Player | Play/Pause | Request native pause/resume; retained duration depends on stream/device |
-| Player | `*` | Audio track, subtitle track, and caption mode menu |
-| Player | Up / Down | Previous / next channel in the current guide filter |
+| Player | OK → Up/Down → Options | App options: audio, captions, scale, sleep, diagnostics and supported source controls |
+| Player | `*` | Intended app Options shortcut; currently may be intercepted by Roku's system menu |
+| Player | Up / Down | Next / previous channel by default; configurable direction |
 | Player options | Back or `*` | Close menu and return to playback |
-| Player | Back | Stop and return to the same guide selection |
+| Player | Back | Close inner chrome, then minimize to guide; use explicit Stop to stop playback |
 
 The date picker displays local calendar days and half-hour times with a UTC
 reference to distinguish repeated daylight-saving hours. A missing spring-forward

@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="GroupNavigator" extends="Group">
   <interface>
+    <function name="applyPresentation" />
     <field id="model" type="assocarray" onChange="configure" />
     <field id="active" type="boolean" onChange="onActive" />
     <field id="preview" type="string" alwaysNotify="true" />
     <field id="closed" type="boolean" alwaysNotify="true" />
+    <field id="optionsRequested" type="boolean" alwaysNotify="true" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="GroupNavigator.brs" />

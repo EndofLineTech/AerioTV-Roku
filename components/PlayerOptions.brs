@@ -9,6 +9,7 @@ sub init()
     m.list = m.top.createChild("LabelList")
     m.list.translation = [510, 340]
     m.list.itemSize = [900, 64]
+    m.list.itemSpacing = [0, 0]
     m.list.numRows = 8
     m.list.color = "0xE8F3FAFF"
     m.list.focusedColor = "0x0A1628FF"

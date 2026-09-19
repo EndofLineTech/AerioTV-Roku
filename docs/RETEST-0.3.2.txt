@@ -1,0 +1,174 @@
+AerioTV Roku 0.3.2 — Focused Retest
+==================================
+Date: ____________________  Tester: _________________________________
+Roku model/OS: ____________________ App version: _____________________
+Dispatcharr version: _____________
+
+Mark each [     ] PASS, FAIL, or SKIP. Leave untested items blank.
+For failures, record ID, channel, exact buttons, expected/actual result
+and a photo filename below. Keep RETEST-0.3.1.txt unchanged.
+
+BUTTON PATHS / STARTING SCREENS
+-----------------------------
+Select a menu label = Up/Down to highlight it, then OK. In the horizontal
+transport row, use Left/Right to highlight an action, then OK.
+Bare fullscreen = playing video with app information and menus dismissed.
+From guide: arrows to a live channel -> OK starts playback.
+PLAYER OPTIONS: bare fullscreen -> *.
+Fallback: bare fullscreen -> OK -> Up (or Down) -> Left/Right to Options -> OK.
+If * fails, use the fallback for the other sections and record the failure.
+GUIDE / MINI-GUIDE: bare fullscreen -> Back. Back or Play expands again.
+GUIDE OPTIONS: guide -> *.
+RELAUNCH: Home -> open the installed AerioTV app again.
+Follow menu labels, not a fixed number of arrow presses; positions vary.
+
+A. FULLSCREEN OPTIONS / INPUT — ihp.22 (also ihp.15)
+Start: tune a channel; wait for tune-in information to disappear.
+Path: bare fullscreen -> physical *.
+[     ] A01 While playing, * opens AerioTV player options, not Roku's menu.
+[     ] A02 Back dismisses options; Play/Pause then * opens Aerio options paused.
+[     ] A03 OK shows information without pausing; OK -> Up -> Options works.
+[     ] A04 OK -> Down -> Options also works; Back restores usable input.
+[     ] A05 Bare Up/Down still change channels, Left opens Channels, and Right
+            returns to the last channel. No key triggers a native transport UI.
+Path: bare fullscreen -> Back -> Back (mini-guide then fullscreen) -> *.
+[     ] A06 * still opens Aerio options after minimizing/expanding.
+[     ] A07 Guide * still opens guide options.
+Physical interception remains unverified by automation; record the actual menu.
+Notes: _______________________________________________________________
+
+B. HIDE PICTURE ENTRY — ihp.26
+Start: playing channel with audible sound.
+Path: PLAYER OPTIONS -> select Hide picture (foreground listening).
+Release OK after selecting; do not press another button for 8 seconds.
+[     ] B01 Picture stays black instead of immediately returning to video.
+[     ] B02 Audio continues and the explanation fades after about 6 seconds.
+Repeat the path, this time holding the selecting OK briefly before releasing.
+[     ] B03 The selecting OK press/repeats/release do not wake the picture.
+If entry fails, mark dependent checks in C SKIP and record why.
+Notes: _______________________________________________________________
+
+C. HIDDEN CONTROLS / CAPTIONS — ihp.27 / ihp.28
+Start: picture hidden using section B's path.
+[     ] C01 Play/Pause pauses/resumes audio without revealing video.
+[     ] C02 First Left restores picture only; second separate Left opens Channels.
+Hide again before each held-key test. Hold the indicated wake key, release,
+then press it again separately.
+[     ] C03 Held Up wakes without tuning; a fresh Up works normally.
+[     ] C04 Held Down wakes without tuning; a fresh Down works normally.
+[     ] C05 Held * wakes without opening options; a fresh * opens Aerio options.
+[     ] C06 Held Back wakes without minimizing; a fresh Back minimizes normally.
+Caption setup: PLAYER OPTIONS -> Captions -> On, on a channel with visible
+captions. Then PLAYER OPTIONS -> Hide picture -> Left to wake.
+[     ] C07 No captions leak while hidden; captions return after waking.
+Paused setup: bare fullscreen -> Play/Pause -> PLAYER OPTIONS -> Hide picture.
+Release the selecting OK, then press Left to wake.
+[     ] C08 Hide/wake preserves pause and the current channel.
+Foreground only: keep AerioTV open; this is not TV-off/background audio.
+Notes: _______________________________________________________________
+
+D. TOP PILLS / SETTING SELECTION — 5tg.18
+Start: guide.
+Path: * -> Group navigation layout -> Top group pills (always visible).
+Release OK after selecting. Look beside the AerioTV logo at the top: a
+CHANNEL GROUPS label and a strip of three group choices should appear.
+[     ] D01 Pills appear immediately and remain after the selecting OK is released.
+[     ] D02 Selecting the layout does not unexpectedly tune a channel.
+Path to focus pills: * -> Channel groups (or Up from the first channel).
+Use Left/Right beyond the first three choices, then Down or OK to return.
+[     ] D03 Real groups beyond All/Favorites/Recently Watched can be reached.
+[     ] D04 Selecting a group updates channels and restores grid focus.
+[     ] D05 Home -> relaunch preserves the pills layout.
+[     ] D06 Pills remain visible/usable with a mini-player playing in the corner.
+Notes: _______________________________________________________________
+
+E. SIDEBAR ENTRY / GROUP OPTIONS — 5tg.19 / 5tg.22 / 5tg.23
+Start: guide.
+Path: * -> Group navigation layout -> Docked group sidebar (always visible).
+[     ] E01 Sidebar is visible and does not overlap the shifted guide grid.
+From the grid, hold Left for at least half a second, then release.
+[     ] E02 Focus enters sidebar without moving backward through the timeline.
+Use Up/Down to another group, wait briefly, then Right or OK.
+[     ] E03 Group preview updates; Right/OK restores usable grid focus.
+From the grid, briefly tap Left and release (less than half a second).
+[     ] E04 A short Left still moves to the earlier program in the timeline.
+Path: * -> Channel groups -> * again, without selecting a group first.
+[     ] E05 The second * opens guide options directly from sidebar navigation.
+Repeat E05 with Top group pills selected.
+[     ] E06 * also opens guide options while pills have focus.
+[     ] E07 Back closes options and leaves guide navigation usable.
+Path: * -> Channel groups (list fallback); scroll to the final entry -> Back.
+[     ] E08 Modal fallback remains usable with no footer overlap.
+Notes: _______________________________________________________________
+
+F. ACCELERATED GUIDE SCROLLING — 5tg.24
+Start: guide, All Channels or another large group; close all menus.
+[     ] F01 One tap of Up/Down moves exactly one channel row.
+Hold Down for 4 seconds, then release. Repeat with Up away from the first row.
+[     ] F02 Movement accelerates during the hold instead of remaining single-step.
+[     ] F03 Releasing stops scrolling immediately; focused channel stays stable.
+[     ] F04 First/last channel clamps correctly without wrapping or invalid rows.
+[     ] F05 A held scroll does not tune video or unexpectedly enter group navigation.
+Open guide options after scrolling; then repeat hold/release within the menu.
+[     ] F06 Menu navigation does not keep scrolling the grid underneath.
+[     ] F07 Guide program data settles after release; navigation remains responsive.
+Observed responsiveness: ______________________________________________
+
+G. DEFAULT GROUP ORDER BY CHANNEL NUMBER — 5tg.21
+Start: guide.
+Path: * -> Guide settings -> Group order -> default.
+Then * -> Channel groups (list fallback).
+[     ] G01 Real groups follow their lowest numeric channel number, not their name.
+[     ] G02 Decimal channel numbers sort numerically (2.1 precedes 10).
+[     ] G03 Groups lacking numeric channels follow numbered groups; ties are stable.
+SKIP G02/G03 if the lineup has no suitable examples. Built-in selectors and
+collections keep their configured placement outside real-group numeric ordering.
+Repeat Group order with alpha and manual, then restore default and relaunch.
+[     ] G04 Alphabetical/manual choices remain distinct and usable.
+[     ] G05 Default ordering remains correct after Home -> relaunch.
+Expected/actual group names and lowest channel numbers: ________________
+_____________________________________________________________________
+
+H. BUTTON KEYCAPS / TRANSLUCENT BROWSER — ihp.30 / ihp.31
+Player path: bare fullscreen -> OK. Guide path: bare fullscreen -> Back.
+[     ] H01 Player information hints distinguish button names from action text.
+[     ] H02 Guide footer uses readable keycaps without overlap or clipping.
+Browser path: bare fullscreen -> Left.
+[     ] H03 Live picture is visible through the browser background/unselected rows.
+[     ] H04 Text, logos and selected-row highlight remain readable over video.
+[     ] H05 Browser footer keycaps are readable; Left opens browser groups normally.
+Path: Back to fullscreen -> Replay (Recently Watched).
+[     ] H06 Recently Watched has the same readable translucent presentation.
+Close/reopen each browser twice after letting visible logos finish loading.
+[     ] H07 Cached logos still reopen without the original cold-loading delay.
+Notes: _______________________________________________________________
+
+I. ACCEPTED-FEATURE REGRESSION SMOKE
+Tune ESPN 408, Big Ten Network 404 and CBS Sports Network 406 using Automatic
+AAC fallback (PLAYER OPTIONS -> Audio compatibility -> Automatic AAC fallback).
+[     ] I01 All three retain moving picture and synchronized audible sound.
+Path: PLAYER OPTIONS -> Sleep timer -> 30 minutes; reopen -> Cancel sleep timer.
+[     ] I02 Timer cancellation still works and shows Off.
+Path: bare fullscreen -> Back -> Back; then PLAYER OPTIONS -> Stop playback.
+[     ] I03 Mini/expand and explicit Stop still work without unexpected retunes.
+Admin only: PLAYER OPTIONS -> Switch stream source -> choose another member
+source -> confirm. Coordinate with another viewer if testing a shared channel.
+[     ] I04 Previously accepted source-switch/recovery behavior remains working.
+[     ] I05 Home -> relaunch opens the guide without diagnostic autoplay.
+Notes: _______________________________________________________________
+
+FAILURE NOTES (ID, channel, exact buttons, expected/actual, photo filename)
+-----------------------------------------------------------------------
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+
+SKIPPED TESTS / REASONS
+----------------------
+_____________________________________________________________________
+_____________________________________________________________________
+
+This worksheet is acceptance evidence; Beads remains the issue backlog.

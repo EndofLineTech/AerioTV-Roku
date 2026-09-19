@@ -1,5 +1,185 @@
 # Device acceptance — EPG/live builds
 
+## 0.3.8 — tester release package and branding
+
+The versioned release ZIP installed and launched on the target Roku on
+2026-09-19 around 21:22 UTC. Native compilation, early AAC profile discovery and
+capability refresh succeeded. All 23 suites, compiler validation and package
+checks passed; `npm audit --omit=dev` reported zero production vulnerabilities.
+No hosted security-scan workflow is configured.
+
+Manifest/version/asset inspection confirms 0.3.8, FHD launcher 540x405, HD launcher
+290x218, and splash sizes 1920x1080 / 1280x720 / 720x480. The pinned Apple TV
+source image's Git blob matches upstream. Generated FHD artwork was visually
+inspected. Roku ECP icon readback is restricted (HTTP 403), so no remote Home-screen
+pixel comparison is claimed. License/attribution are in the ZIP, with original
+artwork and regeneration script in the corresponding source.
+
+PO approved publishing a testing prerelease with the documented P1 limitations:
+fullscreen star (ihp.15/.22) and startup-recovery acceptance (ihp.32). No P0 bugs,
+open release-branch PRs, or in-flight verification agents were identified.
+This release does not close the remaining physical-media/remote checks.
+
+## 0.3.7 — mandatory AAC discovery gate
+
+Normal build installed on 2026-09-19 around 21:02 UTC. Native compilation,
+main launch, early AAC-profile publication and final capability refresh succeeded.
+No diagnostic autoplay occurred. All 23 suites, compiler check, build and
+whitespace checks passed. Final archive scan found no temporary AAC/startup
+validation entry points or known device credentials.
+
+The underlying race had two parts: startPlayback could open direct media when
+the requested AAC profile was still absent, and CapabilityTask delayed publishing
+an already-discovered profile until optional channel-fact pagination completed.
+The gate now waits at most 20 seconds before opening mandatory-AAC media, and
+the Task publishes the profile immediately after account validation. Failure
+offers explicit Automatic/Direct/Cancel choices; it never silently opens direct.
+
+Native cold-start probe on name-verified ESPN 408:
+- Explicit AAC request before discovery: queued=true, noMedia=true,
+  noStartupWatch=true. No direct playback request was constructed.
+- Profile discovery ready preceded tuning. Playback reached playing with the
+  discovered output_profile in the URL and native audioFormat=aac_adts.
+- Pending request cleared after starting playback.
+- Injected expired profile wait produced the real three-choice error dialog.
+- Invoking the real Cancel handler retained the same ContentNode and audio-mode
+  setting, with no pending tune left to resurrect.
+
+Temporary probe removed before final installation. Tests additionally cover the
+actual Scene deferral/cancellation path, late-result/deadline priority, latest
+channel wins, account changes, unavailable/denied catalogs, Auto/Direct bypass,
+retry-budget retention, and the actual CapabilityTask body publishing its result
+before optional metadata. The identity-change Task test publishes no profile.
+
+ihp.34 is resolved by this code and native evidence. Future physical UI checks
+are included in RETEST-0.3.7.txt along with all existing pending startup/star/
+held-channel tests; no immediate PO testing is needed while remote.
+
+## 0.3.6 — startup recovery and acceptance reconciliation
+
+Normal installation, native compilation, launch and capability refresh succeeded
+on 2026-09-19 around 20:36 UTC. All 21 suites, compiler check, build and whitespace
+checks pass. Final archive scan found no temporary startup-injection/autoplay
+entry points or known device credentials. The opt-in star diagnostic remains.
+
+Controller coverage includes the actual Scene error handler routing native -5
+buffering stalls into the startup retry; exact URL/header retention; one-retry
+budget; 25-second boundaries; terminal timeout; stale content/cancellation guards;
+menu/mini/sleep/profile preservation; no retry after playing or while paused;
+and refusal to retry explicit unsupported-codec/authentication errors.
+
+Native probes injected the known stall detail at the first real buffering event
+on name-verified ESPN 408. First run recovered to playing, then independently
+retuned to AAC after profile discovery; this identified the separate ihp.34 race.
+Second run waited for AAC discovery and started with that profile. It recorded:
+- Injected startup stall handled=true, local retry count=1.
+- Exact playback URL equality immediately after replacement and at final sample.
+- Native state transitioned buffering -> playing; startup watch cleared.
+- Later buffering occurred before the final sample. No second startup retry was
+  issued, consistent with the startup-only policy. Sustained playback and the
+  original intermittent channel-2101 failure are not established by this probe.
+
+Both probes were removed before the final normal build. Physical acceptance of
+ihp.32 remains pending; RETEST-0.3.6.txt contains startup tests plus the existing
+pending star and fullscreen held-channel-release tests, with complete paths.
+
+Reconciliation closed ten older Live TV implementation records (ihp.2/.3/.4/.5,
+ihp.10/.11/.12/.13/.20/.21) using completed worksheets and existing boundary/model
+tests. Accepted prerequisite stories b17.1 and b17.5 were also closed. Obsolete
+star-menu access blockers were removed from features accepted via transport
+Options. Broader capability work ah5.4 remains open; source-switch permission
+gating is accepted independently. Detailed acceptance citations are in Beads.
+
+## 0.3.5 — diagnostic navigation correction
+
+Normal installation, native compilation, launch and capability refresh succeeded
+on 2026-09-19 around 20:13 UTC. All 20 suites, compiler check and build pass.
+The actual Scene-handler regression verifies Fast Forward release is dispatched
+before the general key-up early return; a separate regression verifies a missing
+release cannot permanently latch navigation. The actual menu builder exposes six
+direct case choices. Physical star results for cases 3–6 remain pending.
+
+PO's 0.3.4 results: cases 1/2 showed zero star presses, and Fast Forward stuck at
+case 2. The concrete routing defect was the Scene dropping releases before the
+diagnostic handler, not established evidence that firmware lost those releases.
+Use STAR-DIAGNOSTIC-0.3.5.txt to select the remaining cases without Fast Forward.
+
+## 0.3.4 — opt-in physical Options diagnostic
+
+Installed successfully on 2026-09-19 at approximately 19:41 UTC; native
+compilation and main launch completed. Twenty off-device suites and the compiler
+build pass. No diagnostic autoplay is present. The new menu entry is deliberate
+instrumentation for physical-remote testing, not an accepted interception fix.
+
+The first native install rejected an overlong PRINT argument list in the new
+diagnostic despite off-device compiler success. Replaced it with a whitelisted
+JSON snapshot; rebuilt and confirmed successful native installation. Physical
+case execution remains pending in STAR-DIAGNOSTIC-0.3.4.txt. Controller tests
+exercise mode navigation, held-key coalescing, separate press/release counts,
+cross-frame re-arm callback guards and same-content/no-retune restoration.
+
+## 0.3.2 — input-path and guide follow-up
+
+Normal build installed on 2026-09-19 at approximately 16:38 UTC. Native launch
+and admin capability refresh completed without an observed runtime error during
+the 20-second startup check. All 19 automated suites, compiler check, build and
+whitespace checks passed. Archive inspection found no temporary probe entry
+points or known device credentials. Final launch has no diagnostic autoplay.
+
+Pre-cleanup native evidence:
+- A screenshot showed actual group pills after scripted setting selection. This
+  does not supersede the PO's report that the normal menu path still fails.
+- Menu selection followed by the initiating OK press/release retained hidden
+  picture. Screenshot showed black picture and its listening explanation; audio
+  position advanced 4.004 seconds during the subsequent observation.
+- Bare playback's custom Video node reported hasFocus=true. Physical star remains
+  unverified: ECP keypress returned HTTP 403; device policy was not changed.
+- A fixed four-second scripted Down hold moved 82 rows and release stopped its
+  timer. Held Left entered sidebar with unchanged timeline anchor. Group-options
+  signal opened the guide options picker. GroupNavigator star handling also has
+  an actual-handler controller test.
+- Guide/browser screenshots showed distinct button keycaps. Browser alpha was
+  reduced; hardware video is not represented in the screenshot, so perceived
+  video transparency still requires physical acceptance.
+
+An earlier variable-duration probe did not establish accelerated scrolling;
+the fixed-duration guide-only probe supplies that evidence. Temporary probes
+restored Modal layout and were removed before the final normal install.
+Use [RETEST-0.3.2.txt](RETEST-0.3.2.txt). PO-completed worksheets remain intact.
+
+Roku documents Options overlay/focus behavior, and its developer forum records
+model-dependent interception despite focus and override flags. The new focused
+custom Video route remains a candidate awaiting physical-remote acceptance:
+- https://developer.roku.com/dev/docs/video.md
+- https://forum.developer.roku.com/t/onkeyevent-different-on-roku-4k-stick-vs-roku-tv/11011
+- https://forum.developer.roku.com/t/options-key-override-not-working-on-express-4k-model/10137
+
+## 0.3.1 — acceptance-fix candidate
+
+Normal-app installation succeeded on 2026-09-19 at approximately 15:09 UTC.
+Native compilation, launch, and admin capability refresh completed; a 25-second
+startup observation showed no diagnostic autoplay or runtime error. Temporary
+acceptance probes and their exported component functions were removed before
+packaging. All 17 automated suites, compiler validation, build, and diff whitespace
+checks passed.
+
+Pre-cleanup device probes exercised actual guide-setting picker handlers: pills
+became visible, sidebar shifted grid origin from x=96 to x=400, and restoring modal
+returned x=96. Group-list bounds ended at y=822, before footer y=866. Hidden-picture
+mode reported video invisible and captions suppressed while audio advanced 1.53s;
+pause worked and restoration retained ContentNode identity. Eight local logo files
+occupied 2,741,309 bytes, with 7,020ms cold versus 231ms warm readiness.
+
+Guarded local recovery replaced the decoder ContentNode and returned to playing.
+Server status reported the same source URL and client counts 2 -> 2. This proves
+the restart path on a healthy stream, not recovery from the reported actual frozen
+source or continuity of another viewer. The temporary connection is bounded and
+cancelled after recovery; client counts are not client-identity evidence.
+
+Physical star interception, caption/picture perception, held wake behavior, actual
+source-freeze recovery and second-viewer cleanup remain acceptance checks. Use
+[RETEST-0.3.1.txt](RETEST-0.3.1.txt); all 12 acceptance issues remain in progress.
+
 ## 0.3.0 — combined Live TV and Guide implementation pass
 
 Final normal-app installation succeeded at approximately 2026-09-19 05:31:58 UTC

@@ -1,0 +1,129 @@
+AerioTV Roku 0.3.7 — AAC Discovery and Pending Live TV Checks
+============================================================
+Date: ____________________ Tester: ___________________________________
+Roku model/OS: ____________________ App version: _____________________
+Channel(s): ______________________ Audio mode: _______________________
+
+For when physical testing is available; nothing is required while remote.
+Mark [     ] PASS, FAIL, or SKIP; leave untested checks blank. Preserve the
+completed earlier worksheets. All pending test paths are included here.
+
+BUTTON PATHS
+------------
+Select = Up/Down to the named menu item, then OK.
+Tune = guide arrows to a live channel -> OK.
+PLAYER OPTIONS = bare fullscreen -> OK -> Up -> Left/Right to Options -> OK.
+Use this working route; fullscreen * interception is still unresolved.
+MINI-GUIDE = Back from bare fullscreen; Back or Play expands again.
+STOP = PLAYER OPTIONS -> Stop playback, or mini-guide * -> Stop playback.
+RELAUNCH = Home -> reopen AerioTV.
+
+A. ALWAYS AAC / INITIAL DISCOVERY — ihp.34
+On a working channel: PLAYER OPTIONS -> Audio compatibility -> Always use
+AAC compatibility. Then Home -> reopen -> select a live channel as soon as
+the guide appears (before waiting for optional metadata to finish).
+[     ] A01 A tune requiring discovery waits rather than starting direct video.
+[     ] A02 After discovery, playback starts with picture and audible AAC sound.
+[     ] A03 No delayed second retune is needed merely to add the AAC profile.
+The wait may be too brief to see on a fast server; note that rather than
+assuming the waiting/cancellation cases have been tested.
+
+While the Waiting for the existing AAC profile notice is visible:
+Back cancels; guide * -> Cancel pending channel tune also cancels.
+[     ] A04 Cancellation clears the wait and no channel starts later.
+While waiting, choose another channel through the guide or channel browser.
+[     ] A05 Only the latest chosen channel starts when discovery completes.
+
+If profile discovery is denied, unavailable, or exceeds 20 seconds:
+the AAC compatibility unavailable dialog should offer three explicit choices.
+[     ] A06 The failure is clear and no direct stream silently starts.
+[     ] A07 Cancel keeps Always AAC selected and discards the pending tune.
+[     ] A08 Use Automatic changes the audio setting and retries in Automatic mode.
+[     ] A09 Use Direct changes the audio setting and retries in Direct mode.
+Do not change shared server profiles/permissions just to force this condition.
+SKIP unavailable scenarios. Restore your preferred audio mode afterward.
+If an old channel was playing when a new AAC tune began waiting:
+[     ] A10 The old stream remains intact until the new tune can start or is cancelled.
+Notes: _______________________________________________________________
+
+B. BOUNDED STARTUP RECOVERY — ihp.32
+With your preferred audio mode, tune 2101 NCAAF | EMU/WIS if still available,
+and ESPN 408. An expired/unavailable event feed is not itself a Roku defect.
+[     ] B01 Normal startup still gives moving picture and synchronized audio.
+If startup genuinely stalls, wait without manually retuning. The app should
+retry once on the native buffering-stall error or after about 25 seconds of
+media startup. AAC discovery has its own earlier 20-second limit.
+[     ] B02 One retry notice appears and playback recovers without input.
+[     ] B03 Recovery retains the selected audio setting/output profile.
+If the retry fails as well:
+[     ] B04 Playback stops with an error rather than entering a reconnect loop.
+[     ] B05 Buffering-stall wording does not claim an unsupported codec.
+SKIP B02-B05 if the corresponding failure never happens. Do not interrupt
+a shared server or other viewers to manufacture a failure.
+During initial buffering: STOP, then wait at least 30 seconds.
+[     ] B06 Stop remains stopped; the watchdog does not restart the stream.
+During buffering: select another channel.
+[     ] B07 The old channel does not return from a late callback/retry.
+During buffering: Back to mini-guide and wait for startup/recovery.
+[     ] B08 Recovery retains mini-guide presentation rather than forcing fullscreen.
+After playback starts: Play/Pause, wait 30 seconds, resume.
+[     ] B09 Established/paused playback is not retuned by the startup watchdog.
+If coordinated with another viewer on the channel:
+[     ] B10 Local startup recovery does not stop that viewer.
+Channel, time, error text and retry observations: ______________________
+_____________________________________________________________________
+
+C. REMAINING FULLSCREEN STAR DIAGNOSTIC — ihp.22 / ihp.33
+Cases 1 and 2 already recorded zero star presses; continue with 3-6.
+Start a working channel -> PLAYER OPTIONS -> Fullscreen * diagnostic
+(temporary test) -> choose a numbered case directly. No Fast Forward needed.
+Wait one second -> press/release * -> note menu -> Back closes that menu.
+Read banner counters -> Back again exits and restores normal picture size.
+Repeat that entry path to select each next case directly.
+PASS means Aerio options open WITHOUT Roku's menu; otherwise mark FAIL.
+[     ] C03 Case 3/6: Full size / re-arm override after playback starts.
+        Menu (Aerio/Roku/both/nothing): __________ Presses: ___ Releases: ___
+[     ] C04 Case 4/6: Slightly inset picture / sibling focus.
+        Menu: _________________________________ Presses: ___ Releases: ___
+[     ] C05 Case 5/6: Half-size picture / sibling focus.
+        Menu: _________________________________ Presses: ___ Releases: ___
+[     ] C06 Case 6/6: Half-size Video scaled back to fullscreen / sibling focus.
+        Menu: _________________________________ Presses: ___ Releases: ___
+[     ] C07 Exit restores normal geometry and controls without a retune.
+If any fullscreen case works: Home -> reopen -> tune -> select that case
+directly without pressing * in earlier cases.
+[     ] C08 The working fullscreen case repeats after fresh launch/tune.
+If none works, mark C08 SKIP. Inset/half-size cases are temporary diagnostic
+configurations, not saved picture preferences or a claimed fix.
+Notes: _______________________________________________________________
+
+D. POST-WAKE STAR — ihp.28
+Other hidden-picture controls/captions already passed; this checks only the
+previously corrected star failure.
+PLAYER OPTIONS -> Hide picture -> release OK -> hold * to wake -> release
+it -> press * separately after the picture returns.
+[     ] D01 The fresh post-wake * opens Aerio options without Roku's menu.
+Notes: _______________________________________________________________
+
+E. HELD FULLSCREEN CHANNEL RELEASE — ihp.18
+This is fullscreen channel surfing, not the accepted GUIDE scrolling.
+Start bare fullscreen with menus/info dismissed. Hold Up through channel
+previews -> release; repeat with Down.
+[     ] E01 Release tunes the final previewed channel without tuning each preview.
+PLAYER OPTIONS -> Channel direction -> select the alternate direction.
+[     ] E02 Hold/release works in that direction; endpoints do not wrap.
+Hold to preview, then Back; open Options and navigate its arrows.
+[     ] E03 Cancellation/menu navigation does not commit a stale channel preview.
+Restore your preferred Channel direction afterward.
+Notes: _______________________________________________________________
+
+FAILURE NOTES (ID, channel, exact buttons, expected/actual, photo)
+---------------------------------------------------------------
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+SKIPPED TESTS / REASONS: _______________________________________________
+_____________________________________________________________________
+
+Automated/native probe evidence is recorded separately in DEVICE-VALIDATION.md.

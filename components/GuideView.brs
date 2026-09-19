@@ -4,6 +4,11 @@ sub init()
     m.navigator = m.top.findNode("groupNavigator")
     m.navigator.observeField("preview", "onGroupPreview")
     m.navigator.observeField("closed", "onNavigatorClosed")
+    m.navigator.observeField("optionsRequested", "handleOptionsShortcut")
+    m.holdKey = ""
+    m.pickerWakeKey = ""
+    m.holdTimer = m.top.findNode("holdTimer")
+    m.holdTimer.observeField("fire", "repeatGuideHold")
     m.loadDelay = m.top.findNode("loadDelay")
     m.clock = m.top.findNode("clock")
     m.saveDelay = m.top.findNode("saveDelay")
@@ -45,7 +50,7 @@ sub configure()
     m.collections = prefs.collections
     m.reminders = prefs.reminders
     m.recent = prefs.recent
-    m.groups = organizedGroups(m.serverGroups, m.collections, m.settings)
+    m.groups = organizedGroups(m.serverGroups, m.collections, m.settings, false, m.channels)
     m.base = config.baseUrl
     m.key = config.apiKey
     m.tmdbKey = textValue(config.tmdbKey)
@@ -137,7 +142,7 @@ sub buildCanvas()
         m.rows.push({root: root, number: number, badge: badge, logo: logo, name: name, tiles: []})
     end for
     m.nowLine = uiRect(m.canvas, 336, 300, 2, 678, "0x1AC4D8AA")
-    m.footer = uiLabel(m.canvas, "", 96, 998, 1728, 36, 22, "0x9EB5C9FF")
+    m.footer = uiRemoteHints(m.canvas, 96, 998, 1728, 36, 22)
 end sub
 
 sub onActive()
@@ -154,6 +159,7 @@ sub onActive()
 end sub
 
 sub suspendGuide()
+    cancelGuideHold()
     if m.tmdbTask <> invalid
         m.tmdbTask.unobserveField("result")
         m.tmdbTask.control = "STOP"
@@ -356,6 +362,11 @@ end function
 
 sub drawGuide()
     if not m.ready then return
+    gridX = 96
+    if m.settings.groupLayout = "sidebar" then gridX = 400
+    timeX = gridX + 240
+    m.span = (1824 - timeX) * 6
+    keepAnchorVisible()
     m.detailDelay.control = "stop"
     m.detailDelay.control = "start"
     if m.selected < m.rowStart then m.rowStart = m.selected
@@ -369,11 +380,16 @@ sub drawGuide()
     m.heading.visible = m.liveTitle.visible
     if not m.navigator.active then m.navigator.model = {groups: m.groups, layout: m.settings.groupLayout, selected: m.groups[m.groupIndex].id}
     m.dateLabel.text = uiLocalDate(m.viewStart)
+    m.dateLabel.translation = [gridX, 270]
     for i = 0 to m.ticks.count() - 1
         m.ticks[i].text = uiTime(m.viewStart + i * 1800)
+        tickX = timeX + 10 + i * 300
+        m.ticks[i].translation = [tickX, 270]
+        m.ticks[i].visible = tickX < 1824
     end for
     for i = 0 to m.rows.count() - 1
         row = m.rows[i]
+        row.root.translation = [gridX, 306 + i * 96]
         index = m.rowStart + i
         row.root.visible = index < m.filtered.count()
         if row.root.visible
@@ -389,11 +405,12 @@ sub drawGuide()
             renderCells(row, rowCells(channel), index = m.selected)
         end if
     end for
-    x = 336 + (now - m.viewStart) / 6
-    m.nowLine.visible = x >= 336 and x < 1824
+    x = timeX + (now - m.viewStart) / 6
+    m.nowLine.visible = x >= timeX and x < 1824
     if m.nowLine.visible then m.nowLine.translation = [x, 300]
     m.footer.text = "OK  Watch / Details     *  Options, groups, search, date     Back  Connection"
     if m.top.miniActive then m.footer.text = "OK  Watch / Details     Back or Play  Fullscreen     *  Options / Stop playback"
+    if m.settings.groupLayout <> "modal" then m.footer.text = "Hold Left  Groups     OK  Watch / Details     *  Options     Replay  Now"
     if m.query <> "" then m.footer.text = "Search ALL: " + m.query + "    * > Clear search to restore the selected group"
     if m.connectionWarning <> "" then m.footer.text = m.connectionWarning
     if m.message <> "" then m.footer.text = m.message
@@ -634,6 +651,7 @@ sub onDialogClosed()
 end sub
 
 sub openPicker(title as string, items as object, kind as string)
+    cancelGuideHold()
     closePicker()
     m.pickerKind = kind
     m.pickerItems = items
@@ -644,7 +662,9 @@ sub openPicker(title as string, items as object, kind as string)
     list = m.picker.createChild("LabelList")
     list.translation = [510, 265]
     list.itemSize = [900, 64]
-    list.numRows = 9
+    list.itemSpacing = [0, 0]
+    list.numRows = 8
+    list.clippingRect = [0, 0, 900, 512]
     list.color = "0xE8F3FAFF"
     list.focusedColor = "0x0A1628FF"
     list.focusBitmapBlendColor = "0x1AC4D8FF"
@@ -669,11 +689,13 @@ sub closePicker()
 end sub
 
 sub openOptions()
+    m.navigator.active = false
     items = [
         {title: "Program details", action: "details"}
         {title: "Toggle favorite", action: "favorite"}
         {title: "Channel groups", action: "groups"}
         {title: "Channel groups (list fallback)", action: "groupList"}
+        {title: "Group navigation layout", action: "navigationLayout"}
         {title: "Search channels", action: "search"}
         {title: "Search programs", action: "programSearch"}
         {title: "Clear search", action: "clear"}
@@ -694,9 +716,11 @@ sub openOptions()
     ]
     if m.top.miniActive
         items.unshift({title: "Stop playback", action: "stopPlayer"})
+        if m.top.sleepActive then items.unshift({title: "Cancel sleep timer", action: "cancelSleep"})
         items.unshift({title: "AerioTV player options", action: "optionsPlayer"})
         items.unshift({title: "Return to fullscreen", action: "expandPlayer"})
     end if
+    if m.top.pendingTune then items.unshift({title: "Cancel pending channel tune", action: "cancelPendingTune"})
     openPicker("Guide options", items, "options")
 end sub
 
@@ -706,6 +730,7 @@ sub onPickerSelected(event as object)
     if event.getData() < 0 or event.getData() >= m.pickerItems.count() then return
     item = m.pickerItems[event.getData()]
     kind = m.pickerKind
+    m.pickerWakeKey = "OK"
     closePicker()
     m.top.setFocus(true)
     if handleGuideSetting(kind, item) then return
@@ -730,7 +755,7 @@ sub onPickerSelected(event as object)
         return
     else
         action = item.action
-        if action = "expandPlayer" or action = "stopPlayer" or action = "optionsPlayer"
+        if action = "expandPlayer" or action = "stopPlayer" or action = "optionsPlayer" or action = "cancelSleep" or action = "cancelPendingTune"
             m.top.playerRequest = action
             return
         else if action = "details"
@@ -743,6 +768,9 @@ sub onPickerSelected(event as object)
                 filterLineup()
                 savePreferences()
             end if
+        else if action = "navigationLayout"
+            openNavigationLayout()
+            return
         else if action = "groups" or action = "groupList"
             if action = "groups" and m.settings.groupLayout <> "modal"
                 m.navigator.active = true
@@ -968,8 +996,88 @@ sub openDatePicker()
     openPicker("Jump to date", [{title: "Jump to Now", action: "now"}, {title: "Today", days: today}, {title: "Upcoming", days: future}, {title: "Previous", days: past}], "dateCategory")
 end sub
 
+sub cancelGuideHold()
+    m.holdKey = ""
+    if m.holdTimer <> invalid then m.holdTimer.control = "stop"
+end sub
+
+sub beginGuideHold(key as string)
+    m.holdKey = key
+    m.holdClock = CreateObject("roTimespan")
+    m.holdClock.mark()
+    m.holdTimer.duration = 0.4
+    m.holdTimer.control = "start"
+end sub
+
+sub repeatGuideHold()
+    if not m.top.active or m.picker <> invalid or m.navigator.active or m.searchView.active or m.details.active
+        cancelGuideHold()
+        return
+    end if
+    if m.holdKey = "" then return
+    if m.filtered.count() = 0
+        cancelGuideHold()
+        m.selected = 0
+        return
+    end if
+    if m.holdClock.totalMilliseconds() > 10000
+        m.holdTimer.control = "stop"
+        return
+    end if
+    if m.holdKey = "left"
+        cancelGuideHold()
+        m.navigator.active = true
+        return
+    end if
+    stepSize = guideHoldStep(m.holdClock.totalMilliseconds())
+    if m.holdKey = "up" then stepSize = -stepSize
+    m.selected += stepSize
+    if m.selected < 0 then m.selected = 0
+    if m.selected >= m.filtered.count() then m.selected = m.filtered.count() - 1
+    m.holdTimer.duration = 0.12
+    drawGuide()
+    ' Defer network requests until the gesture settles, not on every repeat.
+    m.loadDelay.control = "stop"
+    m.loadDelay.duration = 0.3
+    m.loadDelay.control = "start"
+    m.saveDelay.control = "stop"
+    m.saveDelay.control = "start"
+end sub
+
+sub moveGuideTime(key as string)
+    m.followNow = false
+    m.direction = 1
+    if key = "left" then m.direction = -1
+    cell = selectedCell()
+    if cell <> invalid
+        target = cell.endsAt
+        if m.direction < 0 then target = cell.startsAt - 1
+        m.anchor = guideTimeClamp(target, uiNow(), m.settings)
+        keepAnchorVisible()
+    end if
+end sub
+
 function onKeyEvent(key as string, press as boolean) as boolean
-    if not press or not m.top.active then return false
+    if not m.top.active then return false
+    ' The committing LabelList OK must not tune the grid after closing a picker.
+    if m.pickerWakeKey = key
+        if not press then m.pickerWakeKey = ""
+        return true
+    end if
+    if m.holdKey <> ""
+        if key = m.holdKey
+            if not press
+                shortLeft = key = "left"
+                cancelGuideHold()
+                if shortLeft then moveGuideTime("left")
+                drawGuide()
+                scheduleLoad()
+            end if
+            return true
+        end if
+        if press then cancelGuideHold()
+    end if
+    if not press then return false
     if m.picker <> invalid
         if key = "back" or key = "options"
             closePicker()
@@ -981,6 +1089,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
         openOptions()
         return true
     else if key = "back"
+        if m.top.pendingTune = true
+            m.top.playerRequest = "cancelPendingTune"
+            return true
+        end if
         if m.top.miniActive
             m.top.playerRequest = "expandPlayer"
             return true
@@ -1009,19 +1121,16 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     else if key = "up"
         if m.selected > 0 then m.selected--
+        beginGuideHold(key)
     else if key = "down"
         if m.selected < m.filtered.count() - 1 then m.selected++
+        beginGuideHold(key)
     else if key = "left" or key = "right"
-        m.followNow = false
-        m.direction = 1
-        if key = "left" then m.direction = -1
-        cell = selectedCell()
-        if cell <> invalid
-            target = cell.endsAt
-            if m.direction < 0 then target = cell.startsAt - 1
-            m.anchor = guideTimeClamp(target, uiNow(), m.settings)
-            keepAnchorVisible()
+        if key = "left" and m.settings.groupLayout <> "modal"
+            beginGuideHold(key)
+            return true
         end if
+        moveGuideTime(key)
     else if key = "OK"
         cell = selectedCell()
         now = uiNow()

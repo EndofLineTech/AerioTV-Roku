@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="AerioVideo" extends="Video">
+  <interface>
+    <field id="optionsKeyPress" type="boolean" alwaysNotify="true" />
+    <field id="playerKey" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="AerioVideo.brs" />
+</component>

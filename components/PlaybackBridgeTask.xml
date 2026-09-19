@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="PlaybackBridgeTask" extends="Task">
+  <interface>
+    <field id="url" type="string" />
+    <field id="baseUrl" type="string" />
+    <field id="channelUuid" type="string" />
+    <field id="apiKey" type="string" />
+    <field id="release" type="boolean" />
+    <field id="ready" type="boolean" alwaysNotify="true" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="PlaybackBridgeTask.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
+</component>

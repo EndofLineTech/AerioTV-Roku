@@ -57,3 +57,11 @@ function formatClock(hour as integer, minute as integer, mode as string) as stri
     if hour = 0 then hour = 12
     return hour.toStr() + ":" + uiPad(minute) + suffix
 end function
+function uiRemoteHints(parent as object, x as float, y as float, width as float, height as float, size as integer) as object
+    hints = parent.createChild("RemoteHints")
+    hints.translation = [x, y]
+    hints.width = width
+    hints.height = height
+    hints.fontSize = size
+    return hints
+end function

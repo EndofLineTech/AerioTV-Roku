@@ -18,10 +18,23 @@ sub refreshCapabilities()
         finish({ok: false, identityChanged: true, message: "The connected account changed. Reconnect before continuing."})
         return
     end if
+    profileRows = apiRows(requestJson(m.base + "/api/core/outputprofiles/"))
+    audioProfile = compatibleAacProfile(profileRows)
+    profileState = "ready"
+    profileMessage = ""
+    if profileRows = invalid
+        profileState = "error"
+        profileMessage = "Could not discover an AAC output profile. " + m.failure
+    else if audioProfile = invalid
+        profileState = "unavailable"
+        profileMessage = "No active copy-video/AAC output profile is available for this account."
+    end if
+    ' Identity has been verified. Publish this prerequisite before optional
+    ' version/settings/channel-fact requests, which may take many pages.
+    m.top.profileResult = {accountId: accountId, state: profileState, profile: audioProfile, message: profileMessage}
     version = requestJson(m.base + "/api/core/version/")
     settings = requestJson(m.base + "/api/core/settings/")
     capabilities = normalizeCapabilities(user, version, settings, CreateObject("roDateTime").asSeconds())
-    audioProfile = compatibleAacProfile(apiRows(requestJson(m.base + "/api/core/outputprofiles/")))
     user = invalid
     ' Facts supplement the lean summary but do not replace its scoped lineup.
     rows = requestPages("/api/channels/channels/?page=1&page_size=200")

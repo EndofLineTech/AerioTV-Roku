@@ -11,6 +11,9 @@
   <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
   <script type="text/brightscript" uri="AerioScene.brs" />
+  <script type="text/brightscript" uri="OptionsProbe.brs" />
+  <script type="text/brightscript" uri="StartupRecovery.brs" />
+  <script type="text/brightscript" uri="AacStartup.brs" />
   <children>
     <Group id="screen" />
     <GuideView id="guide" visible="false" />
@@ -19,7 +22,7 @@
       <Label id="miniCaption" translation="[1424,245]" width="400" height="22" maxLines="1" wrap="false" font="font:SmallestSystemFont" color="0x1AC4D8FF" />
     </Group>
     <Group id="videoViewport" clippingRect="[0,0,1920,1080]">
-      <Video id="video" visible="false" width="1920" height="1080" enableUI="false" allowOptionsKeyOverride="true" focusable="false" />
+      <AerioVideo id="video" visible="false" width="1920" height="1080" enableUI="false" allowOptionsKeyOverride="true" focusable="true" />
     </Group>
     <Group id="playerInput" focusable="true" />
     <PlayerInfo id="playerBanner" visible="false" />
@@ -37,6 +40,8 @@
     <Timer id="bannerTimer" duration="8" repeat="false" />
     <Timer id="playerClock" duration="1" repeat="true" />
     <Timer id="audioCheck" duration="5" repeat="false" />
+    <Timer id="aacWaitTimer" duration="0.25" repeat="true" />
+    <Timer id="sourceWatch" duration="3" repeat="true" />
     <Timer id="reminderClock" duration="30" repeat="true" />
     <Timer id="connectionClock" duration="1" repeat="true" />
     <Timer id="channelTuneTimer" duration="0.25" repeat="false" />
@@ -47,5 +52,10 @@
       <Label id="noticeText" translation="[184,44]" width="1552" height="72" wrap="true" font="font:SmallSystemFont" color="0xE8F3FAFF" />
     </Group>
     <Timer id="noticeTimer" duration="8" repeat="false" />
+    <Group id="optionsProbeHud" visible="false">
+      <Rectangle translation="[96,28]" width="1728" height="150" color="0x0A1628E0" />
+      <Label id="optionsProbeText" translation="[116,42]" width="1688" height="130" wrap="true" font="font:SmallSystemFont" color="0xFFFFFFFF" />
+    </Group>
+    <Timer id="optionsProbeRearm" duration="0.15" repeat="false" />
   </children>
 </component>
