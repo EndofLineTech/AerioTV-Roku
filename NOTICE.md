@@ -14,3 +14,8 @@ in this development channel. Roku supplies its native system fonts and player.
 
 The AerioTV name identifies the port's upstream project. This is an independent
 development preview, not an official release by the upstream author.
+
+Optional TMDB artwork fallback uses the TMDB API but is not endorsed or certified
+by TMDB. The bundled TMDB logo is TMDB's mark, used under its attribution/branding
+guidance, separately from the application code license. Source and conversion
+information are in images/README.md. https://www.themoviedb.org/about/logos-attribution

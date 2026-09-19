@@ -11,6 +11,10 @@
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideSettingsModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="ChannelBrowser.brs" />
   <children>

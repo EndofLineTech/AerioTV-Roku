@@ -38,6 +38,96 @@ reviewable backup, not automatic Beads synchronization; the live Dolt database
 and runtime files are ignored by Git. A remote Dolt destination and restore drill
 remain tracked under `AerioTV-Roku-rgs.11`.
 
+## 0.3.0 — Live TV compatibility and Guide discovery
+
+The implementation pass for the Live TV and Guide epics is ready for combined
+acceptance. Use [FINAL-TEST-RESULTS-0.3.0.txt](docs/FINAL-TEST-RESULTS-0.3.0.txt)
+for PASS/FAIL/SKIP results. Physical acceptance remains separate from automated
+and scripted-device evidence; Beads records the outstanding acceptance gates.
+
+### Live TV changes
+
+- **Automatic audio compatibility:** if native playback reports no audio, retry
+  this client once with an existing active FFmpeg copy-video/AAC output profile
+  discovered from Dispatcharr. Successfully repaired channels are remembered per
+  account. Direct and Always AAC choices are in player options. The app does not
+  create profiles, change the shared upstream or introduce a new service. A retry
+  is a client retune and waits while menus/controls are in use.
+- **Held Up/Down:** previews repeat after 400 ms, then every 150 ms; release
+  coalesces a single tune. Context changes cancel the hold; a 10-second guard
+  prevents an indefinitely stuck key.
+- **Browser logos:** eight poster nodes and their HTTP agent are reused across
+  openings within the same connection. Failed images can retry on reopen.
+- **Clock format:** System/12-hour/24-hour preferences apply to guide, player,
+  details and search. Explicit UTC references remain 24-hour.
+- **Channel search:** searches the full authorized lineup; Clear restores the
+  selected group. A direct-number action remains scoped to the visible list.
+
+### Guide controls
+
+Open guide **`*`** and scroll to **Guide settings**, **Manage groups**,
+**Collections**, **Favorite ordering**, or **Program reminders**.
+
+- Show/hide groups; Default/alphabetical/manual order; startup group independent
+  from the last browsed group. A fallback prevents an all-hidden navigation trap.
+- Top group pills or a sidebar overlay with debounced preview. Up from the first
+  channel enters navigation; Down/OK (pills) or Right/OK (sidebar) returns to the
+  grid. The modal group-list fallback is always available.
+- Number/name/ID channel sorting, stable decimal ordering, manual favorite order
+  and a Recently Watched guide group. Player browser ordering follows these
+  preferences while Recent remains chronological.
+- Up to 20 named collections with add/remove selected channel, rename/delete,
+  collection/member ordering and First/Last selector placement. Membership uses
+  compact channel IDs and is account-scoped. Registry limits still apply; failed
+  persistence is reported rather than silently claimed successful.
+- Fast Forward/Rewind page through channels, Jump to Top, and a decimal-aware
+  Go to channel number keyboard.
+- History/future depth choices of 1/3/7/14/30 days. “All available” explicitly means
+  bounded to 30 days each way. The three-window resident guide cache is independent
+  of browsing depth. Date jumping groups Today/Upcoming/Previous and preserves UTC
+  references for repeated DST hours.
+- Scoped lineup refresh preserves selection/time and ongoing authorized playback.
+  A channel removed from the authorized lineup is stopped explicitly. Guide/detail
+  cache clear and refresh do not retune otherwise-valid playback.
+
+### Program information, artwork and reminders
+
+Guide data retains reported New/Live/Premiere/Finale and episode facts. Detail
+enrichment is debounced, coalesced and cached in at most 32 entries for five minutes,
+with bounded failure backoff. Selected programs and a limited visible set are
+enriched progressively; the entire lineup is not fetched program-by-program.
+
+Rich details include available rating/year/quality/language/country/cast and
+artwork, with separate Watch LIVE and reminder actions. Per-badge controls and
+category colors/rules are in Guide settings. Default precedence begins
+Kids > Sports > News > Movies, followed by additional source-inspired buckets.
+Focus overrides category tint; unavailable metadata remains neutral.
+
+Artwork preserves aspect and bounded decode sizes. Dispatcharr headers are applied
+only to same-origin artwork; external HTTPS artwork uses a separate plain agent.
+Optional TMDB fallback is off by default. Its v3 API key can be tested/saved in the
+device registry; fallback opt-in is per account. It searches program titles only
+when indexed detail data lacks a poster and uses only a single exact-title match.
+Ambiguous matches, missing keys and failures leave provider text usable. The
+approved TMDB logo and non-endorsement attribution accompany TMDB artwork.
+
+Up to 50 account-scoped reminders alert once in the foreground, about five minutes
+before a program starts (or late if opened during an unnotified airing). Details
+and the reminders menu support cancellation; guide cells show REM. Refreshed
+windows reconcile schedule changes and suppress reminders whose saved program
+disappeared; expired/unauthorized entries are cleaned up. No background delivery
+is promised.
+
+### Verification
+
+Fourteen automated suites cover models, storage adapters, controller handlers and
+the source Task flow. Native probes verified AAC decode on the affected ESPN
+channel, healthy-channel direct audio, guide settings/pills/sidebar/details focus,
+collection membership and reminder cancellation, held-key tune coalescing, and
+poster-node reuse. The final package excludes test code and diagnostic autoplay.
+See [device evidence](docs/DEVICE-VALIDATION.md) for limitations and remaining
+physical checks, including a separately tracked unexplained device restart.
+
 ## 0.2.13 — Player-menu, transport-focus and mini-caption fixes
 
 The Video now requests Options-key override and is non-focusable. Bare playback

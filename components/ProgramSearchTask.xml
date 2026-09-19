@@ -7,6 +7,8 @@
     <field id="searchField" type="string" value="title" />
     <field id="page" type="integer" value="1" />
     <field id="now" type="integer" />
+    <field id="historyDays" type="integer" value="3" />
+    <field id="futureDays" type="integer" value="7" />
     <field id="channels" type="array" />
     <field id="result" type="assocarray" alwaysNotify="true" />
   </interface>

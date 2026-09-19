@@ -1,3 +1,24 @@
+function compatibleAacProfile(rows as dynamic) as dynamic
+    if type(rows) <> "roArray" then return invalid
+    for each row in rows
+        if type(row) = "roAssociativeArray"
+            id = textValue(row.id)
+            command = textValue(row.command)
+            parameters = textValue(row.parameters)
+            active = false
+            if type(row.is_active) = "Boolean" or type(row.is_active) = "roBoolean" then active = row.is_active
+            if active and CreateObject("roRegex", "^[1-9][0-9]*$", "").isMatch(id)
+                if CreateObject("roRegex", "(^|/)ffmpeg$", "i").isMatch(command)
+                    audio = CreateObject("roRegex", "(^|\s)-(c:a|acodec)\s+aac(\s|$)", "i").isMatch(parameters)
+                    video = CreateObject("roRegex", "(^|\s)-(c:v|vcodec)\s+copy(\s|$)", "i").isMatch(parameters)
+                    if audio and video then return {id: id, name: sanitizePlaybackDiagnostic(textValue(row.name))}
+                end if
+            end if
+        end if
+    end for
+    return invalid
+end function
+
 function permissionFlag(raw as dynamic, permitted as boolean) as string
     if not permitted then return "denied"
     if raw = invalid then return "allowed"

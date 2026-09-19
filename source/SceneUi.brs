@@ -42,5 +42,18 @@ function uiTime(epoch as integer, localTime = true as boolean) as string
     date = CreateObject("roDateTime")
     date.fromSeconds(epoch)
     if localTime then date.toLocalTime()
-    return uiPad(date.getHours()) + ":" + uiPad(date.getMinutes())
+    mode = "24"
+    if localTime and m.global <> invalid
+        if m.global.clockFormat <> invalid then mode = m.global.clockFormat
+    end if
+    return formatClock(date.getHours(), date.getMinutes(), mode)
+end function
+
+function formatClock(hour as integer, minute as integer, mode as string) as string
+    if mode <> "12" then return uiPad(hour) + ":" + uiPad(minute)
+    suffix = " AM"
+    if hour >= 12 then suffix = " PM"
+    hour = hour mod 12
+    if hour = 0 then hour = 12
+    return hour.toStr() + ":" + uiPad(minute) + suffix
 end function

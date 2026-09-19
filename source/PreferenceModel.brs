@@ -20,7 +20,7 @@ function copyJson(value as dynamic) as dynamic
 end function
 
 function defaultPreferenceStore() as object
-    return {schema: 1, device: {channelDirection: "apple", videoScale: "fit"}, accounts: {}}
+    return {schema: 1, device: normalizeDevicePreferences(invalid), accounts: {}}
 end function
 
 function normalizeDevicePreferences(raw as dynamic) as object
@@ -28,8 +28,12 @@ function normalizeDevicePreferences(raw as dynamic) as object
     if type(raw) = "roAssociativeArray" then result = copyJson(raw)
     result.channelDirection = textValue(result.channelDirection)
     result.videoScale = textValue(result.videoScale)
+    result.audioMode = textValue(result.audioMode)
+    result.clockFormat = textValue(result.clockFormat)
     if result.channelDirection <> "apple" and result.channelDirection <> "guide" then result.channelDirection = "apple"
     if result.videoScale <> "fit" and result.videoScale <> "fill" and result.videoScale <> "stretch" then result.videoScale = "fit"
+    if result.audioMode <> "auto" and result.audioMode <> "direct" and result.audioMode <> "aac" then result.audioMode = "auto"
+    if result.clockFormat <> "12" and result.clockFormat <> "24" then result.clockFormat = "system"
     return result
 end function
 
@@ -54,6 +58,10 @@ function normalizeAccountPreferences(raw as dynamic) as object
     if type(raw) = "roAssociativeArray" then result = copyJson(raw)
     result.favoriteIds = compactIds(result.favoriteIds, 2000)
     result.recent = compactIds(result.recent, 25)
+    result.aacChannels = compactIds(result.aacChannels, 100)
+    result.guide = normalizeGuideSettings(result.guide)
+    result.collections = normalizeCollections(result.collections)
+    result.reminders = normalizeReminders(result.reminders)
     result.lastWatched = textValue(result.lastWatched)
     result.previous = textValue(result.previous)
     result.lastChannel = textValue(result.lastChannel)
@@ -169,6 +177,16 @@ function reconcileWatchHistory(preferences as object, channels as object) as obj
         if allowed.doesExist(id) then recent.push(id)
     end for
     result.recent = recent
+    reminders = []
+    for each entry in result.reminders
+        if allowed.doesExist(entry.channelUuid) then reminders.push(entry)
+    end for
+    result.reminders = reminders
+    aac = []
+    for each id in result.aacChannels
+        if allowed.doesExist(id) then aac.push(id)
+    end for
+    result.aacChannels = aac
     if not allowed.doesExist(result.lastWatched) then result.lastWatched = ""
     if not allowed.doesExist(result.previous) then result.previous = ""
     return result

@@ -543,11 +543,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Refine date/time jumping to the TV reference",
-        "updated_at": "2026-09-18T22:42:23Z",
+        "updated_at": "2026-09-19T04:02:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -598,11 +598,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Create and manage named channel collections",
-        "updated_at": "2026-09-18T22:42:22Z",
+        "updated_at": "2026-09-19T04:02:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -653,11 +653,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Add persisted channel sort and favorite ordering",
-        "updated_at": "2026-09-18T22:42:22Z",
+        "updated_at": "2026-09-19T04:02:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -708,11 +708,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Color guide programs by configurable category rules",
-        "updated_at": "2026-09-18T22:42:22Z",
+        "updated_at": "2026-09-19T04:02:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -1808,11 +1808,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Make guide history and future depth configurable",
-        "updated_at": "2026-09-18T22:42:24Z",
+        "updated_at": "2026-09-19T04:02:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -2138,11 +2138,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Resolve and cache program artwork with optional TMDB fallback",
-        "updated_at": "2026-09-18T22:42:23Z",
+        "updated_at": "2026-09-19T04:02:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -2303,11 +2303,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Add guide paging, Jump to Top and direct number entry",
-        "updated_at": "2026-09-18T22:42:23Z",
+        "updated_at": "2026-09-19T04:02:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -3458,11 +3458,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Retain rich EPG facts and support lazy program enrichment",
-        "updated_at": "2026-09-18T22:42:22Z",
+        "updated_at": "2026-09-19T04:02:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -3554,7 +3554,7 @@
         "last_activity": null,
         "metadata": "{}",
         "mol_type": "",
-        "notes": "Native investigation on 3820RW2 / OS 15.3.4: no videoDisplayMode or scaleMode field. Public Group scale/clippingRect documentation defines graphical transforms but does not establish a hardware-video Fit/Fill/Stretch mapping. Real MPEG-TS playback also reported empty resolution/videoTrack and tracks=[], so no measured decoded aspect ratio is available for automatic crop geometry. Retaining native rendering; no speculative scale choices exposed. Blocked on a supported, measured video-plane mapping (or a PO-approved scope/platform adaptation), not on implementation of the other player controls.",
+        "notes": "Native investigation on 3820RW2 / OS 15.3.4: no videoDisplayMode or scaleMode field. Public Group scale/clippingRect documentation defines graphical transforms but does not establish a hardware-video Fit/Fill/Stretch mapping. Real MPEG-TS playback also reported empty resolution/videoTrack and tracks=[], so no measured decoded aspect ratio is available for automatic crop geometry. Retaining native rendering; no speculative scale choices exposed. Blocked on a supported, measured video-plane mapping (or a PO-approved scope/platform adaptation), not on implementation of the other player controls.\nSupersedes the earlier blocking note: scaling preview controls are implemented using the measured clipped viewport path, persisted mode and per-channel aspect overrides. Final pixel/aspect/caption matrix is awaiting PO acceptance; no claim that screenshot bounds prove video-pixel stretch.",
         "original_size": null,
         "owner": "curt@lecaptain.org",
         "payload": "",
@@ -3572,7 +3572,7 @@
         "target": "",
         "timeout_ns": 0,
         "title": "Add Fit, Fill and Stretch video scale choices",
-        "updated_at": "2026-09-19T01:15:59Z",
+        "updated_at": "2026-09-19T05:33:21Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -4008,11 +4008,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Add top group pills and a docked group sidebar",
-        "updated_at": "2026-09-18T22:42:21Z",
+        "updated_at": "2026-09-19T04:02:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -4393,11 +4393,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Track program reminders with an explicit Roku delivery policy",
-        "updated_at": "2026-09-18T22:42:24Z",
+        "updated_at": "2026-09-19T04:02:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -4778,11 +4778,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Add channel refresh and cache-maintenance controls",
-        "updated_at": "2026-09-18T22:42:24Z",
+        "updated_at": "2026-09-19T04:02:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -4833,11 +4833,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Honor system, 12-hour and 24-hour clock formats",
-        "updated_at": "2026-09-18T22:42:25Z",
+        "updated_at": "2026-09-19T05:28:39Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -5273,11 +5273,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Display configurable program badges and episode facts",
-        "updated_at": "2026-09-18T22:42:22Z",
+        "updated_at": "2026-09-19T04:02:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -5328,11 +5328,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Expose Recently Watched as a guide group",
-        "updated_at": "2026-09-18T22:42:22Z",
+        "updated_at": "2026-09-19T04:02:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -6098,11 +6098,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Manage group visibility, order and startup default",
-        "updated_at": "2026-09-18T22:42:21Z",
+        "updated_at": "2026-09-19T04:02:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -6538,11 +6538,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Build a rich program detail and preview presentation",
-        "updated_at": "2026-09-18T22:42:23Z",
+        "updated_at": "2026-09-19T04:02:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -6813,11 +6813,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Search channels across the connected lineup regardless of group",
-        "updated_at": "2026-09-19T03:05:54Z",
+        "updated_at": "2026-09-19T03:25:38Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -7363,11 +7363,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Guide organization, metadata and discovery",
-        "updated_at": "2026-09-18T22:42:18Z",
+        "updated_at": "2026-09-19T03:25:38Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -7693,11 +7693,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Repeat channel navigation when Up or Down is held",
-        "updated_at": "2026-09-19T03:05:54Z",
+        "updated_at": "2026-09-19T03:25:38Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -7748,11 +7748,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Improve channel-browser logo loading latency",
-        "updated_at": "2026-09-19T03:05:54Z",
+        "updated_at": "2026-09-19T03:25:38Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -7803,11 +7803,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Missing selectable 12/24-hour time format in tested player and guide",
-        "updated_at": "2026-09-19T03:06:06Z",
+        "updated_at": "2026-09-19T03:25:38Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -7858,11 +7858,66 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Restore audio on affected live channels including ESPN",
-        "updated_at": "2026-09-19T03:05:54Z",
+        "updated_at": "2026-09-19T03:25:38Z",
+        "waiters": "",
+        "wisp_type": "",
+        "work_type": ""
+      },
+      {
+        "acceptance_criteria": "Record a sustained final-build run and any restart timestamps/uptime/error evidence. If reproduced, isolate environmental versus application/resource causes and file a concrete bug. Keep final acceptance honest about what was observed.",
+        "actor": "",
+        "agent_state": "",
+        "assignee": null,
+        "await_id": "",
+        "await_type": "",
+        "close_reason": "",
+        "closed_at": null,
+        "closed_by_session": "",
+        "compacted_at": null,
+        "compacted_at_commit": null,
+        "compaction_level": 0,
+        "content_hash": "4a777d3246382b528665cc6e03efcf25703c06200b90255c43d1cab075d79366",
+        "created_at": "2026-09-19T05:08:31Z",
+        "created_by": "MotWakorb",
+        "crystallizes": 0,
+        "defer_until": null,
+        "description": "During a later logo-instrumentation install attempt, the device console restarted at an earlier clock value and query/device-info reported uptime 161 seconds. No causal app exception was captured; power/environment/firmware/app causes are not established. The preceding native held-key/poster-reuse probe completed successfully. Recheck sustained final-build playback/browsing, collect uptime and native logs if it repeats, and distinguish a device restart from an ordinary app restart. Do not label this an application-caused reboot without evidence.",
+        "design": "",
+        "due_at": null,
+        "ephemeral": 0,
+        "estimated_minutes": null,
+        "event_kind": "",
+        "external_ref": null,
+        "hook_bead": "",
+        "id": "AerioTV-Roku-rgs.13",
+        "is_template": 0,
+        "issue_type": "task",
+        "last_activity": null,
+        "metadata": "{}",
+        "mol_type": "",
+        "notes": "",
+        "original_size": null,
+        "owner": "curt@lecaptain.org",
+        "payload": "",
+        "pinned": 0,
+        "priority": 2,
+        "quality_score": null,
+        "rig": "",
+        "role_bead": "",
+        "role_type": "",
+        "sender": "",
+        "source_repo": "",
+        "source_system": "",
+        "spec_id": "",
+        "status": "open",
+        "target": "",
+        "timeout_ns": 0,
+        "title": "Recheck native stability after observed device restart",
+        "updated_at": "2026-09-19T05:08:31Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -9322,24 +9377,6 @@
       {
         "created_at": "2026-09-18T17:42:42Z",
         "created_by": "MotWakorb",
-        "depends_on_id": "AerioTV-Roku-b17.2",
-        "issue_id": "AerioTV-Roku-5tg.7",
-        "metadata": "{}",
-        "thread_id": "",
-        "type": "blocks"
-      },
-      {
-        "created_at": "2026-09-18T17:42:42Z",
-        "created_by": "MotWakorb",
-        "depends_on_id": "AerioTV-Roku-b17.2",
-        "issue_id": "AerioTV-Roku-5tg.8",
-        "metadata": "{}",
-        "thread_id": "",
-        "type": "blocks"
-      },
-      {
-        "created_at": "2026-09-18T17:42:42Z",
-        "created_by": "MotWakorb",
         "depends_on_id": "AerioTV-Roku-faa.1",
         "issue_id": "AerioTV-Roku-5tg.10",
         "metadata": "{}",
@@ -9387,15 +9424,6 @@
         "created_by": "MotWakorb",
         "depends_on_id": "AerioTV-Roku-b17.2",
         "issue_id": "AerioTV-Roku-b17.10",
-        "metadata": "{}",
-        "thread_id": "",
-        "type": "blocks"
-      },
-      {
-        "created_at": "2026-09-18T17:42:43Z",
-        "created_by": "MotWakorb",
-        "depends_on_id": "AerioTV-Roku-b17.2",
-        "issue_id": "AerioTV-Roku-b17.5",
         "metadata": "{}",
         "thread_id": "",
         "type": "blocks"
@@ -10821,6 +10849,24 @@
         "metadata": "{}",
         "thread_id": "",
         "type": "blocks"
+      },
+      {
+        "created_at": "2026-09-19T00:08:30Z",
+        "created_by": "MotWakorb",
+        "depends_on_id": "AerioTV-Roku-ihp.19",
+        "issue_id": "AerioTV-Roku-rgs.13",
+        "metadata": "{}",
+        "thread_id": "",
+        "type": "discovered-from"
+      },
+      {
+        "created_at": "2026-09-19T00:08:30Z",
+        "created_by": "MotWakorb",
+        "depends_on_id": "AerioTV-Roku-rgs",
+        "issue_id": "AerioTV-Roku-rgs.13",
+        "metadata": "{}",
+        "thread_id": "",
+        "type": "parent-child"
       }
     ],
     "comments": [
@@ -11047,6 +11093,216 @@
         "id": 32,
         "issue_id": "AerioTV-Roku-ihp",
         "text": "Latest installed 0.2.13 (~2026-09-19 03:19:03 UTC). Candidate fixes for menu interception, transport focus and mini-caption overlap. Native scripted focus checks and caption screenshot succeeded; physical star/menu and reported-key retest still required. Twelve suites/check/build pass; probe autoplay removed. Added docs/RETEST-0.2.13.txt, preserving original results. Audio, held repeat, logo loading, global channel search and clock defects remain open."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T04:18:15Z",
+        "id": 33,
+        "issue_id": "AerioTV-Roku-ihp.14",
+        "text": "Native comparison reproduced ESPN 404 audioFormat=none with audio position 0, while ESPN2 405 and Food Network 239 report aac_adts and advancing audio. Existing server output profile 2 (Web Player AAC Audio) fixed native audio decode for ESPN without modifying the shared source or creating server configuration. Implemented discovery of active ffmpeg copy-video/AAC profiles, automatic one-time no-audio fallback, Direct/Always AAC choices and account-scoped learned channels. Native integrated auto test selected discovered profile2 and advanced audio timestamps; one sample rebuffered, so sustained audible playback remains final acceptance."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T04:18:16Z",
+        "id": 34,
+        "issue_id": "AerioTV-Roku-5tg",
+        "text": "Implementation underway across all guide stories: bounded group visibility/order/startup, name/number/ID sorting and favorite order, compact-ID collections, recent group, pills/sidebar-overlay navigation, paging/top/number, configurable 1–30 day bounds, grouped date navigation, scoped lineup/cache refresh, debounced 32-entry rich metadata cache, poster display with origin-scoped auth, truthful badges, category palettes/rules, optional tested TMDB key/fallback and foreground reminders. Native smoke on 1336 channels/34 groups verified settings menu11 entries, visible pills, sidebar focus and active details with metadata cache populated. Continuing native interaction and storage tests before final install/document."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:28:39Z",
+        "id": 35,
+        "issue_id": "AerioTV-Roku-5tg.7",
+        "text": "0.3.0 supplies these controls in Guide/player settings. Removed the planning dependency on the future general settings hub: that hub is not a runtime prerequisite for the delivered controls and remains separately open. Final UI acceptance is in FINAL-TEST-RESULTS-0.3.0.txt."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:28:39Z",
+        "id": 36,
+        "issue_id": "AerioTV-Roku-5tg.8",
+        "text": "0.3.0 supplies these controls in Guide/player settings. Removed the planning dependency on the future general settings hub: that hub is not a runtime prerequisite for the delivered controls and remains separately open. Final UI acceptance is in FINAL-TEST-RESULTS-0.3.0.txt."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:28:40Z",
+        "id": 37,
+        "issue_id": "AerioTV-Roku-b17.5",
+        "text": "0.3.0 supplies these controls in Guide/player settings. Removed the planning dependency on the future general settings hub: that hub is not a runtime prerequisite for the delivered controls and remains separately open. Final UI acceptance is in FINAL-TEST-RESULTS-0.3.0.txt."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:16Z",
+        "id": 38,
+        "issue_id": "AerioTV-Roku-ihp.14",
+        "text": "Correction and expanded evidence: channel404 was incorrectly called ESPN in earlier commentary without name confirmation. Name-logged checks identify Big Ten Network404 and CBS Sports Network406: direct format none/audio position0; AAC output produced aac_adts with advancing synchronized timestamps and state playing. A separate name-selected ESPN408 check also changed none/position0 to aac_adts/audio10.983/video10.992, playing. Production auto fallback uses discovered profile, not hardcoded IDs. Perceptual confirmation remains final acceptance."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:16Z",
+        "id": 39,
+        "issue_id": "AerioTV-Roku-ihp.18",
+        "text": "0.3.0 implements held-key preview repeat (400ms then150ms), release-coalesced tune, context cancellation and10s stuck-key guard. Handler tests pass. Native timer probe retained ContentNode while held/pending, then tuned only final candidate239->245 after release; buffering/playing followed. Physical remote/release matrix remains final acceptance."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:16Z",
+        "id": 40,
+        "issue_id": "AerioTV-Roku-ihp.19",
+        "text": "0.3.0 reuses eight browser Poster nodes/HTTP agent within same connection; account changes clear URI before agent replacement; failed images retry on reopen. Native isSameNode check confirmed retained Poster across reopen. Complete cold/warm download timings not captured; network/provider latency still requires observation. An unrelated/undetermined device restart during later instrumentation is tracked by rgs.13, not claimed as a code defect."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:16Z",
+        "id": 41,
+        "issue_id": "AerioTV-Roku-ihp.20",
+        "text": "0.3.0 global channel search bypasses group filter only while query nonempty; clear restores selected group. Heading/footer explicitly say Search all/ALL. Model tests cover cross-group match/restoration; native ESPN query returned148 matches from authorized1336-channel lineup. Number jumping remains scoped to current visible list."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:16Z",
+        "id": 42,
+        "issue_id": "AerioTV-Roku-ihp.21",
+        "text": "0.3.0 exposes persisted System/12/24-hour controls in guide and player options via one formatter. Native GetClockFormat returned12h; screenshot confirmed midnight12:00AM labels. Noon/midnight/24h logic tests pass. UTC picker references remain24h; final format/account/UI review deferred."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:16Z",
+        "id": 43,
+        "issue_id": "AerioTV-Roku-ihp",
+        "text": "Implementation pass delivered in0.3.0 across remaining Live TV defects, followed by the Guide epic. Audio repair now verified by name on ESPN, Big Ten Network and CBS Sports Network; healthy direct controls preserved. Held-repeat native timer and retained-poster checks passed. Fourteen suites/check/build pass. Combined FINAL-TEST-RESULTS-0.3.0.txt covers remaining physical/PO acceptance. Items tagged implementation-ready/awaiting-acceptance; epic stays open per its explicit PO acceptance requirement."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:16Z",
+        "id": 44,
+        "issue_id": "AerioTV-Roku-5tg",
+        "text": "Implementation pass delivered in0.3.0 for all16 guide stories. Guide-local settings replace planning dependencies on future settings hub where needed; hub itself remains future work. Native1336-channel/34-group smoke verified settings11 entries, pills/sidebar, focused rich details,148 global matches, collection membership1->0/delete, reminders1->0 and clock12. Final normal screenshot shows1353 channels,12-hour times,episode facts and category colors. Models cover group/sort/collection/horizon/metadata/reminder rules. Full physical matrix and optional TMDB positive-key verification are in FINAL-TEST-RESULTS-0.3.0.txt; keep epic open until PO accepts."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:51Z",
+        "id": 45,
+        "issue_id": "AerioTV-Roku-5tg.1",
+        "text": "Implemented in0.3.0. Group visibility/default/alphabetical/manual order and separate startup default; fallback prevents all-hidden trap. Test G. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:51Z",
+        "id": 46,
+        "issue_id": "AerioTV-Roku-5tg.2",
+        "text": "Implemented in0.3.0. Top pills and debounced sidebar overlay with modal-list fallback. Native visible/focus checks passed; overlay is documented platform adaptation. Test G07-G11. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:51Z",
+        "id": 47,
+        "issue_id": "AerioTV-Roku-5tg.3",
+        "text": "Implemented in0.3.0. Stable numeric/decimal, name and ID sorting; compact-ID manual favorite order, shared with browser. Model regression coverage. Test H. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:51Z",
+        "id": 48,
+        "issue_id": "AerioTV-Roku-5tg.4",
+        "text": "Implemented in0.3.0. Bounded named collections with create/delete/rename, member and collection order, First/Last placement and account scope. Native membership1->0/delete smoke passed. Test I. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:51Z",
+        "id": 49,
+        "issue_id": "AerioTV-Roku-5tg.5",
+        "text": "Implemented in0.3.0. Guide Recent group uses the same account history, visibility/order/default rules; model tests preserve recency. Test H05-H07. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:51Z",
+        "id": 50,
+        "issue_id": "AerioTV-Roku-5tg.6",
+        "text": "Implemented in0.3.0. Truthful optional grid facts plus debounced/coalesced detail fetches,32-entry5-minute cache and bounded failure backoff. Numeric IDs only; dummy IDs retain base facts. Native detail fetch/cache passed. Test J. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:51Z",
+        "id": 51,
+        "issue_id": "AerioTV-Roku-5tg.7",
+        "text": "Implemented in0.3.0. Per-badge New/Live/Premiere/Finale/Episode toggles; narrow cells skip crowded facts. Native screenshot shows episodes. Test J07-J08. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:51Z",
+        "id": 52,
+        "issue_id": "AerioTV-Roku-5tg.8",
+        "text": "Implemented in0.3.0. Source-inspired category precedence/palette, enable/reset/custom palette and matching-word rules. Model precedence and native tinted-cell screenshot verified. Test J09-J11. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:51Z",
+        "id": 53,
+        "issue_id": "AerioTV-Roku-5tg.9",
+        "text": "Implemented in0.3.0. Provider artwork with bounded aspect-preserving Poster; same-origin credential scoping; optional TMDB test/save/forget, unique exact-title fallback, official logo/attribution. No real TMDB key supplied; positive-path verification deferred. Test K. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:51Z",
+        "id": 54,
+        "issue_id": "AerioTV-Roku-5tg.10",
+        "text": "Implemented in0.3.0. Rich focusable details with metadata/art, explicit Watch LIVE and foreground reminder actions. Native details active/focus/cache checks passed. Test J01-J06. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:51Z",
+        "id": 55,
+        "issue_id": "AerioTV-Roku-5tg.11",
+        "text": "Implemented in0.3.0. Existing program search passed PO0.2.12 worksheet; now follows configured depth and handles hidden-All result placement. Expanded-horizon regression tests added. Test L03-L05. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:51Z",
+        "id": 56,
+        "issue_id": "AerioTV-Roku-5tg.12",
+        "text": "Implemented in0.3.0. Guide FF/Rewind row-page steps, Jump to Top and decimal-aware exact number keyboard; pure number/invalid-match tests. Test L06-L09. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:52Z",
+        "id": 57,
+        "issue_id": "AerioTV-Roku-5tg.13",
+        "text": "Implemented in0.3.0. Today/Upcoming/Previous day groups, Jump to Now, local-time labels plus UTC references for DST. Test M04-M05. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:52Z",
+        "id": 58,
+        "issue_id": "AerioTV-Roku-5tg.14",
+        "text": "Implemented in0.3.0. Account reminders max50, foreground once-only alerts, cancel/menu/REM state, expiry/authorization cleanup and visible-window schedule reconciliation. Native save/cancel and model threshold/dedup/expiry tests pass. Test N. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:52Z",
+        "id": 59,
+        "issue_id": "AerioTV-Roku-5tg.15",
+        "text": "Implemented in0.3.0. 1/3/7/14/30 day choices and explicit bounded30-day All Available; fixed3-window resident guide cache. Clamp/search bounds tested. Test M01-M03. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:30:52Z",
+        "id": 60,
+        "issue_id": "AerioTV-Roku-5tg.16",
+        "text": "Implemented in0.3.0. Scoped authorized-lineup refresh preserves selection/time and valid playback; removed playing channels stop explicitly; guide/detail cache maintenance. Test M07-M10. Evidence: docs/DEVICE-VALIDATION.md; final PO matrix: docs/FINAL-TEST-RESULTS-0.3.0.txt. Status remains awaiting acceptance, not an assertion of unperformed physical tests."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:33:21Z",
+        "id": 61,
+        "issue_id": "AerioTV-Roku-ihp",
+        "text": "Final probe-free0.3.0 installed at2026-09-19 ~05:31:58 UTC (96968 bytes). Native compile/launch/capability refresh successful; fourteen suites/check/build/package checks pass. ESPN408 was explicitly selected by name and AAC decode/timestamps verified, alongside affected Big Ten404 and CBS Sports406. This corrects earlier unverified naming of404. Combined acceptance worksheet is docs/FINAL-TEST-RESULTS-0.3.0.txt. All implementation items carry implementation-ready/awaiting-acceptance; formal epic closure waits for PO results as required by epic AC."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T05:33:21Z",
+        "id": 62,
+        "issue_id": "AerioTV-Roku-5tg",
+        "text": "Final probe-free0.3.0 installed at2026-09-19 ~05:31:58 UTC. Native guide interaction checks and final1353-channel screenshot recorded in DEVICE-VALIDATION. Fourteen suites/check/build/package checks pass. FINAL-TEST-RESULTS-0.3.0.txt is the single combined acceptance worksheet. Implementation pass complete; formal epic closure remains gated on PO acceptance, including chosen overlay/sidebar and manual-order UX."
       }
     ],
     "labels": [
@@ -11664,7 +11920,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.1",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.1",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.1",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.1",
@@ -11692,7 +11956,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.10",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.10",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.10",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.10",
@@ -11720,7 +11992,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.11",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.11",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.11",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.11",
@@ -11744,7 +12024,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.12",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.12",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.12",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.12",
@@ -11768,7 +12056,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.13",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.13",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.13",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.13",
@@ -11792,7 +12088,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.14",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.14",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.14",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.14",
@@ -11816,7 +12120,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.15",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.15",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.15",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.15",
@@ -11840,7 +12152,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.16",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.16",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.16",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.16",
@@ -11868,7 +12188,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.2",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.2",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.2",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.2",
@@ -11896,7 +12224,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.3",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.3",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.3",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.3",
@@ -11920,7 +12256,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.4",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.4",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.4",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.4",
@@ -11944,7 +12288,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.5",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.5",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.5",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.5",
@@ -11980,7 +12332,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.6",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.6",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.6",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.6",
@@ -12008,7 +12368,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.7",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.7",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.7",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.7",
@@ -12032,7 +12400,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.8",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.8",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.8",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.8",
@@ -12060,7 +12436,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.9",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.9",
         "label": "guide"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.9",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.9",
@@ -12792,6 +13176,14 @@
       },
       {
         "issue_id": "AerioTV-Roku-b17.5",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-b17.5",
+        "label": "implementation-ready"
+      },
+      {
+        "issue_id": "AerioTV-Roku-b17.5",
         "label": "milestone-live-tv"
       },
       {
@@ -13232,6 +13624,14 @@
       },
       {
         "issue_id": "AerioTV-Roku-ihp.10",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.10",
+        "label": "implementation-ready"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.10",
         "label": "live"
       },
       {
@@ -13253,6 +13653,14 @@
       {
         "issue_id": "AerioTV-Roku-ihp.11",
         "label": "audit-p12"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.11",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.11",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-ihp.11",
@@ -13280,6 +13688,14 @@
       },
       {
         "issue_id": "AerioTV-Roku-ihp.12",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.12",
+        "label": "implementation-ready"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.12",
         "label": "live"
       },
       {
@@ -13304,7 +13720,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-ihp.13",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.13",
         "label": "feasibility"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.13",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-ihp.13",
@@ -13335,24 +13759,72 @@
         "label": "acceptance-0.2.12"
       },
       {
+        "issue_id": "AerioTV-Roku-ihp.14",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.14",
+        "label": "implementation-ready"
+      },
+      {
         "issue_id": "AerioTV-Roku-ihp.15",
         "label": "acceptance-0.2.12"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.15",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.15",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-ihp.16",
         "label": "acceptance-0.2.12"
       },
       {
+        "issue_id": "AerioTV-Roku-ihp.16",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.16",
+        "label": "implementation-ready"
+      },
+      {
         "issue_id": "AerioTV-Roku-ihp.17",
         "label": "acceptance-0.2.12"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.17",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.17",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-ihp.18",
         "label": "acceptance-0.2.12"
       },
       {
+        "issue_id": "AerioTV-Roku-ihp.18",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.18",
+        "label": "implementation-ready"
+      },
+      {
         "issue_id": "AerioTV-Roku-ihp.19",
         "label": "acceptance-0.2.12"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.19",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.19",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-ihp.2",
@@ -13365,6 +13837,14 @@
       {
         "issue_id": "AerioTV-Roku-ihp.2",
         "label": "audit-p08"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.2",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.2",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-ihp.2",
@@ -13391,12 +13871,36 @@
         "label": "acceptance-0.2.12"
       },
       {
+        "issue_id": "AerioTV-Roku-ihp.20",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.20",
+        "label": "implementation-ready"
+      },
+      {
         "issue_id": "AerioTV-Roku-ihp.21",
         "label": "acceptance-0.2.12"
       },
       {
+        "issue_id": "AerioTV-Roku-ihp.21",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.21",
+        "label": "implementation-ready"
+      },
+      {
         "issue_id": "AerioTV-Roku-ihp.3",
         "label": "audit-p07"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.3",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.3",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-ihp.3",
@@ -13424,6 +13928,14 @@
       },
       {
         "issue_id": "AerioTV-Roku-ihp.4",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.4",
+        "label": "implementation-ready"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.4",
         "label": "live"
       },
       {
@@ -13445,6 +13957,14 @@
       {
         "issue_id": "AerioTV-Roku-ihp.5",
         "label": "audit-p08"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.5",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.5",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-ihp.5",
@@ -13472,6 +13992,14 @@
       },
       {
         "issue_id": "AerioTV-Roku-ihp.6",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.6",
+        "label": "implementation-ready"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.6",
         "label": "live"
       },
       {
@@ -13493,6 +14021,14 @@
       {
         "issue_id": "AerioTV-Roku-ihp.7",
         "label": "audit-p10"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.7",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.7",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-ihp.7",
@@ -13524,6 +14060,14 @@
       },
       {
         "issue_id": "AerioTV-Roku-ihp.8",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.8",
+        "label": "implementation-ready"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.8",
         "label": "live"
       },
       {
@@ -13545,6 +14089,14 @@
       {
         "issue_id": "AerioTV-Roku-ihp.9",
         "label": "audit-p13"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.9",
+        "label": "awaiting-acceptance"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.9",
+        "label": "implementation-ready"
       },
       {
         "issue_id": "AerioTV-Roku-ihp.9",

@@ -7,6 +7,9 @@
   <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/CapabilityModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/VideoGeometry.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideSettingsModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
   <script type="text/brightscript" uri="AerioScene.brs" />
   <children>
     <Group id="screen" />
@@ -33,8 +36,11 @@
     <Timer id="pictureHintTimer" duration="6" repeat="false" />
     <Timer id="bannerTimer" duration="8" repeat="false" />
     <Timer id="playerClock" duration="1" repeat="true" />
+    <Timer id="audioCheck" duration="5" repeat="false" />
+    <Timer id="reminderClock" duration="30" repeat="true" />
     <Timer id="connectionClock" duration="1" repeat="true" />
     <Timer id="channelTuneTimer" duration="0.25" repeat="false" />
+    <Timer id="heldZapTimer" duration="0.4" repeat="true" />
     <Timer id="capabilityClock" duration="300" repeat="true" />
     <Group id="notice" visible="false">
       <Rectangle translation="[160,28]" width="1600" height="92" color="0x172D43F5" />

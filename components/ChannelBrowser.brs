@@ -11,10 +11,18 @@ sub configure()
     if data = invalid then return
     m.ready = false
     m.channels = data.channels
+    m.logoClock = CreateObject("roTimespan")
+    m.logoClock.mark()
+    m.logoReported = false
+    m.resetFailed = true
     m.groups = data.groups
     m.favorites = data.favorites
     m.recent = data.recent
+    m.collections = data.collections
+    m.settings = normalizeGuideSettings(data.settings)
+    sameConnection = m.base = data.baseUrl and m.key = data.apiKey
     m.base = data.baseUrl
+    m.key = data.apiKey
     m.mode = data.mode
     m.groupIndex = 0
     for i = 0 to m.groups.count() - 1
@@ -26,11 +34,24 @@ sub configure()
     m.start = 0
     m.filtered = []
     m.top.nowTitles = {}
-    m.canvas.removeChildrenIndex(m.canvas.getChildCount(), 0)
-    agent = CreateObject("roHttpAgent")
-    agent.setCertificatesFile("common:/certs/ca-bundle.crt")
-    agent.setHeaders({"X-API-Key": data.apiKey, "Authorization": "ApiKey " + data.apiKey})
-    m.canvas.setHttpAgent(agent)
+    if not sameConnection
+        agent = CreateObject("roHttpAgent")
+        agent.setCertificatesFile("common:/certs/ca-bundle.crt")
+        agent.setHeaders({"X-API-Key": data.apiKey, "Authorization": "ApiKey " + data.apiKey})
+        if m.rows <> invalid
+            for each row in m.rows
+                row.logo.uri = ""
+            end for
+        end if
+        m.canvas.setHttpAgent(agent)
+    end if
+    if m.rows = invalid then buildBrowserCanvas()
+    m.ready = true
+    filterList()
+    draw()
+end sub
+
+sub buildBrowserCanvas()
     m.backdrop = uiRect(m.canvas, 0, 0, 890, 1080, "0x071426ED")
     m.title = uiLabel(m.canvas, "", 60, 70, 740, 58, 36)
     m.summary = uiLabel(m.canvas, "", 60, 133, 740, 36, 23, "0x1AC4D8FF")
@@ -55,21 +76,19 @@ sub configure()
         logo.loadWidth = 152
         logo.loadHeight = 108
         logo.loadDisplayMode = "scaleToFit"
+        logo.observeField("loadStatus", "reportLogoLoad")
         name = uiLabel(row, "", 105, 11, 500, 36, 25)
         nowTitle = uiLabel(row, "", 105, 47, 624, 31, 20, "0x9EB5C9FF")
         watching = uiLabel(row, "", 614, 14, 135, 29, 18, "0x1AC4D8FF")
         m.rows.push({root: row, border: border, fill: fill, logo: logo, name: name, now: nowTitle, watching: watching, uuid: ""})
     end for
     m.hint = uiLabel(m.canvas, "", 60, 953, 1150, 62, 22, "0x9EB5C9FF")
-    m.ready = true
-    filterList()
-    draw()
 end sub
 
 sub filterList()
     group = m.groups[m.groupIndex].id
     if m.mode = "recent" then group = "recent"
-    m.filtered = playerBrowserChannels(m.channels, group, m.favorites, m.recent)
+    m.filtered = organizedChannels(m.channels, group, m.favorites, m.recent, m.collections, m.settings, "")
     m.selected = 0
     m.start = 0
     for i = 0 to m.filtered.count() - 1
@@ -129,6 +148,7 @@ sub draw()
             if channel.uuid = m.top.playingUuid then row.watching.text = "WATCHING"
             uri = ""
             if channel.logoId <> "" then uri = m.base + "/api/channels/logos/" + channel.logoId + "/cache/"
+            if m.resetFailed and row.logo.loadStatus = "failed" then row.logo.uri = ""
             if row.logo.uri <> uri then row.logo.uri = uri
             row.border.color = "0x17344AFF"
             row.fill.color = "0x0D1E35FF"
@@ -143,6 +163,27 @@ sub draw()
     if m.mode = "recent" then m.hint.text = "OK  Watch    Back  Close"
     updateTitles()
     requestInfo()
+    m.resetFailed = false
+    reportLogoLoad()
+end sub
+
+sub reportLogoLoad()
+    if not m.ready or not m.top.active or m.logoReported then return
+    loaded = 0
+    failed = 0
+    for each row in m.rows
+        if row.root.visible and row.logo.uri <> ""
+            if row.logo.loadStatus = "ready"
+                loaded++
+            else if row.logo.loadStatus = "failed"
+                failed++
+            else
+                return
+            end if
+        end if
+    end for
+    print "[browser-logos] ready="; loaded; " failed="; failed; " elapsed_ms="; m.logoClock.totalMilliseconds()
+    m.logoReported = true
 end sub
 
 sub requestInfo()

@@ -1,15 +1,15 @@
-function programSearchParameters(query as string, field as string, page as integer, now as integer) as dynamic
+function programSearchParameters(query as string, field as string, page as integer, now as integer, historyDays = 3 as integer, futureDays = 7 as integer) as dynamic
     query = left(query.trim(), 120)
     if len(query) < 2 or page < 1 then return invalid
     if field <> "title" and field <> "description" then return invalid
     lowerBound = CreateObject("roDateTime")
-    lowerBound.fromSeconds(now - 259200)
+    lowerBound.fromSeconds(now - historyDays * 86400)
     upperBound = CreateObject("roDateTime")
-    upperBound.fromSeconds(now + 604800)
+    upperBound.fromSeconds(now + futureDays * 86400)
     return {query: query, field: field, page: page, pageSize: 50, endAfter: lowerBound.toISOString(), startBefore: upperBound.toISOString()}
 end function
 
-function programSearchResults(rows as dynamic, channels as object, now as integer, limit = 200 as integer) as object
+function programSearchResults(rows as dynamic, channels as object, now as integer, limit = 200 as integer, historyDays = 3 as integer, futureDays = 7 as integer) as object
     result = {items: [], truncated: false}
     if type(rows) <> "roArray" then return result
     allowed = {}
@@ -20,7 +20,7 @@ function programSearchResults(rows as dynamic, channels as object, now as intege
     for each row in rows
         program = normalizeProgram(row)
         if program <> invalid
-            if program.endsAt > now - 259200 and program.startsAt < now + 604800 and type(row.channels) = "roArray"
+            if program.endsAt > now - historyDays * 86400 and program.startsAt < now + futureDays * 86400 and type(row.channels) = "roArray"
                 for each reference in row.channels
                     if type(reference) = "roAssociativeArray"
                         id = textValue(reference.id)

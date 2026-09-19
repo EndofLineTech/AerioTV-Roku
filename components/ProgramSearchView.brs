@@ -82,7 +82,7 @@ sub render()
     m.detail.text = model.message
     selected = m.entries[m.index]
     if selected.program <> invalid then m.detail.text = selected.program.description
-    m.footer.text = "Page " + model.page.toStr() + "  |  Past 3d / Next 7d  |  OK: Guide  |  *: Edit  |  Back: Close"
+    m.footer.text = "Page " + model.page.toStr() + "  |  Configured guide range  |  OK: Guide  |  *: Edit  |  Back: Close"
     if model.truncated = true
         m.footer.text += chr(10) + "Page limited to 200 airings. Narrow the search to see omitted matches."
     else

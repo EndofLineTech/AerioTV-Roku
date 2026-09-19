@@ -39,6 +39,7 @@ end sub
 
 sub onSelected(event as object)
     if not m.top.active then return
+    if event.getData() < 0 or event.getData() >= m.top.menu.items.count() then return
     m.top.selection = m.top.menu.items[event.getData()]
 end sub
 

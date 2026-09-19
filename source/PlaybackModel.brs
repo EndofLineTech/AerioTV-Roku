@@ -58,7 +58,29 @@ function adjacentLiveChannel(lineup as object, currentUuid as string, direction 
     return invalid
 end function
 
-function playerBrowserChannels(channels as object, group as string, favorites as object, recent as object) as object
+function playerBrowserChannels(channels as object, group as string, favorites as object, recent as object, collections = invalid as dynamic) as object
+    if left(group, 11) = "collection:" and type(collections) = "roArray"
+        for each collection in collections
+            if "collection:" + collection.id = group
+                index = {}
+                for each channel in channels
+                    index[channel.id] = channel
+                    index[channel.uuid] = channel
+                end for
+                result = []
+                seen = {}
+                for each id in collection.channels
+                    if index.doesExist(id)
+                        channel = index[id]
+                        if not seen.doesExist(channel.uuid) then result.push(channel)
+                        seen[channel.uuid] = true
+                    end if
+                end for
+                return result
+            end if
+        end for
+        return []
+    end if
     if group <> "recent" then return filterChannels(channels, group, favorites)
     byId = {}
     for each channel in channels

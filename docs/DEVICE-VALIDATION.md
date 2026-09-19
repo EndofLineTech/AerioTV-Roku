@@ -1,5 +1,80 @@
 # Device acceptance — EPG/live builds
 
+## 0.3.0 — combined Live TV and Guide implementation pass
+
+Final normal-app installation succeeded at approximately 2026-09-19 05:31:58 UTC
+(96,968-byte archive), with native compile/launch and capability
+refresh observed. A screenshot of the preceding normal build showed the refreshed 1,353-channel lineup, correct
+12-hour midnight labels, episode facts and progressive category colors. Temporary
+probes are excluded from the final package. Fourteen automated suites, compiler
+validation and package checks passed; the production archive contains no tests,
+tooling, backlog data or hardcoded diagnostic output-profile override.
+
+### Native audio diagnosis and repair
+
+Direct MPEG-TS on channel404: video advanced but audioFormat=none, tracks=[], audio
+position=0. Channel405 and Food Network239 reported aac_adts and advancing audio.
+The existing server profile named Web Player (AAC Audio), id2 in this environment,
+produced aac_adts on all three. Production discovers a compatible active profile;
+it does not hardcode id2 or mutate/create server configuration.
+
+Integrated Auto mode natively retuned channel404 once using the discovered profile and
+reported state=playing with audio position 6.937 and video position 6.950 at the
+sample. Channel405 and Food Network remained on direct output with advancing audio.
+One earlier sample rebuffered; sustained audible playback remains a PO check.
+Native audioChannelsCount stayed zero even on working audio, so fallback does not
+use that field. Audio format, not a guessed provider codec, triggers the retry.
+
+Correction: early notes incorrectly called channel404 ESPN without recording its
+name. A subsequent name-logged probe identified it as Big Ten Network. Additional
+native direct-versus-AAC checks explicitly verified:
+- Big Ten Network404: none/audio position0 -> aac_adts/audio9.820/video9.829, playing.
+- CBS Sports Network406: none/audio position0 -> aac_adts/audio10.759/video10.740, playing.
+- ESPN408, selected by normalized name: none/audio position0 ->
+  aac_adts/audio10.983/video10.992, playing.
+Thus ESPN and two other affected channels have native decoder/timestamp evidence.
+These measurements still require audible/perceptual confirmation in the final worksheet.
+
+### Native guide integration probe
+
+On 1,336 channels / 34 groups before the later server refresh:
+- Guide settings: 11 entries; top pills visible; sidebar in focus chain.
+- Rich details active and focused; detail cache populated; System clock resolved 12.
+- Global ESPN query returned 148 authorized matches.
+- Created a temporary collection: membership 1, then 0, then deleted it.
+- Saved a future temporary reminder: count1, then cancelled to count0.
+- Restored original settings/collections/reminders after the probe.
+
+The final code additionally bounds details to32, failures to64, collections to20,
+reminders to50 and resident guide windows to3. Model tests exercise decimal order,
+visibility fallback, deleted-group reconciliation, global search, collection scope,
+category precedence, unknown flags, enrichment identity and reminder dedup/expiry.
+
+### Held navigation and logo reuse
+
+The native held-key probe retained the exact ContentNode while a candidate was
+pending, then changed channel after release. Console showed only the final tune
+(239 to245) rather than every preview. The final state sample preceded buffering/
+playing notifications; both followed. Reopening the browser retained the same
+Poster node (isSameNode=true). Complete cold/warm download timings were not captured;
+provider/server latency remains distinct from avoided node recreation.
+
+A subsequent instrumentation install coincided with a device restart: uptime was
+161 seconds and console clock history reset. No causal app exception was captured.
+Cause is unknown; tracked as rgs.13 rather than attributed to the app. The final
+normal package subsequently installed and launched successfully. Sustained resource
+and audiovisual acceptance remains required.
+
+### Final acceptance
+
+Use FINAL-TEST-RESULTS-0.3.0.txt for both epics. Especially verify physical Options
+interception/focus, audible AAC recovery, natural held-key/release behavior, scale
+preview pixels/captions, real multi-viewer source switching, persistence/account
+boundaries, and sustained stability. Optional TMDB positive-path acceptance needs
+a user-supplied key; no real key was supplied during automated checks. Manual
+favorite/collection editors use select-item then Move earlier/later; group sidebar
+is an overlay adaptation, not a shifted/docked grid. These UX choices await PO review.
+
 ## 0.2.13 installed — 2026-09-19 03:19 UTC
 
 Addresses acceptance defects ihp.15/.16/.17. Final installer reported success;

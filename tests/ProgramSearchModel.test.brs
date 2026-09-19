@@ -24,6 +24,7 @@ sub main()
     row.start_time = now + 604800
     row.end_time = row.start_time + 100
     assertEqual(programSearchResults([row], channels, now).items.count(), 0, "future boundary excluded")
+    assertEqual(programSearchResults([row], channels, now, 200, 3, 30).items.count(), 1, "expanded future range applies to results")
     assertEqual(programSearchParameters("x", "title", 1, now), invalid, "avoid one-character broad query")
     assertEqual(programSearchParameters("news", "url", 1, now), invalid, "whitelist server search field")
     assertEqual(programSearchParameters("news", "title", 0, now), invalid, "reject invalid page")
@@ -33,6 +34,9 @@ sub main()
     assertEqual(params.pageSize, 50, "bounded page size")
     assertEqual(guideEpoch(params.endAfter), now - 259200, "history overlap query")
     assertEqual(guideEpoch(params.startBefore), now + 604800, "future bound")
+    expanded = programSearchParameters("news", "title", 1, now, 30, 30)
+    assertEqual(guideEpoch(expanded.endAfter), now - 30 * 86400, "custom history query")
+    assertEqual(guideEpoch(expanded.startBefore), now + 30 * 86400, "custom future query")
     print "ALL TESTS PASSED"
 end sub
 

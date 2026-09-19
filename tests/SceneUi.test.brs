@@ -14,6 +14,9 @@ sub main()
         assertEqual(label.font.size, size, "apply requested text size")
         assertEqual(label.text, "Server URL", "retain label text")
     end for
+    assertEqual(formatClock(0, 5, "12"), "12:05 AM", "midnight")
+    assertEqual(formatClock(12, 0, "12"), "12:00 PM", "noon")
+    assertEqual(formatClock(23, 59, "24"), "23:59", "24-hour")
     print "ALL TESTS PASSED"
 end sub
 

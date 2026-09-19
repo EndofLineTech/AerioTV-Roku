@@ -5,7 +5,7 @@ end sub
 sub searchPrograms()
     m.base = m.top.baseUrl
     m.key = m.top.apiKey
-    params = programSearchParameters(m.top.query, m.top.searchField, m.top.page, m.top.now)
+    params = programSearchParameters(m.top.query, m.top.searchField, m.top.page, m.top.now, m.top.historyDays, m.top.futureDays)
     result = {ok: false, items: [], hasNext: false, message: "Enter at least two characters."}
     if params <> invalid
         encoder = CreateObject("roUrlTransfer")
@@ -15,7 +15,7 @@ sub searchPrograms()
         if rows = invalid
             result.message = "Program search unavailable. " + m.failure
         else
-            normalized = programSearchResults(rows, m.top.channels, m.top.now)
+            normalized = programSearchResults(rows, m.top.channels, m.top.now, 200, m.top.historyDays, m.top.futureDays)
             result = {ok: true, items: normalized.items, truncated: normalized.truncated, hasNext: false, message: ""}
             if type(payload) = "roAssociativeArray" then result.hasNext = textValue(payload.next) <> ""
             ' Rebuild pagination paths ourselves; never follow arbitrary next URLs.

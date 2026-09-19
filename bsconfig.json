@@ -1,6 +1,6 @@
 {
   "rootDir": ".",
-  "files": ["manifest", "source/**/*", "components/**/*", "LICENSE.md", "NOTICE.md"],
+  "files": ["manifest", "source/**/*", "components/**/*", "images/*.png", "LICENSE.md", "NOTICE.md"],
   "stagingDir": "out/staging",
   "outFile": "out/aeriotv-roku.zip",
   "createPackage": true,

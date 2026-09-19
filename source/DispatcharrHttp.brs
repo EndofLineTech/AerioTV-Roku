@@ -52,7 +52,7 @@ function requestJson(url as string, body = invalid as dynamic, bearer = "" as st
     transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
     transfer.setUrl(url)
     transfer.addHeader("Accept", "application/json")
-    transfer.addHeader("User-Agent", "AerioTV-Roku/0.2")
+    transfer.addHeader("User-Agent", "AerioTV-Roku/0.3")
     transfer.enableEncodings(true)
     if bearer <> ""
         transfer.addHeader("Authorization", "Bearer " + bearer)

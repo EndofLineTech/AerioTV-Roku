@@ -34,6 +34,9 @@ sub main()
     assertEqual(sourceClientContinuity(original, {client_count: 0, clients: []}).missingCount, 2, "all original clients disappeared")
     assertEqual(sourceClientContinuity({client_count: 1, clients: [{client_id: "A"}]}, {client_count: 1, clients: [{client_id: "a"}]}).state, "changed", "opaque client IDs are case-sensitive")
     assertEqual(preserved.doesExist("clients"), false, "no client identity data in UI result")
+    profile = compatibleAacProfile([{id: 2, name: "AAC", is_active: true, command: "ffmpeg", parameters: "-i pipe:0 -c:v copy -c:a aac -f mpegts pipe:1"}])
+    assertEqual(profile.id, "2", "discover existing copy-video AAC profile")
+    assertEqual(compatibleAacProfile([{id: 2, is_active: false}]), invalid, "inactive profile not used")
     print "ALL TESTS PASSED"
 end sub
 

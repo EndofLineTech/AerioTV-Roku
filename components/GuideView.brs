@@ -1,5 +1,9 @@
 sub init()
     m.canvas = m.top.findNode("canvas")
+    m.top.focusable = true
+    m.navigator = m.top.findNode("groupNavigator")
+    m.navigator.observeField("preview", "onGroupPreview")
+    m.navigator.observeField("closed", "onNavigatorClosed")
     m.loadDelay = m.top.findNode("loadDelay")
     m.clock = m.top.findNode("clock")
     m.saveDelay = m.top.findNode("saveDelay")
@@ -12,6 +16,15 @@ sub init()
     m.searchView.observeField("selection", "onProgramSearchSelection")
     m.programQuery = ""
     m.programSearchField = "title"
+    m.details = m.top.findNode("programDetails")
+    m.details.observeField("action", "onRichDetailAction")
+    m.detailDelay = m.top.findNode("detailDelay")
+    m.detailDelay.observeField("fire", "loadProgramDetail")
+    m.detailTask = invalid
+    m.detailCache = {}
+    m.detailOrder = []
+    m.detailFailures = {}
+    m.tmdbTask = invalid
     m.picker = invalid
     m.ready = false
     m.span = 8928 ' 1488 pixels at upstream's 600 pixels/hour.
@@ -26,15 +39,22 @@ sub configure()
     config = m.top.config
     if config = invalid then return
     m.channels = config.channels
-    m.groups = [{id: "all", name: "All Channels"}, {id: "favorites", name: "Favorites"}]
-    for each group in config.groups
-        m.groups.push({id: "group:" + group.id, name: group.name})
-    end for
+    m.serverGroups = config.groups
+    prefs = normalizeAccountPreferences(config.preferences)
+    m.settings = prefs.guide
+    m.collections = prefs.collections
+    m.reminders = prefs.reminders
+    m.recent = prefs.recent
+    m.groups = organizedGroups(m.serverGroups, m.collections, m.settings)
     m.base = config.baseUrl
     m.key = config.apiKey
+    m.tmdbKey = textValue(config.tmdbKey)
     m.favorites = {}
     m.allowedKeys = guideDictionary()
     m.cache = guideNewCache()
+    m.detailCache = {}
+    m.detailOrder = []
+    m.detailFailures = {}
     m.failures = {}
     m.connectionWarning = config.warning
     m.message = ""
@@ -48,7 +68,6 @@ sub configure()
     m.followNow = true
     m.viewStart = (m.anchor \ 1800) * 1800
     m.direction = 1
-    prefs = config.preferences
     savedIds = {}
     if type(prefs) = "roAssociativeArray"
         if type(prefs.favoriteIds) = "roArray"
@@ -57,7 +76,9 @@ sub configure()
             end for
         end if
         for i = 0 to m.groups.count() - 1
-            if m.groups[i].id = prefs.group then m.groupIndex = i
+            startup = m.settings.startupGroup
+            if startup = "last" then startup = prefs.group
+            if m.groups[i].id = startup then m.groupIndex = i
         end for
     end if
     for each channel in m.channels
@@ -84,12 +105,13 @@ end sub
 sub buildCanvas()
     m.canvas.removeChildrenIndex(m.canvas.getChildCount(), 0)
     uiLabel(m.canvas, "AerioTV", 96, 62, 400, 64, 46)
-    uiLabel(m.canvas, "Live TV", 580, 76, 200, 48, 32, "0x1AC4D8FF")
-    uiRect(m.canvas, 580, 129, 112, 3, "0x1AC4D8FF")
+    m.liveTitle = uiLabel(m.canvas, "Live TV", 580, 76, 200, 48, 32, "0x1AC4D8FF")
+    m.liveUnderline = uiRect(m.canvas, 580, 129, 112, 3, "0x1AC4D8FF")
     m.heading = uiLabel(m.canvas, "", 1000, 82, 820, 38, 25, "0x9EB5C9FF")
     m.title = uiLabel(m.canvas, "", 96, 150, 1728, 50, 34)
     m.description = uiLabel(m.canvas, "", 96, 205, 1728, 57, 23, "0x9EB5C9FF")
     m.description.wrap = true
+    m.description.maxLines = 2
     m.dateLabel = uiLabel(m.canvas, "", 96, 270, 235, 30, 22, "0x1AC4D8FF")
     m.ticks = []
     for i = 0 to 4
@@ -111,6 +133,7 @@ sub buildCanvas()
         logo.loadDisplayMode = "scaleToFit"
         name = uiLabel(root, "", 80, 34, 150, 56, 21)
         name.wrap = true
+        name.maxLines = 2
         m.rows.push({root: root, number: number, badge: badge, logo: logo, name: name, tiles: []})
     end for
     m.nowLine = uiRect(m.canvas, 336, 300, 2, 678, "0x1AC4D8AA")
@@ -131,6 +154,14 @@ sub onActive()
 end sub
 
 sub suspendGuide()
+    if m.tmdbTask <> invalid
+        m.tmdbTask.unobserveField("result")
+        m.tmdbTask.control = "STOP"
+        m.tmdbTask = invalid
+    end if
+    cancelProgramDetail()
+    m.details.active = false
+    m.navigator.active = false
     cancelProgramSearch()
     m.searchView.active = false
     m.clock.control = "stop"
@@ -153,7 +184,7 @@ sub tick()
         return
     end if
     ' Live browsing follows the clock; historical/future browsing stays anchored.
-    if m.followNow then m.anchor = uiNow() else m.anchor = guideClamp(m.anchor, uiNow())
+    if m.followNow then m.anchor = uiNow() else m.anchor = guideTimeClamp(m.anchor, uiNow(), m.settings)
     keepAnchorVisible()
     drawGuide()
     scheduleLoad()
@@ -215,6 +246,38 @@ sub onWindowLoaded(event as object)
     m.task = invalid
     if result.ok
         guideCachePut(m.cache, result.windowStart, result.index, uiNow())
+        changedReminder = false
+        for each reminder in m.reminders
+            matchedReminder = false
+            channel = channelByUuid(reminder.channelUuid)
+            if channel <> invalid
+                key = guideChannelKey(channel, result.index)
+                if result.index.doesExist(key)
+                    for each program in result.index[key]
+                        if reminder.id = channel.uuid + "|" + program.id
+                            matchedReminder = true
+                            if reminder.unavailable = true
+                                reminder.unavailable = false
+                                changedReminder = true
+                            end if
+                            if reminder.startsAt <> program.startsAt or reminder.endsAt <> program.endsAt or reminder.title <> program.title
+                                reminder.startsAt = program.startsAt
+                                reminder.endsAt = program.endsAt
+                                reminder.title = program.title
+                                changedReminder = true
+                            end if
+                        end if
+                    end for
+                end if
+            end if
+            if not matchedReminder and reminder.startsAt >= result.windowStart and reminder.startsAt < result.windowStart + 10800
+                if reminder.unavailable <> true
+                    reminder.unavailable = true
+                    changedReminder = true
+                end if
+            end if
+        end for
+        if changedReminder then savePreferences()
         m.failures.delete(result.windowStart.toStr())
         m.message = ""
     else
@@ -243,7 +306,7 @@ function requestedWindows() as object
     if last <> first then windows.push(last)
     adjacent = last + 10800
     if m.direction < 0 then adjacent = first - 10800
-    if adjacent >= guideWindowStart(now - 259200) and adjacent <= guideWindowStart(now + 604799) then windows.push(adjacent)
+    if adjacent >= guideWindowStart(now - m.settings.historyDays * 86400) and adjacent <= guideWindowStart(now + m.settings.futureDays * 86400 - 1) then windows.push(adjacent)
     return windows
 end function
 
@@ -275,7 +338,11 @@ function channelPrograms(channel as object) as object
         index = m.cache.entries[window].index
         if index.doesExist(channel.uuid) then key = channel.uuid
     end for
-    return guideCachePrograms(m.cache, key, m.viewStart, m.viewStart + m.span)
+    programs = guideCachePrograms(m.cache, key, m.viewStart, m.viewStart + m.span)
+    for i = 0 to programs.count() - 1
+        if m.detailCache.doesExist(programs[i].id) then programs[i] = mergeProgramFacts(programs[i], m.detailCache[programs[i].id])
+    end for
+    return programs
 end function
 
 function rowCells(channel as object) as object
@@ -289,10 +356,18 @@ end function
 
 sub drawGuide()
     if not m.ready then return
+    m.detailDelay.control = "stop"
+    m.detailDelay.control = "start"
     if m.selected < m.rowStart then m.rowStart = m.selected
     if m.selected >= m.rowStart + m.rowCount then m.rowStart = m.selected - m.rowCount + 1
     now = uiNow()
-    m.heading.text = m.groups[m.groupIndex].name + "  |  " + m.filtered.count().toStr() + " channels  |  " + uiTime(now)
+    groupTitle = m.groups[m.groupIndex].name
+    if m.query <> "" then groupTitle = "Search all channels"
+    m.heading.text = groupTitle + "  |  " + m.filtered.count().toStr() + " channels  |  " + uiTime(now)
+    m.liveTitle.visible = m.settings.groupLayout <> "pills"
+    m.liveUnderline.visible = m.liveTitle.visible
+    m.heading.visible = m.liveTitle.visible
+    if not m.navigator.active then m.navigator.model = {groups: m.groups, layout: m.settings.groupLayout, selected: m.groups[m.groupIndex].id}
     m.dateLabel.text = uiLocalDate(m.viewStart)
     for i = 0 to m.ticks.count() - 1
         m.ticks[i].text = uiTime(m.viewStart + i * 1800)
@@ -303,6 +378,7 @@ sub drawGuide()
         row.root.visible = index < m.filtered.count()
         if row.root.visible
             channel = m.filtered[index]
+            row.uuid = channel.uuid
             row.number.text = channel.number
             row.name.text = channel.name
             row.badge.text = ""
@@ -318,7 +394,7 @@ sub drawGuide()
     if m.nowLine.visible then m.nowLine.translation = [x, 300]
     m.footer.text = "OK  Watch / Details     *  Options, groups, search, date     Back  Connection"
     if m.top.miniActive then m.footer.text = "OK  Watch / Details     Back or Play  Fullscreen     *  Options / Stop playback"
-    if m.query <> "" then m.footer.text = "Search: " + m.query + "    * > Clear search to show all channels"
+    if m.query <> "" then m.footer.text = "Search ALL: " + m.query + "    * > Clear search to restore the selected group"
     if m.connectionWarning <> "" then m.footer.text = m.connectionWarning
     if m.message <> "" then m.footer.text = m.message
     if m.filtered.count() = 0
@@ -360,6 +436,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
         border = uiRect(root, 0, 0, 100, 95, "0x17344AFF")
         fill = uiRect(root, 2, 2, 96, 91, "0x0D1E35FF")
         title = uiLabel(root, "", 14, 14, 70, 37, 25)
+        title.maxLines = 1
         time = uiLabel(root, "", 14, 55, 70, 29, 20, "0x9EB5C9FF")
         row.tiles.push({root: root, border: border, fill: fill, title: title, time: time})
     end while
@@ -392,9 +469,13 @@ sub renderCells(row as object, cells as object, selected as boolean)
             tile.title.text = gapText()
             tile.time.text = ""
             if cell.program <> invalid
+                if not focused then tile.fill.color = programTint(cell.program, m.settings)
                 program = cell.program
                 tile.title.text = program.title
                 tile.time.text = uiTime(program.startsAt) + " - " + uiTime(program.endsAt)
+                badges = programBadges(program, m.settings)
+                if width > 360 and badges <> "" then tile.time.text = badges + " | " + tile.time.text
+                if hasReminder(m.reminders, row.uuid, program.id) then tile.title.text = "REM | " + tile.title.text
             end if
         end if
     end for
@@ -405,7 +486,7 @@ sub filterLineup()
     if m.filtered <> invalid
         if m.selected < m.filtered.count() then previous = m.filtered[m.selected].uuid
     end if
-    candidates = filterChannels(m.channels, m.groups[m.groupIndex].id, m.favorites)
+    candidates = organizedChannels(m.channels, m.groups[m.groupIndex].id, m.favorites, m.recent, m.collections, m.settings, m.query)
     m.filtered = []
     m.selected = 0
     m.rowStart = 0
@@ -424,7 +505,7 @@ sub savePreferences()
     end for
     uuid = ""
     if m.filtered.count() > 0 then uuid = m.filtered[m.selected].uuid
-    m.top.preferences = {favoriteIds: favoriteIds, lastChannel: uuid, group: m.groups[m.groupIndex].id}
+    m.top.preferences = {favoriteIds: favoriteIds, lastChannel: uuid, group: m.groups[m.groupIndex].id, guide: m.settings, collections: m.collections, reminders: m.reminders}
 end sub
 
 sub keepAnchorVisible()
@@ -435,7 +516,7 @@ end sub
 
 sub jumpTo(epoch as integer)
     m.followNow = abs(epoch - uiNow()) < 2
-    m.anchor = guideClamp(epoch, uiNow())
+    m.anchor = guideTimeClamp(epoch, uiNow(), m.settings)
     m.viewStart = (m.anchor \ 1800) * 1800
     drawGuide()
     scheduleLoad()
@@ -473,7 +554,7 @@ function channelByUuid(uuid as string) as dynamic
 end function
 
 function playerBrowserData() as object
-    return {channels: m.channels, groups: m.groups, favorites: m.favorites, group: m.groups[m.groupIndex].id}
+    return {channels: m.channels, groups: m.groups, favorites: m.favorites, collections: m.collections, settings: m.settings, group: m.groups[m.groupIndex].id}
 end function
 
 function browserNowTitles(channels as object) as object
@@ -506,6 +587,22 @@ sub updateMiniLayout()
 end sub
 
 sub showDetails()
+    if m.filtered.count() = 0 then return
+    cell = selectedCell()
+    if cell <> invalid
+        if cell.program <> invalid
+            m.detailProgram = cell.program
+            m.detailChannel = m.filtered[m.selected]
+            updateRichDetails()
+            m.details.active = true
+            loadProgramDetail()
+            return
+        end if
+    end if
+    showGapDetails()
+end sub
+
+sub showGapDetails()
     if m.filtered.count() = 0 then return
     channel = m.filtered[m.selected]
     cell = selectedCell()
@@ -558,10 +655,13 @@ sub openPicker(title as string, items as object, kind as string)
     end for
     list.content = content
     list.observeField("itemSelected", "onPickerSelected")
+    m.pickerList = list
+    uiLabel(m.picker, "Up/Down  Scroll choices     OK  Select     Back  Close", 510, 866, 900, 36, 21, "0x9EB5C9FF")
     list.setFocus(true)
 end sub
 
 sub closePicker()
+    m.pickerList = invalid
     if m.picker <> invalid
         m.top.removeChild(m.picker)
         m.picker = invalid
@@ -573,6 +673,7 @@ sub openOptions()
         {title: "Program details", action: "details"}
         {title: "Toggle favorite", action: "favorite"}
         {title: "Channel groups", action: "groups"}
+        {title: "Channel groups (list fallback)", action: "groupList"}
         {title: "Search channels", action: "search"}
         {title: "Search programs", action: "programSearch"}
         {title: "Clear search", action: "clear"}
@@ -580,6 +681,16 @@ sub openOptions()
         {title: "Jump to Now", action: "now"}
         {title: "Refresh guide", action: "refresh"}
         {title: "Connection settings", action: "settings"}
+        {title: "Clock format", action: "clock"}
+        {title: "Guide settings", action: "guideSettings"}
+        {title: "Manage groups", action: "manageGroups"}
+        {title: "Collections", action: "collections"}
+        {title: "Favorite ordering", action: "favoriteOrder"}
+        {title: "Program reminders", action: "reminders"}
+        {title: "Jump to top", action: "top"}
+        {title: "Go to channel number", action: "number"}
+        {title: "Refresh channel lineup", action: "refreshChannels"}
+        {title: "Clear guide/detail cache", action: "clearCache"}
     ]
     if m.top.miniActive
         items.unshift({title: "Stop playback", action: "stopPlayer"})
@@ -590,14 +701,23 @@ sub openOptions()
 end sub
 
 sub onPickerSelected(event as object)
+    if m.pickerList = invalid then return
+    if not m.pickerList.isSameNode(event.getRoSGNode()) then return
+    if event.getData() < 0 or event.getData() >= m.pickerItems.count() then return
     item = m.pickerItems[event.getData()]
     kind = m.pickerKind
     closePicker()
     m.top.setFocus(true)
+    if handleGuideSetting(kind, item) then return
     if kind = "programSearchField"
         m.programSearchField = item.field
         editProgramSearch()
         return
+    else if kind = "dateCategory"
+        if item.action = "now" then jumpTo(uiNow()) else openPicker(item.title, item.days, "date")
+        return
+    else if kind = "clock"
+        m.top.devicePreference = {clockFormat: item.value}
     else if kind = "groups"
         m.groupIndex = item.index
         filterLineup()
@@ -623,7 +743,11 @@ sub onPickerSelected(event as object)
                 filterLineup()
                 savePreferences()
             end if
-        else if action = "groups"
+        else if action = "groups" or action = "groupList"
+            if action = "groups" and m.settings.groupLayout <> "modal"
+                m.navigator.active = true
+                return
+            end if
             items = []
             for i = 0 to m.groups.count() - 1
                 items.push({title: m.groups[i].name, index: i})
@@ -633,9 +757,32 @@ sub onPickerSelected(event as object)
         else if action = "programSearch"
             openPicker("Search programs by", [{title: "Title", field: "title"}, {title: "Description", field: "description"}], "programSearchField")
             return
+        else if action = "guideSettings" or action = "manageGroups" or action = "collections" or action = "favoriteOrder" or action = "reminders"
+            openGuideSetting(action)
+            return
+        else if action = "top"
+            m.selected = 0
+            m.rowStart = 0
+        else if action = "number"
+            openGuideKeyboard("number", "Channel number in current list (decimals allowed)", "")
+            return
+        else if action = "refreshChannels"
+            m.top.playerRequest = "refreshChannels"
+            return
+        else if action = "clearCache"
+            cancelProgramDetail()
+            m.cache = guideNewCache()
+            m.detailCache = {}
+            m.detailOrder = []
+            m.detailFailures = {}
+            m.failures = {}
+            m.message = "Guide cache cleared. Reloading visible data."
+        else if action = "clock"
+            openPicker("Clock format", [{title: "System", value: "system"}, {title: "12-hour", value: "12"}, {title: "24-hour", value: "24"}], "clock")
+            return
         else if action = "search"
             dialog = CreateObject("roSGNode", "KeyboardDialog")
-            dialog.title = "Search channel name or number"
+            dialog.title = "Search ALL authorized channels by name or number"
             dialog.text = m.query
             dialog.buttons = ["Search", "Cancel"]
             dialog.observeField("buttonSelected", "onSearch")
@@ -652,6 +799,10 @@ sub onPickerSelected(event as object)
             jumpTo(uiNow())
             return
         else if action = "refresh"
+            cancelProgramDetail()
+            m.detailCache = {}
+            m.detailOrder = []
+            m.detailFailures = {}
             for each key in m.cache.entries
                 m.cache.entries[key].expiresAt = 0
             end for
@@ -671,6 +822,7 @@ sub onSearch(event as object)
     dialog = event.getRoSGNode()
     if event.getData() = 0
         m.query = dialog.text.trim()
+        m.message = ""
         filterLineup()
         drawGuide()
         scheduleLoad()
@@ -722,6 +874,8 @@ sub loadProgramSearch()
     m.searchTask.searchField = m.programSearchField
     m.searchTask.page = m.programSearchPage
     m.searchTask.now = m.programSearchNow
+    m.searchTask.historyDays = m.settings.historyDays
+    m.searchTask.futureDays = m.settings.futureDays
     m.searchTask.channels = m.channels
     m.searchTask.observeField("result", "onProgramSearchResult")
     m.searchTask.control = "RUN"
@@ -753,8 +907,15 @@ sub onProgramSearchSelection(event as object)
             if channel.uuid = target.uuid then found = true
         end for
         if not found
-            m.groupIndex = 0
             m.query = ""
+            allFound = false
+            for i = 0 to m.groups.count() - 1
+                if m.groups[i].id = "all"
+                    m.groupIndex = i
+                    allFound = true
+                end if
+            end for
+            if not allFound then m.query = target.name
             filterLineup()
         end if
         selectPlayingChannel(target.uuid)
@@ -783,8 +944,8 @@ sub openDatePicker()
     now = uiNow()
     dates = []
     lastDate = ""
-    start = ((now - 259200) \ 1800) * 1800 + 1800
-    for epoch = start to now + 604799 step 1800
+    start = ((now - m.settings.historyDays * 86400) \ 1800) * 1800 + 1800
+    for epoch = start to now + m.settings.futureDays * 86400 - 1 step 1800
         date = uiLocalDate(epoch)
         if date <> lastDate
             dates.push({title: date, times: []})
@@ -792,7 +953,19 @@ sub openDatePicker()
         end if
         dates[dates.count() - 1].times.push({title: uiTime(epoch) + "  (" + uiTime(epoch, false) + " UTC)", epoch: epoch})
     end for
-    openPicker("Jump to date", dates, "date")
+    today = []
+    future = []
+    past = []
+    for each day in dates
+        if day.title = uiLocalDate(now)
+            today.push(day)
+        else if day.title > uiLocalDate(now)
+            future.push(day)
+        else
+            past.unshift(day)
+        end if
+    end for
+    openPicker("Jump to date", [{title: "Jump to Now", action: "now"}, {title: "Today", days: today}, {title: "Upcoming", days: future}, {title: "Previous", days: past}], "dateCategory")
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
@@ -820,8 +993,21 @@ function onKeyEvent(key as string, press as boolean) as boolean
         m.top.playerRequest = "expandPlayer"
         return true
     end if
+    if key = "up" and m.selected = 0 and m.settings.groupLayout <> "modal"
+        m.navigator.active = true
+        return true
+    end if
     if m.filtered.count() = 0 then return true
-    if key = "up"
+    if key = "fastforward" or key = "rewind"
+        delta = m.rowCount
+        if key = "rewind" then delta = -delta
+        m.selected += delta
+        if m.selected < 0 then m.selected = 0
+        if m.selected >= m.filtered.count() then m.selected = m.filtered.count() - 1
+    else if len(key) = 1 and instr(1, "0123456789", key) > 0
+        openGuideKeyboard("number", "Channel number in current list", key)
+        return true
+    else if key = "up"
         if m.selected > 0 then m.selected--
     else if key = "down"
         if m.selected < m.filtered.count() - 1 then m.selected++
@@ -831,7 +1017,9 @@ function onKeyEvent(key as string, press as boolean) as boolean
         if key = "left" then m.direction = -1
         cell = selectedCell()
         if cell <> invalid
-            m.anchor = guideNavigate(m.anchor, cell, m.direction, uiNow())
+            target = cell.endsAt
+            if m.direction < 0 then target = cell.startsAt - 1
+            m.anchor = guideTimeClamp(target, uiNow(), m.settings)
             keepAnchorVisible()
         end if
     else if key = "OK"

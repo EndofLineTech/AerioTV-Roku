@@ -7,6 +7,13 @@ sub init()
     m.video = m.top.findNode("video")
     m.playerInput = m.top.findNode("playerInput")
     m.videoViewport = m.top.findNode("videoViewport")
+    m.audioCheck = m.top.findNode("audioCheck")
+    m.audioCheck.observeField("fire", "checkPlaybackAudio")
+    m.reminderClock = m.top.findNode("reminderClock")
+    m.reminderClock.observeField("fire", "checkReminders")
+    m.refreshTask = invalid
+    m.aacProfile = invalid
+    m.activeAudioProfile = ""
     m.pendingScale = ""
     m.banner = m.top.findNode("playerBanner")
     m.transport = m.top.findNode("transport")
@@ -44,6 +51,9 @@ sub init()
     m.connectionClock.observeField("fire", "onConnectionTick")
     m.channelTuneTimer = m.top.findNode("channelTuneTimer")
     m.channelTuneTimer.observeField("fire", "commitChannelSwitch")
+    m.heldZapTimer = m.top.findNode("heldZapTimer")
+    m.heldZapTimer.observeField("fire", "repeatHeldZap")
+    m.heldZap = ""
     m.playingChannel = invalid
     m.pendingChannel = invalid
     m.video.observeField("state", "onVideoState")
@@ -70,9 +80,12 @@ sub init()
     m.guide.observeField("preferences", "onPreferences")
     m.guide.observeField("playbackInfo", "onPlaybackInfo")
     m.guide.observeField("playerRequest", "onGuidePlayerRequest")
+    m.guide.observeField("devicePreference", "onDevicePreference")
     m.registry = CreateObject("roRegistrySection", "AerioTV")
     m.preferenceStore = loadPreferenceStore(m.registry)
     m.devicePreferences = m.preferenceStore.device
+    m.global.addFields({clockFormat: "24", clockPreference: m.devicePreferences.clockFormat})
+    applyClockFormat()
     m.accountPreferences = normalizeAccountPreferences(invalid)
     m.recordedChannel = ""
     m.notice = m.top.findNode("notice")
@@ -359,6 +372,7 @@ sub completeConnection(result as dynamic)
     m.guide.config = {
         channels: result.channels, groups: result.groups, warning: result.warning
         baseUrl: m.baseUrl, apiKey: m.apiKey, preferences: prefs
+        tmdbKey: m.registry.read("tmdbApiKey")
     }
     m.banner.session = {baseUrl: m.baseUrl, apiKey: m.apiKey}
     m.page = "guide"
@@ -367,9 +381,16 @@ sub completeConnection(result as dynamic)
     m.guide.active = true
     refreshCapabilities()
     m.capabilityClock.control = "start"
+    m.reminderClock.control = "start"
 end sub
 
 sub cancelCapabilityRefresh()
+    if m.refreshTask <> invalid
+        m.refreshTask.unobserveField("result")
+        m.refreshTask.control = "STOP"
+        m.refreshTask = invalid
+    end if
+    m.aacProfile = invalid
     m.capabilityClock.control = "stop"
     if m.capabilityTask <> invalid
         m.capabilityTask.unobserveField("result")
@@ -396,10 +417,13 @@ sub onCapabilities(event as object)
     m.capabilityTask = invalid
     if result.ok
         m.capabilities = result.capabilities
+        m.aacProfile = result.audioProfile
+        if m.playingChannel <> invalid then m.audioCheck.control = "start"
         m.channelFacts = result.channelFacts
         print "[capabilities] level="; m.capabilities.level; " source-switch="; m.capabilities.switchStreams; " version="; m.capabilities.version
     else
         m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
+        m.aacProfile = invalid
         m.channelFacts = {}
         if result.identityChanged = true
             if m.playingChannel <> invalid then stopPlayback()
@@ -481,6 +505,7 @@ sub forgetConnection()
     m.guide.observeField("preferences", "onPreferences")
     m.guide.observeField("playbackInfo", "onPlaybackInfo")
     m.guide.observeField("playerRequest", "onGuidePlayerRequest")
+    m.guide.observeField("devicePreference", "onDevicePreference")
     m.banner.session = invalid
     m.banner.channel = invalid
     m.banner.info = invalid
@@ -492,13 +517,15 @@ sub onWatchChannel(event as object)
     startPlayback(event.getData())
 end sub
 
-sub startPlayback(channel as object)
+sub startPlayback(channel as object, forceRetune = false as boolean, useAac = false as boolean)
+    cancelHeldZap()
+    m.audioCheck.control = "stop"
     restorePicture()
     cancelSourceOperation()
     m.channelTuneTimer.control = "stop"
     m.pendingChannel = invalid
     if m.playingChannel <> invalid
-        if m.playingChannel.uuid = channel.uuid and m.video.state <> "error" and m.video.state <> "finished"
+        if not forceRetune and m.playingChannel.uuid = channel.uuid and m.video.state <> "error" and m.video.state <> "finished"
             expandPlayback()
             return
         end if
@@ -526,12 +553,25 @@ sub startPlayback(channel as object)
     m.playingChannel = channel
     applyVideoLayout()
     m.recordedChannel = ""
-    m.guide.callFunc("selectPlayingChannel", channel.uuid)
+    if not forceRetune then m.guide.callFunc("selectPlayingChannel", channel.uuid)
     m.guide.playbackChannel = channel
     content = CreateObject("roSGNode", "ContentNode")
     content.setFields(descriptor)
+    m.activeAudioProfile = ""
+    if m.devicePreferences.audioMode = "aac" then useAac = true
+    if m.devicePreferences.audioMode = "auto"
+        for each id in m.accountPreferences.aacChannels
+            if id = channel.uuid then useAac = true
+        end for
+    end if
+    if useAac and m.aacProfile <> invalid
+        m.activeAudioProfile = m.aacProfile.id
+        content.url += "&output_profile=" + m.activeAudioProfile
+    else if m.devicePreferences.audioMode = "direct"
+        content.url += "&output_profile=0"
+    end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.2.13"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.0"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true
@@ -627,6 +667,7 @@ sub queueChannelSwitch(direction as integer)
 end sub
 
 sub commitChannelSwitch()
+    if m.heldZap <> "" then return
     if m.page <> "player" or m.pendingChannel = invalid then return
     channel = m.pendingChannel
     m.pendingChannel = invalid
@@ -664,6 +705,8 @@ sub hideBanner()
 end sub
 
 sub stopPlayback()
+    cancelHeldZap()
+    m.audioCheck.control = "stop"
     restorePicture()
     cancelSourceOperation()
     wasSetup = m.page = "setup"
@@ -703,6 +746,7 @@ sub stopPlayback()
 end sub
 
 sub minimizePlayback()
+    cancelHeldZap()
     restorePicture()
     if m.playingChannel = invalid then return
     m.channelTuneTimer.control = "stop"
@@ -766,6 +810,10 @@ sub applyVideoLayout()
 end sub
 
 sub onGuidePlayerRequest(event as object)
+    if event.getData() = "refreshChannels"
+        refreshChannelLineup()
+        return
+    end if
     if event.getData() = "expandPlayer" then expandPlayback()
     if event.getData() = "stopPlayer" then stopPlayback()
     if event.getData() = "optionsPlayer"
@@ -775,6 +823,7 @@ sub onGuidePlayerRequest(event as object)
 end sub
 
 sub openChannelBrowser(mode = "channels" as string)
+    cancelHeldZap()
     if m.playingChannel = invalid then return
     m.channelTuneTimer.control = "stop"
     m.pendingChannel = invalid
@@ -858,6 +907,7 @@ sub togglePause()
 end sub
 
 sub openPlayerOptions(kind = "main" as string)
+    cancelHeldZap()
     previousKind = m.optionKind
     previousFocus = m.playerOptions.focusedIndex
     m.optionKind = kind
@@ -870,9 +920,10 @@ sub openPlayerOptions(kind = "main" as string)
     hideBanner()
     title = "AerioTV player options"
     note = "Back returns to the parent menu; * returns to playback."
-    if kind = "main" then note = "Back or * returns to playback."
+    if kind = "main" then note = "Up/Down scroll all choices. Back or * returns to playback."
     items = [
         {title: "Audio track", action: "audioMenu"}
+        {title: "Audio compatibility: " + m.devicePreferences.audioMode, action: "audioModeMenu"}
         {title: "Captions: " + m.video.globalCaptionMode, action: "captionsMenu"}
         {title: "Subtitle track", action: "subtitleMenu"}
         {title: "Stream Info", action: "streamInfo"}
@@ -884,6 +935,7 @@ sub openPlayerOptions(kind = "main" as string)
         {title: "Hide picture (foreground listening)", action: "hidePicture"}
         {title: "Sleep timer", action: "sleepMenu"}
         {title: "Channel direction", action: "directionMenu"}
+        {title: "Clock format: " + m.devicePreferences.clockFormat, action: "clockMenu"}
         {title: "Stop playback", action: "stop"}
         {title: "Close", action: "close"}
     ]
@@ -892,7 +944,22 @@ sub openPlayerOptions(kind = "main" as string)
     else if m.capabilities.switchStreams = "unknown"
         items.unshift({title: "Refresh source-switch permissions", action: "refreshCapabilities"})
     end if
-    if kind = "scale"
+    if kind = "clock"
+        title = "Clock format"
+        items = []
+        for each mode in ["system", "12", "24"]
+            items.push({title: mode, action: "clock", value: mode})
+        end for
+    else if kind = "audioMode"
+        title = "Audio compatibility"
+        note = "Auto retries missing audio once using an existing copy-video/AAC server output profile. Retunes this client only."
+        items = []
+        for each choice in [{value: "auto", title: "Automatic AAC fallback"}, {value: "direct", title: "Direct source audio"}, {value: "aac", title: "Always use AAC compatibility"}]
+            label = choice.title
+            if choice.value = m.devicePreferences.audioMode then label = "[Selected] " + label
+            items.push({title: label, action: "audioMode", value: choice.value})
+        end for
+    else if kind = "scale"
         title = "Video scale"
         aspect = currentVideoAspect()
         note = "Source aspect for this channel: " + aspect + ". Transforms keep the same player session."
@@ -995,7 +1062,27 @@ sub onPlayerOption(event as object)
     if m.page <> "player" then return
     item = event.getData()
     if m.optionKind = "main" then m.optionReturnAction = item.action
-    if item.action = "scaleMenu"
+    if item.action = "clockMenu"
+        openPlayerOptions("clock")
+        return
+    else if item.action = "clock"
+        m.devicePreferences.clockFormat = item.value
+        applyClockFormat()
+        persistPreferences()
+    else if item.action = "audioModeMenu"
+        openPlayerOptions("audioMode")
+        return
+    else if item.action = "audioMode"
+        if item.value = "aac" and m.aacProfile = invalid
+            showNotice("No active copy-video/AAC output profile was returned by Dispatcharr.")
+            return
+        end if
+        m.devicePreferences.audioMode = item.value
+        persistPreferences()
+        m.playerOptions.active = false
+        startPlayback(m.playingChannel, true)
+        return
+    else if item.action = "scaleMenu"
         openPlayerOptions("scale")
         return
     else if item.action = "aspectMenu"
@@ -1282,9 +1369,11 @@ sub onVideoState()
             m.bannerTimer.control = "stop"
         end if
     else if m.video.state = "playing"
+        m.audioCheck.control = "start"
         if m.playingChannel <> invalid
             if m.recordedChannel <> m.playingChannel.uuid
                 m.accountPreferences = recordWatched(m.accountPreferences, m.playingChannel.uuid)
+                m.guide.recentIds = m.accountPreferences.recent
                 m.recordedChannel = m.playingChannel.uuid
                 persistAccountPreferences()
             end if
@@ -1294,6 +1383,112 @@ sub onVideoState()
             if not m.transport.active and not m.userInfoOpen then m.bannerTimer.control = "start"
         end if
     end if
+end sub
+
+sub checkPlaybackAudio()
+    if m.playingChannel = invalid or m.video.state <> "playing" then return
+    if m.page = "setup" then return
+    if m.activeAudioProfile <> ""
+        if m.video.audioFormat <> "none" and m.video.audioFormat <> ""
+            if m.devicePreferences.audioMode = "auto"
+                known = false
+                for each id in m.accountPreferences.aacChannels
+                    if id = m.playingChannel.uuid then known = true
+                end for
+                if not known
+                    m.accountPreferences.aacChannels.unshift(m.playingChannel.uuid)
+                    m.accountPreferences.aacChannels = compactIds(m.accountPreferences.aacChannels, 100)
+                    persistAccountPreferences()
+                end if
+            end if
+        end if
+        return
+    end if
+    if m.aacProfile = invalid then return
+    if m.devicePreferences.audioMode <> "auto" and m.devicePreferences.audioMode <> "aac" then return
+    if m.video.audioFormat = "none" or m.devicePreferences.audioMode = "aac"
+        busy = m.playerOptions.active or m.browser.active or m.transport.active or m.pendingChannel <> invalid or m.heldZap <> ""
+        if m.top.dialog <> invalid
+            if not m.top.dialog.wasClosed then busy = true
+        end if
+        if busy
+            m.audioCheck.control = "start"
+            return
+        end if
+        wasMini = m.mini
+        wasHidden = m.pictureCover.visible
+        wasInfo = m.userInfoOpen
+        channel = m.playingChannel
+        showNotice("No native audio detected. Retrying this channel with AAC compatibility.")
+        startPlayback(channel, true, true)
+        if wasMini then minimizePlayback()
+        if wasHidden then hidePicture()
+        if wasInfo then togglePlayerInfo()
+    end if
+end sub
+
+sub refreshChannelLineup()
+    if m.refreshTask <> invalid then return
+    showNotice("Refreshing authorized channels; current playback continues.")
+    m.refreshTask = CreateObject("roSGNode", "DispatcharrTask")
+    m.refreshTask.baseUrl = m.baseUrl
+    m.refreshTask.apiKey = m.apiKey
+    m.refreshTask.observeField("result", "onLineupRefresh")
+    m.refreshTask.control = "RUN"
+end sub
+
+sub onLineupRefresh(event as object)
+    if not isCurrentTaskEvent(event, m.refreshTask) then return
+    result = event.getData()
+    m.refreshTask.unobserveField("result")
+    m.refreshTask = invalid
+    if not result.ok
+        showNotice("Channel refresh failed: " + result.message)
+        return
+    end if
+    if result.accountId <> m.serverAccountId
+        showNotice("Account changed. Reconnect to load the new account.")
+        return
+    end if
+    m.accountPreferences = reconcileWatchHistory(m.accountPreferences, result.channels)
+    removedPlaying = false
+    if m.playingChannel <> invalid
+        current = invalid
+        for each channel in result.channels
+            if channel.uuid = m.playingChannel.uuid then current = channel
+        end for
+        if current = invalid
+            removedPlaying = true
+            stopPlayback()
+        else
+            m.playingChannel = current
+            m.guide.playbackChannel = current
+            m.banner.channel = current
+            m.miniCaption.text = current.name
+        end if
+    end if
+    result.preferences = m.accountPreferences
+    m.guide.callFunc("applyRefreshedLineup", result)
+    m.guide.recentIds = m.accountPreferences.recent
+    persistAccountPreferences()
+    showNotice("Channel lineup refreshed.")
+    if removedPlaying then showNotice("The playing channel is no longer in the authorized lineup; playback stopped.")
+end sub
+
+sub checkReminders()
+    if m.accountIdentity = "" then return
+    result = reminderTick(m.accountPreferences.reminders, uiNow())
+    if FormatJson(result.items) <> FormatJson(m.accountPreferences.reminders)
+        m.accountPreferences.reminders = result.items
+        m.guide.reminderState = result.items
+        persistAccountPreferences()
+    end if
+    message = ""
+    for each reminder in result.alerts
+        if message <> "" then message += " | "
+        message += reminder.title + " at " + uiTime(reminder.startsAt)
+    end for
+    if message <> "" then showNotice("Reminder: " + message)
 end sub
 
 sub showPlaybackFailure(code as integer, detail as string)
@@ -1311,6 +1506,18 @@ sub closeMessage(event as object)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    if key = m.heldZap and not press
+        cancelHeldZap()
+        m.channelTuneTimer.control = "stop"
+        m.channelTuneTimer.control = "start"
+        return true
+    end if
+    if press and m.heldZap <> ""
+        if key = m.heldZap then return true
+        cancelHeldZap()
+        m.channelTuneTimer.control = "stop"
+        m.pendingChannel = invalid
+    end if
     ' A held wake key must not turn into a channel change after uncovering video.
     if m.pictureWakeKey <> "" and key = m.pictureWakeKey
         if not press then m.pictureWakeKey = ""
@@ -1378,6 +1585,11 @@ function onKeyEvent(key as string, press as boolean) as boolean
         direction = playerChannelDirection(key, m.devicePreferences.channelDirection)
         if direction <> 0
             print "[player-input] "; key
+            m.heldZap = key
+            m.heldZapClock = CreateObject("roTimespan")
+            m.heldZapClock.mark()
+            m.heldZapTimer.duration = 0.4
+            m.heldZapTimer.control = "start"
             queueChannelSwitch(direction)
             return true
         end if
@@ -1406,3 +1618,53 @@ function onKeyEvent(key as string, press as boolean) as boolean
     drawSetup()
     return true
 end function
+
+sub cancelHeldZap()
+    m.heldZap = ""
+    m.heldZapTimer.control = "stop"
+end sub
+
+sub repeatHeldZap()
+    if m.page <> "player" or m.userInfoOpen or m.playerOptions.active or m.browser.active
+        cancelHeldZap()
+        return
+    end if
+    if m.heldZap = "" then return
+    if m.heldZapClock.totalMilliseconds() >= 10000
+        cancelHeldZap()
+        commitChannelSwitch()
+        return
+    end if
+    m.heldZapTimer.duration = 0.15
+    queueChannelSwitch(playerChannelDirection(m.heldZap, m.devicePreferences.channelDirection))
+end sub
+
+sub applyClockFormat()
+    mode = m.devicePreferences.clockFormat
+    if mode = "system"
+        mode = "24"
+        if CreateObject("roDeviceInfo").getClockFormat() = "12h" then mode = "12"
+    end if
+    m.global.clockFormat = mode
+    m.global.clockPreference = m.devicePreferences.clockFormat
+end sub
+
+sub onDevicePreference(event as object)
+    change = event.getData()
+    if change.tmdbKey <> invalid
+        written = true
+        if change.tmdbKey = ""
+            if m.registry.read("tmdbApiKey") <> "" then written = m.registry.delete("tmdbApiKey")
+        else
+            written = m.registry.write("tmdbApiKey", change.tmdbKey)
+        end if
+        flushed = m.registry.flush()
+        if not written or not flushed then showNotice("Could not persist the optional TMDB key.")
+    end if
+    if change.clockFormat <> invalid
+        m.devicePreferences.clockFormat = change.clockFormat
+        applyClockFormat()
+        m.guide.callFunc("refreshPresentation")
+        persistPreferences()
+    end if
+end sub

@@ -7,6 +7,8 @@ sub main()
     end function}
     m.playerInput = m.top
     m.page = "player"
+    m.heldZap = ""
+    m.heldZapTimer = {control: "stop"}
     m.playingChannel = {uuid: "a"}
     m.video = {state: "playing", control: "play", content: {programId: "a"}, visible: true, mute: false}
     m.mini = false
@@ -56,7 +58,7 @@ sub main()
     m.video.availableAudioTracks = []
     m.video.audioTrack = ""
     m.capabilities = {switchStreams: "allowed"}
-    m.devicePreferences = {videoScale: "fit"}
+    m.devicePreferences = normalizeDevicePreferences(invalid)
     m.accountPreferences = {videoAspects: {}}
     m.optionReturnAction = "audioMenu"
     openPlayerOptions("audio")
@@ -106,6 +108,25 @@ sub main()
     m.banner.visible = true
     onBannerTimeout()
     assertEqual(m.banner.visible, false, "automatic tune banner still expires")
+    m.playerOptions.active = false
+    m.pendingChannel = invalid
+    m.video.control = "play"
+    m.guide = {callFunc: function(name as string, current as dynamic, value as dynamic) as dynamic
+        if name = "adjacentPlayingChannel"
+            return adjacentLiveChannel([{uuid: "a", number: "1"}, {uuid: "b", number: "2"}, {uuid: "c", number: "3"}], current, value)
+        end if
+        return {programs: [], status: "ready"}
+    end function}
+    assertEqual(onKeyEvent("up", true), true, "held key begins preview")
+    assertEqual(m.pendingChannel.uuid, "b", "initial candidate")
+    repeatHeldZap()
+    assertEqual(m.pendingChannel.uuid, "c", "timer advances held candidate")
+    assertEqual(m.video.content.programId, "a", "hold does not open intermediate streams")
+    assertEqual(onKeyEvent("up", true), true, "native repeated key coalesced")
+    assertEqual(m.pendingChannel.uuid, "c", "no double advancement from native repeats")
+    assertEqual(onKeyEvent("up", false), true, "release captured")
+    assertEqual(m.heldZap, "", "release clears held state")
+    assertEqual(m.channelTuneTimer.control, "start", "one deferred tune after release")
     print "ALL TESTS PASSED"
 end sub
 
