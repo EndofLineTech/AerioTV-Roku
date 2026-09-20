@@ -818,11 +818,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Recover stalled or unexpectedly ended live streams",
-        "updated_at": "2026-09-18T22:42:28Z",
+        "updated_at": "2026-09-20T04:45:10Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -4668,11 +4668,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Add in-player Retry and meaningful loading feedback",
-        "updated_at": "2026-09-18T22:42:28Z",
+        "updated_at": "2026-09-20T04:45:10Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -13983,6 +13983,34 @@
         "id": 150,
         "issue_id": "AerioTV-Roku-mxz.9",
         "text": "Pre-epic scope reconciliation: Sanitized native failures, console events and temporary physical diagnostics exist. There is no general bounded in-app event viewer/clear/export product yet. Retain open; current b17.2 dependency reflects placement in categorized Settings and should be discussed if an earlier existing-menu entry is preferred."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T04:59:34Z",
+        "id": 151,
+        "issue_id": "AerioTV-Roku-mxz.5",
+        "text": "0.3.14 implementation and native controller/media probe complete: one midstream reconnect after observable buffering/end/timeout, no pause/refusal retry, shared startup deadline, exact URL/profile clone and Back-to-mini preservation. 30 suites/check/build pass. Native injected-end reconnect, budget exhaustion, manual Retry, mini, pause and Stop passed. Real outage/server recovery and second-viewer/physical checks remain pending; keep open. Evidence docs/LIVE-RECOVERY.md; consolidated docs/PHYSICAL-VALIDATION-CURRENT.txt."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T04:59:34Z",
+        "id": 152,
+        "issue_id": "AerioTV-Roku-mxz.6",
+        "text": "0.3.14 implements Retry channel / Return to guide, sanitized channel failure context, elapsed native buffering/startup hints, account/stale-dialog/duplicate-action guards and mini restoration. Actual handler tests and native Dialog callback/manual retry passed; physical focus/held-OK and real-failure checks remain in consolidated worksheet. Keep in_progress pending validation; no full story closure inferred from injected faults."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T04:59:34Z",
+        "id": 153,
+        "issue_id": "AerioTV-Roku-mxz.7",
+        "text": "0.3.14 native identity-baseline sample: status absent before controlled tune, 1 client normally, transient2 after one automatic reconnect and3 during deliberately immediate manual retry, then1, 0 after local Stop, then idle status removed. Source URL equality stayed same. Baseline had0 other clients, so no second-viewer continuity claim. Requested User-Agent did not match observed status; use pre-tune client IDs rather than UA ownership. Broader rapid-retune/Home/other-viewer audit still required. Fixture tests/native/LiveRecoveryProbe.brs and LiveStatusProbeTask.*; docs/LIVE-RECOVERY.md."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T05:01:25Z",
+        "id": 154,
+        "issue_id": "AerioTV-Roku-mxz.7",
+        "text": "Evidence clarification: the first probe compared UA 0.3.14 while the media header still read0.3.13; do not infer that Roku ignored the header. Corrected normal build now uses0.3.14. The ID-based probe started before tuning but its first status was unavailable, so empty baseline did not prove absence of other viewers. Actual observed counts1/2/3/1/0 and source equality remain valid; no second viewer was deliberately established. Retained fixture now requires valid snapshot or404 before baseline-ready and logs status; that guard is not part of recorded run."
       }
     ],
     "labels": [

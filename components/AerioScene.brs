@@ -277,6 +277,7 @@ end sub
 
 sub connectServer()
     if m.busy then return
+    cancelPlaybackFailure()
     if m.playingChannel <> invalid then stopPlayback()
     cancelCapabilityRefresh()
     m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
@@ -576,6 +577,7 @@ sub showConnection()
 end sub
 
 sub forgetConnection()
+    cancelPlaybackFailure()
     m.metadataForgetTask = m.guide.callFunc("forgetStoredMetadata")
     m.browser.callFunc("invalidateLogos")
     cancelCapabilityRefresh()
@@ -621,6 +623,7 @@ sub onWatchChannel(event as object)
 end sub
 
 sub startPlayback(channel as object, forceRetune = false as boolean, useAac = false as boolean, preserveStartupBudget = false as boolean)
+    cancelPlaybackFailure()
     cancelAacWait()
     cancelAacFailure()
     cancelPlayerOkHold()
@@ -656,6 +659,8 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     m.guide.miniActive = false
     cancelStartupWatch()
     if not preserveStartupBudget then m.startupRetryCount = 0
+    if not preserveStartupBudget then m.liveRetryCount = 0
+    m.liveBufferWatch = invalid
     m.video.control = "stop"
     m.streamReady = false
     m.decoderKeysReported = false
@@ -681,7 +686,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         content.url += "&output_profile=0"
     end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.13"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.14"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true
@@ -710,6 +715,12 @@ end sub
 function playerInfoHint() as string
     hint = "OK  Info    Hold OK  Options    Up/Down  Channel    Left  Channels    Right  Last    Replay  Recent    Back  Guide"
     if m.userInfoOpen then hint = "OK  Hide info    Hold OK  Options    Up/Down  Controls    Back  Hide info"
+    if m.video.state = "buffering"
+        stage = "Buffering... "
+        if m.startupWatch <> invalid then stage = "Starting stream (" + m.startupWatch.clock.totalSeconds().toStr() + "s)... "
+        if m.liveBufferWatch <> invalid then stage = "Buffering (" + m.liveBufferWatch.clock.totalSeconds().toStr() + "s)... "
+        hint = stage + hint
+    end if
     remaining = sleepTimerRemaining(m.sleepDeadline, uiNow())
     if remaining > 0 then hint += "    Sleep " + ((remaining + 59) \ 60).toStr() + "m"
     return hint
@@ -740,6 +751,7 @@ sub onPlayerClock()
         end if
     end if
     checkStartupPlayback()
+    checkLivePlayback()
 end sub
 
 sub togglePlayerInfo()
@@ -818,6 +830,8 @@ sub hideBanner()
 end sub
 
 sub stopPlayback()
+    cancelPlaybackFailure()
+    m.liveBufferWatch = invalid
     cancelAacWait()
     cancelAacFailure()
     cancelStartupWatch()
@@ -1538,6 +1552,7 @@ end sub
 
 sub onVideoState()
     if m.playingChannel = invalid then return
+    if m.video.state <> "buffering" then m.liveBufferWatch = invalid
     if m.video.state = "playing" or m.video.state = "paused" then completeStartupWatch()
     if m.video.state = "playing" then m.streamReady = true
     m.transport.paused = m.video.state = "paused"
@@ -1550,12 +1565,15 @@ sub onVideoState()
         if detail = "" then detail = m.video.errorMsg
         detail = sanitizePlaybackDiagnostic(detail, m.apiKey)
         print "[playback] code="; code; " detail="; detail
+        if m.pendingChannel <> invalid or m.heldZap <> "" then return
         if handleStartupFailure(code, detail) then return
+        if retryInterruptedLive("error", code, detail) then return
         if m.startupWatch <> invalid and m.startupRetryCount > 0 then detail += chr(10) + "One startup retry was already attempted."
-        stopPlayback()
-        showPlaybackFailure(code, detail)
+        failLivePlayback(code, detail)
     else if m.video.state = "finished"
-        stopPlayback()
+        if m.pendingChannel <> invalid or m.heldZap <> "" then return
+        if retryInterruptedLive("finished", 0, "") then return
+        failLivePlayback(-1, "The live stream ended unexpectedly. Automatic recovery is unavailable or already used.")
     else if m.video.state = "buffering" or m.video.state = "paused"
         if m.pendingChannel = invalid and m.playingChannel <> invalid
             showChannelBanner(m.playingChannel, playerInfoHint())
@@ -1731,6 +1749,7 @@ sub onLineupRefresh(event as object)
         showNotice("Account changed. Reconnect to load the new account.")
         return
     end if
+    cancelPlaybackFailure()
     m.accountPreferences = reconcileWatchHistory(m.accountPreferences, result.channels)
     removedPlaying = false
     if m.playingChannel <> invalid
@@ -1771,16 +1790,6 @@ sub checkReminders()
         message += reminder.title + " at " + uiTime(reminder.startsAt)
     end for
     if message <> "" then showNotice("Reminder: " + message)
-end sub
-
-sub showPlaybackFailure(code as integer, detail as string)
-    dialog = CreateObject("roSGNode", "Dialog")
-    dialog.title = "Unable to play this channel"
-    dialog.message = playbackFailureText(code, sanitizePlaybackDiagnostic(detail, m.apiKey))
-    dialog.buttons = ["Close"]
-    dialog.observeField("buttonSelected", "closeMessage")
-    dialog.observeField("wasClosed", "onDialogClosed")
-    m.top.dialog = dialog
 end sub
 
 sub closeMessage(event as object)

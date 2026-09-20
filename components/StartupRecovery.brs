@@ -65,6 +65,5 @@ sub checkStartupPlayback()
     ' expiring a new attempt. Once-per-second clock gives a bounded ~25s deadline.
     if m.startupWatch.clock.totalMilliseconds() < 25000 then return
     if retryStartupPlayback() then return
-    stopPlayback()
-    showPlaybackFailure(-2, "Startup buffering timed out (25 seconds). The one automatic startup retry for this tune has already been used.")
+    failLivePlayback(-2, "Startup buffering timed out (25 seconds). The automatic retry budget for this tune has already been used.")
 end sub

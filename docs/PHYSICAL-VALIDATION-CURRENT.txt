@@ -1,4 +1,4 @@
-AerioTV Roku 0.3.13 — Consolidated pending physical validation
+AerioTV Roku 0.3.14 — Consolidated pending physical validation
 =============================================================
 INTERNAL WORKSHEET. Preserve completed older worksheets.
 Date: __________________ Tester: _________________________________
@@ -78,6 +78,40 @@ promise fullscreen * interception. Fullscreen * remains Roku's control.
 [     ] C05 Start: fullscreen playback. Home -> relaunch. Guide opens without
 diagnostic autoplay; picture sizing remains normal on the next intentional tune.
 
+D. LIVE RECOVERY AND RETRY
+-------------------------
+[     ] D01 Start: guide. Tune a known-working channel -> OK. While starting,
+information identifies buffering/startup and elapsed seconds, without invented
+download percentages. Wait for moving picture/audio.
+
+[     ] D02 Start: fullscreen live playback. Pause for at least 30 seconds.
+Expected: no automatic reconnect or retry prompt. Resume; playback continues.
+
+[     ] D03 Optional controlled outage, only if you can interrupt THIS ROKU'S
+network without disrupting other viewers. Start: fullscreen live playback.
+Interrupt connectivity until buffering fails or reaches its deadline, then
+restore it. Expected: at most one midstream reconnect for that intentional tune,
+or an actionable failure prompt. No endless restart loop. SKIP if unsuitable.
+
+[     ] D04 Start: the failure prompt from D03 (or a reproducibly failing test
+channel). Select Retry channel -> OK. Expected: one new intentional attempt of
+the same channel/audio setting. Repeated/held OK must not queue several retries.
+
+[     ] D05 Start: failure prompt. Select Return to guide -> OK, or press Back.
+Expected: guide has usable focus, no delayed reconnect, no accidental retune.
+
+[     ] D06 Start: playing channel. Back to mini-guide. If a natural recoverable
+interruption occurs, recovery may continue in mini; ordinary Back is not Stop.
+Use * -> Stop playback -> OK. Expected: no later automatic restart.
+
+[     ] D07 Start: a buffering/failed channel with recovery pending. Change to a
+different known-working channel, then Home -> relaunch.
+Expected: old recovery never replaces the new channel; launch has no autoplay.
+
+[     ] D08 Optional second viewer. Keep a separate client playing the same
+channel during D03-D06, without cutting its network. Expected: Roku recovery or
+Stop does not stop that viewer. SKIP if no second viewer is available.
+
 FAILURE NOTES — ID, exact buttons, expected/actual, photo filename
 ----------------------------------------------------------------
 _________________________________________________________________
@@ -86,5 +120,6 @@ _________________________________________________________________
 _________________________________________________________________
 _________________________________________________________________
 
-Save this file with results. Pending physical checks: ihp.37 and 0.3.13 cache/UI
-regressions. Reboot/OS-pressure cache retention is not a promised behavior.
+Save this file with results. Pending physical checks: ihp.37, cache/UI regressions,
+mxz.5/.6 recovery and mxz.7 exit/session audit. Reboot/OS-pressure cache retention
+is not a promised behavior. Script-injected faults are not a real-outage pass.

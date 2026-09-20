@@ -102,5 +102,5 @@ responses produce a mapping-unavailable message while live tuning remains usable
 File staging is not a hard network byte quota. This implementation does not claim
 that the upstream endpoint became paginated or arbitrarily scalable.
 
-Physical acceptance is consolidated in `PHYSICAL-VALIDATION-0.3.13.txt`, including
+Physical acceptance is consolidated in `PHYSICAL-VALIDATION-CURRENT.txt`, including
 the previously pending hold-OK shortcut checks.

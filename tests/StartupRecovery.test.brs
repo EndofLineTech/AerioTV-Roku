@@ -113,3 +113,8 @@ end sub
 sub showPlaybackFailure(code as integer, detail as string)
     m.failure = detail
 end sub
+
+sub failLivePlayback(code as integer, detail as string)
+    stopPlayback()
+    showPlaybackFailure(code, detail)
+end sub

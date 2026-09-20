@@ -726,6 +726,6 @@ URLs from platform logs before sharing. Screenshots should omit setup secrets.
 # 0.3.13 incremental metadata cache checkpoint
 
 Native results and limitations: `METADATA-CACHE-IMPLEMENTATION.md`.
-Consolidated pending physical worksheet: `PHYSICAL-VALIDATION-0.3.13.txt`.
+Consolidated pending physical worksheet: `PHYSICAL-VALIDATION-CURRENT.txt`.
 All temporary controller/autoplay/memory hooks were removed before restoring
 the normal development package. Existing completed worksheets remain evidence.

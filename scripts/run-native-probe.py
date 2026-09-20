@@ -34,6 +34,13 @@ def main():
     ], capture_output=True, text=True)
     installed = result.returncode == 0 and "Install Success" in result.stdout
     print("Installed:", installed, flush=True)
+    if not installed:
+        messages = re.findall(r'"text"\s*:\s*"([^"\n]+)"', result.stdout)
+        for message in messages:
+            message = re.sub(r'https?://[^\s"<>]+', "[URL]", message)
+            print("Installer:", message.replace(password, "[developer password]"), flush=True)
+        if result.returncode:
+            print("Installer transport exit:", result.returncode, flush=True)
     deadline = time.monotonic() + (args.timeout if installed else 3)
     pending = b""
     complete = False
