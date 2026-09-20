@@ -1,5 +1,15 @@
 # Third-party artwork attribution
 
+## Catch-up indicator
+
+`catchup-history.svg` is Google's Material Icons **history** icon, from
+https://github.com/google/material-design-icons/blob/master/src/action/history/materialicons/24px.svg
+(retrieved 2026-09-20), licensed under Apache-2.0. The path is unchanged; the fill
+is changed to AerioTV teal. `catchup-history.png` is the transparent 64x64 raster
+used by Roku at 28x28. License: `material-icons-LICENSE.txt` in this directory.
+Regenerate with `node scripts/generate-catchup-icon.mjs /absolute/path/to/@resvg/resvg-js`
+using an isolated installation of `@resvg/resvg-js` (no runtime dependency).
+
 ## AerioTV launcher and splash images
 
 `channel-icon-fhd.png` (540x405), `channel-icon-hd.png` (290x218), and

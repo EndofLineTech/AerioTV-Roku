@@ -162,7 +162,12 @@ sub buildCanvas()
         name = uiLabel(root, "", 80, 34, 150, 56, 21)
         name.wrap = true
         name.maxLines = 2
-        catchup = uiLabel(root, "CATCH-UP", 82, 4, 96, 27, 16, "0x1AC4D8FF")
+        catchup = root.createChild("Poster")
+        catchup.uri = "pkg:/images/catchup-history.png"
+        catchup.translation = [145, 3]
+        catchup.width = 28
+        catchup.height = 28
+        catchup.loadDisplayMode = "scaleToFit"
         catchup.visible = false
         m.rows.push({root: root, number: number, badge: badge, catchup: catchup, logo: logo, name: name, tiles: []})
     end for
@@ -442,7 +447,7 @@ sub drawGuide()
             row.number.text = channel.number
             row.catchup.visible = catchupChannelDays(m.top.catchupPermission, m.top.channelFacts, channel.id) > 0
             row.number.width = 170
-            if row.catchup.visible then row.number.width = 68
+            if row.catchup.visible then row.number.width = 128
             row.name.text = channel.name
             row.badge.text = ""
             if m.favorites.doesExist(channel.uuid) then row.badge.text = "FAV"

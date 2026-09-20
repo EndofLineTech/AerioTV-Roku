@@ -33,7 +33,7 @@ sub runCatchupBadgeProbe()
     for each layout in ["modal", "sidebar", "pills"]
         m.settings.groupLayout = layout
         drawGuide()
-        print "[catchup-badge] layout="; layout; " badge="; m.rows[0].catchup.visible; " numberWidth="; m.rows[0].number.width
+        print "[catchup-badge] layout="; layout; " badge="; m.rows[0].catchup.visible; " numberWidth="; m.rows[0].number.width; " image="; m.rows[0].catchup.loadStatus
     end for
     m.detailChannel = m.filtered[chosen]
     m.detailProgram = program

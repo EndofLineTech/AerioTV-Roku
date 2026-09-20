@@ -25,3 +25,7 @@ Optional TMDB artwork fallback uses the TMDB API but is not endorsed or certifie
 by TMDB. The bundled TMDB logo is TMDB's mark, used under its attribution/branding
 guidance, separately from the application code license. Source and conversion
 information are in images/README.md. https://www.themoviedb.org/about/logos-attribution
+
+The catch-up history icon is from Google's Material Design Icons, licensed under
+Apache License 2.0 (included at images/material-icons-LICENSE.txt). Adaptations:
+teal fill and PNG rasterization. Source: https://github.com/google/material-design-icons
