@@ -34,6 +34,11 @@ sub discover()
         m.key = ""
         return
     end if
+    if kind = "language-audit"
+        auditDescriptionSources()
+        m.key = ""
+        return
+    end if
     if kind = "catchup"
         rows = requestPages("/api/channels/channels/?page_size=200")
         if rows = invalid
@@ -179,6 +184,49 @@ sub discover()
         m.top.media = media
     end if
     m.key = ""
+end sub
+
+sub auditDescriptionSources()
+    saved = CreateObject("roRegistrySection", "AerioTV")
+    print "[media-probe] tmdb-key-configured="; saved.read("tmdbApiKey") <> ""
+    for each kind in ["movie", "series"]
+        path = "/api/vod/movies/?page_size=20&name=The%20Matrix&year=1999"
+        if kind = "series" then path = "/api/vod/series/?page_size=20&name=Deep%20Space%20Nine"
+        page = vodPage(requestJson(m.base + path), kind, m.base)
+        if page.ok and page.items.count() > 0
+            item = page.items[0]
+            print "[media-probe] description-kind="; kind; " text="; sanitizePlaybackDiagnostic(left(item.description, 180), m.key)
+            raw = requestJson(m.base + "/api/vod/" + vodKindPath(kind) + "/" + item.id + "/")
+            if type(raw) = "roAssociativeArray"
+                if type(raw.custom_properties) = "roAssociativeArray" then print "[media-probe] description-properties="; FormatJson(raw.custom_properties.keys())
+            end if
+            m.maxResponseBytes = 8388608
+            rows = apiRows(requestJson(m.base + "/api/vod/" + vodKindPath(kind) + "/" + item.id + "/providers/"))
+            if rows <> invalid
+                seen = {}
+                for each row in rows
+                    if type(row.m3u_account) = "roAssociativeArray" and type(row.custom_properties) = "roAssociativeArray"
+                        id = textValue(row.m3u_account.id)
+                        if not seen.doesExist(id)
+                            seen[id] = true
+                            print "[media-probe] description-provider="; id; " keys="; FormatJson(row.custom_properties.keys())
+                            for each field in ["plot", "description", "overview"]
+                                value = textValue(row.custom_properties[field])
+                                if value <> "" then print "[media-probe] description-candidate="; sanitizePlaybackDiagnostic(left(value, 180), m.key)
+                            end for
+                            if type(row.custom_properties.detailed_info) = "roAssociativeArray" then print "[media-probe] description-detail="; sanitizePlaybackDiagnostic(left(textValue(row.custom_properties.detailed_info.plot), 180), m.key)
+                            if type(row.custom_properties.basic_data) = "roAssociativeArray"
+                                print "[media-probe] description-basic-keys="; FormatJson(row.custom_properties.basic_data.keys())
+                                print "[media-probe] description-basic-plot="; sanitizePlaybackDiagnostic(left(textValue(row.custom_properties.basic_data.plot), 180), m.key)
+                            end if
+                            if seen.count() >= 3 then exit for
+                        end if
+                    end if
+                end for
+            end if
+        end if
+    end for
+    m.top.report = {languageAudit: true}
 end sub
 
 sub auditSeriesEpisodes()

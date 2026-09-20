@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="GroupNavigator" extends="Group">
   <interface>
+    <field id="topRequested" type="boolean" alwaysNotify="true" />
     <function name="applyPresentation" />
     <field id="model" type="assocarray" onChange="configure" />
     <field id="active" type="boolean" onChange="onActive" />

@@ -6,9 +6,10 @@
     <field id="playRequested" type="assocarray" alwaysNotify="true" />
     <field id="exitRequested" type="boolean" alwaysNotify="true" />
     <field id="savedState" type="array" />
-    <field id="permissions" type="assocarray" />
+    <field id="permissions" type="assocarray" onChange="updateLibraryTabs" />
     <field id="stateChange" type="assocarray" alwaysNotify="true" />
     <field id="bookmark" type="assocarray" alwaysNotify="true" />
+    <field id="destination" type="string" alwaysNotify="true" />
     <function name="cancelVod" />
     <function name="libraryStatus" />
     <function name="handleLibraryKey" />
@@ -20,5 +21,10 @@
   <script type="text/brightscript" uri="pkg:/source/VodModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/VodState.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DescriptionModel.brs" />
   <script type="text/brightscript" uri="VodView.brs" />
+  <children>
+    <TopNavigation id="primaryNavigation" translation="[560,20]" selected="vod" />
+    <TopNavigation id="libraryNavigation" translation="[560,88]" allowUp="true" selected="movie" />
+  </children>
 </component>

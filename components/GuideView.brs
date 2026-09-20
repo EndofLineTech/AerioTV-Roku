@@ -1,10 +1,15 @@
 sub init()
     m.canvas = m.top.findNode("canvas")
     m.top.focusable = true
+    m.primaryNavigation = m.top.findNode("primaryNavigation")
+    m.primaryNavigation.observeField("selection", "onPrimarySelection")
+    m.primaryNavigation.observeField("exitRequested", "onPrimaryExit")
+    updatePrimaryTabs()
     m.navigator = m.top.findNode("groupNavigator")
     m.navigator.observeField("preview", "onGroupPreview")
     m.navigator.observeField("closed", "onNavigatorClosed")
     m.navigator.observeField("optionsRequested", "handleOptionsShortcut")
+    m.navigator.observeField("topRequested", "focusPrimaryNavigation")
     m.holdKey = ""
     m.pickerWakeKey = ""
     m.holdTimer = m.top.findNode("holdTimer")
@@ -177,6 +182,7 @@ sub onActive()
 end sub
 
 sub suspendGuide()
+    m.primaryNavigation.active = false
     cancelGuideHold()
     if m.tmdbTask <> invalid
         m.tmdbTask.unobserveField("result")
@@ -411,9 +417,9 @@ sub drawGuide()
     groupTitle = m.groups[m.groupIndex].name
     if m.query <> "" then groupTitle = "Search all channels"
     m.heading.text = groupTitle + "  |  " + m.filtered.count().toStr() + " channels  |  " + uiTime(now)
-    m.liveTitle.visible = m.settings.groupLayout <> "pills"
-    m.liveUnderline.visible = m.liveTitle.visible
-    m.heading.visible = m.liveTitle.visible
+    m.liveTitle.visible = false
+    m.liveUnderline.visible = false
+    m.heading.visible = m.settings.groupLayout <> "pills"
     if not m.navigator.active then m.navigator.model = {groups: m.groups, layout: m.settings.groupLayout, selected: m.groups[m.groupIndex].id}
     m.dateLabel.text = uiLocalDate(m.viewStart)
     m.dateLabel.translation = [gridX, 270]
@@ -444,9 +450,10 @@ sub drawGuide()
     x = timeX + (now - m.viewStart) / 6
     m.nowLine.visible = x >= timeX and x < 1824
     if m.nowLine.visible then m.nowLine.translation = [x, 300]
-    m.footer.text = "OK  Watch / Details     *  Options, groups, search, date     Back  Connection"
+    m.footer.text = "Hold Left  Live TV / VOD     OK  Watch / Details     *  Guide options     Back  Connection"
     if m.top.miniActive then m.footer.text = "OK  Watch / Details     Back or Play  Fullscreen     *  Options / Stop playback"
-    if m.settings.groupLayout <> "modal" then m.footer.text = "Hold Left  Groups     OK  Watch / Details     *  Options     Replay  Now"
+    if m.settings.groupLayout = "sidebar" then m.footer.text = "Hold Left  Groups     Left in groups  Live TV / VOD     OK  Watch / Details     *  Options"
+    if m.settings.groupLayout = "pills" then m.footer.text = "Hold Left  Groups     Up in groups  Live TV / VOD     OK  Watch / Details     *  Options"
     if m.query <> "" then m.footer.text = "Search ALL: " + m.query + "    * > Clear search to restore the selected group"
     if m.connectionWarning <> "" then m.footer.text = m.connectionWarning
     if m.message <> "" then m.footer.text = m.message
@@ -1080,7 +1087,7 @@ sub repeatGuideHold()
     end if
     if m.holdKey = "left"
         cancelGuideHold()
-        m.navigator.active = true
+        if m.settings.groupLayout = "modal" then focusPrimaryNavigation() else m.navigator.active = true
         return
     end if
     stepSize = guideHoldStep(m.holdClock.totalMilliseconds())
@@ -1163,6 +1170,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
         m.navigator.active = true
         return true
     end if
+    if key = "up" and (m.selected = 0 or m.filtered.count() = 0)
+        focusPrimaryNavigation()
+        return true
+    end if
     if m.filtered.count() = 0 then return true
     if key = "fastforward" or key = "rewind"
         delta = m.rowCount
@@ -1180,7 +1191,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         if m.selected < m.filtered.count() - 1 then m.selected++
         beginGuideHold(key)
     else if key = "left" or key = "right"
-        if key = "left" and m.settings.groupLayout <> "modal"
+        if key = "left"
             beginGuideHold(key)
             return true
         end if
@@ -1210,3 +1221,30 @@ function onKeyEvent(key as string, press as boolean) as boolean
     m.saveDelay.control = "start"
     return true
 end function
+
+sub updatePrimaryTabs()
+    if m.primaryNavigation = invalid then return
+    enabled = m.top.moviesPermission = "allowed" or m.top.seriesPermission = "allowed"
+    items = [{id: "live", label: "Live TV", enabled: true}, {id: "vod", label: "VOD", enabled: enabled}]
+    if FormatJson(m.primaryNavigation.items) <> FormatJson(items) then m.primaryNavigation.items = items
+end sub
+
+sub focusPrimaryNavigation()
+    if not m.top.active then return
+    cancelGuideHold()
+    m.navigator.active = false
+    m.primaryNavigation.active = true
+end sub
+
+sub onPrimarySelection(event as object)
+    m.top.setFocus(true)
+    if event.getData() = "vod"
+        m.top.playerRequest = "vodHome"
+    else
+        m.top.setFocus(true)
+    end if
+end sub
+
+sub onPrimaryExit(event as object)
+    if event.getData() = "down" and m.settings.groupLayout = "pills" then m.navigator.active = true else m.top.setFocus(true)
+end sub

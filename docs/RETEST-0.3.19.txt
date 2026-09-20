@@ -1,0 +1,64 @@
+AerioTV Roku 0.3.19 — Top navigation and English descriptions
+============================================================
+INTERNAL focused retest. Previous completed results are preserved.
+Date: __________ Tester: __________ Roku/OS: _______________________
+Use PASS / FAIL / SKIP in each [     ]; record failures by ID below.
+
+TOP NAVIGATION
+--------------
+[     ] N01 Start: guide. Confirm visible Live TV / VOD buttons at the top.
+Reach them from your current row:
+  Sidebar: hold Left -> Groups, then Left.
+  Pills: hold Left -> Groups, then Up.
+  Modal: hold Left directly.
+Expected: clear header focus; Left/Right moves between permitted destinations.
+
+[     ] N02 Start: focused guide header. Right to VOD -> OK.
+Expected: VOD opens without using star. Movies and TV Shows tabs are visible.
+Up from the first tile row -> select TV Shows with Right -> OK.
+Expected: correct library loads; selecting Movies returns to the movie library.
+
+[     ] N03 Start: VOD tile grid. Up from its first row -> library tabs; Up again
+-> Live TV/VOD. Left to Live TV -> OK.
+Expected: guide returns with its prior group/channel/time position and usable focus.
+Back from a header must return to content, not exit or accidentally tune a channel.
+
+[     ] N04 Start: playing live channel minimized to guide. Enter header without
+selecting VOD. Expected: same playback continues. Select VOD -> OK: local live
+playback stops before entering the library; no overlapping player or late retune.
+
+[     ] N05 Start: guide. Test short Left, held Left, vertical channel scrolling,
+and your group layout. Short Left still moves time; hold uses the navigation path.
+If trying other layouts: * -> Group navigation layout -> choose layout. Verify
+headers/group controls do not overlap, then restore your original layout.
+
+[     ] N06 Optional restricted/disabled VOD. Start: guide -> * -> Disable VOD
+libraries for this connection. Header VOD is unavailable and cannot steal focus.
+Re-enable using Guide options afterward. A restricted account must not gain access
+through the new headers. SKIP account-specific checks if no second account exists.
+
+DESCRIPTIONS
+------------
+[     ] L01 Start: VOD -> TV Shows -> * -> Search -> Deep Space Nine -> Search.
+Select Star Trek: Deep Space Nine (1993) -> OK. Leave details open briefly.
+Expected: an available English provider summary replaces the French shared summary.
+If loading is visible, Play/Browse episodes remains available during the lookup.
+
+[     ] L02 Start: VOD -> Movies. Open The Matrix (1999), or another title whose
+supplied base summary is English. Expected: English is not overwritten with French
+as additional metadata arrives. Record the title/source if any text stays French.
+
+[     ] L03 Start: details while English metadata is loading. Move between buttons
+without selecting one. Expected: text updates do not reset focus or change actions.
+Back to grid, open another title quickly: the first title's summary must not appear
+on the second. Playback/source selection must keep its normal meaning.
+
+[     ] L04 Conditional missing English. Open a title without an available English
+summary. Expected: original provider text is retained with an honest fallback notice,
+not invented translation, endless loading or blocked playback. Record the title so
+its sources can be checked. SKIP if no suitable example is encountered.
+
+Failure notes (ID, exact buttons, title/source, observed behavior, photo):
+__________________________________________________________________
+__________________________________________________________________
+__________________________________________________________________

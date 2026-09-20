@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="TopNavigation" extends="Group">
+  <interface>
+    <field id="items" type="array" onChange="configureNavigation" />
+    <field id="selected" type="string" onChange="drawNavigation" />
+    <field id="active" type="boolean" onChange="activateNavigation" />
+    <field id="allowUp" type="boolean" />
+    <field id="selection" type="string" alwaysNotify="true" />
+    <field id="exitRequested" type="string" alwaysNotify="true" />
+    <function name="handleNavigationKey" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="pkg:/source/NavigationModel.brs" />
+  <script type="text/brightscript" uri="TopNavigation.brs" />
+</component>

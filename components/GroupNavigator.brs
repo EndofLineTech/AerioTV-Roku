@@ -28,9 +28,9 @@ sub applyPresentation(model as dynamic)
     if m.layout = "sidebar" then count = 7
     for i = 0 to count - 1
         x = 580 + i * 245
-        y = 70
+        y = 98
         width = 235
-        height = 62
+        height = 40
         if m.layout = "sidebar"
             x = 96
             y = 306 + i * 96
@@ -38,11 +38,17 @@ sub applyPresentation(model as dynamic)
             height = 94
         end if
         bg = uiRect(m.canvas, x, y, width, height, "0x0D1E35FF")
-        label = uiLabel(m.canvas, "", x + 12, y + 16, width - 24, height - 18, 23)
+        labelY = y + 7
+        labelHeight = height - 8
+        if m.layout = "sidebar"
+            labelY = y + 16
+            labelHeight = height - 18
+        end if
+        label = uiLabel(m.canvas, "", x + 12, labelY, width - 24, labelHeight, 23)
         m.rows.push({bg: bg, label: label})
     end for
     if m.layout = "sidebar" then uiLabel(m.canvas, "Groups", 96, 270, 280, 32, 22, "0x1AC4D8FF")
-    if m.layout = "pills" then m.caption = uiLabel(m.canvas, "", 580, 38, 740, 28, 18, "0x1AC4D8FF")
+    if m.layout = "pills" then m.caption = uiLabel(m.canvas, "", 580, 73, 740, 24, 18, "0x1AC4D8FF")
     draw()
 end sub
 
@@ -86,6 +92,12 @@ end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if not press or not m.top.active then return false
+    if (key = "up" and (m.layout = "pills" or m.index = 0)) or (key = "left" and m.layout = "sidebar")
+        m.delay.control = "stop"
+        m.top.active = false
+        m.top.topRequested = true
+        return true
+    end if
     if key = "options"
         m.delay.control = "stop"
         m.top.active = false

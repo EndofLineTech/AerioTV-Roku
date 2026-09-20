@@ -88,6 +88,7 @@ sub loadVod()
                 if enhanced <> invalid
                     if enhanced.uuid = item.uuid
                         enhanced.logoId = item.logoId
+                        enhanced.description = preferredDescription(item.description, enhanced.description)
                         item = enhanced
                     end if
                 end if
@@ -102,6 +103,8 @@ sub loadVod()
                                 for each episode in info.episodes[season]
                                     if textValue(episode.id) = item.id
                                         matched = true
+                                        item.description = preferredDescription(item.description, left(textValue(episode.plot), 2000))
+                                        item.description = preferredDescription(item.description, left(textValue(episode.description), 2000))
                                         item.streamFormat = vodStreamFormat(textValue(episode.container_extension))
                                         if type(info.m3u_account) = "roAssociativeArray" then item.providerId = textValue(info.m3u_account.id)
                                     end if

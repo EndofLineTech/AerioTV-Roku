@@ -5,8 +5,8 @@
     <field id="metadataEvent" type="assocarray" alwaysNotify="true" />
     <field id="channelFacts" type="assocarray" />
     <field id="catchupPermission" type="string" value="unknown" />
-    <field id="moviesPermission" type="string" value="unknown" />
-    <field id="seriesPermission" type="string" value="unknown" />
+    <field id="moviesPermission" type="string" value="unknown" onChange="updatePrimaryTabs" />
+    <field id="seriesPermission" type="string" value="unknown" onChange="updatePrimaryTabs" />
     <field id="vodEnabled" type="boolean" value="true" />
     <field id="config" type="assocarray" onChange="configure" />
     <field id="active" type="boolean" value="false" onChange="onActive" />
@@ -30,6 +30,7 @@
     <function name="applyRefreshedLineup" />
     <function name="refreshPresentation" />
     <function name="handleOptionsShortcut" />
+    <function name="focusPrimaryNavigation" />
     <function name="cancelMappingLoad" />
     <function name="cancelMetadataLoads" />
     <function name="forgetStoredMetadata" />
@@ -53,6 +54,7 @@
   <script type="text/brightscript" uri="GuideDetails.brs" />
   <children>
     <Group id="canvas" />
+    <TopNavigation id="primaryNavigation" translation="[560,20]" selected="live" />
     <GroupNavigator id="groupNavigator" visible="false" />
     <ProgramSearchView id="programSearch" visible="false" />
     <ProgramDetails id="programDetails" visible="false" />

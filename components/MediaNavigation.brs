@@ -23,6 +23,11 @@ sub closeVodLibrary()
     m.guide.active = true
 end sub
 
+sub onLibraryDestination(event as object)
+    if not m.vod.isSameNode(event.getRoSGNode()) or m.page <> "library" then return
+    openVodLibrary(event.getData())
+end sub
+
 sub onVodBookmark(event as object)
     if not m.vod.isSameNode(event.getRoSGNode()) then return
     value = event.getData()

@@ -1,6 +1,7 @@
 sub init()
     m.top.focusable = true
     m.task = invalid
+    m.descriptionTask = invalid
     m.items = []
     m.dialog = invalid
     m.tiles = []
@@ -15,12 +16,21 @@ sub init()
     m.shelf = "catalog"
     m.failure = ""
     m.bypassCache = false
-    uiRect(m.top, 0, 0, 1920, 1080, "0x0A1628FF")
-    m.heading = uiLabel(m.top, "Movies", 96, 55, 1728, 64, 42)
-    m.status = uiLabel(m.top, "", 96, 127, 1728, 40, 24, "0x9EB5C9FF")
+    background = uiRect(m.top, 0, 0, 1920, 1080, "0x0A1628FF")
+    m.top.removeChild(background)
+    m.top.insertChild(background, 0)
+    m.primaryNavigation = m.top.findNode("primaryNavigation")
+    m.libraryNavigation = m.top.findNode("libraryNavigation")
+    m.primaryNavigation.observeField("selection", "onLibraryPrimarySelection")
+    m.primaryNavigation.observeField("exitRequested", "onLibraryPrimaryExit")
+    m.libraryNavigation.observeField("selection", "onLibraryTabSelection")
+    m.libraryNavigation.observeField("exitRequested", "onLibraryTabExit")
+    updateLibraryTabs()
+    m.heading = uiLabel(m.top, "Movies", 96, 91, 440, 55, 38)
+    m.status = uiLabel(m.top, "", 96, 154, 1728, 40, 24, "0x9EB5C9FF")
     for i = 0 to 19
         x = 96 + (i mod 5) * 348
-        y = 195 + (i \ 5) * 181
+        y = 210 + (i \ 5) * 181
         border = uiRect(m.top, x, y, 336, 170, "0x17344AFF")
         poster = m.top.createChild("Poster")
         poster.translation = [x + 8, y + 8]
@@ -35,7 +45,7 @@ sub init()
         fact = uiLabel(m.top, "", x + 122, y + 122, 203, 30, 19, "0x9EB5C9FF")
         m.tiles.push({border: border, poster: poster, title: title, fact: fact})
     end for
-    uiLabel(m.top, "Arrows  Browse    OK  Details    *  Search / library / sort    FF / Rew  Pages    Back  Return", 96, 990, 1728, 40, 24, "0x9EB5C9FF")
+    uiLabel(m.top, "Up from first row  Navigation    OK  Details    *  Library options    FF / Rew  Pages    Back  Return", 96, 990, 1728, 40, 23, "0x9EB5C9FF")
 end sub
 
 sub configureVod()
@@ -52,6 +62,7 @@ sub configureVod()
     end for
     if m.top.config = invalid then return
     m.kind = m.top.config.kind
+    updateLibraryTabs()
     m.pageNumber = 1
     m.index = 0
     m.query = ""
@@ -88,11 +99,14 @@ sub activateVod()
         drawVod()
         m.top.setFocus(true)
     else
+        m.primaryNavigation.active = false
+        m.libraryNavigation.active = false
         cancelVod()
     end if
 end sub
 
 sub cancelVod()
+    cancelDescription()
     if m.task <> invalid
         m.task.unobserveField("result")
         cancelNetworkTask(m.task)
@@ -184,11 +198,7 @@ sub onVodLoaded(event as object)
         m.detail = result.item
         dialog = CreateObject("roSGNode", "Dialog")
         dialog.title = m.detail.title
-        dialog.message = m.detail.year + "  " + m.detail.genre + "  Rating: " + m.detail.rating + chr(10) + left(m.detail.description, 700)
-        if m.detail.duration > 0 then dialog.message += chr(10) + (m.detail.duration \ 60).toStr() + " min"
-        if m.detail.airDate <> "" then dialog.message += "  " + m.detail.airDate
-        if m.detail.actors <> "" then dialog.message += chr(10) + "Cast: " + left(m.detail.actors, 180)
-        if m.detail.director <> "" then dialog.message += chr(10) + "Director: " + m.detail.director
+        m.descriptionNotice = ""
         entry = vodStateEntry(m.top.savedState, m.detail)
         menu = vodDetailMenu(m.detail, entry)
         if type(m.top.permissions) = "roAssociativeArray"
@@ -206,7 +216,9 @@ sub onVodLoaded(event as object)
         dialog.observeField("buttonSelected", "onVodDetailAction")
         dialog.observeField("wasClosed", "onVodDialogClosed")
         m.dialog = dialog
+        renderDetailDescription()
         m.top.getScene().dialog = dialog
+        beginDescription()
         drawVod()
         return
     end if
@@ -222,18 +234,19 @@ sub onVodLoaded(event as object)
 end sub
 
 sub drawVod()
+    if m.kind = "movie" then m.libraryNavigation.selected = "movie" else m.libraryNavigation.selected = "series"
     m.heading.text = "Movies"
     if m.kind = "series" then m.heading.text = "TV Shows"
     if m.kind = "episode" then m.heading.text = "Episodes"
     if m.shelf <> "catalog" then m.heading.text = "Library — " + m.shelf
-    if m.query <> "" then m.heading.text += " — " + m.query
-    if m.category <> "" and m.shelf = "catalog" then m.heading.text += " — " + m.category
-    if m.providerId <> "" and m.shelf = "catalog" then m.heading.text += " — Provider " + m.providerId
     if m.task = invalid
         m.status.text = "Page " + m.pageNumber.toStr() + "  |  " + m.items.count().toStr() + " titles loaded"
         if m.total <> invalid then m.status.text += " of " + m.total.toStr()
         if m.items.count() = 0 then m.status.text = "No available titles match this account and search."
         if m.items.count() = 0 and m.hasNext = true then m.status.text = "Nothing visible on this page. FF loads the next page."
+        if m.query <> "" then m.status.text += "  |  Search: " + m.query
+        if m.category <> "" and m.shelf = "catalog" then m.status.text += "  |  " + m.category
+        if m.providerId <> "" and m.shelf = "catalog" then m.status.text += "  |  Provider " + m.providerId
     end if
     if m.failure <> "" then m.status.text = m.failure
     for i = 0 to 19
@@ -260,6 +273,7 @@ end sub
 
 sub onVodDetailAction(event as object)
     if not isCurrentTaskEvent(event, m.dialog) then return
+    cancelDescription()
     event.getRoSGNode().close = true
     choice = event.getData()
     if choice < 0 or choice >= m.detailActions.count() then return
@@ -332,8 +346,63 @@ end sub
 
 sub onVodDialogClosed(event as object)
     if not isCurrentTaskEvent(event, m.dialog) then return
+    cancelDescription()
     ' Native Dialog.wasClosed is a signal; its event payload can be invalid.
     if m.top.active then m.top.setFocus(true)
+end sub
+
+sub renderDetailDescription()
+    if m.dialog = invalid or m.detail = invalid then return
+    message = m.detail.year + "  " + m.detail.genre + "  Rating: " + m.detail.rating + chr(10) + left(m.detail.description, 700)
+    if m.detail.duration > 0 then message += chr(10) + (m.detail.duration \ 60).toStr() + " min"
+    if m.detail.airDate <> "" then message += "  " + m.detail.airDate
+    if m.detail.actors <> "" then message += chr(10) + "Cast: " + left(m.detail.actors, 180)
+    if m.detail.director <> "" then message += chr(10) + "Director: " + m.detail.director
+    if m.descriptionNotice <> "" then message += chr(10) + m.descriptionNotice
+    m.dialog.message = message
+end sub
+
+sub beginDescription()
+    cancelDescription()
+    if descriptionLanguage(m.detail.description) = "en" then return
+    if m.detail.kind <> "movie" and m.detail.kind <> "series" then return
+    m.descriptionNotice = "Checking for an English summary... Playback is available."
+    renderDetailDescription()
+    m.descriptionDialog = m.dialog
+    m.descriptionTask = CreateObject("roSGNode", "DescriptionTask")
+    m.descriptionTask.baseUrl = m.top.config.baseUrl
+    m.descriptionTask.apiKey = m.top.config.apiKey
+    m.descriptionTask.accountId = m.top.config.accountId
+    m.descriptionTask.item = m.detail
+    m.descriptionTask.cacheEpoch = m.global.cacheEpoch
+    m.descriptionTask.observeField("result", "onDescriptionLoaded")
+    m.descriptionTask.control = "RUN"
+end sub
+
+sub cancelDescription()
+    if m.descriptionTask <> invalid
+        m.descriptionTask.unobserveField("result")
+        cancelNetworkTask(m.descriptionTask)
+        m.descriptionTask = invalid
+    end if
+    m.descriptionDialog = invalid
+end sub
+
+sub onDescriptionLoaded(event as object)
+    if not isCurrentTaskEvent(event, m.descriptionTask) then return
+    result = event.getData()
+    dialog = m.descriptionDialog
+    cancelDescription()
+    if not m.top.active or m.dialog = invalid or dialog = invalid then return
+    if not m.dialog.isSameNode(dialog) or m.detail.key <> result.key then return
+    m.descriptionNotice = "No alternate English summary found; showing provider text."
+    if m.detail.description = "" then m.descriptionNotice = "No description supplied by the provider."
+    if result.ok
+        m.detail.description = result.description
+        m.descriptionNotice = "English provider summary."
+    end if
+    ' Keep the existing Dialog/buttons/focus; update only its text.
+    renderDetailDescription()
 end sub
 
 sub openVodOptions()
@@ -437,6 +506,10 @@ end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if not m.top.active or not press then return false
+    if key = "up" and m.index < 5
+        m.libraryNavigation.active = true
+        return true
+    end if
     if key = "back"
         saveLibraryBookmark()
         cancelVod()
@@ -516,7 +589,9 @@ function onKeyEvent(key as string, press as boolean) as boolean
 end function
 
 function libraryStatus() as object
-    return {kind: m.kind, shelf: m.shelf, page: m.pageNumber, index: m.index, loaded: m.items.count(), total: m.total, loading: m.task <> invalid, failure: m.failure}
+    language = "unknown"
+    if m.detail <> invalid then language = descriptionLanguage(m.detail.description)
+    return {kind: m.kind, shelf: m.shelf, page: m.pageNumber, index: m.index, loaded: m.items.count(), total: m.total, loading: m.task <> invalid, failure: m.failure, descriptionLanguage: language, descriptionPending: m.descriptionTask <> invalid}
 end function
 
 function handleLibraryKey(key as string, press as boolean) as boolean
@@ -526,6 +601,43 @@ end function
 sub saveLibraryBookmark()
     if m.top.config = invalid or m.shelf <> "catalog" or m.kind = "episode" then return
     m.top.bookmark = {scope: m.top.config.accountScope, kind: m.kind, query: m.query, category: m.category, providerId: m.providerId, ordering: m.ordering, page: m.pageNumber, index: m.index}
+end sub
+
+sub updateLibraryTabs()
+    if m.primaryNavigation = invalid or m.libraryNavigation = invalid then return
+    permissions = m.top.permissions
+    movies = false
+    series = false
+    if type(permissions) = "roAssociativeArray"
+        movies = permissions.movies = "allowed"
+        series = permissions.series = "allowed"
+    end if
+    primary = [{id: "live", label: "Live TV", enabled: true}, {id: "vod", label: "VOD", enabled: movies or series}]
+    libraries = [{id: "movie", label: "Movies", enabled: movies}, {id: "series", label: "TV Shows", enabled: series}]
+    if FormatJson(m.primaryNavigation.items) <> FormatJson(primary) then m.primaryNavigation.items = primary
+    if FormatJson(m.libraryNavigation.items) <> FormatJson(libraries) then m.libraryNavigation.items = libraries
+end sub
+
+sub onLibraryPrimarySelection(event as object)
+    if event.getData() = "live" then m.top.exitRequested = true else m.libraryNavigation.active = true
+end sub
+
+sub onLibraryPrimaryExit(event as object)
+    if event.getData() = "down" then m.libraryNavigation.active = true else m.top.setFocus(true)
+end sub
+
+sub onLibraryTabSelection(event as object)
+    selected = event.getData()
+    if selected = m.kind and m.shelf = "catalog" and m.seriesId = ""
+        m.top.setFocus(true)
+    else
+        saveLibraryBookmark()
+        m.top.destination = selected
+    end if
+end sub
+
+sub onLibraryTabExit(event as object)
+    if event.getData() = "up" then m.primaryNavigation.active = true else m.top.setFocus(true)
 end sub
 
 sub restoreVersionPage()

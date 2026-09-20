@@ -8,6 +8,7 @@ sub init()
     m.vod.observeField("stateChange", "onVodStateChange")
     m.vod.observeField("bookmark", "onVodBookmark")
     m.vod.observeField("exitRequested", "closeVodLibrary")
+    m.vod.observeField("destination", "onLibraryDestination")
     m.mediaPlayer = m.top.findNode("onDemandPlayer")
     m.mediaPlayer.observeField("closed", "onMediaClosed")
     m.mediaPlayer.observeField("progress", "onMediaProgress")
@@ -711,7 +712,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         content.url += "&output_profile=0"
     end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.18"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.19"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true
@@ -971,6 +972,10 @@ end sub
 
 sub onGuidePlayerRequest(event as object)
     if not m.guide.isSameNode(event.getRoSGNode()) then return
+    if event.getData() = "vodHome"
+        if m.capabilities.movies = "allowed" then openVodLibrary("movie") else if m.capabilities.series = "allowed" then openVodLibrary("series")
+        return
+    end if
     if event.getData() = "toggleVod"
         m.accountPreferences.vodEnabled = m.accountPreferences.vodEnabled = false
         persistAccountPreferences()
