@@ -4,6 +4,22 @@ function catchupEligible(program as dynamic, days as integer, now as integer) as
     return program.startsAt >= now - days * 86400 and program.endsAt <= now and program.endsAt > program.startsAt and program.endsAt - program.startsAt <= 86400
 end function
 
+function catchupChannelDays(permission as string, facts as dynamic, channelId as string) as integer
+    if permission <> "allowed" or type(facts) <> "roAssociativeArray" then return 0
+    if not facts.doesExist(channelId) then return 0
+    fact = facts[channelId]
+    if type(fact) <> "roAssociativeArray" then return 0
+    if not mediaNumber(fact.catchupDays) then return 0
+    if fact.catchupDays < 1 then return 0
+    return int(fact.catchupDays)
+end function
+
+function catchupRetentionLabel(days as integer) as string
+    if days <= 0 then return ""
+    if days = 1 then return "Catch-up: 1 day"
+    return "Catch-up: " + days.toStr() + " days"
+end function
+
 function catchupLiveReturnAllowed(context as dynamic, account as string, channel as dynamic) as boolean
     if type(context) <> "roAssociativeArray" or type(channel) <> "roAssociativeArray" then return false
     if type(context.channel) <> "roAssociativeArray" then return false

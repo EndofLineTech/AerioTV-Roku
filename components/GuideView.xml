@@ -3,8 +3,8 @@
   <interface>
     <field id="archiveRequest" type="assocarray" alwaysNotify="true" />
     <field id="metadataEvent" type="assocarray" alwaysNotify="true" />
-    <field id="channelFacts" type="assocarray" />
-    <field id="catchupPermission" type="string" value="unknown" />
+    <field id="channelFacts" type="assocarray" onChange="onCatchupCapabilities" />
+    <field id="catchupPermission" type="string" value="unknown" onChange="onCatchupCapabilities" />
     <field id="moviesPermission" type="string" value="unknown" onChange="updatePrimaryTabs" />
     <field id="seriesPermission" type="string" value="unknown" onChange="updatePrimaryTabs" />
     <field id="vodEnabled" type="boolean" value="true" />

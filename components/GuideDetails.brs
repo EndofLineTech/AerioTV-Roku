@@ -84,14 +84,16 @@ sub onProgramDetail(event as object)
     end if
 end sub
 
+sub onCatchupCapabilities()
+    if m.ready <> true then return
+    if m.details.active then updateRichDetails()
+    if m.top.active then drawGuide()
+end sub
+
 sub updateRichDetails()
-    days = 0
-    facts = m.top.channelFacts
-    if type(facts) = "roAssociativeArray"
-        if facts.doesExist(m.detailChannel.id) then days = facts[m.detailChannel.id].catchupDays
-    end if
+    days = catchupChannelDays(m.top.catchupPermission, m.top.channelFacts, m.detailChannel.id)
     eligible = m.top.catchupPermission = "allowed" and catchupEligible(m.detailProgram, days, uiNow())
-    m.details.model = {program: m.detailProgram, channel: m.detailChannel, baseUrl: m.base, apiKey: m.key, settings: m.settings, reminded: hasReminder(m.reminders, m.detailChannel.uuid, m.detailProgram.id), catchupAvailable: eligible}
+    m.details.model = {program: m.detailProgram, channel: m.detailChannel, baseUrl: m.base, apiKey: m.key, settings: m.settings, reminded: hasReminder(m.reminders, m.detailChannel.uuid, m.detailProgram.id), catchupAvailable: eligible, catchupRetention: catchupRetentionLabel(days)}
 end sub
 
 sub updateReminders()

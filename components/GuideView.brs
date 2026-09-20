@@ -162,7 +162,9 @@ sub buildCanvas()
         name = uiLabel(root, "", 80, 34, 150, 56, 21)
         name.wrap = true
         name.maxLines = 2
-        m.rows.push({root: root, number: number, badge: badge, logo: logo, name: name, tiles: []})
+        catchup = uiLabel(root, "CATCH-UP", 82, 4, 96, 27, 16, "0x1AC4D8FF")
+        catchup.visible = false
+        m.rows.push({root: root, number: number, badge: badge, catchup: catchup, logo: logo, name: name, tiles: []})
     end for
     m.nowLine = uiRect(m.canvas, 336, 300, 2, 678, "0x1AC4D8AA")
     m.footer = uiRemoteHints(m.canvas, 96, 998, 1728, 36, 22)
@@ -438,6 +440,9 @@ sub drawGuide()
             channel = m.filtered[index]
             row.uuid = channel.uuid
             row.number.text = channel.number
+            row.catchup.visible = catchupChannelDays(m.top.catchupPermission, m.top.channelFacts, channel.id) > 0
+            row.number.width = 170
+            if row.catchup.visible then row.number.width = 68
             row.name.text = channel.name
             row.badge.text = ""
             if m.favorites.doesExist(channel.uuid) then row.badge.text = "FAV"
@@ -471,14 +476,17 @@ sub drawGuide()
         return
     end if
     channel = m.filtered[m.selected]
+    retention = catchupRetentionLabel(catchupChannelDays(m.top.catchupPermission, m.top.channelFacts, channel.id))
     cell = selectedCell()
     m.title.text = channel.name
     m.description.text = gapText() + "  |  OK to watch live."
+    if retention <> "" then m.description.text = retention + " (provider advertised)  |  " + m.description.text
     if cell <> invalid
         if cell.program <> invalid
             program = cell.program
             m.title.text = program.title
             m.description.text = channel.name + "  |  " + uiTime(program.startsAt) + " - " + uiTime(program.endsAt) + "  " + program.description
+            if retention <> "" then m.description.text = retention + " (provider advertised)  |  " + m.description.text
         end if
     end if
 end sub

@@ -56,7 +56,7 @@ sub render()
     m.when.text = model.channel.name + "  |  " + uiLocalDate(p.startsAt) + " " + uiTime(p.startsAt) + " - " + uiTime(p.endsAt)
     m.facts.text = programBadges(p, model.settings) + "  " + textValue(p.rating) + "  " + textValue(p.year) + "  " + textValue(p.quality)
     m.facts.text += "  " + textValue(p.language) + "  " + textValue(p.country)
-    if model.catchupAvailable = true then m.facts.text += "  |  Archive advertised"
+    if textValue(model.catchupRetention) <> "" then m.facts.text += "  |  " + model.catchupRetention + " (provider advertised)"
     categories = ""
     for i = 0 to p.categories.count() - 1
         if i >= 3 then exit for
