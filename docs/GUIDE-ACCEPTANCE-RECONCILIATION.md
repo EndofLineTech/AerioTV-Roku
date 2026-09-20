@@ -35,8 +35,9 @@ Unless otherwise noted, test IDs refer to `FINAL-TEST-RESULTS-0.3.0.txt`.
 - Other prerequisite stories were closed in dependency order using their own
   acceptance evidence.
 
-All Guide child records are now closed. The Guide epic itself is left for final
-PO epic-closure signoff. Live TV's hold-OK acceptance remains separately in ihp.37.
+All Guide child records are closed. The PO subsequently explicitly approved
+closing the Guide epic, and it is now closed. Live TV's hold-OK acceptance remains
+separately in ihp.37.
 
 ## What this does not close in mxz
 

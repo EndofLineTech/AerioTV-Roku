@@ -1,8 +1,8 @@
 import { spawnSync } from 'node:child_process';
 
-for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput']) {
+for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel']) {
   const result = spawnSync(process.execPath, [
-    'node_modules/brs/bin/cli.js', '--root', 'tests',
+    'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
     'source/PlaybackModel.brs',
     'source/NowNextModel.brs',
@@ -12,6 +12,7 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport',
     'source/VideoGeometry.brs',
     'source/GuideSettingsModel.brs',
     'source/ReminderModel.brs',
+    'source/MetadataCacheModel.brs',
     ...(suite === 'PlayerLifecycle' ? ['components/AerioScene.brs'] : []),
     ...(suite === 'StreamSourceTask' ? ['components/StreamSourceTask.brs'] : []),
     ...(suite === 'GuideMenu' ? ['components/GuideSettings.brs'] : []),

@@ -1,0 +1,18 @@
+{
+  "rootDir": "../..",
+  "files": [
+    {"src": "tests/cache-probe/manifest", "dest": "manifest"},
+    {"src": "tests/cache-probe/source/main.brs", "dest": "source/main.brs"},
+    {"src": "tests/cache-probe/components/CacheProbeScene.xml", "dest": "components/CacheProbeScene.xml"},
+    {"src": "tests/cache-probe/components/CacheProbeScene.brs", "dest": "components/CacheProbeScene.brs"},
+    {"src": "tests/cache-probe/components/CacheProbeTask.xml", "dest": "components/CacheProbeTask.xml"},
+    {"src": "tests/cache-probe/components/CacheProbeTask.brs", "dest": "components/CacheProbeTask.brs"},
+    {"src": "source/DispatcharrModel.brs", "dest": "source/DispatcharrModel.brs"},
+    {"src": "source/DispatcharrHttp.brs", "dest": "source/DispatcharrHttp.brs"},
+    {"src": "source/GuideModel.brs", "dest": "source/GuideModel.brs"}
+  ],
+  "stagingDir": "../../out/cache-probe-staging",
+  "outFile": "../../out/cache-probe.zip",
+  "createPackage": true,
+  "sourceMap": false
+}

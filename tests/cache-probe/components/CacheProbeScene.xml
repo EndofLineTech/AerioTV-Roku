@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="CacheProbeScene" extends="Scene">
+  <interface><field id="done" type="boolean" /></interface>
+  <script type="text/brightscript" uri="CacheProbeScene.brs" />
+  <children>
+    <Label translation="[96,96]" width="1728" height="180" wrap="true" text="Metadata cache measurement in progress. No shared stream changes. The app will close when finished." />
+    <Timer id="release" duration="0.5" repeat="false" />
+  </children>
+</component>
