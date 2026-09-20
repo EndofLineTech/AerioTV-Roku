@@ -1,0 +1,90 @@
+AerioTV Roku 0.3.13 — Consolidated pending physical validation
+=============================================================
+INTERNAL WORKSHEET. Preserve completed older worksheets.
+Date: __________________ Tester: _________________________________
+Roku model/OS: __________________ Dispatcharr: ___________________
+Write PASS, FAIL, or SKIP in every [     ]. Record failures by ID below.
+Automated/native scripted results do not pre-fill these physical results.
+
+A. STARTUP, CACHE AND LIVE PLAYBACK
+---------------------------------
+[     ] A01 Start: Roku Home. Launch AerioTV with the saved connection.
+Expected: authorized channels appear while guide mappings/programmes load;
+loading is identified. Normal launch does not autoplay or show diagnostics.
+
+[     ] A02 Start: populated guide. Home, then relaunch within five minutes.
+Expected: normal account verification, useful guide restored, correct programme
+and channel pairing. Missing cache is allowed to rebuild without crashing.
+
+[     ] A03 Start: populated guide. Select a known-working live channel -> OK.
+Expected: fullscreen moving picture and audio. Back minimizes the same session.
+
+[     ] A04 Start: mini-guide while that channel plays. * -> Refresh guide -> OK.
+Expected: guide reloads with honest loading state; playback continues. Back or
+Play expands it. Check picture/audio and channel remain correct.
+
+[     ] A05 Start: mini-guide while playing. * -> Clear guide/detail cache -> OK.
+Expected: visible data rebuilds, favourites/history/settings remain, playback
+continues. No blank screen or indefinitely stuck loading after completion.
+
+[     ] A06 Start: mini-guide while playing. * -> Refresh channel lineup -> OK.
+Expected: authorized lineup and guide refresh. The same channel continues if
+still authorized. Removed channels must disappear; do not remove one just for
+this check unless you intend to change the server lineup.
+
+[     ] A07 Start: populated guide. Navigate Left/Right across several time
+windows, then return to now with * -> Jump to Now -> OK.
+Expected: programmes load for fetched ranges; absent server history is not
+presented as playable/downloaded history. Navigation stays responsive.
+
+[     ] A08 Optional account test. Start: guide -> * -> Connection settings -> OK.
+Use a second account with a known smaller authorized lineup, then Connect.
+Expected: only that account's channels/programmes appear. Return to your original
+account afterward. SKIP if no second account is available.
+
+B. HOLD OK PLAYER OPTIONS (PREVIOUSLY PENDING ihp.37)
+---------------------------------------------------
+For B01-B11, start each check on a known-working fullscreen live channel, with
+menus/browser/transport closed. Let the automatic information banner disappear.
+
+[     ] B01 Tap OK: information appears immediately. Tap OK again: it hides.
+[     ] B02 Hold OK about one second, release: AerioTV player options opens;
+video remains genuinely fullscreen, without an inset or added border.
+[     ] B03 The release from B02 does not select anything, stop, pause or retune.
+[     ] B04 In options: Up/Down -> Clock format -> OK. Back -> Back returns to
+playback; menu selection and focus work normally after the initial hold release.
+[     ] B05 Hold OK for three seconds before releasing: menu opens once;
+continued holding selects nothing. Back closes it.
+[     ] B06 Play/Pause -> hold OK -> release: options opens while staying paused.
+Back closes options; Play/Pause resumes.
+[     ] B07 Tap OK to show information, then hold OK: options also opens here.
+[     ] B08 Briefly press/release OK, wait two seconds: no delayed menu opens.
+[     ] B09 Press OK, then Up before one second: transport opens, with no delayed
+options menu from the cancelled hold. Back closes transport.
+[     ] B10 OK -> Up -> Left/Right to Options -> OK: existing route still works.
+[     ] B11 Left -> Channels -> choose a working channel -> OK: normal browser
+selection works and does not accidentally open player options.
+
+C. GUIDE STAR, HIDDEN PICTURE AND PRESENTATION
+--------------------------------------------
+[     ] C01 Start: fullscreen live playback. Back -> mini-guide -> *.
+Expected: guide options opens normally.
+[     ] C02 From that menu select AerioTV player options -> Hide picture.
+Release the selecting OK. Hold OK to wake, release, then hold OK AGAIN.
+Expected: first hold only wakes; the separate second hold opens player options.
+[     ] C03 Start: fullscreen playback. Hints say Hold OK / Options and do not
+promise fullscreen * interception. Fullscreen * remains Roku's control.
+[     ] C04 Start: player options. No experimental fullscreen-star probe entry.
+[     ] C05 Start: fullscreen playback. Home -> relaunch. Guide opens without
+diagnostic autoplay; picture sizing remains normal on the next intentional tune.
+
+FAILURE NOTES — ID, exact buttons, expected/actual, photo filename
+----------------------------------------------------------------
+_________________________________________________________________
+_________________________________________________________________
+_________________________________________________________________
+_________________________________________________________________
+_________________________________________________________________
+
+Save this file with results. Pending physical checks: ihp.37 and 0.3.13 cache/UI
+regressions. Reboot/OS-pressure cache retention is not a promised behavior.

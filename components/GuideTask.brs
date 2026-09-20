@@ -8,12 +8,29 @@ sub loadWindow()
     m.timeout = 45000
     windowStart = m.top.windowStart
     allowedKeys = m.top.allowedKeys
+    now = CreateObject("roDateTime").asSeconds()
+    cached = {state: "miss"}
+    if not m.top.bypassCache then cached = metadataCacheRead(m.top.scope, "guide", windowStart.toStr(), m.top.generation, now, true)
+    if m.top.cancelRequested
+        m.key = ""
+        m.top.apiKey = ""
+        return
+    end if
+    if cached.state <> "miss"
+        restored = {ok: true, windowStart: windowStart, index: cached.payload, fetched: cached.fetched, source: "cache"}
+        if cached.state = "fresh"
+            m.key = ""
+            m.top.apiKey = ""
+            m.top.result = restored
+            return
+        end if
+        m.top.cached = restored
+    end if
     start = CreateObject("roDateTime")
     finish = CreateObject("roDateTime")
     start.fromSeconds(windowStart)
     finish.fromSeconds(windowStart + 10800)
-    encoder = CreateObject("roUrlTransfer")
-    url = m.base + "/api/epg/grid/?start=" + encoder.escape(start.toISOString()) + "&end=" + encoder.escape(finish.toISOString())
+    url = httpGuideWindowUrl(m.base, start.toISOString(), finish.toISOString())
     payload = requestJson(url)
     rows = apiRows(payload)
     result = {ok: false, windowStart: windowStart, message: m.failure}
@@ -41,7 +58,9 @@ sub loadWindow()
             for each key in index
                 index[key].sortBy("startsAt")
             end for
-            result = {ok: true, windowStart: windowStart, index: index}
+            now = CreateObject("roDateTime").asSeconds()
+            metadataCacheWrite(m.top.scope, "guide", windowStart.toStr(), m.top.generation, now, metadataCacheGuidePayload(index))
+            result = {ok: true, windowStart: windowStart, index: index, fetched: now, source: "network"}
         end if
     end if
     m.key = ""

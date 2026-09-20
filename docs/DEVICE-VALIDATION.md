@@ -723,3 +723,9 @@ Dispatcharr 0.31.0 connection/proxy configuration, channel count, and stream cod
 
 Roku debug console: TCP port 8085. Redact credentials and any credential-bearing
 URLs from platform logs before sharing. Screenshots should omit setup secrets.
+# 0.3.13 incremental metadata cache checkpoint
+
+Native results and limitations: `METADATA-CACHE-IMPLEMENTATION.md`.
+Consolidated pending physical worksheet: `PHYSICAL-VALIDATION-0.3.13.txt`.
+All temporary controller/autoplay/memory hooks were removed before restoring
+the normal development package. Existing completed worksheets remain evidence.

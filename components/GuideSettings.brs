@@ -70,6 +70,13 @@ end sub
 
 sub applyRefreshedLineup(data as object)
     suspendGuide()
+    cancelMetadataLoads()
+    m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
+    m.cacheScope = textValue(data.scope)
+    m.lineupGeneration = textValue(data.generation)
+    m.cacheGeneration = m.lineupGeneration
+    m.metadataElapsed = CreateObject("roTimespan")
+    m.metadataElapsed.mark()
     if type(data.preferences) = "roAssociativeArray"
         m.recent = data.preferences.recent
         m.reminders = data.preferences.reminders
@@ -86,6 +93,7 @@ sub applyRefreshedLineup(data as object)
     m.failures = {}
     m.detailCache = {}
     m.detailOrder = []
+    loadMappings(true)
     rebuildGuideGroups()
     if m.top.active then onActive()
     if m.top.playbackChannel <> invalid then onPlaybackChannel()

@@ -119,6 +119,10 @@ per account. Cache failures must leave network loading usable.
 
 ## Consequences for subsequent work
 
+Implemented for channels/mappings/guide in development **0.3.13**. See
+`METADATA-CACHE-IMPLEMENTATION.md` for filesystem, restore, eviction, cold/warm
+timing and native-media evidence. VOD integration remains separate work.
+
 mxz.2 can expose the authorized lineup before expensive mappings/EPG hydration.
 mxz.3 implements discardable disk coverage and truthful warm restoration.
 mxz.8 must distinguish post-download parse caps from transfer-memory bounds and

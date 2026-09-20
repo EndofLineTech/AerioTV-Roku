@@ -81,3 +81,8 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
     if file <> "" then fs.delete(file)
     return result
 end function
+
+function httpGuideWindowUrl(base as string, startTime as string, endTime as string) as string
+    encoder = CreateObject("roUrlTransfer")
+    return base + "/api/epg/grid/?start=" + encoder.escape(startTime) + "&end=" + encoder.escape(endTime)
+end function

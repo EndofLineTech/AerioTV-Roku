@@ -23,6 +23,9 @@
     <function name="applyRefreshedLineup" />
     <function name="refreshPresentation" />
     <function name="handleOptionsShortcut" />
+    <function name="cancelMappingLoad" />
+    <function name="cancelMetadataLoads" />
+    <function name="forgetStoredMetadata" />
     <field id="reminderState" type="array" onChange="updateReminders" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
@@ -34,6 +37,8 @@
   <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideSettingsModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
+  <script type="text/brightscript" uri="GuideCache.brs" />
   <script type="text/brightscript" uri="GuideView.brs" />
   <script type="text/brightscript" uri="GuideSettings.brs" />
   <script type="text/brightscript" uri="GuideDetails.brs" />

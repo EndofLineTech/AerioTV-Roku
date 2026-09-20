@@ -45,3 +45,22 @@ function metadataCacheDigest(value as string) as string
     digest.setup("sha256")
     return lcase(digest.process(bytes))
 end function
+
+' Artwork can contain signed/provider URLs. Persist text/timing facts only;
+' program details can hydrate artwork again when requested.
+function metadataCacheGuidePayload(index as object) as object
+    result = {}
+    result.setModeCaseSensitive()
+    fields = ["id", "title", "description", "subtitle", "startsAt", "endsAt", "key", "is_new", "is_live", "is_premiere", "is_finale", "is_previously_shown", "season", "episode", "categories", "rating", "year", "language", "country", "quality", "credits"]
+    for each key in index
+        result[key] = []
+        for each program in index[key]
+            clean = {poster: ""}
+            for each field in fields
+                clean[field] = program[field]
+            end for
+            result[key].push(clean)
+        end for
+    end for
+    return result
+end function

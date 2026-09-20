@@ -16,6 +16,11 @@ sub init()
     m.loadDelay.observeField("fire", "loadVisibleWindows")
     m.clock.observeField("fire", "tick")
     m.task = invalid
+    m.mappingTask = invalid
+    m.cacheClearTask = invalid
+    m.mappingState = "idle"
+    m.mappingWarning = ""
+    m.cacheScope = ""
     m.searchTask = invalid
     m.searchView = m.top.findNode("programSearch")
     m.searchView.observeField("selection", "onProgramSearchSelection")
@@ -37,6 +42,9 @@ sub init()
 end sub
 
 sub configure()
+    m.metadataElapsed = CreateObject("roTimespan")
+    m.metadataElapsed.mark()
+    cancelMetadataLoads()
     suspendGuide()
     m.ready = false
     m.top.playbackChannel = invalid
@@ -44,6 +52,10 @@ sub configure()
     config = m.top.config
     if config = invalid then return
     m.channels = config.channels
+    m.cacheScope = textValue(config.scope)
+    m.cacheGeneration = textValue(config.generation)
+    m.lineupGeneration = m.cacheGeneration
+    m.forceGuideFetch = false
     m.serverGroups = config.groups
     prefs = normalizeAccountPreferences(config.preferences)
     m.settings = prefs.guide
@@ -104,6 +116,7 @@ sub configure()
     buildCanvas()
     m.ready = true
     updateMiniLayout()
+    loadMappings()
     if m.top.active then onActive()
 end sub
 
@@ -174,6 +187,7 @@ sub suspendGuide()
     m.saveDelay.control = "stop"
     m.loadDelay.control = "stop"
     if m.task <> invalid
+        m.task.unobserveField("cached")
         m.task.unobserveField("result")
         cancelNetworkTask(m.task)
         m.task = invalid
@@ -182,6 +196,7 @@ sub suspendGuide()
 end sub
 
 sub tick()
+    guideCachePrune(m.cache, uiNow())
     if not m.top.active
         if m.top.playbackChannel <> invalid
             publishPlaybackInfo()
@@ -207,6 +222,7 @@ sub scheduleLoad()
             if not guideCacheHas(m.cache, start, uiNow()) then needed = true
         end for
         if needed and not relevant
+            m.task.unobserveField("cached")
             m.task.unobserveField("result")
             cancelNetworkTask(m.task)
             m.task = invalid
@@ -218,6 +234,8 @@ end sub
 
 sub loadVisibleWindows()
     if not m.ready then return
+    guideCachePrune(m.cache, uiNow())
+    if m.mappingState = "loading" then return
     if not m.top.active and m.top.playbackChannel = invalid then return
     if m.task <> invalid then return
     if m.top.active and m.filtered.count() = 0 then return
@@ -236,7 +254,12 @@ sub loadVisibleWindows()
                 m.task.apiKey = m.key
                 m.task.windowStart = start
                 m.task.allowedKeys = m.allowedKeys
+                m.task.scope = m.cacheScope
+                m.task.generation = m.cacheGeneration
+                m.task.cacheEpoch = m.global.cacheEpoch
+                m.task.bypassCache = m.forceGuideFetch
                 m.task.observeField("result", "onWindowLoaded")
+                m.task.observeField("cached", "onWindowCached")
                 m.task.control = "RUN"
                 if m.top.active then m.footer.text = "Loading guide...  Navigation and live tuning remain available."
                 return
@@ -248,10 +271,15 @@ end sub
 sub onWindowLoaded(event as object)
     if not isCurrentTaskEvent(event, m.task) then return
     result = event.getData()
+    m.task.unobserveField("cached")
     m.task.unobserveField("result")
     m.task = invalid
     if result.ok
-        guideCachePut(m.cache, result.windowStart, result.index, uiNow())
+        fetched = uiNow()
+        if result.fetched <> invalid then fetched = result.fetched
+        guideCachePut(m.cache, result.windowStart, result.index, fetched)
+        m.forceGuideFetch = false
+        print "[guide-cache] source="; result.source; " resident="; m.cache.order.count(); " ms-after-lineup="; m.metadataElapsed.totalMilliseconds()
         changedReminder = false
         for each reminder in m.reminders
             matchedReminder = false
@@ -317,7 +345,9 @@ function requestedWindows() as object
 end function
 
 function cachedPlaybackInfo(channel as object, now as integer) as object
-    if not m.ready then return {channelUuid: channel.uuid, status: "loading", programs: [], windows: []}
+    if not m.ready or m.mappingState = "loading" then return {channelUuid: channel.uuid, status: "loading", programs: [], windows: []}
+    current = channelByUuid(channel.uuid)
+    if current <> invalid then channel = current
     return playbackSnapshot(m.cache, m.failures, channel, now)
 end function
 
@@ -414,6 +444,14 @@ sub drawGuide()
     if m.query <> "" then m.footer.text = "Search ALL: " + m.query + "    * > Clear search to restore the selected group"
     if m.connectionWarning <> "" then m.footer.text = m.connectionWarning
     if m.message <> "" then m.footer.text = m.message
+    for each window in [guideWindowStart(m.viewStart), guideWindowStart(m.viewStart + m.span - 1)]
+        if m.cache.entries.doesExist(window.toStr()) and not guideCacheHas(m.cache, window, uiNow())
+            m.footer.text = "Cached guide (refresh pending). " + m.footer.text
+            exit for
+        end if
+    end for
+    if m.mappingState = "loading" then m.footer.text = "Loading guide mappings... Channels are ready to watch."
+    if m.mappingWarning <> "" then m.footer.text = m.mappingWarning
     if m.filtered.count() = 0
         m.title.text = "No matching channels"
         m.description.text = "Use * to choose another group or clear your search."
@@ -804,7 +842,7 @@ sub onPickerSelected(event as object)
             m.detailOrder = []
             m.detailFailures = {}
             m.failures = {}
-            m.message = "Guide cache cleared. Reloading visible data."
+            clearStoredGuideCache()
         else if action = "clock"
             openPicker("Clock format", [{title: "System", value: "system"}, {title: "12-hour", value: "12"}, {title: "24-hour", value: "24"}], "clock")
             return
@@ -827,6 +865,7 @@ sub onPickerSelected(event as object)
             jumpTo(uiNow())
             return
         else if action = "refresh"
+            clearStoredGuideCache()
             cancelProgramDetail()
             m.detailCache = {}
             m.detailOrder = []

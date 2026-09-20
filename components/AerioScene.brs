@@ -1,4 +1,5 @@
 sub init()
+    m.global.addFields({metadataSession: CreateObject("roDeviceInfo").getRandomUUID(), cacheEpoch: CreateObject("roDeviceInfo").getRandomUUID()})
     m.top.focusable = true
     m.top.backgroundColor = "0x0A1628FF"
     m.top.backgroundUri = ""
@@ -288,12 +289,15 @@ sub connectServer()
         return
     end if
     m.busy = true
+    m.guide.callFunc("cancelMetadataLoads")
+    m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
     m.connectionStage = "Starting connection"
     m.connectionElapsed = CreateObject("roTimespan")
     m.connectionElapsed.mark()
     m.status = "Starting connection..."
     drawSetup()
     m.task = CreateObject("roSGNode", "DispatcharrTask")
+    m.task.cacheEpoch = m.global.cacheEpoch
     m.task.baseUrl = m.baseUrl
     m.task.apiKey = m.apiKey
     if m.authMode = "password"
@@ -375,6 +379,7 @@ sub completeConnection(result as dynamic)
     m.serverAccountId = result.accountId
     m.authMode = "key"
     m.accountIdentity = m.baseUrl + "|" + result.accountId
+    m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
     legacy = invalid
     legacyJson = m.registry.read("preferences")
     if legacyJson <> "" then legacy = ParseJson(legacyJson)
@@ -394,12 +399,14 @@ sub completeConnection(result as dynamic)
         channels: result.channels, groups: result.groups, warning: result.warning
         baseUrl: m.baseUrl, apiKey: m.apiKey, preferences: prefs
         tmdbKey: m.registry.read("tmdbApiKey")
+        scope: result.scope, generation: result.generation
     }
     m.banner.session = {baseUrl: m.baseUrl, apiKey: m.apiKey}
     m.page = "guide"
     m.screen.visible = false
     m.guide.visible = true
     m.guide.active = true
+    print "[startup] authorized lineup ms="; m.connectionElapsed.totalMilliseconds(); " channels="; result.channels.count()
     refreshCapabilities()
     m.capabilityClock.control = "start"
     m.reminderClock.control = "start"
@@ -569,6 +576,7 @@ sub showConnection()
 end sub
 
 sub forgetConnection()
+    m.metadataForgetTask = m.guide.callFunc("forgetStoredMetadata")
     m.browser.callFunc("invalidateLogos")
     cancelCapabilityRefresh()
     m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
@@ -673,7 +681,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         content.url += "&output_profile=0"
     end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.12"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.13"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true
@@ -1703,6 +1711,7 @@ sub refreshChannelLineup()
     if m.refreshTask <> invalid then return
     showNotice("Refreshing authorized channels; current playback continues.")
     m.refreshTask = CreateObject("roSGNode", "DispatcharrTask")
+    m.refreshTask.cacheEpoch = m.global.cacheEpoch
     m.refreshTask.baseUrl = m.baseUrl
     m.refreshTask.apiKey = m.apiKey
     m.refreshTask.observeField("result", "onLineupRefresh")

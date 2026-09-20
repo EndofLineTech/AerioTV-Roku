@@ -11,7 +11,9 @@
     {"src": "source/DispatcharrHttp.brs", "dest": "source/DispatcharrHttp.brs"},
     {"src": "source/HttpPolicy.brs", "dest": "source/HttpPolicy.brs"},
     {"src": "source/HttpTransport.brs", "dest": "source/HttpTransport.brs"},
-    {"src": "source/GuideModel.brs", "dest": "source/GuideModel.brs"}
+    {"src": "source/GuideModel.brs", "dest": "source/GuideModel.brs"},
+    {"src": "source/MetadataCacheModel.brs", "dest": "source/MetadataCacheModel.brs"},
+    {"src": "source/MetadataCacheStore.brs", "dest": "source/MetadataCacheStore.brs"}
   ],
   "stagingDir": "../../out/cache-probe-staging",
   "outFile": "../../out/cache-probe.zip",

@@ -2,6 +2,7 @@
 <component name="DispatcharrTask" extends="Task">
   <interface>
     <field id="cancelRequested" type="boolean" />
+    <field id="cacheEpoch" type="string" />
     <field id="baseUrl" type="string" />
     <field id="apiKey" type="string" />
     <field id="username" type="string" />
@@ -13,5 +14,7 @@
   <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MetadataCacheStore.brs" />
   <script type="text/brightscript" uri="DispatcharrTask.brs" />
 </component>

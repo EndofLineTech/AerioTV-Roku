@@ -2,6 +2,7 @@
 <component name="CacheProbeTask" extends="Task">
   <interface>
     <field id="cancelRequested" type="boolean" />
+    <field id="cacheEpoch" type="string" />
     <field id="report" type="assocarray" alwaysNotify="true" />
     <field id="sample" type="array" alwaysNotify="true" />
   </interface>
@@ -11,4 +12,6 @@
   <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
   <script type="text/brightscript" uri="CacheProbeTask.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MetadataCacheStore.brs" />
 </component>

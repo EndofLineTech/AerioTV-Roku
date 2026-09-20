@@ -53,9 +53,14 @@ sub loadChannels()
         publishError("Could not load channels. " + m.failure)
         return
     end if
+    scope = metadataCacheDigest(m.base + "|" + textValue(user.id))
+    generation = metadataCacheDigest(FormatJson(rows))
+    cached = metadataCacheRead(scope, "channels", "summary", generation, CreateObject("roDateTime").asSeconds(), true)
     channels = []
+    if cached.state = "fresh" then channels = cached.payload
     seen = {}
     for each raw in rows
+        if cached.state = "fresh" then exit for
         channel = normalizeChannel(raw)
         if channel <> invalid
             if not seen.doesExist(channel.uuid)
@@ -64,15 +69,10 @@ sub loadChannels()
             end if
         end if
     end for
+    if cached.state <> "fresh" then metadataCacheWrite(scope, "channels", "summary", generation, CreateObject("roDateTime").asSeconds(), channels)
+    rows = invalid
     warning = ""
-    m.progressLabel = "Loading guide mappings for " + channels.count().toStr() + " channels"
-    epgRows = requestPages("/api/epg/epgdata/?page=1&page_size=500")
-    if epgRows = invalid
-        epgRows = []
-        warning = "Guide channel mappings unavailable. Reconnect to retry."
-    end if
-    bindChannelGuide(channels, epgRows)
-    epgRows = invalid
+    ' EPG mappings hydrate separately after the authorized lineup becomes usable.
     groups = []
     usedGroups = {}
     for each channel in channels
@@ -97,7 +97,7 @@ sub loadChannels()
         m.top.password = ""
         return
     end if
-    m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id)}
+    m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id), scope: scope, generation: generation}
     m.key = ""
     m.top.apiKey = ""
 end sub

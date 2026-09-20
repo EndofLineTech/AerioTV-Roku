@@ -210,12 +210,26 @@ end sub
 
 sub guideCachePut(cache as object, start as integer, index as object, now as integer, ttl = 300 as integer)
     key = start.toStr()
-    cache.entries[key] = {index: index, expiresAt: now + ttl}
+    cache.entries[key] = {index: index, fetchedAt: now, expiresAt: now + ttl, staleUntil: now + ttl + 600}
     guideCacheTouch(cache, start)
     while cache.order.count() > cache.limit
         oldest = cache.order.shift()
         cache.entries.delete(oldest)
     end while
+end sub
+
+sub guideCachePrune(cache as object, now as integer)
+    retained = []
+    for each key in cache.order
+        entry = cache.entries[key]
+        expired = false
+        if entry.staleUntil <> invalid then expired = now >= entry.staleUntil
+        if entry.fetchedAt <> invalid
+            if entry.fetchedAt > now then expired = true
+        end if
+        if expired then cache.entries.delete(key) else retained.push(key)
+    end for
+    cache.order = retained
 end sub
 
 function guideCacheHas(cache as object, start as integer, now as integer) as boolean

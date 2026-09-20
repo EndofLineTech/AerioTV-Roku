@@ -28,6 +28,11 @@ sub measure()
     if m.fs.exists("tmp:/aeriotv-mxz1-probe/sentinel") then m.report.tmpMarkerPresent = ReadAsciiFile("tmp:/aeriotv-mxz1-probe/sentinel") = "cache-probe-v1"
     if m.fs.exists("cachefs:/aeriotv-mxz1-probe/sentinel") then m.report.cacheMarkerPresent = ReadAsciiFile("cachefs:/aeriotv-mxz1-probe/sentinel") = "cache-probe-v1"
     memorySample("start")
+    if m.report.phase = "cache"
+        probeCacheStore()
+        m.top.report = m.report
+        return
+    end if
     if m.report.phase = "http"
         probeHttpPolicy()
         m.top.report = m.report
@@ -116,6 +121,71 @@ sub measure()
     m.report.registryFreeAfter = registry.getSpaceAvailable()
     m.report.finalMemory = memorySample("done")
     m.top.report = m.report
+end sub
+
+sub probeCacheStore()
+    m.global.addFields({metadataSession: CreateObject("roDeviceInfo").getRandomUUID(), cacheEpoch: "probe"})
+    m.top.cacheEpoch = "probe"
+    scope = metadataCacheDigest("isolated-cache-probe")
+    other = metadataCacheDigest("isolated-other-probe")
+    now = CreateObject("roDateTime").asSeconds()
+    metadataCacheClear(scope)
+    payload = guideDictionary()
+    payload["ABC"] = [{title: "Upper", startsAt: now}]
+    payload["abc"] = [{title: "Lower", startsAt: now}]
+    m.report.write = metadataCacheWrite(scope, "guide", "window", "generation", now, payload)
+    restored = metadataCacheRead(scope, "guide", "window", "generation", now, true)
+    m.report.restoreState = restored.state
+    if restored.state = "fresh"
+        m.report.caseSensitive = restored.payload.count() = 2 and restored.payload["ABC"][0].title = "Upper" and restored.payload["abc"][0].title = "Lower"
+    end if
+    m.report.otherAccount = metadataCacheRead(other, "guide", "window", "generation", now, true).state
+    m.report.otherGeneration = metadataCacheRead(scope, "guide", "window", "changed", now, true).state
+    m.report.unauthorized = metadataCacheRead(scope, "guide", "window", "generation", now, false).state
+    m.report.stale = metadataCacheRead(scope, "guide", "window", "generation", now + 301, true).state
+    m.report.expired = metadataCacheRead(scope, "guide", "window", "generation", now + 901, true).state
+    for each file in metadataCacheFiles(m.fs)
+        if file.scope = scope then WriteAsciiFile(metadataCacheRoot() + "/" + file.name, "broken JSON")
+    end for
+    m.report.corrupt = metadataCacheRead(scope, "guide", "window", "generation", now, true).state
+    m.global.cacheEpoch = "changed"
+    m.report.oldEpochRejected = not metadataCacheWrite(scope, "guide", "late", "generation", now, payload)
+    m.top.cacheEpoch = "changed"
+    m.top.cancelRequested = true
+    m.report.cancelRejected = not metadataCacheWrite(scope, "guide", "late", "generation", now, payload)
+    m.top.cancelRequested = false
+    metadataCacheClear(scope)
+    for i = 0 to 65
+        metadataCacheWrite(scope, "mapping", i.toStr(), "generation", now + i, {link: "station"})
+    end for
+    files = metadataCacheFiles(m.fs)
+    m.report.fileCount = files.count()
+    m.report.bytes = 0
+    for each file in files
+        m.report.bytes += file.bytes
+    end for
+    m.report.oldestEvicted = metadataCacheRead(scope, "mapping", "0", "generation", now + 66, true).state = "miss"
+    metadataCacheClear(scope)
+    m.report.cleared = metadataCacheRead(scope, "mapping", "65", "generation", now + 66, true).state = "miss"
+    block = "xxxxxxxxxxxxxxxx"
+    for expand = 1 to 17
+        block = block + block
+    end for
+    m.report.byteWrites = true
+    for i = 0 to 3
+        if not metadataCacheWrite(scope, "guide", "large-" + i.toStr(), "generation", now + i, {blob: block}) then m.report.byteWrites = false
+    end for
+    block = invalid
+    m.report.boundedBytes = 0
+    for each file in metadataCacheFiles(m.fs)
+        m.report.boundedBytes += file.bytes
+    end for
+    m.report.byteEvicted = metadataCacheRead(scope, "guide", "large-0", "generation", now + 4, true).state = "miss"
+    WriteAsciiFile(metadataCacheRoot() + "/" + scope + "-interrupted.part", "leftover")
+    metadataCacheWrite(scope, "mapping", "cleanup", "generation", now, {link: "station"})
+    m.report.partsCleaned = m.fs.match(metadataCacheRoot(), "*.part").count() = 0
+    metadataCacheClear(scope)
+    memorySample("store-done")
 end sub
 
 sub probeHttpPolicy()
