@@ -2,7 +2,7 @@ sub main()
     channel = {uuid: "abc-123", name: "Example TV"}
     content = livePlaybackDescriptor("http://tv.example.test:9191/base/", channel)
     assertEqual(content.url, "http://tv.example.test:9191/base/proxy/ts/stream/abc-123?output_format=mpegts", "use existing continuous TS output")
-    assertEqual(content.streamFormat, "mpegts", "use Roku TS reader instead of MP4 range reader")
+    assertEqual(content.streamFormat, "ts", "use Roku accepted TS enum instead of invalid mpegts hint")
     assertEqual(content.programId, "abc-123", "stable media diagnostic identity")
     assertEqual(content.live, true, "live UI metadata")
     assertEqual(content.doesExist("httpHeaders"), false, "credentials are configured separately")

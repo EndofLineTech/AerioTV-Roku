@@ -3,11 +3,11 @@ function livePlaybackDescriptor(baseUrl as string, channel as dynamic) as dynami
     if base = "" or type(channel) <> "roAssociativeArray" then return invalid
     uuid = textValue(channel.uuid)
     if not CreateObject("roRegex", "^[A-Za-z0-9-]+$", "").isMatch(uuid) then return invalid
-    ' Verified on Streaming Stick 4K / OS 15.3.4. The MP4 reader makes Range
-    ' requests that Dispatcharr's continuous fMP4 output cannot satisfy.
+    ' Dispatcharr names its output mpegts; Roku's ContentNode enum is ts.
+    ' mpegts is rejected as NONE, leaving reader selection to autodetection.
     return {
         url: base + "/proxy/ts/stream/" + uuid + "?output_format=mpegts"
-        streamFormat: "mpegts", live: true
+        streamFormat: "ts", live: true
         title: textValue(channel.name), programId: uuid
     }
 end function
