@@ -7,6 +7,11 @@ sub main()
     if plan.offset <> 60 or plan.program.startsAt <> 1060 or plan.remaining <> 240 then stop
     if catchupSeekPlan(p, -30).offset <> 0 then stop
     if catchupSeekPlan(p, 9999).offset <> 240 then stop
+    context = {account: "account-a", channel: {uuid: "channel"}}
+    if not catchupLiveReturnAllowed(context, "account-a", {uuid: "channel"}) then stop
+    if catchupLiveReturnAllowed(context, "account-b", {uuid: "channel"}) then stop
+    if catchupLiveReturnAllowed(context, "account-a", invalid) then stop
+    if catchupLiveReturnAllowed(context, "account-a", {uuid: "other"}) then stop
     response = {session_id: "abcdefghijklmnop", channel_uuid: "channel", expires_at: 2060, playback_url: "/proxy/catchup/channel?session_id=abcdefghijklmnop"}
     if catchupSessionUrl("https://host.test", "channel", response, 2000) = "" then stop
     if catchupSessionUrl("https://host.test", "other", response, 2000) <> "" then stop

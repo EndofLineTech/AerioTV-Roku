@@ -4,6 +4,12 @@ function catchupEligible(program as dynamic, days as integer, now as integer) as
     return program.startsAt >= now - days * 86400 and program.endsAt <= now and program.endsAt > program.startsAt and program.endsAt - program.startsAt <= 86400
 end function
 
+function catchupLiveReturnAllowed(context as dynamic, account as string, channel as dynamic) as boolean
+    if type(context) <> "roAssociativeArray" or type(channel) <> "roAssociativeArray" then return false
+    if type(context.channel) <> "roAssociativeArray" then return false
+    return context.account = account and textValue(context.channel.uuid) <> "" and context.channel.uuid = channel.uuid
+end function
+
 ' Archive re-open seeks use minute-sized provider windows, not native TS seek.
 function catchupSeekPlan(program as dynamic, requested as dynamic) as dynamic
     if type(program) <> "roAssociativeArray" or not mediaNumber(requested) then return invalid

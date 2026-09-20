@@ -1,0 +1,42 @@
+' Isolated feasibility fixture: not imported by a production component.
+sub init()
+    m.top.functionName = "probeOperation"
+end sub
+
+sub probeOperation()
+    m.base = normalizeBaseUrl(m.top.baseUrl)
+    m.key = m.top.apiKey
+    m.timeout = 4000
+    result = {ok: false}
+    if m.top.operation = "status"
+        status = requestJson(m.base + "/proxy/ts/status/" + m.top.channelUuid)
+        ids = sourceClientSnapshot(status)
+        if ids <> invalid
+            result = {ok: true, clients: ids, count: ids.count()}
+        else if type(m.httpFailure) = "roAssociativeArray"
+            if m.httpFailure.status = 404 then result = {ok: true, clients: {}, count: 0}
+        end if
+    else if m.top.operation = "delete"
+        response = sessionMutation(m.base + "/api/catchup/sessions/" + m.top.sessionId + "/", "DELETE")
+        result = {ok: response.status = 204 or response.status = 404, status: response.status}
+    else if m.top.operation = "restart"
+        user = requestJson(m.base + "/api/accounts/users/me/")
+        if type(user) = "roAssociativeArray"
+            if textValue(user.id) = m.top.accountId and not m.top.cancelRequested
+                stamp = CreateObject("roDateTime")
+                stamp.fromSeconds(m.top.startEpoch)
+                response = sessionMutation(m.base + "/api/catchup/sessions/", "POST", {channel_uuid: m.top.channelUuid, start: stamp.toISOString(), duration: m.top.durationMinutes})
+                url = catchupSessionUrl(m.base, m.top.channelUuid, response.data, CreateObject("roDateTime").asSeconds())
+                result.status = response.status
+                if response.status = 201 and url <> ""
+                    result = {ok: true, status: 201, url: url, sessionId: response.data.session_id, echoedStart: response.data.start}
+                    if m.top.cancelRequested then sessionMutation(m.base + "/api/catchup/sessions/" + result.sessionId + "/", "DELETE")
+                end if
+            end if
+        end if
+    end if
+    m.key = ""
+    m.top.apiKey = ""
+    if m.top.cancelRequested then return
+    m.top.result = result
+end sub

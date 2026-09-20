@@ -6,8 +6,10 @@
     <field id="progress" type="assocarray" alwaysNotify="true" />
     <field id="diagnostic" type="assocarray" alwaysNotify="true" />
     <field id="archiveSeek" type="integer" alwaysNotify="true" />
+    <field id="goLiveRequested" type="boolean" alwaysNotify="true" />
     <function name="closeMedia" />
     <function name="suspendArchive" />
+    <function name="openArchiveActions" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />

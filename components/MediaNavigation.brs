@@ -239,6 +239,22 @@ sub onArchiveSeek(event as object)
     deleteOwnArchive(m.archiveSession, "onArchiveSeekReleased")
 end sub
 
+sub onArchiveGoLive(event as object)
+    if not m.mediaPlayer.isSameNode(event.getRoSGNode()) or m.page <> "onDemand" then return
+    if m.archiveContext = invalid or m.archiveSeeking = true then return
+    channel = m.guide.callFunc("channelByUuid", m.archiveContext.channel.uuid)
+    if not catchupLiveReturnAllowed(m.archiveContext, m.accountIdentity, channel)
+        showNotice("This channel is no longer in the authorized lineup. Return to the guide.")
+        return
+    end if
+    ' Release only this archive session; never stop the shared live channel.
+    m.mediaPlayer.callFunc("closeMedia")
+    cancelArchiveLoad()
+    releaseArchive()
+    m.page = "guide" ' makes a queued archive-closed event obsolete
+    startPlayback(channel, true)
+end sub
+
 sub onArchiveSeekReleased(event as object)
     if not isCurrentTaskEvent(event, m.archiveCleanupTask) then return
     m.archiveCleanupTask.unobserveField("result")

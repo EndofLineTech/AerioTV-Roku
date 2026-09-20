@@ -9,11 +9,13 @@ sub init()
     m.session = invalid
     m.opening = false
     m.seekingArchive = false
+    m.archiveDialog = invalid
 end sub
 
 sub openMedia()
     request = m.top.request
     if request = invalid then return
+    closeArchiveActions()
     m.opening = true
     m.seekingArchive = false
     m.video.control = "stop"
@@ -70,7 +72,7 @@ sub onMediaState()
             end if
         end if
         m.message.text = ""
-        if m.session.mode = "catchup" then m.message.text = "ARCHIVE: " + m.top.request.title + chr(10) + "Play/Pause  Pause    Rew / FF  Previous / next minute    Back  Guide"
+        if m.session.mode = "catchup" then m.message.text = "ARCHIVE: " + m.top.request.title + chr(10) + "Play/Pause  Pause    Rew / FF  Previous / next minute    Up  Controls / Go Live    Back  Guide"
         reportProgress()
     else if state = "error"
         m.mediaFailed = true
@@ -102,7 +104,7 @@ sub reportProgress()
     if m.session.mode = "catchup" and mediaNumber(m.session.position)
         elapsed = int(m.session.position)
         if m.top.request.offset <> invalid then elapsed += m.top.request.offset
-        m.message.text = "ARCHIVE: " + m.top.request.title + " — program offset " + elapsed.toStr() + "s" + chr(10) + "Play/Pause  Pause    Rew / FF  Previous / next minute    Back  Guide"
+        m.message.text = "ARCHIVE: " + m.top.request.title + " — program offset " + elapsed.toStr() + "s" + chr(10) + "Play/Pause  Pause    Rew / FF  Previous / next minute    Up  Controls / Go Live    Back  Guide"
     end if
     if m.video.state = "buffering"
         m.message.text = "Buffering (" + m.elapsed.totalSeconds().toStr() + "s). Back returns."
@@ -121,6 +123,7 @@ sub reportProgress()
 end sub
 
 sub closeMedia()
+    closeArchiveActions()
     if m.seekingArchive
         m.seekingArchive = false
         m.top.visible = false
@@ -155,6 +158,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     if m.session.mode = "catchup"
+        if key = "up"
+            openArchiveActions()
+            return true
+        end if
         if (key = "rewind" or key = "fastforward") and (m.video.state = "playing" or m.video.state = "paused")
             offset = 0
             if m.top.request.offset <> invalid then offset = m.top.request.offset
@@ -173,6 +180,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
 end function
 
 function suspendArchive() as object
+    closeArchiveActions()
     paused = m.video.state = "paused"
     reportProgress()
     m.seekingArchive = true
@@ -185,3 +193,41 @@ function suspendArchive() as object
     m.top.setFocus(true)
     return {paused: paused}
 end function
+
+sub openArchiveActions()
+    if m.session = invalid then return
+    if m.session.mode <> "catchup" or m.seekingArchive then return
+    closeArchiveActions()
+    dialog = CreateObject("roSGNode", "Dialog")
+    dialog.title = "Archive controls"
+    dialog.message = "Go Live returns to the current broadcast of this channel."
+    dialog.buttons = ["Go Live", "Keep watching archive"]
+    dialog.observeField("buttonSelected", "onArchiveAction")
+    dialog.observeField("wasClosed", "onArchiveActionsClosed")
+    m.archiveDialog = dialog
+    m.top.getScene().dialog = dialog
+end sub
+
+sub closeArchiveActions()
+    if m.archiveDialog = invalid then return
+    dialog = m.archiveDialog
+    m.archiveDialog = invalid
+    dialog.unobserveField("buttonSelected")
+    dialog.unobserveField("wasClosed")
+    dialog.close = true
+end sub
+
+sub onArchiveAction(event as object)
+    if m.archiveDialog = invalid then return
+    if not m.archiveDialog.isSameNode(event.getRoSGNode()) then return
+    goLive = event.getData() = 0
+    closeArchiveActions()
+    if goLive then m.top.goLiveRequested = true else m.top.setFocus(true)
+end sub
+
+sub onArchiveActionsClosed(event as object)
+    if m.archiveDialog = invalid then return
+    if not m.archiveDialog.isSameNode(event.getRoSGNode()) then return
+    m.archiveDialog = invalid
+    if m.session <> invalid then m.top.setFocus(true)
+end sub

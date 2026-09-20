@@ -70,11 +70,16 @@ sub archiveProbeTick()
     else if m.archiveProbeStage = 5
         video = m.mediaPlayer.findNode("mediaVideo")
         if video.state <> "playing" then return
-        m.mediaPlayer.callFunc("closeMedia")
+        m.archiveProbeChannel = m.archiveContext.channel.uuid
+        m.mediaPlayer.callFunc("openArchiveActions")
+        print "[archive-seek-probe] controls="; m.top.dialog.buttons.count()
+        m.top.dialog.buttonSelected = 0
         m.archiveProbeStage = 6
     else if m.archiveProbeStage = 6
+        if m.page <> "player" or m.video.state <> "playing" then return
         if type(m.archiveCleanupTask.result) <> "roAssociativeArray" then return
-        print "[archive-seek-probe] final-delete="; m.archiveCleanupTask.result.status; " page="; m.page
+        print "[archive-seek-probe] go-live-playing sameChannel="; m.playingChannel.uuid = m.archiveProbeChannel; " archiveReleased="; m.archiveSession = invalid; " delete="; m.archiveCleanupTask.result.status
+        stopPlayback()
         m.archiveProbeTimer.control = "stop"
         print "[archive-seek-probe] complete"
     end if

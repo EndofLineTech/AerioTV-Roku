@@ -1,0 +1,29 @@
+AerioTV Roku0.3.20 — Archive Go Live focused retest
+=================================================
+INTERNAL. Earlier completed worksheets remain unchanged.
+Date: __________ Tester: __________ Channel/program: _______________
+
+[     ] GOL01 Start: playing a completed-program archive. Press Up.
+Expected: Archive controls offers Go Live / Keep watching archive.
+Choose Keep watching archive, then reopen and use Back.
+Expected: same archive/pause state, usable player focus; no unexpected retune.
+
+[     ] GOL02 Start: playing archive. Up -> Go Live -> OK.
+Expected: current broadcast of the SAME authorized channel, correct live controls
+and audio preference. The archive does not reopen afterward.
+
+[     ] GOL03 Start: paused archive. Up -> Go Live -> OK.
+Expected: live broadcast starts rather than inheriting the archive's pause or
+displaying its old program title as if live. Back minimizes per the live contract.
+
+[     ] GOL04 Optional second viewer: keep that viewer on the live channel while
+performing GOL02. Expected: its playback continues. Check only this Roku's archive
+session settles away in Dispatcharr; do not stop a shared channel to clear it.
+
+No current-program Restart or60-minute rewind UI is enabled by this build. The
+native feasibility results are in TIMESHIFT-FEASIBILITY-0.3.20.md; those behaviors
+remain gated by scope decisions and additional evidence.
+
+Failure notes (ID, exact buttons, observed behavior, photo):
+__________________________________________________________________
+__________________________________________________________________
