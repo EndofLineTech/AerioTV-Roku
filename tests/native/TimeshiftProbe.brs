@@ -1,6 +1,8 @@
 ' Native feasibility fixture. Temporarily import in AerioScene and call installer;
 ' copy TimeshiftProbeTask.* as well. Remove all hooks after capture.
 ' Optional manifest timeshift_probe_restart_only=1 skips the one-minute pause run.
+' timeshift_probe_index selects an eligible guide channel; timeshift_probe_hold
+' controls near-live playing observation seconds (default 10).
 sub installTimeshiftProbe()
     m.timeProbeStage = 0
     m.timeProbeTicks = 0
@@ -37,22 +39,29 @@ sub timeshiftProbeTick()
     m.timeProbeTicks++
     percent = m.timeProbeMemory.getMemoryLimitPercent()
     if percent > m.timeProbePeak then m.timeProbePeak = percent
-    if m.timeProbeTicks > 230
+    if m.timeProbeTicks > 230 and m.timeProbeStage <> 9
         print "[timeshift-probe] timeout stage="; m.timeProbeStage
+        m.timeProbeNearLivePending = false
+        if m.timeProbeTask <> invalid then m.timeProbeTask.cancelRequested = true
         finishTimeshiftProbe()
         return
     end if
     if m.timeProbeStage = 0
         if m.capabilities.catchup <> "allowed" then return
         now = uiNow()
+        candidate = 0
+        wanted = val(CreateObject("roAppInfo").getValue("timeshift_probe_index"))
         for each channel in m.guide.config.channels
-            if instr(1, lcase(channel.name), "espn") > 0 and m.channelFacts.doesExist(channel.id)
+            if m.channelFacts.doesExist(channel.id)
                 if m.channelFacts[channel.id].catchupDays > 0
                     info = m.guide.callFunc("cachedPlaybackInfo", channel, now)
                     for each program in info.programs
-                        if program.startsAt < now - 300 and program.endsAt > now
-                            m.timeProbeChannel = channel
-                            m.timeProbeProgram = program
+                        if program.startsAt < now - 60 and program.endsAt > now
+                            if candidate = wanted
+                                m.timeProbeChannel = channel
+                                m.timeProbeProgram = program
+                            end if
+                            candidate++
                             exit for
                         end if
                     end for
@@ -61,7 +70,7 @@ sub timeshiftProbeTick()
             end if
         end for
         if m.timeProbeChannel = invalid then return
-        print "[timeshift-probe] current-program ageSeconds="; now - m.timeProbeProgram.startsAt; " remainingSeconds="; m.timeProbeProgram.endsAt - now
+        print "[timeshift-probe] channel="; m.timeProbeChannel.number; " current-program ageSeconds="; now - m.timeProbeProgram.startsAt; " remainingSeconds="; m.timeProbeProgram.endsAt - now
         m.timeProbeStatus = timeProbeTask("status")
         m.timeProbeStatus.control = "RUN"
         m.timeProbeStage = 1
@@ -142,9 +151,18 @@ sub timeshiftProbeTick()
         m.timeProbeVideo.content = content
         m.timeProbeVideo.control = "play"
         m.timeProbeRestartAt = m.timeProbeTicks
+        m.timeProbePlayingAt = invalid
         m.timeProbeStage = 7
     else if m.timeProbeStage = 7
         if m.timeProbeVideo.state = "playing"
+            if m.timeProbePlayingAt = invalid
+                m.timeProbePlayingAt = m.timeProbeTicks
+                m.timeProbeStats = timeProbeTask("archiveStats")
+                m.timeProbeStats.sessionId = m.timeProbeSession
+                m.timeProbeStats.control = "RUN"
+            end if
+            if m.timeProbeTicks - m.timeProbePlayingAt < 10 then return
+            if type(m.timeProbeStats.result) = "roAssociativeArray" then print "[timeshift-probe] own-archive-stats="; FormatJson(m.timeProbeStats.result)
             sampleTimeshift("ongoing-restart-playing")
             print "[timeshift-probe] original-start-echo-matches="; guideEpoch(m.timeProbeTask.result.echoedStart) = m.timeProbeProgram.startsAt
             m.timeProbeNearLivePending = true
@@ -156,6 +174,11 @@ sub timeshiftProbeTick()
     else if m.timeProbeStage = 9
         if type(m.timeProbeCleanup.result) <> "roAssociativeArray" then return
         print "[timeshift-probe] delete="; m.timeProbeCleanup.result.status
+        if not m.timeProbeCleanup.result.ok
+            print "[timeshift-probe] cleanup-failed; no further sessions opened"
+            m.timeProbeTimer.control = "stop"
+            return
+        end if
         if m.timeProbeNearLivePending = true
             m.timeProbeNearLivePending = false
             m.timeProbeTask = timeProbeTask("restart")
@@ -183,10 +206,19 @@ sub timeshiftProbeTick()
         m.timeProbeVideo.content = content
         m.timeProbeVideo.control = "play"
         m.timeProbeRestartAt = m.timeProbeTicks
+        m.timeProbePlayingAt = invalid
         m.timeProbeStage = 11
     else if m.timeProbeStage = 11
         if m.timeProbeVideo.state = "playing"
+            if m.timeProbePlayingAt = invalid then m.timeProbePlayingAt = m.timeProbeTicks
+            hold = 10
+            configured = val(CreateObject("roAppInfo").getValue("timeshift_probe_hold"))
+            if configured > 0 then hold = configured
+            if m.timeProbeTicks - m.timeProbePlayingAt < hold then return
             sampleTimeshift("near-live-window-playing")
+            finishTimeshiftProbe()
+        else if m.timeProbeVideo.state = "finished"
+            sampleTimeshift("near-live-window-ended")
             finishTimeshiftProbe()
         else if m.timeProbeVideo.state = "error" or m.timeProbeTicks - m.timeProbeRestartAt > 30
             print "[timeshift-probe] near-live-failure="; m.timeProbeVideo.errorCode; " detail="; sanitizePlaybackDiagnostic(m.timeProbeVideo.errorStr, m.apiKey)

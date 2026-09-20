@@ -94,8 +94,24 @@ sub onArchiveRequested(event as object)
     selected = event.getData()
     if m.guide.config = invalid then return
     if textValue(selected.scope) <> textValue(m.guide.config.scope) then return
+    channel = m.guide.callFunc("channelByUuid", selected.channel.uuid)
+    if channel = invalid then return
+    days = catchupChannelDays(m.capabilities.catchup, m.channelFacts, channel.id)
+    program = selected.program
+    restarting = selected.restart = true
+    if restarting
+        plan = catchupRestartPlan(program, days, uiNow())
+        if plan = invalid
+            showNotice("Restart is no longer available for this program. Reopen its details.")
+            return
+        end if
+        program = plan.program
+    else if not catchupEligible(program, days, uiNow())
+        showNotice("Archive is no longer available for this program. Reopen its details.")
+        return
+    end if
     stopPlayback()
-    m.archiveContext = {baseUrl: m.baseUrl, apiKey: m.apiKey, account: m.accountIdentity, channel: selected.channel, program: selected.program}
+    m.archiveContext = {baseUrl: m.baseUrl, apiKey: m.apiKey, account: m.accountIdentity, channel: channel, program: program, restart: restarting}
     m.archiveOffset = 0
     m.archiveStartPaused = false
     m.archiveSeeking = false
@@ -103,14 +119,15 @@ sub onArchiveRequested(event as object)
     m.archiveTask.baseUrl = m.baseUrl
     m.archiveTask.apiKey = m.apiKey
     m.archiveTask.accountId = m.serverAccountId
-    m.archiveTask.channelUuid = selected.channel.uuid
-    m.archiveTask.program = selected.program
+    m.archiveTask.channelUuid = channel.uuid
+    m.archiveTask.program = program
+    m.archiveTask.restart = restarting
     m.archiveTask.observeField("result", "onArchiveCreated")
     m.archiveTask.control = "RUN"
     m.page = "archiveLoading"
     m.guide.active = false
     m.top.setFocus(true)
-    showNotice("Opening archive... Back cancels.")
+    if restarting then showNotice("Opening Restart Program... Archive may not yet be available. Back cancels.") else showNotice("Opening archive... Back cancels.")
 end sub
 
 sub onArchiveCreated(event as object)
@@ -120,6 +137,12 @@ sub onArchiveCreated(event as object)
     m.archiveTask.unobserveField("result")
     m.archiveTask = invalid
     if not result.ok
+        message = result.message
+        if m.archiveContext <> invalid
+            if m.archiveContext.restart = true
+                if result.status = 400 or result.status = 404 or result.status = 500 or result.status = 502 or result.status = 503 or result.status = 504 then message = "Archive not yet available. The provider may be delayed or busy. Try again later or choose Watch channel LIVE."
+            end if
+        end if
         m.archiveSeeking = false
         m.mediaPlayer.callFunc("closeMedia")
         m.mediaPlayer.visible = false
@@ -127,7 +150,7 @@ sub onArchiveCreated(event as object)
         m.guide.visible = true
         m.guide.active = true
         releaseArchive()
-        showNotice(result.message)
+        showNotice(message)
         return
     end if
     m.archiveSession = result.sessionId
@@ -138,7 +161,7 @@ sub onArchiveCreated(event as object)
     m.guide.visible = false
     m.page = "onDemand"
     p = m.archiveContext.program
-    m.mediaPlayer.request = {account: m.accountIdentity, identity: result.sessionId, key: p.id, mode: "catchup", url: result.url, title: p.title, apiKey: m.apiKey, streamFormat: "ts", programStart: p.startsAt, program: p, offset: m.archiveOffset, startPaused: m.archiveStartPaused}
+    m.mediaPlayer.request = {account: m.accountIdentity, identity: result.sessionId, key: p.id, mode: "catchup", url: result.url, title: p.title, apiKey: m.apiKey, streamFormat: "ts", programStart: p.startsAt, program: p, offset: m.archiveOffset, startPaused: m.archiveStartPaused, restart: m.archiveContext.restart = true}
 end sub
 
 sub deleteOwnArchive(id as string, callback = "" as string)
@@ -227,7 +250,7 @@ end sub
 sub onArchiveSeek(event as object)
     if not m.mediaPlayer.isSameNode(event.getRoSGNode()) or m.page <> "onDemand" then return
     if m.archiveSeeking = true or m.archiveSession = invalid or m.archiveContext = invalid then return
-    plan = catchupSeekPlan(m.archiveContext.program, event.getData())
+    plan = catchupSeekPlan(m.archiveContext.program, event.getData(), uiNow())
     if plan = invalid then return
     if plan.offset = m.archiveOffset then return
     m.archiveSeeking = true
@@ -273,6 +296,7 @@ sub onArchiveSeekReleased(event as object)
     m.archiveTask.accountId = m.serverAccountId
     m.archiveTask.channelUuid = m.archiveContext.channel.uuid
     m.archiveTask.program = m.archiveSeekPlan.program
+    m.archiveTask.restart = m.archiveContext.restart = true
     m.archiveTask.observeField("result", "onArchiveCreated")
     m.archiveTask.control = "RUN"
 end sub

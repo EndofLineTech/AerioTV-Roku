@@ -4,6 +4,12 @@ sub init()
     m.video.observeField("state", "onMediaState")
     m.clock = m.top.findNode("progressClock")
     m.clock.observeField("fire", "reportProgress")
+    m.archivePanel = uiRect(m.top, 136, 734, 1648, 290, "0x081525E6")
+    m.archiveTrack = uiRect(m.top, 160, 756, 1600, 6, "0x52667AFF")
+    m.archiveFill = uiRect(m.top, 160, 756, 0, 6, "0x1AC4D8FF")
+    m.archivePanel.visible = false
+    m.archiveTrack.visible = false
+    m.archiveFill.visible = false
     m.message = uiLabel(m.top, "", 160, 780, 1600, 230, 28)
     m.message.wrap = true
     m.session = invalid
@@ -15,6 +21,9 @@ end sub
 sub openMedia()
     request = m.top.request
     if request = invalid then return
+    m.archivePanel.visible = request.mode = "catchup"
+    m.archiveTrack.visible = false
+    m.archiveFill.visible = false
     closeArchiveActions()
     m.opening = true
     m.seekingArchive = false
@@ -81,12 +90,23 @@ sub onMediaState()
         m.message.text = playbackFailureText(m.video.errorCode, sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)) + chr(10) + "OK Retry    Back Return"
         if m.session.mode = "vod" then m.message.text += chr(10) + "If this source keeps failing: Back to the title, then Choose source version (authorized accounts)."
         if m.session.mode = "catchup" then m.message.text = "Archive unavailable or expired. Return to the guide and open the program again for a new session." + chr(10) + "OK / Back  Return"
+        if m.top.request.restart = true
+            if nativePlaybackRefusal(m.video.errorStr) = "" then m.message.text = "Archive not yet available, or playback was interrupted. Try again later." else m.message.text = playbackFailureText(m.video.errorCode, sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey))
+            m.message.text += chr(10) + "Up  Go Live    OK / Back  Return"
+        end if
         m.video.visible = false
         m.top.setFocus(true)
         m.clock.control = "stop"
     else if state = "finished"
         if m.mediaFailed then return
         m.finished = true
+        if m.top.request.restart = true
+            m.clock.control = "stop"
+            m.video.visible = false
+            m.message.text = "Reached the end of the available archive window." + chr(10) + "Up  Go Live    OK / Back  Return"
+            m.top.setFocus(true)
+            return
+        end if
         closeMedia()
     end if
 end sub
@@ -101,10 +121,8 @@ sub reportProgress()
         m.session.state = m.video.state
     end if
     m.top.progress = {account: m.session.account, identity: m.session.identity, key: m.session.item, mode: m.session.mode, position: m.session.position, duration: m.session.duration, finished: m.finished, state: m.video.state, closing: m.closing}
-    if m.session.mode = "catchup" and mediaNumber(m.session.position)
-        elapsed = int(m.session.position)
-        if m.top.request.offset <> invalid then elapsed += m.top.request.offset
-        m.message.text = "ARCHIVE: " + m.top.request.title + " — program offset " + elapsed.toStr() + "s" + chr(10) + "Play/Pause  Pause    Rew / FF  Previous / next minute    Up  Controls / Go Live    Back  Guide"
+    if m.session.mode = "catchup" and (m.video.state = "playing" or m.video.state = "paused")
+        renderArchiveProgress()
     end if
     if m.video.state = "buffering"
         m.message.text = "Buffering (" + m.elapsed.totalSeconds().toStr() + "s). Back returns."
@@ -113,6 +131,7 @@ sub reportProgress()
             m.video.control = "stop"
             m.message.text = "Media did not start within 45 seconds. OK Retry    Back Return"
             if m.session.mode = "catchup" then m.message.text = "Archive startup timed out. OK / Back returns to the guide; reopen the program for a new session."
+            if m.top.request.restart = true then m.message.text = "Archive not yet available. Try again later." + chr(10) + "Up  Go Live    OK / Back  Return"
             m.video.visible = false
             m.clock.control = "stop"
             m.top.setFocus(true)
@@ -124,6 +143,11 @@ end sub
 
 sub closeMedia()
     closeArchiveActions()
+    if m.archivePanel <> invalid
+        m.archivePanel.visible = false
+        m.archiveTrack.visible = false
+        m.archiveFill.visible = false
+    end if
     if m.seekingArchive
         m.seekingArchive = false
         m.top.visible = false
@@ -167,7 +191,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
             if m.top.request.offset <> invalid then offset = m.top.request.offset
             position = offset + int(m.video.position)
             if key = "rewind" then position -= 60 else position += 60
-            plan = catchupSeekPlan(m.top.request.program, position)
+            plan = catchupSeekPlan(m.top.request.program, position, uiNow())
             if plan <> invalid then m.top.archiveSeek = plan.offset
             return true
         end if
@@ -183,6 +207,8 @@ function suspendArchive() as object
     closeArchiveActions()
     paused = m.video.state = "paused"
     reportProgress()
+    m.archiveTrack.visible = false
+    m.archiveFill.visible = false
     m.seekingArchive = true
     m.session = invalid
     m.clock.control = "stop"
@@ -193,6 +219,31 @@ function suspendArchive() as object
     m.top.setFocus(true)
     return {paused: paused}
 end function
+
+sub renderArchiveProgress()
+    request = m.top.request
+    offset = 0
+    if request.offset <> invalid then offset = request.offset
+    clock = catchupPlaybackClock(request.program, offset, m.session.position, uiNow())
+    if clock = invalid then return
+    m.archiveTrack.visible = true
+    m.archiveFill.visible = true
+    m.archiveFill.width = 1600 * clock.fraction
+    stateLabel = "ARCHIVE"
+    lengthLabel = "guide length"
+    if request.restart = true
+        stateLabel = "RESTART"
+        lengthLabel = "guide length; availability varies"
+    end if
+    if m.video.state = "paused" then stateLabel += " (paused)"
+    title = left(request.title, 100)
+    m.message.text = stateLabel + ": " + title + chr(10)
+    m.message.text += "Position " + catchupElapsedText(clock.position) + " / " + catchupElapsedText(clock.duration) + " (" + lengthLabel + ")"
+    if clock.pastEnd then m.message.text += " — past listed end"
+    m.message.text += chr(10) + "Estimated broadcast: " + uiLocalDate(clock.broadcast) + " " + uiTime(clock.broadcast) + "   |   Behind live: " + catchupElapsedText(clock.behindLive)
+    m.message.text += chr(10) + "Provider seek window: 0:00 - " + catchupElapsedText(clock.seekEnd) + " (availability varies)"
+    m.message.text += chr(10) + "Play/Pause  Pause    Rew / FF  Previous / next minute    Up  Controls / Go Live    Back  Guide"
+end sub
 
 sub openArchiveActions()
     if m.session = invalid then return

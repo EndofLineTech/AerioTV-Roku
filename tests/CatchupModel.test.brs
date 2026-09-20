@@ -11,6 +11,27 @@ sub main()
     if catchupRetentionLabel(3) <> "Catch-up: 3 days" then stop
     if catchupRetentionLabel(0) <> "" then stop
     p = {startsAt: 1000, endsAt: 1300}
+    restart = catchupRestartPlan(p, 3, 1125)
+    if restart = invalid or restart.program.startsAt <> 1000 or restart.program.endsAt <> 1300 or restart.availableUntil <> 1125 then stop
+    if catchupSeekPlan(p, 9999, 1125).offset <> 120 then stop
+    if catchupSeekPlan(p, 9999, 1000) <> invalid then stop
+    if p.endsAt <> 1300 then stop
+    if catchupRestartPlan(p, 0, 1125) <> invalid then stop
+    if catchupRestartPlan(p, 3, 999) <> invalid then stop
+    if catchupRestartPlan(p, 3, 1300) <> invalid then stop
+    if catchupRestartPlan(p, 3, 1000) <> invalid then stop
+    clock = catchupPlaybackClock(p, 60, 15, 2000)
+    if clock.position <> 75 or clock.broadcast <> 1075 or clock.behindLive <> 925 then stop
+    if clock.duration <> 300 or clock.seekEnd <> 240 or clock.fraction <> 0.25 then stop
+    pausedClock = catchupPlaybackClock(p, 60, 15, 2060)
+    if pausedClock.broadcast <> clock.broadcast or pausedClock.behindLive <> 985 then stop
+    pastEnd = catchupPlaybackClock(p, 240, 80, 2000)
+    if pastEnd.position <> 320 or pastEnd.fraction <> 1 or not pastEnd.pastEnd then stop
+    if catchupPlaybackClock(p, 0, invalid, 2000) <> invalid then stop
+    if catchupPlaybackClock(p, 0, -1, 2000) <> invalid then stop
+    if catchupPlaybackClock(p, -60, 10, 2000) <> invalid then stop
+    if catchupPlaybackClock({startsAt: 1300, endsAt: 1000}, 0, 10, 2000) <> invalid then stop
+    if catchupElapsedText(3661) <> "1:01:01" or catchupElapsedText(65) <> "1:05" then stop
     if not catchupEligible(p, 1, 2000) then stop
     if catchupEligible(p, 0, 2000) or catchupEligible(p, 1, 1200) then stop
     if catchupEligible(p, 1, 90000) then stop

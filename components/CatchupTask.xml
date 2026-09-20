@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="CatchupTask" extends="Task">
   <interface>
+    <field id="restart" type="boolean" value="false" />
     <field id="baseUrl" type="string" />
     <field id="apiKey" type="string" />
     <field id="accountId" type="string" />

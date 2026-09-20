@@ -1,4 +1,5 @@
 ' Native integration fixture: import temporarily in AerioScene and call its
+' Optional manifest archive_probe_restart=1 uses a real currently airing program.
 ' installer from init. It opens and replaces only this client's archive sessions.
 sub installArchiveSeekProbe()
     for each format in ["mp4", "mkv", "mpegts", "ts", "mpeg2ts", "mpeg2", "mpeg-ts", "mp2t", "MPEGTS"]
@@ -30,7 +31,17 @@ sub archiveProbeTick()
                 if m.channelFacts[channel.id].catchupDays > 0
                     m.archiveProbeStart = uiNow() - 7200
                     program = {id: "native-archive-seek", title: "Archive seek fixture", startsAt: m.archiveProbeStart, endsAt: m.archiveProbeStart + 300}
-                    m.guide.archiveRequest = {channel: channel, program: program, scope: m.guide.config.scope}
+                    restarting = CreateObject("roAppInfo").getValue("archive_probe_restart") = "1"
+                    if restarting
+                        program = invalid
+                        info = m.guide.callFunc("cachedPlaybackInfo", channel, uiNow())
+                        for each candidate in info.programs
+                            if candidate.startsAt < uiNow() - 180 and candidate.endsAt > uiNow() then program = candidate
+                        end for
+                        if program = invalid then return
+                        m.archiveProbeStart = program.startsAt
+                    end if
+                    m.guide.archiveRequest = {channel: channel, program: program, scope: m.guide.config.scope, restart: restarting}
                     m.archiveProbeStage = 1
                     exit for
                 end if
@@ -40,6 +51,11 @@ sub archiveProbeTick()
         video = m.mediaPlayer.findNode("mediaVideo")
         if video.state <> "playing" or m.page <> "onDemand" then return
         print "[archive-seek-probe] initial-playing offset="; m.archiveOffset; " duration="; video.duration
+        for each child in m.mediaPlayer.getChildren(-1, 0)
+            if child.subtype() = "Label"
+                print "[archive-seek-probe] clock-label="; instr(1, child.text, "Estimated broadcast:") > 0; " delay-label="; instr(1, child.text, "Behind live:") > 0; " restart="; m.mediaPlayer.request.restart
+            end if
+        end for
         m.archiveProbeOld = m.archiveSession
         m.mediaPlayer.archiveSeek = 60
         m.archiveProbeStage = 2

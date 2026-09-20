@@ -98,6 +98,9 @@ sub render()
     if model.catchupAvailable = true
         m.actions = ["catchup", "watch", "close"]
         labels = ["Play archive (provider availability)", "Watch channel LIVE", "Close"]
+    else if model.restartAvailable = true
+        m.actions = ["restart", "watch", "close"]
+        labels = ["Restart Program (provider availability)", "Watch channel LIVE", "Close"]
     end if
     if m.index >= labels.count() then m.index = labels.count() - 1
     for i = 0 to 2

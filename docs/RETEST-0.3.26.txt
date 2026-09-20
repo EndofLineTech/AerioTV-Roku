@@ -1,0 +1,73 @@
+AerioTV Roku 0.3.26 — Restart Program and archive position
+========================================================
+Date: __________ Tester: __________ Actual build: __________
+Write PASS / FAIL / SKIP in each box. Explain failures/skips below.
+These are new checks; your earlier 13 PASS results remain accepted.
+
+PREP: Pick a catch-up channel with a program currently airing, preferably at least
+five minutes into its broadcast. Open details through * -> Program details (OK on
+a current guide cell may tune live). The history icon still identifies catch-up.
+Native samples used3.3,15.4,57.5; current provider availability may differ.
+Channel/program: ____________________ Start/end: ___________________
+Optional other channel/provider: __________________________________
+
+[     ] RS01 Action eligibility
+Current program on an allowed catch-up channel: details offers Restart Program
+(provider availability), Watch channel LIVE, Close. Future programs and channels
+without catch-up do not offer Restart. Ended eligible programs still offer Play
+archive instead. Check a restricted account only if available; note any skipped
+portion rather than treating it as tested.
+
+[     ] RS02 Restart content and sound
+Choose Restart Program. Expected: earlier content from the selected program,
+audible sound, RESTART label and the correct pinned title. Confirm the actual
+content corresponds to the program beginning rather than the current live moment.
+If the beginning cannot be identified, record that gap; a correct label alone is
+not proof. Try the optional second channel/provider if available.
+
+[     ] RS03 Position and pause
+Observe Position advancing and the bar moving against guide length. Pause for
+15seconds. Expected: Position and estimated broadcast time stay fixed; Behind live
+increases (display updates about every5seconds). Resume: Position advances again.
+The guide length is not a claim of measured native duration or cached history.
+
+[     ] RS04 Minute seeks and bounds
+FF moves forward about a minute; Rew moves back. Pause, seek, and confirm pause is
+preserved. Rew near the start cannot go below0. FF cannot request unbroadcast future
+time. Provider availability may limit a request: record the exact message if it does.
+Expected: title remains pinned, displayed position includes the reopened offset.
+
+[     ] RS05 Go Live and cancel
+Up -> Go Live returns to the same channel's current broadcast with normal live
+controls. Repeat from paused Restart. Also press Back during a new Restart load.
+Expected: cancellation returns to the guide; no late archive opens afterward.
+
+[     ] RS06 Conditional unavailable case
+If a newly started program/provider naturally lacks its archive, attempt Restart.
+Expected: Archive not yet available (or a distinct permission/connection error
+when that is the reported problem), with a way back/explicit Go Live. Never an
+automatic substitution of live content labelled RESTART. SKIP if not reproducible.
+
+[     ] RS07 Sustained playback / broadcast rollover (longer optional check)
+Let a restarted program play toward its end, including across the live schedule's
+program boundary. Record how long it played: _______ and any early ending: ______.
+Expected: title/estimated broadcast clock remain tied to the archived content.
+If the provider finishes early, show an explicit available-window end screen;
+Up offers Go Live and Back returns. Record any missing remainder of the program
+as an availability limitation even if the end screen behaves correctly.
+
+[     ] RS08 Completed archive regression and readability
+Play an ended program. Expected: ARCHIVE label, guide-length progress bar, estimated
+broadcast time, delay and provider seek window all readable without clipping.
+Pause/resume, minute seeks, Back and Up -> Go Live still work. Confirm the overlay
+does not interfere with controls. If another viewer is available, verify its live
+channel continues while you open/close this Roku's archive.
+
+No60-minute retained live rewind, configurable skip intervals or held-scrub preview
+is claimed in this build. RS07 is deliberately a separate sustained-playback check.
+
+PASS: ____ FAIL: ____ SKIP: ____ (8 checks)
+Notes: ID, channel/program, exact keys, actual result, time/photo; no credentials.
+__________________________________________________________________
+__________________________________________________________________
+__________________________________________________________________

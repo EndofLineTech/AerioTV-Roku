@@ -20,5 +20,20 @@ sub main()
     m.video.state = "finished"
     onMediaState()
     if m.session = invalid or m.finished then stop
+    m.session = mediaSession("account", "restart-session", "catchup", "program", 1000)
+    m.top.request.restart = true
+    m.mediaFailed = false
+    m.video.state = "finished"
+    onMediaState()
+    if m.session = invalid or not m.finished then stop
+    if m.clock.control <> "stop" or m.video.visible then stop
+    if instr(1, m.message.text, "end of the available archive window") = 0 then stop
+    m.video.state = "error"
+    m.video.errorStr = "HTTP 503"
+    onMediaState()
+    if instr(1, m.message.text, "Archive not yet available") = 0 then stop
+    m.video.errorStr = "HTTP 403"
+    onMediaState()
+    if instr(1, m.message.text, "Archive not yet available") > 0 then stop
     print "ALL TESTS PASSED"
 end sub

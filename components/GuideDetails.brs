@@ -93,7 +93,8 @@ end sub
 sub updateRichDetails()
     days = catchupChannelDays(m.top.catchupPermission, m.top.channelFacts, m.detailChannel.id)
     eligible = m.top.catchupPermission = "allowed" and catchupEligible(m.detailProgram, days, uiNow())
-    m.details.model = {program: m.detailProgram, channel: m.detailChannel, baseUrl: m.base, apiKey: m.key, settings: m.settings, reminded: hasReminder(m.reminders, m.detailChannel.uuid, m.detailProgram.id), catchupAvailable: eligible, catchupRetention: catchupRetentionLabel(days)}
+    restart = catchupRestartPlan(m.detailProgram, days, uiNow()) <> invalid
+    m.details.model = {program: m.detailProgram, channel: m.detailChannel, baseUrl: m.base, apiKey: m.key, settings: m.settings, reminded: hasReminder(m.reminders, m.detailChannel.uuid, m.detailProgram.id), catchupAvailable: eligible, restartAvailable: restart, catchupRetention: catchupRetentionLabel(days)}
 end sub
 
 sub updateReminders()
@@ -131,4 +132,5 @@ sub onRichDetailAction(event as object)
     m.top.setFocus(true)
     if action = "watch" then m.top.watchChannel = m.detailChannel
     if action = "catchup" then m.top.archiveRequest = {channel: m.detailChannel, program: m.detailProgram, scope: m.cacheScope}
+    if action = "restart" then m.top.archiveRequest = {channel: m.detailChannel, program: m.detailProgram, scope: m.cacheScope, restart: true}
 end sub

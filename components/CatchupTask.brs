@@ -20,8 +20,17 @@ sub runCatchup()
         end if
     else if not m.top.cancelRequested
         user = requestJson(m.base + "/api/accounts/users/me/")
+        if type(user) <> "roAssociativeArray"
+            result.message = "Could not verify account access. Reconnect and try again."
+            if type(m.httpFailure) = "roAssociativeArray" then result.status = m.httpFailure.status
+        else if textValue(user.id) <> m.top.accountId
+            result = {ok: false, status: 403, message: "Account changed. Reconnect before opening an archive."}
+        end if
         if type(user) = "roAssociativeArray"
-            if textValue(user.id) = m.top.accountId and not m.top.cancelRequested and catchupEligible(m.top.program, 30, CreateObject("roDateTime").asSeconds())
+            now = CreateObject("roDateTime").asSeconds()
+            eligible = catchupEligible(m.top.program, 30, now)
+            if m.top.restart then eligible = eligible or catchupRestartPlan(m.top.program, 30, now) <> invalid
+            if textValue(user.id) = m.top.accountId and not m.top.cancelRequested and eligible
                 stamp = CreateObject("roDateTime")
                 stamp.fromSeconds(m.top.program.startsAt)
                 duration = int((m.top.program.endsAt - m.top.program.startsAt + 59) / 60)
