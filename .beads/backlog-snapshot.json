@@ -14328,6 +14328,27 @@
         "id": 168,
         "issue_id": "AerioTV-Roku-l4j.10",
         "text": "Watchlist, hide/unhide/reset-hidden and watched/unwatched state implemented under account budget; hidden series suppress episodes and permission changes suppress stale shelf metadata. Unit coverage passes; full deletion reconciliation and physical curation validation remain. Evidence: docs/MEDIA-VALIDATION-0.3.15.md and docs/MEDIA-PROVIDER-CONTRACT.md; one physical worksheet maintained."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T15:35:04Z",
+        "id": 169,
+        "issue_id": "AerioTV-Roku-l4j.9",
+        "text": "0.3.16 follow-up adds admin-gated provider listing/filtering and account provider-filter bookmarks. Native UI returned6 providers and an honestly empty catalog for the selected provider/category combination; regular paging/categories/details/return-focus smoke passed. Filter applies catalog availability, not forced playback provider. Alphabet/global-search expansion still open."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T15:35:04Z",
+        "id": 170,
+        "issue_id": "AerioTV-Roku-l4j.10",
+        "text": "0.3.16 adds Remove selected saved entry in saved shelves, independent of server detail availability. Scope validation protects other connections. Hidden-series exclusion, reset-hidden and permission fingerprints remain; physical curation and deletion-reconciliation acceptance still pending."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T15:35:04Z",
+        "id": 171,
+        "issue_id": "AerioTV-Roku-l4j.12",
+        "text": "0.3.16 implements validated TMDB/YouTube links for viewing on another device, including correct episode URL identity. No inline trailer promise. Native details included the link action; identifier/path tests pass. Explicit provider-version playback remains gated by l4j.14; Auto is default. No story closure implied."
       }
     ],
     "labels": [

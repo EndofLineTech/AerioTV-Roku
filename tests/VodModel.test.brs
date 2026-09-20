@@ -17,5 +17,15 @@ sub main()
     page = vodCategoryPage(categories, 2, "https://host.test")
     if not page.ok or page.items.count() <> 5 or page.total <> 25 or page.next <> "" then stop
     if instr(1, FormatJson(page), "private") > 0 then stop
+    item.tmdbId = "603"
+    item.trailerId = "abcdefghijk"
+    if vodExternalLinks(item).count() <> 2 then stop
+    item.kind = "episode"
+    item.trailerId = ""
+    if vodExternalLinks(item).count() <> 0 then stop
+    item.seriesTmdbId = "1396"
+    item.season = "1"
+    item.episode = "2"
+    if vodExternalLinks(item)[0] <> "https://www.themoviedb.org/tv/1396/season/1/episode/2" then stop
     print "ALL TESTS PASSED"
 end sub

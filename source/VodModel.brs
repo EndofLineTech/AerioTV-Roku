@@ -25,9 +25,35 @@ function vodNormalize(raw as dynamic, kind as string) as dynamic
     item.actors = left(textValue(raw.actors), 500)
     item.director = left(textValue(raw.director), 160)
     item.airDate = left(textValue(raw.air_date), 20)
+    item.tmdbId = textValue(raw.tmdb_id)
+    if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(item.tmdbId) then item.tmdbId = ""
+    item.trailerId = textValue(raw.youtube_trailer)
+    if not CreateObject("roRegex", "^[A-Za-z0-9_-]{11}$", "").isMatch(item.trailerId) then item.trailerId = ""
     if type(raw.m3u_account) = "roAssociativeArray" then item.providerId = textValue(raw.m3u_account.id)
     if type(raw.series) = "roAssociativeArray" then item.seriesId = textValue(raw.series.id)
+    item.seriesTmdbId = ""
+    if type(raw.series) = "roAssociativeArray" then item.seriesTmdbId = textValue(raw.series.tmdb_id)
+    if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(item.seriesTmdbId) then item.seriesTmdbId = ""
     return item
+end function
+
+function vodExternalLinks(item as object) as object
+    links = []
+    numeric = CreateObject("roRegex", "^[0-9]+$", "")
+    id = textValue(item.tmdbId)
+    if (item.kind = "movie" or item.kind = "series") and numeric.isMatch(id)
+        kind = "movie"
+        if item.kind = "series" then kind = "tv"
+        links.push("https://www.themoviedb.org/" + kind + "/" + id)
+    else if item.kind = "episode"
+        seriesId = textValue(item.seriesTmdbId)
+        if numeric.isMatch(seriesId) and numeric.isMatch(textValue(item.season)) and numeric.isMatch(textValue(item.episode))
+            links.push("https://www.themoviedb.org/tv/" + seriesId + "/season/" + item.season + "/episode/" + item.episode)
+        end if
+    end if
+    trailer = textValue(item.trailerId)
+    if CreateObject("roRegex", "^[A-Za-z0-9_-]{11}$", "").isMatch(trailer) then links.push("https://www.youtube.com/watch?v=" + trailer)
+    return links
 end function
 
 function vodStreamFormat(extension as string) as string

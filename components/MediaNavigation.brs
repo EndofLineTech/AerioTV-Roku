@@ -29,7 +29,7 @@ sub onVodBookmark(event as object)
     if value.scope <> normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId then return
     if value.kind <> "movie" and value.kind <> "series" then return
     if type(m.accountPreferences.vodBrowse) <> "roAssociativeArray" then m.accountPreferences.vodBrowse = {}
-    m.accountPreferences.vodBrowse[value.kind] = {query: left(textValue(value.query), 120), category: left(textValue(value.category), 240), ordering: left(textValue(value.ordering), 30), page: value.page, index: value.index}
+    m.accountPreferences.vodBrowse[value.kind] = {query: left(textValue(value.query), 120), category: left(textValue(value.category), 240), providerId: left(textValue(value.providerId), 20), ordering: left(textValue(value.ordering), 30), page: value.page, index: value.index}
     persistAccountPreferences()
 end sub
 
@@ -41,7 +41,7 @@ sub updateLibraryPermissions()
         m.guide.moviesPermission = "denied"
         m.guide.seriesPermission = "denied"
     end if
-    m.vod.permissions = {movies: m.guide.moviesPermission, series: m.guide.seriesPermission}
+    m.vod.permissions = {movies: m.guide.moviesPermission, series: m.guide.seriesPermission, level: m.capabilities.level}
 end sub
 
 sub onVodPlay(event as object)
@@ -207,6 +207,16 @@ sub onVodStateChange(event as object)
     if not m.vod.isSameNode(event.getRoSGNode()) then return
     change = event.getData()
     if textValue(change.scope) <> normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId then return
+    if textValue(change.removeKey) <> ""
+        kept = []
+        for each entry in vodState(m.accountPreferences.vod)
+            if entry.key <> change.removeKey then kept.push(entry)
+        end for
+        m.accountPreferences.vod = kept
+        persistAccountPreferences()
+        m.vod.savedState = kept
+        return
+    end if
     if change.clearHidden = true
         m.accountPreferences.vod = vodState(m.accountPreferences.vod)
         for each entry in m.accountPreferences.vod

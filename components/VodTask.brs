@@ -34,10 +34,18 @@ sub loadVod()
         publishVod({ok: false, message: "Invalid catalog request."})
         return
     end if
-    if m.top.operation = "categories"
+    if m.top.operation = "categories" or m.top.operation = "providers"
         categoryType = "movie"
         if m.top.kind <> "movie" then categoryType = "series"
-        payload = requestJson(m.base + "/api/vod/categories/?category_type=" + categoryType + "&page_size=20&page=" + m.top.pageNumber.toStr())
+        path = "/api/vod/categories/?category_type=" + categoryType
+        if m.top.operation = "providers"
+            if cap.level < 10
+                publishVod({ok: false, message: "Provider listing requires an authorized admin account."})
+                return
+            end if
+            path = "/api/m3u/accounts/?is_active=true"
+        end if
+        payload = requestJson(m.base + path + "&page_size=20&page=" + m.top.pageNumber.toStr())
         result = vodCategoryPage(payload, m.top.pageNumber, m.base)
         if payload = invalid then result.message = m.failure
         publishVod(result)
@@ -101,6 +109,7 @@ sub loadVod()
     if m.top.titleOnly then searchKey = "name"
     if m.top.query <> "" then url += "&" + searchKey + "=" + encoder.escape(left(m.top.query, 120))
     if m.top.category <> "" then url += "&category=" + encoder.escape(m.top.category)
+    if CreateObject("roRegex", "^[0-9]+$", "").isMatch(m.top.providerId) then url += "&m3u_account=" + m.top.providerId
     if CreateObject("roRegex", "^[0-9]{4}$", "").isMatch(m.top.year) then url += "&year=" + m.top.year
     if m.top.seriesId <> ""
         if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(m.top.seriesId)

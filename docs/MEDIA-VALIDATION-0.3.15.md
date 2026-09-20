@@ -116,3 +116,21 @@ Outstanding work is still tracked, including physical checks, VOD range/resume a
 episode reliability, complete deletion reconciliation, provider/alphabet controls,
 TMDB/person discovery, explicit provider versions/links, playback-speed evidence,
 and the gated restart/rewind work. No epic is closed by this checkpoint.
+
+## 0.3.16 follow-up
+
+Added admin-gated provider filtering, account-scoped provider filter bookmarks,
+removal of a saved entry even when its catalog details are unavailable, and
+validated external TMDB/YouTube links. Episode links use the series/season/episode
+path rather than incorrectly treating an episode TMDB ID as a movie ID. These
+are links for another device, not inline trailer playback or TMDB recommendations.
+
+Native UI follow-up passed: six-button details including links, restored focus,
+paging/categories, **six provider choices**, and an honestly empty result for the
+first selected provider/category combination. Filtering catalog availability does
+not force a playback provider; Auto remains the transport default. Explicit
+provider version switching is still gated by `l4j.14`.
+
+Clear removed the prior diagnostic history; one new guide event arrived during
+the final sample. This is expected ongoing logging, not a failure to clear.
+The 37 suites and compiler/build checks passed. Probe hooks were removed again.

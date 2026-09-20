@@ -9,6 +9,7 @@ sub init()
     m.kind = "movie"
     m.query = ""
     m.category = ""
+    m.providerId = ""
     m.seriesId = ""
     m.ordering = "name"
     m.shelf = "catalog"
@@ -55,6 +56,7 @@ sub configureVod()
     m.index = 0
     m.query = ""
     m.category = ""
+    m.providerId = ""
     m.seriesId = ""
     m.items = []
     m.ordering = "name"
@@ -65,6 +67,7 @@ sub configureVod()
     if type(saved) = "roAssociativeArray"
         m.query = left(textValue(saved.query), 120)
         m.category = left(textValue(saved.category), 240)
+        m.providerId = left(textValue(saved.providerId), 20)
         m.ordering = textValue(saved.ordering)
         m.pageNumber = textValue(saved.page).toInt()
         if m.pageNumber < 1 then m.pageNumber = 1
@@ -77,7 +80,7 @@ end sub
 sub activateVod()
     m.top.visible = m.top.active
     if m.top.active
-        if m.shelf <> "catalog" and m.shelf <> "categories" then loadVodPage()
+        if m.shelf <> "catalog" and m.shelf <> "categories" and m.shelf <> "providers" then loadVodPage()
         drawVod()
         m.top.setFocus(true)
     else
@@ -108,14 +111,16 @@ sub loadVodPage(itemId = "" as string)
     m.task.pageNumber = m.pageNumber
     m.task.query = m.query
     m.task.category = m.category
+    m.task.providerId = m.providerId
     m.task.seriesId = m.seriesId
     m.task.itemId = itemId
     m.task.ordering = m.ordering
     m.task.cacheEpoch = m.global.cacheEpoch
     m.task.bypassCache = m.bypassCache
     m.bypassCache = false
-    if m.shelf <> "catalog" and m.shelf <> "categories" and itemId = "" then m.task.operation = "authorize"
+    if m.shelf <> "catalog" and m.shelf <> "categories" and m.shelf <> "providers" and itemId = "" then m.task.operation = "authorize"
     if m.shelf = "categories" then m.task.operation = "categories"
+    if m.shelf = "providers" then m.task.operation = "providers"
     m.task.observeField("result", "onVodLoaded")
     m.task.control = "RUN"
 end sub
@@ -185,6 +190,7 @@ sub drawVod()
     if m.shelf <> "catalog" then m.heading.text = "Library — " + m.shelf
     if m.query <> "" then m.heading.text += " — " + m.query
     if m.category <> "" and m.shelf = "catalog" then m.heading.text += " — " + m.category
+    if m.providerId <> "" and m.shelf = "catalog" then m.heading.text += " — Provider " + m.providerId
     if m.task = invalid
         m.status.text = "Page " + m.pageNumber.toStr() + "  |  " + m.items.count().toStr() + " titles loaded"
         if m.total <> invalid then m.status.text += " of " + m.total.toStr()
@@ -221,6 +227,21 @@ sub onVodDetailAction(event as object)
     if choice < 0 or choice >= m.detailActions.count() then return
     action = m.detailActions[choice]
     if action = "back" then return
+    if action = "links"
+        dialog = CreateObject("roSGNode", "Dialog")
+        dialog.title = "Open on another device"
+        message = "External links; these do not play inside AerioTV."
+        for each link in vodExternalLinks(m.detail)
+            message += chr(10) + link
+        end for
+        dialog.message = message
+        dialog.buttons = ["Close"]
+        dialog.observeField("buttonSelected", "closeVodLink")
+        dialog.observeField("wasClosed", "onVodDialogClosed")
+        m.dialog = dialog
+        m.top.getScene().dialog = dialog
+        return
+    end if
     entry = vodStateEntry(m.top.savedState, m.detail)
     if action = "watchlist" or action = "hidden" or action = "watched"
         patch = {}
@@ -271,6 +292,14 @@ sub openVodOptions()
     end if
     labels.append(["Sort: title / newest / year", "Refresh", "Continue Watching", "Watchlist", "Hidden titles", "Categories", "Reset hidden list", "Close"])
     m.optionCodes.append([3, 4, 5, 6, 7, 8, 9, 10])
+    if type(permissions) = "roAssociativeArray"
+        if permissions.level >= 10
+            labels.push("Filter by provider") : m.optionCodes.push(12)
+        end if
+    end if
+    if m.shelf = "continue" or m.shelf = "watchlist" or m.shelf = "hidden"
+        labels.push("Remove selected saved entry") : m.optionCodes.push(11)
+    end if
     dialog.buttons = labels
     dialog.observeField("buttonSelected", "onVodOption")
     dialog.observeField("wasClosed", "onVodDialogClosed")
@@ -298,6 +327,7 @@ sub onVodOption(event as object)
     else if choice = 1 or choice = 2
         m.shelf = "catalog"
         m.category = ""
+        m.providerId = ""
         m.kind = "movie"
         if choice = 2 then m.kind = "series"
         m.seriesId = ""
@@ -315,6 +345,11 @@ sub onVodOption(event as object)
     else if choice = 9
         m.top.stateChange = {scope: m.top.config.accountScope, clearHidden: true}
         m.shelf = "catalog"
+    else if choice = 11
+        if m.items.count() > 0 then m.top.stateChange = {scope: m.top.config.accountScope, removeKey: m.items[m.index].key}
+    else if choice = 12
+        m.shelf = "providers"
+        m.query = ""
     else if choice <> 4
         return
     end if
@@ -375,7 +410,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         m.index = 0
         loadVodPage()
     else if key = "OK" and m.items.count() > 0
-        if m.shelf = "categories"
+        if m.shelf = "categories" or m.shelf = "providers"
             categoryType = "movie"
             if m.kind <> "movie" then categoryType = "series"
             if m.kind = "episode"
@@ -383,7 +418,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
                 m.seriesId = ""
                 m.parentPage = invalid
             end if
-            m.category = m.items[m.index].value + "|" + categoryType
+            if m.shelf = "categories" then m.category = m.items[m.index].value + "|" + categoryType else m.providerId = m.items[m.index].id
             m.shelf = "catalog"
             m.pageNumber = 1
             m.index = 0
@@ -415,5 +450,10 @@ end function
 
 sub saveLibraryBookmark()
     if m.top.config = invalid or m.shelf <> "catalog" or m.kind = "episode" then return
-    m.top.bookmark = {scope: m.top.config.accountScope, kind: m.kind, query: m.query, category: m.category, ordering: m.ordering, page: m.pageNumber, index: m.index}
+    m.top.bookmark = {scope: m.top.config.accountScope, kind: m.kind, query: m.query, category: m.category, providerId: m.providerId, ordering: m.ordering, page: m.pageNumber, index: m.index}
+end sub
+
+sub closeVodLink(event as object)
+    if not isCurrentTaskEvent(event, m.dialog) then return
+    m.dialog.close = true
 end sub

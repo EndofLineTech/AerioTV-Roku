@@ -61,6 +61,19 @@ sub librarySmokeTick()
         status = m.vod.callFunc("libraryStatus")
         if status.loading then return
         print "[library-smoke] filtered="; FormatJson(status)
+        m.vod.callFunc("handleLibraryKey", "options", true)
+        m.top.dialog.buttonSelected = m.top.dialog.buttons.count() - 1
+        m.librarySmokeStep = 9
+    else if m.librarySmokeStep = 9
+        status = m.vod.callFunc("libraryStatus")
+        if status.loading then return
+        print "[library-smoke] providers="; FormatJson(status)
+        m.vod.callFunc("handleLibraryKey", "OK", true)
+        m.librarySmokeStep = 10
+    else if m.librarySmokeStep = 10
+        status = m.vod.callFunc("libraryStatus")
+        if status.loading then return
+        print "[library-smoke] provider-filter="; FormatJson(status)
         closeVodLibrary()
         recordDiagnostic("vod", 0, "Library smoke complete")
         showDiagnostics()

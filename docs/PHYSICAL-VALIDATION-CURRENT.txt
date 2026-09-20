@@ -1,4 +1,4 @@
-AerioTV Roku 0.3.15 — Consolidated pending physical validation
+AerioTV Roku 0.3.16 — Consolidated pending physical validation
 =============================================================
 INTERNAL WORKSHEET. Preserve completed older worksheets.
 Date: __________________ Tester: _________________________________
@@ -172,6 +172,20 @@ permitted destinations. This preference belongs to the connected account.
 Connect the other account and open its libraries. Expected: no prior-account
 progress, watchlist, hidden titles or stale detail action. SKIP without another
 account. Permission changes must not reveal cached saved entries from old grants.
+
+[     ] E14 Admin account, start: Movies or TV Shows. * -> Filter by provider ->
+select provider -> OK. Expected: matching catalog or honest empty result. Movies /
+TV Shows in Library options resets filters. This is availability filtering; media
+still uses Auto provider selection. SKIP if not an admin or no providers exist.
+
+[     ] E15 Start: Continue Watching / Watchlist / Hidden titles. Select an entry,
+then * -> Remove selected saved entry. Expected: local saved state is removed even
+if the title's server details are no longer available.
+
+[     ] E16 Start: details containing valid TMDB/trailer identifiers. Select
+External information / trailer links. Expected: readable links for another device,
+correct movie/series/episode destination, Close returns with usable focus. No
+promise of inline trailer playback. SKIP when the provider supplies no identifiers.
 
 F. COMPLETED-PROGRAM ARCHIVES
 ----------------------------

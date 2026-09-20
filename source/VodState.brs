@@ -113,6 +113,9 @@ function vodDetailMenu(item as object, entry as object) as object
     label = "Mark watched / remove progress"
     if entry.watched then label = "Mark unwatched"
     buttons.push(label) : actions.push("watched")
+    if vodExternalLinks(item).count() > 0
+        buttons.push("External information / trailer links") : actions.push("links")
+    end if
     buttons.push("Back") : actions.push("back")
     return {actions: actions, buttons: buttons}
 end function
