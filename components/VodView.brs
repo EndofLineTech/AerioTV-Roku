@@ -309,12 +309,13 @@ sub onVodDetailAction(event as object)
     end if
     if action = "episodes"
         saveLibraryBookmark()
-        m.parentPage = {page: m.pageNumber, index: m.index, query: m.query}
+        m.parentPage = {page: m.pageNumber, index: m.index, query: m.query, category: m.category, providerId: m.providerId}
         m.seriesId = m.detail.id
         m.kind = "episode"
         m.pageNumber = 1
         m.index = 0
         m.query = ""
+        m.category = ""
         m.shelf = "catalog"
         m.items = []
         loadVodPage()
@@ -449,6 +450,8 @@ function onKeyEvent(key as string, press as boolean) as boolean
             m.pageNumber = m.parentPage.page
             m.index = m.parentPage.index
             m.query = m.parentPage.query
+            m.category = m.parentPage.category
+            m.providerId = m.parentPage.providerId
             m.parentPage = invalid
             m.items = []
             loadVodPage()

@@ -25,6 +25,7 @@
   <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/CapabilityModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/VodModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/VodSeriesLoader.brs" />
   <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MetadataCacheStore.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />

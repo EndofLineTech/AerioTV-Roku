@@ -91,9 +91,7 @@ sub loadVod()
                         item = enhanced
                     end if
                 end if
-            else if m.top.kind = "series"
-                requestJson(url + m.top.itemId + "/provider-info/?include_episodes=false")
-            else if item.seriesId <> ""
+            else if m.top.kind = "episode" and item.seriesId <> ""
                 if relationQuery <> "" then m.maxResponseBytes = 8388608
                 info = requestJson(m.base + "/api/vod/series/" + item.seriesId + "/provider-info/?include_episodes=true" + relationQuery)
                 matched = false
@@ -159,7 +157,8 @@ sub loadVod()
     generation = authorization
     cacheKey = mid(url, len(m.base) + 1)
     now = CreateObject("roDateTime").asSeconds()
-    if not m.top.bypassCache
+    episodeStart = m.top.kind = "episode" and m.top.seriesId <> "" and m.top.pageNumber = 1
+    if not m.top.bypassCache and not episodeStart
         cached = metadataCacheRead(scope, "vod", cacheKey, generation, now, true)
         if cached.state = "fresh"
             data = cached.payload
@@ -172,6 +171,9 @@ sub loadVod()
     data = requestJson(url)
     result = vodPage(data, m.top.kind, m.base)
     if type(m.httpFailure) = "roAssociativeArray" then result.status = m.httpFailure.status
+    if episodeStart and m.top.query = "" and result.ok
+        if result.items.count() = 0 then result = vodHydrateEpisodes(m.top.seriesId, url, m.top.providerId)
+    end if
     if result.ok
         for each item in result.items
             item.authorization = authorization

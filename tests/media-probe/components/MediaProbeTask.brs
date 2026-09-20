@@ -29,6 +29,11 @@ sub discover()
         m.key = ""
         return
     end if
+    if kind = "series-audit"
+        auditSeriesEpisodes()
+        m.key = ""
+        return
+    end if
     if kind = "catchup"
         rows = requestPages("/api/channels/channels/?page_size=200")
         if rows = invalid
@@ -174,6 +179,45 @@ sub discover()
         m.top.media = media
     end if
     m.key = ""
+end sub
+
+sub auditSeriesEpisodes()
+    m.maxResponseBytes = 1048576
+    matches = vodPage(requestJson(m.base + "/api/vod/series/?page_size=20&name=Deep%20Space"), "series", m.base)
+    if not matches.ok or matches.items.count() = 0
+        m.top.report = {error: "DS9 catalog match unavailable"}
+        return
+    end if
+    print "[media-probe] ds9-matches="; matches.total
+    for each candidate in matches.items
+        print "[media-probe] ds9-title="; candidate.title; " id="; candidate.id; " tmdb="; candidate.tmdbId
+    end for
+    item = invalid
+    for each candidate in matches.items
+        if candidate.tmdbId = "580" then item = candidate
+    end for
+    if item = invalid
+        m.top.report = {error: "Exact Deep Space Nine series not found"}
+        return
+    end if
+    url = m.base + "/api/vod/episodes/?page_size=20&page=1&ordering=season_number,episode_number&series=" + item.id
+    before = vodPage(requestJson(url), "episode", m.base)
+    print "[media-probe] ds9-before ok="; before.ok; " total="; before.total; " rows="; before.items.count()
+    info = requestJson(m.base + "/api/vod/series/" + item.id + "/provider-info/?include_episodes=false")
+    if type(info) = "roAssociativeArray"
+        print "[media-probe] ds9-default fetched="; info.episodes_fetched; " detailed="; info.detailed_fetched
+        if type(info.m3u_account) = "roAssociativeArray" then print "[media-probe] ds9-default provider="; info.m3u_account.id
+    else if type(m.httpFailure) = "roAssociativeArray"
+        print "[media-probe] ds9-default failure="; m.httpFailure.category; " status="; m.httpFailure.status
+    end if
+    after = vodPage(requestJson(url), "episode", m.base)
+    print "[media-probe] ds9-after ok="; after.ok; " total="; after.total; " rows="; after.items.count()
+    m.clock = CreateObject("roTimespan")
+    m.clock.mark()
+    m.deadlineMs = 30000
+    repaired = vodHydrateEpisodes(item.id, url, "")
+    if not repaired.ok then print "[media-probe] ds9-attempts="; repaired.attempts; " provider-list="; repaired.providerListAvailable
+    m.top.report = {audit: true, before: before.total, afterDefault: after.total, hydrated: repaired.ok, total: repaired.total, loaded: repaired.items.count(), elapsedMs: m.clock.totalMilliseconds()}
 end sub
 
 sub inspectMediaResponse(media as object)
