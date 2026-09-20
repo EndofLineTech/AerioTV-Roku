@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="GuideTask" extends="Task">
   <interface>
+    <field id="cancelRequested" type="boolean" />
     <field id="baseUrl" type="string" />
     <field id="apiKey" type="string" />
     <field id="windowStart" type="integer" />
@@ -10,5 +11,7 @@
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
   <script type="text/brightscript" uri="GuideTask.brs" />
 </component>

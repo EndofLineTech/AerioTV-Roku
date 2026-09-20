@@ -48,5 +48,6 @@ sub loadDetails()
     m.key = ""
     m.top.apiKey = ""
     m.top.tmdbKey = ""
+    if m.top.cancelRequested = true then return
     m.top.result = result
 end sub

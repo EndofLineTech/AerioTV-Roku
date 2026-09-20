@@ -91,14 +91,21 @@ sub loadChannels()
     else
         warning = warning + " Groups unavailable; All Channels remains accessible."
     end if
+    if m.top.cancelRequested = true
+        m.key = ""
+        m.top.apiKey = ""
+        m.top.password = ""
+        return
+    end if
     m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id)}
     m.key = ""
     m.top.apiKey = ""
 end sub
 
 sub publishError(message as string)
-    m.top.result = {ok: false, message: message}
     m.key = ""
     m.top.apiKey = ""
     m.top.password = ""
+    if m.top.cancelRequested = true then return
+    m.top.result = {ok: false, message: message}
 end sub

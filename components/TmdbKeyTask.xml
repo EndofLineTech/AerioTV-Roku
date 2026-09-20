@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="TmdbKeyTask" extends="Task">
-  <interface><field id="token" type="string" /><field id="result" type="assocarray" alwaysNotify="true" /></interface>
+  <interface><field id="cancelRequested" type="boolean" /><field id="token" type="string" /><field id="result" type="assocarray" alwaysNotify="true" /></interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="TmdbKeyTask.brs" />
 </component>

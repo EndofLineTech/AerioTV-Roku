@@ -16,5 +16,6 @@ sub loadInfo()
     end if
     m.key = ""
     m.top.apiKey = ""
+    if m.top.cancelRequested = true then return
     m.top.result = result
 end sub

@@ -24,5 +24,6 @@ sub searchPrograms()
     m.key = ""
     m.top.apiKey = ""
     m.top.channels = []
+    if m.top.cancelRequested = true then return
     m.top.result = result
 end sub

@@ -28,6 +28,11 @@ sub measure()
     if m.fs.exists("tmp:/aeriotv-mxz1-probe/sentinel") then m.report.tmpMarkerPresent = ReadAsciiFile("tmp:/aeriotv-mxz1-probe/sentinel") = "cache-probe-v1"
     if m.fs.exists("cachefs:/aeriotv-mxz1-probe/sentinel") then m.report.cacheMarkerPresent = ReadAsciiFile("cachefs:/aeriotv-mxz1-probe/sentinel") = "cache-probe-v1"
     memorySample("start")
+    if m.report.phase = "http"
+        probeHttpPolicy()
+        m.top.report = m.report
+        return
+    end if
     if m.report.phase = "verify"
         m.report.tmpCleanup = m.fs.delete("tmp:/aeriotv-mxz1-probe")
         m.report.cacheCleanup = m.fs.delete("cachefs:/aeriotv-mxz1-probe")
@@ -111,6 +116,35 @@ sub measure()
     m.report.registryFreeAfter = registry.getSpaceAvailable()
     m.report.finalMemory = memorySample("done")
     m.top.report = m.report
+end sub
+
+sub probeHttpPolicy()
+    saved = CreateObject("roRegistrySection", "AerioTV")
+    m.base = normalizeBaseUrl(saved.read("serverUrl"))
+    m.key = saved.read("apiKey")
+    if saved.read("rememberApiKey") = "false" then m.key = ""
+    if m.base = "" or m.key = "" then return
+    response = requestJson(m.base + "/api/core/version/")
+    m.report.validJson = type(response) = "roAssociativeArray"
+    response = invalid
+    m.maxResponseBytes = 64
+    requestJson(m.base + "/api/channels/channels/summary/")
+    m.report.limitCategory = m.httpFailure.category
+    m.report.limitAttempts = m.httpAttempts
+    m.maxResponseBytes = 8388608
+    key = m.key
+    m.key = "deliberately-invalid-probe-key"
+    requestJson(m.base + "/api/accounts/users/me/")
+    m.report.authCategory = m.httpFailure.category
+    m.report.authAttempts = m.httpAttempts
+    m.key = key
+    m.top.cancelRequested = true
+    requestJson(m.base + "/api/core/version/")
+    m.report.cancelCategory = m.httpFailure.category
+    m.report.cancelAttempts = m.httpAttempts
+    m.report.remainingStagingFiles = m.fs.match("tmp:/", "aeriotv-http-*.json").count()
+    m.key = ""
+    key = ""
 end sub
 
 sub probeRequest(label as string, path as string, kind as string)

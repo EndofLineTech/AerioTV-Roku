@@ -12,5 +12,6 @@ sub testKey()
     result = {ok: ok, message: m.failure}
     if ok then result.token = token
     m.top.token = ""
+    if m.top.cancelRequested = true then return
     m.top.result = result
 end sub

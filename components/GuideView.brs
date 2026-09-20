@@ -162,7 +162,7 @@ sub suspendGuide()
     cancelGuideHold()
     if m.tmdbTask <> invalid
         m.tmdbTask.unobserveField("result")
-        m.tmdbTask.control = "STOP"
+        cancelNetworkTask(m.tmdbTask)
         m.tmdbTask = invalid
     end if
     cancelProgramDetail()
@@ -175,7 +175,7 @@ sub suspendGuide()
     m.loadDelay.control = "stop"
     if m.task <> invalid
         m.task.unobserveField("result")
-        m.task.control = "STOP"
+        cancelNetworkTask(m.task)
         m.task = invalid
     end if
     closePicker()
@@ -208,7 +208,7 @@ sub scheduleLoad()
         end for
         if needed and not relevant
             m.task.unobserveField("result")
-            m.task.control = "STOP"
+            cancelNetworkTask(m.task)
             m.task = invalid
         end if
     end if
@@ -861,7 +861,7 @@ end sub
 sub cancelProgramSearch()
     if m.searchTask <> invalid
         m.searchTask.unobserveField("result")
-        m.searchTask.control = "STOP"
+        cancelNetworkTask(m.searchTask)
         m.searchTask = invalid
     end if
 end sub

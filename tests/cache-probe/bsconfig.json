@@ -9,6 +9,8 @@
     {"src": "tests/cache-probe/components/CacheProbeTask.brs", "dest": "components/CacheProbeTask.brs"},
     {"src": "source/DispatcharrModel.brs", "dest": "source/DispatcharrModel.brs"},
     {"src": "source/DispatcharrHttp.brs", "dest": "source/DispatcharrHttp.brs"},
+    {"src": "source/HttpPolicy.brs", "dest": "source/HttpPolicy.brs"},
+    {"src": "source/HttpTransport.brs", "dest": "source/HttpTransport.brs"},
     {"src": "source/GuideModel.brs", "dest": "source/GuideModel.brs"}
   ],
   "stagingDir": "../../out/cache-probe-staging",

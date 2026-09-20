@@ -8,3 +8,15 @@ end function
 function connectionTimedOut(elapsedSeconds as integer) as boolean
     return elapsedSeconds >= 120
 end function
+
+sub cancelNetworkTask(task as dynamic)
+    if task = invalid then return
+    if type(task) = "roAssociativeArray"
+        task.cancelRequested = true
+    else if task.hasField("cancelRequested")
+        ' Allow the transport's bounded poll loop to cancel and delete staging.
+        task.cancelRequested = true
+    else
+        task.control = "STOP"
+    end if
+end sub

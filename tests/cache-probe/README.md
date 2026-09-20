@@ -9,6 +9,8 @@ Set `cache_probe_phase` in this fixture's manifest:
 - `seed`: storage plus API/memory measurements; leaves tiny sentinel markers.
 - `storage`: storage measurements without API calls.
 - `verify`: checks sentinel retention, deletes probe directories/registry section.
+- `http`: validates real JSON, a small response limit, one invalid probe credential,
+  pre-cancellation and staging cleanup. It never changes saved credentials.
 
 From this directory run `../../node_modules/.bin/bsc --project bsconfig.json`.
 From the repository root, with `ROKU_HOST` and `ROKU_DEV_PASSWORD` supplied in the

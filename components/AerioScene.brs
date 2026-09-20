@@ -346,7 +346,7 @@ sub failConnection(message as string)
     if m.task <> invalid
         m.task.unobserveField("result")
         m.task.unobserveField("progress")
-        m.task.control = "STOP"
+        cancelNetworkTask(m.task)
         m.task = invalid
     end if
     m.busy = false
@@ -411,7 +411,7 @@ sub cancelCapabilityRefresh()
     m.aacDiscoveryState = "idle"
     if m.refreshTask <> invalid
         m.refreshTask.unobserveField("result")
-        m.refreshTask.control = "STOP"
+        cancelNetworkTask(m.refreshTask)
         m.refreshTask = invalid
     end if
     m.aacProfile = invalid
@@ -419,7 +419,7 @@ sub cancelCapabilityRefresh()
     if m.capabilityTask <> invalid
         m.capabilityTask.unobserveField("profileResult")
         m.capabilityTask.unobserveField("result")
-        m.capabilityTask.control = "STOP"
+        cancelNetworkTask(m.capabilityTask)
         m.capabilityTask = invalid
     end if
 end sub
@@ -673,7 +673,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         content.url += "&output_profile=0"
     end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.11"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.12"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true
@@ -1318,7 +1318,7 @@ sub cancelSourceOperation()
     clearServerStreamInfo()
     if m.sourceTask <> invalid
         m.sourceTask.unobserveField("result")
-        m.sourceTask.control = "STOP"
+        cancelNetworkTask(m.sourceTask)
         m.sourceTask = invalid
     end if
 end sub
@@ -1326,7 +1326,7 @@ end sub
 sub clearServerStreamInfo()
     if m.streamInfoTask <> invalid
         m.streamInfoTask.unobserveField("result")
-        m.streamInfoTask.control = "STOP"
+        cancelNetworkTask(m.streamInfoTask)
         m.streamInfoTask = invalid
     end if
     m.serverStreamInfo = invalid

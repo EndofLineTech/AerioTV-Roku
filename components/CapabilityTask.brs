@@ -31,6 +31,10 @@ sub refreshCapabilities()
     end if
     ' Identity has been verified. Publish this prerequisite before optional
     ' version/settings/channel-fact requests, which may take many pages.
+    if m.top.cancelRequested = true
+        finish({ok: false})
+        return
+    end if
     m.top.profileResult = {accountId: accountId, state: profileState, profile: audioProfile, message: profileMessage}
     version = requestJson(m.base + "/api/core/version/")
     settings = requestJson(m.base + "/api/core/settings/")
@@ -45,5 +49,6 @@ end sub
 sub finish(result as object)
     m.key = ""
     m.top.apiKey = ""
+    if m.top.cancelRequested = true then return
     m.top.result = result
 end sub

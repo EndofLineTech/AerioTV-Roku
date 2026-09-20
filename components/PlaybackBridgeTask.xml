@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="PlaybackBridgeTask" extends="Task">
   <interface>
+    <field id="cancelRequested" type="boolean" />
     <field id="url" type="string" />
     <field id="baseUrl" type="string" />
     <field id="channelUuid" type="string" />
@@ -12,4 +13,6 @@
   <script type="text/brightscript" uri="PlaybackBridgeTask.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
 </component>

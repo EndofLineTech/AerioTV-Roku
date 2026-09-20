@@ -87,7 +87,7 @@ sub main()
     m.streamInfoTask = infoTask
     m.serverStreamInfo = {resolution: "old source"}
     clearServerStreamInfo()
-    assertEqual(infoTask.control, "STOP", "source transition cancels old metadata request")
+    assertEqual(infoTask.cancelRequested, true, "source transition cooperatively cancels old metadata request")
     assertEqual(infoTask.unobserved, true, "old metadata callback detached")
     assertEqual(m.streamInfoTask, invalid, "stale Task no longer current")
     assertEqual(m.serverStreamInfo, invalid, "old source facts cleared")

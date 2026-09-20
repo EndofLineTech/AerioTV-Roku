@@ -191,6 +191,10 @@ function playbackFailureText(code as integer, detail as string) as string
     if code = -5 then reason = "The Roku reported a media playback error."
     if isStartupBufferingStall(code, detail) then reason = "Playback stalled while buffering. Try this channel again."
     if instr(1, lcase(detail), "startup buffering timed out") > 0 then reason = "The channel did not start after one automatic retry. Try again or choose another channel."
+    refusal = nativePlaybackRefusal(detail)
+    if refusal = "connection-limit" then reason = "The server or provider connection limit was reached. Stop another session before trying again."
+    if refusal = "authentication" then reason = "The media request was not authorized. Check the account and server permissions."
+    if refusal = "rate-limit" then reason = "The media server is limiting requests. Wait before trying again."
     if instr(1, lcase(detail), "full-content response on a range request") > 0
         reason = "The server returned a continuous stream to a byte-range request. The playback transport is incompatible."
     end if
@@ -201,5 +205,14 @@ end function
 
 function isStartupBufferingStall(code as integer, detail as string) as boolean
     if code <> -5 then return false
+    if nativePlaybackRefusal(detail) <> "" then return false
     return instr(1, lcase(detail), "buffering is stalled") > 0
+end function
+
+function nativePlaybackRefusal(detail as string) as string
+    text = lcase(detail)
+    if instr(1, text, "connection limit") > 0 or instr(1, text, "max connections") > 0 or instr(1, text, "maximum connections") > 0 then return "connection-limit"
+    if CreateObject("roRegex", "http[^0-9]{0,24}(401|403)", "i").isMatch(text) then return "authentication"
+    if CreateObject("roRegex", "http[^0-9]{0,24}429", "i").isMatch(text) then return "rate-limit"
+    return ""
 end function

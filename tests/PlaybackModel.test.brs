@@ -21,6 +21,8 @@ sub main()
     assertEqual(isStartupBufferingStall(-5, "BUFFERING IS STALLED"), true, "native stall matching ignores case")
     assertEqual(isStartupBufferingStall(-5, "unsupported video codec"), false, "do not retry permanent format errors")
     assertEqual(isStartupBufferingStall(-1, "HTTP 401"), false, "do not retry authentication errors")
+    assertEqual(isStartupBufferingStall(-5, "buffering is stalled; HTTP error: 403"), false, "known media refusal overrides stall retry")
+    assertEqual(nativePlaybackRefusal("maximum connections reached"), "connection-limit", "explicit connection limit is actionable")
     assertEqual(instr(1, playbackFailureText(-2, ""), "timed out") > 0, true, "explain timeout")
     lineup = [
         {uuid: "first", name: "First"}

@@ -2,7 +2,7 @@ sub cancelProgramDetail()
     m.detailDelay.control = "stop"
     if m.detailTask <> invalid
         m.detailTask.unobserveField("result")
-        m.detailTask.control = "STOP"
+        cancelNetworkTask(m.detailTask)
         m.detailTask = invalid
     end if
 end sub

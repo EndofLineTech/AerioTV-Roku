@@ -4,4 +4,4 @@ minor_version=0
 build_version=1
 ui_resolutions=fhd
 splash_color=#0A1628
-cache_probe_phase=verify
+cache_probe_phase=http
