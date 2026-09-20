@@ -1,0 +1,65 @@
+AerioTV Roku 0.3.10 — Actual Fullscreen Hold-Star Test
+====================================================
+Date: ____________________ Tester: ___________________________________
+Roku model/OS: ____________________ Channel: __________________________
+
+This specifically tests HOLDING * during normal visible fullscreen video,
+not a tap and not Hide picture/wake. Both new cases retain 1920x1080 with
+no inset. Start with a fresh launch for EACH case.
+
+PATH
+----
+1. Home -> reopen AerioTV -> tune a working channel with picture and audio.
+2. OK -> Up -> Left/Right to Options -> OK.
+3. Fullscreen * diagnostic (temporary test) -> select case 9/10 or 10/10.
+   Scroll down the case list to reach these new entries.
+4. Check the banner number; wait one second.
+5. Press and HOLD * continuously for THREE seconds, then release it.
+   Do not tap repeatedly. If Roku's menu appears immediately, keep holding
+   through the three seconds and record whether anything else happens.
+6. If a menu is open, Back once to close it. Read the banner counters/status.
+   If no menu opens, read the banner before pressing Back.
+7. Back with no menu open exits the diagnostic and restores normal controls.
+
+The app starts a one-second timer ONLY after receiving a down event. Further
+down events are counted as repeats and do not restart that timer. Release
+stops it. A release with no delivered down is shown as RELEASE ONLY and cannot
+be called a detected hold. THRESHOLD REACHED means the app timer fired; your
+physical observation is still needed to establish correct behavior.
+
+Mark [     ] PASS / FAIL / SKIP.
+PASS = holding opens Aerio options WITHOUT Roku's menu appearing.
+If Roku appears first and Aerio appears later, mark FAIL and describe the sequence.
+
+[     ] A01 Case 9/10: Full size / HOLD * / Video focus.
+        Menu immediately: _____________ Menu by three seconds: ______________
+        Down events: ____ Repeats: ____ Releases: ____ App elapsed ms: _______
+        Banner status: ____________________________________________________
+        Picture remained fullscreen and audio continued: ___________________
+
+[     ] A02 Case 10/10: Full size / HOLD * / sibling focus.
+        Menu immediately: _____________ Menu by three seconds: ______________
+        Down events: ____ Repeats: ____ Releases: ____ App elapsed ms: _______
+        Banner status: ____________________________________________________
+        Picture remained fullscreen and audio continued: ___________________
+
+[     ] B01 Exiting restores normal controls without retuning or stopping audio.
+
+ONLY IF A CASE WORKS
+-------------------
+Repeat that case from Home/relaunch while playback is paused.
+[     ] C01 Holding * also works while paused.
+        Case / observed menu: _____________________________________________
+Re-enter that case and TAP * briefly instead of holding; wait two seconds.
+[     ] C02 The app does not mistake a short tap for a one-second hold.
+        Observed menu / counts / status: __________________________________
+If neither hold case works, mark C01/C02 SKIP.
+
+NOTES / PHOTO FILENAMES
+----------------------
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+
+Internal diagnostic only. Existing public v0.3.8 download is unchanged.
+Beads: ihp.22 / ihp.36. Save this file and tell me when updated.

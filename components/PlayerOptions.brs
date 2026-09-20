@@ -1,4 +1,5 @@
 sub init()
+    m.top.focusable = true
     m.top.visible = false
     uiRect(m.top, 0, 0, 1920, 1080, "0x000000BB")
     uiRect(m.top, 460, 155, 1000, 755, "0x0D1E35FF")
@@ -30,16 +31,31 @@ sub setMenu()
     m.list.content = content
     m.list.jumpToItem = 0
     if menu.focusIndex <> invalid then m.list.jumpToItem = menu.focusIndex
-    if m.top.active then m.list.setFocus(true)
+    if m.top.active then focusMenuInput()
 end sub
 
 sub onActive()
     m.top.visible = m.top.active
-    if m.top.active then m.list.setFocus(true)
+    if m.top.active
+        focusMenuInput()
+    else
+        m.top.consumeSelectRelease = false
+    end if
+end sub
+
+sub focusMenuInput()
+    if m.top.consumeSelectRelease then m.top.setFocus(true) else m.list.setFocus(true)
+end sub
+
+sub releaseSelectGuard()
+    if not m.top.active or not m.top.consumeSelectRelease then return
+    m.top.consumeSelectRelease = false
+    m.list.setFocus(true)
 end sub
 
 sub onSelected(event as object)
     if not m.top.active then return
+    if m.top.consumeSelectRelease then return
     if event.getData() < 0 or event.getData() >= m.top.menu.items.count() then return
     m.top.selection = m.top.menu.items[event.getData()]
 end sub
@@ -49,13 +65,31 @@ sub onFocused(event as object)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
-    if not press or not m.top.active then return false
+    if not m.top.active then return false
+    if m.top.consumeSelectRelease
+        if key = "OK"
+            if not press
+                releaseSelectGuard()
+            end if
+            return true
+        end if
+        if press and key <> "options"
+            m.top.consumeSelectRelease = false
+            m.list.setFocus(true)
+            if key = "up" or key = "down"
+                target = m.list.itemFocused
+                if key = "up" then target-- else target++
+                if target < 0 then target = 0
+                if target >= m.top.menu.items.count() then target = m.top.menu.items.count() - 1
+                m.list.jumpToItem = target
+                return true
+            end if
+        end if
+    end if
+    if not press or key = "options" then return false
     if key = "back"
         m.top.active = false
         m.top.backRequested = true
-    else if key = "options"
-        m.top.active = false
-        m.top.closed = true
     end if
     ' Don't let menu arrows reach the channel-switch handler.
     return true

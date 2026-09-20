@@ -11,7 +11,7 @@
   <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
   <script type="text/brightscript" uri="AerioScene.brs" />
-  <script type="text/brightscript" uri="OptionsProbe.brs" />
+  <script type="text/brightscript" uri="PlayerOptionsShortcut.brs" />
   <script type="text/brightscript" uri="StartupRecovery.brs" />
   <script type="text/brightscript" uri="AacStartup.brs" />
   <children>
@@ -22,7 +22,7 @@
       <Label id="miniCaption" translation="[1424,245]" width="400" height="22" maxLines="1" wrap="false" font="font:SmallestSystemFont" color="0x1AC4D8FF" />
     </Group>
     <Group id="videoViewport" clippingRect="[0,0,1920,1080]">
-      <AerioVideo id="video" visible="false" width="1920" height="1080" enableUI="false" allowOptionsKeyOverride="true" focusable="true" />
+      <AerioVideo id="video" visible="false" width="1920" height="1080" enableUI="false" allowOptionsKeyOverride="false" focusable="true" />
     </Group>
     <Group id="playerInput" focusable="true" />
     <PlayerInfo id="playerBanner" visible="false" />
@@ -33,7 +33,7 @@
       <Rectangle width="1920" height="1080" color="0x000000FF" />
       <Group id="pictureHint">
         <Label translation="[160,780]" width="1600" height="60" text="Picture hidden — foreground listening" font="font:MediumSystemFont" color="0x9EB5C9FF" />
-        <Label translation="[160,854]" width="1600" height="110" wrap="true" text="Press a navigation key to restore the picture. Play/Pause still works.&#10;Keep AerioTV open; the full video stream is still received." font="font:SmallSystemFont" color="0x9EB5C9FF" />
+        <Label translation="[160,854]" width="1600" height="110" wrap="true" text="Press an arrow, OK, or Back to restore the picture. Play/Pause still works.&#10;Keep AerioTV open; the full video stream is still received." font="font:SmallSystemFont" color="0x9EB5C9FF" />
       </Group>
     </Group>
     <Timer id="pictureHintTimer" duration="6" repeat="false" />
@@ -52,10 +52,6 @@
       <Label id="noticeText" translation="[184,44]" width="1552" height="72" wrap="true" font="font:SmallSystemFont" color="0xE8F3FAFF" />
     </Group>
     <Timer id="noticeTimer" duration="8" repeat="false" />
-    <Group id="optionsProbeHud" visible="false">
-      <Rectangle translation="[96,28]" width="1728" height="150" color="0x0A1628E0" />
-      <Label id="optionsProbeText" translation="[116,42]" width="1688" height="130" wrap="true" font="font:SmallSystemFont" color="0xFFFFFFFF" />
-    </Group>
-    <Timer id="optionsProbeRearm" duration="0.15" repeat="false" />
+    <Timer id="playerOkTimer" duration="1" repeat="false" />
   </children>
 </component>

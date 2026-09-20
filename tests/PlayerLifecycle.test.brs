@@ -6,6 +6,7 @@ sub main()
         return true
     end function}
     m.playerInput = m.top
+    m.playerOkTimer = {control: "stop"}
     m.page = "player"
     m.heldZap = ""
     m.heldZapTimer = {control: "stop"}
@@ -73,9 +74,6 @@ sub main()
     m.capabilities = {switchStreams: "allowed"}
     m.devicePreferences = normalizeDevicePreferences(invalid)
     m.accountPreferences = {videoAspects: {}}
-    openPlayerOptions("optionsProbeCases")
-    assertEqual(m.playerOptions.menu.items.count(), 6, "all diagnostic cases directly selectable")
-    assertEqual(m.playerOptions.menu.items[5].index, 5, "scaled fullscreen case reachable without Fast Forward")
     m.optionReturnAction = "audioMenu"
     openPlayerOptions("audio")
     assertEqual(m.playerOptions.menu.title, "Audio track", "audio submenu opens")
@@ -117,7 +115,9 @@ sub main()
     assertEqual(onKeyEvent("left", true), true, "stranded active controls recover")
     assertEqual(m.transport.forwarded, "left", "key dispatched to active controls")
     assertEqual(m.transport.focused, true, "displaced focus restored")
-    assertEqual(onKeyEvent("options", true), true, "star recovery opens application menu")
+    assertEqual(onKeyEvent("options", true), false, "fullscreen star is left to Roku")
+    assertEqual(m.playerOptions.active, false, "star does not open app options")
+    openPlayerOptions()
     assertEqual(m.playerOptions.menu.title, "AerioTV player options", "clearly branded app menu")
     assertEqual(m.video.content.programId, "a", "focus repair preserves content")
     m.userInfoOpen = false
@@ -144,11 +144,19 @@ sub main()
     assertEqual(onKeyEvent("up", false), true, "release captured")
     assertEqual(m.heldZap, "", "release clears held state")
     assertEqual(m.channelTuneTimer.control, "start", "one deferred tune after release")
-    m.optionsProbeActive = true
-    m.optionsProbeHeldKey = "fastforward"
-    assertEqual(onKeyEvent("fastforward", false), true, "Scene delivers diagnostic key-up before general release return")
-    assertEqual(m.optionsProbeHeldKey, "", "Scene release clears diagnostic latch")
-    m.optionsProbeActive = false
+    m.playerOptions.active = false
+    m.transport.active = false
+    m.userInfoOpen = false
+    m.pendingChannel = invalid
+    assertEqual(onKeyEvent("OK", true), true, "tap OK still opens info immediately")
+    assertEqual(m.userInfoOpen, true, "information is visible during hold preparation")
+    m.playerOkClock = {totalMilliseconds: function() as integer
+        return 1100
+    end function}
+    onPlayerOkHold()
+    assertEqual(m.playerOptions.active, true, "actual Scene hold opens Options")
+    assertEqual(m.playerOptions.consumeSelectRelease, true, "menu protects initiating release")
+    assertEqual(m.video.content.programId, "a", "hold preserves same playback content")
     m.pendingChannel = invalid
     m.apiKey = "test-only"
     m.video.content = lifecycleRetryContent(1)

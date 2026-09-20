@@ -5,11 +5,9 @@ sub init()
     m.screen = m.top.findNode("screen")
     m.guide = m.top.findNode("guide")
     m.video = m.top.findNode("video")
-    m.optionsProbeActive = false
-    m.optionsProbeHud = m.top.findNode("optionsProbeHud")
-    m.optionsProbeText = m.top.findNode("optionsProbeText")
-    m.optionsProbeRearm = m.top.findNode("optionsProbeRearm")
-    m.optionsProbeRearm.observeField("fire", "finishOptionsProbeRearm")
+    m.playerOkDown = false
+    m.playerOkTimer = m.top.findNode("playerOkTimer")
+    m.playerOkTimer.observeField("fire", "onPlayerOkHold")
     m.video.observeField("optionsKeyPress", "onNativeVideoOptions")
     m.video.observeField("playerKey", "onNativePlayerKey")
     m.hiddenCaptionMode = false
@@ -617,7 +615,7 @@ end sub
 sub startPlayback(channel as object, forceRetune = false as boolean, useAac = false as boolean, preserveStartupBudget = false as boolean)
     cancelAacWait()
     cancelAacFailure()
-    endOptionsProbe()
+    cancelPlayerOkHold()
     cancelHeldZap()
     m.audioCheck.control = "stop"
     restorePicture()
@@ -675,7 +673,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         content.url += "&output_profile=0"
     end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.8"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.11"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true
@@ -702,8 +700,8 @@ sub showChannelBanner(channel as object, hint as string)
 end sub
 
 function playerInfoHint() as string
-    hint = "OK  Info    Up/Down  Channel    Left  Channels    Right  Last    Replay  Recent    *  Options    Back  Minimize"
-    if m.userInfoOpen then hint = "OK  Hide info    Up/Down  Controls    Back  Hide info    Options button  App settings"
+    hint = "OK  Info    Hold OK  Options    Up/Down  Channel    Left  Channels    Right  Last    Replay  Recent    Back  Guide"
+    if m.userInfoOpen then hint = "OK  Hide info    Hold OK  Options    Up/Down  Controls    Back  Hide info"
     remaining = sleepTimerRemaining(m.sleepDeadline, uiNow())
     if remaining > 0 then hint += "    Sleep " + ((remaining + 59) \ 60).toStr() + "m"
     return hint
@@ -794,6 +792,7 @@ sub onBannerTimeout()
 end sub
 
 sub enterPlayerControls()
+    cancelPlayerOkHold()
     m.bannerTimer.control = "stop"
     m.userInfoOpen = true
     m.banner.visible = true
@@ -814,7 +813,7 @@ sub stopPlayback()
     cancelAacWait()
     cancelAacFailure()
     cancelStartupWatch()
-    endOptionsProbe()
+    cancelPlayerOkHold()
     cancelHeldZap()
     m.audioCheck.control = "stop"
     restorePicture()
@@ -857,7 +856,7 @@ sub stopPlayback()
 end sub
 
 sub minimizePlayback()
-    endOptionsProbe()
+    cancelPlayerOkHold()
     cancelHeldZap()
     restorePicture()
     if m.playingChannel = invalid then return
@@ -904,6 +903,7 @@ function currentVideoAspect() as string
 end function
 
 sub applyVideoLayout()
+    m.video.allowOptionsKeyOverride = m.mini
     width = 1920.0
     height = 1080.0
     origin = [0, 0]
@@ -944,7 +944,7 @@ sub onGuidePlayerRequest(event as object)
 end sub
 
 sub openChannelBrowser(mode = "channels" as string)
-    endOptionsProbe()
+    cancelPlayerOkHold()
     cancelHeldZap()
     if m.playingChannel = invalid then return
     m.channelTuneTimer.control = "stop"
@@ -1029,6 +1029,7 @@ sub togglePause()
 end sub
 
 sub openPlayerOptions(kind = "main" as string)
+    cancelPlayerOkHold()
     cancelHeldZap()
     previousKind = m.optionKind
     previousFocus = m.playerOptions.focusedIndex
@@ -1041,15 +1042,14 @@ sub openPlayerOptions(kind = "main" as string)
     m.bannerTimer.control = "stop"
     hideBanner()
     title = "AerioTV player options"
-    note = "Back returns to the parent menu; * returns to playback."
-    if kind = "main" then note = "Up/Down scroll all choices. Back or * returns to playback."
+    note = "Back returns to the parent menu."
+    if kind = "main" then note = "Up/Down scroll all choices. Back returns to playback."
     items = [
         {title: "Audio track", action: "audioMenu"}
         {title: "Audio compatibility: " + m.devicePreferences.audioMode, action: "audioModeMenu"}
         {title: "Captions: " + m.video.globalCaptionMode, action: "captionsMenu"}
         {title: "Subtitle track", action: "subtitleMenu"}
         {title: "Stream Info", action: "streamInfo"}
-        {title: "Fullscreen * diagnostic (temporary test)", action: "optionsProbe"}
         {title: "Video scale preference: " + m.devicePreferences.videoScale, action: "scaleMenu"}
         {title: "Channels", action: "channels"}
         {title: "Recently Watched", action: "recent"}
@@ -1069,15 +1069,7 @@ sub openPlayerOptions(kind = "main" as string)
     else if m.capabilities.switchStreams = "unknown"
         items.unshift({title: "Refresh source-switch permissions", action: "refreshCapabilities"})
     end if
-    if kind = "optionsProbeCases"
-        title = "Choose fullscreen * test"
-        note = "Select any case directly. Press * once, close its menu with Back, then Back exits the test."
-        items = []
-        names = optionsProbeNames()
-        for i = 0 to names.count() - 1
-            items.push({title: (i + 1).toStr() + "/6: " + names[i], action: "optionsProbeCase", index: i})
-        end for
-    else if kind = "clock"
+    if kind = "clock"
         title = "Clock format"
         items = []
         for each mode in ["system", "12", "24"]
@@ -1195,10 +1187,7 @@ sub onPlayerOption(event as object)
     if m.page <> "player" then return
     item = event.getData()
     if m.optionKind = "main" then m.optionReturnAction = item.action
-    if item.action = "optionsProbe"
-        openPlayerOptions("optionsProbeCases")
-        return
-    else if item.action = "clockMenu"
+    if item.action = "clockMenu"
         openPlayerOptions("clock")
         return
     else if item.action = "clock"
@@ -1303,7 +1292,6 @@ sub onPlayerOption(event as object)
     if item.action = "minimize" then minimizePlayback()
     if item.action = "stop" then stopPlayback()
     if item.action = "recoverPicture" then recoverFrozenPicture()
-    if item.action = "optionsProbeCase" then beginOptionsProbe(item.index)
     if item.action = "hidePicture"
         hidePicture()
         ' LabelList selection can transfer focus during the initiating OK event.
@@ -1447,15 +1435,14 @@ sub onSourceResult(event as object)
 end sub
 
 sub onPlayerOptionsClosed()
+    cancelPlayerOkHold()
     if m.page = "player" then focusPlaybackInput()
 end sub
 
 sub focusPlaybackInput()
     ' Give the Video override an actual input owner. The hidden Video cannot
     ' receive focus, so foreground listening uses the separate input Group.
-    probeSibling = false
-    if m.optionsProbeActive = true then probeSibling = m.optionsProbeMode <> 0
-    if m.pictureCover.visible or probeSibling
+    if m.pictureCover.visible
         m.playerInput.setFocus(true)
     else
         m.video.setFocus(true)
@@ -1481,7 +1468,7 @@ sub onPlayerOptionsBack()
 end sub
 
 sub hidePicture()
-    endOptionsProbe()
+    cancelPlayerOkHold()
     if m.playingChannel = invalid or m.mini then return
     if m.pictureCover.visible then return
     cancelHeldZap()
@@ -1522,28 +1509,11 @@ sub restorePicture()
 end sub
 
 sub onNativeVideoOptions(event as object)
-    recordOptionsProbeKey("video", event.getData())
-    if not event.getData()
-        if m.pictureWakeKey = "options" then m.pictureWakeKey = ""
-        return
-    end if
-    if m.pictureWakeKey = "options" then return
+    if not event.getData() or m.page <> "guide" then return
     if m.top.dialog <> invalid
         if not m.top.dialog.wasClosed then return
     end if
-    if m.pictureCover.visible
-        restorePicture()
-        m.pictureWakeKey = "options"
-    else if m.playerOptions.active
-        m.playerOptions.active = false
-        onPlayerOptionsClosed()
-    else if m.browser.active
-        m.browser.callFunc("handleOptionsShortcut")
-    else if m.page = "player"
-        openPlayerOptions()
-    else if m.page = "guide"
-        m.guide.callFunc("handleOptionsShortcut")
-    end if
+    m.guide.callFunc("handleOptionsShortcut")
 end sub
 
 sub onDecoderStats()
@@ -1809,7 +1779,6 @@ sub closeMessage(event as object)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
-    if key = "options" then recordOptionsProbeKey("scene", press)
     if key = m.heldZap and not press
         cancelHeldZap()
         m.channelTuneTimer.control = "stop"
@@ -1830,18 +1799,17 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if m.top.dialog <> invalid
         if not m.top.dialog.wasClosed then return false
     end if
+    if handlePlayerOkKey(key, press) then return true
     if m.page = "player"
         if key = "back" and press and m.pendingAacTune <> invalid
             cancelAacWait()
             showNotice("Pending channel tune cancelled.")
             return true
         end if
-        if not m.playerOptions.active and not m.browser.active
-            if handleOptionsProbeKey(key, press) then return true
-        end if
     end if
     if not press then return false
     if m.page = "player"
+        if key = "options" then return false
         if m.pictureCover.visible
             if key = "play"
                 togglePause()
@@ -1854,11 +1822,6 @@ function onKeyEvent(key as string, press as boolean) as boolean
             return true
         end if
         if m.playerOptions.active or m.browser.active then return false
-        if key = "options"
-            print "[player-input] Aerio options"
-            openPlayerOptions()
-            return true
-        end if
         if m.transport.active
             ' A key reaching the Scene instead of active controls means focus
             ' was displaced. Repair it and dispatch to the intended owner.
@@ -1869,11 +1832,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
             if m.userInfoOpen then hideBanner() else minimizePlayback()
             return true
         end if
-        if key = "OK"
-            print "[player-input] OK info"
-            togglePlayerInfo()
-            return true
-        else if key = "play"
+        if key = "play"
             togglePause()
             return true
         else if key = "playonly"

@@ -229,6 +229,14 @@ reviewable backup, not automatic Beads synchronization; the live Dolt database
 and runtime files are ignored by Git. A remote Dolt destination and restore drill
 remain tracked under `AerioTV-Roku-rgs.11`.
 
+## Development 0.3.11 — Hold OK player options
+
+The development build replaces fullscreen-star interception with **hold OK for
+about one second**. A short OK tap still shows/hides information, and the opening
+hold/release cannot activate a menu item. Guide star remains available. Fullscreen
+video stays full-size, and the experimental star menu is retired. These changes
+are not included in the published v0.3.8 ZIP linked above.
+
 ## 0.3.8 — Tester distribution and upstream branding
 
 Adds the upstream Apple TV AerioTV icon adapted to Roku launcher/splash sizes,

@@ -1,7 +1,9 @@
 sub main()
     m.top = {optionsKeyPress: false}
     init()
-    if not m.top.allowOptionsKeyOverride or m.top.enableUI then stop
+    if m.top.allowOptionsKeyOverride or m.top.enableUI then stop
+    if onKeyEvent("options", true) then stop
+    m.top.allowOptionsKeyOverride = true ' mini-guide forwarding only
     if not onKeyEvent("options", true) then stop
     if not m.top.optionsKeyPress then stop
     if not onKeyEvent("options", false) then stop

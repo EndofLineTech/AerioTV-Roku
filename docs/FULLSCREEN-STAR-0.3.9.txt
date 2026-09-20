@@ -1,0 +1,53 @@
+AerioTV Roku 0.3.9 — Fullscreen Native-UI Routing
+================================================
+Date: ____________________ Tester: ___________________________________
+Roku model/OS: ____________________ Channel: __________________________
+
+INTERNAL DIAGNOSTIC. These two new cases keep Video at 1920x1080, scale 1,
+translation 0. No inset, crop or smaller-video workaround is used.
+They enable the native Video UI dispatcher but request its controls hidden.
+This is an unproven hypothesis, not a claimed fix.
+
+Mark [     ] PASS / FAIL / SKIP. PASS means Aerio options WITHOUT Roku's menu.
+Record the actual menu and counters even if the result is a failure.
+
+FOR EACH CASE — start with a fresh launch
+---------------------------------------
+1. Home -> open AerioTV Roku Preview -> tune a known-working channel.
+2. Wait until video and audio are playing normally.
+3. OK -> Up -> Left/Right to Options -> OK.
+4. Select Fullscreen * diagnostic (temporary test).
+5. Select case 7/8 or 8/8 DIRECTLY. Do not run the inset cases.
+6. Confirm the banner's case number, wait one second, then press/release * once.
+7. Record the menu. If it opens, Back ONCE closes it; read the banner counters.
+   If nothing opens, read the counters before pressing Back.
+8. Back with no menu open exits the diagnostic and restores normal Video UI flags.
+
+[     ] A01 Case 7/8: Full size / native UI enabled / sibling focus.
+        Menu (Aerio/Roku/both/nothing): ________________________________
+        Delivered presses: ____ releases: ____ Picture remains full size: ____
+        Did native transport controls appear or playback pause? _____________
+
+[     ] A02 Case 8/8: Full size / native UI enabled / Video focus.
+        Menu (Aerio/Roku/both/nothing): ________________________________
+        Delivered presses: ____ releases: ____ Picture remains full size: ____
+        Did native transport controls appear or playback pause? _____________
+
+[     ] B01 Exiting restores ordinary app controls with no retune/audio interruption.
+
+If either case passes, repeat it after another Home/relaunch/tune.
+[     ] C01 The same fullscreen success repeats from a fresh launch.
+        Case: ____ Menu: __________________ Presses: ____ Releases: ____
+In that successful case, close the menu, pause playback, and press * again.
+[     ] C02 The case also works paused.
+        Menu: _____________________________ Presses: ____ Releases: ____
+If neither case passes, mark C01/C02 SKIP.
+
+NOTES / PHOTOS
+--------------
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+
+Do not repeat the already accepted startup/guide/held-channel tests here.
+The earlier results remain preserved. Beads: ihp.22 / ihp.35.

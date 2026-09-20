@@ -1,0 +1,63 @@
+AerioTV Roku 0.3.11 — Hold OK Player Options
+===========================================
+Date: ____________________ Tester: ___________________________________
+Roku model/OS: ____________________ Channel: __________________________
+
+INTERNAL ACCEPTANCE. This replaces fullscreen * with Hold OK.
+Mark [     ] PASS, FAIL, or SKIP; preserve completed earlier worksheets.
+No star-interception or inset experiments are required.
+
+START
+-----
+Tune a known-working channel -> wait for moving picture/audio and for the
+automatic info banner to disappear. Start each hold from fullscreen with
+menus/browsers/transport closed. Short OK still shows/hides information.
+
+A. MAIN SHORTCUT
+[     ] A01 A short OK tap shows info immediately; a second short tap hides it.
+Hold OK continuously for about one second, then RELEASE it.
+[     ] A02 AerioTV player options opens, with video still genuinely fullscreen.
+[     ] A03 Releasing OK does not select a menu item or stop/pause/retune video.
+Use Up/Down to Clock format -> OK; then Back to parent, Back to playback.
+[     ] A04 Menu selection works normally after release; Back restores focus.
+Hold OK again for three seconds before releasing it.
+[     ] A05 Menu opens once and stays open; continued holding selects nothing.
+Back to playback -> Play/Pause -> hold OK -> release.
+[     ] A06 Options opens while paused and preserves pause.
+Close options with Back; Play/Pause resumes.
+
+B. CONTEXT / CANCELLATION
+Tap OK to show info -> hold OK for one second -> release.
+[     ] B01 Hold OK also works when information is already visible.
+From bare fullscreen, press OK briefly and release; wait two seconds.
+[     ] B02 No delayed options menu opens after a short tap.
+Press OK, then Up before one second has elapsed.
+[     ] B03 Transport opens normally; the cancelled hold does not open Options later.
+From bare fullscreen: OK -> Up -> Left/Right to Options -> OK.
+[     ] B04 The existing transport Options route still works.
+Back to fullscreen -> Left to Channels -> select a working channel with OK.
+[     ] B05 Browser selection retains its normal meaning and does not open Options.
+
+C. GUIDE / HIDE / PRESENTATION
+Bare fullscreen -> Back to mini-guide -> *.
+[     ] C01 Guide/mini-guide * still opens guide options.
+Select AerioTV player options -> Hide picture -> release the selecting OK.
+Hold OK to wake, then release it; hold OK AGAIN as a separate gesture.
+[     ] C02 First hold only wakes; the second separate hold opens player options.
+[     ] C03 Hints show Hold OK / Options and do not promise fullscreen * handling.
+[     ] C04 The experimental fullscreen-star diagnostic menu entry is gone.
+[     ] C05 Picture sizing remains unchanged; no inset or additional border.
+Home -> relaunch.
+[     ] C06 Ordinary launch opens the guide with no diagnostic autoplay.
+
+Fullscreen * is now Roku's control; it is not an Aerio menu or wake shortcut.
+Use Back to close player options. Other already accepted features need no retest.
+
+FAILURE NOTES (ID, exact buttons, observed behavior, photo filename)
+-----------------------------------------------------------------
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+
+Beads: ihp.37. Save this file and tell me when updated.

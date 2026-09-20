@@ -44,6 +44,7 @@ end function
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if not press or not m.top.active then return false
+    if key = "options" then return false
     if key = "left"
         if m.index > 0 then m.index--
     else if key = "right"
@@ -52,8 +53,6 @@ function onKeyEvent(key as string, press as boolean) as boolean
         m.top.action = m.actions[m.index]
     else if key = "play"
         m.top.action = "play"
-    else if key = "options"
-        m.top.action = "options"
     else if key = "up"
         m.top.active = false
         m.top.infoFocus = true

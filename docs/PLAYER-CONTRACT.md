@@ -4,6 +4,10 @@ Decision: `AerioTV-Roku-ihp.1`. The direction/default and Back/minimize ladder
 were accepted by the Product Owner on 2026-09-18. Additional bindings below are
 the implementation contract to verify during device acceptance.
 
+0.3.11 decision: after fullscreen tap/hold-star experiments failed, the PO
+approved moving away from fullscreen star. Hold OK is the replacement shortcut;
+the old star-interception criteria are superseded, not declared fixed.
+
 - Default player direction matches Apple TV: **Up = next, Down = previous**.
   The choice is a persisted device preference so settings can expose an alternate
   guide-order mapping. Existing installs without a stored choice adopt the new
@@ -13,15 +17,21 @@ the implementation contract to verify during device acceptance.
   filter does not silently rewrite the guide's group.
 - Bare fullscreen: Left opens Channels; Right toggles the last channel; Replay
   opens Recently Watched. Held Up/Down repeats are coalesced before tuning.
-- OK shows/hides information. Up or Down from explicitly summoned information enters
+- Tap OK shows/hides information immediately. Hold OK for about one second in
+  fullscreen playback or information view opens player options, including while
+  paused. Repeats do not toggle information repeatedly; the opening hold/release
+  cannot activate an item in the newly opened menu. Another action or lifecycle
+  transition cancels a pending hold. Menu/browser/transport OK keeps its normal
+  selection behavior. Up or Down from explicitly summoned information enters
   the focusable transport row; Left/Right then move between controls and OK
   activates one. Up returns to the information panel. Auto tune-in information
   does not capture channel-surfing keys.
 - Explicit information remains open until dismissed; only automatic tune-in
   information expires. The custom Video owns bare-playback focus and forwards
-  keys to the Scene; hidden-picture mode uses a separate input Group. Video
-  requests Options-key override, pending physical-remote acceptance on the Stick.
-  The mini-guide also exposes AerioTV player options.
+  keys to the Scene; hidden-picture mode uses a separate input Group. Fullscreen
+  star is left to Roku; no application shortcut/wake behavior is promised for it.
+  Guide/mini-guide star remains app-owned where delivered. The mini-guide also
+  exposes AerioTV player options.
 - Back dismisses the innermost menu/browser group/list first. Back from explicit
   information/controls hides the chrome. Back from bare fullscreen minimizes the
   same Video session into the guide. Back from the mini-player guide expands it.
@@ -31,11 +41,11 @@ the implementation contract to verify during device acceptance.
 - No hold-Back or double-Back stop shortcut is introduced in this iteration.
   Repeated Back presses traverse the same visible ladder; Stop is unambiguous.
 - Player submenu Back returns to its parent option; source-change confirmation
-  returns to the source list. Star closes the entire options menu to playback.
+  returns to the source list. Back from the main options menu returns to playback.
 - Hide picture is a foreground-only player option. The explanation fades after
   six seconds; the existing connection continues with video/captions suppressed.
   The selecting OK gesture is consumed through release before a new wake gesture.
-  Play/Pause remains functional. The first navigation key restores the picture
+  Play/Pause remains functional. The first arrow, OK, or Back restores the picture
   and is consumed, including repeats until release. Later Back follows the normal
   ladder. Stop, errors, retune and mini-player transitions remove the cover.
   Home still exits the app; no background playback or TV-off behavior is promised.

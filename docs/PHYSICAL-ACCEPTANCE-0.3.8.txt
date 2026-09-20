@@ -1,0 +1,203 @@
+AerioTV Roku 0.3.8 — Remaining Physical Acceptance
+==================================================
+Date: ____________________ Tester: ___________________________________
+Roku model/OS: ____________________ App version: _____________________
+Dispatcharr version: ______________ Audio mode: _______________________
+Working channel used for star tests: _________________________________
+
+INTERNAL MAINTAINER WORKSHEET — for our development/acceptance session.
+Use the installed 0.3.8 build. Preserve earlier completed worksheets.
+About 15–20 minutes, plus any naturally occurring startup-stall checks.
+
+Mark each [     ] PASS, FAIL, or SKIP. Leave untested items blank.
+SKIP means the necessary condition did not occur; it is not a pass.
+Record failures even when a later workaround works. A failure in star
+handling must not prevent testing other features through the fallback menu.
+
+Run A, B, C, then D. They cover the remaining Live TV beads:
+ihp.15/.22/.33 (star), ihp.28 (post-wake star), ihp.18 (held channel release),
+and ihp.32 (startup recovery). Previously accepted guide/AAC/browser features
+are not being reopened by this worksheet.
+
+BUTTON PATHS / STARTING SCREENS
+-----------------------------
+Select an item = Up/Down to its label -> OK. In the horizontal transport row,
+use Left/Right to highlight an action -> OK.
+Tune = from the guide, highlight a currently airing channel/program -> OK.
+Bare fullscreen = playing video with app menus/info dismissed. Wait about
+8 seconds for the automatic tune-in information to disappear.
+
+PLAYER OPTIONS (known working): bare fullscreen -> OK -> Up -> Left/Right
+to Options -> OK. Down instead of Up also enters transport.
+STOP (short path): bare fullscreen -> OK -> Up -> Left/Right to Stop -> OK.
+MINI-GUIDE: Back from bare fullscreen. Back or Play expands again.
+RELAUNCH: Home -> open AerioTV Roku Preview again.
+
+When a menu is open, Back closes its inner layer first. Do not keep pressing
+Back blindly: from bare fullscreen it minimizes; in the diagnostic it exits.
+
+A. FULLSCREEN STAR: REMAINING DIAGNOSTIC CASES — ihp.15/.22/.33
+----------------------------------------------------------------
+Cases 1/6 and 2/6 already recorded zero star presses. Start with case 3.
+Use one reliably working channel for all cases, preferably 16:9 content.
+Keep playback running (not paused) for A03-A06.
+
+For EACH case below:
+1. Home -> reopen -> tune the same working channel; wait for moving video/audio.
+   A fresh launch per case prevents the prior case's native state carrying over.
+2. PLAYER OPTIONS -> Fullscreen * diagnostic (temporary test).
+3. Select the numbered case directly. No Fast Forward is required.
+4. Confirm the top banner says the intended case number; wait one second.
+5. Press physical * ONCE, then release. Note which menu appears.
+6. If a menu appears, press Back ONCE to close it. Read the banner counters.
+   If no menu appears, read the counters before pressing Back.
+7. Record menu, counts and actual picture size below. Back with no menu open
+   exits the diagnostic and restores normal picture sizing.
+
+PASS = AerioTV player options open WITHOUT Roku's system menu.
+FAIL = Roku menu, both menus, or nothing. A release count alone is not a pass.
+If the banner disappears unexpectedly, record it and re-enter the same case.
+
+[ FAIL    ] A03 Case 3/6: Full size / re-arm override after playback starts.
+        Menu (Aerio/Roku/both/nothing): ________________________________
+        Delivered presses: ____ releases: ____ Picture size: __________
+[ PASS   ] A04 Case 4/6: Inset 1888 x 1062 / sibling focus.
+        Menu: ____________________ Presses: ____ Releases: ____
+        Picture visibly inset, fullscreen, or other: __________________
+[ PASS    ] A05 Case 5/6: Half size 960 x 540 / sibling focus.
+        Menu: ____________________ Presses: ____ Releases: ____
+        Picture visibly half-size, fullscreen, or other: _______________
+[ FAIL    ] A06 Case 6/6: Half-size Video scaled 2x back to fullscreen.
+        Menu: ____________________ Presses: ____ Releases: ____
+        Picture actually fills the screen / other: ____________________
+[   PASS  ] A07 Exiting each case restores the normal picture and controls;
+            audio/video remain connected during the diagnostic.
+
+If A03 or A06 passes AND the picture is genuinely fullscreen:
+repeat that same case after another Home/relaunch/tune.
+[ SKIP    ] A08 The fullscreen success repeats after a fresh launch.
+        Case: ____ Menu: _____________ Presses: ____ Releases: ____
+In that working case, close the menu -> Play/Pause -> press * again.
+[ SKIP    ] A09 The same fullscreen case works while paused.
+        Case: ____ Menu: _____________ Presses: ____ Releases: ____
+If neither fullscreen case works, mark A08/A09 SKIP. An inset or half-size
+success is useful diagnostic evidence, not acceptance of fullscreen star.
+Notes/photos: ________________________________________________________
+_____________________________________________________________________
+
+B. STAR AFTER HIDE PICTURE / WAKE — ihp.28
+-----------------------------------------
+Start fresh: Home -> reopen -> tune -> wait for bare fullscreen.
+Do NOT leave a diagnostic case active for this section.
+PLAYER OPTIONS -> Hide picture (foreground listening) -> release OK.
+Wait for black picture, then hold * briefly to wake and release it.
+[  FAIL   ] B01 The wake gesture restores picture without also opening a menu.
+Now press * a SECOND, separate time, after the picture is visible.
+[  SKIP   ] B02 That fresh press opens AerioTV player options without Roku's menu.
+        Observed menu (Aerio/Roku/both/nothing): _______________________
+Record B01 and B02 independently. The earlier correction confirmed B02
+failed; passing the wake action alone does not establish menu interception.
+Notes: _______________________________________________________________
+
+C. HELD FULLSCREEN CHANNEL RELEASE — ihp.18
+------------------------------------------
+This is PLAYER channel surfing, not accelerated GUIDE scrolling.
+Use an existing guide group containing several working channels. To choose:
+guide * -> Channel groups (list fallback) -> select group -> tune a channel.
+PLAYER OPTIONS -> Channel direction -> Up next / Down previous (Apple TV).
+Close menus and wait for bare fullscreen.
+
+Hold Up for about 2 seconds. Watch the channel preview, then RELEASE Up.
+[  PASS   ] C01 Previews advance while held, without playing every preview channel.
+[  PASS   ] C02 Release tunes the final previewed channel once; it does not drift
+            to another channel after release.
+        Final preview: __________________ Actual tuned: _______________
+Repeat holding Down for about 2 seconds, then release.
+[  PASS   ] C03 Down also settles on its final preview without intermediate tunes.
+        Final preview: __________________ Actual tuned: _______________
+
+PLAYER OPTIONS -> Channel direction -> Up previous / Down next (guide order).
+Repeat a short Up hold/release and a Down hold/release.
+[  PASS   ] C04 Both holds settle correctly with the alternate direction mapping.
+
+At the first/last channel of a small existing group, hold toward the boundary.
+[ PASS    ] C05 Selection clamps at the endpoint instead of wrapping.
+SKIP C05 if no suitable small group is available; record the reason.
+
+From bare fullscreen, hold Up to preview; while still holding it, press Back,
+then release both keys. This should cancel the preview and minimize the
+original stream. Wait 3 seconds, then Back or Play to expand.
+[  PASS   ] C06 No cancelled preview channel is tuned later.
+PLAYER OPTIONS -> use Up/Down to scroll menu items -> Back to playback.
+[  PASS   ] C07 Menu arrows do not change channels or leave a pending tune behind.
+Restore your preferred Channel direction afterward.
+If the final selected channel itself fails to stream, record that separately
+from whether selection/tuning settled on the correct channel.
+Notes: _______________________________________________________________
+_____________________________________________________________________
+
+D. STARTUP RECOVERY / CANCELLATION — ihp.32
+------------------------------------------
+Keep your preferred audio mode. If using Always AAC, it may first wait for
+profile discovery. That is a separate 20-second wait BEFORE media startup.
+Time startup buffering from the player entering BUFFERING, not from an AAC
+profile-discovery notice in the guide.
+
+Tune ESPN 408 or another known-good channel and watch for at least 60 seconds.
+[  PASS   ] D01 Normal startup and ongoing picture/audio work without a retry loop.
+Tune 2101 NCAAF | EMU/WIS if it is still an active, working feed. Otherwise
+use another channel that has shown the intermittent startup stall.
+        Channel / time / first outcome: _______________________________
+
+If media startup genuinely stalls, do not manually retune immediately.
+The app permits ONE automatic local retry for a confirmed native buffering
+stall, or after approximately 25 seconds still awaiting initial playback.
+[  PASS   ] D02 Exactly one startup-retry notice appears; it does not repeatedly retry.
+[ PASS    ] D03 The retry recovers moving picture and synchronized sound without input.
+        Time to notice: __________ Time to recovered playback: ________
+After recovery: PLAYER OPTIONS -> Audio compatibility.
+[  PASS   ] D04 The selected audio mode has not silently changed.
+If the retry ALSO fails, wait for the terminal result:
+[ PASS    ] D05 Playback ends with an error rather than retrying indefinitely.
+[  PASS   ] D06 A buffering-stall error describes stalled buffering, not proof of
+            an unsupported codec. Record the exact message below.
+
+Mark D02-D06 SKIP where the corresponding failure did not occur. A healthy
+tune does not pass the recovery test. HTTP/authentication or explicit codec
+errors are not the specific buffering-stall trigger; record their exact text.
+Do not interrupt a shared server or other viewers to manufacture a stall.
+
+Start another tune. While it is STILL initially buffering, use STOP, then
+wait at least 30 seconds without choosing another channel.
+[ PASS    ] D07 The old attempt stays stopped; no watchdog restarts it.
+Start a tune and select a DIFFERENT working channel while the first buffers.
+Wait at least 30 seconds on the replacement channel.
+[  PASS   ] D08 No stale retry brings the old channel back.
+Start a tune -> Back to mini-guide while it is still buffering.
+[  PASS   ] D09 Startup/recovery finishes in mini-guide without forcing fullscreen.
+SKIP D07-D09 if the startup window is too short to perform the relevant step.
+
+After successful playback, Play/Pause -> wait at least 30 seconds -> resume.
+[ PASS    ] D10 The startup watchdog does not retune paused/established playback.
+If a second viewer is available and a startup retry actually occurs on Roku:
+[ PASS    ] D11 The other viewer keeps picture/audio through that local retry.
+SKIP D11 if there is no second viewer or no actual retry.
+Error text / timestamps / observations: _______________________________
+_____________________________________________________________________
+_____________________________________________________________________
+
+FAILURE NOTES (ID, channel, exact buttons, expected/actual, photo filename)
+-----------------------------------------------------------------------
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+
+SKIPPED TESTS / REASONS
+----------------------
+_____________________________________________________________________
+_____________________________________________________________________
+_____________________________________________________________________
+
+After finishing, save this file and tell me it is updated. I will read it,
+record the physical evidence, and reconcile the affected Beads records.

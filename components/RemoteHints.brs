@@ -3,7 +3,7 @@ sub renderHints()
     x = 0
     size = m.top.fontSize
     pieces = CreateObject("roRegex", " {3,}", "").split(m.top.text)
-    keys = ["Hold Left", "Up/Down", "Left/Right", "Back or Play", "Play/Pause", "Replay", "Back", "Right", "Left", "Down", "Play", "Up", "OK", "*"]
+    keys = ["Hold Left", "Hold OK", "Up/Down", "Left/Right", "Back or Play", "Play/Pause", "Replay", "Back", "Right", "Left", "Down", "Play", "Up", "OK", "*"]
     for each piece in pieces
         text = piece.trim()
         button = ""

@@ -1,12 +1,13 @@
 sub init()
-    m.top.allowOptionsKeyOverride = true
+    m.top.allowOptionsKeyOverride = false
     m.top.enableUI = false
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
-    ' Handle at the native Video owner as well as at the Scene: some firmware
-    ' sends Options directly to the media node instead of bubbling normally.
+    ' Fullscreen Options belongs to Roku. Only forward where explicitly enabled
+    ' for the mini-guide; fullscreen app options use hold OK or transport.
     if key = "options"
+        if not m.top.allowOptionsKeyOverride then return false
         m.top.optionsKeyPress = press
         return true
     end if

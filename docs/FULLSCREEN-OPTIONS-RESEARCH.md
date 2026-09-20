@@ -3,6 +3,92 @@
 Date: 2026-09-19. Beads: `AerioTV-Roku-ihp.22`, original `ihp.15`.
 Target: Streaming Stick 4K 3820RW2, Roku OS 15.3.4, app 0.3.3.
 
+## Outcome / product pivot
+
+The PO reported both 0.3.10 hold-star cases failed and explicitly chose a
+different input direction. Development 0.3.11 retires fullscreen-star attempts
+in favor of hold OK. No inset is used. Guide star is retained. This supersedes
+the product requirement; it does not establish that Roku interception was fixed.
+The diagnostic implementation is archived under `tests/native/retired/` and
+excluded from the runtime package. Historical evidence below is preserved.
+
+## Fullscreen-only requirement and further research
+
+The PO explicitly rejects any inset. The passing inset is diagnostic evidence
+only, not an acceptable product solution. Preserve genuinely full-size video.
+
+Additional checks on 2026-09-19:
+
+- Current [ifSGScreen](https://developer.roku.com/dev/docs/ifsgscreen.md),
+  [ifSGNodeFocus](https://developer.roku.com/dev/docs/ifsgnodefocus.md) and
+  [ifAppManager](https://developer.roku.com/dev/docs/ifappmanager.md) references
+  do not document a pre-firmware fullscreen Options interception API.
+- The manifest's `disable_audio_guide_shortcut` concerns the four-press screen
+  reader shortcut; it is not a documented single-press media-menu override.
+- Published [OS 15.3 and 16.0 developer release notes](https://developer.roku.com/dev/docs/release-notes.md)
+  do not list a fullscreen Options override or a fix for this behavior. This
+  does not rule out undocumented firmware changes.
+- [A 2017 developer reply](https://forum.developer.roku.com/t/asterisk-key-while-video-playback/7874)
+  suggests overlaying another interface to receive the key before the player.
+  No implementation or applicable current device/firmware is supplied. Ordinary
+  sibling focus has already failed here; an overlay/modal input-stack mechanism
+  remains an unverified, distinct hypothesis—not a confirmed workaround.
+- [A parental-dialog report](https://forum.developer.roku.com/t/options-key-behavior-changes-in-video-player-during-playback/9131)
+  describes the system menu ceasing to appear after a PIN dialog. It does NOT
+  establish that the app receives the key, and must not be cited as a solution.
+- The [Stack Overflow answer](https://stackoverflow.com/questions/39346432/how-to-disable-options-button-functionality-when-video-playing-in-bright-script)
+  proposes a one-pixel reduction; excluded by the PO's fullscreen requirement.
+- Inspected Jellyfin's `VideoPlayerView.bs`, `.xml`, `OSD.bs` and manifest at
+  [`885304d3f64cad0d843e2d58925a303003499d8a`](https://github.com/jellyfin/jellyfin-roku/tree/885304d3f64cad0d843e2d58925a303003499d8a).
+  The inspected player/OSD handlers use OK/arrows for custom controls; no working
+  fullscreen star interception mechanism was found in those files. This is not
+  a claim about every file/platform combination in that project.
+
+All of our earlier diagnostic cases set `enableUI=false`. Its documented
+fullscreen Options exception makes a separate native-UI-enabled routing trial
+worth isolating, although the documentation does NOT promise it will work.
+0.3.9 adds opt-in cases 7/8 with `enableUI=true`, `showUI=false`, and genuine
+1920x1080 geometry under sibling/Video focus. Original UI flags are restored on
+exit. No inset is introduced into normal playback; no fullscreen fix is claimed.
+Procedure: `FULLSCREEN-STAR-0.3.9.txt`. A release-only callback, both menus, or a
+smaller picture cannot count as success.
+
+**PO result:** cases 7 and 8 both FAIL. Native UI activation with controls hidden
+did not fix interception under either focus configuration. Exact menu/count
+readings were not supplied. The diagnostic task ihp.35 is complete; the defect
+remains open. Further work should obtain a supported full-screen routing mechanism
+or explicit platform clarification rather than treating these flags as a fix.
+A source-linked inquiry is prepared in `ROKU-FULLSCREEN-OPTIONS-REPORT.md`; it has
+not been submitted externally.
+
+## Update: physical comparison on 0.3.8
+
+PO completed `PHYSICAL-ACCEPTANCE-0.3.8.txt`:
+
+| Configuration | Reported result |
+| --- | --- |
+| Full size, Video focus (earlier case 1) | Zero star presses reported |
+| Full size, sibling focus (earlier case 2) | Zero star presses reported |
+| Full size, override re-armed after playback | FAIL |
+| Inset 1888x1062, sibling focus | PASS |
+| Half size 960x540, sibling focus | PASS |
+| Half size scaled 2x back to fullscreen | FAIL |
+| Exit restores normal geometry/session | PASS |
+
+The new worksheet's numeric counters, observed-menu fields and visible-size
+notes were left blank. PASS means the worksheet's stated condition—Aerio options
+without the Roku menu—was met; do not invent measured counts or pixel bounds.
+
+This pattern supports fullscreen/final-geometry classification as the relevant
+factor: focus/override changes alone did not work, and scaling a smaller node
+back to fullscreen did not bypass interception. It does not establish the minimum
+working inset or a working zero-border fullscreen route. The PO subsequently
+rejected the inset as a product solution; it remains diagnostic evidence only.
+
+The same worksheet reports star wake-only behavior FAIL (B01), with the subsequent
+post-wake star test SKIP (B02). The precise failed wake subcondition is not stated.
+The diagnostic comparison task ihp.33 is complete; ihp.15/.22/.28 stay open.
+
 ## Observed acceptance evidence
 
 - Ordinary fullscreen star fails (A01), including after mini/fullscreen (A06).
@@ -98,8 +184,8 @@ flag. Exclude URLs, credentials and arbitrary native diagnostic objects.
 Compare a fresh launch/tune, paused playback, mini/fullscreen, and hide/wake.
 Reset between trials so a persistent video-plane flag cannot contaminate results.
 Then vary only one factor at a time: post-playing focus, video-plane flag, or
-visibility cycle. Only if these fail should a geometry trial be considered;
-reducing fullscreen size is a visual tradeoff and is not automatically a fix.
+visibility cycle. The geometry trials have now been completed and insets rejected
+by the PO. Further candidates must preserve genuine fullscreen rendering.
 
 Physical success means the Aerio menu opens with no Roku overlay and no retune,
 audio interruption, caption regression or broken Back behavior. A release-only

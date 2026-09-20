@@ -504,8 +504,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: 0.3.0 M04-M05/F03-F04 PASS: Today/Upcoming/Previous and Jump to Now, local/UTC distinctions including DST. Source-inspired date/time implementation and guide screenshot/focus evidence documented; no pixel-parity assertion.",
+        "closed_at": "2026-09-20T02:21:52Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -543,11 +543,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Refine date/time jumping to the TV reference",
-        "updated_at": "2026-09-19T04:02:13Z",
+        "updated_at": "2026-09-20T02:21:52Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -559,8 +559,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: 0.3.0 I01-I07/O01-O03 PASS: creation, membership, rename/reordering, first/last placement, persistence/account isolation and deletion.",
+        "closed_at": "2026-09-20T02:21:50Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -598,11 +598,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Create and manage named channel collections",
-        "updated_at": "2026-09-19T04:02:13Z",
+        "updated_at": "2026-09-20T02:21:50Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -614,8 +614,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: 0.3.0 H01-H04/H07/O01-O03 PASS; GuideSettingsModel tests cover decimal sorting, stable ties and favorite-order reconciliation.",
+        "closed_at": "2026-09-20T02:21:49Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -653,11 +653,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Add persisted channel sort and favorite ordering",
-        "updated_at": "2026-09-19T04:02:13Z",
+        "updated_at": "2026-09-20T02:21:49Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -669,8 +669,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: 0.3.0 J09-J11/O01 PASS: progressive category tint, neutral unknowns, focus contrast, custom palettes/rules and reset; model tests cover precedence.",
+        "closed_at": "2026-09-20T02:21:51Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -708,11 +708,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Color guide programs by configurable category rules",
-        "updated_at": "2026-09-19T04:02:13Z",
+        "updated_at": "2026-09-20T02:21:51Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -1769,8 +1769,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: 0.3.0 M01-M03/M06/O01 PASS: 1/3/7/14/30-day choices, bounded All Available, clamping/persistence and missing-data states. Fixed three-window resident cache and model boundary tests; long-depth browsing is not full-depth downloading.",
+        "closed_at": "2026-09-20T02:21:52Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -1808,11 +1808,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Make guide history and future depth configurable",
-        "updated_at": "2026-09-19T04:02:13Z",
+        "updated_at": "2026-09-20T02:21:52Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -2099,8 +2099,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: 0.3.0 K01-K07 PASS: provider art aspect/fallback, repeated detail navigation, TMDB key/opt-in/forget, exact-title fallback and attribution. Source trust helpers, bounded detail/prefetch and texture dimensions documented; no persistent cross-launch artwork-cache claim.",
+        "closed_at": "2026-09-20T02:21:51Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -2138,11 +2138,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Resolve and cache program artwork with optional TMDB fallback",
-        "updated_at": "2026-09-19T04:02:13Z",
+        "updated_at": "2026-09-20T02:21:51Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -2264,8 +2264,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: 0.3.0 L06-L09 PASS: paging, Jump to Top, decimal channel number/no-match behavior and visible-lineup scope. Held guide navigation also accepted in 0.3.3-REMAINING F01-F07.",
+        "closed_at": "2026-09-20T02:21:51Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -2303,11 +2303,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Add guide paging, Jump to Top and direct number entry",
-        "updated_at": "2026-09-19T04:02:13Z",
+        "updated_at": "2026-09-20T02:21:51Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -3128,11 +3128,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "open",
+        "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
         "title": "Validate a Roku-appropriate metadata storage and cache strategy",
-        "updated_at": "2026-09-18T22:42:27Z",
+        "updated_at": "2026-09-20T02:31:32Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -3419,8 +3419,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: 0.3.0 J01-J06 PASS: rich facts, lazy loading, missing/dummy metadata and tuning/focus behavior. Model coverage and bounded 32-entry/5-minute detail cache documented in implementation/device evidence.",
+        "closed_at": "2026-09-20T02:21:50Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -3458,11 +3458,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Retain rich EPG facts and support lazy program enrichment",
-        "updated_at": "2026-09-19T04:02:13Z",
+        "updated_at": "2026-09-20T02:21:50Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -3969,8 +3969,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: Original 0.3.0 pills/sidebar failures superseded by RETEST-0.3.3 A01-A05/B01-B07/C01-C03 all PASS; modal fallback and group-options focus confirmed in 0.3.3-REMAINING E05/E07/E08. Related 5tg.18/.19/.20/.22/.23/.25 accepted.",
+        "closed_at": "2026-09-20T02:21:53Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -4008,11 +4008,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Add top group pills and a docked group sidebar",
-        "updated_at": "2026-09-19T04:02:13Z",
+        "updated_at": "2026-09-20T02:21:53Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -4354,8 +4354,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: 0.3.0 N01-N07 PASS: save/cancel/markers, foreground timing, no duplicate notifications, expiry/schedule updates and per-account persistence. Foreground-only policy accepted; no background notification promise.",
+        "closed_at": "2026-09-20T02:21:52Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -4393,11 +4393,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Track program reminders with an explicit Roku delivery policy",
-        "updated_at": "2026-09-19T04:02:13Z",
+        "updated_at": "2026-09-20T02:21:52Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -4739,8 +4739,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: 0.3.0 M07-M10 PASS: guide/lineup refresh, preserved valid playback/selection, explicit stop for removed/unauthorized playing channel, and guide/detail cache clear. Incremental startup/cross-launch caching remain in mxz.",
+        "closed_at": "2026-09-20T02:21:52Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -4778,11 +4778,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Add channel refresh and cache-maintenance controls",
-        "updated_at": "2026-09-19T04:02:13Z",
+        "updated_at": "2026-09-20T02:21:52Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -5234,8 +5234,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: 0.3.0 J07-J08/O01 PASS: truthful badges, toggles/persistence and readable narrow cells; GuideModel tests cover optional flags and episode facts.",
+        "closed_at": "2026-09-20T02:21:50Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -5273,11 +5273,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Display configurable program badges and episode facts",
-        "updated_at": "2026-09-19T04:02:13Z",
+        "updated_at": "2026-09-20T02:21:50Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -5289,8 +5289,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: 0.3.0 H05-H07/C07-C08/O02 PASS; shared history store and removed/empty account-scoped history behavior covered by PreferenceModel/guide model tests.",
+        "closed_at": "2026-09-20T02:21:50Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -5328,11 +5328,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Expose Recently Watched as a guide group",
-        "updated_at": "2026-09-19T04:02:13Z",
+        "updated_at": "2026-09-20T02:21:50Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -6059,8 +6059,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: 0.3.0 G01-G06/G09-G11/O01-O03 passed. Original default-order caveat was subsequently resolved and accepted in 0.3.3-REMAINING G01-G05 (channel-number default).",
+        "closed_at": "2026-09-20T02:21:49Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -6098,11 +6098,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Manage group visibility, order and startup default",
-        "updated_at": "2026-09-19T04:02:13Z",
+        "updated_at": "2026-09-20T02:21:49Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -6444,8 +6444,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: 0.3.0 L03-L05 PASS: title/description queries, phrases/AND/OR, paging, empty/error/cancel states and correct guide-result location; ProgramSearchModel/TaskSupport coverage retained.",
+        "closed_at": "2026-09-20T02:21:51Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -6483,11 +6483,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Search program titles and descriptions across the guide",
-        "updated_at": "2026-09-19T00:32:50Z",
+        "updated_at": "2026-09-20T02:21:51Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -6499,8 +6499,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO acceptance reconciliation: 0.3.0 J01-J06/K01-K03 PASS: enriched detail/art, Watch LIVE distinction, missing-data fallback and exact guide focus restoration. Source-inspired presentation, not a claim of pixel-identical Apple TV rendering.",
+        "closed_at": "2026-09-20T02:21:51Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -6538,11 +6538,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Build a rich program detail and preview presentation",
-        "updated_at": "2026-09-19T04:02:13Z",
+        "updated_at": "2026-09-20T02:21:51Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -6780,12 +6780,12 @@
         "compacted_at": null,
         "compacted_at_commit": null,
         "compaction_level": 0,
-        "content_hash": "01f8cda05070cc0f0be25819827de7909111c3d696e68b9df24fa7ed22436a1d",
-        "created_at": "2026-09-19T18:48:42Z",
+        "content_hash": "610908dc6194aa2c5be76b5403d60ee19beb1ce59e1525bcd5eaec8797e4a4b8",
+        "created_at": "2026-09-20T00:14:09Z",
         "created_by": "MotWakorb",
         "crystallizes": 0,
         "defer_until": null,
-        "description": "PO reports channel 2101 NCAAF | EMU/WIS does not load on 0.3.3 (corrected from 2010). Native console shows tuning 2101 followed by state=buffering, without a captured error or playing transition. Investigate upstream availability versus Roku transport/decode before changing shared source. Record actual native/server facts and resolve or document provider-side failure.",
+        "description": "PO explicitly pivots away from fullscreen star after tap/hold experiments failed. Implement hold OK (~1s) to open player options, preserve tap OK info, consume initiating hold/release without selecting menu items, cancel on focus/lifecycle changes, retain guide star. Remove exposed experimental star diagnostic paths and update app hints/docs without changing fullscreen geometry. Supersede old star-specific acceptance rather than claiming firmware interception fixed.",
         "design": "",
         "due_at": null,
         "ephemeral": 0,
@@ -6793,9 +6793,9 @@
         "event_kind": "",
         "external_ref": null,
         "hook_bead": "",
-        "id": "AerioTV-Roku-ihp.32",
+        "id": "AerioTV-Roku-ihp.37",
         "is_template": 0,
-        "issue_type": "bug",
+        "issue_type": "feature",
         "last_activity": null,
         "metadata": "{}",
         "mol_type": "",
@@ -6816,8 +6816,8 @@
         "status": "in_progress",
         "target": "",
         "timeout_ns": 0,
-        "title": "Recover bounded startup buffering stalls and report accurate errors",
-        "updated_at": "2026-09-19T20:37:07Z",
+        "title": "Open player options with hold OK and retire fullscreen star interception",
+        "updated_at": "2026-09-20T00:17:23Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -6829,18 +6829,18 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "Created docs/PHYSICAL-ACCEPTANCE-0.3.8.txt: self-contained internal plan for six remaining Live TV records, exact remote paths, direct diagnostic cases 3-6 with fresh-launch isolation/counters, independent wake/menu outcomes, held-channel release and conditional startup recovery/cancellation checks. Previously completed worksheets and public README left unchanged.",
+        "closed_at": "2026-09-19T22:15:18Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
         "compaction_level": 0,
-        "content_hash": "69805c7eeaced4f07c6eb146126269aae9fe48041a5c1db67108508245c48e2c",
-        "created_at": "2026-09-19T19:32:28Z",
+        "content_hash": "daf759fa4a82522688208c24126d37a499c03a87fe0f9d1b37177f778f571083",
+        "created_at": "2026-09-19T22:12:39Z",
         "created_by": "MotWakorb",
         "crystallizes": 0,
         "defer_until": null,
-        "description": "Discriminating diagnostic for unresolved fullscreen star interception ihp.22. On the existing stream compare focused Video, sibling focus, post-playing override re-arm, inset, half-size, and half-size scaled back to fullscreen. Display press/release counters and log only safe playback/focus/geometry facts. No autoplay, retune, shared-source mutation, or persistent setting changes. Produce a short physical-remote worksheet; ECP currently 403.",
+        "description": "User is ready for physical checks. Provide one internal maintainer worksheet for installed 0.3.8, covering remaining fullscreen Options diagnostics, post-wake star, held-channel release and startup recovery with exact button paths, press/release counters and explicit conditional SKIPs. Preserve completed worksheets; no public README worksheet links.",
         "design": "",
         "due_at": null,
         "ephemeral": 0,
@@ -6848,7 +6848,62 @@
         "event_kind": "",
         "external_ref": null,
         "hook_bead": "",
-        "id": "AerioTV-Roku-ihp.33",
+        "id": "AerioTV-Roku-rgs.16",
+        "is_template": 0,
+        "issue_type": "task",
+        "last_activity": null,
+        "metadata": "{}",
+        "mol_type": "",
+        "notes": "",
+        "original_size": null,
+        "owner": "curt@lecaptain.org",
+        "payload": "",
+        "pinned": 0,
+        "priority": 2,
+        "quality_score": null,
+        "rig": "",
+        "role_bead": "",
+        "role_type": "",
+        "sender": "",
+        "source_repo": "",
+        "source_system": "",
+        "spec_id": "",
+        "status": "closed",
+        "target": "",
+        "timeout_ns": 0,
+        "title": "Prepare remaining 0.3.8 physical acceptance plan",
+        "updated_at": "2026-09-19T22:15:18Z",
+        "waiters": "",
+        "wisp_type": "",
+        "work_type": ""
+      },
+      {
+        "acceptance_criteria": "",
+        "actor": "",
+        "agent_state": "",
+        "assignee": null,
+        "await_id": "",
+        "await_type": "",
+        "close_reason": "Diagnostic implemented and physical comparison completed: PO reports cases 7/8 both FAIL. This rules out the tested native-UI-enabled configurations as a solution. The fullscreen interception defect remains open in ihp.15/.22/.28.",
+        "closed_at": "2026-09-19T22:57:20Z",
+        "closed_by_session": "",
+        "compacted_at": null,
+        "compacted_at_commit": null,
+        "compaction_level": 0,
+        "content_hash": "b9a119d65607e0afb71d452a1d806b4174356f7f1779c38e57e1895dc111c6fa",
+        "created_at": "2026-09-19T22:47:59Z",
+        "created_by": "MotWakorb",
+        "crystallizes": 0,
+        "defer_until": null,
+        "description": "PO rejects all insets. Prior physical cases all used enableUI=false, whose documented behavior explicitly leaves fullscreen Options active. Add opt-in genuine-fullscreen cases with enableUI=true/showUI=false under sibling and Video focus, record UI/override fields and key delivery, restore original UI/geometry flags on exit. This is an unproven SDK-path hypothesis, not an interception fix. Retain full 1920x1080 rendering.",
+        "design": "",
+        "due_at": null,
+        "ephemeral": 0,
+        "estimated_minutes": null,
+        "event_kind": "",
+        "external_ref": null,
+        "hook_bead": "",
+        "id": "AerioTV-Roku-ihp.35",
         "is_template": 0,
         "issue_type": "task",
         "last_activity": null,
@@ -6868,11 +6923,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
-        "title": "Measure physical Options delivery across controlled Video states",
-        "updated_at": "2026-09-19T19:34:03Z",
+        "title": "Test fullscreen Options with native Video UI enabled",
+        "updated_at": "2026-09-19T22:57:20Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -6928,6 +6983,61 @@
         "timeout_ns": 0,
         "title": "Honor Always AAC during initial profile discovery",
         "updated_at": "2026-09-19T21:03:53Z",
+        "waiters": "",
+        "wisp_type": "",
+        "work_type": ""
+      },
+      {
+        "acceptance_criteria": "",
+        "actor": "",
+        "agent_state": "",
+        "assignee": null,
+        "await_id": "",
+        "await_type": "",
+        "close_reason": "Physical comparison completed in PHYSICAL-ACCEPTANCE-0.3.8: A03 full-size override re-arm FAIL; A04 inset 1888x1062 PASS; A05 half-size PASS; A06 half-size scaled to fullscreen FAIL; A07 restoration/session continuity PASS. A08/A09 correctly SKIP with no successful fullscreen case. Menu/counter/picture-size fields are blank, so no quantitative press-count or pixel-verification claim. Interception fixes remain in ihp.15/.22/.28.",
+        "closed_at": "2026-09-19T22:27:32Z",
+        "closed_by_session": "",
+        "compacted_at": null,
+        "compacted_at_commit": null,
+        "compaction_level": 0,
+        "content_hash": "69805c7eeaced4f07c6eb146126269aae9fe48041a5c1db67108508245c48e2c",
+        "created_at": "2026-09-19T19:32:28Z",
+        "created_by": "MotWakorb",
+        "crystallizes": 0,
+        "defer_until": null,
+        "description": "Discriminating diagnostic for unresolved fullscreen star interception ihp.22. On the existing stream compare focused Video, sibling focus, post-playing override re-arm, inset, half-size, and half-size scaled back to fullscreen. Display press/release counters and log only safe playback/focus/geometry facts. No autoplay, retune, shared-source mutation, or persistent setting changes. Produce a short physical-remote worksheet; ECP currently 403.",
+        "design": "",
+        "due_at": null,
+        "ephemeral": 0,
+        "estimated_minutes": null,
+        "event_kind": "",
+        "external_ref": null,
+        "hook_bead": "",
+        "id": "AerioTV-Roku-ihp.33",
+        "is_template": 0,
+        "issue_type": "task",
+        "last_activity": null,
+        "metadata": "{}",
+        "mol_type": "",
+        "notes": "",
+        "original_size": null,
+        "owner": "curt@lecaptain.org",
+        "payload": "",
+        "pinned": 0,
+        "priority": 1,
+        "quality_score": null,
+        "rig": "",
+        "role_bead": "",
+        "role_type": "",
+        "sender": "",
+        "source_repo": "",
+        "source_system": "",
+        "spec_id": "",
+        "status": "closed",
+        "target": "",
+        "timeout_ns": 0,
+        "title": "Measure physical Options delivery across controlled Video states",
+        "updated_at": "2026-09-19T22:27:32Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -7313,6 +7423,116 @@
         "timeout_ns": 0,
         "title": "Focus top group pills from any guide row",
         "updated_at": "2026-09-19T19:05:42Z",
+        "waiters": "",
+        "wisp_type": "",
+        "work_type": ""
+      },
+      {
+        "acceptance_criteria": "",
+        "actor": "",
+        "agent_state": "",
+        "assignee": null,
+        "await_id": "",
+        "await_type": "",
+        "close_reason": "PO completed PHYSICAL-ACCEPTANCE-0.3.8 D01-D11 PASS: normal playback, one bounded retry and recovery, unchanged audio mode, terminal failure/error wording, Stop/retune cancellation, mini-guide/paused preservation and second-viewer continuity accepted.",
+        "closed_at": "2026-09-19T22:27:32Z",
+        "closed_by_session": "",
+        "compacted_at": null,
+        "compacted_at_commit": null,
+        "compaction_level": 0,
+        "content_hash": "01f8cda05070cc0f0be25819827de7909111c3d696e68b9df24fa7ed22436a1d",
+        "created_at": "2026-09-19T18:48:42Z",
+        "created_by": "MotWakorb",
+        "crystallizes": 0,
+        "defer_until": null,
+        "description": "PO reports channel 2101 NCAAF | EMU/WIS does not load on 0.3.3 (corrected from 2010). Native console shows tuning 2101 followed by state=buffering, without a captured error or playing transition. Investigate upstream availability versus Roku transport/decode before changing shared source. Record actual native/server facts and resolve or document provider-side failure.",
+        "design": "",
+        "due_at": null,
+        "ephemeral": 0,
+        "estimated_minutes": null,
+        "event_kind": "",
+        "external_ref": null,
+        "hook_bead": "",
+        "id": "AerioTV-Roku-ihp.32",
+        "is_template": 0,
+        "issue_type": "bug",
+        "last_activity": null,
+        "metadata": "{}",
+        "mol_type": "",
+        "notes": "",
+        "original_size": null,
+        "owner": "curt@lecaptain.org",
+        "payload": "",
+        "pinned": 0,
+        "priority": 1,
+        "quality_score": null,
+        "rig": "",
+        "role_bead": "",
+        "role_type": "",
+        "sender": "",
+        "source_repo": "",
+        "source_system": "",
+        "spec_id": "",
+        "status": "closed",
+        "target": "",
+        "timeout_ns": 0,
+        "title": "Recover bounded startup buffering stalls and report accurate errors",
+        "updated_at": "2026-09-19T22:27:32Z",
+        "waiters": "",
+        "wisp_type": "",
+        "work_type": ""
+      },
+      {
+        "acceptance_criteria": "",
+        "actor": "",
+        "agent_state": "",
+        "assignee": null,
+        "await_id": "",
+        "await_type": "",
+        "close_reason": "PO reports both genuine-fullscreen hold-star cases fail and explicitly chooses a different control instead of further star interception attempts.",
+        "closed_at": "2026-09-20T00:14:09Z",
+        "closed_by_session": "",
+        "compacted_at": null,
+        "compacted_at_commit": null,
+        "compaction_level": 0,
+        "content_hash": "28d3503f05d52c67046d675cec12861e517a7613e664789e6708f374488aa16e",
+        "created_at": "2026-09-19T23:08:01Z",
+        "created_by": "MotWakorb",
+        "crystallizes": 0,
+        "defer_until": null,
+        "description": "User explicitly requests trying hold-star after single-press fullscreen experiments failed. Add opt-in full-size Video/sibling-focus hold cases that log first delivered down, repeats, release, elapsed time and a one-second threshold; a release-only event must not count as a hold. Restore/cancel on exit, retune and mode change. Do not introduce an inset or claim physical success from synthetic callbacks.",
+        "design": "",
+        "due_at": null,
+        "ephemeral": 0,
+        "estimated_minutes": null,
+        "event_kind": "",
+        "external_ref": null,
+        "hook_bead": "",
+        "id": "AerioTV-Roku-ihp.36",
+        "is_template": 0,
+        "issue_type": "task",
+        "last_activity": null,
+        "metadata": "{}",
+        "mol_type": "",
+        "notes": "",
+        "original_size": null,
+        "owner": "curt@lecaptain.org",
+        "payload": "",
+        "pinned": 0,
+        "priority": 1,
+        "quality_score": null,
+        "rig": "",
+        "role_bead": "",
+        "role_type": "",
+        "sender": "",
+        "source_repo": "",
+        "source_system": "",
+        "spec_id": "",
+        "status": "closed",
+        "target": "",
+        "timeout_ns": 0,
+        "title": "Measure held star delivery during genuine fullscreen playback",
+        "updated_at": "2026-09-20T00:14:09Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -8045,61 +8265,6 @@
         "compacted_at": null,
         "compacted_at_commit": null,
         "compaction_level": 0,
-        "content_hash": "db94569bed3ed8fe04380242217da45a18f38dd0d8303f3202bc06f841408b71",
-        "created_at": "2026-09-18T22:42:18Z",
-        "created_by": "MotWakorb",
-        "crystallizes": 0,
-        "defer_until": null,
-        "description": "Complete EPG organization, rich program presentation, search and fast navigation while keeping the large lineup responsive.\n\nReference: docs/PARITY-AUDIT.md (Roku 0.2.6; upstream 8d5818456e0f4421d93b8ff120ad878d63331091)\n\nTarget: Streaming Stick 4K, Dispatcharr 0.31.0, 800-1,400 channels, three days back/seven ahead by default. Use the Roku plus existing Dispatcharr/provider services only; no additional runtime service/container. Preserve verified MPEG-TS live playback.",
-        "design": "",
-        "due_at": null,
-        "ephemeral": 0,
-        "estimated_minutes": null,
-        "event_kind": "",
-        "external_ref": null,
-        "hook_bead": "",
-        "id": "AerioTV-Roku-5tg",
-        "is_template": 0,
-        "issue_type": "epic",
-        "last_activity": null,
-        "metadata": "{}",
-        "mol_type": "",
-        "notes": "",
-        "original_size": null,
-        "owner": "curt@lecaptain.org",
-        "payload": "",
-        "pinned": 0,
-        "priority": 1,
-        "quality_score": null,
-        "rig": "",
-        "role_bead": "",
-        "role_type": "",
-        "sender": "",
-        "source_repo": "",
-        "source_system": "",
-        "spec_id": "",
-        "status": "in_progress",
-        "target": "",
-        "timeout_ns": 0,
-        "title": "Guide organization, metadata and discovery",
-        "updated_at": "2026-09-19T03:25:38Z",
-        "waiters": "",
-        "wisp_type": "",
-        "work_type": ""
-      },
-      {
-        "acceptance_criteria": "Child stories meet their acceptance criteria with appropriate tests/device evidence; known limitations and dependencies are recorded. Feasibility-gated features are not promised without an accepted viable path. Product Owner review is required before this epic is closed.",
-        "actor": "",
-        "agent_state": "",
-        "assignee": null,
-        "await_id": "",
-        "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
-        "closed_by_session": "",
-        "compacted_at": null,
-        "compacted_at_commit": null,
-        "compaction_level": 0,
         "content_hash": "eb23800067d753a8cb58b4844bcdbeb14d65d1a93087eaf4b8862bce48abe5eb",
         "created_at": "2026-09-18T22:42:19Z",
         "created_by": "MotWakorb",
@@ -8138,6 +8303,61 @@
         "timeout_ns": 0,
         "title": "Cross-device integration and platform adaptation",
         "updated_at": "2026-09-18T22:42:19Z",
+        "waiters": "",
+        "wisp_type": "",
+        "work_type": ""
+      },
+      {
+        "acceptance_criteria": "Child stories meet their acceptance criteria with appropriate tests/device evidence; known limitations and dependencies are recorded. Feasibility-gated features are not promised without an accepted viable path. Product Owner review is required before this epic is closed.",
+        "actor": "",
+        "agent_state": "",
+        "assignee": null,
+        "await_id": "",
+        "await_type": "",
+        "close_reason": "PO explicitly approved closing the Guide epic after acceptance reconciliation. All child stories and follow-up defects are closed against completed physical worksheets and model/native evidence; see docs/GUIDE-ACCEPTANCE-RECONCILIATION.md.",
+        "closed_at": "2026-09-20T02:31:31Z",
+        "closed_by_session": "",
+        "compacted_at": null,
+        "compacted_at_commit": null,
+        "compaction_level": 0,
+        "content_hash": "db94569bed3ed8fe04380242217da45a18f38dd0d8303f3202bc06f841408b71",
+        "created_at": "2026-09-18T22:42:18Z",
+        "created_by": "MotWakorb",
+        "crystallizes": 0,
+        "defer_until": null,
+        "description": "Complete EPG organization, rich program presentation, search and fast navigation while keeping the large lineup responsive.\n\nReference: docs/PARITY-AUDIT.md (Roku 0.2.6; upstream 8d5818456e0f4421d93b8ff120ad878d63331091)\n\nTarget: Streaming Stick 4K, Dispatcharr 0.31.0, 800-1,400 channels, three days back/seven ahead by default. Use the Roku plus existing Dispatcharr/provider services only; no additional runtime service/container. Preserve verified MPEG-TS live playback.",
+        "design": "",
+        "due_at": null,
+        "ephemeral": 0,
+        "estimated_minutes": null,
+        "event_kind": "",
+        "external_ref": null,
+        "hook_bead": "",
+        "id": "AerioTV-Roku-5tg",
+        "is_template": 0,
+        "issue_type": "epic",
+        "last_activity": null,
+        "metadata": "{}",
+        "mol_type": "",
+        "notes": "",
+        "original_size": null,
+        "owner": "curt@lecaptain.org",
+        "payload": "",
+        "pinned": 0,
+        "priority": 1,
+        "quality_score": null,
+        "rig": "",
+        "role_bead": "",
+        "role_type": "",
+        "sender": "",
+        "source_repo": "",
+        "source_system": "",
+        "spec_id": "",
+        "status": "closed",
+        "target": "",
+        "timeout_ns": 0,
+        "title": "Guide organization, metadata and discovery",
+        "updated_at": "2026-09-20T02:31:31Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -8204,8 +8424,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "Superseded by explicit PO decision to stop using fullscreen star after tap and hold experiments failed. 0.3.11 retires those runtime diagnostics and implements hold OK / transport Options, tracked for acceptance in ihp.37. This is a product-binding change, NOT a claim that Roku fullscreen interception was fixed.",
+        "closed_at": "2026-09-20T00:35:13Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -8243,11 +8463,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Roku system Options opens instead of Aerio player menu",
-        "updated_at": "2026-09-19T03:09:17Z",
+        "updated_at": "2026-09-20T00:35:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -8369,8 +8589,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "PO completed PHYSICAL-ACCEPTANCE-0.3.8 C01-C07 PASS: preview-only holds, final-channel release settling, both direction mappings, endpoint clamping, Back cancellation and menu isolation accepted.",
+        "closed_at": "2026-09-19T22:27:32Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -8408,11 +8628,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Repeat channel navigation when Up or Down is held",
-        "updated_at": "2026-09-19T03:25:38Z",
+        "updated_at": "2026-09-19T22:27:32Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -8919,8 +9139,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "Superseded by explicit PO decision to stop using fullscreen star after tap and hold experiments failed. 0.3.11 retires those runtime diagnostics and implements hold OK / transport Options, tracked for acceptance in ihp.37. This is a product-binding change, NOT a claim that Roku fullscreen interception was fixed.",
+        "closed_at": "2026-09-20T00:35:13Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -8958,11 +9178,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Roku system menu still intercepts star in 0.3.0",
-        "updated_at": "2026-09-19T13:53:07Z",
+        "updated_at": "2026-09-20T00:35:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -9139,8 +9359,8 @@
         "assignee": null,
         "await_id": "",
         "await_type": "",
-        "close_reason": "",
-        "closed_at": null,
+        "close_reason": "Remaining failed star-wake expectation superseded by PO pivot away from fullscreen star. Hidden picture now documents arrows/OK/Back for wake; other hidden controls/captions were already accepted. Hold-OK wake/menu separation is included in ihp.37 acceptance.",
+        "closed_at": "2026-09-20T00:35:13Z",
         "closed_by_session": "",
         "compacted_at": null,
         "compacted_at_commit": null,
@@ -9178,11 +9398,11 @@
         "source_repo": "",
         "source_system": "",
         "spec_id": "",
-        "status": "in_progress",
+        "status": "closed",
         "target": "",
         "timeout_ns": 0,
         "title": "Hidden-picture held wake key and caption behavior fail",
-        "updated_at": "2026-09-19T19:26:35Z",
+        "updated_at": "2026-09-20T00:35:13Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
@@ -10725,24 +10945,6 @@
       {
         "created_at": "2026-09-18T17:42:42Z",
         "created_by": "MotWakorb",
-        "depends_on_id": "AerioTV-Roku-b17.2",
-        "issue_id": "AerioTV-Roku-5tg.15",
-        "metadata": "{}",
-        "thread_id": "",
-        "type": "blocks"
-      },
-      {
-        "created_at": "2026-09-18T17:42:42Z",
-        "created_by": "MotWakorb",
-        "depends_on_id": "AerioTV-Roku-b17.2",
-        "issue_id": "AerioTV-Roku-5tg.16",
-        "metadata": "{}",
-        "thread_id": "",
-        "type": "blocks"
-      },
-      {
-        "created_at": "2026-09-18T17:42:42Z",
-        "created_by": "MotWakorb",
         "depends_on_id": "AerioTV-Roku-faa.1",
         "issue_id": "AerioTV-Roku-5tg.10",
         "metadata": "{}",
@@ -10772,15 +10974,6 @@
         "created_by": "MotWakorb",
         "depends_on_id": "AerioTV-Roku-ihp.1",
         "issue_id": "AerioTV-Roku-5tg.12",
-        "metadata": "{}",
-        "thread_id": "",
-        "type": "blocks"
-      },
-      {
-        "created_at": "2026-09-18T17:42:42Z",
-        "created_by": "MotWakorb",
-        "depends_on_id": "AerioTV-Roku-mxz.2",
-        "issue_id": "AerioTV-Roku-5tg.16",
         "metadata": "{}",
         "thread_id": "",
         "type": "blocks"
@@ -12602,6 +12795,69 @@
         "metadata": "{}",
         "thread_id": "",
         "type": "parent-child"
+      },
+      {
+        "created_at": "2026-09-19T17:12:38Z",
+        "created_by": "MotWakorb",
+        "depends_on_id": "AerioTV-Roku-rgs",
+        "issue_id": "AerioTV-Roku-rgs.16",
+        "metadata": "{}",
+        "thread_id": "",
+        "type": "parent-child"
+      },
+      {
+        "created_at": "2026-09-19T17:47:59Z",
+        "created_by": "MotWakorb",
+        "depends_on_id": "AerioTV-Roku-ihp.22",
+        "issue_id": "AerioTV-Roku-ihp.35",
+        "metadata": "{}",
+        "thread_id": "",
+        "type": "discovered-from"
+      },
+      {
+        "created_at": "2026-09-19T17:47:59Z",
+        "created_by": "MotWakorb",
+        "depends_on_id": "AerioTV-Roku-ihp",
+        "issue_id": "AerioTV-Roku-ihp.35",
+        "metadata": "{}",
+        "thread_id": "",
+        "type": "parent-child"
+      },
+      {
+        "created_at": "2026-09-19T18:08:00Z",
+        "created_by": "MotWakorb",
+        "depends_on_id": "AerioTV-Roku-ihp.22",
+        "issue_id": "AerioTV-Roku-ihp.36",
+        "metadata": "{}",
+        "thread_id": "",
+        "type": "discovered-from"
+      },
+      {
+        "created_at": "2026-09-19T18:08:00Z",
+        "created_by": "MotWakorb",
+        "depends_on_id": "AerioTV-Roku-ihp",
+        "issue_id": "AerioTV-Roku-ihp.36",
+        "metadata": "{}",
+        "thread_id": "",
+        "type": "parent-child"
+      },
+      {
+        "created_at": "2026-09-19T19:14:08Z",
+        "created_by": "MotWakorb",
+        "depends_on_id": "AerioTV-Roku-ihp.22",
+        "issue_id": "AerioTV-Roku-ihp.37",
+        "metadata": "{}",
+        "thread_id": "",
+        "type": "discovered-from"
+      },
+      {
+        "created_at": "2026-09-19T19:14:08Z",
+        "created_by": "MotWakorb",
+        "depends_on_id": "AerioTV-Roku-ihp",
+        "issue_id": "AerioTV-Roku-ihp.37",
+        "metadata": "{}",
+        "thread_id": "",
+        "type": "parent-child"
       }
     ],
     "comments": [
@@ -13486,6 +13742,174 @@
         "id": 126,
         "issue_id": "AerioTV-Roku-rgs.14",
         "text": "PO explicitly approved publishing v0.3.8 testing prerelease and committing/pushing current tested sources. Readiness: 23 suites/check/build, package/asset validation, native release-ZIP install pass; production dependency audit zero vulnerabilities; no hosted scan workflow, open dev PRs or in-flight agents. No P0 bugs; documented P1 ihp.15/.22 (star) and ihp.32 (startup acceptance) accepted for testing release. README includes Developer Mode/browser install and pinned Apple TV/Android TV comparison; upstream TV icon and source attribution included."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T22:27:32Z",
+        "id": 127,
+        "issue_id": "AerioTV-Roku-ihp.22",
+        "text": "New physical evidence (PHYSICAL-ACCEPTANCE-0.3.8): inset 1888x1062 and half-size sibling-focus cases PASS; full-size post-start override re-arm and half-size scaled back to fullscreen FAIL. This is consistent with fullscreen classification/final geometry controlling interception, rather than focus or raw node dimensions alone. No successful true-fullscreen route established. No exact smallest inset threshold tested; numeric counters and visible-size notes blank. Small-inset compatibility is a candidate with an explicit visual tradeoff, not a silently approved default."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T22:27:32Z",
+        "id": 128,
+        "issue_id": "AerioTV-Roku-ihp.15",
+        "text": "Current physical diagnostic establishes working inset/half-size cases but full-size cases still FAIL; see ihp.22 and completed PHYSICAL-ACCEPTANCE-0.3.8. Original fullscreen acceptance remains unresolved."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T22:27:32Z",
+        "id": 129,
+        "issue_id": "AerioTV-Roku-ihp.28",
+        "text": "PHYSICAL-ACCEPTANCE-0.3.8 B01 FAIL for star wake-only gesture; B02 SKIP. Unlike prior interpretation, the wake gesture itself now explicitly fails its combined expectation. No visible-menu/picture detail supplied, so do not assert whether picture stayed hidden, a menu opened, or both. Other previously accepted hidden controls/captions remain valid."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T22:31:03Z",
+        "id": 130,
+        "issue_id": "AerioTV-Roku-ihp.22",
+        "text": "PO rejects any inset, including smaller-border workarounds. Required outcome remains genuine fullscreen with Aerio handling star. Continue researching supported fullscreen delivery/override paths; do not shrink video as a solution or treat the alternate transport menu as acceptance of this requirement."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T22:54:41Z",
+        "id": 131,
+        "issue_id": "AerioTV-Roku-ihp.35",
+        "text": "Continued SDK/forum/open-source research; current interfaces/release notes provide no confirmed fullscreen override. Older overlay claim lacks code/current-device validation. All prior controlled cases used enableUI=false; implemented opt-in full-size cases 7/8 using enableUI=true/showUI=false with sibling/Video focus, restoring UI/trickplay flags on exit. 23 suites/check/build pass; native 0.3.9 installs/launches with capability refresh. Physical delivery is NOT established. Internal worksheet docs/FULLSCREEN-STAR-0.3.9.txt; normal playback stays full-size, and public v0.3.8 package unchanged."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T22:54:41Z",
+        "id": 132,
+        "issue_id": "AerioTV-Roku-ihp.22",
+        "text": "Full-screen-only investigation continued: reviewed ifSGScreen/ifSGNodeFocus/ifAppManager, manifest shortcut scope, OS15.3/16 developer release notes, Stack Overflow answer and Jellyfin player/OSD at 885304d3f64cad0d843e2d58925a303003499d8a. No supported confirmed override found. New native-UI-enabled fullscreen routing trial installed as 0.3.9 (ihp.35), preserving 1920x1080 with no inset. Inset solution explicitly ruled out by PO; no alternate-button route counted as resolution."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T22:57:20Z",
+        "id": 133,
+        "issue_id": "AerioTV-Roku-ihp.22",
+        "text": "PO reports 0.3.9 cases 7 and 8 both FAIL: genuine fullscreen with enableUI=true/showUI=false, under sibling and Video focus respectively. Native UI activation does not establish a fix. Exact menu/counter readings not supplied. All tested full-size routes fail; only smaller geometry worked, and PO rejects any inset. Keep requirement and bug open; consolidate evidence for Roku-supported API/firmware clarification."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T22:58:45Z",
+        "id": 134,
+        "issue_id": "AerioTV-Roku-ihp.22",
+        "text": "Prepared docs/ROKU-FULLSCREEN-OPTIONS-REPORT.md with model/OS, full physical matrix, documentation conflict, and precise questions about supported fullscreen overrides, capability requirements and overlay input priority. Explicitly distinguishes public v0.3.8 cases 1-6 from local 0.3.9 cases 7-8, and does not claim a credential-free minimal repro exists. Draft is local and not submitted externally. No inset accepted; defect remains open."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-19T23:14:58Z",
+        "id": 135,
+        "issue_id": "AerioTV-Roku-ihp.36",
+        "text": "Installed local 0.3.10 with explicit HOLD-star cases 9/10 at 1920x1080, no inset. Logs down/repeat/release and elapsed time; threshold timer starts only on delivered down, opens menu once, consumes repeats through menu handoff, rejects release-only/short gestures, cancels on case/exit lifecycle. 24 suites/check/build pass; native compile/launch/capability refresh successful. Physical results pending docs/HOLD-STAR-0.3.10.txt; no long-press success claimed."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T00:35:13Z",
+        "id": 136,
+        "issue_id": "AerioTV-Roku-ihp.1",
+        "text": "PO product pivot after all fullscreen tap/hold-star experiments failed: stop attempting fullscreen star; 0.3.11 introduces hold OK (~1s) for app player options while retaining short OK info and the transport button. Guide/mini-guide star remains. No inset permitted. New shortcut acceptance tracked in ihp.37."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T00:35:13Z",
+        "id": 137,
+        "issue_id": "AerioTV-Roku-ihp.37",
+        "text": "Normal 0.3.11 installed. Tap OK keeps immediate information feedback; 1s hold opens app options; repeats/releases guarded via menu-parent focus with alternate release forwarding from Video. Context/lifecycle cancellation retained; fullscreen star left to Roku, mini-guide override only. Experimental diagnostic code archived outside packages. 24 suites/check/build pass. Native real-timer/menu probe opened options while playing and paused, menu-parent focus=true before release; actual release handler focused list with no selection, same ContentNode preserved. Temporary probe removed; archive inspected. Physical test pending docs/RETEST-0.3.11.txt."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T02:21:49Z",
+        "id": 138,
+        "issue_id": "AerioTV-Roku-5tg.15",
+        "text": "Acceptance reconciliation: removing obsolete prerequisite b17.2. Existing guide options already expose the implemented depth/maintenance controls accepted in FINAL-TEST-RESULTS-0.3.0 M01-M03/M07-M10. A categorized settings hub and incremental startup remain separate future work; their completion is not required to close this delivered guide feature."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T02:21:49Z",
+        "id": 139,
+        "issue_id": "AerioTV-Roku-5tg.16",
+        "text": "Acceptance reconciliation: removing obsolete prerequisite b17.2. Existing guide options already expose the implemented depth/maintenance controls accepted in FINAL-TEST-RESULTS-0.3.0 M01-M03/M07-M10. A categorized settings hub and incremental startup remain separate future work; their completion is not required to close this delivered guide feature."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T02:21:49Z",
+        "id": 140,
+        "issue_id": "AerioTV-Roku-5tg.16",
+        "text": "Acceptance reconciliation: removing obsolete prerequisite mxz.2. Existing guide options already expose the implemented depth/maintenance controls accepted in FINAL-TEST-RESULTS-0.3.0 M01-M03/M07-M10. A categorized settings hub and incremental startup remain separate future work; their completion is not required to close this delivered guide feature."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T02:21:53Z",
+        "id": 141,
+        "issue_id": "AerioTV-Roku-5tg",
+        "text": "Reconciled all 16 original implementation stories against completed 0.3.0 acceptance plus 0.3.3/0.3.8 follow-up evidence. All Guide children now closed. Removed only obsolete categorized-settings/incremental-startup blockers; did not close mxz or b17.2. Epic left in progress for explicit final PO closure signoff per epic acceptance criteria. Evidence index: docs/GUIDE-ACCEPTANCE-RECONCILIATION.md."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T02:25:58Z",
+        "id": 142,
+        "issue_id": "AerioTV-Roku-mxz.1",
+        "text": "Pre-epic scope reconciliation: Reconciliation baseline: Guide features are accepted with an in-memory 3-window guide cache, 32-entry/5-minute details, bounded logo files and local preferences. This is partial groundwork, not measured persistent guide/channel/VOD storage across process eviction. Keep strategy/measurement story open."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T02:25:58Z",
+        "id": 143,
+        "issue_id": "AerioTV-Roku-mxz.2",
+        "text": "Pre-epic scope reconciliation: Guide maintenance 5tg.16 accepted independently; removed its obsolete dependency on this story. Current lineup/config publication still waits for required loading; early AAC profile publication in 0.3.7 accelerates that prerequisite only and does not establish general incremental/cached guide startup. Keep open."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T02:25:58Z",
+        "id": 144,
+        "issue_id": "AerioTV-Roku-mxz.3",
+        "text": "Pre-epic scope reconciliation: 5tg.15 accepts bounded browsing depth/three resident windows, not persistent EPG/catalog restoration across app exit or OS eviction. This story retains coverage/restore and native-memory measurement scope; no closure inferred from guide feature passes."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T02:25:58Z",
+        "id": 145,
+        "issue_id": "AerioTV-Roku-mxz.4",
+        "text": "Pre-epic scope reconciliation: Current requestJson helper combines 401/403, gives a generic 429 wait message, and has request/deadline bounds. It does not parse Retry-After or provide the complete structured refusal/connection-limit policy. Accepted ihp.32 startup retry is a separate narrow baseline, not completion here. Future policy must not blindly retry shared-source mutations or open extra media connections to probe errors."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T02:25:58Z",
+        "id": 146,
+        "issue_id": "AerioTV-Roku-mxz.5",
+        "text": "Pre-epic scope reconciliation: Accepted foundations: ihp.32 startup-only one retry/deadline and ihp.24 post-source-switch frozen-video recovery. General midstream stalls and unexpected live end remain unimplemented scope. Existing criterion stop retries after Back conflicts with accepted ihp.1/PLAYER-CONTRACT Back-to-mini behavior; scope discussion should align cancellation with explicit Stop/Home/retune/account change while preserving continuing mini-player playback."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T02:25:58Z",
+        "id": 147,
+        "issue_id": "AerioTV-Roku-mxz.6",
+        "text": "Pre-epic scope reconciliation: Actionable startup errors and explicit AAC mode choices exist, but general focusable in-player Retry/return/loading flow remains open. Must reuse the recovery policy rather than stack independent retry loops; preserve focus/cancellation across auto/manual actions."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T02:25:58Z",
+        "id": 148,
+        "issue_id": "AerioTV-Roku-mxz.7",
+        "text": "Pre-epic scope reconciliation: PO accepted specific startup Stop/retune/second-viewer checks and source-recovery continuity. This does not replace a systematic rapid-tune/Home/logout/Task cancellation resource audit with client identity/count evidence. Keep open; cleanup must remain local-client-specific."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T02:25:58Z",
+        "id": 149,
+        "issue_id": "AerioTV-Roku-mxz.8",
+        "text": "Pre-epic scope reconciliation: Current DispatcharrHttp cap is checked after event.getString(): full response is already buffered before the 16 MB parse guard. This is not a transfer-memory bound. Need supported paging/download/parse boundaries, cross-thread-copy measurement and explicit partial-result semantics."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-20T02:25:59Z",
+        "id": 150,
+        "issue_id": "AerioTV-Roku-mxz.9",
+        "text": "Pre-epic scope reconciliation: Sanitized native failures, console events and temporary physical diagnostics exist. There is no general bounded in-app event viewer/clear/export product yet. Retain open; current b17.2 dependency reflects placement in categorized Settings and should be discussed if an earlier existing-menu entry is preferred."
       }
     ],
     "labels": [
@@ -14095,7 +14519,7 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.1",
-        "label": "acceptance-failed"
+        "label": "acceptance-reconciled"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.1",
@@ -14127,15 +14551,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.10",
+        "label": "acceptance-reconciled"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.10",
         "label": "audit-g15"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.10",
         "label": "audit-g18"
-      },
-      {
-        "issue_id": "AerioTV-Roku-5tg.10",
-        "label": "awaiting-acceptance"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.10",
@@ -14163,15 +14587,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.11",
+        "label": "acceptance-reconciled"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.11",
         "label": "audit-g11"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.11",
         "label": "audit-g12"
-      },
-      {
-        "issue_id": "AerioTV-Roku-5tg.11",
-        "label": "awaiting-acceptance"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.11",
@@ -14199,11 +14623,11 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.12",
-        "label": "audit-g14"
+        "label": "acceptance-reconciled"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.12",
-        "label": "awaiting-acceptance"
+        "label": "audit-g14"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.12",
@@ -14231,11 +14655,11 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.13",
-        "label": "audit-g13"
+        "label": "acceptance-reconciled"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.13",
-        "label": "awaiting-acceptance"
+        "label": "audit-g13"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.13",
@@ -14263,11 +14687,11 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.14",
-        "label": "audit-g19"
+        "label": "acceptance-reconciled"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.14",
-        "label": "awaiting-acceptance"
+        "label": "audit-g19"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.14",
@@ -14295,11 +14719,11 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.15",
-        "label": "audit-g02"
+        "label": "acceptance-reconciled"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.15",
-        "label": "awaiting-acceptance"
+        "label": "audit-g02"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.15",
@@ -14327,11 +14751,11 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.16",
-        "label": "audit-g21"
+        "label": "acceptance-reconciled"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.16",
-        "label": "awaiting-acceptance"
+        "label": "audit-g21"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.16",
@@ -14383,7 +14807,7 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.2",
-        "label": "acceptance-failed"
+        "label": "acceptance-reconciled"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.2",
@@ -14431,15 +14855,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.3",
+        "label": "acceptance-reconciled"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.3",
         "label": "audit-g07"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.3",
         "label": "audit-g09"
-      },
-      {
-        "issue_id": "AerioTV-Roku-5tg.3",
-        "label": "awaiting-acceptance"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.3",
@@ -14467,11 +14891,11 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.4",
-        "label": "audit-g08"
+        "label": "acceptance-reconciled"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.4",
-        "label": "awaiting-acceptance"
+        "label": "audit-g08"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.4",
@@ -14499,11 +14923,11 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.5",
-        "label": "audit-g10"
+        "label": "acceptance-reconciled"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.5",
-        "label": "awaiting-acceptance"
+        "label": "audit-g10"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.5",
@@ -14531,6 +14955,10 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.6",
+        "label": "acceptance-reconciled"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.6",
         "label": "audit-g15"
       },
       {
@@ -14544,10 +14972,6 @@
       {
         "issue_id": "AerioTV-Roku-5tg.6",
         "label": "audit-g18"
-      },
-      {
-        "issue_id": "AerioTV-Roku-5tg.6",
-        "label": "awaiting-acceptance"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.6",
@@ -14575,15 +14999,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.7",
+        "label": "acceptance-reconciled"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.7",
         "label": "audit-a05"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.7",
         "label": "audit-g16"
-      },
-      {
-        "issue_id": "AerioTV-Roku-5tg.7",
-        "label": "awaiting-acceptance"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.7",
@@ -14611,11 +15035,11 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.8",
-        "label": "audit-g17"
+        "label": "acceptance-reconciled"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.8",
-        "label": "awaiting-acceptance"
+        "label": "audit-g17"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.8",
@@ -14643,15 +15067,15 @@
       },
       {
         "issue_id": "AerioTV-Roku-5tg.9",
+        "label": "acceptance-reconciled"
+      },
+      {
+        "issue_id": "AerioTV-Roku-5tg.9",
         "label": "audit-g18"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.9",
         "label": "audit-v04"
-      },
-      {
-        "issue_id": "AerioTV-Roku-5tg.9",
-        "label": "awaiting-acceptance"
       },
       {
         "issue_id": "AerioTV-Roku-5tg.9",
@@ -16015,7 +16439,7 @@
       },
       {
         "issue_id": "AerioTV-Roku-ihp.18",
-        "label": "awaiting-acceptance"
+        "label": "accepted-0.3.8"
       },
       {
         "issue_id": "AerioTV-Roku-ihp.18",
@@ -16172,6 +16596,10 @@
       {
         "issue_id": "AerioTV-Roku-ihp.3",
         "label": "story"
+      },
+      {
+        "issue_id": "AerioTV-Roku-ihp.32",
+        "label": "accepted-0.3.8"
       },
       {
         "issue_id": "AerioTV-Roku-ihp.4",

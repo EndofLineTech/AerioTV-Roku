@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="PlayerOptions" extends="Group">
   <interface>
+    <function name="releaseSelectGuard" />
     <field id="menu" type="assocarray" onChange="setMenu" />
     <field id="active" type="boolean" value="false" onChange="onActive" />
     <field id="selection" type="assocarray" alwaysNotify="true" />
     <field id="closed" type="boolean" alwaysNotify="true" />
     <field id="backRequested" type="boolean" alwaysNotify="true" />
     <field id="focusedIndex" type="integer" value="0" />
+    <field id="consumeSelectRelease" type="boolean" value="false" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="PlayerOptions.brs" />

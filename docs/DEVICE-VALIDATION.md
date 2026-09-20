@@ -1,6 +1,77 @@
 # Device acceptance — EPG/live builds
 
+## 0.3.11 — hold OK replaces fullscreen star
+
+Normal installation, native compilation, launch and capability refresh succeeded
+on 2026-09-20 around 00:33 UTC. All 24 active suites, compiler check and build
+passed. The archive contains neither retired OptionsProbe code nor temporary
+hold-validation/autoplay code. The old diagnostic sources are preserved under
+tests/native/retired but excluded from both application and native-fixture builds.
+
+A temporary on-device controller probe used real timers and real menu nodes on
+ESPN 408. While playing, the hold opened options with consumeSelectRelease=true
+and the menu parent owning focus. The real menu release handler cleared that
+guard, focused the LabelList and left selection empty. Repeating while paused
+opened options with state still paused and the same ContentNode. This verifies
+timer/menu handoff behavior, not physical OK event delivery; final physical
+checks are in RETEST-0.3.11.txt. A controller regression also covers releases
+forwarded through the original Video rather than the new menu focus owner.
+
+The PO chose to stop using fullscreen star after both hold-star cases failed.
+Old star defects are superseded by that product decision, not declared repaired.
+Guide/mini-guide star remains enabled; full-size playback binds app Options to
+hold OK and retains the transport Options button. No inset is introduced.
+
+## 0.3.10 — explicit hold-star diagnostic
+
+Installed on 2026-09-19 around 23:13 UTC; native compilation, launch and
+capability refresh succeeded. All 24 suites, compiler check and build pass.
+Cases 9/10 keep genuine fullscreen video and test a three-second physical hold
+under Video/sibling focus. Delivered down/repeat/release events are logged;
+a one-second timer can open app options only after a delivered down event.
+Release-only events cannot establish a hold. Repeats after the menu opens are
+forwarded to the gesture handler rather than immediately closing the menu.
+
+Tests cover single-fire threshold handling, short/release-only events, repeat
+counting, cancellation and normal menu behavior outside the diagnostic. They
+do not establish physical long-press delivery. Internal instructions are in
+HOLD-STAR-0.3.10.txt. Public v0.3.8 artifacts remain unchanged.
+
+## 0.3.9 — genuine-fullscreen native-UI diagnostic
+
+Installed on 2026-09-19 around 22:53 UTC. Native compilation, launch, AAC profile
+discovery and capability refresh succeeded. All 23 suites, compiler check and
+build pass. New opt-in cases 7/8 retain 1920x1080, scale [1,1], translation [0,0]
+while enabling native UI dispatch with controls requested hidden. They differ
+only in sibling versus Video focus. Normal playback has no new inset or UI mode.
+
+Controller tests cover full-size geometry, direct case access, selected focus
+owner and restoration of enableUI/showUI/enableTrickPlay on exit without changing
+content/control. These tests do not establish physical Options delivery. Native
+case execution awaits the internal FULLSCREEN-STAR-0.3.9.txt results. Public
+v0.3.8 assets/tag remain unchanged; this local diagnostic is not a new release.
+
+Subsequent PO feedback: cases 7 and 8 both failed. The native-UI-enabled
+configurations therefore do not resolve fullscreen Options interception.
+
 ## 0.3.8 — tester release package and branding
+
+### Subsequent PO physical acceptance
+
+`PHYSICAL-ACCEPTANCE-0.3.8.txt` records 21 PASS, 3 FAIL and 3 SKIP.
+All held fullscreen channel-release checks (C01-C07) and startup recovery checks
+(D01-D11) passed; ihp.18 and ihp.32 are closed. This includes recovery, bounded
+terminal failure, audio-mode preservation, cancellation, mini-guide behavior,
+pause and second-viewer continuity.
+
+Star diagnostic: inset and half-size PASS; full-size post-start override and
+half-size scaled back to fullscreen FAIL. Diagnostic restoration/session
+continuity PASS. No working true-fullscreen case qualified for the follow-up
+playing/paused confirmation. Star wake-only behavior also FAIL; subsequent star
+after wake SKIP. See FULLSCREEN-OPTIONS-RESEARCH.md for the scoped interpretation.
+The detailed count/menu/picture-size fields were not filled in.
+
+### Release-time checks
 
 The versioned release ZIP installed and launched on the target Roku on
 2026-09-19 around 21:22 UTC. Native compilation, early AAC profile discovery and
