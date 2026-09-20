@@ -164,9 +164,9 @@ sub buildCanvas()
         name.maxLines = 2
         catchup = root.createChild("Poster")
         catchup.uri = "pkg:/images/catchup-history.png"
-        catchup.translation = [12, 3]
-        catchup.width = 28
-        catchup.height = 28
+        catchup.translation = [12, 4]
+        catchup.width = 20
+        catchup.height = 20
         catchup.loadDisplayMode = "scaleToFit"
         catchup.visible = false
         m.rows.push({root: root, number: number, badge: badge, catchup: catchup, logo: logo, name: name, tiles: []})
@@ -453,7 +453,7 @@ sub drawGuide()
                 numberWidth = row.number.localBoundingRect().width
                 if numberWidth > 128 then numberWidth = 128
                 row.number.width = numberWidth
-                row.catchup.translation = [12 + numberWidth + 6, 3]
+                row.catchup.translation = [12 + numberWidth + 6, 4]
             end if
             row.name.text = channel.name
             row.badge.text = ""

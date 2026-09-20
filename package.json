@@ -1,6 +1,6 @@
 {
   "name": "aeriotv-roku",
-  "version": "0.3.24",
+  "version": "0.3.25",
   "private": true,
   "description": "Native Roku port of AerioTV — Dispatcharr-first development build",
   "license": "GPL-3.0-or-later",

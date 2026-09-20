@@ -40,3 +40,8 @@ uses the number Label's rendered width plus a six-pixel gap, rather than a fixed
 column above the name. Number width is capped at 128 pixels to reserve FAV space.
 Native checks in all three layouts measured a 26-pixel sampled number and a
 six-pixel icon gap, with image ready and permission/facts gating still correct.
+
+## 0.3.25 size correction
+
+At the PO's request, the icon is now 20x20 to match the channel number's 20-pixel
+font size, with its top aligned at y=4. The measured six-pixel horizontal gap stays.
