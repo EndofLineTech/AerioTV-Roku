@@ -1,0 +1,137 @@
+AerioTV Roku 0.3.21 — Catch-up indicators and archive Go Live
+===========================================================
+INTERNAL PHYSICAL TEST WORKSHEET
+Installed code: ab57298 (development build 0.3.21).
+Date: __________________ Tester: _________________________________
+Roku model/OS: __________________ Dispatcharr: ____________________
+Build actually tested: __________ Session start/end: ______________
+
+Write PASS, FAIL, or SKIP in each [     ]. Give a reason for SKIP.
+Results below are blank: scripted native checks do not count as your physical pass.
+Use this worksheet for the latest changes; prior completed results stay intact.
+GOL01-GOL04 carry forward the 0.3.20 Go Live checks, so you can record this pass here.
+
+PREPARATION (about 15-25 minutes for the ordinary checks)
+-------------------------------------------------------
+- Start in the Live TV guide. '*' means the remote star button.
+- Menu paths: press *, select the named item with Up/Down, then OK.
+- Open details consistently with * -> Program details. OK on a current program
+  may tune live instead; use the menu when this plan asks for details.
+- Choose channel A with known advertised catch-up retention, and channel B known
+  to have none. Use Dispatcharr's information as the comparison when available.
+- Choose an ended program on A within its retention window for playback tests.
+- Optional: a second viewer and an account without catch-up permission.
+
+Channel A: __________________ Advertised retention: ______ days
+Channel B (no catch-up): _________________________________________
+Archive program/date/start-end: __________________________________
+Original group layout: __________ Original group: ________________
+Was channel A already a favorite? ______ Audio mode: ______________
+
+The channel badge is the text CATCH-UP above its name, alongside its number.
+Retention appears as "Catch-up: N days (provider advertised)" in the selected
+guide summary and program details. This marks channel capability, not proof that
+every archive is ready. Current-program Restart and 60-minute rewind are not
+enabled in this build; do not expect to find those controls.
+
+CATCH-UP INDICATORS
+-------------------
+[     ] CU01 Supported channel and retention
+Highlight A. Expected: CATCH-UP appears in its channel header; the selected guide
+summary shows the advertised retention. Open * -> Program details.
+Expected: the same retention is shown with "provider advertised" wording.
+Compare the number to Dispatcharr if available; record any mismatch.
+
+[     ] CU02 Unsupported channel and reused rows
+Highlight B and open its program details.
+Expected: no CATCH-UP badge, no catch-up retention text, no Play archive action.
+Back to the guide, scroll more than one screen of channels, then return to A/B.
+Expected: each channel keeps its own indicator; B never inherits A's badge/text.
+
+[     ] CU03 Favorite and long-name readability
+On A, use * -> Toggle favorite if needed.
+Expected: FAV and CATCH-UP are both readable, without overlapping each other or
+the channel number/name/logo. Check a long-name or long-number channel if present.
+Record truncation/overlap with a photo. Restore A's original favorite state.
+
+[     ] CU04 Modal group layout
+Use * -> Guide settings -> Group navigation -> Modal group list (current value
+may appear in the menu label). Return to A in the guide.
+Expected: badge, channel number/name, summary and details retention are readable.
+
+[     ] CU05 Sidebar group layout
+Change Group navigation to Docked group sidebar (always visible).
+Expected: the same information remains readable beside the group sidebar; no
+overlap with program tiles. Open details, then Back; guide focus remains usable.
+
+[     ] CU06 Pills group layout
+Change Group navigation to Top group pills (always visible).
+Expected: badge and retention remain readable; group pills and top navigation
+still work. Restore your original group layout afterward.
+
+[     ] CU07 Channel capability versus program eligibility
+On A, select an ended program inside retention and open Program details.
+Expected: retention plus "Play archive (provider availability)".
+Then inspect a currently airing and a future program on A.
+Expected: retention still describes the channel, but no Play archive/Restart
+action appears for those programs. If available, inspect an ended program outside
+retention: its channel can retain the badge, but that program has no Play archive.
+Unavailable guide cases: note which portion could not be checked.
+
+[     ] CU08 Mini-player and restart persistence
+Tune a working live channel, then Back to minimize. Browse A and B.
+Expected: catch-up information stays correct and readable in the narrower summary;
+live playback continues. Stop your local playback via its normal app controls.
+Exit and reopen the app; allow capabilities to load, then revisit A/B.
+Expected: correct indicators return. A brief absence while capabilities are unknown
+is acceptable; an unsupported channel must not gain a badge.
+
+[     ] CU09 Optional permission/account check
+With an existing account known to lack catch-up access, inspect the same channel
+if it is authorized in that account's lineup.
+Expected: no catch-up badge/retention or Play archive action. Return to the original
+account and allow capabilities to load; A's indicator returns. Mark SKIP if the
+required account/channel is unavailable. Record account labels only, not credentials.
+
+ARCHIVE GO LIVE
+--------------
+[     ] GOL01 Open and dismiss archive controls
+Play the ended program on A using * -> Program details -> Play archive.
+While playing, press Up. Expected: Archive controls offers Go Live and
+Keep watching archive. Choose Keep watching archive; reopen and press Back.
+Expected: the same archive continues, no retune, usable playback focus.
+Pause, repeat the dismiss checks, and confirm playback remains paused.
+
+[     ] GOL02 Return from playing archive to live
+Resume archive playback. Up -> Go Live -> OK.
+Expected: current broadcast of the SAME channel A, normal live controls and audio
+preference. The archive does not reopen or take focus afterward.
+
+[     ] GOL03 Return from paused archive to live
+Start A's archive again, pause, then Up -> Go Live -> OK.
+Expected: live playback starts without inheriting the archive pause. Live program
+information describes the current broadcast, not the old archived program.
+Back minimizes live playback; Back or Play expands it again.
+
+[     ] GOL04 Optional second viewer and session cleanup
+Keep another viewer playing A while this Roku repeats GOL02.
+Expected: the other viewer continues uninterrupted. If Dispatcharr session status
+is available, confirm this Roku's owned archive session clears after Go Live.
+Record observed status/time; do not stop a shared channel to clear it.
+
+If an archive cannot start, record the displayed error and try another known-working
+ended program. If none plays, mark dependent GOL checks SKIP with the blocker;
+this does not prevent completing the channel-indicator checks.
+
+WRAP-UP AND RESULTS
+-------------------
+Restore original account, group/layout and favorite state; stop your local playback.
+Total: 13 checks (CU01-CU09, GOL01-GOL04).
+PASS: _____ FAIL: _____ SKIP: _____
+
+Failure/SKIP notes — ID, starting screen, channel/program, exact buttons, expected
+versus actual result, time of failure, and photo filename. No passwords/API keys.
+__________________________________________________________________
+__________________________________________________________________
+__________________________________________________________________
+__________________________________________________________________
