@@ -32,3 +32,11 @@ No need to repeat the full accepted worksheet for this icon-only change:
 
 The previous badge's behavioral PASS results are not pre-filled acceptance of the
 new icon's appearance.
+
+## 0.3.24 placement correction
+
+The PO requested the icon immediately beside the channel number. Its position now
+uses the number Label's rendered width plus a six-pixel gap, rather than a fixed
+column above the name. Number width is capped at 128 pixels to reserve FAV space.
+Native checks in all three layouts measured a 26-pixel sampled number and a
+six-pixel icon gap, with image ready and permission/facts gating still correct.

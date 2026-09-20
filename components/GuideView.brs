@@ -164,7 +164,7 @@ sub buildCanvas()
         name.maxLines = 2
         catchup = root.createChild("Poster")
         catchup.uri = "pkg:/images/catchup-history.png"
-        catchup.translation = [145, 3]
+        catchup.translation = [12, 3]
         catchup.width = 28
         catchup.height = 28
         catchup.loadDisplayMode = "scaleToFit"
@@ -447,7 +447,14 @@ sub drawGuide()
             row.number.text = channel.number
             row.catchup.visible = catchupChannelDays(m.top.catchupPermission, m.top.channelFacts, channel.id) > 0
             row.number.width = 170
-            if row.catchup.visible then row.number.width = 128
+            if row.catchup.visible
+                ' Measure the resolved Label font so the icon follows the digits.
+                row.number.width = 0
+                numberWidth = row.number.localBoundingRect().width
+                if numberWidth > 128 then numberWidth = 128
+                row.number.width = numberWidth
+                row.catchup.translation = [12 + numberWidth + 6, 3]
+            end if
             row.name.text = channel.name
             row.badge.text = ""
             if m.favorites.doesExist(channel.uuid) then row.badge.text = "FAV"

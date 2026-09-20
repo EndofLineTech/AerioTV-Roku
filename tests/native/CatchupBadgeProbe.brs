@@ -34,6 +34,7 @@ sub runCatchupBadgeProbe()
         m.settings.groupLayout = layout
         drawGuide()
         print "[catchup-badge] layout="; layout; " badge="; m.rows[0].catchup.visible; " numberWidth="; m.rows[0].number.width; " image="; m.rows[0].catchup.loadStatus
+        print "[catchup-badge] icon-gap="; m.rows[0].catchup.translation[0] - m.rows[0].number.translation[0] - m.rows[0].number.width
     end for
     m.detailChannel = m.filtered[chosen]
     m.detailProgram = program
