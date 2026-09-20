@@ -1,10 +1,91 @@
-AerioTV Roku 0.3.17 — Consolidated pending physical validation
-=============================================================
-INTERNAL WORKSHEET. Preserve completed older worksheets.
+AerioTV Roku 0.3.17 — Full overnight-to-now physical test pass
+============================================================
+INTERNAL WORKSHEET — single results file for this test session.
+Coverage: hold-OK checkpoint 0.3.11 through installed development build 0.3.17,
+including the subsequent archive-reader and VOD-source blocker work.
+Previous completed worksheets remain historical evidence.
 Date: __________________ Tester: _________________________________
 Roku model/OS: __________________ Dispatcharr: ___________________
+Build tested: __________ Test session start/end: _________________
 Write PASS, FAIL, or SKIP in every [     ]. Record failures by ID below.
 Automated/native scripted results do not pre-fill these physical results.
+
+PREPARATION AND HOW TO USE THIS LIST
+-----------------------------------
+The installed development build is 0.3.17 (commit 3b06e13). The public 0.3.8 ZIP
+does not contain these changes. Check the build you are testing before starting.
+
+Have ready:
+- A known-working live channel, movie, and episode; an advertised catch-up channel.
+- Your original connection details available privately before connection tests.
+- An admin account for source/provider selectors; a second restricted account and
+  second viewer are optional. Missing prerequisites mean SKIP, with a reason.
+- A phone/camera for failures and a clock for timeouts/resume positions.
+
+Record original settings so you can restore them:
+Audio mode: __________ Clock: _________ Scale: _________ Captions: _________
+VOD enabled: _________ Active group: __________ Search/category: __________
+
+Record media by names and visible source/version labels, NOT passwords/API keys:
+Live channel: _____________________________________________________
+Movie + working source/version: ___________________________________
+Series / season / episode + working source/version: ________________
+Archive channel / title / broadcast date and time: _________________
+
+Notation: '*' is the remote star button; FF/Rew are Fast Forward/Rewind.
+Each named menu item is selected with Up/Down, then OK, unless stated otherwise.
+Release held buttons before the next gesture. Close inner menus/info before using
+Back to minimize live playback. Movie/episode playback uses Roku's native controls;
+hold-OK is the LIVE player shortcut, not a promised VOD shortcut.
+
+Suggested order:
+1. A-C: startup, caching, hold OK and presentation.
+2. E-F: libraries, working-source playback, saved state and archives.
+3. D, G: recovery and diagnostics; conditional faults can be SKIP.
+4. H-J: optional connection/fault/account/resource checks, then restore settings.
+
+Allow roughly 90-150 minutes for the full ordinary pass, depending on load times;
+optional outages, second-account checks and the soak add time. You can stop and
+resume this worksheet without repeating completed checks.
+For a shorter first pass: A01-A06, B01-B06, C01-C02, E01-E04, E06, E09, E17,
+F01-F04 and G01-G03. The other IDs remain pending rather than implied PASS.
+
+INDEX — 109 individually marked checks
+--------------------------------------
+A01-A13 (13) Startup, cache, guide refresh and early tuning
+B01-B11 (11) Tap/hold OK and player-options focus
+C01-C05 (5)  Guide star, hidden picture and presentation
+D01-D13 (13) Live buffering, recovery, Retry and cancellation
+E01-E33 (33) Movies/series, search/filtering, sources and saved state
+F01-F10 (10) Archive eligibility, playback, minute seeks and exit
+G01-G06 (6)  Diagnostic viewer, export, clear and lifetime
+H01-H09 (9)  Connection errors, permissions and cancelled Tasks
+I01-I05 (5)  Existing audio/caption/sleep/history regression
+J01-J04 (4)  Client cleanup, other viewers and soak
+
+Change coverage:0.3.11 hold OK;0.3.12 HTTP budgets/cancellation;0.3.13 incremental
+startup/cache;0.3.14 live recovery/Retry;0.3.15-16 media libraries/archive sessions/
+diagnostics;0.3.17 TS reader, archive window seeks and remembered VOD versions.
+
+CURRENT BOUNDARIES / KNOWN LIMITATIONS
+-------------------------------------
+- The original failing VOD provider returns upstream405, exposed as HTTP500.
+  That provider is not repaired. A different source for the SAME title/episode
+  passed native playback. Use Choose source version and record the visible label.
+  Internal provider IDs from engineering notes are not necessarily menu labels.
+- Archive FF/Rew reopens a program window at minute boundaries; it is not native
+  frame-accurate scrubbing. A short buffering interval during the reopen is normal.
+- Native movie resume is keyframe-granular: saved67 resumed at63.605 in the sample.
+  Judge whether it returns near your actual watched position, not frame equality.
+- VOD local state retains at most20 entries across progress/watchlist/hidden/watched
+  state. Guide RAM retains three windows; disk metadata cache is discardable.
+- Do not look for universal Restart Program, a guaranteed60-minute rewind buffer,
+  multiview, DVR, alphabet jump, TMDB/person recommendations, or speed choices.
+  These are not delivered by this build. External links are not inline trailers.
+- No fullscreen-star interception/inset experiment needs testing. Fullscreen star
+  remains Roku-owned; guide/mini-guide star remains an app menu.
+- Do not deliberately overload Dispatcharr/providers or change a shared source to
+  manufacture an error. Conditional checks are optional; record SKIP if unsuitable.
 
 A. STARTUP, CACHE AND LIVE PLAYBACK
 ---------------------------------
@@ -32,7 +113,7 @@ Expected: authorized lineup and guide refresh. The same channel continues if
 still authorized. Removed channels must disappear; do not remove one just for
 this check unless you intend to change the server lineup.
 
-[     ] A07 Start: populated guide. Navigate Left/Right across several time
+[     ] A07 Start: populated guide. Tap Left/Right across several time
 windows, then return to now with * -> Jump to Now -> OK.
 Expected: programmes load for fetched ranges; absent server history is not
 presented as playable/downloaded history. Navigation stays responsive.
@@ -41,6 +122,31 @@ presented as playable/downloaded history. Navigation stays responsive.
 Use a second account with a known smaller authorized lineup, then Connect.
 Expected: only that account's channels/programmes appear. Return to your original
 account afterward. SKIP if no second account is available.
+
+[     ] A09 Start: freshly opened guide while mappings/programs still load.
+Move between several channel rows and select a known-working channel -> OK.
+Expected: early channel navigation/tuning works; later metadata must not retune
+you, reset focus unexpectedly, or attach a different station's program information.
+
+[     ] A10 Start: populated guide. Note a title/time, then leave the app for more
+than five minutes. Relaunch and visit that range again.
+Expected: stale/missing cache is refreshed or rebuilt. When stale data is shown,
+it is labeled cached/refreshing rather than presented as freshly fetched.
+If the rebuild is too fast to see a cached label, record that; do not force an outage.
+
+[     ] A11 Start: guide. Move several windows forward, then backward, then use
+* -> Jump to Now. Repeat enough to visit at least five distinct three-hour ranges.
+Expected: old ranges may reload; no crash, wrong channel mapping, or ever-growing
+set of visible rows. This checks behavior, not the internal byte/file cap directly.
+
+[     ] A12 Start: guide with a non-default group and a known selected row.
+* -> Refresh channel lineup -> OK. Wait for completion and browse that group.
+Expected: usable group/channel selection, updated permissions/mappings, no duplicate
+rows or old request suddenly replacing newly loaded data. Record any focus jump.
+
+[     ] A13 Start: guide. * -> Clear guide/detail cache -> OK. While reloading,
+move to a different time range; then return to Now.
+Expected: late responses do not populate the wrong range or leave loading stuck.
 
 B. HOLD OK PLAYER OPTIONS (PREVIOUSLY PENDING ihp.37)
 ---------------------------------------------------
@@ -103,14 +209,46 @@ Expected: guide has usable focus, no delayed reconnect, no accidental retune.
 [     ] D06 Start: playing channel. Back to mini-guide. If a natural recoverable
 interruption occurs, recovery may continue in mini; ordinary Back is not Stop.
 Use * -> Stop playback -> OK. Expected: no later automatic restart.
+If failure already ended the session and opened a dialog, use Return to guide
+instead; record that path rather than looking for a mini-player Stop action.
 
 [     ] D07 Start: a buffering/failed channel with recovery pending. Change to a
-different known-working channel, then Home -> relaunch.
+different known-working channel: while fullscreen buffers, Up/Down selects it;
+if a failure dialog is open, Return to guide first, then select the other channel.
+After it starts, Home -> relaunch.
 Expected: old recovery never replaces the new channel; launch has no autoplay.
 
 [     ] D08 Optional second viewer. Keep a separate client playing the same
 channel during D03-D06, without cutting its network. Expected: Roku recovery or
 Stop does not stop that viewer. SKIP if no second viewer is available.
+
+[     ] D09 Conditional startup stall. Start: guide; select a channel known to
+stall before its first picture. Observe the banner and time the attempt.
+Expected: at most one automatic startup retry for a confirmed buffering stall or
+roughly25-second startup deadline, then an actionable failure. Do not mistake the
+separate after-playing recovery budget for another startup loop. SKIP if no stall.
+
+[     ] D10 Conditional sustained midstream buffering. Start: a channel that has
+already played. Use a natural or isolated-Roku interruption that does not produce
+an immediate terminal error. Note when sustained buffering begins.
+Expected: a bounded reconnect around20 seconds, with a roughly25-second deadline
+for that replacement to start. Other immediate error paths may fail sooner.
+No endless auto-retry loop. SKIP if this signal cannot be reproduced.
+
+[     ] D11 Start: failure dialog. Select Retry channel once; release OK promptly.
+On a separate reproduction, hold OK briefly while selecting Retry, then release.
+Expected: one intentional new attempt per selection, not several queued attempts,
+and no unexpected menu/retune from the initiating button release.
+
+[     ] D12 Start: fullscreen live playback. Tap Up/Down rapidly through several
+channels, release on a known-working one, then wait.
+Expected: the final selection wins; an old startup/reconnect never takes over.
+Back minimizes, then * -> Stop playback ends it without a delayed restart.
+
+[     ] D13 Conditional explicit refusal. Start: a channel/account already known
+to be refused for permissions, rate limit or connection limit. Attempt it once.
+Expected: actionable failure rather than repeated automatic media reconnects.
+Do not create extra viewers to force the limit. SKIP without a suitable example.
 
 E. MOVIES, TV SHOWS AND SAVED STATE
 ---------------------------------
@@ -135,13 +273,13 @@ returning405 is still unavailable. Record the selected version and result.
 
 [     ] E05 Start: Movies. * -> Search -> enter a title -> Search.
 Expected: server results for this account, stable focus, no whole-catalog load.
-Search an empty string to clear it. * -> Sort: title / newest / year cycles
-supported sorting. * -> Categories -> choose category -> OK filters the library.
-* -> Movies resets category/search. * -> Refresh bypasses the current page cache.
+Search an empty string to clear it. Use E18-E20 for separate sort/category/refresh
+results, rather than treating one search PASS as covering those operations.
 
 [     ] E06 Start: guide. * -> TV Shows -> select series -> OK -> Browse episodes.
-Expected: season/episode ordering and matching episode facts. Back restores the
-series location. Select an episode -> details -> appropriate Play action.
+Expected: an episode grid ordered by season/episode with matching facts; there is
+not a separate season-picker screen to hunt for. Back restores the series location.
+Select an episode -> details -> appropriate Play action.
 A working source for the same tested episode now passed native play/seek/pause.
 Use Choose source version if the default provider does not serve that episode.
 
@@ -190,10 +328,89 @@ correct movie/series/episode destination, Close returns with usable focus. No
 promise of inline trailer playback. SKIP when the provider supplies no identifiers.
 
 [     ] E17 Admin account, start: title details -> Choose source version -> choose
-a rendition -> OK -> Play. Expected: matching title/episode and supplied container;
+a rendition -> OK -> returned details -> Play from beginning (or Resume).
+Expected: matching title/episode and supplied container;
 unavailable versions give an error. Back and reopen details: valid choice is
 remembered. Use Auto source clears it. Library * -> Choose source for selected
 title must remain usable if a previously saved source disappears.
+
+[     ] E18 Start: Movies or TV Shows. * -> Sort: title / newest / year -> OK.
+Repeat to cycle title, newest-added and descending year, then back to title.
+Expected: supported orders take effect without losing remote control. No rating
+sort is promised by the0.31 endpoint. Record which order each result used.
+
+[     ] E19 Start: library. * -> Categories -> OK. Browse; use FF/Rew if there are
+multiple category pages. Choose a category -> OK.
+Expected: matching titles or an honest empty result, correct page navigation.
+* -> Movies (or TV Shows) resets category/search/provider filters.
+
+[     ] E20 Start: a populated library page. * -> Refresh -> OK.
+Expected: fresh loading feedback, then a usable page with current titles. Press
+Back during a separate refresh; the cancelled result must not reopen the library.
+
+[     ] E21 Start: library. Search for a deliberately nonexistent title.
+Expected: clear empty result with Search/Back still usable, not indefinite loading.
+Cancel a subsequent search keyboard with Cancel; the existing query remains.
+
+[     ] E22 Start: movie details. Use the on-screen Back button, then reopen the
+same details and press remote Back. Also close Library options with Close/Back.
+Expected: all dismissal routes restore usable focus without a crash, accidental
+Play, or missing final buttons. This targets the two native-dialog fixes.
+
+[     ] E23 Conditional unavailable media. Start: a title/source known to fail.
+Play once. Expected: the error remains readable until OK Retry or Back; a later
+native finished event must not silently dismiss it or mark the title watched.
+Back -> Choose source version can select another copy. SKIP if not reproducible.
+
+[     ] E24 Conditional media timeout. Start: movie/episode opening or buffering.
+If it stalls continuously, observe for about45 seconds.
+Expected: a bounded timeout and usable Retry/Return path, not an endless spinner.
+SKIP if it plays or fails by a different path before that deadline.
+
+[     ] E25 Start: a fresh test title with no prior progress. Play for less than
+30 seconds, then Back -> * -> Continue Watching.
+Expected: no resumable entry yet. Repeat with 60-90 seconds of actual playback,
+then Back; it should now be resumable. Do not use a merely displayed seek target.
+
+[     ] E26 Start: a known-working episode. Confirm series, season and episode
+before Play; pause/resume, then Back.
+Expected: that exact episode plays and the episode grid/focus returns. Back again
+returns to its series location. Repeat with a second season if available.
+
+[     ] E27 Start: a working movie with saved progress, plus a watchlist entry and
+one hidden test title. Home -> relaunch -> reopen the same library/shelves.
+Expected: account state survives; hidden entries stay out of normal results and
+Resume points near watched content. Restore/unhide the test title afterward.
+
+[     ] E28 Conditional failed seek. Start: a movie at a noted working position.
+If a subsequent seek buffers/fails, return to the library and inspect Resume.
+Expected: the uncommitted target must not replace the last confirmed position.
+SKIP if seeks succeed. Record both the watched position and requested target.
+
+[     ] E29 Start: series details. Hide title. Open Continue Watching/Watchlist
+containing an episode from that series, if one was retained.
+Expected: hiding the series also excludes its episodes from those ordinary shelves.
+Use Hidden titles -> series details -> Unhide title to restore it.
+
+[     ] E30 Optional completion check. Start: a short working title or a known
+seekable title near its end. Play through actual completion or beyond95%.
+Expected: it is no longer resumable and details offer Mark unwatched. An error is
+not completion. SKIP rather than repeatedly seeking an unreliable source.
+
+[     ] E31 Start: source-version chooser. Use FF/Rew if there are more than20
+versions. Remote Back restores the original title/page rather than selecting one.
+Select a version known not to contain the chosen episode, if available.
+Expected: an explicit error; no silent substitution of another episode.
+
+[     ] E32 Start: working title selected through Choose source version. Play,
+Back, Home -> relaunch -> title details. Verify the saved choice; then Use Auto
+source -> confirm the override clears. Auto may still pick an unavailable provider;
+that is a source-health result, not a reason to claim the saved selection persisted.
+
+[     ] E33 Optional bounded-state check, best on a test account. Add/visit enough
+test titles to exceed20 saved entries. Expected: older retained state may be evicted,
+but no crash or corruption of unrelated guide/account preferences. SKIP on your
+normal account if you do not want to displace its saved entries.
 
 F. COMPLETED-PROGRAM ARCHIVES
 ----------------------------
@@ -210,21 +427,196 @@ program minute; Rew opens the previous minute, clamped to this program. The titl
 stays pinned and the displayed program offset changes. Pause, then seek: pause
 must remain. This reopens a server window; it is not frame-accurate native scrubbing.
 
-[     ] F04 Back returns to the same guide location. Open details -> Watch channel
+[     ] F04 Start: playing archive. Back returns to the same guide location.
+Open details -> Watch channel
 LIVE explicitly tunes live. Cancel an archive load with Back; it must not open
 later or replace another selected channel.
+
+[     ] F05 Start: archive details for a past program outside the advertised
+retention window, a future program, or a channel without catch-up.
+Expected: no eligible archive action/badge. Watch channel LIVE is a distinct action;
+missing archive data must never be substituted with live playback automatically.
+
+[     ] F06 Start: a playing archive with a known title and broadcast time.
+After a little playback, tap FF once and wait for reopening to finish; tap Rew
+once and wait again. Expected: content moves to the requested program minute, the
+offset label tracks it, and title identity stays pinned. Check the actual scene/
+audio progression, not just the numeric label; server echoes alone were not proof.
+
+[     ] F07 Start: paused archive. Tap FF or Rew; wait for reopening.
+Expected: new window remains paused. Play/Pause resumes it. No switch to live.
+
+[     ] F08 Start: archive near its beginning. Rew must not go before program start.
+If a short program is available, FF through to its final program minute.
+Expected: requested offsets clamp to the program window. Provider padding may
+exist; do not interpret its extra bytes as a new verified rewind range. Record
+the tested boundary; SKIP the end portion if reaching it is impractical.
+
+[     ] F09 Start: playing archive. Tap FF several times while one reopen is
+pending, then Back before it finishes. Expected: pending input does not create an
+unbounded queue; the guide returns, stays visible/focused, and no late archive opens.
+
+[     ] F10 Conditional archive failure/expiry. Start: an archive that becomes
+unavailable or an existing expired-session error. Expected: readable return path.
+OK/Back returns to guide; selecting the program again creates a new attempt.
+An unavailable/expired session must not leave a black, unfocusable screen.
+SKIP if it cannot be reproduced; normal pause may refresh the session lifetime.
 
 G. IN-APP DIAGNOSTICS
 --------------------
 [     ] G01 Start: guide. * -> Diagnostics -> OK. Expected: recent session events
 with stage, timing/code and sanitized messages. Older/Newer page through them.
-[     ] G02 Export to Roku console emits sanitized JSON on developer TCP8085.
+[     ] G02 Start: Diagnostics. Export to Roku console -> OK emits sanitized JSON
+on developer TCP8085.
 SKIP console capture if unavailable; the on-screen viewer must still work.
 [     ] G03 Clear removes prior events. New activity may add new events. Close or
 Back restores guide focus. No credentials, media URLs or session tokens displayed.
 
-FAILURE NOTES — ID, exact buttons, expected/actual, photo filename
+[     ] G04 Start: guide after a failed tune or media error. * -> Diagnostics.
+Expected: relevant stage/error information is readable and redacted; header values,
+full playable URLs and session tokens must not appear. Do not paste secrets into
+test notes even if a failure exposes them; describe the field and redact the image.
+
+[     ] G05 Start: Diagnostics containing recognizable events. Home -> relaunch ->
+* -> Diagnostics. Expected: prior-session history is gone; NEW startup/guide events
+may already exist. Logs are session-only, not durable history.
+
+[     ] G06 Optional long-session check. Leave the app open for over an hour, then
+reopen Diagnostics. Expected: old events expire and navigation remains bounded.
+SKIP if inconvenient; expiry and storage caps also have automated coverage.
+
+H. CONNECTION / HTTP FAILURE / TASK CANCELLATION (OPTIONAL CONDITIONS)
+--------------------------------------------------------------------
+Do these after the normal pass. Preserve your original URL/sign-in details outside
+this worksheet. Restore them immediately after each edited-connection check.
+
+[     ] H01 Start: guide -> * -> Connection settings. If you can restore the real
+key, choose Sign-in method = API key, set API key to a deliberately invalid test
+value -> Save -> Connect. Expected: actionable authentication failure, no cached
+authorized library shown as an offline bypass. Restore the real key and Connect.
+
+[     ] H02 Start: Connection settings. With the original URL recorded privately,
+enter a known unreachable TEST endpoint -> Save -> Connect, then Back while loading.
+Expected: cancellation restores an editable screen; a late response never opens
+the old connection. Restore original Server URL and Connect. SKIP if unsuitable.
+
+[     ] H03 Start: guide during metadata loading. * -> Connection settings ->
+Connect to reload the current connection, or use the optional second account.
+Expected: old guide/details/library results cannot overwrite the new connection.
+
+[     ] H04 Start: movie/series library. Start Search or page loading, then Back.
+Return to the guide and tune a live channel before the old request completes.
+Expected: no delayed catalog/dialog steals focus or replaces the live session.
+
+[     ] H05 Start: a restricted account with movies/series/catch-up denied.
+Expected: denied destinations/actions are absent or explicitly refused; saved
+metadata from an earlier allowed account must not grant access. SKIP without one.
+
+[     ] H06 Conditional existing429/503 response. If a normal request naturally
+hits rate limiting/server unavailability, note the message and elapsed behavior.
+Expected: actionable, bounded response and usable cancellation, not a rapid retry
+storm. Do not deliberately load-test the server. SKIP if it does not occur.
+Exact Retry-After parsing/attempt counts are automated checks, not remote-only proof.
+
+[     ] H07 Optional Forget test, LAST, on an account whose local app settings you
+are prepared to remove. Guide -> * -> Connection settings -> Forget connection.
+Expected: saved connection/account state is removed, old content never opens later,
+and reconnecting requires appropriate credentials. Reconnect when finished.
+This deliberately changes stored state; SKIP if you want to preserve it.
+
+[     ] H08 Start: guide after restoring the original connection. Home -> relaunch.
+Expected: the intended remembered connection opens, or normal sign-in is requested
+if Remember API key is Off. None of the failed/cancelled test contexts resurrects.
+
+[     ] H09 Start: guide. * -> Search programs -> Title -> enter a query -> Search; Back
+while results are loading, then move elsewhere or tune a channel. Separately open
+* -> Program details for one airing, Back, then another airing before enrichment finishes.
+Expected: cancelled search/detail responses neither reopen old UI nor put the first
+airing's facts/artwork on the second. Fast completion is not a cancellation proof;
+record that condition or SKIP that branch if you cannot catch it loading.
+
+I. SHORT REGRESSION OF EXISTING LIVE SETTINGS
+--------------------------------------------
+These settings mostly predate the overnight work, but the changed player/menu/
+Task paths must still respect them. Restore the original values recorded above.
+
+[     ] I01 Start: fullscreen live -> hold OK -> Audio compatibility -> choose
+Direct source audio, then Automatic AAC fallback, checking a known-working channel
+after each choice. Expected: the chosen setting remains selected through a retune
+and a manual Retry, with usable audio. Restore your original mode.
+
+[     ] I02 If an AAC profile is available: same path -> Always use AAC compatibility.
+Tune a working channel; Home -> relaunch -> tune again. Expected: selected mode
+persists and startup waits for its prerequisite rather than silently using Direct.
+If Always AAC was already saved and its profile is unavailable on a later tune,
+Use Automatic / Use Direct / Cancel must be explicit choices; Cancel retains Always
+AAC. Do not disable a server profile
+solely to force this case. SKIP the unavailable-profile branch if not encountered.
+
+[     ] I03 Start: fullscreen live -> hold OK -> Captions -> select a supported
+caption mode. Back to playback, then mini and fullscreen again.
+Expected: caption behavior remains usable. SKIP visual caption checks on a stream
+without captions; do not call absence of provider captions an app failure.
+
+[     ] I04 Start: fullscreen live -> hold OK -> Sleep timer -> select30 minutes.
+Verify the setting/hint, then Back to mini-guide -> * -> Cancel sleep timer.
+Expected: timer setting/cancellation remain usable through the new options route.
+Waiting for expiry is optional; already accepted sleep functionality is regression.
+
+[     ] I05 Start: guide. Check a known favorite/recent channel and a non-default
+group before and after cache clear, VOD playback, and archive return.
+Expected: guide preferences/history remain usable and separate from VOD saved state.
+
+J. RESOURCE / SECOND-VIEWER / SOAK CHECKS
+---------------------------------------
+If available, open Dispatcharr's active-stream/client view on another device.
+Track this Roku's client identity separately from other viewers. A brief overlap
+of client records during stop/reopen was observed; settled cleanup is the check,
+not an assertion that the count is always exactly one.
+
+[     ] J01 Start: live playback. Note the Roku client; switch several channels,
+settle on one, then mini-guide -> * -> Stop playback. Wait for server cleanup.
+Expected: this Roku's old clients settle away; other viewers remain. Record counts
+and time to settle. SKIP server-side count verification if that view is unavailable.
+
+[     ] J02 Start: a movie or archive. Note its client/session, then Back; repeat
+once with Home instead of Back. Expected: local playback ends and its server
+connection settles away. Home cleanup may use server grace/expiry rather than an
+explicit DELETE. Do not manually stop a shared server channel to make it pass.
+
+[     ] J03 Optional second viewer on the same LIVE channel: keep that viewer
+playing while Roku tunes, minimizes, stops, enters Movies, or opens an archive.
+Expected: the other viewer is not stopped by this Roku's local cleanup. SKIP if
+no second viewer is available; record its continuity separately from total counts.
+
+[     ] J04 Optional20-30-minute soak. Alternate a few guide windows/library pages,
+then watch a known-working live or on-demand stream. Return through the menus.
+Expected: responsive focus, no crash/restart or accumulating stuck loading screens.
+Record picture/audio interruptions and whether the same source fails elsewhere.
+
+AUTOMATED / NATIVE INTERNALS ALREADY CHECKED — NO MANUAL PASS BOXES
+-----------------------------------------------------------------
+The following are engineering evidence, not things this remote-only worksheet
+asks you to prove:38 automated suites; compile/build;8MiB/64-file cache limits,
+checksums/corruption/epoch checks; bounded ingestion; Retry-After seconds/date
+parsing; credential-free normalized metadata; X-API-Key-only media headers;
+cancelled session creation cleanup; native ContentNode reader enum validation.
+Your checks above supply the missing physical focus, picture/audio, content
+alignment and real-user lifecycle evidence. An on-screen grid alone cannot prove
+an internal memory cap, and a numeric seek target alone cannot prove content moved.
+
+RESULT SUMMARY / FAILURE NOTES
 ----------------------------------------------------------------
+PASS count: ______ FAIL count: ______ SKIP count: ______ Pending: ______
+For each failure or conditional SKIP, record:
+ID: _______ Media + visible source/version: ________________________
+Starting screen / exact buttons: __________________________________
+Expected: ________________________________________________________
+Observed (include timestamps/resume offsets if relevant): ___________
+Photo/video filename / sanitized diagnostic: _______________________
+Repeatable? ______ Recovery that worked: ___________________________
+SKIP reason / missing prerequisite: ________________________________
+Copy this note block as needed; keep each failure tied to its test ID.
 _________________________________________________________________
 _________________________________________________________________
 _________________________________________________________________
@@ -233,5 +625,6 @@ _________________________________________________________________
 
 Save this file with results. Pending physical checks span ihp.37, mxz, 34y and l4j.
 Reboot/OS-pressure cache retention and a 60-minute rewind window are not promised.
-Script-injected faults are not a real-outage pass. See MEDIA-VALIDATION-0.3.15.md
-for the exact automated/native evidence and open transport blockers.
+Script-injected faults are not a real-outage pass. Engineering references:
+MEDIA-VALIDATION-0.3.15.md and MEDIA-BLOCKER-FIXES-0.3.17.md. You do not need to
+switch worksheets: return this file with your results and any referenced photos.
