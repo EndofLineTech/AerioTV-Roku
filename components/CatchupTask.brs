@@ -29,7 +29,7 @@ sub runCatchup()
                 result.status = response.status
                 url = catchupSessionUrl(m.base, m.top.channelUuid, response.data, CreateObject("roDateTime").asSeconds())
                 if response.status = 201 and url <> ""
-                    result = {ok: true, url: url, sessionId: response.data.session_id, expiresAt: response.data.expires_at}
+                    result = {ok: true, url: url, sessionId: response.data.session_id, expiresAt: response.data.expires_at, start: textValue(response.data.start)}
                     if m.top.cancelRequested then sessionMutation(root + result.sessionId + "/", "DELETE")
                 else
                     if response.status = 201 and type(response.data) = "roAssociativeArray"

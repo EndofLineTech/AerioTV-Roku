@@ -5,12 +5,15 @@
     <field id="closed" type="boolean" alwaysNotify="true" />
     <field id="progress" type="assocarray" alwaysNotify="true" />
     <field id="diagnostic" type="assocarray" alwaysNotify="true" />
+    <field id="archiveSeek" type="integer" alwaysNotify="true" />
     <function name="closeMedia" />
+    <function name="suspendArchive" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/CatchupModel.brs" />
   <script type="text/brightscript" uri="OnDemandPlayer.brs" />
   <children>
     <Rectangle width="1920" height="1080" color="0x000000FF" />

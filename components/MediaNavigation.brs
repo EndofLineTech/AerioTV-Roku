@@ -48,12 +48,13 @@ sub onVodPlay(event as object)
     if not m.vod.isSameNode(event.getRoSGNode()) or m.page <> "library" then return
     item = event.getData()
     if textValue(item.accountScope) <> normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId then return
+    saveVodChange(item, {relationId: textValue(item.relationId)})
     identity = "roku_" + CreateObject("roDeviceInfo").getRandomUUID()
     transport = identity
     if m.vodTransport <> invalid
-        if m.vodTransport.account = m.accountIdentity and m.vodTransport.key = item.key then transport = m.vodTransport.id
+        if m.vodTransport.account = m.accountIdentity and m.vodTransport.key = item.key and m.vodTransport.version = textValue(item.relationId) then transport = m.vodTransport.id
     end if
-    m.vodTransport = {account: m.accountIdentity, key: item.key, id: transport}
+    m.vodTransport = {account: m.accountIdentity, key: item.key, id: transport, version: textValue(item.relationId)}
     url = vodPlaybackUrl(m.baseUrl, item, transport)
     if url = "" then return
     m.mediaReturn = "library"
@@ -69,6 +70,8 @@ end sub
 
 sub onMediaClosed()
     if m.page <> "onDemand" then return
+    m.archiveSeeking = false
+    cancelArchiveLoad()
     releaseArchive()
     if m.mediaReturn = "library"
         m.page = "library"
@@ -88,6 +91,9 @@ sub onArchiveRequested(event as object)
     if textValue(selected.scope) <> textValue(m.guide.config.scope) then return
     stopPlayback()
     m.archiveContext = {baseUrl: m.baseUrl, apiKey: m.apiKey, account: m.accountIdentity, channel: selected.channel, program: selected.program}
+    m.archiveOffset = 0
+    m.archiveStartPaused = false
+    m.archiveSeeking = false
     m.archiveTask = CreateObject("roSGNode", "CatchupTask")
     m.archiveTask.baseUrl = m.baseUrl
     m.archiveTask.apiKey = m.apiKey
@@ -109,29 +115,37 @@ sub onArchiveCreated(event as object)
     m.archiveTask.unobserveField("result")
     m.archiveTask = invalid
     if not result.ok
+        m.archiveSeeking = false
+        m.mediaPlayer.callFunc("closeMedia")
+        m.mediaPlayer.visible = false
         m.page = "guide"
+        m.guide.visible = true
         m.guide.active = true
+        releaseArchive()
         showNotice(result.message)
         return
     end if
     m.archiveSession = result.sessionId
+    m.archiveServerStart = result.start
+    m.archiveSeeking = false
     m.mediaReturn = "guide"
     m.lastArchiveReport = 0
     m.guide.visible = false
     m.page = "onDemand"
     p = m.archiveContext.program
-    m.mediaPlayer.request = {account: m.accountIdentity, identity: result.sessionId, key: p.id, mode: "catchup", url: result.url, title: p.title, apiKey: m.apiKey, streamFormat: "mpegts", programStart: p.startsAt}
+    m.mediaPlayer.request = {account: m.accountIdentity, identity: result.sessionId, key: p.id, mode: "catchup", url: result.url, title: p.title, apiKey: m.apiKey, streamFormat: "ts", programStart: p.startsAt, program: p, offset: m.archiveOffset, startPaused: m.archiveStartPaused}
 end sub
 
-sub deleteOwnArchive(id as string)
+sub deleteOwnArchive(id as string, callback = "" as string)
     if m.archiveContext = invalid or id = "" then return
     task = CreateObject("roSGNode", "CatchupTask")
     task.baseUrl = m.archiveContext.baseUrl
     task.apiKey = m.archiveContext.apiKey
     task.sessionId = id
     task.operation = "delete"
-    task.control = "RUN"
+    if callback <> "" then task.observeField("result", callback)
     m.archiveCleanupTask = task
+    task.control = "RUN"
 end sub
 
 sub cancelArchiveLoad()
@@ -156,6 +170,7 @@ sub releaseArchive()
 end sub
 
 sub resetMediaNavigation()
+    m.archiveSeeking = false
     m.vodTransport = invalid
     m.mediaIdentity = ""
     m.mediaItem = invalid
@@ -186,6 +201,7 @@ sub onMediaProgress(event as object)
         return
     end if
     if progress.mode = "catchup" and m.archiveSession <> invalid
+        if m.archiveSeeking = true then return
         if progress.identity <> m.archiveSession or not mediaNumber(progress.position) then return
         if m.lastArchiveReport > uiNow() - 30 then return
         if m.archivePositionTask <> invalid
@@ -197,10 +213,47 @@ sub onMediaProgress(event as object)
         m.archivePositionTask.apiKey = m.archiveContext.apiKey
         m.archivePositionTask.sessionId = m.archiveSession
         m.archivePositionTask.operation = "position"
-        m.archivePositionTask.position = progress.position
+        m.archivePositionTask.position = progress.position + m.archiveOffset
         m.archivePositionTask.paused = progress.state = "paused"
         m.archivePositionTask.control = "RUN"
     end if
+end sub
+
+sub onArchiveSeek(event as object)
+    if not m.mediaPlayer.isSameNode(event.getRoSGNode()) or m.page <> "onDemand" then return
+    if m.archiveSeeking = true or m.archiveSession = invalid or m.archiveContext = invalid then return
+    plan = catchupSeekPlan(m.archiveContext.program, event.getData())
+    if plan = invalid then return
+    if plan.offset = m.archiveOffset then return
+    m.archiveSeeking = true
+    m.archiveSeekPlan = plan
+    state = m.mediaPlayer.callFunc("suspendArchive")
+    m.archiveStartPaused = state.paused
+    if m.archivePositionTask <> invalid then cancelNetworkTask(m.archivePositionTask)
+    m.archivePositionTask = invalid
+    deleteOwnArchive(m.archiveSession, "onArchiveSeekReleased")
+end sub
+
+sub onArchiveSeekReleased(event as object)
+    if not isCurrentTaskEvent(event, m.archiveCleanupTask) then return
+    m.archiveCleanupTask.unobserveField("result")
+    if m.archiveSeeking <> true or m.page <> "onDemand" or m.archiveContext = invalid then return
+    result = event.getData()
+    if not result.ok
+        m.mediaPlayer.callFunc("closeMedia")
+        showNotice("Could not release the prior archive session. Return to the guide and retry.")
+        return
+    end if
+    m.archiveSession = invalid
+    m.archiveOffset = m.archiveSeekPlan.offset
+    m.archiveTask = CreateObject("roSGNode", "CatchupTask")
+    m.archiveTask.baseUrl = m.archiveContext.baseUrl
+    m.archiveTask.apiKey = m.archiveContext.apiKey
+    m.archiveTask.accountId = m.serverAccountId
+    m.archiveTask.channelUuid = m.archiveContext.channel.uuid
+    m.archiveTask.program = m.archiveSeekPlan.program
+    m.archiveTask.observeField("result", "onArchiveCreated")
+    m.archiveTask.control = "RUN"
 end sub
 
 sub onVodStateChange(event as object)

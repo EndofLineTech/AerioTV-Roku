@@ -17,7 +17,9 @@ function vodState(raw as dynamic) as object
                     item.watchlist = row.watchlist = true
                     item.hidden = row.hidden = true
                     item.watched = row.watched = true
-                    result.push({id: item.id, uuid: item.uuid, key: item.key, kind: item.kind, title: left(item.title, 120), position: item.position, duration: item.duration, watchlist: item.watchlist, hidden: item.hidden, watched: item.watched, seriesId: left(textValue(row.seriesId), 20), authorization: left(textValue(row.authorization), 64)})
+                    relation = textValue(row.relationId)
+                    if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(relation) then relation = ""
+                    result.push({id: item.id, uuid: item.uuid, key: item.key, kind: item.kind, title: left(item.title, 120), position: item.position, duration: item.duration, watchlist: item.watchlist, hidden: item.hidden, watched: item.watched, seriesId: left(textValue(row.seriesId), 20), authorization: left(textValue(row.authorization), 64), relationId: relation})
                     seen[item.key] = true
                     if result.count() >= 20 then exit for
                 end if
@@ -72,7 +74,7 @@ end function
 
 function vodStateUpdate(raw as dynamic, item as object, patch as object) as object
     entry = vodStateEntry(raw, item)
-    for each key in ["position", "duration", "watchlist", "hidden", "watched"]
+    for each key in ["position", "duration", "watchlist", "hidden", "watched", "relationId"]
         if patch.doesExist(key) then entry[key] = patch[key]
     end for
     result = [entry]

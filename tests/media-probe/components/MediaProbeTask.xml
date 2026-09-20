@@ -5,6 +5,7 @@
     <field id="media" type="assocarray" />
     <field id="report" type="assocarray" />
     <field id="sessionId" type="string" />
+    <field id="operation" type="string" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
@@ -14,5 +15,6 @@
   <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/CatchupModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/VodModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
   <script type="text/brightscript" uri="MediaProbeTask.brs" />
 </component>

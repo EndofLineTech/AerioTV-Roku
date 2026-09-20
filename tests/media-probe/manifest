@@ -3,4 +3,5 @@ major_version=0
 minor_version=0
 build_version=1
 ui_resolutions=fhd
-media_probe_kind=episode
+media_probe_kind=episode-meta
+media_probe_provider=19

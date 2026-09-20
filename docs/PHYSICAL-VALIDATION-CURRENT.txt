@@ -1,4 +1,4 @@
-AerioTV Roku 0.3.16 — Consolidated pending physical validation
+AerioTV Roku 0.3.17 — Consolidated pending physical validation
 =============================================================
 INTERNAL WORKSHEET. Preserve completed older worksheets.
 Date: __________________ Tester: _________________________________
@@ -129,8 +129,9 @@ to the library (close native transport chrome first if necessary).
 
 [     ] E04 Start: playing movie. Use native FF/Rew controls for a modest seek;
 pause/resume. Expected: an actual committed position, not just a moving target.
-Known blocker l4j.14: HTTP500/buffered seek/reopen failures have been observed.
-Record the result; do not repeatedly hammer a failing provider.
+If the default source fails, use Choose source version in title details (admin
+accounts). A working rendition now passed native seek/resume; the upstream source
+returning405 is still unavailable. Record the selected version and result.
 
 [     ] E05 Start: Movies. * -> Search -> enter a title -> Search.
 Expected: server results for this account, stable focus, no whole-catalog load.
@@ -141,7 +142,8 @@ supported sorting. * -> Categories -> choose category -> OK filters the library.
 [     ] E06 Start: guide. * -> TV Shows -> select series -> OK -> Browse episodes.
 Expected: season/episode ordering and matching episode facts. Back restores the
 series location. Select an episode -> details -> appropriate Play action.
-Known blocker l4j.15: one tested episode returned no readable media bytes.
+A working source for the same tested episode now passed native play/seek/pause.
+Use Choose source version if the default provider does not serve that episode.
 
 [     ] E07 Start: movie/episode details. Add to watchlist -> OK.
 * -> Watchlist shows it. Reopen details -> Remove from watchlist removes it.
@@ -153,7 +155,7 @@ and search. * -> Hidden titles -> its details -> Unhide title restores it.
 [     ] E09 Start: a movie/episode with at least 30 seconds of verified playback.
 Back to library -> * -> Continue Watching -> title -> Resume.
 Expected: saved position resumes if the transport/server supports it. This is
-NOT pre-passed: native resume remains blocked by l4j.14 in the tested sample.
+NOT a physical pre-pass: native resume67 reopened at63.605 on the working rendition.
 Play from beginning must reset that item's progress.
 
 [     ] E10 Start: title details. Mark watched / remove progress -> OK.
@@ -187,6 +189,12 @@ External information / trailer links. Expected: readable links for another devic
 correct movie/series/episode destination, Close returns with usable focus. No
 promise of inline trailer playback. SKIP when the provider supplies no identifiers.
 
+[     ] E17 Admin account, start: title details -> Choose source version -> choose
+a rendition -> OK -> Play. Expected: matching title/episode and supplied container;
+unavailable versions give an error. Back and reopen details: valid choice is
+remembered. Use Auto source clears it. Library * -> Choose source for selected
+title must remain usable if a previously saved source disappears.
+
 F. COMPLETED-PROGRAM ARCHIVES
 ----------------------------
 [     ] F01 Start: guide on a catch-up-capable channel. Tap Left to a completed
@@ -197,9 +205,10 @@ program -> OK for details. Expected: Archive advertised badge and Play archive
 Expected: that archived program opens, not live TV. An unavailable archive must
 show an error and a return path. One native sample returned404; another played.
 
-[     ] F03 Start: playing archive. Play/Pause pauses/resumes. The displayed title
-stays pinned to the archive. FF/Rew must not imply a supported seek window.
-Archive seeking is deliberately unavailable after the failed native seek probe.
+[     ] F03 Start: playing archive. Play/Pause pauses/resumes. FF opens the next
+program minute; Rew opens the previous minute, clamped to this program. The title
+stays pinned and the displayed program offset changes. Pause, then seek: pause
+must remain. This reopens a server window; it is not frame-accurate native scrubbing.
 
 [     ] F04 Back returns to the same guide location. Open details -> Watch channel
 LIVE explicitly tunes live. Cancel an archive load with Back; it must not open

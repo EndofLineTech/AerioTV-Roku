@@ -29,5 +29,10 @@ sub main()
     item.kind = "series"
     menu = vodDetailMenu(item, state[0])
     if menu.actions[0] <> "episodes" or menu.buttons.count() <> 5 then stop
+    item = vodNormalize({id: 8, uuid: "source-test", name: "Source test"}, "movie")
+    state = vodStateUpdate(state, item, {relationId: "42"})
+    if vodStateEntry(state, item).relationId <> "42" then stop
+    state = vodStateUpdate(state, item, {relationId: "../invalid"})
+    if vodStateEntry(state, item).relationId <> "" then stop
     print "ALL TESTS PASSED"
 end sub

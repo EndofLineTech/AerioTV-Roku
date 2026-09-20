@@ -19,6 +19,16 @@ sub discover()
         return
     end if
     kind = CreateObject("roAppInfo").getValue("media_probe_kind")
+    if m.top.operation <> "" then kind = m.top.operation
+    m.probeHttp = right(kind, 5) = "-http"
+    m.probeMeta = right(kind, 5) = "-meta"
+    if m.probeHttp or m.probeMeta then kind = left(kind, len(kind) - 5)
+    if kind = "logs"
+        wait(3000, CreateObject("roMessagePort"))
+        inspectMediaLogs()
+        m.key = ""
+        return
+    end if
     if kind = "catchup"
         rows = requestPages("/api/channels/channels/?page_size=200")
         if rows = invalid
@@ -51,7 +61,7 @@ sub discover()
             m.top.report = {error: "Catchup session unavailable", status: response.status}
             return
         end if
-        m.top.media = {kind: kind, url: url, apiKey: m.key, format: "mpegts", sessionId: response.data.session_id}
+        media = {kind: kind, url: url, apiKey: m.key, format: "mpegts", sessionId: response.data.session_id}
     else if kind = "episode"
         m.maxResponseBytes = 1048576
         seriesPage = vodPage(requestJson(m.base + "/api/vod/series/?page_size=20&name=Breaking%20Bad"), "series", m.base)
@@ -59,18 +69,49 @@ sub discover()
             m.top.report = {error: "Representative series unavailable"}
             return
         end if
+        print "[media-probe] matching-series="; seriesPage.total
         info = requestJson(m.base + "/api/vod/series/" + seriesPage.items[0].id + "/provider-info/?include_episodes=true")
-        item = invalid
+        originalEpisodeId = ""
         if type(info) = "roAssociativeArray"
             if type(info.episodes) = "roAssociativeArray"
-                for each season in info.episodes
-                    if type(info.episodes[season]) = "roArray"
-                        if info.episodes[season].count() > 0
-                            item = vodNormalize(info.episodes[season][0], "episode")
-                            exit for
-                        end if
+                if type(info.episodes["3"]) = "roArray"
+                    for each episode in info.episodes["3"]
+                        if textValue(episode.episode_number) = "1" then originalEpisodeId = textValue(episode.id)
+                    end for
+                end if
+            end if
+        end if
+        m.maxResponseBytes = 8388608
+        rawVariants = requestJson(m.base + "/api/vod/series/" + seriesPage.items[0].id + "/providers/")
+        m.maxResponseBytes = 1048576
+        variants = apiRows(rawVariants)
+        if variants = invalid
+            if type(rawVariants) = "roAssociativeArray" then print "[media-probe] variant-keys="; FormatJson(rawVariants.keys())
+            if type(m.httpFailure) = "roAssociativeArray" then print "[media-probe] variant-failure="; m.httpFailure.category; " status="; m.httpFailure.status
+        end if
+        if variants <> invalid
+            print "[media-probe] series-variants="; variants.count()
+            for each variant in variants
+                if type(variant.m3u_account) = "roAssociativeArray"
+                    if textValue(variant.m3u_account.id) = CreateObject("roAppInfo").getValue("media_probe_provider")
+                        m.maxResponseBytes = 8388608
+                        info = requestJson(m.base + "/api/vod/series/" + seriesPage.items[0].id + "/provider-info/?include_episodes=true&relation_id=" + textValue(variant.id))
+                        if info = invalid and type(m.httpFailure) = "roAssociativeArray" then print "[media-probe] alternate-info-failure="; m.httpFailure.category; " status="; m.httpFailure.status
+                        exit for
                     end if
-                end for
+                end if
+            end for
+        end if
+        item = invalid
+        if type(info) = "roAssociativeArray"
+            print "[media-probe] episodes-fetched="; info.episodes_fetched; " selected-provider="; info.m3u_account.id
+            if type(info.episodes) = "roAssociativeArray"
+                print "[media-probe] seasons="; FormatJson(info.episodes.keys())
+                if type(info.episodes["3"]) = "roArray"
+                    for each episode in info.episodes["3"]
+                        if textValue(episode.episode_number) = "1" then item = vodNormalize(episode, "episode")
+                    end for
+                    end if
             end if
         end if
         if item = invalid
@@ -78,10 +119,29 @@ sub discover()
             return
         end if
         format = item.streamFormat
+        print "[media-probe] same-episode-id="; originalEpisodeId = item.id
+        if type(info.m3u_account) = "roAssociativeArray"
+            item.providerId = textValue(info.m3u_account.id)
+            item.explicitProvider = true
+            account = invalid
+            accounts = apiRows(requestJson(m.base + "/api/m3u/accounts/"))
+            if accounts <> invalid
+                for each candidate in accounts
+                    if textValue(candidate.id) = item.providerId then account = candidate
+                end for
+            end if
+            if type(account) = "roAssociativeArray"
+                print "[media-probe] provider-keys="; FormatJson(account.keys())
+                print "[media-probe] provider-type="; textValue(account.account_type); " url-shape="; mediaUrlShape(textValue(account.server_url))
+                print "[media-probe] provider-is-self="; urlOrigin(textValue(account.server_url)) = urlOrigin(m.base)
+                print "[media-probe] provider-status="; textValue(account.status); " active="; account.is_active; " vod="; account.enable_vod
+                if type(account.custom_properties) = "roAssociativeArray" then print "[media-probe] provider-property-keys="; FormatJson(account.custom_properties.keys())
+            end if
+        end if
         if format = "unknown" then format = "mp4"
-        print "[media-probe] kind=episode format="; format
+        print "[media-probe] kind=episode format="; format; " season="; item.season; " episode="; item.episode; " provider="; item.providerId
         url = vodPlaybackUrl(m.base, item, "roku_probe_" + CreateObject("roDeviceInfo").getRandomUUID())
-        m.top.media = {kind: kind, url: url, apiKey: m.key, format: format, sessionId: ""}
+        media = {kind: kind, url: url, apiKey: m.key, format: format, sessionId: ""}
     else
         query = "?page_size=20"
         if kind = "movie" then query += "&name=The%20Matrix&year=1999"
@@ -104,7 +164,121 @@ sub discover()
         end if
         print "[media-probe] kind="; kind; " page="; page.items.count(); " total="; page.total
         url = vodPlaybackUrl(m.base, item, "roku_probe_" + CreateObject("roDeviceInfo").getRandomUUID())
-        m.top.media = {kind: kind, url: url, apiKey: m.key, format: format, sessionId: ""}
+        media = {kind: kind, url: url, apiKey: m.key, format: format, sessionId: ""}
+    end if
+    if m.probeMeta
+        m.top.report = {metadataOnly: true}
+    else if m.probeHttp
+        inspectMediaResponse(media)
+    else
+        m.top.media = media
     end if
     m.key = ""
+end sub
+
+sub inspectMediaResponse(media as object)
+    transfer = CreateObject("roUrlTransfer")
+    port = CreateObject("roMessagePort")
+    fs = CreateObject("roFileSystem")
+    file = "tmp:/media-diagnostic-response"
+    transfer.setMessagePort(port)
+    transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
+    transfer.setUrl(media.url)
+    transfer.setHeaders({"X-API-Key": m.key, "Range": "bytes=0-1023"})
+    transfer.retainBodyOnError(true)
+    clock = CreateObject("roTimespan")
+    clock.mark()
+    report = {status: 0}
+    body = ""
+    memory = CreateObject("roAppMemoryMonitor")
+    if transfer.asyncGetToString()
+        while clock.totalSeconds() < 20
+            event = wait(50, port)
+            if type(event) = "roUrlEvent"
+                report.status = event.getResponseCode()
+                body = event.getString()
+                exit while
+            end if
+            if memory.getMemoryLimitPercent() > 25 then exit while
+        end while
+    end if
+    transfer.asyncCancel()
+    if report.status >= 400
+        matches = CreateObject("roRegex", ".*?(https?://[^\s]+)", "i").match(body)
+        if matches.count() > 1 then report.targetShape = mediaUrlShape(matches[1])
+        report.failure = sanitizePlaybackDiagnostic(left(body, 2000), m.key)
+    else
+        bytes = CreateObject("roByteArray")
+        bytes.fromAsciiString(left(body, 4))
+        report.magic = bytes.toHexString()
+    end if
+    fs.delete(file)
+    if media.sessionId <> "" then sessionMutation(m.base + "/api/catchup/sessions/" + media.sessionId + "/", "DELETE")
+    m.top.report = report
+end sub
+
+function mediaUrlShape(url as string) as string
+    origin = urlOrigin(url)
+    if origin = "" then return "unknown"
+    path = mid(url, len(origin) + 1)
+    query = instr(1, path, "?")
+    if query > 0 then path = left(path, query - 1)
+    shape = "[origin]"
+    for each part in path.tokenize("/")
+        if part <> ""
+            value = "[segment]"
+            for each known in ["api", "player_api.php", "get.php", "proxy", "vod", "movie", "movies", "series", "episode", "live", "timeshift", "stream"]
+                if lcase(part) = known then value = known
+            end for
+            if CreateObject("roRegex", "[.](mkv|mp4|ts)$", "i").isMatch(part) then value = "[media]." + part.tokenize(".").peek()
+            shape += "/" + value
+        end if
+    end for
+    return shape
+end function
+
+sub inspectMediaLogs()
+    listing = requestJson(m.base + "/api/core/logs/")
+    if type(listing) <> "roAssociativeArray"
+        m.top.report = {error: "Log listing unavailable"}
+        return
+    end if
+    if type(listing.files) <> "roArray"
+        m.top.report = {error: "Log listing has no file array"}
+        return
+    end if
+    print "[media-probe] log-files="; listing.files.count(); " collector="; listing.collector_running
+    m.maxResponseBytes = 33554432 ' isolated diagnostics, server tail cap is24MiB
+    encoder = CreateObject("roUrlTransfer")
+    readCount = 0
+    hits = 0
+    for each file in listing.files
+        if readCount >= 2 then exit for
+        name = textValue(file.name)
+        print "[media-probe] log="; name; " bytes="; file.size
+        payload = requestJson(m.base + "/api/core/logs/" + encoder.escape(name) + "/")
+        readCount++
+        if type(payload) = "roAssociativeArray"
+            print "[media-probe] log-text-bytes="; len(textValue(payload.content)); " keys="; FormatJson(payload.keys())
+            lines = textValue(payload.content).tokenize(chr(10))
+            payload = invalid
+            for each line in lines
+                lower = lcase(line)
+                relevant = instr(1, lower, "apps.proxy.vod_proxy") > 0 and (instr(1, line, " ERROR ") > 0 or instr(1, line, " WARNING ") > 0)
+                if relevant
+                    safe = sanitizePlaybackDiagnostic(line, m.key)
+                    safe = CreateObject("roRegex", "host=['" + chr(34) + "][^'" + chr(34) + "]+", "i").replaceAll(safe, "host=[redacted]")
+                    safe = CreateObject("roRegex", "[A-Za-z0-9_-]{24,}", "").replaceAll(safe, "[identifier]")
+                    print "[media-probe-log] "; safe
+                    hits++
+                    if hits >= 20 then exit for
+                end if
+            end for
+            lines = invalid
+        else
+            print "[media-probe] log-read unavailable"
+        end if
+        if hits >= 20 then exit for
+    end for
+    m.top.report = {filesRead: readCount, errorsFound: hits}
 end sub

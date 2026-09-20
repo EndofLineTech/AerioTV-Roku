@@ -8,29 +8,36 @@ sub init()
     m.message.wrap = true
     m.session = invalid
     m.opening = false
+    m.seekingArchive = false
 end sub
 
 sub openMedia()
     request = m.top.request
     if request = invalid then return
     m.opening = true
+    m.seekingArchive = false
     m.video.control = "stop"
     m.message.text = "Opening " + request.title + "... Back returns."
     m.session = mediaSession(request.account, request.identity, request.mode, request.key, uiNow())
     if request.programStart <> invalid then m.session.programStart = request.programStart
     m.finished = false
+    m.startPaused = request.startPaused = true
     m.mediaFailed = false
     m.closing = false
     content = CreateObject("roSGNode", "ContentNode")
     content.url = request.url
     content.streamFormat = request.streamFormat
+    if request.streamFormat = "mpegts" then content.streamFormat = "ts"
     content.live = false
     content.title = request.title
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + request.apiKey, "Authorization: ApiKey " + request.apiKey]
+    ' Dispatcharr's VOD proxy forwards Authorization upstream. X-API-Key alone
+    ' authenticates to Dispatcharr without forwarding that credential header.
+    content.httpHeaders = mediaPlaybackHeaders(request.apiKey)
     m.pendingResume = 0
     if request.resume <> invalid then m.pendingResume = int(request.resume)
     m.video.content = content
+    print "[on-demand] reader="; content.streamFormat; " mode="; request.mode
     m.video.enableUI = request.mode <> "catchup"
     m.video.enableTrickPlay = request.mode <> "catchup"
     m.video.visible = true
@@ -48,6 +55,11 @@ sub onMediaState()
     state = m.video.state
     print "[on-demand] mode="; m.session.mode; " state="; state
     if state = "playing" or state = "paused"
+        if state = "playing" and m.startPaused
+            m.startPaused = false
+            m.video.control = "pause"
+            return
+        end if
         if state = "playing" and m.pendingResume > 0
             target = m.pendingResume
             m.pendingResume = 0
@@ -58,13 +70,14 @@ sub onMediaState()
             end if
         end if
         m.message.text = ""
-        if m.session.mode = "catchup" then m.message.text = "ARCHIVE: " + m.top.request.title + chr(10) + "Play/Pause  Pause or resume    Back  Guide / Watch LIVE    Seeking unavailable"
+        if m.session.mode = "catchup" then m.message.text = "ARCHIVE: " + m.top.request.title + chr(10) + "Play/Pause  Pause    Rew / FF  Previous / next minute    Back  Guide"
         reportProgress()
     else if state = "error"
         m.mediaFailed = true
         m.top.diagnostic = {mode: m.session.mode, code: m.video.errorCode, message: sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)}
         print "[on-demand] failure code="; m.video.errorCode; " detail="; sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)
         m.message.text = playbackFailureText(m.video.errorCode, sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)) + chr(10) + "OK Retry    Back Return"
+        if m.session.mode = "vod" then m.message.text += chr(10) + "If this source keeps failing: Back to the title, then Choose source version (authorized accounts)."
         if m.session.mode = "catchup" then m.message.text = "Archive unavailable or expired. Return to the guide and open the program again for a new session." + chr(10) + "OK / Back  Return"
         m.video.visible = false
         m.top.setFocus(true)
@@ -86,6 +99,11 @@ sub reportProgress()
         m.session.state = m.video.state
     end if
     m.top.progress = {account: m.session.account, identity: m.session.identity, key: m.session.item, mode: m.session.mode, position: m.session.position, duration: m.session.duration, finished: m.finished, state: m.video.state, closing: m.closing}
+    if m.session.mode = "catchup" and mediaNumber(m.session.position)
+        elapsed = int(m.session.position)
+        if m.top.request.offset <> invalid then elapsed += m.top.request.offset
+        m.message.text = "ARCHIVE: " + m.top.request.title + " — program offset " + elapsed.toStr() + "s" + chr(10) + "Play/Pause  Pause    Rew / FF  Previous / next minute    Back  Guide"
+    end if
     if m.video.state = "buffering"
         m.message.text = "Buffering (" + m.elapsed.totalSeconds().toStr() + "s). Back returns."
         if m.elapsed.totalSeconds() >= 45
@@ -103,6 +121,12 @@ sub reportProgress()
 end sub
 
 sub closeMedia()
+    if m.seekingArchive
+        m.seekingArchive = false
+        m.top.visible = false
+        m.top.closed = true
+        return
+    end if
     if m.session = invalid then return
     m.closing = true
     reportProgress()
@@ -117,6 +141,10 @@ sub closeMedia()
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    if m.seekingArchive
+        if key = "back" and press then closeMedia()
+        return true
+    end if
     if m.session = invalid or not press then return false
     if key = "back"
         closeMedia()
@@ -127,10 +155,33 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     if m.session.mode = "catchup"
+        if (key = "rewind" or key = "fastforward") and (m.video.state = "playing" or m.video.state = "paused")
+            offset = 0
+            if m.top.request.offset <> invalid then offset = m.top.request.offset
+            position = offset + int(m.video.position)
+            if key = "rewind" then position -= 60 else position += 60
+            plan = catchupSeekPlan(m.top.request.program, position)
+            if plan <> invalid then m.top.archiveSeek = plan.offset
+            return true
+        end if
         if key = "play" or key = "OK"
             if m.video.state = "paused" then m.video.control = "resume" else if m.video.state = "playing" then m.video.control = "pause"
         end if
         return key <> "options"
     end if
     return false
+end function
+
+function suspendArchive() as object
+    paused = m.video.state = "paused"
+    reportProgress()
+    m.seekingArchive = true
+    m.session = invalid
+    m.clock.control = "stop"
+    m.video.control = "stop"
+    m.video.content = invalid
+    m.top.request = invalid
+    m.message.text = "Opening the requested archive minute... Back cancels."
+    m.top.setFocus(true)
+    return {paused: paused}
 end function

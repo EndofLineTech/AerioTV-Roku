@@ -12,6 +12,7 @@ sub init()
     m.mediaPlayer.observeField("closed", "onMediaClosed")
     m.mediaPlayer.observeField("progress", "onMediaProgress")
     m.mediaPlayer.observeField("diagnostic", "onMediaDiagnostic")
+    m.mediaPlayer.observeField("archiveSeek", "onArchiveSeek")
     m.screen = m.top.findNode("screen")
     m.guide = m.top.findNode("guide")
     m.video = m.top.findNode("video")
@@ -710,7 +711,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         content.url += "&output_profile=0"
     end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.16"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.17"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true

@@ -93,15 +93,46 @@ sub onVodProbePage(event as object)
         return
     end if
     print "[vod-app-probe] page rows="; result.items.count(); " total="; result.total
+    m.vodProbeMovieId = result.items[0].id
     m.vodProbeTask = CreateObject("roSGNode", "VodTask")
     m.vodProbeTask.baseUrl = m.baseUrl
     m.vodProbeTask.apiKey = m.apiKey
     m.vodProbeTask.accountId = m.serverAccountId
     m.vodProbeTask.kind = "movie"
     m.vodProbeTask.itemId = result.items[0].id
-    m.vodProbeTask.observeField("result", "onVodProbeDetail")
+    m.vodProbeTask.operation = "versions"
+    m.vodProbeTask.observeField("result", "onVodProbeVersions")
     m.vodProbeTask.control = "RUN"
     m.vodProbeStage = 2
+end sub
+
+sub onVodProbeVersions(event as object)
+    if not isCurrentTaskEvent(event, m.vodProbeTask) then return
+    result = event.getData()
+    m.vodProbeTask.unobserveField("result")
+    if not result.ok
+        print "[vod-app-probe] version-list-failed"
+        finishVodAppProbe()
+        return
+    end if
+    selected = invalid
+    for each item in result.items
+        if item.providerId = "19" then selected = item
+    end for
+    if selected = invalid
+        print "[vod-app-probe] matching-version-unavailable"
+        finishVodAppProbe()
+        return
+    end if
+    m.vodProbeTask = CreateObject("roSGNode", "VodTask")
+    m.vodProbeTask.baseUrl = m.baseUrl
+    m.vodProbeTask.apiKey = m.apiKey
+    m.vodProbeTask.accountId = m.serverAccountId
+    m.vodProbeTask.kind = "movie"
+    m.vodProbeTask.itemId = m.vodProbeMovieId
+    m.vodProbeTask.relationId = selected.id
+    m.vodProbeTask.observeField("result", "onVodProbeDetail")
+    m.vodProbeTask.control = "RUN"
 end sub
 
 sub onVodProbeDetail(event as object)

@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 
-for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'GuideTaskCache', 'MappingTask', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'CatchupModel', 'CatchupTask', 'DiagnosticModel', 'OnDemandPlayer']) {
+for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'GuideTaskCache', 'MappingTask', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'CatchupModel', 'CatchupTask', 'DiagnosticModel', 'OnDemandPlayer', 'ArchiveController']) {
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
@@ -30,6 +30,7 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport',
     ...(suite === 'PlayerLifecycle' ? ['components/Diagnostics.brs'] : []),
     ...(suite === 'CatchupTask' ? ['components/CatchupTask.brs'] : []),
     ...(suite === 'OnDemandPlayer' ? ['components/OnDemandPlayer.brs'] : []),
+    ...(suite === 'ArchiveController' ? ['components/MediaNavigation.brs'] : []),
     ...(suite === 'LiveRecovery' ? ['components/LiveRecovery.brs'] : []),
     ...(suite === 'PlaybackFailure' ? ['components/PlaybackFailure.brs'] : []),
     ...(['AacStartup', 'PlayerLifecycle'].includes(suite) ? ['components/AacStartup.brs'] : []),

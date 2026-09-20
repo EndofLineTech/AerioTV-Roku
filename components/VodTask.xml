@@ -13,6 +13,7 @@
     <field id="year" type="string" />
     <field id="category" type="string" />
     <field id="providerId" type="string" />
+    <field id="relationId" type="string" />
     <field id="titleOnly" type="boolean" />
     <field id="seriesId" type="string" />
     <field id="itemId" type="string" />

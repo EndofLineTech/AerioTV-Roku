@@ -61,6 +61,10 @@ sub configureVod()
     m.items = []
     m.ordering = "name"
     m.parentPage = invalid
+    m.versionItem = invalid
+    m.versionReturn = invalid
+    m.relationId = ""
+    m.versionFor = ""
     m.shelf = "catalog"
     m.failure = ""
     saved = m.top.config.bookmark
@@ -98,6 +102,20 @@ end sub
 
 sub loadVodPage(itemId = "" as string)
     cancelVod()
+    if itemId <> m.versionFor
+        m.relationId = ""
+        if itemId <> "" and type(m.top.permissions) = "roAssociativeArray"
+            if m.top.permissions.level >= 10
+                for each item in m.items
+                    if item.id = itemId and item.kind = m.kind
+                        saved = vodStateEntry(m.top.savedState, item)
+                        m.relationId = textValue(saved.relationId)
+                        exit for
+                    end if
+                end for
+            end if
+        end if
+    end if
     m.failure = ""
     if itemId = ""
         m.items = []
@@ -114,13 +132,19 @@ sub loadVodPage(itemId = "" as string)
     m.task.providerId = m.providerId
     m.task.seriesId = m.seriesId
     m.task.itemId = itemId
+    m.task.relationId = m.relationId
     m.task.ordering = m.ordering
     m.task.cacheEpoch = m.global.cacheEpoch
     m.task.bypassCache = m.bypassCache
     m.bypassCache = false
-    if m.shelf <> "catalog" and m.shelf <> "categories" and m.shelf <> "providers" and itemId = "" then m.task.operation = "authorize"
+    if m.shelf <> "catalog" and m.shelf <> "categories" and m.shelf <> "providers" and m.shelf <> "versions" and itemId = "" then m.task.operation = "authorize"
     if m.shelf = "categories" then m.task.operation = "categories"
     if m.shelf = "providers" then m.task.operation = "providers"
+    if m.shelf = "versions"
+        m.task.operation = "versions"
+        m.task.itemId = m.versionItem.id
+        m.task.relationId = ""
+    end if
     m.task.observeField("result", "onVodLoaded")
     m.task.control = "RUN"
 end sub
@@ -128,10 +152,14 @@ end sub
 sub onVodLoaded(event as object)
     if not isCurrentTaskEvent(event, m.task) then return
     result = event.getData()
-    detail = m.task.itemId <> ""
+    detail = m.task.itemId <> "" and m.task.operation <> "versions"
     m.task.unobserveField("result")
     m.task = invalid
     if not result.ok
+        if detail
+            m.relationId = ""
+            m.versionFor = ""
+        end if
         if not detail and m.pageNumber > 1 and result.status = 404
             m.pageNumber = 1
             m.index = 0
@@ -163,6 +191,16 @@ sub onVodLoaded(event as object)
         if m.detail.director <> "" then dialog.message += chr(10) + "Director: " + m.detail.director
         entry = vodStateEntry(m.top.savedState, m.detail)
         menu = vodDetailMenu(m.detail, entry)
+        if type(m.top.permissions) = "roAssociativeArray"
+            if m.top.permissions.level >= 10 and m.detail.kind <> "series"
+                menu.actions.unshift("versions")
+                menu.buttons.unshift("Choose source version")
+                if textValue(entry.relationId) <> ""
+                    menu.actions.unshift("autoSource")
+                    menu.buttons.unshift("Use Auto source")
+                end if
+            end if
+        end if
         m.detailActions = menu.actions
         dialog.buttons = menu.buttons
         dialog.observeField("buttonSelected", "onVodDetailAction")
@@ -227,6 +265,23 @@ sub onVodDetailAction(event as object)
     if choice < 0 or choice >= m.detailActions.count() then return
     action = m.detailActions[choice]
     if action = "back" then return
+    if action = "autoSource"
+        m.relationId = ""
+        m.versionFor = m.detail.id
+        m.top.stateChange = {scope: m.detail.accountScope, item: m.detail, patch: {relationId: ""}}
+        m.top.savedState = vodStateUpdate(m.top.savedState, m.detail, {relationId: ""})
+        loadVodPage(m.detail.id)
+        return
+    end if
+    if action = "versions"
+        m.versionItem = m.detail
+        m.versionReturn = {items: m.items, index: m.index, page: m.pageNumber, shelf: m.shelf, total: m.total, hasNext: m.hasNext}
+        m.shelf = "versions"
+        m.pageNumber = 1
+        m.index = 0
+        loadVodPage()
+        return
+    end if
     if action = "links"
         dialog = CreateObject("roSGNode", "Dialog")
         dialog.title = "Open on another device"
@@ -295,6 +350,9 @@ sub openVodOptions()
     if type(permissions) = "roAssociativeArray"
         if permissions.level >= 10
             labels.push("Filter by provider") : m.optionCodes.push(12)
+            if m.items.count() > 0 and (m.kind = "movie" or m.kind = "episode") and m.shelf <> "versions" and m.shelf <> "categories" and m.shelf <> "providers"
+                labels.push("Choose source for selected title") : m.optionCodes.push(13)
+            end if
         end if
     end if
     if m.shelf = "continue" or m.shelf = "watchlist" or m.shelf = "hidden"
@@ -350,6 +408,10 @@ sub onVodOption(event as object)
     else if choice = 12
         m.shelf = "providers"
         m.query = ""
+    else if choice = 13
+        m.versionItem = m.items[m.index]
+        m.versionReturn = {items: m.items, index: m.index, page: m.pageNumber, shelf: m.shelf, total: m.total, hasNext: m.hasNext}
+        m.shelf = "versions"
     else if choice <> 4
         return
     end if
@@ -377,6 +439,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if key = "back"
         saveLibraryBookmark()
         cancelVod()
+        if m.shelf = "versions" and m.versionReturn <> invalid
+            restoreVersionPage()
+            return true
+        end if
         if m.kind = "episode" and m.parentPage <> invalid
             m.kind = "series"
             m.seriesId = ""
@@ -410,7 +476,13 @@ function onKeyEvent(key as string, press as boolean) as boolean
         m.index = 0
         loadVodPage()
     else if key = "OK" and m.items.count() > 0
-        if m.shelf = "categories" or m.shelf = "providers"
+        if m.shelf = "versions"
+            m.relationId = m.items[m.index].id
+            itemId = m.versionItem.id
+            m.versionFor = itemId
+            restoreVersionPage()
+            loadVodPage(itemId)
+        else if m.shelf = "categories" or m.shelf = "providers"
             categoryType = "movie"
             if m.kind <> "movie" then categoryType = "series"
             if m.kind = "episode"
@@ -451,6 +523,17 @@ end function
 sub saveLibraryBookmark()
     if m.top.config = invalid or m.shelf <> "catalog" or m.kind = "episode" then return
     m.top.bookmark = {scope: m.top.config.accountScope, kind: m.kind, query: m.query, category: m.category, providerId: m.providerId, ordering: m.ordering, page: m.pageNumber, index: m.index}
+end sub
+
+sub restoreVersionPage()
+    m.items = m.versionReturn.items
+    m.index = m.versionReturn.index
+    m.pageNumber = m.versionReturn.page
+    m.shelf = m.versionReturn.shelf
+    m.total = m.versionReturn.total
+    m.hasNext = m.versionReturn.hasNext
+    m.versionReturn = invalid
+    drawVod()
 end sub
 
 sub closeVodLink(event as object)

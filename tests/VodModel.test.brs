@@ -27,5 +27,9 @@ sub main()
     item.season = "1"
     item.episode = "2"
     if vodExternalLinks(item)[0] <> "https://www.themoviedb.org/tv/1396/season/1/episode/2" then stop
+    versions = vodVersionPage([{id: 9, m3u_account: {id: 19, name: "Provider", username: "private", password: "secret"}}], 1)
+    if not versions.ok or versions.items[0].providerId <> "19" then stop
+    if instr(1, FormatJson(versions), "secret") > 0 or instr(1, FormatJson(versions), "private") > 0 then stop
+    if vodStreamFormat("mpegts") <> "ts" then stop
     print "ALL TESTS PASSED"
 end sub

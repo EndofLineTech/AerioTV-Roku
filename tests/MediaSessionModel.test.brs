@@ -13,5 +13,7 @@ sub main()
     if mediaSessionMatches(archive, "b", "2") then stop
     mediaEnd(archive)
     if archive.state <> "stopped" or archive.position <> invalid then stop
+    headers = mediaPlaybackHeaders("fixture-key")
+    if headers.count() <> 1 or headers[0] <> "X-API-Key: fixture-key" then stop
     print "ALL TESTS PASSED"
 end sub

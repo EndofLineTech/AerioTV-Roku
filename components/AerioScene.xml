@@ -17,6 +17,7 @@
   <script type="text/brightscript" uri="PlaybackFailure.brs" />
   <script type="text/brightscript" uri="pkg:/source/VodModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/CatchupModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/VodState.brs" />
   <script type="text/brightscript" uri="MediaNavigation.brs" />
   <script type="text/brightscript" uri="pkg:/source/DiagnosticModel.brs" />

@@ -52,6 +52,14 @@ sub loadVod()
         return
     end if
     url = m.base + "/api/vod/" + path + "/"
+    relationQuery = ""
+    if m.top.relationId <> ""
+        if cap.level < 10 or not CreateObject("roRegex", "^[0-9]+$", "").isMatch(m.top.relationId)
+            publishVod({ok: false, message: "Source selection requires an authorized admin and a valid version."})
+            return
+        end if
+        relationQuery = "&relation_id=" + m.top.relationId
+    end if
     if m.top.itemId <> ""
         if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(m.top.itemId)
             publishVod({ok: false, message: "Invalid title identifier."})
@@ -60,8 +68,22 @@ sub loadVod()
         raw = requestJson(url + m.top.itemId + "/")
         item = vodNormalize(raw, m.top.kind)
         if item <> invalid
+            if m.top.operation = "versions"
+                if cap.level < 10
+                    publishVod({ok: false, message: "Source selection requires an authorized admin account."})
+                    return
+                end if
+                versionUrl = url + item.id + "/providers/"
+                if item.kind = "episode" then versionUrl = m.base + "/api/vod/series/" + item.seriesId + "/providers/"
+                ' Provider relations embed account/catalog data. Bound the raw
+                ' response to the existing8MiB ceiling; only20 safe choices leave.
+                m.maxResponseBytes = 8388608
+                result = vodVersionPage(requestJson(versionUrl), m.top.pageNumber)
+                publishVod(result)
+                return
+            end if
             if m.top.kind = "movie"
-                info = requestJson(url + m.top.itemId + "/provider-info/")
+                info = requestJson(url + m.top.itemId + "/provider-info/?refresh_interval=24" + relationQuery)
                 enhanced = vodNormalize(info, "movie")
                 if enhanced <> invalid
                     if enhanced.uuid = item.uuid
@@ -72,13 +94,16 @@ sub loadVod()
             else if m.top.kind = "series"
                 requestJson(url + m.top.itemId + "/provider-info/?include_episodes=false")
             else if item.seriesId <> ""
-                info = requestJson(m.base + "/api/vod/series/" + item.seriesId + "/provider-info/?include_episodes=true")
+                if relationQuery <> "" then m.maxResponseBytes = 8388608
+                info = requestJson(m.base + "/api/vod/series/" + item.seriesId + "/provider-info/?include_episodes=true" + relationQuery)
+                matched = false
                 if type(info) = "roAssociativeArray"
                     if type(info.episodes) = "roAssociativeArray"
                         for each season in info.episodes
                             if type(info.episodes[season]) = "roArray"
                                 for each episode in info.episodes[season]
                                     if textValue(episode.id) = item.id
+                                        matched = true
                                         item.streamFormat = vodStreamFormat(textValue(episode.container_extension))
                                         if type(info.m3u_account) = "roAssociativeArray" then item.providerId = textValue(info.m3u_account.id)
                                     end if
@@ -87,6 +112,18 @@ sub loadVod()
                         end for
                     end if
                 end if
+                if relationQuery <> "" and not matched
+                    publishVod({ok: false, message: "This source does not have this exact episode. Choose another version."})
+                    return
+                end if
+            end if
+            if relationQuery <> ""
+                if item.providerId = "" or item.streamFormat = "unknown"
+                    publishVod({ok: false, message: "Source container could not be confirmed. Choose another version."})
+                    return
+                end if
+                item.explicitProvider = true
+                item.relationId = m.top.relationId
             end if
         end if
         if item = invalid

@@ -60,8 +60,31 @@ function vodStreamFormat(extension as string) as string
     extension = lcase(extension)
     if extension = "mkv" then return "mkv"
     if extension = "mp4" or extension = "m4v" or extension = "mov" then return "mp4"
-    if extension = "ts" or extension = "mpegts" then return "mpegts"
+    if extension = "ts" or extension = "mpegts" then return "ts"
     return "unknown"
+end function
+
+function vodVersionPage(payload as dynamic, page as integer) as object
+    result = {ok: false, items: [], total: 0, next: "", message: "Source versions unavailable."}
+    rows = apiRows(payload)
+    if rows = invalid then return result
+    result.total = rows.count()
+    offset = (page - 1) * 20
+    for i = offset to rows.count() - 1
+        if result.items.count() >= 20 then exit for
+        row = rows[i]
+        if type(row) <> "roAssociativeArray" then return result
+        if type(row.m3u_account) <> "roAssociativeArray" then return result
+        id = textValue(row.id)
+        providerId = textValue(row.m3u_account.id)
+        numeric = CreateObject("roRegex", "^[0-9]+$", "")
+        if not numeric.isMatch(id) or not numeric.isMatch(providerId) then return result
+        result.items.push({id: id, providerId: providerId, uuid: "version-" + id, key: "version:" + id, kind: "version", title: left(textValue(row.m3u_account.name), 120) + " — version " + id, year: "", rating: "", logoId: "", season: "", episode: ""})
+    end for
+    if rows.count() > offset + 20 then result.next = "next"
+    result.ok = true
+    result.message = ""
+    return result
 end function
 
 function vodPage(payload as dynamic, kind as string, base as string, limit = 20 as integer) as object

@@ -22,7 +22,7 @@ sub onMedia()
     content.streamFormat = media.format
     content.live = false
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + media.apiKey, "Authorization: ApiKey " + media.apiKey]
+    content.httpHeaders = ["X-API-Key: " + media.apiKey]
     m.video.content = content
     m.task.media = invalid
     m.video.control = "play"
@@ -37,6 +37,7 @@ sub onState()
         m.playedAt = m.elapsed
     end if
     if m.video.state = "error"
+        m.failed = true
         print "[media-probe] native-error="; m.video.errorCode; " detail="; sanitizePlaybackDiagnostic(m.video.errorStr, m.media.apiKey)
         stopProbe()
     end if
@@ -66,6 +67,13 @@ sub stopProbe()
     m.clock.control = "stop"
     m.video.control = "stop"
     m.video.content = invalid
+    if m.failed = true and m.media.kind <> "catchup"
+        m.logs = CreateObject("roSGNode", "MediaProbeTask")
+        m.logs.operation = "logs"
+        m.logs.observeField("report", "onProbeLogs")
+        m.logs.control = "RUN"
+        return
+    end if
     if m.media <> invalid
         if m.media.sessionId <> ""
             m.cleanup = CreateObject("roSGNode", "MediaProbeTask")
@@ -75,6 +83,11 @@ sub stopProbe()
             return
         end if
     end if
+    print "[media-probe] complete"
+end sub
+
+sub onProbeLogs()
+    print "[media-probe] log-result="; FormatJson(m.logs.report)
     print "[media-probe] complete"
 end sub
 
