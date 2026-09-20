@@ -29,6 +29,7 @@ def main():
         pass
     result = subprocess.run([
         "curl", "--max-time", "40", "--silent", "--show-error", "--digest",
+        "-H", "Expect: 100-continue",
         "--user", "rokudev:" + password, "-F", "mysubmit=Install",
         "-F", "archive=@" + args.archive, "http://" + host + "/plugin_install",
     ], capture_output=True, text=True)

@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="GuideView" extends="Group">
   <interface>
+    <field id="archiveRequest" type="assocarray" alwaysNotify="true" />
+    <field id="metadataEvent" type="assocarray" alwaysNotify="true" />
+    <field id="channelFacts" type="assocarray" />
+    <field id="catchupPermission" type="string" value="unknown" />
+    <field id="moviesPermission" type="string" value="unknown" />
+    <field id="seriesPermission" type="string" value="unknown" />
+    <field id="vodEnabled" type="boolean" value="true" />
     <field id="config" type="assocarray" onChange="configure" />
     <field id="active" type="boolean" value="false" onChange="onActive" />
     <field id="watchChannel" type="assocarray" alwaysNotify="true" />
@@ -38,6 +45,8 @@
   <script type="text/brightscript" uri="pkg:/source/GuideSettingsModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/CatchupModel.brs" />
   <script type="text/brightscript" uri="GuideCache.brs" />
   <script type="text/brightscript" uri="GuideView.brs" />
   <script type="text/brightscript" uri="GuideSettings.brs" />

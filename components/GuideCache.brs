@@ -48,6 +48,7 @@ end sub
 sub onMappingsLoaded(event as object)
     if not isCurrentTaskEvent(event, m.mappingTask) then return
     result = event.getData()
+    m.top.metadataEvent = {ok: result.ok, stage: "mapping", source: textValue(result.source), elapsedMs: m.metadataElapsed.totalMilliseconds(), message: textValue(result.message)}
     m.mappingTask.unobserveField("result")
     m.mappingTask = invalid
     m.mappingState = "ready"

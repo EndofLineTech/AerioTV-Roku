@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="VodView" extends="Group">
+  <interface>
+    <field id="config" type="assocarray" onChange="configureVod" />
+    <field id="active" type="boolean" onChange="activateVod" />
+    <field id="playRequested" type="assocarray" alwaysNotify="true" />
+    <field id="exitRequested" type="boolean" alwaysNotify="true" />
+    <field id="savedState" type="array" />
+    <field id="permissions" type="assocarray" />
+    <field id="stateChange" type="assocarray" alwaysNotify="true" />
+    <field id="bookmark" type="assocarray" alwaysNotify="true" />
+    <function name="cancelVod" />
+    <function name="libraryStatus" />
+    <function name="handleLibraryKey" />
+    <function name="saveLibraryBookmark" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
+  <script type="text/brightscript" uri="pkg:/source/VodModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/VodState.brs" />
+  <script type="text/brightscript" uri="VodView.brs" />
+</component>

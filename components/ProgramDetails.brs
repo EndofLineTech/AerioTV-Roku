@@ -56,6 +56,7 @@ sub render()
     m.when.text = model.channel.name + "  |  " + uiLocalDate(p.startsAt) + " " + uiTime(p.startsAt) + " - " + uiTime(p.endsAt)
     m.facts.text = programBadges(p, model.settings) + "  " + textValue(p.rating) + "  " + textValue(p.year) + "  " + textValue(p.quality)
     m.facts.text += "  " + textValue(p.language) + "  " + textValue(p.country)
+    if model.catchupAvailable = true then m.facts.text += "  |  Archive advertised"
     categories = ""
     for i = 0 to p.categories.count() - 1
         if i >= 3 then exit for
@@ -93,6 +94,10 @@ sub render()
         label = "Remind me (foreground, 5 minutes before)"
         if model.reminded then label = "Cancel reminder"
         labels = ["Watch channel LIVE", label, "Close"]
+    end if
+    if model.catchupAvailable = true
+        m.actions = ["catchup", "watch", "close"]
+        labels = ["Play archive (provider availability)", "Watch channel LIVE", "Close"]
     end if
     if m.index >= labels.count() then m.index = labels.count() - 1
     for i = 0 to 2

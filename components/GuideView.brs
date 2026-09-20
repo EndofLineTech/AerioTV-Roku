@@ -42,6 +42,10 @@ sub init()
 end sub
 
 sub configure()
+    m.top.channelFacts = {}
+    m.top.catchupPermission = "unknown"
+    m.top.moviesPermission = "unknown"
+    m.top.seriesPermission = "unknown"
     m.metadataElapsed = CreateObject("roTimespan")
     m.metadataElapsed.mark()
     cancelMetadataLoads()
@@ -51,6 +55,7 @@ sub configure()
     m.top.playbackInfo = invalid
     config = m.top.config
     if config = invalid then return
+    m.top.vodEnabled = config.preferences.vodEnabled <> false
     m.channels = config.channels
     m.cacheScope = textValue(config.scope)
     m.cacheGeneration = textValue(config.generation)
@@ -271,6 +276,7 @@ end sub
 sub onWindowLoaded(event as object)
     if not isCurrentTaskEvent(event, m.task) then return
     result = event.getData()
+    m.top.metadataEvent = {ok: result.ok, stage: "window", source: textValue(result.source), elapsedMs: m.metadataElapsed.totalMilliseconds(), message: textValue(result.message)}
     m.task.unobserveField("cached")
     m.task.unobserveField("result")
     m.task = invalid
@@ -741,6 +747,7 @@ sub openOptions()
         {title: "Jump to Now", action: "now"}
         {title: "Refresh guide", action: "refresh"}
         {title: "Connection settings", action: "settings"}
+        {title: "Diagnostics", action: "diagnostics"}
         {title: "Clock format", action: "clock"}
         {title: "Guide settings", action: "guideSettings"}
         {title: "Manage groups", action: "manageGroups"}
@@ -758,6 +765,11 @@ sub openOptions()
         items.unshift({title: "AerioTV player options", action: "optionsPlayer"})
         items.unshift({title: "Return to fullscreen", action: "expandPlayer"})
     end if
+    if m.top.moviesPermission = "allowed" then items.push({title: "Movies", action: "movies"})
+    if m.top.seriesPermission = "allowed" then items.push({title: "TV Shows", action: "series"})
+    label = "Enable VOD libraries for this connection"
+    if m.top.vodEnabled then label = "Disable VOD libraries for this connection"
+    items.push({title: label, action: "toggleVod"})
     if m.top.pendingTune then items.unshift({title: "Cancel pending channel tune", action: "cancelPendingTune"})
     openPicker("Guide options", items, "options")
 end sub
@@ -834,6 +846,9 @@ sub onPickerSelected(event as object)
             return
         else if action = "refreshChannels"
             m.top.playerRequest = "refreshChannels"
+            return
+        else if action = "movies" or action = "series" or action = "diagnostics" or action = "toggleVod"
+            m.top.playerRequest = action
             return
         else if action = "clearCache"
             cancelProgramDetail()

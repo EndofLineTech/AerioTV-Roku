@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="MediaProbeScene" extends="Scene">
+  <script type="text/brightscript" uri="MediaProbeScene.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
+  <children>
+    <Video id="video" width="1920" height="1080" enableUI="true" />
+    <Timer id="clock" duration="1" repeat="true" />
+  </children>
+</component>

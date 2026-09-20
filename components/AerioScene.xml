@@ -15,10 +15,18 @@
   <script type="text/brightscript" uri="StartupRecovery.brs" />
   <script type="text/brightscript" uri="LiveRecovery.brs" />
   <script type="text/brightscript" uri="PlaybackFailure.brs" />
+  <script type="text/brightscript" uri="pkg:/source/VodModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/VodState.brs" />
+  <script type="text/brightscript" uri="MediaNavigation.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DiagnosticModel.brs" />
+  <script type="text/brightscript" uri="Diagnostics.brs" />
   <script type="text/brightscript" uri="AacStartup.brs" />
   <children>
     <Group id="screen" />
     <GuideView id="guide" visible="false" />
+    <VodView id="vodLibrary" visible="false" />
+    <OnDemandPlayer id="onDemandPlayer" visible="false" />
     <Group id="miniFrame" visible="false">
       <Rectangle translation="[1420,12]" width="408" height="233" color="0x1AC4D8FF" />
       <Label id="miniCaption" translation="[1424,245]" width="400" height="22" maxLines="1" wrap="false" font="font:SmallestSystemFont" color="0x1AC4D8FF" />

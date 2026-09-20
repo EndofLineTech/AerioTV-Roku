@@ -3,6 +3,15 @@ sub init()
     m.top.focusable = true
     m.top.backgroundColor = "0x0A1628FF"
     m.top.backgroundUri = ""
+    m.vod = m.top.findNode("vodLibrary")
+    m.vod.observeField("playRequested", "onVodPlay")
+    m.vod.observeField("stateChange", "onVodStateChange")
+    m.vod.observeField("bookmark", "onVodBookmark")
+    m.vod.observeField("exitRequested", "closeVodLibrary")
+    m.mediaPlayer = m.top.findNode("onDemandPlayer")
+    m.mediaPlayer.observeField("closed", "onMediaClosed")
+    m.mediaPlayer.observeField("progress", "onMediaProgress")
+    m.mediaPlayer.observeField("diagnostic", "onMediaDiagnostic")
     m.screen = m.top.findNode("screen")
     m.guide = m.top.findNode("guide")
     m.video = m.top.findNode("video")
@@ -99,6 +108,8 @@ sub init()
     m.capabilityClock.observeField("fire", "refreshCapabilities")
     m.guide.observeField("watchChannel", "onWatchChannel")
     m.guide.observeField("exitRequested", "showConnection")
+    m.guide.observeField("archiveRequest", "onArchiveRequested")
+    m.guide.observeField("metadataEvent", "onMetadataDiagnostic")
     m.guide.observeField("preferences", "onPreferences")
     m.guide.observeField("playbackInfo", "onPlaybackInfo")
     m.guide.observeField("playerRequest", "onGuidePlayerRequest")
@@ -277,6 +288,7 @@ end sub
 
 sub connectServer()
     if m.busy then return
+    resetMediaNavigation()
     cancelPlaybackFailure()
     if m.playingChannel <> invalid then stopPlayback()
     cancelCapabilityRefresh()
@@ -347,6 +359,7 @@ sub onConnectionTick()
 end sub
 
 sub failConnection(message as string)
+    recordDiagnostic("connect", -1, message)
     m.connectionClock.control = "stop"
     if m.task <> invalid
         m.task.unobserveField("result")
@@ -372,11 +385,13 @@ sub completeConnection(result as dynamic)
         return
     end if
     if not result.ok
+        recordDiagnostic("connect", -1, result.message)
         m.status = result.message
         drawSetup()
         return
     end if
     m.apiKey = result.apiKey
+    recordDiagnostic("connect", 0, "Authorized lineup ready", m.connectionElapsed.totalMilliseconds())
     m.serverAccountId = result.accountId
     m.authMode = "key"
     m.accountIdentity = m.baseUrl + "|" + result.accountId
@@ -487,6 +502,10 @@ sub onCapabilities(event as object)
             drawSetup()
         end if
     end if
+    m.guide.channelFacts = m.channelFacts
+    m.guide.catchupPermission = m.capabilities.catchup
+    updateLibraryPermissions()
+    enforceMediaCapabilities()
     processAacWait()
 end sub
 
@@ -567,6 +586,7 @@ sub onAacFailureClosed(event as object)
 end sub
 
 sub showConnection()
+    resetMediaNavigation()
     m.guide.active = false
     m.guide.visible = false
     m.screen.visible = true
@@ -577,6 +597,7 @@ sub showConnection()
 end sub
 
 sub forgetConnection()
+    resetMediaNavigation()
     cancelPlaybackFailure()
     m.metadataForgetTask = m.guide.callFunc("forgetStoredMetadata")
     m.browser.callFunc("invalidateLogos")
@@ -603,6 +624,8 @@ sub forgetConnection()
     ' Recreate the guide to release account data, cached programs and HTTP agent.
     m.top.removeChild(m.guide)
     m.guide = CreateObject("roSGNode", "GuideView")
+    m.guide.observeField("archiveRequest", "onArchiveRequested")
+    m.guide.observeField("metadataEvent", "onMetadataDiagnostic")
     m.guide.visible = false
     m.top.insertChild(m.guide, 1)
     m.guide.observeField("watchChannel", "onWatchChannel")
@@ -666,6 +689,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     m.decoderKeysReported = false
     m.decoderSnapshot = {}
     m.playingChannel = channel
+    m.liveSession = mediaSession(m.accountIdentity, CreateObject("roDeviceInfo").getRandomUUID(), "live", channel.uuid, uiNow())
     applyVideoLayout()
     m.recordedChannel = ""
     if not forceRetune then m.guide.callFunc("selectPlayingChannel", channel.uuid)
@@ -686,7 +710,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         content.url += "&output_profile=0"
     end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.14"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.15"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true
@@ -830,6 +854,7 @@ sub hideBanner()
 end sub
 
 sub stopPlayback()
+    if m.liveSession <> invalid then mediaEnd(m.liveSession)
     cancelPlaybackFailure()
     m.liveBufferWatch = invalid
     cancelAacWait()
@@ -944,6 +969,23 @@ sub applyVideoLayout()
 end sub
 
 sub onGuidePlayerRequest(event as object)
+    if not m.guide.isSameNode(event.getRoSGNode()) then return
+    if event.getData() = "toggleVod"
+        m.accountPreferences.vodEnabled = m.accountPreferences.vodEnabled = false
+        persistAccountPreferences()
+        updateLibraryPermissions()
+        return
+    end if
+    if event.getData() = "diagnostics"
+        showDiagnostics()
+        return
+    end if
+    if event.getData() = "movies" or event.getData() = "series"
+        kind = "movie"
+        if event.getData() = "series" then kind = "series"
+        openVodLibrary(kind)
+        return
+    end if
     if event.getData() = "cancelPendingTune"
         cancelAacWait()
         showNotice("Pending channel tune cancelled.")
@@ -1552,11 +1594,13 @@ end sub
 
 sub onVideoState()
     if m.playingChannel = invalid then return
+    if m.liveSession <> invalid then mediaObserve(m.liveSession, m.video.state, m.video.position, m.video.duration, invalid)
     if m.video.state <> "buffering" then m.liveBufferWatch = invalid
     if m.video.state = "playing" or m.video.state = "paused" then completeStartupWatch()
     if m.video.state = "playing" then m.streamReady = true
     m.transport.paused = m.video.state = "paused"
     print "[playback] state="; m.video.state
+    recordDiagnostic("playback", 0, m.video.state)
     if m.pendingChannel = invalid then m.banner.playbackState = m.video.state
     if m.video.state = "error"
         code = m.video.errorCode
@@ -1565,6 +1609,7 @@ sub onVideoState()
         if detail = "" then detail = m.video.errorMsg
         detail = sanitizePlaybackDiagnostic(detail, m.apiKey)
         print "[playback] code="; code; " detail="; detail
+        recordDiagnostic("playback", code, detail)
         if m.pendingChannel <> invalid or m.heldZap <> "" then return
         if handleStartupFailure(code, detail) then return
         if retryInterruptedLive("error", code, detail) then return
@@ -1797,6 +1842,12 @@ sub closeMessage(event as object)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    if m.page = "archiveLoading" and key = "back" and press
+        cancelArchiveLoad()
+        m.page = "guide"
+        m.guide.active = true
+        return true
+    end if
     if key = m.heldZap and not press
         cancelHeldZap()
         m.channelTuneTimer.control = "stop"

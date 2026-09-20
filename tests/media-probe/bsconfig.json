@@ -1,0 +1,13 @@
+{
+  "rootDir": "../..",
+  "files": [
+    "source/**/*.brs", "!source/[Mm]ain.brs", "components/**/*", "images/**/*",
+    {"src": "tests/media-probe/manifest", "dest": "manifest"},
+    {"src": "tests/media-probe/source/main.brs", "dest": "source/main.brs"},
+    {"src": "tests/media-probe/components/*", "dest": "components/"}
+  ],
+  "stagingDir": "../../out/media-probe-staging",
+  "outFile": "../../out/media-probe.zip",
+  "createPackage": true,
+  "sourceMap": false
+}

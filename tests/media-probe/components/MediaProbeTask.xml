@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="MediaProbeTask" extends="Task">
+  <interface>
+    <field id="cancelRequested" type="boolean" />
+    <field id="media" type="assocarray" />
+    <field id="report" type="assocarray" />
+    <field id="sessionId" type="string" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SessionHttp.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/CatchupModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/VodModel.brs" />
+  <script type="text/brightscript" uri="MediaProbeTask.brs" />
+</component>

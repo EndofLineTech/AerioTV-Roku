@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="CatchupTask" extends="Task">
+  <interface>
+    <field id="baseUrl" type="string" />
+    <field id="apiKey" type="string" />
+    <field id="accountId" type="string" />
+    <field id="channelUuid" type="string" />
+    <field id="program" type="assocarray" />
+    <field id="operation" type="string" value="create" />
+    <field id="sessionId" type="string" />
+    <field id="position" type="float" />
+    <field id="paused" type="boolean" />
+    <field id="cancelRequested" type="boolean" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/CatchupModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SessionHttp.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
+  <script type="text/brightscript" uri="CatchupTask.brs" />
+</component>

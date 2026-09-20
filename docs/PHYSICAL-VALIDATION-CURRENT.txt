@@ -1,4 +1,4 @@
-AerioTV Roku 0.3.14 — Consolidated pending physical validation
+AerioTV Roku 0.3.15 — Consolidated pending physical validation
 =============================================================
 INTERNAL WORKSHEET. Preserve completed older worksheets.
 Date: __________________ Tester: _________________________________
@@ -112,6 +112,94 @@ Expected: old recovery never replaces the new channel; launch has no autoplay.
 channel during D03-D06, without cutting its network. Expected: Roku recovery or
 Stop does not stop that viewer. SKIP if no second viewer is available.
 
+E. MOVIES, TV SHOWS AND SAVED STATE
+---------------------------------
+[     ] E01 Start: populated guide after capability discovery. * -> Movies -> OK.
+Expected: bounded poster/title grid, clear loading, usable focus. FF loads the
+next page; Rew returns. A denied library should not appear in Guide options.
+
+[     ] E02 Start: Movies. Move Right, then Down -> OK on a title.
+Expected: matching title, supplied facts/synopsis and playback choices. Back
+returns to the selected grid location. Missing artwork must not block browsing.
+
+[     ] E03 Start: a known-working movie's details. Play from beginning -> OK.
+For unknown containers, choose the known correct Play as MP4 / Play as Matroska
+option. Expected: native fullscreen playback with picture/audio. Back returns
+to the library (close native transport chrome first if necessary).
+
+[     ] E04 Start: playing movie. Use native FF/Rew controls for a modest seek;
+pause/resume. Expected: an actual committed position, not just a moving target.
+Known blocker l4j.14: HTTP500/buffered seek/reopen failures have been observed.
+Record the result; do not repeatedly hammer a failing provider.
+
+[     ] E05 Start: Movies. * -> Search -> enter a title -> Search.
+Expected: server results for this account, stable focus, no whole-catalog load.
+Search an empty string to clear it. * -> Sort: title / newest / year cycles
+supported sorting. * -> Categories -> choose category -> OK filters the library.
+* -> Movies resets category/search. * -> Refresh bypasses the current page cache.
+
+[     ] E06 Start: guide. * -> TV Shows -> select series -> OK -> Browse episodes.
+Expected: season/episode ordering and matching episode facts. Back restores the
+series location. Select an episode -> details -> appropriate Play action.
+Known blocker l4j.15: one tested episode returned no readable media bytes.
+
+[     ] E07 Start: movie/episode details. Add to watchlist -> OK.
+* -> Watchlist shows it. Reopen details -> Remove from watchlist removes it.
+
+[     ] E08 Start: details. Hide title -> OK. It disappears from normal browse
+and search. * -> Hidden titles -> its details -> Unhide title restores it.
+* -> Reset hidden list clears local exclusions, including after permissions change.
+
+[     ] E09 Start: a movie/episode with at least 30 seconds of verified playback.
+Back to library -> * -> Continue Watching -> title -> Resume.
+Expected: saved position resumes if the transport/server supports it. This is
+NOT pre-passed: native resume remains blocked by l4j.14 in the tested sample.
+Play from beginning must reset that item's progress.
+
+[     ] E10 Start: title details. Mark watched / remove progress -> OK.
+Expected: item leaves Continue Watching. Mark unwatched allows a new watch.
+Two retained episodes of one series should yield its latest resumable entry.
+
+[     ] E11 Start: filtered/sorted movie or series page. Back to guide, then
+reopen that library. Expected: this connection's browse settings/location return.
+If a saved page no longer exists, the library should recover to page 1.
+
+[     ] E12 Start: guide. * -> Disable VOD libraries for this connection -> OK.
+Movies/TV Shows disappear. * -> Enable VOD libraries for this connection restores
+permitted destinations. This preference belongs to the connected account.
+
+[     ] E13 Optional second account. Start: guide -> * -> Connection settings.
+Connect the other account and open its libraries. Expected: no prior-account
+progress, watchlist, hidden titles or stale detail action. SKIP without another
+account. Permission changes must not reveal cached saved entries from old grants.
+
+F. COMPLETED-PROGRAM ARCHIVES
+----------------------------
+[     ] F01 Start: guide on a catch-up-capable channel. Tap Left to a completed
+program -> OK for details. Expected: Archive advertised badge and Play archive
+(provider availability) share the same retention/permission gate.
+
+[     ] F02 Select Play archive (provider availability) -> OK.
+Expected: that archived program opens, not live TV. An unavailable archive must
+show an error and a return path. One native sample returned404; another played.
+
+[     ] F03 Start: playing archive. Play/Pause pauses/resumes. The displayed title
+stays pinned to the archive. FF/Rew must not imply a supported seek window.
+Archive seeking is deliberately unavailable after the failed native seek probe.
+
+[     ] F04 Back returns to the same guide location. Open details -> Watch channel
+LIVE explicitly tunes live. Cancel an archive load with Back; it must not open
+later or replace another selected channel.
+
+G. IN-APP DIAGNOSTICS
+--------------------
+[     ] G01 Start: guide. * -> Diagnostics -> OK. Expected: recent session events
+with stage, timing/code and sanitized messages. Older/Newer page through them.
+[     ] G02 Export to Roku console emits sanitized JSON on developer TCP8085.
+SKIP console capture if unavailable; the on-screen viewer must still work.
+[     ] G03 Clear removes prior events. New activity may add new events. Close or
+Back restores guide focus. No credentials, media URLs or session tokens displayed.
+
 FAILURE NOTES — ID, exact buttons, expected/actual, photo filename
 ----------------------------------------------------------------
 _________________________________________________________________
@@ -120,6 +208,7 @@ _________________________________________________________________
 _________________________________________________________________
 _________________________________________________________________
 
-Save this file with results. Pending physical checks: ihp.37, cache/UI regressions,
-mxz.5/.6 recovery and mxz.7 exit/session audit. Reboot/OS-pressure cache retention
-is not a promised behavior. Script-injected faults are not a real-outage pass.
+Save this file with results. Pending physical checks span ihp.37, mxz, 34y and l4j.
+Reboot/OS-pressure cache retention and a 60-minute rewind window are not promised.
+Script-injected faults are not a real-outage pass. See MEDIA-VALIDATION-0.3.15.md
+for the exact automated/native evidence and open transport blockers.

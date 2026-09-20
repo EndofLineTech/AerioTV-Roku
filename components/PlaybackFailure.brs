@@ -50,7 +50,7 @@ sub onPlaybackFailureAction(event as object)
 end sub
 
 sub onPlaybackFailureClosed(event as object)
-    if not isCurrentTaskEvent(event, m.playbackFailureDialog) or not event.getData() then return
+    if not isCurrentTaskEvent(event, m.playbackFailureDialog) then return
     cancelPlaybackFailure()
     onDialogClosed()
 end sub

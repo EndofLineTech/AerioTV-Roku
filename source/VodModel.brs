@@ -1,0 +1,103 @@
+function vodKindPath(kind as string) as string
+    if kind = "movie" then return "movies"
+    if kind = "series" then return "series"
+    if kind = "episode" then return "episodes"
+    return ""
+end function
+
+function vodNormalize(raw as dynamic, kind as string) as dynamic
+    if type(raw) <> "roAssociativeArray" or vodKindPath(kind) = "" then return invalid
+    id = textValue(raw.id)
+    uuid = textValue(raw.uuid)
+    if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(id) then return invalid
+    if not CreateObject("roRegex", "^[A-Za-z0-9-]+$", "").isMatch(uuid) then return invalid
+    title = left(textValue(raw.name), 256)
+    if title = "" then title = "Untitled"
+    description = textValue(raw.description)
+    if description = "" then description = textValue(raw.plot)
+    logoId = ""
+    if type(raw.logo) = "roAssociativeArray" then logoId = textValue(raw.logo.id)
+    if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(logoId) then logoId = ""
+    item = {id: id, uuid: uuid, kind: kind, key: kind + ":" + uuid, title: title, description: left(description, 2000), year: textValue(raw.year), rating: left(textValue(raw.rating), 20), genre: left(textValue(raw.genre), 160), duration: textValue(raw.duration_secs).toInt(), logoId: logoId, season: textValue(raw.season_number), episode: textValue(raw.episode_number), seriesId: ""}
+    if item.duration < 0 then item.duration = 0
+    item.streamFormat = vodStreamFormat(textValue(raw.container_extension))
+    item.providerId = ""
+    item.actors = left(textValue(raw.actors), 500)
+    item.director = left(textValue(raw.director), 160)
+    item.airDate = left(textValue(raw.air_date), 20)
+    if type(raw.m3u_account) = "roAssociativeArray" then item.providerId = textValue(raw.m3u_account.id)
+    if type(raw.series) = "roAssociativeArray" then item.seriesId = textValue(raw.series.id)
+    return item
+end function
+
+function vodStreamFormat(extension as string) as string
+    extension = lcase(extension)
+    if extension = "mkv" then return "mkv"
+    if extension = "mp4" or extension = "m4v" or extension = "mov" then return "mp4"
+    if extension = "ts" or extension = "mpegts" then return "mpegts"
+    return "unknown"
+end function
+
+function vodPage(payload as dynamic, kind as string, base as string, limit = 20 as integer) as object
+    result = {ok: false, items: [], total: 0, next: "", message: "Unexpected catalog response."}
+    if type(payload) <> "roAssociativeArray" then return result
+    if type(payload.results) <> "roArray" then return result
+    if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(textValue(payload.count)) then return result
+    if payload.results.count() > limit then return result
+    for each row in payload.results
+        item = vodNormalize(row, kind)
+        if item <> invalid then result.items.push(item)
+    end for
+    if result.items.count() <> payload.results.count() then return result
+    nextPage = textValue(payload.next)
+    if nextPage <> ""
+        result.next = trustedPageUrl(base, nextPage)
+        if result.next = "" then return result
+    end if
+    result.total = textValue(payload.count).toInt()
+    result.ok = true
+    result.message = ""
+    return result
+end function
+
+function vodCategoryPage(payload as dynamic, page as integer, base as string) as object
+    result = {ok: false, items: [], total: 0, next: "", categories: true, message: "Categories unavailable; use title search."}
+    rows = apiRows(payload)
+    if rows = invalid then return result
+    offset = 0
+    result.total = rows.count()
+    if type(payload) = "roAssociativeArray"
+        if rows.count() > 20 then return result
+        result.total = textValue(payload.count).toInt()
+        if textValue(payload.next) <> ""
+            result.next = trustedPageUrl(base, textValue(payload.next))
+            if result.next = "" then return result
+        end if
+    else
+        offset = (page - 1) * 20
+        if rows.count() > offset + 20 then result.next = "next"
+    end if
+    for i = offset to rows.count() - 1
+        if result.items.count() >= 20 then exit for
+        raw = rows[i]
+        if type(raw) <> "roAssociativeArray" then return result
+        id = textValue(raw.id)
+        if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(id) then return result
+        result.items.push({id: id, uuid: "category-" + id, key: "category:" + id, kind: "category", title: left(textValue(raw.name), 200), value: textValue(raw.name), year: "", rating: "", logoId: "", season: "", episode: ""})
+    end for
+    result.ok = true
+    result.message = ""
+    return result
+end function
+
+function vodPlaybackUrl(base as string, item as object, sessionId as string) as string
+    if item.kind <> "movie" and item.kind <> "episode" then return ""
+    if not CreateObject("roRegex", "^[A-Za-z0-9-]+$", "").isMatch(item.uuid) then return ""
+    if not CreateObject("roRegex", "^[A-Za-z0-9_-]+$", "").isMatch(sessionId) then return ""
+    base = normalizeBaseUrl(base)
+    if base = "" then return ""
+    url = base + "/proxy/vod/" + item.kind + "/" + item.uuid + "/" + sessionId
+    provider = textValue(item.providerId)
+    if item.explicitProvider = true and CreateObject("roRegex", "^[0-9]+$", "").isMatch(provider) then url += "?m3u_account_id=" + provider
+    return url
+end function

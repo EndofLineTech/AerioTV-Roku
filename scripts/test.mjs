@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 
-for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'GuideTaskCache', 'MappingTask', 'LiveRecovery', 'PlaybackFailure']) {
+for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'GuideTaskCache', 'MappingTask', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'CatchupModel', 'CatchupTask', 'DiagnosticModel', 'OnDemandPlayer']) {
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
@@ -14,6 +14,8 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport',
     'source/ReminderModel.brs',
     'source/MetadataCacheModel.brs',
     'source/HttpPolicy.brs',
+    'source/MediaSessionModel.brs', 'source/VodModel.brs', 'source/VodState.brs', 'source/CatchupModel.brs',
+    'source/DiagnosticModel.brs',
     ...(suite === 'PlayerLifecycle' ? ['components/AerioScene.brs'] : []),
     ...(suite === 'StreamSourceTask' ? ['components/StreamSourceTask.brs'] : []),
     ...(suite === 'GuideMenu' ? ['components/GuideSettings.brs'] : []),
@@ -24,6 +26,10 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport',
     ...(['PlayerOkHold', 'PlayerLifecycle'].includes(suite) ? ['components/PlayerOptionsShortcut.brs'] : []),
     ...(['StartupRecovery', 'PlayerLifecycle'].includes(suite) ? ['components/StartupRecovery.brs'] : []),
     ...(suite === 'PlayerLifecycle' ? ['components/LiveRecovery.brs', 'components/PlaybackFailure.brs'] : []),
+    ...(suite === 'PlayerLifecycle' ? ['components/MediaNavigation.brs'] : []),
+    ...(suite === 'PlayerLifecycle' ? ['components/Diagnostics.brs'] : []),
+    ...(suite === 'CatchupTask' ? ['components/CatchupTask.brs'] : []),
+    ...(suite === 'OnDemandPlayer' ? ['components/OnDemandPlayer.brs'] : []),
     ...(suite === 'LiveRecovery' ? ['components/LiveRecovery.brs'] : []),
     ...(suite === 'PlaybackFailure' ? ['components/PlaybackFailure.brs'] : []),
     ...(['AacStartup', 'PlayerLifecycle'].includes(suite) ? ['components/AacStartup.brs'] : []),

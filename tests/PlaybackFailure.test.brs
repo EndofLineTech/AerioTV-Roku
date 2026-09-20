@@ -19,7 +19,7 @@ sub main()
     resetFailure()
     onPlaybackFailureAction(failureEvent(failureDialog(9), 0))
     if m.starts <> 0 or m.playbackRetry = invalid then stop
-    onPlaybackFailureClosed(failureEvent(m.playbackFailureDialog, true))
+    onPlaybackFailureClosed(failureEvent(m.playbackFailureDialog, invalid))
     if m.playbackRetry <> invalid or not m.focusRestored then stop
     print "ALL TESTS PASSED"
 end sub
