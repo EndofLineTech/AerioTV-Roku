@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="SettingsHub" extends="Group">
+  <interface>
+    <field id="active" type="boolean" onChange="onActive" />
+    <field id="model" type="assocarray" onChange="renderSettings" />
+    <field id="selection" type="assocarray" alwaysNotify="true" />
+    <field id="closed" type="boolean" alwaysNotify="true" />
+    <function name="handleSettingsKey" />
+    <function name="selectSetting" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SettingsModel.brs" />
+  <script type="text/brightscript" uri="SettingsHub.brs" />
+  <children>
+    <Rectangle width="1920" height="1080" color="0x081525F5" />
+    <Label id="heading" translation="[180,100]" width="1560" height="64" font="font:LargeBoldSystemFont" />
+    <Label id="note" translation="[180,180]" width="1560" height="72" wrap="true" color="0x9EB5C9FF" font="font:SmallSystemFont" />
+    <LabelList id="list" translation="[180,290]" itemSize="[1560,76]" numRows="7" itemSpacing="[0,8]" />
+    <Label translation="[180,960]" width="1560" height="50" text="Up / Down  Select     OK  Open / Set     Back  Previous page" font="font:SmallSystemFont" color="0x9EB5C9FF" />
+  </children>
+</component>

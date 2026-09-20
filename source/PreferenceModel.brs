@@ -34,6 +34,13 @@ function normalizeDevicePreferences(raw as dynamic) as object
     if result.videoScale <> "fit" and result.videoScale <> "fill" and result.videoScale <> "stretch" then result.videoScale = "fit"
     if result.audioMode <> "auto" and result.audioMode <> "direct" and result.audioMode <> "aac" then result.audioMode = "auto"
     if result.clockFormat <> "12" and result.clockFormat <> "24" then result.clockFormat = "system"
+    skip = result.archiveSkipSeconds
+    ' Keep one canonical key even if a JSON dictionary contains case variants.
+    for each key in result.keys()
+        if lcase(key) = "archiveskipseconds" then result.delete(key)
+    end for
+    if skip <> 60 and skip <> 120 and skip <> 300 then skip = 60
+    result.archiveSkipSeconds = skip
     return result
 end function
 

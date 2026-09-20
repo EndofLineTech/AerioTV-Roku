@@ -47,6 +47,9 @@ sub updateLibraryPermissions()
         m.guide.seriesPermission = "denied"
     end if
     m.vod.permissions = {movies: m.guide.moviesPermission, series: m.guide.seriesPermission, level: m.capabilities.level}
+    if m.settingsHub <> invalid
+        if m.settingsHub.active then refreshSettingsHub()
+    end if
 end sub
 
 sub onVodPlay(event as object)
@@ -161,6 +164,7 @@ sub onArchiveCreated(event as object)
     m.guide.visible = false
     m.page = "onDemand"
     p = m.archiveContext.program
+    m.mediaPlayer.skipSeconds = m.devicePreferences.archiveSkipSeconds
     m.mediaPlayer.request = {account: m.accountIdentity, identity: result.sessionId, key: p.id, mode: "catchup", url: result.url, title: p.title, apiKey: m.apiKey, streamFormat: "ts", programStart: p.startsAt, program: p, offset: m.archiveOffset, startPaused: m.archiveStartPaused, restart: m.archiveContext.restart = true}
 end sub
 
@@ -198,6 +202,7 @@ sub releaseArchive()
 end sub
 
 sub resetMediaNavigation()
+    if m.settingsHub <> invalid then m.settingsHub.active = false
     m.archiveSeeking = false
     m.vodTransport = invalid
     m.mediaIdentity = ""
@@ -252,7 +257,6 @@ sub onArchiveSeek(event as object)
     if m.archiveSeeking = true or m.archiveSession = invalid or m.archiveContext = invalid then return
     plan = catchupSeekPlan(m.archiveContext.program, event.getData(), uiNow())
     if plan = invalid then return
-    if plan.offset = m.archiveOffset then return
     m.archiveSeeking = true
     m.archiveSeekPlan = plan
     state = m.mediaPlayer.callFunc("suspendArchive")
@@ -260,6 +264,15 @@ sub onArchiveSeek(event as object)
     if m.archivePositionTask <> invalid then cancelNetworkTask(m.archivePositionTask)
     m.archivePositionTask = invalid
     deleteOwnArchive(m.archiveSession, "onArchiveSeekReleased")
+end sub
+
+sub onArchiveSkipPreference(event as object)
+    if not m.mediaPlayer.isSameNode(event.getRoSGNode()) or m.page <> "onDemand" then return
+    change = event.getData()
+    if change.account <> m.accountIdentity then return
+    if change.seconds <> 60 and change.seconds <> 120 and change.seconds <> 300 then return
+    m.devicePreferences.archiveSkipSeconds = change.seconds
+    persistPreferences()
 end sub
 
 sub onArchiveGoLive(event as object)

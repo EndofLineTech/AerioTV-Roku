@@ -60,3 +60,50 @@ sub mediaEnd(session as object)
     session.seek = "unavailable"
     session.liveEdge = "unknown"
 end sub
+
+' Relative TS clocks have no broadcast UTC. Anchor once at playback start and
+' label the result estimated; abandon it on overflow/discontinuity, never guess.
+function mediaLiveClock(session as dynamic, state as string, position as dynamic, info as dynamic, clip as dynamic, now as integer, overflow as boolean) as object
+    unknown = {known: false}
+    if type(session) <> "roAssociativeArray" then return unknown
+    if session.state = "stopped" then return unknown
+    if state <> "playing" and state <> "paused" then return unknown
+    if not mediaNumber(position) then return unknown
+    if position < 0 then return unknown
+    if session.clockClip <> clip or session.clockAnchor = invalid
+        session.clockClip = clip
+        session.clockAnchor = now
+        session.clockAnchorPosition = position
+        session.clockUncertain = false
+        session.clockLastPosition = position
+        session.clockObservedAt = now
+    end if
+    if overflow then session.clockUncertain = true
+    delta = position - session.clockLastPosition
+    if delta < -2 or delta > now - session.clockObservedAt + 15 then session.clockUncertain = true
+    session.clockLastPosition = position
+    session.clockObservedAt = now
+    if session.clockUncertain then return unknown
+    ' Int() accepts a single-precision float on hardware: converting an absolute
+    ' epoch through it loses seconds. Convert only the small elapsed delta.
+    epoch = session.clockAnchor + int(position - session.clockAnchorPosition)
+    estimated = true
+    if type(info) = "roAssociativeArray"
+        if info.epoch = 1
+            epoch = position
+            estimated = false
+        end if
+    end if
+    if epoch > now + 5 then return unknown
+    if estimated and epoch > now
+        ' Some readers report zero at playing, then their first real timestamp.
+        ' Calibrate that small startup lead rather than dating paused media ahead.
+        session.clockAnchor -= epoch - now
+        epoch = now
+    end if
+    delay = int(now - epoch)
+    if delay < 0 then delay = 0
+    delayed = delay > 3
+    if delayed then session.mode = "delayed" else session.mode = "live"
+    return {known: true, epoch: epoch, delay: delay, delayed: delayed, estimated: estimated}
+end function

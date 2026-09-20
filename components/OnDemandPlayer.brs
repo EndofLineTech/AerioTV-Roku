@@ -4,9 +4,14 @@ sub init()
     m.video.observeField("state", "onMediaState")
     m.clock = m.top.findNode("progressClock")
     m.clock.observeField("fire", "reportProgress")
+    m.scrubTimer = m.top.findNode("scrubTimer")
+    m.scrubTimer.observeField("fire", "repeatArchiveScrub")
+    m.scrub = invalid
     m.archivePanel = uiRect(m.top, 136, 734, 1648, 290, "0x081525E6")
     m.archiveTrack = uiRect(m.top, 160, 756, 1600, 6, "0x52667AFF")
     m.archiveFill = uiRect(m.top, 160, 756, 0, 6, "0x1AC4D8FF")
+    m.archivePreview = uiRect(m.top, 160, 750, 4, 18, "0xFFFFFFFF")
+    m.archivePreview.visible = false
     m.archivePanel.visible = false
     m.archiveTrack.visible = false
     m.archiveFill.visible = false
@@ -21,6 +26,7 @@ end sub
 sub openMedia()
     request = m.top.request
     if request = invalid then return
+    cancelArchiveScrub()
     m.archivePanel.visible = request.mode = "catchup"
     m.archiveTrack.visible = false
     m.archiveFill.visible = false
@@ -84,6 +90,7 @@ sub onMediaState()
         if m.session.mode = "catchup" then m.message.text = "ARCHIVE: " + m.top.request.title + chr(10) + "Play/Pause  Pause    Rew / FF  Previous / next minute    Up  Controls / Go Live    Back  Guide"
         reportProgress()
     else if state = "error"
+        cancelArchiveScrub()
         m.mediaFailed = true
         m.top.diagnostic = {mode: m.session.mode, code: m.video.errorCode, message: sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)}
         print "[on-demand] failure code="; m.video.errorCode; " detail="; sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)
@@ -98,6 +105,7 @@ sub onMediaState()
         m.top.setFocus(true)
         m.clock.control = "stop"
     else if state = "finished"
+        cancelArchiveScrub()
         if m.mediaFailed then return
         m.finished = true
         if m.top.request.restart = true
@@ -142,6 +150,7 @@ sub reportProgress()
 end sub
 
 sub closeMedia()
+    cancelArchiveScrub()
     closeArchiveActions()
     if m.archivePanel <> invalid
         m.archivePanel.visible = false
@@ -168,11 +177,40 @@ sub closeMedia()
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    return handleArchiveKey(key, press)
+end function
+
+function handleArchiveKey(key as string, press as boolean) as boolean
     if m.seekingArchive
         if key = "back" and press then closeMedia()
         return true
     end if
-    if m.session = invalid or not press then return false
+    if m.session = invalid then return false
+    if m.session.mode = "catchup" and (key = "rewind" or key = "fastforward")
+        if press
+            beginArchiveScrub(key)
+        else if m.scrub <> invalid
+            if m.scrub.key = key
+                m.scrub.key = ""
+                m.scrubTimer.control = "stop"
+                if not m.scrub.held then commitArchiveScrub()
+            end if
+        end if
+        return true
+    end if
+    if not press then return false
+    if m.scrub <> invalid
+        if key = "OK" or key = "play"
+            commitArchiveScrub()
+        else if key = "back"
+            cancelArchiveScrub()
+            renderArchiveProgress()
+        else if key = "up"
+            cancelArchiveScrub()
+            openArchiveActions()
+        end if
+        return true
+    end if
     if key = "back"
         closeMedia()
         return true
@@ -186,15 +224,6 @@ function onKeyEvent(key as string, press as boolean) as boolean
             openArchiveActions()
             return true
         end if
-        if (key = "rewind" or key = "fastforward") and (m.video.state = "playing" or m.video.state = "paused")
-            offset = 0
-            if m.top.request.offset <> invalid then offset = m.top.request.offset
-            position = offset + int(m.video.position)
-            if key = "rewind" then position -= 60 else position += 60
-            plan = catchupSeekPlan(m.top.request.program, position, uiNow())
-            if plan <> invalid then m.top.archiveSeek = plan.offset
-            return true
-        end if
         if key = "play" or key = "OK"
             if m.video.state = "paused" then m.video.control = "resume" else if m.video.state = "playing" then m.video.control = "pause"
         end if
@@ -204,6 +233,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
 end function
 
 function suspendArchive() as object
+    cancelArchiveScrub()
     closeArchiveActions()
     paused = m.video.state = "paused"
     reportProgress()
@@ -221,6 +251,8 @@ function suspendArchive() as object
 end function
 
 sub renderArchiveProgress()
+    if m.video.state <> "playing" and m.video.state <> "paused" then return
+    if m.closing = true or m.seekingArchive = true then return
     request = m.top.request
     offset = 0
     if request.offset <> invalid then offset = request.offset
@@ -242,17 +274,82 @@ sub renderArchiveProgress()
     if clock.pastEnd then m.message.text += " — past listed end"
     m.message.text += chr(10) + "Estimated broadcast: " + uiLocalDate(clock.broadcast) + " " + uiTime(clock.broadcast) + "   |   Behind live: " + catchupElapsedText(clock.behindLive)
     m.message.text += chr(10) + "Provider seek window: 0:00 - " + catchupElapsedText(clock.seekEnd) + " (availability varies)"
-    m.message.text += chr(10) + "Play/Pause  Pause    Rew / FF  Previous / next minute    Up  Controls / Go Live    Back  Guide"
+    m.message.text += chr(10) + "Play/Pause  Pause    Rew / FF  Skip " + catchupElapsedText(archiveSkipSeconds()) + " / hold to preview    Up  Controls    Back  Guide"
+    if m.scrub <> invalid
+        m.archivePreview.visible = true
+        m.archivePreview.translation = [160 + 1596 * m.scrub.target / clock.duration, 750]
+        m.message.text = "SEEK PREVIEW: " + catchupElapsedText(m.scrub.target) + " / " + catchupElapsedText(clock.duration) + chr(10) + "Estimated broadcast: " + uiLocalDate(request.program.startsAt + m.scrub.target) + " " + uiTime(request.program.startsAt + m.scrub.target) + chr(10) + "Preview only — no seek is sent until you commit." + chr(10) + "Hold Rew / FF  Move preview    OK / Play Seek    Back  Cancel"
+    end if
+end sub
+
+function archiveSkipSeconds() as integer
+    seconds = m.top.skipSeconds
+    if seconds <> 60 and seconds <> 120 and seconds <> 300 then return 60
+    return seconds
+end function
+
+sub beginArchiveScrub(key as string)
+    if m.video.state <> "playing" and m.video.state <> "paused" then return
+    if m.scrub <> invalid
+        if m.scrub.key = key then return
+    else
+        offset = 0
+        if m.top.request.offset <> invalid then offset = m.top.request.offset
+        m.scrub = {identity: m.session.identity, target: offset + int(m.video.position), held: false, key: ""}
+    end if
+    m.scrub.key = key
+    stepArchiveScrub()
+    m.scrubTimer.control = "stop"
+    m.scrubTimer.control = "start"
+end sub
+
+sub stepArchiveScrub()
+    if m.scrub = invalid then return
+    target = m.scrub.target
+    if m.scrub.key = "rewind" then target -= archiveSkipSeconds() else target += archiveSkipSeconds()
+    plan = catchupSeekPlan(m.top.request.program, target, uiNow())
+    if plan = invalid
+        cancelArchiveScrub()
+        return
+    end if
+    m.scrub.target = plan.offset
+    renderArchiveProgress()
+end sub
+
+sub repeatArchiveScrub()
+    if m.scrub = invalid or m.session = invalid then return
+    if m.scrub.key = "" then return
+    m.scrub.held = true
+    stepArchiveScrub()
+end sub
+
+sub cancelArchiveScrub()
+    m.scrub = invalid
+    if m.scrubTimer <> invalid then m.scrubTimer.control = "stop"
+    if m.archivePreview <> invalid then m.archivePreview.visible = false
+end sub
+
+sub commitArchiveScrub()
+    if m.scrub = invalid or m.session = invalid then return
+    if m.scrub.identity <> m.session.identity
+        cancelArchiveScrub()
+        return
+    end if
+    target = m.scrub.target
+    cancelArchiveScrub()
+    m.top.archiveSeek = target
 end sub
 
 sub openArchiveActions()
     if m.session = invalid then return
     if m.session.mode <> "catchup" or m.seekingArchive then return
+    cancelArchiveScrub()
     closeArchiveActions()
     dialog = CreateObject("roSGNode", "Dialog")
     dialog.title = "Archive controls"
     dialog.message = "Go Live returns to the current broadcast of this channel."
-    dialog.buttons = ["Go Live", "Keep watching archive"]
+    dialog.buttons = ["Go Live", "Keep watching archive", "Skip interval: " + catchupElapsedText(archiveSkipSeconds())]
+    m.archiveDialogKind = "actions"
     dialog.observeField("buttonSelected", "onArchiveAction")
     dialog.observeField("wasClosed", "onArchiveActionsClosed")
     m.archiveDialog = dialog
@@ -271,9 +368,32 @@ end sub
 sub onArchiveAction(event as object)
     if m.archiveDialog = invalid then return
     if not m.archiveDialog.isSameNode(event.getRoSGNode()) then return
-    goLive = event.getData() = 0
+    selection = event.getData()
+    kind = m.archiveDialogKind
     closeArchiveActions()
-    if goLive then m.top.goLiveRequested = true else m.top.setFocus(true)
+    if kind = "skip"
+        choices = [60, 120, 300]
+        if selection >= 0 and selection < choices.count()
+            m.top.skipSeconds = choices[selection]
+            m.top.skipPreference = {account: m.session.account, seconds: choices[selection]}
+        end if
+        m.top.setFocus(true)
+        renderArchiveProgress()
+    else if selection = 0
+        m.top.goLiveRequested = true
+    else if selection = 2
+        dialog = CreateObject("roSGNode", "Dialog")
+        dialog.title = "Archive skip interval"
+        dialog.message = "Used for tap skips and held seek preview. Provider windows use whole minutes."
+        dialog.buttons = ["1 minute", "2 minutes", "5 minutes"]
+        dialog.observeField("buttonSelected", "onArchiveAction")
+        dialog.observeField("wasClosed", "onArchiveActionsClosed")
+        m.archiveDialogKind = "skip"
+        m.archiveDialog = dialog
+        m.top.getScene().dialog = dialog
+    else
+        m.top.setFocus(true)
+    end if
 end sub
 
 sub onArchiveActionsClosed(event as object)

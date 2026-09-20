@@ -367,7 +367,7 @@ function cachedPlaybackInfo(channel as object, now as integer) as object
     if not m.ready or m.mappingState = "loading" then return {channelUuid: channel.uuid, status: "loading", programs: [], windows: []}
     current = channelByUuid(channel.uuid)
     if current <> invalid then channel = current
-    return playbackSnapshot(m.cache, m.failures, channel, now)
+    return playbackSnapshot(m.cache, m.failures, channel, now, uiNow())
 end function
 
 sub publishPlaybackInfo()
@@ -777,6 +777,7 @@ sub openOptions()
         {title: "Diagnostics", action: "diagnostics"}
         {title: "Clock format", action: "clock"}
         {title: "Guide settings", action: "guideSettings"}
+        {title: "Settings (Live TV / Player / Appearance / General)", action: "settingsHub"}
         {title: "Manage groups", action: "manageGroups"}
         {title: "Collections", action: "collections"}
         {title: "Favorite ordering", action: "favoriteOrder"}
@@ -874,7 +875,7 @@ sub onPickerSelected(event as object)
         else if action = "refreshChannels"
             m.top.playerRequest = "refreshChannels"
             return
-        else if action = "movies" or action = "series" or action = "diagnostics" or action = "toggleVod"
+        else if action = "movies" or action = "series" or action = "diagnostics" or action = "toggleVod" or action = "settingsHub"
             m.top.playerRequest = action
             return
         else if action = "clearCache"
@@ -1245,7 +1246,7 @@ end function
 sub updatePrimaryTabs()
     if m.primaryNavigation = invalid then return
     enabled = m.top.moviesPermission = "allowed" or m.top.seriesPermission = "allowed"
-    items = [{id: "live", label: "Live TV", enabled: true}, {id: "vod", label: "VOD", enabled: enabled}]
+    items = [{id: "live", label: "Live TV", enabled: true}, {id: "vod", label: "VOD", enabled: enabled}, {id: "settings", label: "Settings", enabled: true}]
     if FormatJson(m.primaryNavigation.items) <> FormatJson(items) then m.primaryNavigation.items = items
 end sub
 
@@ -1260,6 +1261,8 @@ sub onPrimarySelection(event as object)
     m.top.setFocus(true)
     if event.getData() = "vod"
         m.top.playerRequest = "vodHome"
+    else if event.getData() = "settings"
+        m.top.playerRequest = "settingsHub"
     else
         m.top.setFocus(true)
     end if

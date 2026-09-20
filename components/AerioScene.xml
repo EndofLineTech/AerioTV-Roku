@@ -23,6 +23,8 @@
   <script type="text/brightscript" uri="pkg:/source/DiagnosticModel.brs" />
   <script type="text/brightscript" uri="Diagnostics.brs" />
   <script type="text/brightscript" uri="AacStartup.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SettingsModel.brs" />
+  <script type="text/brightscript" uri="SettingsNavigation.brs" />
   <children>
     <Group id="screen" />
     <GuideView id="guide" visible="false" />
@@ -48,6 +50,7 @@
       </Group>
     </Group>
     <Timer id="pictureHintTimer" duration="6" repeat="false" />
+    <SettingsHub id="settingsHub" visible="false" />
     <Timer id="bannerTimer" duration="8" repeat="false" />
     <Timer id="playerClock" duration="1" repeat="true" />
     <Timer id="audioCheck" duration="5" repeat="false" />

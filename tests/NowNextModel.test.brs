@@ -46,6 +46,7 @@ sub main()
     guideCachePut(cache, base + 10800, {}, base + 10)
     assertEqual(playbackSnapshot(cache, {}, channel, base + 100).status, "ready", "empty but loaded window is valid")
     assertEqual(playbackSnapshot(cache, {}, channel, base + 400).status, "stale", "expired cache status")
+    assertEqual(playbackSnapshot(cache, {}, channel, base + 100, base + 400).status, "stale", "historical playhead cannot make expired cache fresh")
     failures = {}
     failures[base.toStr()] = base + 1000
     assertEqual(playbackSnapshot(cache, failures, channel, base + 400).status, "unavailable", "failure keeps cached data but surfaces status")

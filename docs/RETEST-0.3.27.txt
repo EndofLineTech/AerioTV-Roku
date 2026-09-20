@@ -1,0 +1,98 @@
+AerioTV Roku0.3.27 — Restart, transport, delayed info and Settings
+================================================================
+Date: __________ Tester: __________ Build actually tested: __________
+Write PASS / FAIL / SKIP; record skipped prerequisites and failures by ID below.
+Prior completed0.3.21 worksheet results stay accepted. These boxes are new results.
+
+PREP: Choose a catch-up channel, a currently airing program at least5minutes old,
+and an ended program inside retention. Use * -> Program details when needed.
+Original skip interval: ______ Group layout: ______ Audio mode: ______
+Channel/programs: _________________________________________________
+
+[     ] TS01 Restart eligibility and content
+Current catch-up program details offers Restart Program; future/non-catch-up
+programs do not. Choose Restart. Confirm actual earlier program content and audible
+sound, not just the correct title. If program-start alignment cannot be identified,
+record that gap. Ended eligible programs retain Play archive instead.
+
+[     ] TS02 Position and pause
+In Restart/archive, observe position, guide-length bar and estimated broadcast
+clock. Pause15seconds: position/broadcast clock stay fixed; delay behind live grows.
+Resume advances the playhead. Labels must remain readable without clipping.
+
+[     ] TS03 Configured tap skip
+Up -> Skip interval ->2minutes. Tap and release FF. Expected: one replacement at
+about two minutes ahead (whole-minute rounding), with no additional seek on release.
+Pause and repeat with Rew: replacement remains paused. Bounds never go below0 or
+beyond the program/already-broadcast range.
+
+[     ] TS04 Held preview and cancel
+Hold FF about2seconds, then release. Expected: timestamp/marker preview remains;
+no media restart while previewing. Back cancels preview and keeps current playback.
+Repeat while paused: cancellation keeps it paused. No thumbnails are promised.
+
+[     ] TS05 Held preview and commit
+Hold FF/Rew, release, then OK or Play. Expected: one seek to the previewed minute,
+pause state preserved, correct position afterward. Repeated direction presses
+adjust the preview; reaching an endpoint stays bounded rather than wrapping.
+
+[     ] TS06 Return to opening minute
+Play an archive from its beginning for at least10seconds, then tap Rew.
+Expected: restart at the opening minute even though the old session also began at0.
+
+[     ] TS07 Go Live / cancel a load
+Up -> Go Live from playing and paused archive returns to the same current channel.
+Back during a new archive/restart load cancels; a late session must not open.
+
+[     ] TS08 Provider unavailable / early end (conditional)
+If naturally reproducible, a missing archive shows Archive not yet available or
+the distinct reported permission/connection error. No automatic live substitution.
+If Restart ends before the full program is available, the end screen offers explicit
+Go Live/Return. Record missing content as a limitation, even if the message is right.
+Mark SKIP if neither case can be reproduced.
+
+[     ] TS09 Sustained Restart (longer check)
+Let Restart play toward the program's end and across the live schedule boundary.
+Record viewing duration and any missing remainder. Program identity follows the
+archive, not the currently airing show. Duration: ______ Outcome: ______________
+
+[     ] TS10 Paused live information
+Watch ordinary live, open Info with OK, pause with Play/Pause and wait15seconds.
+Expected: info describes the estimated playhead and delay rather than claiming
+the paused picture is current live. Resume: delay remains and the estimate advances.
+If a schedule rollover occurs while paused, the watched title does not jump ahead.
+Note whether rollover was actually observed. No rewind guarantee follows from pause.
+
+[     ] TS11 Settings categories / Back
+From the guide header select Settings (or * -> Settings). Open each category:
+Live TV, Player, Appearance, General, Connection. Back restores the previous
+category/row; Back from the root returns to the same guide position.
+
+[     ] TS12 Settings persistence and shared skip preference
+Settings -> Player -> Archive skip interval ->5minutes. Reopen an archive and
+confirm Up -> Skip interval reflects that choice and a tap uses it. Exit/relaunch
+and verify persistence. Restore your original skip interval afterward.
+
+[     ] TS13 Guide/appearance/general settings
+Change a supported guide value or layout, then return and verify it takes effect.
+Restore it. Check Clock format, then restore. If VOD is permitted, its account
+toggle controls the VOD destination. Audio compatibility is labelled next-tune;
+changing settings must not silently retune an existing live reader.
+
+[     ] TS14 Connection and permissions
+Connection -> Open connection settings reaches the existing editor. Reconnect
+without forgetting credentials and confirm normal guide landing. If a restricted
+account is available, verify no unavailable VOD toggle/archive skip setting is
+offered and old-account choices/data do not carry over. Note skipped subcases.
+
+[     ] TS15 Regression / cleanup
+Watch a movie or episode: native controls still work. Return to guide. If a second
+viewer is available, keep it on the same live channel during this Roku's archive
+seeks/Go Live; it must continue. Inspect only owned session cleanup if available.
+
+Restore original account/preferences and stop this Roku's playback.
+PASS: ____ FAIL: ____ SKIP: ____ (15 checks)
+Notes: ID, channel/program, keys, observed behavior, time/photo. No credentials.
+__________________________________________________________________
+__________________________________________________________________
+__________________________________________________________________

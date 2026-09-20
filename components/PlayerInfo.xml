@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="PlayerInfo" extends="Group">
   <interface>
+    <field id="playhead" type="assocarray" onChange="renderInfo" />
     <field id="session" type="assocarray" onChange="configureSession" />
     <field id="channel" type="assocarray" onChange="renderInfo" />
     <field id="info" type="assocarray" onChange="renderInfo" />

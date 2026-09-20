@@ -44,7 +44,8 @@ function playbackWindowStarts(now as integer, programs as object) as object
     return result
 end function
 
-function playbackSnapshot(cache as object, failures as object, channel as object, now as integer) as object
+function playbackSnapshot(cache as object, failures as object, channel as object, now as integer, cacheNow = invalid as dynamic) as object
+    if cacheNow = invalid then cacheNow = now
     key = channel.epgKey
     for each window in cache.entries
         if cache.entries[window].index.doesExist(channel.uuid) then key = channel.uuid
@@ -60,7 +61,7 @@ function playbackSnapshot(cache as object, failures as object, channel as object
         if failures.doesExist(id) then failed = true
         if cache.entries.doesExist(id)
             relevant.entries[id] = cache.entries[id]
-            if not guideCacheHas(cache, start, now) then stale = true
+            if not guideCacheHas(cache, start, cacheNow) then stale = true
         else
             missing = true
         end if

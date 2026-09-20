@@ -30,6 +30,19 @@ sub refreshPresentation()
     if m.details.active then updateRichDetails()
 end sub
 
+function applyHubGuideSetting(key as string, value as dynamic) as dynamic
+    if not m.ready then return invalid
+    if key <> "historyDays" and key <> "futureDays" and key <> "channelSort" and key <> "groupLayout" and key <> "categoryColors" then return invalid
+    m.settings[lcase(key)] = value
+    m.settings = normalizeGuideSettings(m.settings)
+    m.anchor = guideTimeClamp(m.anchor, uiNow(), m.settings)
+    keepAnchorVisible()
+    m.navigator.active = false
+    m.navigator.callFunc("applyPresentation", {groups: m.groups, layout: m.settings.groupLayout, selected: m.groups[m.groupIndex].id})
+    rebuildGuideGroups()
+    return m.settings
+end function
+
 sub onGroupPreview(event as object)
     for i = 0 to m.groups.count() - 1
         if m.groups[i].id = event.getData() then m.groupIndex = i

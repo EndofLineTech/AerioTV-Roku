@@ -7,9 +7,12 @@
     <field id="diagnostic" type="assocarray" alwaysNotify="true" />
     <field id="archiveSeek" type="integer" alwaysNotify="true" />
     <field id="goLiveRequested" type="boolean" alwaysNotify="true" />
+    <field id="skipSeconds" type="integer" value="60" />
+    <field id="skipPreference" type="assocarray" alwaysNotify="true" />
     <function name="closeMedia" />
     <function name="suspendArchive" />
     <function name="openArchiveActions" />
+    <function name="handleArchiveKey" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
@@ -21,5 +24,6 @@
     <Rectangle width="1920" height="1080" color="0x000000FF" />
     <Video id="mediaVideo" width="1920" height="1080" enableUI="true" allowOptionsKeyOverride="false" />
     <Timer id="progressClock" duration="5" repeat="true" />
+    <Timer id="scrubTimer" duration="0.45" repeat="true" />
   </children>
 </component>

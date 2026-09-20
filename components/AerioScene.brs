@@ -15,8 +15,12 @@ sub init()
     m.mediaPlayer.observeField("diagnostic", "onMediaDiagnostic")
     m.mediaPlayer.observeField("archiveSeek", "onArchiveSeek")
     m.mediaPlayer.observeField("goLiveRequested", "onArchiveGoLive")
+    m.mediaPlayer.observeField("skipPreference", "onArchiveSkipPreference")
     m.screen = m.top.findNode("screen")
     m.guide = m.top.findNode("guide")
+    m.settingsHub = m.top.findNode("settingsHub")
+    m.settingsHub.observeField("selection", "onSettingsHubSelection")
+    m.settingsHub.observeField("closed", "closeSettingsHub")
     m.video = m.top.findNode("video")
     m.playerOkDown = false
     m.playerOkTimer = m.top.findNode("playerOkTimer")
@@ -649,6 +653,9 @@ sub onWatchChannel(event as object)
 end sub
 
 sub startPlayback(channel as object, forceRetune = false as boolean, useAac = false as boolean, preserveStartupBudget = false as boolean)
+    if m.settingsHub <> invalid
+        if m.settingsHub.active then closeSettingsHub()
+    end if
     cancelPlaybackFailure()
     cancelAacWait()
     cancelAacFailure()
@@ -713,7 +720,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         content.url += "&output_profile=0"
     end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.26"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.27"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true
@@ -730,6 +737,8 @@ sub showChannelBanner(channel as object, hint as string)
     if m.mini or m.pictureCover.visible then return
     m.banner.channel = channel
     m.banner.info = m.guide.callFunc("cachedPlaybackInfo", channel, uiNow())
+    m.banner.playhead = invalid
+    if m.pendingChannel = invalid then updateLivePresentation()
     m.banner.hint = hint
     m.banner.playbackState = m.video.state
     if m.pendingChannel <> invalid then m.banner.playbackState = "preview"
@@ -761,11 +770,13 @@ sub onPlaybackInfo(event as object)
     if info.channelUuid <> m.playingChannel.uuid then return
     ' Never reopen a dismissed overlay or steal focus when metadata arrives.
     m.banner.info = info
+    updateLivePresentation()
     m.banner.now = uiNow()
 end sub
 
 sub onPlayerClock()
     m.guide.sleepActive = m.sleepDeadline > uiNow()
+    updateLivePresentation()
     if m.page = "player" then m.banner.now = uiNow()
     if m.playingChannel <> invalid
         if sleepTimerRemaining(m.sleepDeadline, uiNow()) = 0
@@ -779,6 +790,19 @@ sub onPlayerClock()
     end if
     checkStartupPlayback()
     checkLivePlayback()
+end sub
+
+sub updateLivePresentation()
+    if m.liveSession = invalid or m.playingChannel = invalid then return
+    if m.pendingChannel <> invalid then return
+    now = uiNow()
+    clock = mediaLiveClock(m.liveSession, m.video.state, m.video.position, m.video.positionInfo, m.video.clipId, now, m.video.pauseBufferOverflow)
+    m.banner.playhead = clock
+    if clock.known
+        if clock.delayed or m.video.state = "paused"
+            m.banner.info = m.guide.callFunc("cachedPlaybackInfo", m.playingChannel, clock.epoch)
+        end if
+    end if
 end sub
 
 sub togglePlayerInfo()
@@ -857,6 +881,7 @@ sub hideBanner()
 end sub
 
 sub stopPlayback()
+    if m.settingsHub <> invalid then m.settingsHub.active = false
     if m.liveSession <> invalid then mediaEnd(m.liveSession)
     cancelPlaybackFailure()
     m.liveBufferWatch = invalid
@@ -973,6 +998,10 @@ end sub
 
 sub onGuidePlayerRequest(event as object)
     if not m.guide.isSameNode(event.getRoSGNode()) then return
+    if event.getData() = "settingsHub"
+        openSettingsHub()
+        return
+    end if
     if event.getData() = "vodHome"
         if m.capabilities.movies = "allowed" then openVodLibrary("movie") else if m.capabilities.series = "allowed" then openVodLibrary("series")
         return
@@ -1602,6 +1631,7 @@ end sub
 sub onVideoState()
     if m.playingChannel = invalid then return
     if m.liveSession <> invalid then mediaObserve(m.liveSession, m.video.state, m.video.position, m.video.duration, invalid)
+    if m.video.state = "playing" or m.video.state = "paused" then updateLivePresentation()
     if m.video.state <> "buffering" then m.liveBufferWatch = invalid
     if m.video.state = "playing" or m.video.state = "paused" then completeStartupWatch()
     if m.video.state = "playing" then m.streamReady = true

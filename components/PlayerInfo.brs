@@ -48,12 +48,28 @@ sub renderInfo()
     channel = m.top.channel
     if channel = invalid then return
     now = m.top.now
+    watchingAt = now
+    delayed = false
+    unknownClock = false
+    playhead = m.top.playhead
+    if type(playhead) = "roAssociativeArray" and m.top.playbackState <> "preview"
+        if playhead.known = true
+            if playhead.delayed or m.top.playbackState = "paused"
+                watchingAt = playhead.epoch
+                delayed = true
+            end if
+        else if m.top.playbackState = "playing" or m.top.playbackState = "paused"
+            unknownClock = true
+        end if
+    end if
     m.channelName.text = channel.number + "  " + channel.name
     uri = ""
     if channel.logoId <> "" and m.base <> "" then uri = m.base + "/api/channels/logos/" + channel.logoId + "/cache/"
     if m.logo.uri <> uri then m.logo.uri = uri
     m.clock.text = uiTime(now)
     m.state.text = "LIVE"
+    if delayed then m.state.text = "DELAYED"
+    if unknownClock then m.state.text = "TIME UNKNOWN"
     if m.top.playbackState = "buffering" then m.state.text = "BUFFERING"
     if m.top.playbackState = "paused" then m.state.text = "PAUSED"
     if m.top.playbackState = "preview" then m.state.text = "CHANNEL PREVIEW"
@@ -67,7 +83,8 @@ sub renderInfo()
             status = info.status
         end if
     end if
-    schedule = selectNowNext(programs, now)
+    if unknownClock then programs = []
+    schedule = selectNowNext(programs, watchingAt)
     m.title.text = "No program information"
     m.description.text = "No guide information is available for this time."
     m.times.text = "ON AIR NOW"
@@ -91,9 +108,14 @@ sub renderInfo()
             m.description.text = current.subtitle
             if current.description <> "" then m.description.text += " - " + current.description
         end if
-        m.progressFill.width = 1070 * scheduleProgress(current, now)
-        minutes = (current.endsAt - now + 59) \ 60
+        m.progressFill.width = 1070 * scheduleProgress(current, watchingAt)
+        minutes = (current.endsAt - watchingAt + 59) \ 60
         m.progressText.text = "Schedule progress  |  " + minutes.toStr() + " min remaining in the broadcast"
+        if delayed
+            m.times.text = uiTime(current.startsAt) + " - " + uiTime(current.endsAt) + "  |  WATCHING " + uiLocalDate(watchingAt) + " " + uiTime(watchingAt)
+            m.progressText.text = "Program position  |  " + playhead.delay.toStr() + "s behind live"
+            if playhead.estimated then m.progressText.text = "Estimated " + lcase(m.progressText.text)
+        end if
     end if
     m.nextTitle.text = "No upcoming program information"
     m.nextTimes.text = ""
@@ -109,4 +131,17 @@ sub renderInfo()
     if status = "loading" then m.dataStatus.text = "Updating guide..."
     if status = "stale" then m.dataStatus.text = "Refreshing cached guide..."
     if status = "unavailable" then m.dataStatus.text = "Guide refresh unavailable"
+    if delayed
+        if status = "stale" then m.dataStatus.text = "Cached guide for playback time"
+        if status = "ready"
+            m.dataStatus.text = "Watching " + uiLocalDate(watchingAt) + " " + uiTime(watchingAt)
+            if playhead.estimated then m.dataStatus.text = "Estimated: " + m.dataStatus.text
+        end if
+        if schedule.current = invalid then m.title.text = "Program information unavailable for playback time"
+    end if
+    if unknownClock
+        m.title.text = "Playback time unavailable"
+        m.times.text = "Program identity unavailable after a clock discontinuity"
+        m.description.text = "Playback continues. Stop and reopen this channel to establish a new timing reference."
+    end if
 end sub

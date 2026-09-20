@@ -29,6 +29,7 @@
     <field id="recentIds" type="array" onChange="updateHistory" />
     <function name="applyRefreshedLineup" />
     <function name="refreshPresentation" />
+    <function name="applyHubGuideSetting" />
     <function name="handleOptionsShortcut" />
     <function name="focusPrimaryNavigation" />
     <function name="cancelMappingLoad" />
