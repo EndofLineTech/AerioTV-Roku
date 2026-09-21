@@ -9934,7 +9934,7 @@
         "last_activity": null,
         "metadata": "{}",
         "mol_type": "",
-        "notes": "Read-only uptime/model/OS collector added in scripts/roku_device_info.py and documented in docs/NATIVE-DEVICE-WORKFLOW.md. Awaiting target-device before/after soak samples.",
+        "notes": "Read-only uptime/model/OS collector added in scripts/roku_device_info.py. Remote 0.3.30 normal install/launch session is recorded in docs/REMOTE-DEVICE-SESSION-0.3.30.md: active app confirmed, 30-second filtered console idle, uptime increased 214583 to214608. Awaiting sustained target-device browse/playback soak samples.",
         "original_size": null,
         "owner": "curt@lecaptain.org",
         "payload": "",
@@ -9952,7 +9952,7 @@
         "target": "",
         "timeout_ns": 0,
         "title": "Recheck native stability after observed device restart",
-        "updated_at": "2026-09-21T16:18:57Z",
+        "updated_at": "2026-09-21T16:32:07Z",
         "waiters": "",
         "wisp_type": "",
         "work_type": ""
