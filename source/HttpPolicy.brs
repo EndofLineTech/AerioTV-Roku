@@ -22,17 +22,21 @@ function httpRetryAfter(headers as dynamic, now as integer) as integer
     return delay
 end function
 
-function httpFailure(status as integer, headers as dynamic, now as integer, error = "" as string) as object
-    result = {status: status, category: "server", retryable: false, retryAfter: httpRetryAfter(headers, now), message: "Server returned HTTP " + status.toStr() + "."}
+function httpFailure(status as integer, headers as dynamic, now as integer, error = "" as string, responseBytes = invalid as dynamic, maxBytes = invalid as dynamic) as object
+    result = {status: status, category: "server", retryable: false, retryAfter: httpRetryAfter(headers, now), sizeBucket: "", message: "Server returned HTTP " + status.toStr() + "."}
     if error = "cancelled"
         result.category = "cancelled"
         result.message = "Request cancelled."
     else if error = "timeout"
         result.category = "timeout"
         result.message = "Request timed out. Try again when the server is reachable."
-    else if error = "too-large" or error = "memory"
-        result.category = "response-limit"
+    else if error = "too-large"
+        result.category = "response-too-large"
+        result.sizeBucket = httpResponseSizeBucket(responseBytes, maxBytes)
         result.message = "Metadata response exceeds this device's safe loading budget."
+    else if error = "memory"
+        result.category = "memory-pressure"
+        result.message = "Device memory pressure stopped the metadata download."
     else if error = "invalid-response"
         result.category = "invalid-response"
         result.message = "The server did not return valid JSON."
@@ -68,4 +72,11 @@ function httpFailure(status as integer, headers as dynamic, now as integer, erro
     end if
     if result.retryAfter > 0 then result.message += " Retry after " + result.retryAfter.toStr() + " seconds."
     return result
+end function
+
+function httpResponseSizeBucket(responseBytes as dynamic, maxBytes as dynamic) as string
+    if type(responseBytes) <> "Integer" and type(responseBytes) <> "roInt" then return ""
+    if type(maxBytes) <> "Integer" and type(maxBytes) <> "roInt" then return ""
+    if responseBytes <= maxBytes or maxBytes < 1048576 then return ""
+    return "at-least-" + int(maxBytes / 1048576).toStr() + "-mib"
 end function

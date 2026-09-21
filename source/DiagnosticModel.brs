@@ -5,6 +5,15 @@ function diagnosticText(value as string, apiKey as string) as string
     return left(value, 240)
 end function
 
+function guideMetadataDiagnosticText(value as dynamic) as string
+    message = textValue(value.stage) + " " + textValue(value.source)
+    category = textValue(value.category)
+    if category = "response-too-large" or category = "memory-pressure" then message += " " + category
+    bucket = textValue(value.sizeBucket)
+    if bucket = "at-least-1-mib" or bucket = "at-least-2-mib" or bucket = "at-least-4-mib" or bucket = "at-least-8-mib" or bucket = "at-least-16-mib" or bucket = "at-least-32-mib" then message += " " + bucket
+    return message.trim() + " " + textValue(value.message)
+end function
+
 function diagnosticEvents(raw as dynamic, now as integer, apiKey as string) as object
     result = []
     if type(raw) <> "roArray" then return result

@@ -2,6 +2,9 @@ sub main()
     if httpFailure(401, {}, 1000).category <> "authentication" then stop
     if httpFailure(403, {}, 1000).category <> "permission" then stop
     if httpFailure(409, {}, 1000).retryable then stop
+    tooLarge = httpFailure(0, {}, 1000, "too-large", 8388609, 8388608)
+    if tooLarge.category <> "response-too-large" or tooLarge.sizeBucket <> "at-least-8-mib" then stop
+    if httpFailure(0, {}, 1000, "memory").category <> "memory-pressure" then stop
     if httpRetryAfter({"Retry-After": "17"}, 1000) <> 17 then stop
     if httpRetryAfter({"retry-after": "-1"}, 1000) <> -1 then stop
     reference = CreateObject("roDateTime")
@@ -20,6 +23,12 @@ sub main()
     resetHttpTest([{status: 200, body: "not json"}])
     if requestJson("https://example.test/api") <> invalid then stop
     if m.httpFailure.category <> "invalid-response" then stop
+    resetHttpTest([{status: 200, body: "", error: "too-large", bytes: 8388609}])
+    if requestJson("https://example.test/api") <> invalid then stop
+    if m.httpFailure.category <> "response-too-large" or m.httpFailure.sizeBucket <> "at-least-8-mib" then stop
+    resetHttpTest([{status: 200, body: "", error: "memory"}])
+    if requestJson("https://example.test/api") <> invalid then stop
+    if m.httpFailure.category <> "memory-pressure" then stop
     resetHttpTest([{status: 200, body: "[]"}])
     m.top.cancelRequested = true
     if requestJson("https://example.test/api") <> invalid or m.calls <> 0 then stop
@@ -47,5 +56,6 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
     if result.cancelNext = true then m.top.cancelRequested = true
     if result.headers = invalid then result.headers = {}
     if result.error = invalid then result.error = ""
+    if result.bytes = invalid then result.bytes = -1
     return result
 end function

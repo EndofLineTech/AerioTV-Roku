@@ -45,7 +45,12 @@ sub loadMappings()
     m.top.channels = []
     if m.top.cancelRequested then return
     if links = invalid
-        m.top.result = {ok: false, message: m.failure}
+        failure = {ok: false, source: source, message: m.failure}
+        if type(m.httpFailure) = "roAssociativeArray"
+            failure.category = textValue(m.httpFailure.category)
+            failure.sizeBucket = textValue(m.httpFailure.sizeBucket)
+        end if
+        m.top.result = failure
     else
         m.top.result = {ok: true, links: links, source: source}
     end if

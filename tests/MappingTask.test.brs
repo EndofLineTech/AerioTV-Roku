@@ -10,8 +10,10 @@ sub main()
     check(m.requests = 0 and m.top.result.source = "cache", "warm mapping avoids unpaged endpoint")
     resetTask()
     m.response = invalid
+    m.httpFailure = {category: "response-too-large", sizeBucket: "at-least-8-mib"}
     loadMappings()
     check(not m.top.result.ok and m.writes = 0, "failure never caches empty successful mapping")
+    check(m.top.result.category = "response-too-large" and m.top.result.sizeBucket = "at-least-8-mib", "mapping preserves safe transfer diagnostics")
     resetTask()
     m.top.cancelRequested = true
     loadMappings()
@@ -30,6 +32,7 @@ sub resetTask()
     m.requests = 0
     m.writes = 0
     m.failure = "Unavailable"
+    m.httpFailure = invalid
     m.response = [{id: 10, tvg_id: "Station"}, {id: 11, tvg_id: "Not-authorized"}]
 end sub
 

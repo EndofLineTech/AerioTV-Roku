@@ -449,7 +449,7 @@ sub onMetadataDiagnostic(event as object)
     value = event.getData()
     code = 0
     if not value.ok then code = -1
-    recordDiagnostic("guide", code, value.stage + " " + value.source + " " + value.message, value.elapsedMs)
+    recordDiagnostic("guide", code, guideMetadataDiagnosticText(value), value.elapsedMs)
 end sub
 
 sub enforceMediaCapabilities()

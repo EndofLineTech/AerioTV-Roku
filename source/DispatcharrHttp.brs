@@ -80,7 +80,7 @@ function requestJson(url as string, body = invalid as dynamic, bearer = "" as st
         response = httpTransferOnce(url, body, bearer, remaining, maxBytes)
         if response.error = "" and response.status >= 200 and response.status < 300
             if len(response.body) > maxBytes
-                setHttpFailure(httpFailure(0, {}, 0, "too-large"))
+                setHttpFailure(httpFailure(0, {}, 0, "too-large", len(response.body), maxBytes))
                 return invalid
             end if
             if not CreateObject("roRegex", "^\s*[\{\[]", "").isMatch(response.body)
@@ -91,7 +91,7 @@ function requestJson(url as string, body = invalid as dynamic, bearer = "" as st
             if value = invalid then setHttpFailure(httpFailure(response.status, {}, 0, "invalid-response"))
             return value
         end if
-        failure = httpFailure(response.status, response.headers, CreateObject("roDateTime").asSeconds(), response.error)
+        failure = httpFailure(response.status, response.headers, CreateObject("roDateTime").asSeconds(), response.error, response.bytes, maxBytes)
         setHttpFailure(failure)
         ' Never auto-repeat login/source-switch/catch-up mutations.
         if body <> invalid or attempt > 0 or not failure.retryable then return invalid

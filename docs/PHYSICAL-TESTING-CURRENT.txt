@@ -5,7 +5,7 @@ remote-control map. It supersedes PHYSICAL-SETTINGS-0.3.30.txt for outstanding
 settings checks. It does not invalidate recorded 0.3.28 Live TV/timeshift or
 0.3.29 VOD acceptance; repeat those only as the regression checks below.
 
-Use public v0.3.33 or newer for RM01-RM10. Earlier public ZIPs do not contain the
+Use public v0.3.34 or newer for RM01-RM10. Earlier public ZIPs do not contain the
 remote-control map.
 Target installed code/version/commit: ________________________________________
 Date: __________ Tester: __________ Roku model/OS/build: ____________________

@@ -1,7 +1,7 @@
 ' Task-thread transport. GET bodies stage in tmp and are size-checked before
 ' reading/ParseJSON. tmp is not a hard byte quota: also abort on memory pressure.
 function httpTransferOnce(url as string, body as dynamic, bearer as string, timeoutMs as integer, maxBytes as integer) as object
-    result = {status: 0, headers: {}, body: "", error: ""}
+    result = {status: 0, headers: {}, body: "", bytes: -1, error: ""}
     port = CreateObject("roMessagePort")
     transfer = CreateObject("roUrlTransfer")
     transfer.setMessagePort(port)
@@ -44,6 +44,7 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
         if file <> ""
             stat = fs.stat(file)
             if type(stat) = "roAssociativeArray" and stat.size <> invalid
+                result.bytes = stat.size
                 if stat.size > maxBytes
                     result.error = "too-large"
                     exit while
@@ -64,10 +65,12 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
                             result.error = "too-large"
                         else
                             result.body = ReadAsciiFile(file)
+                            result.bytes = len(result.body)
                         end if
                     else
                         ' Native POST responses are buffered before this check.
                         result.body = event.getString()
+                        result.bytes = len(result.body)
                         if len(result.body) > maxBytes then result.error = "too-large"
                     end if
                 end if
