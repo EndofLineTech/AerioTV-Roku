@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="VodDetails" extends="Group">
+  <interface>
+    <field id="title" type="string" onChange="renderText" />
+    <field id="message" type="string" onChange="renderText" />
+    <field id="buttons" type="array" onChange="renderButtons" />
+    <field id="buttonSelected" type="integer" alwaysNotify="true" />
+    <field id="close" type="boolean" onChange="closeDetails" />
+    <field id="wasClosed" type="boolean" alwaysNotify="true" />
+    <field id="posterUri" type="string" onChange="loadPoster" />
+    <field id="fallbackUri" type="string" onChange="loadPoster" />
+    <field id="baseUrl" type="string" />
+    <field id="apiKey" type="string" />
+    <field id="tmdbUsed" type="boolean" onChange="renderAttribution" />
+    <function name="focusActions" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="VodDetails.brs" />
+  <children>
+    <Rectangle width="1920" height="1080" color="0x081525FF" />
+    <Label id="title" translation="[460,90]" width="1300" height="100" wrap="true" maxLines="2" font="font:LargeBoldSystemFont" />
+    <Label id="placeholder" translation="[128,370]" width="292" height="80" wrap="true" text="Artwork unavailable" color="0x9EB5C9FF" font="font:SmallSystemFont" />
+    <Poster id="poster" translation="[120,210]" width="300" height="450" loadWidth="300" loadHeight="450" loadDisplayMode="scaleToFit" />
+    <Label id="message" translation="[460,210]" width="760" height="600" wrap="true" maxLines="20" font="font:SmallSystemFont" />
+    <Group translation="[1270,210]" clippingRect="[-40,-12,600,620]">
+      <LabelList id="actions" itemSize="[520,62]" numRows="8" itemSpacing="[0,4]" vertFocusAnimationStyle="floatingFocus" color="0xE8F3FAFF" focusedColor="0x0A1628FF" focusBitmapBlendColor="0x1AC4D8FF" />
+    </Group>
+    <Poster id="tmdbLogo" uri="pkg:/images/tmdb-logo.png" translation="[120,850]" width="250" height="45" loadDisplayMode="scaleToFit" visible="false" />
+    <Label id="attribution" translation="[460,855]" width="1300" height="80" wrap="true" color="0x9EB5C9FF" font="font:SmallestSystemFont" />
+    <Label translation="[120,982]" width="1680" height="44" text="Up/Down  Actions     OK  Select     Back  Library" color="0x9EB5C9FF" font="font:SmallSystemFont" />
+  </children>
+</component>

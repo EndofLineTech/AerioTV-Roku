@@ -1003,6 +1003,13 @@ end sub
 
 sub onGuidePlayerRequest(event as object)
     if not m.guide.isSameNode(event.getRoSGNode()) then return
+    if event.getData() = "searchMovies" or event.getData() = "searchSeries"
+        kind = "movie"
+        if event.getData() = "searchSeries" then kind = "series"
+        openVodLibrary(kind)
+        if m.page = "library" then m.vod.callFunc("openVodSearch")
+        return
+    end if
     if event.getData() = "settingsHub"
         openSettingsHub()
         return

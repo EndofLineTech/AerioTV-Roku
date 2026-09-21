@@ -5,7 +5,7 @@ sub main()
     general = settingsHubEntries("general", model)
     if general.count() <> 1 then stop
     model.movies = "allowed"
-    if settingsHubEntries("general", model).count() <> 2 then stop
+    if settingsHubEntries("general", model).count() <> 3 then stop
     player = settingsHubEntries("player", model)
     if player[0].key <> "archiveSkipSeconds" or player[0].values[0] <> 60 or player[0].values[2] <> 300 then stop
     if not settingsHubChangeAllowed(model, "device", "archiveSkipSeconds", 120) then stop

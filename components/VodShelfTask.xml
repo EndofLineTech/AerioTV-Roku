@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="VodShelfTask" extends="Task">
+  <interface>
+    <field id="baseUrl" type="string" />
+    <field id="apiKey" type="string" />
+    <field id="accountId" type="string" />
+    <field id="savedState" type="array" />
+    <field id="shelf" type="string" />
+    <field id="cancelRequested" type="boolean" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/CapabilityModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/VodModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/VodState.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
+  <script type="text/brightscript" uri="VodShelfTask.brs" />
+</component>

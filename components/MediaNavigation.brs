@@ -10,7 +10,7 @@ sub openVodLibrary(kind as string)
     m.vod.savedState = vodState(m.accountPreferences.vod)
     bookmark = invalid
     if type(m.accountPreferences.vodBrowse) = "roAssociativeArray" then bookmark = m.accountPreferences.vodBrowse[kind]
-    m.vod.config = {kind: kind, baseUrl: m.baseUrl, apiKey: m.apiKey, accountId: m.serverAccountId, accountScope: normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId, bookmark: bookmark}
+    m.vod.config = {kind: kind, baseUrl: m.baseUrl, apiKey: m.apiKey, accountId: m.serverAccountId, accountScope: normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId, bookmark: bookmark, tmdbKey: m.registry.read("tmdbApiKey"), tmdbEnabled: m.accountPreferences.vodTmdbEnabled = true}
     m.vod.active = true
 end sub
 
@@ -392,6 +392,17 @@ sub onVodStateChange(event as object)
     if not m.vod.isSameNode(event.getRoSGNode()) then return
     change = event.getData()
     if textValue(change.scope) <> normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId then return
+    if type(change.availability) = "roArray"
+        before = m.accountPreferences.vod
+        m.accountPreferences.vod = vodApplyAvailability(before, change.availability)
+        if not persistAccountPreferences()
+            m.accountPreferences.vod = before
+            m.preferenceStore.accounts[preferenceScope(m.accountIdentity)] = m.accountPreferences
+            showNotice("Saved-library verification could not be saved. Refresh to retry.")
+        end if
+        m.vod.savedState = vodState(m.accountPreferences.vod)
+        return
+    end if
     if textValue(change.removeKey) <> ""
         kept = []
         for each entry in vodState(m.accountPreferences.vod)

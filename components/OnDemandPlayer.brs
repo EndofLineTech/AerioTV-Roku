@@ -52,6 +52,7 @@ sub openMedia()
     ' authenticates to Dispatcharr without forwarding that credential header.
     content.httpHeaders = mediaPlaybackHeaders(request.apiKey)
     m.pendingResume = 0
+    m.resumeNoticeUntil = 0
     if request.resume <> invalid then m.pendingResume = int(request.resume)
     m.video.content = content
     print "[on-demand] reader="; content.streamFormat; " mode="; request.mode
@@ -84,9 +85,12 @@ sub onMediaState()
                 m.message.text = "Resuming..."
                 m.video.seek = target
                 return
+            else
+                m.resumeNoticeUntil = uiNow() + 8
             end if
         end if
         m.message.text = ""
+        if m.resumeNoticeUntil > uiNow() then m.message.text = "Resume unavailable for this rendition; playing from beginning."
         if m.session.mode = "catchup" then m.message.text = "ARCHIVE: " + m.top.request.title + chr(10) + "Play/Pause  Pause    Rew / FF  Previous / next minute    Up  Controls / Go Live    Back  Guide"
         reportProgress()
     else if state = "error"
@@ -121,6 +125,12 @@ end sub
 
 sub reportProgress()
     if m.session = invalid then return
+    if m.session.mode = "vod" and m.resumeNoticeUntil <> invalid
+        if m.resumeNoticeUntil > 0 and uiNow() >= m.resumeNoticeUntil
+            m.message.text = ""
+            m.resumeNoticeUntil = 0
+        end if
+    end if
     ' A buffering seek target is not a committed playhead. Persist only native
     ' playing/paused samples; an exit during buffering retains the last sample.
     if m.video.state = "playing" or m.video.state = "paused"

@@ -19,7 +19,9 @@ function vodState(raw as dynamic) as object
                     item.watched = row.watched = true
                     relation = textValue(row.relationId)
                     if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(relation) then relation = ""
-                    result.push({id: item.id, uuid: item.uuid, key: item.key, kind: item.kind, title: left(item.title, 120), position: item.position, duration: item.duration, watchlist: item.watchlist, hidden: item.hidden, watched: item.watched, seriesId: left(textValue(row.seriesId), 20), authorization: left(textValue(row.authorization), 64), relationId: relation})
+                    availability = textValue(row.availability)
+                    if availability <> "missing" and availability <> "denied" and availability <> "available" then availability = "unknown"
+                    result.push({id: item.id, uuid: item.uuid, key: item.key, kind: item.kind, title: left(item.title, 120), position: item.position, duration: item.duration, watchlist: item.watchlist, hidden: item.hidden, watched: item.watched, seriesId: left(textValue(row.seriesId), 20), seriesTitle: left(textValue(row.seriesTitle), 120), authorization: left(textValue(row.authorization), 64), relationId: relation, availability: availability})
                     seen[item.key] = true
                     if result.count() >= 20 then exit for
                 end if
@@ -61,6 +63,8 @@ function vodShelfEntries(raw as dynamic, shelf as string, permissions as object)
             if shelf = "continue" then include = vodResumePosition(entry, entry.duration) > 0
         end if
         if entry.authorization = "" or entry.authorization <> permissions.authorization then include = false
+        if entry.availability = "denied" then include = false
+        if entry.availability = "missing" and shelf = "continue" then include = false
         if entry.kind = "movie" and permissions.movies <> "allowed" then include = false
         if entry.kind <> "movie" and permissions.series <> "allowed" then include = false
         if include and shelf = "continue" and entry.kind = "episode" and entry.seriesId <> ""
@@ -70,6 +74,24 @@ function vodShelfEntries(raw as dynamic, shelf as string, permissions as object)
         if include then result.push(entry)
     end for
     return result
+end function
+
+' Merge only fresh availability metadata into current state. Never resurrect an
+' entry removed while a request was in flight or overwrite progress/curation.
+function vodApplyAvailability(raw as dynamic, patches as dynamic) as object
+    result = vodState(raw)
+    if type(patches) <> "roArray" then return result
+    for each entry in result
+        for each patch in patches
+            if patch.key = entry.key
+                entry.availability = textValue(patch.availability)
+                entry.authorization = textValue(patch.authorization)
+                if textValue(patch.title) <> "" then entry.title = left(patch.title, 120)
+                if textValue(patch.seriesTitle) <> "" then entry.seriesTitle = left(patch.seriesTitle, 120)
+            end if
+        end for
+    end for
+    return vodState(result)
 end function
 
 function vodStateUpdate(raw as dynamic, item as object, patch as object) as object
@@ -102,7 +124,7 @@ function vodDetailMenu(item as object, entry as object) as object
     else if item.streamFormat = "unknown"
         actions = ["mp4", "mkv"]
         buttons = ["Play as MP4", "Play as Matroska"]
-    else if vodResumePosition(entry, item.duration) > 0
+    else if vodResumePosition(entry, entry.duration) > 0
         actions.unshift("resume")
         buttons.unshift("Resume")
     end if

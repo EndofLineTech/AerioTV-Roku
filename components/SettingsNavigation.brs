@@ -1,5 +1,5 @@
 sub refreshSettingsHub()
-    m.settingsHub.model = {account: m.accountIdentity, device: m.devicePreferences, guide: m.accountPreferences.guide, vodEnabled: m.accountPreferences.vodEnabled <> false, movies: m.capabilities.movies, series: m.capabilities.series, catchup: m.capabilities.catchup}
+    m.settingsHub.model = {account: m.accountIdentity, device: m.devicePreferences, guide: m.accountPreferences.guide, vodEnabled: m.accountPreferences.vodEnabled <> false, vodTmdbEnabled: m.accountPreferences.vodTmdbEnabled = true, movies: m.capabilities.movies, series: m.capabilities.series, catchup: m.capabilities.catchup}
 end sub
 
 sub openSettingsHub()
@@ -40,7 +40,7 @@ sub onSettingsHubSelection(event as object)
         if settings <> invalid then m.accountPreferences.guide = settings
         persistAccountPreferences()
     else if item.scope = "account"
-        m.accountPreferences.vodEnabled = item.value
+        m.accountPreferences[lcase(item.key)] = item.value
         persistAccountPreferences()
         updateLibraryPermissions()
     end if

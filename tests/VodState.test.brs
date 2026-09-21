@@ -22,6 +22,8 @@ sub main()
     if vodShelfEntries(state, "continue", {movies: "allowed", series: "allowed", authorization: "current"}).count() <> 1 then stop
     if vodShelfEntries(state, "continue", {movies: "denied", series: "allowed", authorization: "current"}).count() <> 0 then stop
     item.streamFormat = "mkv"
+    item.duration = 10
+    if vodDetailMenu(item, state[0]).actions[0] <> "resume" then stop
     item.duration = 1000
     menu = vodDetailMenu(item, state[0])
     if menu.buttons.count() <> menu.actions.count() or menu.actions[0] <> "resume" then stop
@@ -34,5 +36,10 @@ sub main()
     if vodStateEntry(state, item).relationId <> "42" then stop
     state = vodStateUpdate(state, item, {relationId: "../invalid"})
     if vodStateEntry(state, item).relationId <> "" then stop
+    state = vodStateUpdate([], item, {watchlist: true, position: 100, duration: 1000})
+    updated = vodApplyAvailability(state, [{key: item.key, availability: "missing", authorization: "new"}])
+    if not updated[0].watchlist or updated[0].position <> 100 or updated[0].availability <> "missing" then stop
+    if vodShelfEntries(updated, "continue", {authorization: "new", movies: "allowed", series: "allowed"}).count() <> 0 then stop
+    if vodApplyAvailability([], [{key: item.key, availability: "available"}]).count() <> 0 then stop
     print "ALL TESTS PASSED"
 end sub

@@ -782,7 +782,7 @@ sub openOptions()
         {title: "Channel groups (list fallback)", action: "groupList"}
         {title: "Group navigation layout", action: "navigationLayout"}
         {title: "Search channels", action: "search"}
-        {title: "Search programs", action: "programSearch"}
+        {title: "Search programs / movies / TV", action: "programSearch"}
         {title: "Clear search", action: "clear"}
         {title: "Jump to date and time", action: "date"}
         {title: "Jump to Now", action: "now"}
@@ -827,6 +827,10 @@ sub onPickerSelected(event as object)
     m.top.setFocus(true)
     if handleGuideSetting(kind, item) then return
     if kind = "programSearchField"
+        if item.field = "searchMovies" or item.field = "searchSeries"
+            m.top.playerRequest = item.field
+            return
+        end if
         m.programSearchField = item.field
         editProgramSearch()
         return
@@ -875,7 +879,12 @@ sub onPickerSelected(event as object)
             openPicker("Channel groups", items, "groups")
             return
         else if action = "programSearch"
-            openPicker("Search programs by", [{title: "Title", field: "title"}, {title: "Description", field: "description"}], "programSearchField")
+            scopes = [{title: "Program title", field: "title"}, {title: "Program description", field: "description"}]
+            if m.top.vodEnabled
+                if m.top.moviesPermission = "allowed" then scopes.push({title: "Movies", field: "searchMovies"})
+                if m.top.seriesPermission = "allowed" then scopes.push({title: "TV Shows", field: "searchSeries"})
+            end if
+            openPicker("Search in", scopes, "programSearchField")
             return
         else if action = "guideSettings" or action = "manageGroups" or action = "collections" or action = "favoriteOrder" or action = "reminders"
             openGuideSetting(action)

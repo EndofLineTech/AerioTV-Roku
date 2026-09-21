@@ -1,0 +1,83 @@
+AerioTV Roku 0.3.29 — focused physical VOD acceptance
+
+All results are initially NOT RUN. Scripted native evidence is recorded in
+VOD-ENRICHMENT-0.3.29.md and does not fill in physical results.
+Preserve the completed 0.3.28 worksheets separately.
+
+Date/time:
+Device/OS:
+Dispatcharr version:
+Build:
+
+N01  Result: NOT RUN
+Open Movies and TV Shows. Navigate the six library tabs with the remote.
+Expected: readable titles; deterministic focus; permitted destinations work;
+Back returns without trapping focus. Continue shows the selected series/episode.
+Notes:
+
+N02  Result: NOT RUN
+Open movie, series and episode details while metadata is loading.
+Expected: Play/Resume or Browse episodes is focused first. Artwork/fallback and
+facts are readable. Enrichment does not move focus. Back dismisses details.
+Notes:
+
+N03  Result: NOT RUN
+Use the General settings TMDB toggle, off and on, then relaunch.
+Expected: account-scoped opt-in persists. Off uses provider information. On with
+a configured key adds available English metadata and visible attribution.
+Notes:
+
+N04  Result: NOT RUN
+Open long or missing synopses; use Full synopsis, Next/Previous, Close and Back.
+Expected: readable bounded pages, honest missing-data message, usable return.
+Notes:
+
+N05  Result: NOT RUN
+Open cast/crew, a person, a permitted filmography title and related titles.
+Expected: playable results belong to this account. Hidden titles are excluded.
+Back restores the parent page and focus. Unmatched suggestions are not playable.
+Notes:
+
+N06  Result: NOT RUN
+Use a title with a valid saved position and incorrect provider runtime metadata.
+Expected: Resume is offered and reaches the saved position on a working source.
+Play from beginning resets progress. Native rendition duration governs playback.
+Notes:
+
+N07  Result: NOT RUN
+Exercise Watchlist, Hidden/unhide, watched/unwatched and Continue Watching.
+Expected: changes persist after relaunch, watched/hidden items leave Continue,
+and only the latest eligible episode per series is shown there.
+Notes:
+
+N08  Result: NOT RUN
+Use an already unavailable saved title, if one exists; avoid altering the shared
+server just to manufacture this case. Refresh saved shelves and remove the entry.
+Expected: absent from Continue; Watchlist/Hidden placeholder remains removable.
+Record SKIP if no suitable title exists; synthetic native coverage is separate.
+Notes:
+
+N09  Result: NOT RUN
+Use an existing restricted account or permission-change test connection.
+Expected: denied catalog/saved/discovery titles are suppressed; previous-account
+results and artwork do not reappear after switching. No cross-account progress.
+Notes:
+
+N10  Result: NOT RUN
+From Guide options choose Search programs / movies / TV, then each allowed scope.
+Expected: VOD scopes open the proper search keyboard and results; existing program
+title/description search still works. Back returns to the guide.
+Notes:
+
+N11  Result: NOT RUN
+Inspect external information/trailer destinations and select available versions.
+Expected: destinations contain only public title identifiers; no credential-bearing
+provider URL is displayed. No claim of inline trailer playback. Source selection
+and Auto restore usable focus; unsupported renditions report failure honestly.
+Notes:
+
+N12  Result: NOT RUN
+Return to live TV after VOD playback and browse for several minutes.
+Expected: normal-speed audio/video, working mini/fullscreen and accepted controls;
+no automated probe starts, unexpected retune, or leaked VOD dialog.
+Notes:

@@ -1,4 +1,7 @@
 sub main()
+    art = vodNormalize({id: 42, uuid: "episode", name: "Episode", series: {id: 1, name: "Series", logo: {id: 5}}}, "episode")
+    if art.seriesTitle <> "Series" or art.seriesLogoId <> "5" then stop
+    if vodArtworkUrl("https://host.test", art) <> "https://host.test/api/vod/episodes/42/image/?kind=movie_image" then stop
     raw = {id: 2, uuid: "safe-uuid", name: "Movie", duration_secs: 3600, direct_source: "secret", logo: {id: 8, url: "secret"}}
     item = vodNormalize(raw, "movie")
     if item.key <> "movie:safe-uuid" or item.logoId <> "8" then stop

@@ -14,6 +14,7 @@
     <function name="libraryStatus" />
     <function name="handleLibraryKey" />
     <function name="saveLibraryBookmark" />
+    <function name="openVodSearch" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
@@ -22,7 +23,9 @@
   <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/VodState.brs" />
   <script type="text/brightscript" uri="pkg:/source/DescriptionModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/TmdbModel.brs" />
   <script type="text/brightscript" uri="VodView.brs" />
+  <script type="text/brightscript" uri="VodMetadata.brs" />
   <children>
     <TopNavigation id="primaryNavigation" translation="[560,20]" selected="vod" />
     <TopNavigation id="libraryNavigation" translation="[560,88]" allowUp="true" selected="movie" />

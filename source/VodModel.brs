@@ -26,15 +26,34 @@ function vodNormalize(raw as dynamic, kind as string) as dynamic
     item.director = left(textValue(raw.director), 160)
     item.airDate = left(textValue(raw.air_date), 20)
     item.tmdbId = textValue(raw.tmdb_id)
-    if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(item.tmdbId) then item.tmdbId = ""
+    if not CreateObject("roRegex", "^[1-9][0-9]*$", "").isMatch(item.tmdbId) then item.tmdbId = ""
     item.trailerId = textValue(raw.youtube_trailer)
     if not CreateObject("roRegex", "^[A-Za-z0-9_-]{11}$", "").isMatch(item.trailerId) then item.trailerId = ""
     if type(raw.m3u_account) = "roAssociativeArray" then item.providerId = textValue(raw.m3u_account.id)
     if type(raw.series) = "roAssociativeArray" then item.seriesId = textValue(raw.series.id)
     item.seriesTmdbId = ""
     if type(raw.series) = "roAssociativeArray" then item.seriesTmdbId = textValue(raw.series.tmdb_id)
-    if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(item.seriesTmdbId) then item.seriesTmdbId = ""
+    item.seriesTitle = ""
+    item.seriesLogoId = ""
+    if type(raw.series) = "roAssociativeArray"
+        item.seriesTitle = left(textValue(raw.series.name), 120)
+        if type(raw.series.logo) = "roAssociativeArray" then item.seriesLogoId = textValue(raw.series.logo.id)
+    end if
+    if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(item.seriesLogoId) then item.seriesLogoId = ""
+    if not CreateObject("roRegex", "^[1-9][0-9]*$", "").isMatch(item.seriesTmdbId) then item.seriesTmdbId = ""
     return item
+end function
+
+function vodArtworkUrl(base as string, item as object) as string
+    base = normalizeBaseUrl(base)
+    path = vodKindPath(item.kind)
+    if base = "" or path = "" then return ""
+    numeric = CreateObject("roRegex", "^[0-9]+$", "")
+    if item.explicitProvider <> true and numeric.isMatch(textValue(item.logoId)) then return base + "/api/vod/vodlogos/" + item.logoId + "/cache/"
+    if not numeric.isMatch(textValue(item.id)) then return ""
+    uri = base + "/api/vod/" + path + "/" + item.id + "/image/?kind=movie_image"
+    if item.explicitProvider = true and numeric.isMatch(textValue(item.providerId)) then uri += "&m3u_account_id=" + item.providerId
+    return uri
 end function
 
 function vodExternalLinks(item as object) as object

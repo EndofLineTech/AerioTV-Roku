@@ -42,6 +42,7 @@ sub renderSettings()
     m.items = []
     if m.choice <> invalid
         m.heading.text = m.choice.title
+        if m.choice.key = "vodTmdbEnabled" then m.note.text = "Uses the key saved in Guide options > Guide settings > Optional TMDB artwork fallback. Optional: playback does not depend on TMDB."
         current = settingsHubValue(model, m.choice.scope, m.choice.key)
         for each value in m.choice.values
             title = settingsValueText(value, m.choice.key)

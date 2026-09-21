@@ -19,7 +19,10 @@ function settingsHubEntries(page as string, model as object) as object
     ]
     if page = "general"
         entries = [{title: "Clock format", scope: "device", key: "clockFormat", values: ["system", "12", "24"]}]
-        if model.movies = "allowed" or model.series = "allowed" then entries.push({title: "VOD libraries for this account", scope: "account", key: "vodEnabled", values: [true, false]})
+        if model.movies = "allowed" or model.series = "allowed"
+            entries.push({title: "VOD libraries for this account", scope: "account", key: "vodEnabled", values: [true, false]})
+            entries.push({title: "Optional TMDB VOD enrichment", scope: "account", key: "vodTmdbEnabled", values: [true, false]})
+        end if
         return entries
     end if
     if page = "connection" then return [{title: "Open connection settings (edit / forget / reconnect)", action: "connection"}]
@@ -27,7 +30,7 @@ function settingsHubEntries(page as string, model as object) as object
 end function
 
 function settingsHubValue(model as object, scope as string, key as string) as dynamic
-    if scope = "account" then return model.vodEnabled
+    if scope = "account" then return model[lcase(key)]
     if type(model[scope]) <> "roAssociativeArray" then return invalid
     return model[scope][lcase(key)]
 end function

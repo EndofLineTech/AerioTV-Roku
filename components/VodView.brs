@@ -2,6 +2,8 @@ sub init()
     m.top.focusable = true
     m.task = invalid
     m.descriptionTask = invalid
+    m.tmdbTask = invalid
+    m.discoveryStack = []
     m.items = []
     m.dialog = invalid
     m.tiles = []
@@ -50,10 +52,10 @@ end sub
 
 sub configureVod()
     cancelVod()
-    if m.dialog <> invalid
-        m.dialog.close = true
-        m.dialog = invalid
-    end if
+    dismissVodDialog()
+    m.discoveryStack = []
+    m.discoveryAnchor = invalid
+    m.discoveryPerson = ""
     m.items = []
     m.detail = invalid
     for each tile in m.tiles
@@ -107,6 +109,7 @@ end sub
 
 sub cancelVod()
     cancelDescription()
+    cancelTmdb()
     if m.task <> invalid
         m.task.unobserveField("result")
         cancelNetworkTask(m.task)
@@ -116,6 +119,10 @@ end sub
 
 sub loadVodPage(itemId = "" as string)
     cancelVod()
+    if itemId = "" and (m.shelf = "people" or m.shelf = "related" or m.shelf = "person")
+        loadDiscovery()
+        return
+    end if
     if itemId <> m.versionFor
         m.relationId = ""
         if itemId <> "" and type(m.top.permissions) = "roAssociativeArray"
@@ -135,6 +142,17 @@ sub loadVodPage(itemId = "" as string)
         m.items = []
     end if
     m.status.text = "Loading... Back cancels."
+    if itemId = "" and (m.shelf = "continue" or m.shelf = "watchlist" or m.shelf = "hidden")
+        m.task = CreateObject("roSGNode", "VodShelfTask")
+        m.task.baseUrl = m.top.config.baseUrl
+        m.task.apiKey = m.top.config.apiKey
+        m.task.accountId = m.top.config.accountId
+        m.task.savedState = m.top.savedState
+        m.task.shelf = m.shelf
+        m.task.observeField("result", "onVodLoaded")
+        m.task.control = "RUN"
+        return
+    end if
     m.task = CreateObject("roSGNode", "VodTask")
     m.task.baseUrl = m.top.config.baseUrl
     m.task.apiKey = m.top.config.apiKey
@@ -166,7 +184,9 @@ end sub
 sub onVodLoaded(event as object)
     if not isCurrentTaskEvent(event, m.task) then return
     result = event.getData()
-    detail = m.task.itemId <> "" and m.task.operation <> "versions"
+    shelfResult = m.task.subtype() = "VodShelfTask"
+    detail = false
+    if not shelfResult then detail = m.task.itemId <> "" and m.task.operation <> "versions"
     m.task.unobserveField("result")
     m.task = invalid
     if not result.ok
@@ -184,10 +204,9 @@ sub onVodLoaded(event as object)
         m.status.text = m.failure
         return
     end if
-    if result.authorizedShelf = true
-        for each entry in vodShelfEntries(m.top.savedState, m.shelf, result)
-            m.items.push(vodNormalize({id: entry.id, uuid: entry.uuid, name: entry.title}, entry.kind))
-        end for
+    if shelfResult
+        m.top.stateChange = {scope: m.top.config.accountScope, availability: result.patches}
+        m.items = result.items
         m.total = m.items.count()
         m.hasNext = false
         if m.index >= m.items.count() then m.index = 0
@@ -196,29 +215,45 @@ sub onVodLoaded(event as object)
     end if
     if detail
         m.detail = result.item
-        dialog = CreateObject("roSGNode", "Dialog")
+        dismissVodDialog()
+        dialog = CreateObject("roSGNode", "VodDetails")
+        dialog.id = "vodDetails"
+        m.top.appendChild(dialog)
+        dialog.baseUrl = m.top.config.baseUrl
+        dialog.apiKey = m.top.config.apiKey
         dialog.title = m.detail.title
         m.descriptionNotice = ""
+        m.tmdbNotice = ""
         entry = vodStateEntry(m.top.savedState, m.detail)
         menu = vodDetailMenu(m.detail, entry)
+        menu.actions.pop()
+        menu.buttons.pop()
         if type(m.top.permissions) = "roAssociativeArray"
             if m.top.permissions.level >= 10 and m.detail.kind <> "series"
-                menu.actions.unshift("versions")
-                menu.buttons.unshift("Choose source version")
+                menu.actions.push("versions")
+                menu.buttons.push("Choose source version")
                 if textValue(entry.relationId) <> ""
-                    menu.actions.unshift("autoSource")
-                    menu.buttons.unshift("Use Auto source")
+                    menu.actions.push("autoSource")
+                    menu.buttons.push("Use Auto source")
                 end if
             end if
         end if
+        if m.top.config.tmdbEnabled = true and m.top.config.tmdbKey <> ""
+            menu.actions.push("related") : menu.buttons.push("Related titles in my library")
+            menu.actions.push("people") : menu.buttons.push("Cast and crew discovery")
+            if vodExternalLinks(m.detail).count() = 0 then menu.actions.push("links") : menu.buttons.push("External information / trailer links")
+        end if
+        menu.actions.push("synopsis") : menu.buttons.push("Full synopsis")
+        menu.actions.push("back") : menu.buttons.push("Back")
         m.detailActions = menu.actions
         dialog.buttons = menu.buttons
         dialog.observeField("buttonSelected", "onVodDetailAction")
         dialog.observeField("wasClosed", "onVodDialogClosed")
         m.dialog = dialog
         renderDetailDescription()
-        m.top.getScene().dialog = dialog
+        dialog.callFunc("focusActions")
         beginDescription()
+        beginTmdb()
         drawVod()
         return
     end if
@@ -235,11 +270,16 @@ end sub
 
 sub drawVod()
     if m.kind = "movie" then m.libraryNavigation.selected = "movie" else m.libraryNavigation.selected = "series"
+    if m.shelf = "continue" or m.shelf = "watchlist" or m.shelf = "hidden" or m.shelf = "categories" then m.libraryNavigation.selected = m.shelf
     m.heading.text = "Movies"
     if m.kind = "series" then m.heading.text = "TV Shows"
     if m.kind = "episode" then m.heading.text = "Episodes"
     if m.shelf <> "catalog" then m.heading.text = "Library — " + m.shelf
-    if m.task = invalid
+    if m.shelf = "continue" then m.heading.text = "Continue Watching"
+    if m.shelf = "watchlist" then m.heading.text = "Watchlist"
+    if m.shelf = "hidden" then m.heading.text = "Hidden titles"
+    if m.shelf = "categories" then m.heading.text = "Categories"
+    if m.task = invalid and m.tmdbTask = invalid
         m.status.text = "Page " + m.pageNumber.toStr() + "  |  " + m.items.count().toStr() + " titles loaded"
         if m.total <> invalid then m.status.text += " of " + m.total.toStr()
         if m.items.count() = 0 then m.status.text = "No available titles match this account and search."
@@ -249,6 +289,7 @@ sub drawVod()
         if m.providerId <> "" and m.shelf = "catalog" then m.status.text += "  |  Provider " + m.providerId
     end if
     if m.failure <> "" then m.status.text = m.failure
+    if (m.shelf = "related" or m.shelf = "person") and m.failure = "" and textValue(m.discoveryMessage) <> "" then m.status.text = m.discoveryMessage
     for i = 0 to 19
         tile = m.tiles[i]
         tile.border.visible = i < m.items.count()
@@ -261,10 +302,22 @@ sub drawVod()
             if i = m.index then tile.border.color = "0x146779FF"
             tile.title.text = item.title
             tile.fact.text = item.year + "  " + item.rating
-            if m.kind = "episode" then tile.fact.text = "S" + item.season + " E" + item.episode
-            uri = ""
-            if item.logoId <> "" then uri = m.top.config.baseUrl + "/api/vod/vodlogos/" + item.logoId + "/cache/"
-            if tile.poster.uri <> uri then tile.poster.uri = uri
+            if item.kind = "episode" then tile.fact.text = "S" + item.season + " E" + item.episode
+            if m.shelf = "continue" and item.kind = "episode" and textValue(item.seriesTitle) <> "" then tile.title.text = item.seriesTitle + " — " + item.title
+            uri = vodArtworkUrl(m.top.config.baseUrl, item)
+            if item.metadataPending = true then tile.fact.text = "Refresh to verify"
+            if item.unavailable = true
+                tile.fact.text = "Unavailable — * to remove"
+                uri = ""
+            end if
+            if uri = "" and tmdbImagePath(item.tmdbPosterPath) <> "" then uri = "https://image.tmdb.org/t/p/w185" + item.tmdbPosterPath
+            if tile.poster.uri <> uri
+                agent = CreateObject("roHttpAgent")
+                agent.setCertificatesFile("common:/certs/ca-bundle.crt")
+                if trustedPageUrl(m.top.config.baseUrl, uri) <> "" then agent.setHeaders({"X-API-Key": m.top.config.apiKey})
+                tile.poster.setHttpAgent(agent)
+                tile.poster.uri = uri
+            end if
         else
             tile.poster.uri = ""
         end if
@@ -273,12 +326,20 @@ end sub
 
 sub onVodDetailAction(event as object)
     if not isCurrentTaskEvent(event, m.dialog) then return
-    cancelDescription()
-    event.getRoSGNode().close = true
     choice = event.getData()
     if choice < 0 or choice >= m.detailActions.count() then return
     action = m.detailActions[choice]
+    dismissVodDialog()
     if action = "back" then return
+    if action = "people" or action = "related"
+        enterDiscovery(action, m.detail)
+        return
+    end if
+    if action = "synopsis"
+        m.synopsisPage = 0
+        openFullSynopsis()
+        return
+    end if
     if action = "autoSource"
         m.relationId = ""
         m.versionFor = m.detail.id
@@ -336,7 +397,7 @@ sub onVodDetailAction(event as object)
     else
         saveLibraryBookmark()
         m.detail.resume = 0
-        if action = "resume" then m.detail.resume = vodResumePosition(entry, m.detail.duration)
+        if action = "resume" then m.detail.resume = vodResumePosition(entry, entry.duration)
         if action = "mp4" then m.detail.streamFormat = "mp4"
         if action = "mkv" then m.detail.streamFormat = "mkv"
         if action <> "resume" then m.top.stateChange = {scope: m.detail.accountScope, item: m.detail, patch: {position: 0, watched: false}}
@@ -346,20 +407,68 @@ end sub
 
 sub onVodDialogClosed(event as object)
     if not isCurrentTaskEvent(event, m.dialog) then return
+    dismissVodDialog()
+end sub
+
+sub dismissVodDialog()
     cancelDescription()
-    ' Native Dialog.wasClosed is a signal; its event payload can be invalid.
+    cancelTmdb()
+    node = m.dialog
+    m.dialog = invalid
+    if node <> invalid
+        node.unobserveField("buttonSelected")
+        node.unobserveField("wasClosed")
+        node.close = true
+        if node.subtype() = "VodDetails" then m.top.removeChild(node)
+    end if
     if m.top.active then m.top.setFocus(true)
+    if m.top.active and m.status <> invalid then drawVod()
 end sub
 
 sub renderDetailDescription()
     if m.dialog = invalid or m.detail = invalid then return
-    message = m.detail.year + "  " + m.detail.genre + "  Rating: " + m.detail.rating + chr(10) + left(m.detail.description, 700)
-    if m.detail.duration > 0 then message += chr(10) + (m.detail.duration \ 60).toStr() + " min"
+    message = m.detail.year + "  " + left(m.detail.genre, 100)
+    actors = left(m.detail.actors, 180)
+    director = left(m.detail.director, 160)
+    if m.detail.tmdb <> invalid
+        message += chr(10) + "TMDB rating: " + m.detail.tmdb.rating
+        if m.detail.tmdb.runtimeMinutes > 0 then message += "  |  Runtime (TMDB): " + m.detail.tmdb.runtimeMinutes.toStr() + " min"
+        tmdbActors = ""
+        tmdbDirectors = ""
+        for each person in m.detail.tmdb.people
+            if person.director = true
+                if tmdbDirectors <> "" then tmdbDirectors += ", "
+                tmdbDirectors += person.name
+            end if
+            if person.cast = true and len(tmdbActors) < 160
+                if tmdbActors <> "" then tmdbActors += ", "
+                tmdbActors += person.name
+            end if
+        end for
+        if tmdbActors <> "" then actors = left(tmdbActors, 200)
+        if tmdbDirectors <> "" then director = left(tmdbDirectors, 160)
+    else
+        message += chr(10) + "Provider rating: " + m.detail.rating
+        if m.detail.duration > 0 then message += "  |  Provider runtime: " + (m.detail.duration \ 60).toStr() + " min"
+    end if
     if m.detail.airDate <> "" then message += "  " + m.detail.airDate
-    if m.detail.actors <> "" then message += chr(10) + "Cast: " + left(m.detail.actors, 180)
-    if m.detail.director <> "" then message += chr(10) + "Director: " + m.detail.director
+    message += chr(10) + chr(10) + left(m.detail.description, 900)
+    if actors <> "" then message += chr(10) + chr(10) + "Cast: " + actors
+    if director <> "" then message += chr(10) + "Director / creator: " + director
     if m.descriptionNotice <> "" then message += chr(10) + m.descriptionNotice
+    if m.detail.tmdb = invalid and textValue(m.tmdbNotice) <> "" then message += chr(10) + m.tmdbNotice
     m.dialog.message = message
+    if type(m.dialog) <> "roAssociativeArray"
+        if m.dialog.subtype() = "VodDetails"
+            uri = vodArtworkUrl(m.top.config.baseUrl, m.detail)
+            m.dialog.posterUri = uri
+            fallback = ""
+            if textValue(m.detail.seriesLogoId) <> "" then fallback = m.top.config.baseUrl + "/api/vod/vodlogos/" + m.detail.seriesLogoId + "/cache/"
+            if tmdbImagePath(m.detail.tmdbPosterPath) <> "" then fallback = "https://image.tmdb.org/t/p/w342" + m.detail.tmdbPosterPath
+            m.dialog.fallbackUri = fallback
+            m.dialog.tmdbUsed = m.detail.tmdb <> invalid
+        end if
+    end if
 end sub
 
 sub beginDescription()
@@ -398,8 +507,14 @@ sub onDescriptionLoaded(event as object)
     m.descriptionNotice = "No alternate English summary found; showing provider text."
     if m.detail.description = "" then m.descriptionNotice = "No description supplied by the provider."
     if result.ok
-        m.detail.description = result.description
-        m.descriptionNotice = "English provider summary."
+        if descriptionLanguage(m.detail.description) <> "en"
+            m.detail.description = result.description
+            m.descriptionNotice = "English provider summary."
+        else
+            m.descriptionNotice = ""
+        end if
+    else if descriptionLanguage(m.detail.description) = "en"
+        m.descriptionNotice = ""
     end if
     ' Keep the existing Dialog/buttons/focus; update only its text.
     renderDetailDescription()
@@ -435,22 +550,27 @@ sub openVodOptions()
     m.top.getScene().dialog = dialog
 end sub
 
+sub openVodSearch()
+    dismissVodDialog()
+    dialog = CreateObject("roSGNode", "KeyboardDialog")
+    dialog.title = "Search permitted library"
+    dialog.text = m.query
+    dialog.buttons = ["Search", "Cancel"]
+    dialog.observeField("buttonSelected", "onVodSearch")
+    dialog.observeField("wasClosed", "onVodDialogClosed")
+    m.dialog = dialog
+    m.top.getScene().dialog = dialog
+end sub
+
 sub onVodOption(event as object)
     if not isCurrentTaskEvent(event, m.dialog) then return
-    event.getRoSGNode().close = true
     choice = event.getData()
     if choice < 0 or choice >= m.optionCodes.count() then return
     choice = m.optionCodes[choice]
+    dismissVodDialog()
     if choice = 4 then m.bypassCache = true
     if choice = 0
-        dialog = CreateObject("roSGNode", "KeyboardDialog")
-        dialog.title = "Search permitted library"
-        dialog.text = m.query
-        dialog.buttons = ["Search", "Cancel"]
-        dialog.observeField("buttonSelected", "onVodSearch")
-        dialog.observeField("wasClosed", "onVodDialogClosed")
-        m.dialog = dialog
-        m.top.getScene().dialog = dialog
+        openVodSearch()
         return
     else if choice = 1 or choice = 2
         m.shelf = "catalog"
@@ -493,15 +613,17 @@ end sub
 
 sub onVodSearch(event as object)
     if not isCurrentTaskEvent(event, m.dialog) then return
-    if event.getData() = 0
+    text = event.getRoSGNode().text
+    submitted = event.getData() = 0
+    dismissVodDialog()
+    if submitted
         m.shelf = "catalog"
-        m.query = left(event.getRoSGNode().text.trim(), 120)
+        m.query = left(text.trim(), 120)
         m.pageNumber = 1
         m.index = 0
         m.items = []
         loadVodPage()
     end if
-    event.getRoSGNode().close = true
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
@@ -513,6 +635,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if key = "back"
         saveLibraryBookmark()
         cancelVod()
+        if (m.shelf = "people" or m.shelf = "related" or m.shelf = "person") and m.discoveryStack.count() > 0
+            restoreDiscovery()
+            return true
+        end if
         if m.shelf = "versions" and m.versionReturn <> invalid
             restoreVersionPage()
             return true
@@ -542,7 +668,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         openVodOptions()
         return true
     end if
-    if m.task <> invalid then return true
+    if m.task <> invalid or m.tmdbTask <> invalid then return true
     if key = "fastforward" and m.hasNext
         m.pageNumber++
         m.index = 0
@@ -552,7 +678,9 @@ function onKeyEvent(key as string, press as boolean) as boolean
         m.index = 0
         loadVodPage()
     else if key = "OK" and m.items.count() > 0
-        if m.shelf = "versions"
+        if m.shelf = "people"
+            enterDiscovery("person", m.discoveryAnchor, m.items[m.index].id)
+        else if m.shelf = "versions"
             m.relationId = m.items[m.index].id
             itemId = m.versionItem.id
             m.versionFor = itemId
@@ -591,7 +719,7 @@ end function
 function libraryStatus() as object
     language = "unknown"
     if m.detail <> invalid then language = descriptionLanguage(m.detail.description)
-    return {kind: m.kind, shelf: m.shelf, page: m.pageNumber, index: m.index, loaded: m.items.count(), total: m.total, loading: m.task <> invalid, failure: m.failure, descriptionLanguage: language, descriptionPending: m.descriptionTask <> invalid}
+    return {kind: m.kind, shelf: m.shelf, page: m.pageNumber, index: m.index, loaded: m.items.count(), total: m.total, loading: m.task <> invalid or m.tmdbTask <> invalid, failure: m.failure, descriptionLanguage: language, descriptionPending: m.descriptionTask <> invalid, tmdbPending: m.tmdbTask <> invalid}
 end function
 
 function handleLibraryKey(key as string, press as boolean) as boolean
@@ -614,6 +742,10 @@ sub updateLibraryTabs()
     end if
     primary = [{id: "live", label: "Live TV", enabled: true}, {id: "vod", label: "VOD", enabled: movies or series}]
     libraries = [{id: "movie", label: "Movies", enabled: movies}, {id: "series", label: "TV Shows", enabled: series}]
+    for each destination in [{id: "continue", label: "Continue"}, {id: "watchlist", label: "Watchlist"}, {id: "hidden", label: "Hidden"}, {id: "categories", label: "Categories"}]
+        destination.enabled = movies or series
+        libraries.push(destination)
+    end for
     if FormatJson(m.primaryNavigation.items) <> FormatJson(primary) then m.primaryNavigation.items = primary
     if FormatJson(m.libraryNavigation.items) <> FormatJson(libraries) then m.libraryNavigation.items = libraries
 end sub
@@ -628,6 +760,20 @@ end sub
 
 sub onLibraryTabSelection(event as object)
     selected = event.getData()
+    if selected = "continue" or selected = "watchlist" or selected = "hidden" or selected = "categories"
+        saveLibraryBookmark()
+        dismissVodDialog()
+        m.shelf = selected
+        m.pageNumber = 1
+        m.index = 0
+        if selected = "categories" and m.kind = "episode"
+            m.kind = "series"
+            m.seriesId = ""
+        end if
+        loadVodPage()
+        m.top.setFocus(true)
+        return
+    end if
     if selected = m.kind and m.shelf = "catalog" and m.seriesId = ""
         m.top.setFocus(true)
     else
