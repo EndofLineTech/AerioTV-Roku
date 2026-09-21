@@ -23,6 +23,8 @@ sub main()
     assertEqual(isStartupBufferingStall(-1, "HTTP 401"), false, "do not retry authentication errors")
     assertEqual(isStartupBufferingStall(-5, "buffering is stalled; HTTP error: 403"), false, "known media refusal overrides stall retry")
     assertEqual(nativePlaybackRefusal("maximum connections reached"), "connection-limit", "explicit connection limit is actionable")
+    assertEqual(nativePlaybackRefusal("reader pick stream error:HTTP error:Transfer error: HTTP response code said error response code:(403):403"), "authentication", "recognize native transfer error status")
+    assertEqual(nativePlaybackRefusal("HTTP response code said error response code:(429):429"), "rate-limit", "native transfer rate limit is not archive lag")
     assertEqual(instr(1, playbackFailureText(-2, ""), "timed out") > 0, true, "explain timeout")
     lineup = [
         {uuid: "first", name: "First"}

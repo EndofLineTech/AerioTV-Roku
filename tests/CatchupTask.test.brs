@@ -27,6 +27,21 @@ sub main()
     m.top.paused = true
     runCatchup()
     if not m.top.result.ok or m.calls[0].body.position_secs <> 40 or not m.calls[0].body.paused then stop
+    resetTask()
+    now = CreateObject("roDateTime").asSeconds()
+    m.top.rewind = true
+    m.top.tuneStart = now - 7200
+    m.top.program = {startsAt: now - 9000, endsAt: now - 8000}
+    m.echoStart = true
+    runCatchup()
+    if not m.top.result.ok or m.top.result.requestedStart < now - 3600 then stop
+    if m.calls[0].body.duration > 60 then stop
+    resetTask()
+    m.top.rewind = true
+    m.top.tuneStart = now - 7200
+    m.response.data.start = "1970-01-01T00:00:00Z"
+    runCatchup()
+    if m.top.result.ok or m.calls.count() <> 2 or m.calls[1].method <> "DELETE" then stop
     print "ALL TESTS PASSED"
 end sub
 
@@ -37,6 +52,7 @@ sub resetTask()
     m.response = {status: 201, data: {session_id: "abcdefghijklmnop", channel_uuid: "channel", expires_at: now + 60, playback_url: "/proxy/catchup/channel?session_id=abcdefghijklmnop"}}
     m.calls = []
     m.cancelDuringCreate = false
+    m.echoStart = false
 end sub
 
 function requestJson(url)
@@ -48,5 +64,6 @@ function sessionMutation(url, method, body = invalid)
     if method = "DELETE" then return {status: 204, data: invalid}
     if instr(1, url, "/position/") > 0 then return {status: 204, data: invalid}
     if m.cancelDuringCreate then m.top.cancelRequested = true
+    if m.echoStart then m.response.data.start = body.start
     return m.response
 end function

@@ -1,4 +1,21 @@
 sub main()
+    epoch = "1789946400".toInt()
+    bounds = rewindBounds(epoch - 7200, epoch)
+    if bounds.start <> epoch - 3600 or bounds.finish <> epoch - 60 then stop
+    if rewindBounds(epoch - 900, epoch).start <> epoch - 900 then stop
+    if rewindBounds(epoch + 10, epoch + 20) <> invalid then stop
+    if rewindBounds(epoch + 10, epoch + 61).start <> epoch + 60 then stop
+    if rewindBounds(epoch + 1, epoch) <> invalid then stop
+    baseWindow = {id: "history", title: "Channel", startsAt: epoch - 3600, endsAt: epoch}
+    oldest = rewindSeekPlan(baseWindow, epoch - 7200, -500, epoch)
+    if oldest.offset <> 0 or oldest.program.startsAt <> epoch - 3600 or oldest.remaining <> 3600 then stop
+    newest = rewindSeekPlan(baseWindow, epoch - 7200, 999999, epoch)
+    if newest.program.startsAt <> epoch - 60 or newest.remaining <> 60 then stop
+    moved = rewindSeekPlan(baseWindow, epoch - 7200, 0, epoch + 61)
+    if moved.offset <> 120 then stop
+    clock = rewindPlaybackClock(baseWindow, epoch - 7200, 0, 30, epoch + 61)
+    if not clock.outside or clock.broadcast <> epoch - 3570 or clock.behindLive <> 3631 then stop
+    if clock.fraction <> 0 then stop
     facts = {"42": {catchupDays: 3}, "43": {catchupDays: 0}, "44": {catchupDays: -1}}
     if catchupChannelDays("allowed", facts, "42") <> 3 then stop
     if catchupChannelDays("denied", facts, "42") <> 0 then stop

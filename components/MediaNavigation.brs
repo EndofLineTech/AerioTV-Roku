@@ -133,6 +133,47 @@ sub onArchiveRequested(event as object)
     if restarting then showNotice("Opening Restart Program... Archive may not yet be available. Back cancels.") else showNotice("Opening archive... Back cancels.")
 end sub
 
+sub openLiveRewind()
+    if m.page <> "player" or m.playingChannel = invalid or m.liveSession = invalid then return
+    if m.video.state <> "playing" and m.video.state <> "paused" then return
+    channel = m.guide.callFunc("channelByUuid", m.playingChannel.uuid)
+    if channel = invalid then return
+    if catchupChannelDays(m.capabilities.catchup, m.channelFacts, channel.id) <= 0
+        showNotice("Provider rewind is unavailable on this channel.")
+        return
+    end if
+    now = uiNow()
+    tunedAt = m.liveSession.openedAt
+    bounds = rewindBounds(tunedAt, now)
+    if bounds = invalid
+        showNotice("No whole-minute rewind history since this tune yet. Try again shortly.")
+        return
+    end if
+    origin = {id: "rewind-" + channel.uuid, title: channel.name, startsAt: bounds.start, endsAt: now}
+    plan = rewindSeekPlan(origin, tunedAt, now - m.devicePreferences.archiveSkipSeconds - origin.startsAt, now)
+    paused = m.video.state = "paused"
+    stopPlayback()
+    cancelArchiveLoad()
+    m.archiveContext = {baseUrl: m.baseUrl, apiKey: m.apiKey, account: m.accountIdentity, channel: channel, program: origin, rewind: true, tuneStart: tunedAt, restart: false}
+    m.archiveOffset = plan.offset
+    m.archiveStartPaused = paused
+    m.archiveSeeking = false
+    m.archiveTask = CreateObject("roSGNode", "CatchupTask")
+    m.archiveTask.baseUrl = m.baseUrl
+    m.archiveTask.apiKey = m.apiKey
+    m.archiveTask.accountId = m.serverAccountId
+    m.archiveTask.channelUuid = channel.uuid
+    m.archiveTask.program = plan.program
+    m.archiveTask.rewind = true
+    m.archiveTask.tuneStart = tunedAt
+    m.archiveTask.observeField("result", "onArchiveCreated")
+    m.archiveTask.control = "RUN"
+    m.page = "archiveLoading"
+    m.guide.active = false
+    m.top.setFocus(true)
+    showNotice("Opening provider rewind... Archive may not yet be available. Back cancels.")
+end sub
+
 sub onArchiveCreated(event as object)
     if not isCurrentTaskEvent(event, m.archiveTask) then return
     result = event.getData()
@@ -142,7 +183,7 @@ sub onArchiveCreated(event as object)
     if not result.ok
         message = result.message
         if m.archiveContext <> invalid
-            if m.archiveContext.restart = true
+            if m.archiveContext.restart = true or m.archiveContext.rewind = true
                 if result.status = 400 or result.status = 404 or result.status = 500 or result.status = 502 or result.status = 503 or result.status = 504 then message = "Archive not yet available. The provider may be delayed or busy. Try again later or choose Watch channel LIVE."
             end if
         end if
@@ -157,7 +198,10 @@ sub onArchiveCreated(event as object)
         return
     end if
     m.archiveSession = result.sessionId
+    hideNotice()
     m.archiveServerStart = result.start
+    m.archiveWindowRequestedAt = result.requestedAt
+    if m.archiveContext.rewind = true then m.archiveOffset = result.requestedStart - m.archiveContext.program.startsAt
     m.archiveSeeking = false
     m.mediaReturn = "guide"
     m.lastArchiveReport = 0
@@ -165,7 +209,12 @@ sub onArchiveCreated(event as object)
     m.page = "onDemand"
     p = m.archiveContext.program
     m.mediaPlayer.skipSeconds = m.devicePreferences.archiveSkipSeconds
-    m.mediaPlayer.request = {account: m.accountIdentity, identity: result.sessionId, key: p.id, mode: "catchup", url: result.url, title: p.title, apiKey: m.apiKey, streamFormat: "ts", programStart: p.startsAt, program: p, offset: m.archiveOffset, startPaused: m.archiveStartPaused, restart: m.archiveContext.restart = true}
+    m.mediaPlayer.broadcastInfo = invalid
+    if m.archiveContext.rewind = true
+        m.guide.playbackEpoch = p.startsAt + m.archiveOffset
+        m.guide.playbackChannel = m.archiveContext.channel
+    end if
+    m.mediaPlayer.request = {account: m.accountIdentity, identity: result.sessionId, key: p.id, mode: "catchup", url: result.url, title: p.title, apiKey: m.apiKey, streamFormat: "ts", programStart: p.startsAt, program: p, offset: m.archiveOffset, startPaused: m.archiveStartPaused, restart: m.archiveContext.restart = true, rewind: m.archiveContext.rewind = true, tuneStart: m.archiveContext.tuneStart}
 end sub
 
 sub deleteOwnArchive(id as string, callback = "" as string)
@@ -192,6 +241,12 @@ sub cancelArchiveLoad()
 end sub
 
 sub releaseArchive()
+    if m.archiveContext <> invalid
+        if m.archiveContext.rewind = true
+            m.guide.playbackEpoch = 0
+            m.guide.playbackChannel = invalid
+        end if
+    end if
     if m.archivePositionTask <> invalid then cancelNetworkTask(m.archivePositionTask)
     m.archivePositionTask = invalid
     if m.archiveSession <> invalid
@@ -236,6 +291,20 @@ sub onMediaProgress(event as object)
     if progress.mode = "catchup" and m.archiveSession <> invalid
         if m.archiveSeeking = true then return
         if progress.identity <> m.archiveSession or not mediaNumber(progress.position) then return
+        reportPosition = progress.position + m.archiveOffset
+        if m.archiveContext.rewind = true
+            epoch = m.archiveContext.program.startsAt + int(reportPosition)
+            m.guide.playbackEpoch = epoch
+            snapshot = m.guide.callFunc("cachedPlaybackInfo", m.archiveContext.channel, epoch)
+            current = selectNowNext(snapshot.programs, epoch).current
+            title = "Program information unavailable for playback time"
+            reportPosition = progress.position
+            if current <> invalid
+                title = current.title
+                reportPosition = epoch - current.startsAt
+            end if
+            m.mediaPlayer.broadcastInfo = {title: title, status: snapshot.status}
+        end if
         if m.lastArchiveReport > uiNow() - 30 then return
         if m.archivePositionTask <> invalid
             if m.archivePositionTask.state = "run" then return
@@ -246,7 +315,7 @@ sub onMediaProgress(event as object)
         m.archivePositionTask.apiKey = m.archiveContext.apiKey
         m.archivePositionTask.sessionId = m.archiveSession
         m.archivePositionTask.operation = "position"
-        m.archivePositionTask.position = progress.position + m.archiveOffset
+        m.archivePositionTask.position = reportPosition
         m.archivePositionTask.paused = progress.state = "paused"
         m.archivePositionTask.control = "RUN"
     end if
@@ -256,6 +325,7 @@ sub onArchiveSeek(event as object)
     if not m.mediaPlayer.isSameNode(event.getRoSGNode()) or m.page <> "onDemand" then return
     if m.archiveSeeking = true or m.archiveSession = invalid or m.archiveContext = invalid then return
     plan = catchupSeekPlan(m.archiveContext.program, event.getData(), uiNow())
+    if m.archiveContext.rewind = true then plan = rewindSeekPlan(m.archiveContext.program, m.archiveContext.tuneStart, event.getData(), uiNow())
     if plan = invalid then return
     m.archiveSeeking = true
     m.archiveSeekPlan = plan
@@ -284,11 +354,13 @@ sub onArchiveGoLive(event as object)
         return
     end if
     ' Release only this archive session; never stop the shared live channel.
+    tunedAt = 0
+    if m.archiveContext.rewind = true then tunedAt = m.archiveContext.tuneStart
     m.mediaPlayer.callFunc("closeMedia")
     cancelArchiveLoad()
     releaseArchive()
     m.page = "guide" ' makes a queued archive-closed event obsolete
-    startPlayback(channel, true)
+    startPlayback(channel, true, false, false, tunedAt)
 end sub
 
 sub onArchiveSeekReleased(event as object)
@@ -310,6 +382,8 @@ sub onArchiveSeekReleased(event as object)
     m.archiveTask.channelUuid = m.archiveContext.channel.uuid
     m.archiveTask.program = m.archiveSeekPlan.program
     m.archiveTask.restart = m.archiveContext.restart = true
+    m.archiveTask.rewind = m.archiveContext.rewind = true
+    if m.archiveContext.rewind = true then m.archiveTask.tuneStart = m.archiveContext.tuneStart
     m.archiveTask.observeField("result", "onArchiveCreated")
     m.archiveTask.control = "RUN"
 end sub
@@ -392,6 +466,7 @@ sub enforceMediaCapabilities()
         end if
     else if m.page = "archiveLoading" and m.capabilities.catchup = "denied"
         cancelArchiveLoad()
+        releaseArchive()
         m.page = "guide"
         m.guide.active = true
         denied = true

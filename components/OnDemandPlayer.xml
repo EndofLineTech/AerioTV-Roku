@@ -9,6 +9,7 @@
     <field id="goLiveRequested" type="boolean" alwaysNotify="true" />
     <field id="skipSeconds" type="integer" value="60" />
     <field id="skipPreference" type="assocarray" alwaysNotify="true" />
+    <field id="broadcastInfo" type="assocarray" onChange="renderArchiveProgress" />
     <function name="closeMedia" />
     <function name="suspendArchive" />
     <function name="openArchiveActions" />

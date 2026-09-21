@@ -212,7 +212,7 @@ end function
 function nativePlaybackRefusal(detail as string) as string
     text = lcase(detail)
     if instr(1, text, "connection limit") > 0 or instr(1, text, "max connections") > 0 or instr(1, text, "maximum connections") > 0 then return "connection-limit"
-    if CreateObject("roRegex", "http[^0-9]{0,24}(401|403)", "i").isMatch(text) then return "authentication"
-    if CreateObject("roRegex", "http[^0-9]{0,24}429", "i").isMatch(text) then return "rate-limit"
+    if CreateObject("roRegex", "(http[^0-9]{0,24}|response code[^0-9]{0,16})(401|403)", "i").isMatch(text) then return "authentication"
+    if CreateObject("roRegex", "(http[^0-9]{0,24}|response code[^0-9]{0,16})429", "i").isMatch(text) then return "rate-limit"
     return ""
 end function

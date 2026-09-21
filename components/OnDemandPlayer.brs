@@ -97,7 +97,7 @@ sub onMediaState()
         m.message.text = playbackFailureText(m.video.errorCode, sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)) + chr(10) + "OK Retry    Back Return"
         if m.session.mode = "vod" then m.message.text += chr(10) + "If this source keeps failing: Back to the title, then Choose source version (authorized accounts)."
         if m.session.mode = "catchup" then m.message.text = "Archive unavailable or expired. Return to the guide and open the program again for a new session." + chr(10) + "OK / Back  Return"
-        if m.top.request.restart = true
+        if m.top.request.restart = true or m.top.request.rewind = true
             if nativePlaybackRefusal(m.video.errorStr) = "" then m.message.text = "Archive not yet available, or playback was interrupted. Try again later." else m.message.text = playbackFailureText(m.video.errorCode, sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey))
             m.message.text += chr(10) + "Up  Go Live    OK / Back  Return"
         end if
@@ -108,7 +108,7 @@ sub onMediaState()
         cancelArchiveScrub()
         if m.mediaFailed then return
         m.finished = true
-        if m.top.request.restart = true
+        if m.top.request.restart = true or m.top.request.rewind = true
             m.clock.control = "stop"
             m.video.visible = false
             m.message.text = "Reached the end of the available archive window." + chr(10) + "Up  Go Live    OK / Back  Return"
@@ -139,7 +139,7 @@ sub reportProgress()
             m.video.control = "stop"
             m.message.text = "Media did not start within 45 seconds. OK Retry    Back Return"
             if m.session.mode = "catchup" then m.message.text = "Archive startup timed out. OK / Back returns to the guide; reopen the program for a new session."
-            if m.top.request.restart = true then m.message.text = "Archive not yet available. Try again later." + chr(10) + "Up  Go Live    OK / Back  Return"
+            if m.top.request.restart = true or m.top.request.rewind = true then m.message.text = "Archive not yet available. Try again later." + chr(10) + "Up  Go Live    OK / Back  Return"
             m.video.visible = false
             m.clock.control = "stop"
             m.top.setFocus(true)
@@ -251,11 +251,17 @@ function suspendArchive() as object
 end function
 
 sub renderArchiveProgress()
+    if m.session = invalid then return
+    if m.session.mode <> "catchup" then return
     if m.video.state <> "playing" and m.video.state <> "paused" then return
     if m.closing = true or m.seekingArchive = true then return
     request = m.top.request
     offset = 0
     if request.offset <> invalid then offset = request.offset
+    if request.rewind = true
+        renderRewindProgress(offset)
+        return
+    end if
     clock = catchupPlaybackClock(request.program, offset, m.session.position, uiNow())
     if clock = invalid then return
     m.archiveTrack.visible = true
@@ -308,12 +314,51 @@ sub stepArchiveScrub()
     target = m.scrub.target
     if m.scrub.key = "rewind" then target -= archiveSkipSeconds() else target += archiveSkipSeconds()
     plan = catchupSeekPlan(m.top.request.program, target, uiNow())
+    if m.top.request.rewind = true then plan = rewindSeekPlan(m.top.request.program, m.top.request.tuneStart, target, uiNow())
     if plan = invalid
         cancelArchiveScrub()
         return
     end if
     m.scrub.target = plan.offset
     renderArchiveProgress()
+end sub
+
+sub renderRewindProgress(offset as integer)
+    request = m.top.request
+    clock = rewindPlaybackClock(request.program, request.tuneStart, offset, m.session.position, uiNow())
+    if clock = invalid
+        m.archiveTrack.visible = false
+        m.archiveFill.visible = false
+        cancelArchiveScrub()
+        m.message.text = "Rewind timing unavailable. Up  Go Live    Back  Return"
+        return
+    end if
+    m.archiveTrack.visible = true
+    m.archiveFill.visible = true
+    m.archiveFill.width = 1600 * clock.fraction
+    title = "Program information unavailable for playback time"
+    if m.top.broadcastInfo <> invalid
+        title = m.top.broadcastInfo.title
+        if title <> "Program information unavailable for playback time"
+            if m.top.broadcastInfo.status = "stale" or m.top.broadcastInfo.status = "unavailable" then title += " (cached guide)"
+        end if
+    end if
+    m.message.text = "REWIND (provider): " + left(title, 100) + chr(10)
+    m.message.text += "Estimated broadcast: " + uiLocalDate(clock.broadcast) + " " + uiTime(clock.broadcast) + "   |   Behind live: " + catchupElapsedText(clock.behindLive)
+    m.message.text += chr(10) + "Requestable history: " + uiTime(clock.start) + " - " + uiTime(clock.finish) + " (up to 60 minutes since tuning; availability varies)"
+    if clock.outside then m.message.text += chr(10) + "Position is older than the current range. New seeks use the current range."
+    m.message.text += chr(10) + "Rew / FF  Skip " + catchupElapsedText(archiveSkipSeconds()) + " / hold to preview    Play/Pause  Pause    Up  Go Live    Back  Guide"
+    if m.scrub <> invalid
+        plan = rewindSeekPlan(request.program, request.tuneStart, m.scrub.target, uiNow())
+        if plan <> invalid then m.scrub.target = plan.offset
+        target = request.program.startsAt + m.scrub.target
+        ratio = (target - clock.start) / (uiNow() - clock.start)
+        if ratio < 0 then ratio = 0
+        if ratio > 1 then ratio = 1
+        m.archivePreview.visible = true
+        m.archivePreview.translation = [160 + 1596 * ratio, 750]
+        m.message.text = "REWIND PREVIEW: " + uiLocalDate(target) + " " + uiTime(target) + chr(10) + "Behind live: " + catchupElapsedText(uiNow() - target) + chr(10) + "Provider availability varies. No seek is sent until you commit." + chr(10) + "Hold Rew / FF  Move preview    OK / Play Seek    Back  Cancel"
+    end if
 end sub
 
 sub repeatArchiveScrub()

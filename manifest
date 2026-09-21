@@ -1,7 +1,7 @@
 title=AerioTV Roku Preview
 major_version=0
 minor_version=3
-build_version=27
+build_version=28
 mm_icon_focus_fhd=pkg:/images/channel-icon-fhd.png
 mm_icon_focus_hd=pkg:/images/channel-icon-hd.png
 splash_screen_fhd=pkg:/images/splash-fhd.png

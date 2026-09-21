@@ -1,12 +1,13 @@
 sub main()
     resetAacTest()
-    if not deferRequiredAacTune({uuid: "first"}, false, false, false) then stop
+    if not deferRequiredAacTune({uuid: "first"}, false, false, false, 900) then stop
     if m.starts <> 0 or not m.guide.pendingTune then stop
     if m.pendingAacTune.channel.uuid <> "first" then stop
     m.aacProfile = {id: "7"}
     m.aacDiscoveryState = "ready"
     processAacWait()
     if m.starts <> 1 or m.started.channel.uuid <> "first" or not m.started.useAac then stop
+    if m.started.tuneStartedAt <> 900 then stop
     if m.pendingAacTune <> invalid or m.guide.pendingTune then stop
 
     resetAacTest()
@@ -93,7 +94,7 @@ sub showAacUnavailable(request as object, message as string)
     m.failureMessage = message
 end sub
 
-sub startPlayback(channel as object, force as boolean, useAac as boolean, preserveBudget as boolean)
+sub startPlayback(channel as object, force as boolean, useAac as boolean, preserveBudget as boolean, tuneStartedAt = 0 as integer)
     m.starts++
-    m.started = {channel: channel, force: force, useAac: useAac, preserveBudget: preserveBudget}
+    m.started = {channel: channel, force: force, useAac: useAac, preserveBudget: preserveBudget, tuneStartedAt: tuneStartedAt}
 end sub

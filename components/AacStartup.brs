@@ -1,5 +1,5 @@
 ' Gate mandatory AAC before constructing/opening any new media request.
-function deferRequiredAacTune(channel as object, forceRetune as boolean, useAac as boolean, preserveBudget as boolean) as boolean
+function deferRequiredAacTune(channel as object, forceRetune as boolean, useAac as boolean, preserveBudget as boolean, tuneStartedAt = 0 as integer) as boolean
     if m.devicePreferences.audioMode <> "aac" and not useAac then return false
     if m.aacProfile <> invalid then return false
     clock = CreateObject("roTimespan")
@@ -7,6 +7,7 @@ function deferRequiredAacTune(channel as object, forceRetune as boolean, useAac 
     m.pendingAacTune = {
         channel: channel, forceRetune: forceRetune, preserveBudget: preserveBudget
         account: m.accountIdentity, mode: m.devicePreferences.audioMode, clock: clock
+        tuneStartedAt: tuneStartedAt
     }
     m.guide.pendingTune = true
     m.aacWaitingMessage = "Waiting for the existing AAC profile... Back or Stop cancels this tune."
@@ -40,7 +41,7 @@ sub processAacWait()
         message = "AAC profile discovery timed out after 20 seconds."
     else if m.aacProfile <> invalid
         cancelAacWait()
-        startPlayback(request.channel, request.forceRetune, true, request.preserveBudget)
+        startPlayback(request.channel, request.forceRetune, true, request.preserveBudget, request.tuneStartedAt)
         return
     else if m.aacDiscoveryState = "unavailable" or m.aacDiscoveryState = "error"
         message = m.aacDiscoveryMessage

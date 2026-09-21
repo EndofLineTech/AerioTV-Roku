@@ -1,4 +1,4 @@
-AerioTV Roku0.3.27 — Restart, transport, delayed info and Settings
+AerioTV Roku0.3.28 — Restart, rewind, transport, delayed info and Settings
 ================================================================
 Date: __________ Tester: __________ Build actually tested: __________
 Write PASS / FAIL / SKIP; record skipped prerequisites and failures by ID below.
@@ -90,8 +90,40 @@ Watch a movie or episode: native controls still work. Return to guide. If a seco
 viewer is available, keep it on the same live channel during this Roku's archive
 seeks/Go Live; it must continue. Inspect only owned session cleanup if available.
 
+PROVIDER-BACKED LIVE REWIND
+--------------------------
+[     ] RW01 Entry and unsupported channels
+Watch a catch-up channel for several minutes, then press Rew (or hold OK ->
+Rewind history (provider)). Expected: REWIND (provider), earlier content and sound.
+On a channel without catch-up, Rew explains unavailability and keeps live playing.
+Immediately after a fresh tune, history may not have a requestable minute yet.
+
+[     ] RW02 Since-tune / hour limits
+Rewind and hold-preview backward. It cannot request before this tune. After an
+hour's ordinary viewing, the lower bound moves forward, keeping requests within
+the latest hour (whole-minute rounding can leave slightly less than60minutes).
+Record actual time watched: ______. Mark any unobserved hour-boundary portion.
+
+[     ] RW03 Pause and aged-out position (conditional longer check)
+Near the earliest edge of a full hour, pause long enough for that position to age
+out. Expected: an explicit older-than-current-range warning, no silent live jump.
+A new rewind request clamps to the current earliest minute and preserves pause.
+The existing provider reader may remain usable; no local retained buffer is claimed.
+
+[     ] RW04 Go Live and channel changes
+Go Live returns to the same channel. Reenter rewind: its original tune history
+remains available. Tune another channel: that channel's range starts at the new
+tune, rather than inheriting the previous channel's time. Back during loading
+cancels without a late open. Stop and account changes clean up local ownership.
+
+[     ] RW05 Provider availability and historical titles
+Check that the title/time describes the historical playhead, not the current live
+show; temporary loading/cached/unavailable metadata is explicit. If a provider
+request fails, expect Archive not yet available or the distinct reported error,
+with explicit Return/Go Live and no automatic live substitution. Note skipped faults.
+
 Restore original account/preferences and stop this Roku's playback.
-PASS: ____ FAIL: ____ SKIP: ____ (15 checks)
+PASS: ____ FAIL: ____ SKIP: ____ (20 checks: TS01-TS15, RW01-RW05)
 Notes: ID, channel/program, keys, observed behavior, time/photo. No credentials.
 __________________________________________________________________
 __________________________________________________________________

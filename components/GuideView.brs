@@ -351,7 +351,7 @@ end sub
 function requestedWindows() as object
     now = uiNow()
     if not m.top.active and m.top.playbackChannel <> invalid
-        return cachedPlaybackInfo(m.top.playbackChannel, now).windows
+        return cachedPlaybackInfo(m.top.playbackChannel, playbackClockEpoch()).windows
     end if
     first = guideWindowStart(m.viewStart)
     last = guideWindowStart(m.viewStart + m.span - 1)
@@ -372,7 +372,21 @@ end function
 
 sub publishPlaybackInfo()
     if m.top.playbackChannel = invalid then return
-    m.top.playbackInfo = cachedPlaybackInfo(m.top.playbackChannel, uiNow())
+    m.top.playbackInfo = cachedPlaybackInfo(m.top.playbackChannel, playbackClockEpoch())
+end sub
+
+function playbackClockEpoch() as integer
+    now = uiNow()
+    if m.top.playbackEpoch > 0 and m.top.playbackEpoch <= now then return m.top.playbackEpoch
+    return now
+end function
+
+sub onPlaybackTime()
+    if m.ready <> true or m.top.playbackChannel = invalid or m.top.active then return
+    window = guideWindowStart(playbackClockEpoch())
+    if m.playbackRequestedWindow = window then return
+    m.playbackRequestedWindow = window
+    scheduleLoad()
 end sub
 
 sub onPlaybackChannel()

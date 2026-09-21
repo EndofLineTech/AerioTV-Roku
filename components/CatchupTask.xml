@@ -2,6 +2,8 @@
 <component name="CatchupTask" extends="Task">
   <interface>
     <field id="restart" type="boolean" value="false" />
+    <field id="rewind" type="boolean" value="false" />
+    <field id="tuneStart" type="integer" />
     <field id="baseUrl" type="string" />
     <field id="apiKey" type="string" />
     <field id="accountId" type="string" />
@@ -15,6 +17,7 @@
     <field id="result" type="assocarray" alwaysNotify="true" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/CatchupModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SessionHttp.brs" />

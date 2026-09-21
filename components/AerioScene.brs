@@ -582,7 +582,7 @@ sub onAacFailureChoice(event as object)
     if request.account <> m.accountIdentity then return
     if choice = 0 then m.devicePreferences.audioMode = "auto" else m.devicePreferences.audioMode = "direct"
     persistPreferences()
-    startPlayback(request.channel, true)
+    startPlayback(request.channel, true, false, false, request.tuneStartedAt)
 end sub
 
 sub onAacFailureClosed(event as object)
@@ -652,7 +652,7 @@ sub onWatchChannel(event as object)
     startPlayback(event.getData())
 end sub
 
-sub startPlayback(channel as object, forceRetune = false as boolean, useAac = false as boolean, preserveStartupBudget = false as boolean)
+sub startPlayback(channel as object, forceRetune = false as boolean, useAac = false as boolean, preserveStartupBudget = false as boolean, tuneStartedAt = 0 as integer)
     if m.settingsHub <> invalid
         if m.settingsHub.active then closeSettingsHub()
     end if
@@ -678,7 +678,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         return
     end if
     cancelStartupWatch()
-    if deferRequiredAacTune(channel, forceRetune, useAac, preserveStartupBudget) then return
+    if deferRequiredAacTune(channel, forceRetune, useAac, preserveStartupBudget, tuneStartedAt) then return
     m.guide.active = false
     m.guide.visible = false
     m.screen.visible = false
@@ -700,6 +700,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     m.decoderSnapshot = {}
     m.playingChannel = channel
     m.liveSession = mediaSession(m.accountIdentity, CreateObject("roDeviceInfo").getRandomUUID(), "live", channel.uuid, uiNow())
+    if tuneStartedAt > 0 and tuneStartedAt <= uiNow() then m.liveSession.openedAt = tuneStartedAt
     applyVideoLayout()
     m.recordedChannel = ""
     if not forceRetune then m.guide.callFunc("selectPlayingChannel", channel.uuid)
@@ -720,7 +721,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         content.url += "&output_profile=0"
     end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.27"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.28"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true
@@ -798,11 +799,14 @@ sub updateLivePresentation()
     now = uiNow()
     clock = mediaLiveClock(m.liveSession, m.video.state, m.video.position, m.video.positionInfo, m.video.clipId, now, m.video.pauseBufferOverflow)
     m.banner.playhead = clock
+    playbackEpoch = 0
     if clock.known
         if clock.delayed or m.video.state = "paused"
+            playbackEpoch = clock.epoch
             m.banner.info = m.guide.callFunc("cachedPlaybackInfo", m.playingChannel, clock.epoch)
         end if
     end if
+    m.guide.playbackEpoch = playbackEpoch
 end sub
 
 sub togglePlayerInfo()
@@ -919,6 +923,7 @@ sub stopPlayback()
     m.banner.channel = invalid
     m.banner.info = invalid
     m.guide.playbackChannel = invalid
+    m.guide.playbackEpoch = 0
     m.guide.visible = true
     m.guide.active = true
     if wasSetup
@@ -1163,6 +1168,9 @@ sub openPlayerOptions(kind = "main" as string)
         {title: "Close", action: "close"}
     ]
     if m.sleepDeadline > 0 then items.unshift({title: "Cancel sleep timer", action: "cancelSleep"})
+    if m.playingChannel <> invalid and m.capabilities.catchup = "allowed"
+        if catchupChannelDays(m.capabilities.catchup, m.channelFacts, textValue(m.playingChannel.id)) > 0 then items.unshift({title: "Rewind history (provider)", action: "rewindHistory"})
+    end if
     if m.capabilities.switchStreams = "allowed"
         items.unshift({title: "Recover frozen picture (this player)", action: "recoverPicture"})
         items.unshift({title: "Switch stream source", action: "sourceMenu"})
@@ -1287,6 +1295,12 @@ sub onPlayerOption(event as object)
     if m.page <> "player" then return
     item = event.getData()
     if m.optionKind = "main" then m.optionReturnAction = item.action
+    if item.action = "rewindHistory"
+        m.playerOptions.active = false
+        onPlayerOptionsClosed()
+        openLiveRewind()
+        return
+    end if
     if item.action = "clockMenu"
         openPlayerOptions("clock")
         return
@@ -1881,6 +1895,8 @@ end sub
 function onKeyEvent(key as string, press as boolean) as boolean
     if m.page = "archiveLoading" and key = "back" and press
         cancelArchiveLoad()
+        releaseArchive()
+        hideNotice()
         m.page = "guide"
         m.guide.active = true
         return true
@@ -1943,6 +1959,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
             return true
         else if key = "playonly"
             if m.video.state = "paused" then m.video.control = "resume"
+            return true
+        end if
+        if key = "rewind"
+            openLiveRewind()
             return true
         end if
         if m.userInfoOpen

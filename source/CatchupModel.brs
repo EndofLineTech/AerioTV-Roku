@@ -97,3 +97,46 @@ function catchupSessionUrl(base as string, uuid as string, response as dynamic, 
     if textValue(response.playback_url) <> expected then return ""
     return base + expected
 end function
+
+' Requestable provider history, never a claim of locally buffered media.
+' Integer modulo preserves epoch precision; providers use whole UTC minutes.
+function rewindBounds(tunedAt as dynamic, now as integer) as dynamic
+    if not mediaNumber(tunedAt) then return invalid
+    if tunedAt <= 0 or tunedAt >= now then return invalid
+    first = now - 3600
+    if tunedAt > first then first = tunedAt
+    remainder = first mod 60
+    if remainder <> 0 then first += 60 - remainder
+    last = now - 1
+    last -= last mod 60
+    if first > last then return invalid
+    return {start: first, finish: last}
+end function
+
+function rewindSeekPlan(origin as dynamic, tunedAt as dynamic, requested as dynamic, now as integer) as dynamic
+    if type(origin) <> "roAssociativeArray" or not mediaNumber(requested) then return invalid
+    if not mediaNumber(origin.startsAt) then return invalid
+    bounds = rewindBounds(tunedAt, now)
+    if bounds = invalid then return invalid
+    target = origin.startsAt + int(requested)
+    target -= target mod 60
+    if target < bounds.start then target = bounds.start
+    if target > bounds.finish then target = bounds.finish
+    window = {id: textValue(origin.id), title: textValue(origin.title), startsAt: target, endsAt: now}
+    return {offset: target - origin.startsAt, program: window, remaining: now - target}
+end function
+
+function rewindPlaybackClock(origin as dynamic, tunedAt as dynamic, offset as dynamic, position as dynamic, now as integer) as dynamic
+    if type(origin) <> "roAssociativeArray" or not mediaNumber(position) or not mediaNumber(offset) then return invalid
+    if not mediaNumber(origin.startsAt) then return invalid
+    if position < 0 or offset < 0 then return invalid
+    bounds = rewindBounds(tunedAt, now)
+    if bounds = invalid then return invalid
+    broadcast = origin.startsAt + int(offset + position)
+    behind = now - broadcast
+    if behind < 0 then behind = 0
+    fraction = (broadcast - bounds.start) / (now - bounds.start)
+    if fraction < 0 then fraction = 0
+    if fraction > 1 then fraction = 1
+    return {broadcast: broadcast, behindLive: behind, start: bounds.start, finish: bounds.finish, fraction: fraction, outside: broadcast < bounds.start}
+end function
