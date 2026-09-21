@@ -30,10 +30,23 @@ function normalizeDevicePreferences(raw as dynamic) as object
     result.videoScale = textValue(result.videoScale)
     result.audioMode = textValue(result.audioMode)
     result.clockFormat = textValue(result.clockFormat)
+    result.guideReplayAction = textValue(result.guideReplayAction)
+    result.playerReplayAction = textValue(result.playerReplayAction)
     if result.channelDirection <> "apple" and result.channelDirection <> "guide" then result.channelDirection = "apple"
     if result.videoScale <> "fit" and result.videoScale <> "fill" and result.videoScale <> "stretch" then result.videoScale = "fit"
     if result.audioMode <> "auto" and result.audioMode <> "direct" and result.audioMode <> "aac" then result.audioMode = "auto"
     if result.clockFormat <> "12" and result.clockFormat <> "24" then result.clockFormat = "system"
+    if result.guideReplayAction <> "options" then result.guideReplayAction = "now"
+    if result.playerReplayAction <> "rewind" then result.playerReplayAction = "recent"
+    if result.networkTimeoutSeconds <> 10 and result.networkTimeoutSeconds <> 20 and result.networkTimeoutSeconds <> 30 then result.networkTimeoutSeconds = 20
+    if result.refreshSeconds <> 120 and result.refreshSeconds <> 300 and result.refreshSeconds <> 600 then result.refreshSeconds = 300
+    if result.infoLogo <> false then result.infoLogo = true
+    if result.infoChannel <> false then result.infoChannel = true
+    if result.infoTitle <> false then result.infoTitle = true
+    if result.infoTime <> false then result.infoTime = true
+    if result.infoDescription <> false then result.infoDescription = true
+    if result.infoNext <> false then result.infoNext = true
+    if result.infoHints <> false then result.infoHints = true
     skip = result.archiveSkipSeconds
     ' Keep one canonical key even if a JSON dictionary contains case variants.
     for each key in result.keys()
@@ -74,6 +87,9 @@ function normalizeAccountPreferences(raw as dynamic) as object
     result.lastChannel = textValue(result.lastChannel)
     result.group = textValue(result.group)
     if result.group = "" then result.group = "all"
+    result.startupBehavior = textValue(result.startupBehavior)
+    if result.startupBehavior <> "mini" then result.startupBehavior = "guide"
+    result.whatsNewVersion = left(textValue(result.whatsNewVersion), 32)
     aspects = {}
     if type(result.videoAspects) = "roAssociativeArray"
         for each id in result.videoAspects

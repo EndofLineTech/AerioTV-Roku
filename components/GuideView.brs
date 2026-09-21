@@ -485,6 +485,11 @@ sub drawGuide()
     if m.top.miniActive then m.footer.text = "OK  Watch / Details     Back or Play  Fullscreen     *  Options / Stop playback"
     if m.settings.groupLayout = "sidebar" then m.footer.text = "Hold Left  Groups     Left in groups  Live TV / VOD     OK  Watch / Details     *  Options"
     if m.settings.groupLayout = "pills" then m.footer.text = "Hold Left  Groups     Up in groups  Live TV / VOD     OK  Watch / Details     *  Options"
+    remote = m.top.remotePreferences
+    if type(remote) = "roAssociativeArray"
+        m.footer.visible = remote.infoHints <> false
+        if remote.guideReplayAction = "options" then m.footer.text += "     Replay  Options" else m.footer.text += "     Replay  Now"
+    end if
     if m.query <> "" then m.footer.text = "Search ALL: " + m.query + "    * > Clear search to restore the selected group"
     if m.connectionWarning <> "" then m.footer.text = m.connectionWarning
     if m.message <> "" then m.footer.text = m.message
@@ -1254,7 +1259,12 @@ function onKeyEvent(key as string, press as boolean) as boolean
         watchLive()
         return true
     else if key = "replay"
-        jumpTo(uiNow())
+        remote = m.top.remotePreferences
+        if type(remote) = "roAssociativeArray" and remote.guideReplayAction = "options"
+            openOptions()
+        else
+            jumpTo(uiNow())
+        end if
         return true
     else
         return false

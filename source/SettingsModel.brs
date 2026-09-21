@@ -11,20 +11,45 @@ function settingsHubEntries(page as string, model as object) as object
         entries.push({title: "Audio compatibility (next tune)", scope: "device", key: "audioMode", values: ["auto", "direct", "aac"]})
         entries.push({title: "Video scale", scope: "device", key: "videoScale", values: ["fit", "fill", "stretch"]})
         entries.push({title: "Channel Up/Down direction", scope: "device", key: "channelDirection", values: ["apple", "guide"]})
+        entries.push({title: "Player Replay action", scope: "device", key: "playerReplayAction", values: ["recent", "rewind"]})
         return entries
     end if
     if page = "appearance" then return [
         {title: "Group navigation", scope: "guide", key: "groupLayout", values: ["modal", "pills", "sidebar"]}
         {title: "Category colors", scope: "guide", key: "categoryColors", values: [true, false]}
+        {title: "Show player logo", scope: "device", key: "infoLogo", values: [true, false]}
+        {title: "Show player channel", scope: "device", key: "infoChannel", values: [true, false]}
+        {title: "Show player title", scope: "device", key: "infoTitle", values: [true, false]}
+        {title: "Show player time and progress", scope: "device", key: "infoTime", values: [true, false]}
+        {title: "Show player description", scope: "device", key: "infoDescription", values: [true, false]}
+        {title: "Show player next program", scope: "device", key: "infoNext", values: [true, false]}
+        {title: "Show player remote hints", scope: "device", key: "infoHints", values: [true, false]}
     ]
     if page = "general"
         entries = [{title: "Clock format", scope: "device", key: "clockFormat", values: ["system", "12", "24"]}]
+        entries.push({title: "Startup behavior", scope: "account", key: "startupBehavior", values: ["guide", "mini"]})
+        entries.push({title: "Guide Replay action", scope: "device", key: "guideReplayAction", values: ["now", "options"]})
+        entries.push({title: "Network request timeout", scope: "device", key: "networkTimeoutSeconds", values: [10, 20, 30]})
+        entries.push({title: "Active session refresh", scope: "device", key: "refreshSeconds", values: [120, 300, 600]})
         if model.movies = "allowed" or model.series = "allowed"
             entries.push({title: "VOD libraries for this account", scope: "account", key: "vodEnabled", values: [true, false]})
             entries.push({title: "Optional TMDB VOD enrichment", scope: "account", key: "vodTmdbEnabled", values: [true, false]})
         end if
+        entries.push({title: "About, licenses and What's New", action: "about"})
         return entries
     end if
+    if page = "about" then return [
+        {title: "AerioTV Roku " + model.version},
+        {title: "Independent Roku client for Dispatcharr"},
+        {title: "License notices and third-party attribution", action: "licenses"},
+        {title: "What's New", action: "whatsNew"}
+    ]
+    if page = "whatsNew" then return [
+        {title: "Version " + model.version},
+        {title: "VOD enrichment, saved-library reconciliation and focused acceptance."},
+        {title: "Read release notes in docs/RELEASE-0.3.28.md."},
+        {title: "Mark this version read", action: "markWhatsNew"}
+    ]
     if page = "connection" then return [{title: "Open connection settings (edit / forget / reconnect)", action: "connection"}]
     return []
 end function
@@ -57,6 +82,20 @@ function settingsValueText(value as dynamic, key = "" as string) as string
     if key = "channelDirection"
         if value = "apple" then return "Up next / Down previous"
         if value = "guide" then return "Up previous / Down next"
+    end if
+    if key = "guideReplayAction"
+        if value = "now" then return "Jump to Now"
+        return "Open guide options"
+    end if
+    if key = "playerReplayAction"
+        if value = "recent" then return "Open Recent"
+        return "Open rewind history"
+    end if
+    if key = "networkTimeoutSeconds" then return value.toStr() + " seconds"
+    if key = "refreshSeconds" then return (value \ 60).toStr() + " minutes"
+    if key = "startupBehavior"
+        if value = "mini" then return "Resume last channel in mini-player"
+        return "Guide (no autoplay)"
     end if
     if type(value) = "Boolean" or type(value) = "roBoolean"
         if value then return "On" else return "Off"

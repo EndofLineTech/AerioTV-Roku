@@ -1,5 +1,5 @@
 sub init()
-    m.global.addFields({metadataSession: CreateObject("roDeviceInfo").getRandomUUID(), cacheEpoch: CreateObject("roDeviceInfo").getRandomUUID()})
+    m.global.addFields({metadataSession: CreateObject("roDeviceInfo").getRandomUUID(), cacheEpoch: CreateObject("roDeviceInfo").getRandomUUID(), networkTimeoutMs: 20000})
     m.top.focusable = true
     m.top.backgroundColor = "0x0A1628FF"
     m.top.backgroundUri = ""
@@ -126,6 +126,7 @@ sub init()
     m.devicePreferences = m.preferenceStore.device
     m.global.addFields({clockFormat: "24", clockPreference: m.devicePreferences.clockFormat})
     applyClockFormat()
+    applyDevicePreferences()
     m.accountPreferences = normalizeAccountPreferences(invalid)
     m.recordedChannel = ""
     m.notice = m.top.findNode("notice")
@@ -425,6 +426,8 @@ sub completeConnection(result as dynamic)
         scope: result.scope, generation: result.generation
     }
     m.banner.session = {baseUrl: m.baseUrl, apiKey: m.apiKey}
+    m.banner.preferences = m.devicePreferences
+    m.guide.remotePreferences = m.devicePreferences
     m.page = "guide"
     m.screen.visible = false
     m.guide.visible = true
@@ -433,6 +436,23 @@ sub completeConnection(result as dynamic)
     refreshCapabilities()
     m.capabilityClock.control = "start"
     m.reminderClock.control = "start"
+    version = CreateObject("roAppInfo").getValue("major_version") + "." + CreateObject("roAppInfo").getValue("minor_version") + "." + CreateObject("roAppInfo").getValue("build_version")
+    if m.accountPreferences.whatsNewVersion <> version then showNotice("What's New in " + version + ". Open Settings > General > About, licenses and What's New.")
+    startConfiguredMiniPlayback(result.channels)
+end sub
+
+sub startConfiguredMiniPlayback(channels as object)
+    m.startMiniAfterPlayback = false
+    if m.accountPreferences.startupBehavior <> "mini" then return
+    if m.accountPreferences.lastChannel = "" then return
+    for each channel in channels
+        if channel.uuid = m.accountPreferences.lastChannel
+            m.startMiniAfterPlayback = true
+            startPlayback(channel)
+            return
+        end if
+    end for
+    showNotice("The saved startup channel is no longer available. Opened the guide instead.")
 end sub
 
 sub cancelCapabilityRefresh()
@@ -751,6 +771,7 @@ end sub
 
 function playerInfoHint() as string
     hint = "OK  Info    Hold OK  Options    Up/Down  Channel    Left  Channels    Right  Last    Replay  Recent    Back  Guide"
+    if m.devicePreferences.playerReplayAction = "rewind" then hint = "OK  Info    Hold OK  Options    Up/Down  Channel    Left  Channels    Right  Last    Replay  Rewind history    Back  Guide"
     if m.userInfoOpen then hint = "OK  Hide info    Hold OK  Options    Up/Down  Controls    Back  Hide info"
     if m.video.state = "buffering"
         stage = "Buffering... "
@@ -886,6 +907,7 @@ end sub
 
 sub stopPlayback()
     if m.settingsHub <> invalid then m.settingsHub.active = false
+    m.startMiniAfterPlayback = false
     if m.liveSession <> invalid then mediaEnd(m.liveSession)
     cancelPlaybackFailure()
     m.liveBufferWatch = invalid
@@ -1701,6 +1723,10 @@ sub onVideoState()
             m.bannerTimer.control = "stop"
             if not m.transport.active and not m.userInfoOpen then m.bannerTimer.control = "start"
         end if
+        if m.startMiniAfterPlayback
+            m.startMiniAfterPlayback = false
+            minimizePlayback()
+        end if
     end if
 end sub
 
@@ -1985,7 +2011,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
             zapPreviousChannel()
             return true
         else if key = "replay"
-            openChannelBrowser("recent")
+            if m.devicePreferences.playerReplayAction = "rewind" then openLiveRewind() else openChannelBrowser("recent")
             return true
         end if
         direction = playerChannelDirection(key, m.devicePreferences.channelDirection)
@@ -2059,6 +2085,13 @@ sub applyClockFormat()
     end if
     m.global.clockFormat = mode
     m.global.clockPreference = m.devicePreferences.clockFormat
+end sub
+
+sub applyDevicePreferences()
+    m.global.networkTimeoutMs = m.devicePreferences.networkTimeoutSeconds * 1000
+    if m.capabilityClock <> invalid then m.capabilityClock.duration = m.devicePreferences.refreshSeconds
+    if m.guide <> invalid then m.guide.remotePreferences = m.devicePreferences
+    if m.banner <> invalid then m.banner.preferences = m.devicePreferences
 end sub
 
 sub onDevicePreference(event as object)

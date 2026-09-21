@@ -1,5 +1,7 @@
 sub refreshSettingsHub()
-    m.settingsHub.model = {account: m.accountIdentity, device: m.devicePreferences, guide: m.accountPreferences.guide, vodEnabled: m.accountPreferences.vodEnabled <> false, vodTmdbEnabled: m.accountPreferences.vodTmdbEnabled = true, movies: m.capabilities.movies, series: m.capabilities.series, catchup: m.capabilities.catchup}
+    info = CreateObject("roAppInfo")
+    version = info.getValue("major_version") + "." + info.getValue("minor_version") + "." + info.getValue("build_version")
+    m.settingsHub.model = {account: m.accountIdentity, version: version, device: m.devicePreferences, guide: m.accountPreferences.guide, vodEnabled: m.accountPreferences.vodEnabled <> false, vodTmdbEnabled: m.accountPreferences.vodTmdbEnabled = true, startupBehavior: m.accountPreferences.startupBehavior, whatsNewVersion: m.accountPreferences.whatsNewVersion, movies: m.capabilities.movies, series: m.capabilities.series, catchup: m.capabilities.catchup}
 end sub
 
 sub openSettingsHub()
@@ -27,21 +29,48 @@ sub onSettingsHubSelection(event as object)
         showConnection()
         return
     end if
+    if item.action = "markWhatsNew"
+        m.accountPreferences.whatsNewVersion = textValue(item.value)
+        if not persistAccountPreferences() then showNotice("What's New will be shown again because this choice could not be saved.")
+        refreshSettingsHub()
+        return
+    end if
     allowed = settingsHubChangeAllowed(m.settingsHub.model, item.scope, item.key, item.value)
     if not allowed then return
     if item.scope = "device"
+        before = copyJson(m.devicePreferences)
         m.devicePreferences[lcase(item.key)] = item.value
         m.devicePreferences = normalizeDevicePreferences(m.devicePreferences)
-        persistPreferences()
+        if not persistPreferences()
+            m.devicePreferences = before
+            m.preferenceStore.device = before
+            applyDevicePreferences()
+            refreshSettingsHub()
+            return
+        end if
+        applyDevicePreferences()
         if item.key = "clockFormat" then applyClockFormat()
         if item.key = "videoScale" and m.playingChannel <> invalid then applyVideoLayout()
     else if item.scope = "guide"
+        before = copyJson(m.accountPreferences.guide)
         settings = m.guide.callFunc("applyHubGuideSetting", item.key, item.value)
         if settings <> invalid then m.accountPreferences.guide = settings
-        persistAccountPreferences()
+        if not persistAccountPreferences()
+            m.accountPreferences.guide = before
+            m.guide.callFunc("applyHubGuideSetting", item.key, before[lcase(item.key)])
+            m.preferenceStore.accounts[preferenceScope(m.accountIdentity)] = m.accountPreferences
+            refreshSettingsHub()
+            return
+        end if
     else if item.scope = "account"
+        before = copyJson(m.accountPreferences)
         m.accountPreferences[lcase(item.key)] = item.value
-        persistAccountPreferences()
+        if not persistAccountPreferences()
+            m.accountPreferences = before
+            m.preferenceStore.accounts[preferenceScope(m.accountIdentity)] = before
+            refreshSettingsHub()
+            return
+        end if
         updateLibraryPermissions()
     end if
     refreshSettingsHub()

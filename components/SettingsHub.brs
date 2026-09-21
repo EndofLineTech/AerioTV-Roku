@@ -35,10 +35,15 @@ sub renderSettings()
         end if
     end if
     m.heading.text = "Settings"
-    titles = {live: "Live TV", player: "Player", appearance: "Appearance", general: "General", connection: "Connection"}
+    titles = {live: "Live TV", player: "Player", appearance: "Appearance", general: "General", connection: "Connection", about: "About", whatsNew: "What's New", licenses: "License notices"}
     if titles.doesExist(m.page) then m.heading.text += " / " + titles[m.page]
     m.note.text = "Changes are saved on this Roku. Back returns to the previous page without moving the guide."
     if m.page = "player" then m.note.text = "Archive skip supports whole-minute provider windows. Audio compatibility changes take effect on the next tune."
+    if m.page = "appearance" then m.note.text = "Overlay changes apply immediately without interrupting playback. All fields default to On."
+    if m.page = "general" then m.note.text = "Guide startup never plays automatically. Mini startup resumes only the last available channel after it starts."
+    if m.page = "about" then m.note.text = "This is an independent Roku client. License and attribution text is included in the installed package."
+    if m.page = "whatsNew" then m.note.text = "Release notes describe implemented Roku features. Marking read only dismisses this version's startup notice."
+    if m.page = "licenses" then m.note.text = "License and attribution notices included with this Roku package. Back returns to About."
     m.items = []
     if m.choice <> invalid
         m.heading.text = m.choice.title
@@ -51,6 +56,15 @@ sub renderSettings()
         end for
     else
         m.items = settingsHubEntries(m.page, model)
+        if m.page = "licenses"
+            m.items = []
+            for each path in ["pkg:/LICENSE.md", "pkg:/images/material-icons-LICENSE.txt"]
+                for each line in CreateObject("roRegex", "\r?\n", "").split(ReadAsciiFile(path))
+                    text = line.trim()
+                    if text <> "" then m.items.push({title: left(text, 220)})
+                end for
+            end for
+        end if
     end if
     content = CreateObject("roSGNode", "ContentNode")
     for each item in m.items
@@ -77,6 +91,14 @@ sub selectSetting(index as integer)
         goBackSettings()
     else if item.action = "connection"
         m.top.selection = {account: m.top.model.account, action: "connection"}
+    else if item.action = "about" or item.action = "whatsNew" or item.action = "licenses"
+        m.stack.push({page: m.page, index: index})
+        m.page = item.action
+        renderSettings()
+        m.list.jumpToItem = 0
+    else if item.action = "markWhatsNew"
+        m.top.selection = {account: m.top.model.account, action: "markWhatsNew", value: m.top.model.version}
+        goBackSettings()
     else
         m.stack.push({page: m.page, index: index})
         if item.page <> invalid then m.page = item.page else m.choice = item

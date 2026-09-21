@@ -21,6 +21,7 @@
     <field id="pendingTune" type="boolean" />
     <field id="playerRequest" type="string" alwaysNotify="true" />
     <field id="devicePreference" type="assocarray" alwaysNotify="true" />
+    <field id="remotePreferences" type="assocarray" />
     <function name="adjacentPlayingChannel" />
     <function name="selectPlayingChannel" />
     <function name="cachedPlaybackInfo" />

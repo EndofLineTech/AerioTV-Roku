@@ -3,7 +3,7 @@ sub init()
     m.base = ""
     m.logo = m.top.findNode("logo")
     canvas = m.top.findNode("canvas")
-    uiRect(canvas, 96, 684, 1728, 328, "0x0A1628EF")
+    m.background = uiRect(canvas, 96, 684, 1728, 328, "0x0A1628EF")
     uiRect(canvas, 96, 684, 1728, 3, "0x1AC4D8FF")
     m.channelName = uiLabel(canvas, "", 246, 705, 1150, 38, 26, "0x1AC4D8FF")
     m.state = uiLabel(canvas, "", 1410, 705, 240, 36, 23, "0x1AC4D8FF")
@@ -18,8 +18,8 @@ sub init()
     m.progressTrack = uiRect(canvas, 128, 933, 1070, 5, "0x294357FF")
     m.progressFill = uiRect(canvas, 128, 933, 0, 5, "0x1AC4D8FF")
     m.progressText = uiLabel(canvas, "", 128, 946, 1070, 31, 20, "0x9EB5C9FF")
-    uiRect(canvas, 1234, 752, 1, 221, "0x294357FF")
-    uiLabel(canvas, "UP NEXT", 1272, 754, 516, 34, 22, "0x1AC4D8FF")
+    m.separator = uiRect(canvas, 1234, 752, 1, 221, "0x294357FF")
+    m.nextHeading = uiLabel(canvas, "UP NEXT", 1272, 754, 516, 34, 22, "0x1AC4D8FF")
     m.nextTitle = uiLabel(canvas, "", 1272, 799, 516, 74, 26)
     m.nextTitle.wrap = true
     m.nextTitle.maxLines = 2
@@ -45,6 +45,7 @@ end sub
 
 sub renderInfo()
     if not m.ready or not m.top.visible then return
+    applyPlayerInfoPreferences()
     channel = m.top.channel
     if channel = invalid then return
     now = m.top.now
@@ -143,5 +144,65 @@ sub renderInfo()
         m.title.text = "Playback time unavailable"
         m.times.text = "Program identity unavailable after a clock discontinuity"
         m.description.text = "Playback continues. Stop and reopen this channel to establish a new timing reference."
+    end if
+end sub
+
+function playerInfoVisible(key as string) as boolean
+    preferences = m.top.preferences
+    if type(preferences) <> "roAssociativeArray" then return true
+    return preferences[key] <> false
+end function
+
+sub applyPlayerInfoPreferences()
+    showLogo = playerInfoVisible("infoLogo")
+    showChannel = playerInfoVisible("infoChannel")
+    showTitle = playerInfoVisible("infoTitle")
+    showTime = playerInfoVisible("infoTime")
+    showDescription = playerInfoVisible("infoDescription")
+    showNext = playerInfoVisible("infoNext")
+    showHints = playerInfoVisible("infoHints")
+    m.logo.visible = showLogo
+    m.channelName.visible = showChannel
+    m.state.visible = showChannel
+    m.clock.visible = showTime
+    m.title.visible = showTitle
+    m.times.visible = showTime
+    m.description.visible = showDescription
+    m.progressTrack.visible = showTime
+    m.progressFill.visible = showTime
+    m.progressText.visible = showTime
+    if m.separator <> invalid then m.separator.visible = showNext
+    if m.nextHeading <> invalid then m.nextHeading.visible = showNext
+    m.nextTitle.visible = showNext
+    m.nextTimes.visible = showNext
+    m.dataStatus.visible = showNext
+    m.hint.visible = showHints
+    y = 705
+    if showChannel
+        m.channelName.translation = [246, y]
+        m.state.translation = [1410, y]
+        y += 45
+    end if
+    if showTitle
+        m.title.translation = [246, y]
+        y += 50
+    end if
+    if showTime
+        m.times.translation = [246, y]
+        y += 40
+    end if
+    if showDescription
+        m.description.translation = [128, y]
+        y += 80
+    end if
+    if showTime
+        m.progressTrack.translation = [128, y]
+        m.progressFill.translation = [128, y]
+        m.progressText.translation = [128, y + 13]
+        y += 48
+    end if
+    m.hint.translation = [128, 978]
+    if m.background <> invalid
+        if not showHints then m.background.height = 290 else m.background.height = 328
     end if
 end sub

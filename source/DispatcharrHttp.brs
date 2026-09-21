@@ -50,6 +50,10 @@ function requestJson(url as string, body = invalid as dynamic, bearer = "" as st
     m.httpAttempts = 0
     timeout = 20000
     if m.timeout <> invalid then timeout = m.timeout
+    ' Device preference can shorten, never expand, a task's established safe ceiling.
+    if m.global <> invalid and m.global.networkTimeoutMs <> invalid
+        if m.global.networkTimeoutMs > 0 and m.global.networkTimeoutMs < timeout then timeout = m.global.networkTimeoutMs
+    end if
     if m.deadlineMs <> invalid
         remaining = m.deadlineMs - m.clock.totalMilliseconds()
         if remaining < timeout then timeout = remaining

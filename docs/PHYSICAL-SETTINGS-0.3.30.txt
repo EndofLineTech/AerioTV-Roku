@@ -1,0 +1,95 @@
+AerioTV Roku 0.3.30 — Focused settings, preferences and remote checks
+======================================================================
+Target installed code: 0.3.30. No new app installation is needed.
+Date: __________ Tester: __________ Actual build: __________
+Roku model/OS: __________________ Dispatcharr: ______________
+
+8 individually marked entries: S01-S08.
+
+MARKING RESULTS
+---------------
+Write PASS, FAIL, or SKIP in each box. Leave not-yet-attempted entries blank.
+SKIP is not PASS. For a multi-part check, note any unobserved branch; do not mark
+the entire entry PASS if a required part was not exercised. Record failures by ID.
+Native scripted/automated results do not pre-fill your physical results.
+
+PREPARATION / PATHS
+-------------------
+- Start at Guide header -> Settings. Back returns through Settings, then Guide.
+- Record existing values and restore them before finishing. Do not record keys,
+  passwords, server URLs or playback URLs in this file.
+- Startup mini-player needs a naturally available last watched channel. A missing
+  channel means record the observed guide fallback; do not remove shared channels
+  to manufacture this case.
+- Restricted/offline persistence cases are conditional. Do not change shared
+  provider or network equipment just to force a failure.
+
+Original settings: ___________________________________________________________
+Last watched channel label: __________________ Account label: _______________
+
+PLAYER / REMOTE / OVERLAY
+-------------------------
+[         ] S01 Player Replay action and dynamic hint
+Settings -> Player -> Player Replay action. Test Recent and Rewind history on a
+working live channel. Expected: the visible player hint names the selected action;
+Replay opens only that implemented destination. Back, * and normal channel keys
+retain their established behavior. Restore the original value.
+
+[         ] S02 Guide Replay action and dynamic footer
+Settings -> General -> Guide Replay action. Test Jump to Now and Open guide
+options. Expected: the Guide footer names the selected Replay action; Replay does
+only that action. Guide * still opens options and Back still follows its normal
+guide/mini-player behavior. Restore the original value.
+
+[         ] S03 Player overlay field toggles
+Settings -> Appearance. Toggle each logo, channel, title, time/progress,
+description, next-program and hint field while live playback continues.
+Expected: only the selected field changes; remaining rows reflow without clipping
+or empty holes; the info panel is not reopened after dismissal. Restore all On.
+
+PERSISTENCE / STARTUP / NETWORK
+-------------------------------
+[         ] S04 Device and account persistence
+Change one device setting and one account setting, exit/relaunch, and reconnect
+to the same account. Expected: both survive. Switch to another available account
+if possible: account startup/What's New state is isolated; device remote/overlay
+choices remain on this Roku. Restore values.
+
+[         ] S05 Startup behavior — conditional
+Set Startup behavior to Resume last channel in mini-player, exit/relaunch and
+connect with an available last watched channel. Expected: native playback starts,
+then minimizes without a retune. An unavailable saved channel opens Guide with an
+honest notice. Guide/no autoplay must never start a channel. Restore default.
+
+[         ] S06 Network timeout and active refresh
+Settings -> General: select 10, 20 and 30-second request ceilings and 2, 5 and
+10-minute active refresh values. Expected: labels persist; ordinary guide/player
+use remains responsive. No claim of a background refresh after app exit. Restore
+defaults. Record a naturally observed timeout only; do not disconnect shared gear.
+
+ABOUT / WRITE FAILURE / REGRESSION
+----------------------------------
+[         ] S07 About, license notices and What's New
+Settings -> General -> About, licenses and What's New. Expected: actual installed
+version, independent Roku/Dispatcharr attribution, readable GPL/Material notices,
+What's New, Mark read and manual reopen all work. Relaunch confirms only the
+current account's read state is dismissed.
+
+[         ] S08 Save-failure feedback — conditional
+If a harmless existing storage-full/write-failure condition can be reproduced,
+change a setting. Expected: current screen shows a sanitized failure notice and
+the UI reverts to the persisted value; favorites and other settings remain intact.
+SKIP if no safe condition exists.
+
+FINISH / RESULTS
+----------------
+Restore original settings. Stop this Roku's playback through app controls when
+finished.
+PASS: _____ FAIL: _____ SKIP: _____ Still blank: _____ (total 8)
+
+ID: ______ Starting screen / account: ________________________________________
+Exact buttons and selected values: ___________________________________________
+Expected vs actual: _________________________________________________________
+Observed timing / untested branch / SKIP reason: ______________________________
+Photo or sanitized diagnostic filename: _____________________________________
+Repeat the note block as needed. Save this file and tell me when updated.
