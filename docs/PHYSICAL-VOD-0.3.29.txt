@@ -1,83 +1,112 @@
-AerioTV Roku 0.3.29 — focused physical VOD acceptance
+AerioTV Roku 0.3.29 — Focused physical VOD checks
+===============================================
+Target installed code: 0.3.29 / 3fd86aa. No new app installation is needed.
+Date: __________ Tester: __________ Actual build: __________
+Roku model/OS: __________________ Dispatcharr: ______________
 
-All results are initially NOT RUN. Scripted native evidence is recorded in
-VOD-ENRICHMENT-0.3.29.md and does not fill in physical results.
-Preserve the completed 0.3.28 worksheets separately.
+12 individually marked entries: N01-N12.
 
-Date/time:
-Device/OS:
-Dispatcharr version:
-Build:
+MARKING RESULTS
+---------------
+Write PASS, FAIL, or SKIP in each box. Leave not-yet-attempted entries blank.
+SKIP is not PASS. For a multi-part check, note any unobserved branch; do not mark
+the entire entry PASS if a required part was not exercised. Record failures by ID.
+Native scripted/automated results do not pre-fill your physical results.
+Evidence is in VOD-ENRICHMENT-0.3.29.md.
 
-N01  Result: NOT RUN
+PREPARATION / PATHS
+-------------------
+- Have a working movie, series, episode and live channel.
+- In VOD, Up from the first grid row reaches library navigation; * opens library
+  options. Select labels with arrows then OK. Back returns to the prior view.
+- TMDB toggle: Settings -> General -> Optional TMDB VOD enrichment.
+- TMDB key setup: Guide options -> Guide settings -> Optional TMDB artwork
+  fallback -> Test and save. Record no API keys or credentials in this file.
+- Conditional cases need an already unavailable saved title or an existing
+  restricted account. Missing conditions mean SKIP; do not change the shared
+  server or stop another TV simply to manufacture a fault.
+
+Original TMDB toggle: ______ Account label: ________________________
+Movie / episode / working source labels: __________________________
+
+You can stop and resume this sheet; no need to repeat completed entries.
+
+LIBRARY / DETAILS / DISCOVERY
+-----------------------------
+[         ] N01 Library tabs and focus
 Open Movies and TV Shows. Navigate the six library tabs with the remote.
 Expected: readable titles; deterministic focus; permitted destinations work;
 Back returns without trapping focus. Continue shows the selected series/episode.
-Notes:
 
-N02  Result: NOT RUN
+[         ] N02 Rich details and loading focus
 Open movie, series and episode details while metadata is loading.
 Expected: Play/Resume or Browse episodes is focused first. Artwork/fallback and
 facts are readable. Enrichment does not move focus. Back dismisses details.
-Notes:
 
-N03  Result: NOT RUN
+[         ] N03 Optional TMDB setting and persistence
 Use the General settings TMDB toggle, off and on, then relaunch.
 Expected: account-scoped opt-in persists. Off uses provider information. On with
 a configured key adds available English metadata and visible attribution.
-Notes:
 
-N04  Result: NOT RUN
+[         ] N04 Long and missing synopses
 Open long or missing synopses; use Full synopsis, Next/Previous, Close and Back.
 Expected: readable bounded pages, honest missing-data message, usable return.
-Notes:
 
-N05  Result: NOT RUN
+[         ] N05 Cast, person and related-title discovery
 Open cast/crew, a person, a permitted filmography title and related titles.
 Expected: playable results belong to this account. Hidden titles are excluded.
 Back restores the parent page and focus. Unmatched suggestions are not playable.
-Notes:
 
-N06  Result: NOT RUN
+RESUME / SAVED LIBRARIES / ACCOUNT ACCESS
+----------------------------------------
+[         ] N06 Resume with incorrect provider runtime — conditional
 Use a title with a valid saved position and incorrect provider runtime metadata.
 Expected: Resume is offered and reaches the saved position on a working source.
 Play from beginning resets progress. Native rendition duration governs playback.
-Notes:
 
-N07  Result: NOT RUN
+[         ] N07 Watchlist, Hidden and watched state
 Exercise Watchlist, Hidden/unhide, watched/unwatched and Continue Watching.
 Expected: changes persist after relaunch, watched/hidden items leave Continue,
 and only the latest eligible episode per series is shown there.
-Notes:
 
-N08  Result: NOT RUN
+[         ] N08 Deleted saved title and removal — conditional
 Use an already unavailable saved title, if one exists; avoid altering the shared
 server just to manufacture this case. Refresh saved shelves and remove the entry.
 Expected: absent from Continue; Watchlist/Hidden placeholder remains removable.
 Record SKIP if no suitable title exists; synthetic native coverage is separate.
-Notes:
 
-N09  Result: NOT RUN
+[         ] N09 Restricted account and isolation — conditional
 Use an existing restricted account or permission-change test connection.
 Expected: denied catalog/saved/discovery titles are suppressed; previous-account
 results and artwork do not reappear after switching. No cross-account progress.
-Notes:
 
-N10  Result: NOT RUN
+SEARCH / SOURCES / LIVE RETURN
+------------------------------
+[         ] N10 Guide search scopes
 From Guide options choose Search programs / movies / TV, then each allowed scope.
 Expected: VOD scopes open the proper search keyboard and results; existing program
 title/description search still works. Back returns to the guide.
-Notes:
 
-N11  Result: NOT RUN
+[         ] N11 Public links and source selection
 Inspect external information/trailer destinations and select available versions.
 Expected: destinations contain only public title identifiers; no credential-bearing
 provider URL is displayed. No claim of inline trailer playback. Source selection
 and Auto restore usable focus; unsupported renditions report failure honestly.
-Notes:
 
-N12  Result: NOT RUN
+[         ] N12 Return to live TV — regression
 Return to live TV after VOD playback and browse for several minutes.
 Expected: normal-speed audio/video, working mini/fullscreen and accepted controls;
 no automated probe starts, unexpected retune, or leaked VOD dialog.
-Notes:
+
+FINISH / RESULTS
+----------------
+Restore the original account and TMDB toggle. Stop this Roku's playback through
+app controls when finished.
+PASS: _____ FAIL: _____ SKIP: _____ Still blank: _____ (total 12)
+
+ID: ______ Media / visible source label / account label: ______________________
+Exact buttons and starting screen: __________________________________________
+Expected vs actual: _________________________________________________________
+Observed timing/positions / untested branch / SKIP reason: ____________________
+Photo or sanitized diagnostic filename: _____________________________________
+Repeat the note block as needed. Save this file and tell me when updated.
