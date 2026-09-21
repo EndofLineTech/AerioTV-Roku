@@ -8,10 +8,16 @@
     "check": "bsc --project bsconfig.json --copy-to-staging false --create-package false",
     "build": "bsc --project bsconfig.json",
     "test": "node scripts/test.mjs",
-    "release:prepare": "npm run build && node scripts/prepare-release.mjs"
+    "test:package": "node --test scripts/verify-package.test.mjs",
+    "verify": "npm test && npm run test:package && npm run check && npm run build && node scripts/verify-package.mjs",
+    "release:prepare": "npm run verify && node scripts/prepare-release.mjs"
   },
   "devDependencies": {
     "brighterscript": "0.73.5",
     "brs": "0.39.0"
+  },
+  "overrides": {
+    "source-map-resolve": "0.5.0",
+    "uuid": "11.1.0"
   }
 }

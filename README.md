@@ -739,9 +739,12 @@ tests, and credentials are excluded.
 
 Install your locally built ZIP using the [same browser steps](#install-on-your-roku).
 
-Maintainers can run `npm run release:prepare` to build and copy a versioned ZIP
-plus `SHA256SUMS` into `out/release/`. This does not publish a release or embed
-device/server credentials. Artwork regeneration is optional; see
+Maintainers can run `npm run verify` for the full automated/package gate, then
+`npm run release:prepare` to build and copy a versioned ZIP plus `SHA256SUMS` into
+`out/release/`. This does not publish a release or embed device/server credentials.
+See the [native-device workflow](docs/NATIVE-DEVICE-WORKFLOW.md) for controlled
+installation, redacted diagnostic collection, and physical-remote fallback.
+Artwork regeneration is optional; see
 [the source-artwork notes](images/upstream/README.md).
 
 ## Connection storage
@@ -843,11 +846,10 @@ absolute network-byte quota. Cachefs is discardable; catalogs/media are not stor
 in the registry, and local VOD saved state is bounded to 20 entries.
 
 `brs@0.39.0` runs off-device model and controller-adapter tests; it is not a Roku
-emulator. An earlier upgrade candidate added an archive-extraction dependency with
-a critical advisory, so the interpreter remains pinned. The current audit
-has four moderate development-tool findings in the `uuid`/`brs` and
-`decode-uri-component`/`source-map-resolve` chains. These tools are excluded from
-the ZIP; dependency replacement remains build-tool follow-up work.
+emulator. The pinned interpreter's audited dependency exceptions and the rejected
+latest candidate are documented in
+[development dependency review](docs/DEVELOPMENT-DEPENDENCIES.md). These tools are
+excluded from the ZIP.
 
 ## References and licensing
 
