@@ -5,6 +5,8 @@ Date: __________ Tester: __________ Actual build: __________
 Roku model/OS: __________________ Dispatcharr: ______________
 
 12 individually marked entries: N01-N12.
+PO acceptance recorded 2026-09-21 from chat: "Not filling it out, all pass."
+N01-N12 marked PASS on that instruction. Unprovided setup/timing fields remain blank.
 
 MARKING RESULTS
 ---------------
@@ -33,67 +35,67 @@ You can stop and resume this sheet; no need to repeat completed entries.
 
 LIBRARY / DETAILS / DISCOVERY
 -----------------------------
-[         ] N01 Library tabs and focus
+[ PASS    ] N01 Library tabs and focus
 Open Movies and TV Shows. Navigate the six library tabs with the remote.
 Expected: readable titles; deterministic focus; permitted destinations work;
 Back returns without trapping focus. Continue shows the selected series/episode.
 
-[         ] N02 Rich details and loading focus
+[ PASS    ] N02 Rich details and loading focus
 Open movie, series and episode details while metadata is loading.
 Expected: Play/Resume or Browse episodes is focused first. Artwork/fallback and
 facts are readable. Enrichment does not move focus. Back dismisses details.
 
-[         ] N03 Optional TMDB setting and persistence
+[ PASS    ] N03 Optional TMDB setting and persistence
 Use the General settings TMDB toggle, off and on, then relaunch.
 Expected: account-scoped opt-in persists. Off uses provider information. On with
 a configured key adds available English metadata and visible attribution.
 
-[         ] N04 Long and missing synopses
+[ PASS    ] N04 Long and missing synopses
 Open long or missing synopses; use Full synopsis, Next/Previous, Close and Back.
 Expected: readable bounded pages, honest missing-data message, usable return.
 
-[         ] N05 Cast, person and related-title discovery
+[ PASS    ] N05 Cast, person and related-title discovery
 Open cast/crew, a person, a permitted filmography title and related titles.
 Expected: playable results belong to this account. Hidden titles are excluded.
 Back restores the parent page and focus. Unmatched suggestions are not playable.
 
 RESUME / SAVED LIBRARIES / ACCOUNT ACCESS
 ----------------------------------------
-[         ] N06 Resume with incorrect provider runtime — conditional
+[ PASS    ] N06 Resume with incorrect provider runtime — conditional
 Use a title with a valid saved position and incorrect provider runtime metadata.
 Expected: Resume is offered and reaches the saved position on a working source.
 Play from beginning resets progress. Native rendition duration governs playback.
 
-[         ] N07 Watchlist, Hidden and watched state
+[ PASS    ] N07 Watchlist, Hidden and watched state
 Exercise Watchlist, Hidden/unhide, watched/unwatched and Continue Watching.
 Expected: changes persist after relaunch, watched/hidden items leave Continue,
 and only the latest eligible episode per series is shown there.
 
-[         ] N08 Deleted saved title and removal — conditional
+[ PASS    ] N08 Deleted saved title and removal — conditional
 Use an already unavailable saved title, if one exists; avoid altering the shared
 server just to manufacture this case. Refresh saved shelves and remove the entry.
 Expected: absent from Continue; Watchlist/Hidden placeholder remains removable.
 Record SKIP if no suitable title exists; synthetic native coverage is separate.
 
-[         ] N09 Restricted account and isolation — conditional
+[ PASS    ] N09 Restricted account and isolation — conditional
 Use an existing restricted account or permission-change test connection.
 Expected: denied catalog/saved/discovery titles are suppressed; previous-account
 results and artwork do not reappear after switching. No cross-account progress.
 
 SEARCH / SOURCES / LIVE RETURN
 ------------------------------
-[         ] N10 Guide search scopes
+[ PASS    ] N10 Guide search scopes
 From Guide options choose Search programs / movies / TV, then each allowed scope.
 Expected: VOD scopes open the proper search keyboard and results; existing program
 title/description search still works. Back returns to the guide.
 
-[         ] N11 Public links and source selection
+[ PASS    ] N11 Public links and source selection
 Inspect external information/trailer destinations and select available versions.
 Expected: destinations contain only public title identifiers; no credential-bearing
 provider URL is displayed. No claim of inline trailer playback. Source selection
 and Auto restore usable focus; unsupported renditions report failure honestly.
 
-[         ] N12 Return to live TV — regression
+[ PASS    ] N12 Return to live TV — regression
 Return to live TV after VOD playback and browse for several minutes.
 Expected: normal-speed audio/video, working mini/fullscreen and accepted controls;
 no automated probe starts, unexpected retune, or leaked VOD dialog.
@@ -102,7 +104,7 @@ FINISH / RESULTS
 ----------------
 Restore the original account and TMDB toggle. Stop this Roku's playback through
 app controls when finished.
-PASS: _____ FAIL: _____ SKIP: _____ Still blank: _____ (total 12)
+PASS: 12    FAIL: 0    SKIP: 0    Still blank: 0    (total 12)
 
 ID: ______ Media / visible source label / account label: ______________________
 Exact buttons and starting screen: __________________________________________

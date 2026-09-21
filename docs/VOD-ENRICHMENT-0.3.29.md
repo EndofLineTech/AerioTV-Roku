@@ -1,7 +1,7 @@
 # VOD enrichment and saved-library reconciliation — 0.3.29
 
 Development increment after the published 0.3.28 testing prerelease. This is not
-a new public release or a claim of physical acceptance. Work is tracked under
+a new public release. Work is tracked under
 `AerioTV-Roku-l4j`; the epic still requires Product Owner review.
 
 ## Changes
@@ -111,6 +111,11 @@ are `vod_enrichment_kind`, `vod_enrichment_query`, `vod_enrichment_tmdb`; defaul
 are movie/The Matrix/603. Series verification uses series/Deep Space Nine/580.
 Remove all fixture imports, exports, installer calls and manifest keys afterward.
 Supply developer credentials through the native runner's environment.
+
+On 2026-09-21 the PO reported "Not filling it out, all pass." This accepts all
+12 physical checks N01-N12 in `PHYSICAL-VOD-0.3.29.txt`. Unprovided setup details,
+timings and screenshots have not been inferred. This acceptance does not resolve
+alphabet navigation or the playback-speed transition investigation.
 
 Physical checks for this increment are in `PHYSICAL-VOD-0.3.29.txt`; the existing
 50-PASS 0.3.28 worksheet is preserved. Alphabet navigation remains in `l4j.9`:

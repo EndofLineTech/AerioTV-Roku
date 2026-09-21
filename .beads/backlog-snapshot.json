@@ -15221,6 +15221,13 @@
         "id": 178,
         "issue_id": "AerioTV-Roku-l4j.18",
         "text": "PO rejects description acceptance on0.3.19: 'No, lots of missing descriptions; are we using any external services at all?' Reopened. Current DescriptionTask only queries Dispatcharr/provider metadata; its conservative English preference cannot supply absent descriptions. Existing optional TMDB path covers guide artwork, not VOD synopsis enrichment. Last native audit found no configured TMDB key. Top navigation remains independently accepted."
+      },
+      {
+        "author": "MotWakorb",
+        "created_at": "2026-09-21T12:54:41Z",
+        "id": 179,
+        "issue_id": "AerioTV-Roku-l4j",
+        "text": "PO acceptance2026-09-21: \"Not filling it out, all pass.\" Recorded all12 physical0.3.29 checks N01-N12 PASS in docs/PHYSICAL-VOD-0.3.29.txt, with no inferred setup/timing fields. This supersedes pending physical acceptance for that increment. Alphabet navigation l4j.9 and speed-transition investigation l4j.13 remain unresolved; this statement does not close the whole epic. Next planned epic is b17, Settings/preferences/remote customization."
       }
     ],
     "labels": [
