@@ -62,6 +62,7 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
                         if type(stat) <> "roAssociativeArray" or stat.size = invalid
                             result.error = "invalid-response"
                         else if stat.size > maxBytes
+                            result.bytes = stat.size
                             result.error = "too-large"
                         else
                             result.body = ReadAsciiFile(file)

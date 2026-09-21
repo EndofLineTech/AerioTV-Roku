@@ -27,7 +27,10 @@ sub loadMappings()
             if channel.epgId <> "" then allowed[channel.epgId] = true
         end for
         rows = []
-        if allowed.count() > 0 then rows = apiRows(requestJson(m.base + "/api/epg/epgdata/"))
+        ' Explicit channel assignments require their authoritative mapped tvg_id.
+        ' Keep this endpoint paged as in v0.3.8 so a large account never becomes
+        ' one oversized Roku response.
+        if allowed.count() > 0 then rows = requestPages("/api/epg/epgdata/?page=1&page_size=500")
         if rows <> invalid
             links = {}
             for each row in rows

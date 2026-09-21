@@ -3,6 +3,7 @@ sub main()
     loadMappings()
     check(m.top.result.ok and m.top.result.links.count() = 1, "persist only authorized lineup assignments")
     check(m.top.result.links["10"] = "Station" and m.written.count() = 1, "mapping identifiers retained exactly")
+    check(m.lastUrl = "http://fixture.invalid/api/epg/epgdata/?page=1&page_size=500", "mapping request stays paged")
     check(m.top.apiKey = "" and m.top.channels.count() = 0, "release credentials and full lineup")
     resetTask()
     m.cached = {state: "fresh", payload: {"10": "Station"}}
@@ -47,8 +48,9 @@ function metadataCacheWrite(scope, kind, key, generation, now, payload)
     return true
 end function
 
-function requestJson(url)
+function requestPages(path)
     m.requests++
+    m.lastUrl = m.base + path
     return m.response
 end function
 
