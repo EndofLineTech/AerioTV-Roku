@@ -67,6 +67,21 @@ means the Roku policy forbids it. Do not change the policy merely to collect
 evidence. Use a physical camera instead, remove any credentials/URLs from the
 image, and retain only redacted evidence outside Git. `out/` is ignored.
 
+## Stability sampling
+
+Capture the whitelisted model, OS, UI resolution, and uptime before installation,
+after launch, and after a sustained browse/playback run:
+
+```sh
+python3 scripts/roku_device_info.py
+```
+
+The collector deliberately omits serial numbers, device IDs, MAC addresses, and
+network data. A lower later uptime indicates a device restart; it does not by
+itself establish an application cause. Pair the three outputs with redacted native
+console errors and the real test duration. This is the `rgs.13` stability evidence
+path and complements, but does not replace, physical remote acceptance.
+
 ## Physical remote fallback
 
 ECP keypress may return `403` on the tested device. Do not enable or alter remote
