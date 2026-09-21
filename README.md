@@ -29,9 +29,10 @@ This is a sideloaded testing preview, not a Roku Streaming Store release.
   development build that is intended to replace the earlier guide-data testing
   candidate. Guide results still depend on the connected Dispatcharr data and need
   your full physical validation.
-- **Player and remote preferences:** choose Replay behavior independently in the
-  guide and live player, customize displayed player-information fields, and retain
-  device-scoped controls on this Roku.
+- **Player preferences and bounded remote behavior:** choose Channel Up/Down
+  direction plus separate Replay behavior in the guide and live player; customize
+  displayed player-information fields. This is not user-defined remote-button
+  remapping: Back and fullscreen `*` remain fixed/Roku-owned.
 - **Startup and network preferences:** choose Guide/no autoplay or resume the last
   channel in a mini-player; select bounded request timeouts and active refresh
   intervals.

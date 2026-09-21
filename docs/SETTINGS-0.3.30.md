@@ -1,4 +1,4 @@
-# Settings, preferences and remote customization — 0.3.30
+# Settings, preferences and bounded remote behavior — 0.3.30
 
 Development increment for `b17`. It is not a public release. Existing Roku
 controls remain unchanged except where a saved preference explicitly selects one
