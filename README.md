@@ -9,26 +9,44 @@ parity with deliberate Roku remote adaptations. Distribution starts with persona
 sideloading. The deployment consists of the Roku and the existing Dispatcharr
 instance; no additional service/container is required by this build.
 
-For the current feature-by-feature comparison against upstream AerioTV, see the
-[parity audit and remaining-work inventory](docs/PARITY-AUDIT.md).
+The [source-level parity audit and remaining-work inventory](docs/PARITY-AUDIT.md)
+records the original baseline. The feature table below describes this release.
 
 ## Download the testing build
 
-**[Download v0.3.8 — testing prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.8)**
+**[Download v0.3.28 — testing prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.28)**
 
-Under **Assets**, download **`aeriotv-roku-v0.3.8.zip`**. Keep it zipped.
+Under **Assets**, download **`aeriotv-roku-v0.3.28.zip`**. Keep it zipped.
 Do **not** download GitHub's automatically generated **Source code (zip)** for
 installation; that is the repository, not the Roku application package.
 
 You do not need Node.js, npm, Git, or a compiler to install the release ZIP.
 This is a sideloaded testing preview, not a Roku Streaming Store release.
 
+### New since v0.3.8
+
+- **Movies and TV Shows:** paged catalogs, search/categories/sort, episode browsing,
+  Continue Watching, watchlists, hidden titles and authorized source-version selection.
+- **Catch-up and Restart Program:** replay eligible completed programs or restart
+  a currently airing program when the provider archive is available.
+- **Provider-backed live rewind:** up to 60 minutes since tuning on supported
+  catch-up channels, with explicit **Go Live** and unavailable-window handling.
+- **Seek controls:** configurable 1/2/5-minute skips and held timestamp/marker
+  preview, with explicit commit/cancel and pause preservation.
+- **Navigation and Settings:** Live TV / VOD / Settings in the guide header,
+  categorized settings, and catch-up history icons beside channel numbers.
+- **Reliability:** incremental guide loading, bounded metadata caching, local
+  startup/midstream recovery, contextual Retry and sanitized diagnostics.
+- **Hold OK** opens app player options; fullscreen star remains Roku-owned.
+
+[v0.3.28 release notes](docs/RELEASE-0.3.28.md)
+
 ## Roku vs. Apple TV and Android TV
 
-**Roku currently delivers the Dispatcharr live-TV/guide experience, not full
-feature parity with the upstream Apple TV and Android TV apps.** In particular,
-movies/series, DVR, multiview and a guaranteed live rewind buffer are not available
-in this Roku preview. A working Pause button is not a promised rewind window.
+**Roku now includes Dispatcharr live TV, the guide, movies/series, and conditional
+catch-up/restart/rewind, but not full upstream feature parity.** DVR, multiview,
+direct Xtream/M3U setup and cross-device sync remain unimplemented. Rewind uses
+provider archives; it is not a guaranteed local buffer or available on every channel.
 
 | Feature | Roku — this preview | Apple TV — upstream | Android TV / Google TV — upstream |
 | --- | --- | --- | --- |
@@ -41,10 +59,10 @@ in this Roku preview. A working Pause button is not a promised rewind window.
 | Audio/subtitle selection and sleep timer | **Available**, limited to tracks Roku exposes | Available | Available |
 | Video scaling | **Fit / Fill / Stretch**; source-aspect setting may be required | Available | Available |
 | Programme reminders | **Foreground alerts only**, while the app is open | Saved reminder state; background delivery not established on tvOS | Documented reminders; notification delivery depends on device |
-| Movies/series and Continue Watching | **Not implemented** | Available with supported providers | Available with supported providers |
+| Movies/series and Continue Watching | **Available** with supported provider renditions; local progress/watchlists | Available with supported providers | Available with supported providers |
 | DVR scheduling and recording management | **Not implemented** | Available; server-side DVR uses Dispatcharr | Available; server-side DVR uses Dispatcharr |
 | Multiview | **Not implemented** | Up to 9 streams, device/resource dependent | Up to 9 streams, device/resource dependent |
-| Live rewind / completed-program catch-up | **Not implemented**; native pause only | Implemented, subject to settings/provider support | Not verified in this comparison |
+| Live rewind / completed-program catch-up | **Provider-backed** catch-up, Restart and up to 60 minutes of history since tuning on eligible channels | Implemented, subject to settings/provider support | Not verified in this comparison |
 | Cross-device preference/watch-progress sync | **Not implemented**; local Roku preferences only | iCloud | Optional Google Drive sync |
 | Playback compatibility | Native Roku MPEG-TS player; optional existing server AAC profile | Apple/native and mpv playback routes | Media3/ExoPlayer plus bundled FFmpeg audio decoders |
 | Distribution | **Developer Mode ZIP / testing prerelease** | App Store, TestFlight and upstream sideload releases | APK releases; upstream documents invite-only Google Play testing |
@@ -55,7 +73,7 @@ versions; provider permissions and device capabilities still apply. "Not verifie
 is not a claim that the feature is absent. Mobile-only features are not assumed
 to be available on a TV.
 
-Comparison sources, reviewed 2026-09-19:
+Upstream comparison sources reviewed 2026-09-19; Roku column updated for v0.3.28:
 - [Apple upstream README, pinned revision](https://github.com/jonzey231/AerioTV/blob/8d5818456e0f4421d93b8ff120ad878d63331091/README.md)
   and the [source-level tvOS audit](docs/PARITY-AUDIT.md). The audit's Roku column
   is an older baseline; the table above describes this release.
@@ -114,7 +132,7 @@ If Developer Mode is already enabled, proceed to the next step.
 
 ### 3. Upload and install the release ZIP
 
-1. Click **Upload** / **Choose File** and select **`aeriotv-roku-v0.3.8.zip`**.
+1. Click **Upload** / **Choose File** and select **`aeriotv-roku-v0.3.28.zip`**.
 2. Click **Install** or **Install with zip**, depending on the installer version.
    Some versions also offer **Install with squashfs**.
 3. Wait for **Install Success**. AerioTV should launch on the TV automatically.
@@ -142,11 +160,10 @@ On the Roku's AerioTV connection screen:
 
 ## Essential controls and known testing limitations
 
-- **OK** shows player information. **OK → Up (or Down) → Options** opens the
-  application menu; use Left/Right to highlight Options, then OK.
-- **Fullscreen `*` is a known unresolved issue on the tested Stick**: it may open
-  Roku's system menu instead of AerioTV options. Use the route above. Guide `*`
-  works for guide settings and group navigation.
+- **Tap OK** shows/hides live player information. **Hold OK about one second**
+  opens app player options. **OK → Up (or Down) → Options** is the alternative.
+- **Fullscreen `*` belongs to Roku.** Guide/mini-guide `*` opens app guide options.
+  The retired fullscreen-star diagnostic is not included.
 - **Back** from bare fullscreen minimizes the same player into the guide;
   Back or Play expands it. To end playback, select **Stop playback** in player
   options or mini-guide options.
@@ -154,19 +171,32 @@ On the Roku's AerioTV connection screen:
   **Left** opens Channels, **Right** returns to the last channel, and **Replay**
   opens Recently Watched.
 - In pills/sidebar guide layouts, **hold Left** to focus groups from any row.
+- To reach the guide header: hold Left directly in Modal; in Sidebar, then Left
+  from groups; in Pills, then Up from groups. Select **VOD** or **Settings** there.
+- For catch-up/Restart, open **Program details** and select the separate archive
+  or Restart action. **Watch channel LIVE** remains a distinct choice.
+- During live playback, **Rew** or player options → **Rewind history (provider)**
+  opens available history since tuning. Unsupported/too-early entry leaves live
+  playback running. Provider delay or failure can produce **Archive not yet available**.
+- In archive/Restart/rewind: tap Rew/FF to skip; hold to preview a timestamp,
+  release, then **OK/Play** to commit or **Back** to cancel. **Up → Go Live**
+  returns to the same live channel. Set intervals in **Settings → Player** or
+  **Up → Skip interval**. VOD uses Roku's native transport controls.
 - **AAC compatibility needs an existing active copy-video/AAC output profile**
   visible to the Dispatcharr account. The app does not create server profiles.
   Always AAC waits for discovery and offers explicit alternatives if unavailable.
-- Startup-stall recovery retries once; it is not a guarantee that every provider
-  stream will play. The intermittent channel-startup issue remains under testing.
+- Startup and recoverable midstream failures have bounded local retry budgets;
+  terminal failures offer Retry/Return. Recovery cannot make an unavailable
+  provider rendition playable.
 - **Switch stream source** is an admin action affecting everyone watching that
   shared Dispatcharr channel; the menu explains this before confirmation.
-- Hide picture is **foreground listening only**. VOD, catch-up and a guaranteed
-  long rewind buffer are not delivered by this live-TV testing preview.
-
-The opt-in **Fullscreen * diagnostic** menu is for the current investigation.
-It intentionally changes picture geometry during its tests; Back exits and
-restores normal sizing. It does not run automatically.
+- Hide picture is **foreground listening only**.
+- Rewind is limited to eligible provider archives and whole-minute requests, not
+  local recording. Channel changes begin a new since-tune range; inactive channels
+  do not keep ingesting media. Provider windows can be missing, delayed or end early.
+- Some VOD providers/renditions can fail even when another copy works. Authorized
+  accounts can use **Choose source version**. Missing descriptions remain a known
+  limitation; English is preferred when available, without invented translation.
 
 ## Update or remove the sideloaded app
 
@@ -189,7 +219,9 @@ restores normal sizing. It does not run automatically.
 | Compilation/install error | Record the exact installer error and release version; confirm you selected the intended release asset. |
 | App installs but cannot connect | Check the Dispatcharr URL from the Roku's network and use Dispatcharr dashboard credentials/API key. |
 | Picture but no sound | Player options → Audio compatibility. AAC requires the existing server profile described above; unavailable-profile errors have Automatic/Direct/Cancel choices. |
-| `*` opens Roku settings | This is the known fullscreen issue. Use **OK → Up → Options**. |
+| `*` opens Roku settings | Expected in fullscreen. **Hold OK** for app options, or use **OK → Up → Options**. |
+| Archive/rewind unavailable | Check channel catch-up support and provider availability; retry later or explicitly choose Go Live. |
+| Movie/episode source fails | If authorized, use title details → Choose source version. A working alternative does not repair the failing provider. |
 
 ## Feedback
 
@@ -229,13 +261,25 @@ reviewable backup, not automatic Beads synchronization; the live Dolt database
 and runtime files are ignored by Git. A remote Dolt destination and restore drill
 remain tracked under `AerioTV-Roku-rgs.11`.
 
-## Development 0.3.11 — Hold OK player options
+## 0.3.28 — Accepted testing preview
+
+Adds VOD browsing/playback/state, catch-up/Restart, approved provider-backed rewind,
+held seek preview and configurable skips, playhead-relative information, a Settings
+hub, and the corrected native `ts` reader hint. Incremental metadata loading and
+bounded recovery/cache/diagnostic paths are included. Forty-four automated suites
+and compiler checks pass; the maintainer reported all 50 consolidated physical
+checks PASS. Provider/metadata limitations remain documented in the release notes.
+
+The sections below are historical build-time records, not current availability
+or pending-test statements. See the current feature table and controls above.
+
+## Development 0.3.11 — Hold OK player options (historical)
 
 The development build replaces fullscreen-star interception with **hold OK for
 about one second**. A short OK tap still shows/hides information, and the opening
 hold/release cannot activate a menu item. Guide star remains available. Fullscreen
 video stays full-size, and the experimental star menu is retired. These changes
-are not included in the published v0.3.8 ZIP linked above.
+were not included in v0.3.8; they are included in the current release.
 
 ## 0.3.8 — Tester distribution and upstream branding
 
@@ -709,9 +753,10 @@ key; only that key is eligible for saving. Relaunch uses the saved key. Rotated
 or revoked keys require signing in again.
 
 Turning Remember off removes the saved key. **Forget connection** removes the
-saved URL, key, favorites and selected group/channel. Only the most recently
-connected account's preferences are retained. Changing the URL clears the entered
-credentials, preventing accidental reuse at a different server.
+saved connection and account preferences while retaining the device's Remember
+policy. Preferences and VOD state are locally account-scoped; there is no cloud
+sync. Changing the URL clears the entered API key and dashboard password,
+preventing accidental reuse at a different server.
 
 ## Remote controls
 
@@ -729,12 +774,18 @@ credentials, preventing accidental reuse at a different server.
 | Guide | Back | Cancel a pending AAC tune, expand an active mini-player, or otherwise open connection settings |
 | Menu | Back | Close and restore guide focus |
 | Player | OK | Show/hide now/next information without pausing |
+| Player | Hold OK | Open app player options; release before selecting an item |
 | Player | Play/Pause | Request native pause/resume; retained duration depends on stream/device |
 | Player | OK → Up/Down → Options | App options: audio, captions, scale, sleep, diagnostics and supported source controls |
-| Player | `*` | Intended app Options shortcut; currently may be intercepted by Roku's system menu |
+| Player | `*` | Roku system options |
+| Player | Rew | Open provider-backed rewind on an eligible channel |
 | Player | Up / Down | Next / previous channel by default; configurable direction |
-| Player options | Back or `*` | Close menu and return to playback |
+| Player options | Back | Return to parent menu or playback |
 | Player | Back | Close inner chrome, then minimize to guide; use explicit Stop to stop playback |
+| Archive / Restart / rewind | Tap Rew/FF | One configured whole-minute skip on release |
+| Archive / Restart / rewind | Hold Rew/FF, then release | Preview a target; OK/Play commits, Back cancels |
+| Archive / Restart / rewind | Up | Go Live, keep watching, or configure skip interval |
+| Guide header | Settings | Categorized Live TV, Player, Appearance, General and Connection settings |
 
 The date picker displays local calendar days and half-hour times with a UTC
 reference to distinguish repeated daylight-saving hours. A missing spring-forward
@@ -749,17 +800,19 @@ The live route is:
 /proxy/ts/stream/<channel-uuid>?output_format=mpegts
 ```
 
-Dispatcharr 0.31.0 emits `video/mp2t`; the Roku Video node uses `mpegts`. This
-combination was exercised on model 3820RW2 / OS 15.3.4 build 2402 with working
-picture and audio. The fMP4/`mp4` combination was tested and rejected by Roku's
-HTTP range reader. It is not used as a fallback.
+Dispatcharr 0.31.0 emits `video/mp2t`; the Roku Video node uses **`ts`**. Dispatcharr's
+output name `mpegts` is not a valid Roku ContentNode reader enum. That mismatch
+was corrected after a live MP4-reader failure. The tested Stick now uses the
+explicit TS reader. The incompatible continuous fMP4 route is not a fallback.
 
-Additional codecs, long-duration playback, repeated tuning, and seek/pause behavior
-still require testing. Successful live viewing is not proof of a 60-minute buffer.
+The full-hour native experiment did not produce a local seekable hour. Approved
+rewind instead opens owned Dispatcharr catch-up sessions at provider timestamps,
+with bounded requests and explicit Go Live. Compatibility remains provider/device
+dependent, even with the maintainer's completed physical acceptance.
 
 The old 0.1 `/proxy/hls/...` candidate was removed because that route is not wired
 into 0.31.0's proxy URLs. This build does not add a proxy, transcoder, recording
-service, HLS endpoint, or claimed DVR window. A failed compatibility test is a
+service, HLS endpoint, or locally retained DVR buffer. A failed compatibility test is a
 decision point about existing server configuration/stream support.
 
 ## Development layout
@@ -781,14 +834,17 @@ tests/                       Off-device model tests, including 1,400 channels
 docs/                        Architecture, UI specification, device checklist
 ```
 
-Guide limits: three cached windows, 24,000 normalized programs per window, 128
-rendered cells per row, and a 16 MB JSON parsing limit per HTTP response. Excessive
-input produces an explicit error/state. HTTP transfers still buffer complete
-responses before the parsing limit is checked. Channel and EPG mapping catalogs
-are loaded at connection time; their peak memory also needs device measurement.
+Guide limits include three resident windows, 24,000 normalized programs per
+window, 128 rendered cells per row, and a global 8 MiB / 64-file metadata cache.
+Authorized channels appear before independent guide mappings finish. Metadata HTTP
+reads use bounded staging, cancellation and pre-parse limits; ordinary VOD reads
+have a 1 MiB cap and large metadata paths use an 8 MiB cap. These are not an
+absolute network-byte quota. Cachefs is discardable; catalogs/media are not stored
+in the registry, and local VOD saved state is bounded to 20 entries.
 
-`brs@0.39.0` runs only pure-model tests. Its newer release adds an archive-extraction
-dependency with a critical advisory. It is not a Roku emulator. The initial audit
+`brs@0.39.0` runs off-device model and controller-adapter tests; it is not a Roku
+emulator. An earlier upgrade candidate added an archive-extraction dependency with
+a critical advisory, so the interpreter remains pinned. The current audit
 has four moderate development-tool findings in the `uuid`/`brs` and
 `decode-uri-component`/`source-map-resolve` chains. These tools are excluded from
 the ZIP; dependency replacement remains build-tool follow-up work.

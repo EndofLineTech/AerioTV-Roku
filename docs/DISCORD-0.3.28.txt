@@ -1,0 +1,28 @@
+🎉 **AerioTV for Roku v0.3.28 — Testing Preview**
+
+A big update since v0.3.8! Uses your existing **Dispatcharr** server—no extra service or container.
+
+**🎬 Movies & TV Shows**
+• Browse, search, filter and sort movies and series.
+• Episode browsing, Continue Watching, resume, watchlists and hidden titles.
+• Choose and remember available source versions on authorized accounts.
+
+**⏪ Catch-up, Restart & Rewind**
+• Replay completed programs or restart a show that's still airing.
+• Provider-backed rewind: **up to 60 minutes since tuning** on catch-up channels.
+• **1/2/5-minute skips**, hold-to-preview seeking, commit/cancel and pause preservation.
+• **Go Live**, historical program information and catch-up icons beside channel numbers.
+
+**📺 Navigation & Reliability**
+• **Live TV / VOD / Settings** in the guide header and categorized settings.
+• **Hold OK** for app player options; tap OK for info. Fullscreen `*` remains Roku-owned.
+• Faster guide startup, bounded caching, improved recovery/Retry and diagnostics.
+• Live TS-reader fix and improved episode loading.
+
+**Testing:** 44 automated suites passed; maintainer physical checks **50/50 PASS**. Tested on Streaming Stick 4K with Roku OS 15.3.4 and Dispatcharr 0.31.0.
+
+**Heads-up:** Rewind/restart depend on provider archives—not a local buffer. Some VOD sources and descriptions remain unavailable. This is a sideloaded testing preview, not a Roku Store app.
+
+**⬇️ Download & install**
+https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.28
+Grab **aeriotv-roku-v0.3.28.zip** from Assets—not “Source code”—and upload it through your Roku Developer Mode installer.
