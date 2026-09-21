@@ -1,5 +1,12 @@
 # Worksheet reconciliation — 0.3.28
 
+## Subsequent completed pass
+
+The PO has now marked all50 entries in `PHYSICAL-TESTING-REMAINING.txt` PASS.
+See `PHYSICAL-ACCEPTANCE-0.3.28.md` for the acceptance and scope reconciliation.
+The inventory below records why those checks were outstanding when this sheet
+was prepared; it is not a new request to repeat the completed pass.
+
 Reviewed 2026-09-21 for `AerioTV-Roku-25t`. **One fillable output:**
 `PHYSICAL-TESTING-REMAINING.txt` (50 entries). This document is an evidence index,
 not another results sheet or issue tracker. Beads remains authoritative.
