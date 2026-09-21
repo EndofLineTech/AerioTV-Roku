@@ -45,6 +45,7 @@
   <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/NowNextModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RemoteMapModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideSettingsModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />

@@ -10,6 +10,7 @@
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RemoteMapModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SettingsModel.brs" />
   <script type="text/brightscript" uri="SettingsHub.brs" />
   <children>

@@ -1,0 +1,207 @@
+AerioTV Roku - Current physical acceptance worksheet
+=====================================================
+Use this worksheet for the next development build that includes the configurable
+remote-control map. It supersedes PHYSICAL-SETTINGS-0.3.30.txt for outstanding
+settings checks. It does not invalidate recorded 0.3.28 Live TV/timeshift or
+0.3.29 VOD acceptance; repeat those only as the regression checks below.
+
+Use public v0.3.33 or newer for RM01-RM10. Earlier public ZIPs do not contain the
+remote-control map.
+Target installed code/version/commit: ________________________________________
+Date: __________ Tester: __________ Roku model/OS/build: ____________________
+Dispatcharr version/account label: __________ Start/end time: ________________
+
+MARKING
+-------
+Write PASS, FAIL, or SKIP in every result blank. SKIP is not PASS. Record the
+actual screen, buttons, selected mapping, observed result, and a sanitized photo
+or diagnostic filename below. Do not record passwords, API keys, server/media
+URLs, serial numbers, or account identifiers.
+
+The Remote Control page offers Player and Guide mappings only. Back remains the
+fixed recovery path; Home and fullscreen * are Roku-owned. A missing test media
+or capability is SKIP; do not alter shared provider/network equipment to create
+a fault. Restore the original map and settings before finishing.
+
+PREPARATION
+-----------
+- Confirm the actual installed version in Settings -> General -> About.
+- Have a known-working live channel, a catch-up channel, a movie or episode, and
+  an optional second account. A mini-player requires an active live session.
+- Record original values: remote map/preset __________  startup __________
+  overlay fields __________  timeout/refresh __________  TMDB __________
+- In the guide: Settings -> Remote control. Player means fullscreen live playback;
+  Guide means the normal populated guide. Release every held key before the next
+  action. Fullscreen * must be left to Roku.
+
+BUILD / GUIDE / EXISTING-CHANGE REGRESSION
+------------------------------------------
+[  PASS   ] B01 Build identity and normal startup
+Launch the target build, connect/reconnect if necessary, and confirm the About
+version matches the recorded build. Expected: authorized channels and guide data
+populate without autoplay, a blank permanent guide, credentials in UI, or native
+error screen. Guide range/time observed: ______________________________________
+
+[  PASS   ] B02 Live tune, mini-player and return
+From the populated guide, tune a known-working live channel. Confirm moving
+picture and audible sound; Back minimizes the SAME session and Back/Play expands
+it. Stop only through the explicit app action. No unexpected retune on return.
+
+[  PASS   ] B03 VOD and saved-state regression
+Open a permitted movie or episode, play a working rendition, use native
+pause/seek, then return to the library and Live TV. Confirm focus, audio/video,
+and normal mini/fullscreen behavior. This is not a retest of all accepted VOD
+cases; record a regression if observed. Visible source label: _________________
+
+REMOTE MAP - SETTINGS, PERSISTENCE, AND FIXED KEYS
+---------------------------------------------------
+[  FAIL - doesn't appear   ] RM01 Remote Control settings navigation
+Guide -> Settings -> Remote control. Open While watching, In the TV Guide, and
+Reset remote controls. Each row names the physical button/gesture and its current
+action; only supported actions are listed. Back restores the prior row/page and
+then the guide without a focus trap.
+
+[  SKIP   ] RM02 Default map and dynamic hints
+Reset to defaults, confirm the confirmation flow, then inspect fullscreen player
+and guide hints. Expected defaults: Player OK=info/Hold OK=options, Up/Down=
+channel up/down, Left=channels, Right=previous channel, Replay=recent, Play=
+play/pause, Rew=rewind history; Guide OK=watch/details, Left/Right=navigate,
+Hold Left=groups, Rew/FF=page, Replay=Jump to Now, Play in mini=fullscreen.
+Hints must match the effective mapping and remain readable. Result: ___________
+
+[  SKIP   ] RM03 Player OK short and hold mappings
+For each value offered by Settings -> Remote control -> While watching -> OK and
+OK (hold), test it on a fullscreen live channel. Record every offered value:
+OK short Toggle info ______ Open options ______ Do nothing ______
+OK hold Open options ______ Do nothing ______
+Expected: short/hold recognition stays bounded; an initiating release never
+selects Stop or another menu row; Do nothing does not leak into another action.
+
+[  SKIP   ] RM04 Player directional mappings
+For EACH Player Up, Down, Left, and Right row, assign every displayed action and
+record its result. Values can include Channel up/down, Recently watched, Channel
+list, Previous channel, Show/hide info, Return to TV Guide, and Do nothing.
+Up: ______ ______ ______ ______ ______ ______ ______ ______
+Down: ______ ______ ______ ______ ______ ______ ______ ______
+Left: ______ ______ ______ ______ ______ ______ ______ ______
+Right: ______ ______ ______ ______ ______ ______ ______ ______
+Expected: channel actions select the intended filtered-lineup neighbor; held
+channel surfing commits only the final choice on release; unavailable edge shows
+an honest notice; no mapping strands focus or starts multiple streams.
+
+[ SKIP    ] RM05 Player dedicated action mappings
+Test every displayed value for Replay, Play/Pause, and Rewind:
+Replay Recent ______ Rewind history ______ Do nothing ______
+Play/Pause Play/Pause ______ Do nothing ______
+Rewind Rewind history ______ Recently watched ______ Do nothing ______
+Expected: provider rewind remains provider-backed and preserves honest unavailable
+handling; pause/resume affects only the current player; None consumes no other key.
+
+[  SKIP   ] RM06 Guide OK mapping
+On a current program and a future/ended program, test every displayed Guide OK
+value: Play selected channel ______ Program details ______ Do nothing ______.
+Expected: current selection can tune; future/ended behavior remains honest;
+details opens the selected program; Do nothing neither tunes nor traps focus.
+
+[  SKIP   ] RM07 Guide Left/Right and Hold Left mappings
+For EACH offered action, test Guide Left, Right, and Left (hold). Record values:
+Left Move focus ______ Jump to Now ______ Jump to top ______ Open groups ______
+     Open options ______ Do nothing ______
+Right Move focus ______ Jump to Now ______ Jump to top ______ Open groups ______
+      Open options ______ Do nothing ______
+Hold Left Open groups ______ Do nothing ______
+Expected: normal navigation/time movement remains usable when mapped to Move
+focus; groups works in Modal/Pills/Sidebar; no mapping leaves an empty group or
+guide without an escape route.
+
+[ SKIP    ] RM08 Guide paging, Replay, and mini-player Play mappings
+Test each displayed value:
+Rew/FF Page up ______ Page down ______ Jump to Now ______ Jump to top ______
+       Do nothing ______
+Replay Jump to Now ______ Open options ______ Do nothing ______
+Play/Pause while mini Return to player ______ Do nothing ______
+Expected: page actions clamp at lineup bounds; Replay hint changes with the map;
+mini-player mapping does not retune or leak to fullscreen star behavior.
+
+[  SKIP   ] RM09 Persistence, account scope, and reset
+Set non-default Player and Guide values, exit/relaunch, and reconnect to the same
+account. Expected: the device-local map and hints persist. If an existing second
+account is available, confirm the same Roku map remains while account data stays
+isolated. Reset and relaunch: defaults return atomically. Same account ______
+Second account/skip reason ______ Reset ______
+
+[  SKIP   ] RM10 Fixed-key and recovery boundaries
+In every mapped state above, verify Back dismisses/returns/minimizes by its normal
+context contract and can always recover focus. Press Home: Roku exits normally;
+relaunch has no unintended autoplay. In fullscreen press *: Roku owns it. In the
+guide/mini-guide press *: app guide options still opens. Back ______ Home ______
+Fullscreen * ______ Guide/mini * ______
+
+PREVIOUS SETTINGS AND CUSTOMIZATION ACCEPTANCE
+----------------------------------------------
+[  PASS   ] S01 Player overlay field toggles
+Settings -> Appearance: toggle logo, channel, title, time/progress, description,
+next program, and remote hints during live playback. Only the chosen field changes;
+visible rows reflow without clipping/holes; dismissed info does not reopen. Restore.
+
+[  PASS   ] S02 Device/account persistence
+Change one device setting and one account setting, exit/relaunch, then reconnect.
+Expected: both persist; account startup/What's New state is isolated; device map,
+overlay, timeout, and refresh choices remain on this Roku. Restore values.
+
+[ PASS    ] S03 Startup behavior - conditional
+Test Guide/no autoplay and Resume last channel in mini-player with a naturally
+available last watched channel. Mini starts then minimizes without retune; a missing
+channel falls back to Guide with honest notice. Restore default. Result: ________
+
+[  PASS   ] S04 Network timeout and active refresh
+Select 10/20/30-second request ceilings and 2/5/10-minute active refresh values.
+Expected: labels persist and ordinary guide/player use remains responsive. Do not
+disconnect shared gear to force a timeout. Restore defaults.
+
+[ PASS    ] S05 About, license notices, and What's New
+Verify installed version, independent Roku/Dispatcharr attribution, readable
+GPL/Material notices, Mark read, manual reopen, and per-account read state.
+
+[  PASS   ] S06 Save-failure feedback - conditional
+Only if a harmless existing storage/write failure exists, change a setting.
+Expected: sanitized failure notice and visible rollback to persisted value; other
+preferences remain intact. SKIP if no safe condition exists.
+
+VISUAL, ACCESSIBILITY, RESOURCE, AND STABILITY ACCEPTANCE
+---------------------------------------------------------
+[  PASS   ] Q01 Visual/focus audit
+At 1080p, inspect long channel/program names, every Remote Control page, choice
+list, reset confirmation, guide, fullscreen info, mini-player, and VOD return.
+Expected: no clipping, overlap, unreadable contrast, lost focus, or focus trap.
+Use Roku Audio Guide if enabled and record announced labels/order. Result: ______
+
+[  PASS   ] Q02 Captions/audio and playback regression - conditional
+On a naturally captioned/live sample, confirm picture, audible sound, captions,
+and configured video scale are readable in fullscreen and mini-player. Restore any
+caption/scale setting. SKIP if no suitable sample exists.
+
+[  PASS   ] Q03 Sustained browse/playback resource run
+Record `python3 scripts/roku_device_info.py` uptime before. Browse guide/remote
+settings/VOD and play a known-working live channel for at least 30 minutes, using
+several map changes but restoring defaults before the end. Record uptime after and
+any sanitized native errors. No restart, crash, accumulating artifact, or degraded
+focus/playback is PASS. Before ______ After ______ Duration ______ Result ______
+
+[  PASS   ] Q04 Longer stability soak
+Perform a separate 60-minute ordinary guide/live playback run after the map is
+stable. Capture uptime before/after and note real channel/media labels privately.
+No restart or late action from a prior map/session is PASS. Before ______ After
+______ Duration ______ Result ______
+
+FINISH / RESULTS
+----------------
+Restore original remote map, settings, account, and playback state. Stop playback
+through app controls. PASS: ____ FAIL: ____ SKIP: ____ Blank: ____
+
+ID: ______ Starting screen/context: __________________________________________
+Selected map/action and exact buttons: ________________________________________
+Expected vs actual: ___________________________________________________________
+Timing, untested branch, or SKIP reason: _______________________________________
+Sanitized photo/diagnostic filename: __________________________________________
+Repeat this note block for each result.

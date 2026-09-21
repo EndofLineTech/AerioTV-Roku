@@ -30,14 +30,25 @@ function normalizeDevicePreferences(raw as dynamic) as object
     result.videoScale = textValue(result.videoScale)
     result.audioMode = textValue(result.audioMode)
     result.clockFormat = textValue(result.clockFormat)
-    result.guideReplayAction = textValue(result.guideReplayAction)
-    result.playerReplayAction = textValue(result.playerReplayAction)
+    legacyGuideReplay = textValue(result.guideReplayAction)
+    legacyPlayerReplay = textValue(result.playerReplayAction)
     if result.channelDirection <> "apple" and result.channelDirection <> "guide" then result.channelDirection = "apple"
     if result.videoScale <> "fit" and result.videoScale <> "fill" and result.videoScale <> "stretch" then result.videoScale = "fit"
     if result.audioMode <> "auto" and result.audioMode <> "direct" and result.audioMode <> "aac" then result.audioMode = "auto"
     if result.clockFormat <> "12" and result.clockFormat <> "24" then result.clockFormat = "system"
-    if result.guideReplayAction <> "options" then result.guideReplayAction = "now"
-    if result.playerReplayAction <> "rewind" then result.playerReplayAction = "recent"
+    hasRemoteMap = type(result.remoteMap) = "roAssociativeArray"
+    result.remoteMap = normalizeRemoteMap(result.remoteMap)
+    ' Migrate the two 0.3.30 Replay preferences once into the sparse map.
+    if not hasRemoteMap
+        if result.channelDirection = "guide"
+            result.remoteMap = setRemoteAction(result.remoteMap, "player", "upShort", "channelDown")
+            result.remoteMap = setRemoteAction(result.remoteMap, "player", "downShort", "channelUp")
+        end if
+        if legacyGuideReplay = "options" then result.remoteMap = setRemoteAction(result.remoteMap, "guide", "replay", "openOptions")
+        if legacyPlayerReplay = "rewind" then result.remoteMap = setRemoteAction(result.remoteMap, "player", "replay", "rewindHistory")
+    end if
+    result.delete("guideReplayAction")
+    result.delete("playerReplayAction")
     if result.networkTimeoutSeconds <> 10 and result.networkTimeoutSeconds <> 20 and result.networkTimeoutSeconds <> 30 then result.networkTimeoutSeconds = 20
     if result.refreshSeconds <> 120 and result.refreshSeconds <> 300 and result.refreshSeconds <> 600 then result.refreshSeconds = 300
     if result.infoLogo <> false then result.infoLogo = true

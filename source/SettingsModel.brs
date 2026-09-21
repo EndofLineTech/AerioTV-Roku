@@ -1,5 +1,5 @@
 function settingsHubEntries(page as string, model as object) as object
-    if page = "" then return [{title: "Live TV", page: "live"}, {title: "Player", page: "player"}, {title: "Appearance", page: "appearance"}, {title: "General", page: "general"}, {title: "Connection", page: "connection"}]
+    if page = "" then return [{title: "Live TV", page: "live"}, {title: "Player", page: "player"}, {title: "Remote control", page: "remote"}, {title: "Appearance", page: "appearance"}, {title: "General", page: "general"}, {title: "Connection", page: "connection"}]
     if page = "live" then return [
         {title: "Guide history days", scope: "guide", key: "historyDays", values: [1, 3, 7, 14, 30]}
         {title: "Guide future days", scope: "guide", key: "futureDays", values: [1, 3, 7, 14, 30]}
@@ -10,10 +10,15 @@ function settingsHubEntries(page as string, model as object) as object
         if model.catchup = "allowed" then entries.push({title: "Archive skip interval", scope: "device", key: "archiveSkipSeconds", values: [60, 120, 300]})
         entries.push({title: "Audio compatibility (next tune)", scope: "device", key: "audioMode", values: ["auto", "direct", "aac"]})
         entries.push({title: "Video scale", scope: "device", key: "videoScale", values: ["fit", "fill", "stretch"]})
-        entries.push({title: "Channel Up/Down direction", scope: "device", key: "channelDirection", values: ["apple", "guide"]})
-        entries.push({title: "Player Replay action", scope: "device", key: "playerReplayAction", values: ["recent", "rewind"]})
         return entries
     end if
+    if page = "remote" then return [
+        {title: "While watching", page: "remotePlayer"}
+        {title: "In the TV Guide", page: "remoteGuide"}
+        {title: "Reset remote controls", action: "resetRemoteMap"}
+    ]
+    if page = "remotePlayer" then return remoteSlotEntries("player")
+    if page = "remoteGuide" then return remoteSlotEntries("guide")
     if page = "appearance" then return [
         {title: "Group navigation", scope: "guide", key: "groupLayout", values: ["modal", "pills", "sidebar"]}
         {title: "Category colors", scope: "guide", key: "categoryColors", values: [true, false]}
@@ -28,7 +33,6 @@ function settingsHubEntries(page as string, model as object) as object
     if page = "general"
         entries = [{title: "Clock format", scope: "device", key: "clockFormat", values: ["system", "12", "24"]}]
         entries.push({title: "Startup behavior", scope: "account", key: "startupBehavior", values: ["guide", "mini"]})
-        entries.push({title: "Guide Replay action", scope: "device", key: "guideReplayAction", values: ["now", "options"]})
         entries.push({title: "Network request timeout", scope: "device", key: "networkTimeoutSeconds", values: [10, 20, 30]})
         entries.push({title: "Active session refresh", scope: "device", key: "refreshSeconds", values: [120, 300, 600]})
         if model.movies = "allowed" or model.series = "allowed"
@@ -52,6 +56,32 @@ function settingsHubEntries(page as string, model as object) as object
     ]
     if page = "connection" then return [{title: "Open connection settings (edit / forget / reconnect)", action: "connection"}]
     return []
+end function
+
+function remoteSlotEntries(context as string) as object
+    slots = []
+    if context = "player" then slots = ["okShort", "okLong", "upShort", "downShort", "leftShort", "rightShort", "replay", "playPause", "rewind"]
+    if context = "guide" then slots = ["okShort", "leftShort", "leftLong", "rightShort", "rewind", "fastForward", "replay", "playPause"]
+    entries = []
+    for each slot in slots
+        entries.push({title: remoteSlotTitle(slot), action: "remoteSlot", context: context, slot: slot, values: remoteActionChoices(context, slot)})
+    end for
+    return entries
+end function
+
+function remoteSlotTitle(slot as string) as string
+    if slot = "okShort" then return "OK"
+    if slot = "okLong" then return "OK (hold)"
+    if slot = "upShort" then return "Up"
+    if slot = "downShort" then return "Down"
+    if slot = "leftShort" then return "Left"
+    if slot = "leftLong" then return "Left (hold)"
+    if slot = "rightShort" then return "Right"
+    if slot = "replay" then return "Replay"
+    if slot = "playPause" then return "Play/Pause"
+    if slot = "fastForward" then return "Fast Forward"
+    if slot = "rewind" then return "Rewind"
+    return slot
 end function
 
 function settingsHubValue(model as object, scope as string, key as string) as dynamic

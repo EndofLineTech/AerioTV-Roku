@@ -13,6 +13,20 @@ function canHoldPlayerOk() as boolean
     return true
 end function
 
+function playerOkRemoteAction(slot as string) as string
+    map = defaultRemoteMap()
+    if type(m.devicePreferences) = "roAssociativeArray" then map = m.devicePreferences.remoteMap
+    return resolveRemoteAction(map, "player", slot)
+end function
+
+sub executePlayerOkAction(action as string)
+    if action = "toggleInfo" then togglePlayerInfo()
+    if action = "openOptions"
+        m.playerOptions.consumeSelectRelease = true
+        openPlayerOptions()
+    end if
+end sub
+
 function handlePlayerOkKey(key as string, press as boolean) as boolean
     if key <> "OK"
         if press then cancelPlayerOkHold()
@@ -34,9 +48,9 @@ function handlePlayerOkKey(key as string, press as boolean) as boolean
     m.playerOkDown = true
     m.playerOkClock = CreateObject("roTimespan")
     m.playerOkClock.mark()
-    ' Preserve immediate tap-OK information feedback. A sustained press upgrades
-    ' this gesture to Options; repeats must not toggle the information repeatedly.
-    togglePlayerInfo()
+    ' Preserve the established gesture timing while resolving both slots from the map.
+    action = playerOkRemoteAction("okShort")
+    if action <> "none" then executePlayerOkAction(action)
     m.playerOkTimer.control = "start"
     return true
 end function
@@ -50,8 +64,6 @@ sub onPlayerOkHold()
     if m.playerOkClock = invalid then return
     if m.playerOkClock.totalMilliseconds() < 1000 then return
     cancelPlayerOkHold()
-    ' Keep focus on the menu's parent until OK is released, so the initiating
-    ' gesture cannot select the first/current LabelList item (including Stop).
-    m.playerOptions.consumeSelectRelease = true
-    openPlayerOptions()
+    action = playerOkRemoteAction("okLong")
+    executePlayerOkAction(action)
 end sub

@@ -488,7 +488,7 @@ sub drawGuide()
     remote = m.top.remotePreferences
     if type(remote) = "roAssociativeArray"
         m.footer.visible = remote.infoHints <> false
-        if remote.guideReplayAction = "options" then m.footer.text += "     Replay  Options" else m.footer.text += "     Replay  Now"
+        m.footer.text += "     Replay  " + remoteActionText(guideRemoteAction("replay"))
     end if
     if m.query <> "" then m.footer.text = "Search ALL: " + m.query + "    * > Clear search to restore the selected group"
     if m.connectionWarning <> "" then m.footer.text = m.connectionWarning
@@ -1136,7 +1136,7 @@ sub repeatGuideHold()
     end if
     if m.holdKey = "left"
         cancelGuideHold()
-        if m.settings.groupLayout = "modal" then focusPrimaryNavigation() else m.navigator.active = true
+        executeGuideRemoteAction(guideRemoteAction("leftLong"))
         return
     end if
     stepSize = guideHoldStep(m.holdClock.totalMilliseconds())
@@ -1165,6 +1165,46 @@ sub moveGuideTime(key as string)
         m.anchor = guideTimeClamp(target, uiNow(), m.settings)
         keepAnchorVisible()
     end if
+end sub
+
+function guideRemoteAction(slot as string) as string
+    map = defaultRemoteMap()
+    if type(m.top.remotePreferences) = "roAssociativeArray" then map = m.top.remotePreferences.remoteMap
+    return resolveRemoteAction(map, "guide", slot)
+end function
+
+sub executeGuideRemoteAction(action as string)
+    if action = "jumpToNow"
+        jumpTo(uiNow())
+    else if action = "jumpToTop"
+        m.selected = 0
+    else if action = "openGroups"
+        if m.settings.groupLayout = "modal" then focusPrimaryNavigation() else m.navigator.active = true
+    else if action = "openOptions"
+        openOptions()
+    else if action = "pageUp" or action = "pageDown"
+        delta = m.rowCount
+        if action = "pageUp" then delta = -delta
+        m.selected += delta
+        if m.selected < 0 then m.selected = 0
+        if m.selected >= m.filtered.count() then m.selected = m.filtered.count() - 1
+    else if action = "resumePlayer" and m.top.miniActive
+        m.top.playerRequest = "expandPlayer"
+    else if action = "programDetails"
+        showDetails()
+    end if
+end sub
+
+sub activateGuideSelection()
+    cell = selectedCell()
+    now = uiNow()
+    if cell <> invalid and cell.program <> invalid
+        if cell.program.startsAt > now or cell.program.endsAt <= now
+            showDetails()
+            return
+        end if
+    end if
+    watchLive()
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
@@ -1212,7 +1252,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     if key = "play" and m.top.miniActive
-        m.top.playerRequest = "expandPlayer"
+        executeGuideRemoteAction(guideRemoteAction("playPause"))
         return true
     end if
     if key = "up" and m.selected = 0 and m.settings.groupLayout <> "modal"
@@ -1225,11 +1265,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
     end if
     if m.filtered.count() = 0 then return true
     if key = "fastforward" or key = "rewind"
-        delta = m.rowCount
-        if key = "rewind" then delta = -delta
-        m.selected += delta
-        if m.selected < 0 then m.selected = 0
-        if m.selected >= m.filtered.count() then m.selected = m.filtered.count() - 1
+        executeGuideRemoteAction(guideRemoteAction(key))
     else if len(key) = 1 and instr(1, "0123456789", key) > 0
         openGuideKeyboard("number", "Channel number in current list", key)
         return true
@@ -1240,31 +1276,24 @@ function onKeyEvent(key as string, press as boolean) as boolean
         if m.selected < m.filtered.count() - 1 then m.selected++
         beginGuideHold(key)
     else if key = "left" or key = "right"
+        action = guideRemoteAction(key + "Short")
+        if action <> "navigate"
+            executeGuideRemoteAction(action)
+            drawGuide()
+            scheduleLoad()
+            return true
+        end if
         if key = "left"
             beginGuideHold(key)
             return true
         end if
         moveGuideTime(key)
     else if key = "OK"
-        cell = selectedCell()
-        now = uiNow()
-        if cell <> invalid
-            if cell.program <> invalid
-                if cell.program.startsAt > now or cell.program.endsAt <= now
-                    showDetails()
-                    return true
-                end if
-            end if
-        end if
-        watchLive()
+        action = guideRemoteAction("okShort")
+        if action = "programDetails" then showDetails() else if action = "activateSelection" then activateGuideSelection()
         return true
     else if key = "replay"
-        remote = m.top.remotePreferences
-        if type(remote) = "roAssociativeArray" and remote.guideReplayAction = "options"
-            openOptions()
-        else
-            jumpTo(uiNow())
-        end if
+        executeGuideRemoteAction(guideRemoteAction("replay"))
         return true
     else
         return false

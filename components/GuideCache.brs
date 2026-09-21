@@ -54,13 +54,7 @@ sub onMappingsLoaded(event as object)
     m.mappingState = "ready"
     m.allowedKeys = guideDictionary()
     for each channel in m.channels
-        channel.epgKey = channel.tvgId
-        if channel.epgId <> ""
-            channel.epgKey = ""
-            if result.ok
-                if result.links.doesExist(channel.epgId) then channel.epgKey = result.links[channel.epgId]
-            end if
-        end if
+        channel.epgKey = guideMappingKey(channel, result)
         m.allowedKeys[channel.uuid] = true
         if channel.epgKey <> "" then m.allowedKeys[channel.epgKey] = true
     end for
@@ -75,6 +69,12 @@ sub onMappingsLoaded(event as object)
     publishPlaybackInfo()
     scheduleLoad()
 end sub
+
+function guideMappingKey(channel as object, result as object) as string
+    key = textValue(channel.tvgId)
+    if result.ok and channel.epgId <> "" and result.links.doesExist(channel.epgId) then key = textValue(result.links[channel.epgId])
+    return key
+end function
 
 sub onWindowCached(event as object)
     if not isCurrentTaskEvent(event, m.task) then return

@@ -89,7 +89,7 @@ control policy to make automation work. Use the supplied Roku physical remote an
 record PASS, FAIL, or SKIP with the actual model, OS, build, media label, and
 sanitized symptom.
 
-- Current settings validation: `docs/PHYSICAL-SETTINGS-0.3.30.txt`.
+- Current outstanding acceptance: `docs/PHYSICAL-TESTING-CURRENT.txt`.
 - Completed historical Live TV/VOD evidence: `docs/PHYSICAL-VALIDATION-CURRENT.txt`
   and `docs/WORKSHEET-RECONCILIATION-0.3.28.md`.
 - Required baseline path: setup/reconnect, populated guide, tune a known-working

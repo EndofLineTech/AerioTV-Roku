@@ -35,6 +35,32 @@ sub onSettingsHubSelection(event as object)
         refreshSettingsHub()
         return
     end if
+    if item.action = "setRemoteAction"
+        before = copyJson(m.devicePreferences)
+        m.devicePreferences.remoteMap = setRemoteAction(m.devicePreferences.remoteMap, item.context, item.slot, item.value)
+        m.devicePreferences = normalizeDevicePreferences(m.devicePreferences)
+        if not persistPreferences()
+            m.devicePreferences = before
+            m.preferenceStore.device = before
+            refreshSettingsHub()
+            return
+        end if
+        refreshSettingsHub()
+        return
+    end if
+    if item.action = "resetRemoteMap"
+        before = copyJson(m.devicePreferences)
+        m.devicePreferences.remoteMap = resetRemoteMap()
+        m.devicePreferences = normalizeDevicePreferences(m.devicePreferences)
+        if not persistPreferences()
+            m.devicePreferences = before
+            m.preferenceStore.device = before
+            refreshSettingsHub()
+            return
+        end if
+        refreshSettingsHub()
+        return
+    end if
     allowed = settingsHubChangeAllowed(m.settingsHub.model, item.scope, item.key, item.value)
     if not allowed then return
     if item.scope = "device"

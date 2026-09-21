@@ -1,12 +1,12 @@
 import { spawnSync } from 'node:child_process';
 
-for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'GuideTaskCache', 'MappingTask', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'CatchupModel', 'CatchupTask', 'DiagnosticModel', 'OnDemandPlayer', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask']) {
+for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'GuideTaskCache', 'GuideMappingFallback', 'MappingTask', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'CatchupModel', 'CatchupTask', 'DiagnosticModel', 'OnDemandPlayer', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask', 'RemoteMapModel']) {
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
     'source/PlaybackModel.brs',
     'source/NowNextModel.brs',
-    'source/PreferenceModel.brs',
+    'source/RemoteMapModel.brs', 'source/PreferenceModel.brs',
     'source/CapabilityModel.brs',
     'source/ProgramSearchModel.brs',
     'source/VideoGeometry.brs',
@@ -46,6 +46,7 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport',
     ...(suite === 'PlayerOptionsInput' ? ['components/PlayerOptions.brs'] : []),
     ...(suite === 'HttpPolicy' ? ['source/DispatcharrHttp.brs'] : []),
     ...(suite === 'GuideTaskCache' ? ['components/GuideTask.brs'] : []),
+    ...(suite === 'GuideMappingFallback' ? ['components/GuideCache.brs'] : []),
     ...(suite === 'MappingTask' ? ['components/MappingTask.brs'] : []),
     `tests/${suite}.test.brs`,
   ], { encoding: 'utf8' });

@@ -23,7 +23,7 @@ sub renderSettings()
     if m.top.model = invalid then return
     focused = m.list.itemFocused
     model = m.top.model
-    if m.choice <> invalid
+    if m.choice <> invalid and m.choice.action <> "remoteSlot" and m.choice.action <> "resetRemoteMapConfirm"
         currentValue = settingsHubValue(model, m.choice.scope, m.choice.key)
         if not settingsHubChangeAllowed(model, m.choice.scope, m.choice.key, currentValue)
             m.choice = invalid
@@ -35,7 +35,7 @@ sub renderSettings()
         end if
     end if
     m.heading.text = "Settings"
-    titles = {live: "Live TV", player: "Player", appearance: "Appearance", general: "General", connection: "Connection", about: "About", whatsNew: "What's New", licenses: "License notices"}
+    titles = {live: "Live TV", player: "Player", remote: "Remote control", remotePlayer: "While watching", remoteGuide: "In the TV Guide", appearance: "Appearance", general: "General", connection: "Connection", about: "About", whatsNew: "What's New", licenses: "License notices"}
     if titles.doesExist(m.page) then m.heading.text += " / " + titles[m.page]
     m.note.text = "Changes are saved on this Roku. Back returns to the previous page without moving the guide."
     if m.page = "player" then m.note.text = "Archive skip supports whole-minute provider windows. Audio compatibility changes take effect on the next tune."
@@ -45,7 +45,20 @@ sub renderSettings()
     if m.page = "whatsNew" then m.note.text = "Release notes describe implemented Roku features. Marking read only dismisses this version's startup notice."
     if m.page = "licenses" then m.note.text = "License and attribution notices included with this Roku package. Back returns to About."
     m.items = []
-    if m.choice <> invalid
+    if m.choice <> invalid and m.choice.action = "remoteSlot"
+        m.heading.text = m.choice.title
+        m.note.text = "Applies immediately in this context. Back, Home and fullscreen * cannot be reassigned."
+        current = resolveRemoteAction(model.device.remoteMap, m.choice.context, m.choice.slot)
+        for each value in m.choice.values
+            title = remoteActionText(value)
+            if value = current then title = "[Selected] " + title
+            m.items.push({title: title, value: value})
+        end for
+    else if m.choice <> invalid and m.choice.action = "resetRemoteMapConfirm"
+        m.heading.text = "Reset remote controls?"
+        m.note.text = "This restores the standard Player and Guide mappings."
+        m.items = [{title: "Reset to defaults", value: "reset"}, {title: "Cancel", value: "cancel"}]
+    else if m.choice <> invalid
         m.heading.text = m.choice.title
         if m.choice.key = "vodTmdbEnabled" then m.note.text = "Uses the key saved in Guide options > Guide settings > Optional TMDB artwork fallback. Optional: playback does not depend on TMDB."
         current = settingsHubValue(model, m.choice.scope, m.choice.key)
@@ -69,6 +82,7 @@ sub renderSettings()
     content = CreateObject("roSGNode", "ContentNode")
     for each item in m.items
         label = item.title
+        if item.action = "remoteSlot" then label += ": " + remoteActionText(resolveRemoteAction(model.device.remoteMap, item.context, item.slot))
         if item.key <> invalid then label += ": " + settingsValueText(settingsHubValue(model, item.scope, item.key), item.key)
         content.createChild("ContentNode").title = label
     end for
@@ -85,7 +99,14 @@ sub selectSetting(index as integer)
     if not m.top.active then return
     if index < 0 or index >= m.items.count() then return
     item = m.items[index]
-    if m.choice <> invalid
+    if m.choice <> invalid and m.choice.action = "remoteSlot"
+        choice = m.choice
+        m.top.selection = {account: m.top.model.account, action: "setRemoteAction", context: choice.context, slot: choice.slot, value: item.value}
+        goBackSettings()
+    else if m.choice <> invalid and m.choice.action = "resetRemoteMapConfirm"
+        if item.value = "reset" then m.top.selection = {account: m.top.model.account, action: "resetRemoteMap"}
+        goBackSettings()
+    else if m.choice <> invalid
         choice = m.choice
         m.top.selection = {account: m.top.model.account, scope: choice.scope, key: choice.key, value: item.value}
         goBackSettings()
@@ -99,6 +120,11 @@ sub selectSetting(index as integer)
     else if item.action = "markWhatsNew"
         m.top.selection = {account: m.top.model.account, action: "markWhatsNew", value: m.top.model.version}
         goBackSettings()
+    else if item.action = "resetRemoteMap"
+        m.stack.push({page: m.page, index: index})
+        m.choice = {title: "Reset remote controls", action: "resetRemoteMapConfirm"}
+        renderSettings()
+        m.list.jumpToItem = 0
     else
         m.stack.push({page: m.page, index: index})
         if item.page <> invalid then m.page = item.page else m.choice = item

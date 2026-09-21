@@ -14,25 +14,23 @@ records the original baseline. The feature table below describes this release.
 
 ## Download the testing build
 
-**[Download v0.3.31 — testing prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.31)**
+**[Download v0.3.33 — testing prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.33)**
 
-Under **Assets**, download **`aeriotv-roku-v0.3.31.zip`**. Keep it zipped.
+Under **Assets**, download **`aeriotv-roku-v0.3.33.zip`**. Keep it zipped.
 Do **not** download GitHub's automatically generated **Source code (zip)** for
 installation; that is the repository, not the Roku application package.
 
 You do not need Node.js, npm, Git, or a compiler to install the release ZIP.
 This is a sideloaded testing preview, not a Roku Streaming Store release.
 
-### New in v0.3.31
+### New in v0.3.33
 
-- **Current guide build:** this prerelease is cut from the current normal
-  development build that is intended to replace the earlier guide-data testing
-  candidate. Guide results still depend on the connected Dispatcharr data and need
-  your full physical validation.
-- **Player preferences and bounded remote behavior:** choose Channel Up/Down
-  direction plus separate Replay behavior in the guide and live player; customize
-  displayed player-information fields. This is not user-defined remote-button
-  remapping: Back and fullscreen `*` remain fixed/Roku-owned.
+- **Guide mapping fallback:** if the Dispatcharr EPG-link request is unavailable,
+  the app retains a channel's direct guide ID instead of discarding available EPG
+  data. Guide diagnostics identify mapping failures and Refresh guide retries them.
+- **Remote Control settings:** customize supported Player and Guide button actions
+  per context, with safe defaults, persistence, reset, and matching hints. Back,
+  Home, and fullscreen `*` remain fixed/Roku-owned.
 - **Startup and network preferences:** choose Guide/no autoplay or resume the last
   channel in a mini-player; select bounded request timeouts and active refresh
   intervals.
@@ -57,7 +55,7 @@ This is a sideloaded testing preview, not a Roku Streaming Store release.
   startup/midstream recovery, contextual Retry and sanitized diagnostics.
 - **Hold OK** opens app player options; fullscreen star remains Roku-owned.
 
-[v0.3.31 release notes](docs/RELEASE-0.3.31.md)
+[v0.3.33 release notes](docs/RELEASE-0.3.33.md)
 
 ## Roku vs. Apple TV and Android TV
 
@@ -66,7 +64,7 @@ catch-up/restart/rewind, but not full upstream feature parity.** DVR, multiview,
 direct Xtream/M3U setup and cross-device sync remain unimplemented. Rewind uses
 provider archives; it is not a guaranteed local buffer or available on every channel.
 
-| Feature | Roku — v0.3.31 preview | Apple TV — upstream | Android TV / Google TV — upstream |
+| Feature | Roku — v0.3.33 preview | Apple TV — upstream | Android TV / Google TV — upstream |
 | --- | --- | --- | --- |
 | Dispatcharr connection | **Available** — API key or dashboard login | Available | Available |
 | Direct Xtream Codes connection | **Not implemented**; import through Dispatcharr instead | Available | Available |
@@ -91,7 +89,7 @@ versions; provider permissions and device capabilities still apply. "Not verifie
 is not a claim that the feature is absent. Mobile-only features are not assumed
 to be available on a TV.
 
-Upstream comparison sources reviewed 2026-09-19; Roku column updated for v0.3.31:
+Upstream comparison sources reviewed 2026-09-19; Roku column updated for v0.3.33:
 - [Apple upstream README, pinned revision](https://github.com/jonzey231/AerioTV/blob/8d5818456e0f4421d93b8ff120ad878d63331091/README.md)
   and the [source-level tvOS audit](docs/PARITY-AUDIT.md). The audit's Roku column
   is an older baseline; the table above describes this release.
@@ -150,7 +148,7 @@ If Developer Mode is already enabled, proceed to the next step.
 
 ### 3. Upload and install the release ZIP
 
-1. Click **Upload** / **Choose File** and select **`aeriotv-roku-v0.3.31.zip`**.
+1. Click **Upload** / **Choose File** and select **`aeriotv-roku-v0.3.33.zip`**.
 2. Click **Install** or **Install with zip**, depending on the installer version.
    Some versions also offer **Install with squashfs**.
 3. Wait for **Install Success**. AerioTV should launch on the TV automatically.
