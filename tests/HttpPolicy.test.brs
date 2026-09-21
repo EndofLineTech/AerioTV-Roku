@@ -14,6 +14,11 @@ sub main()
     resetHttpTest([{status: 429, headers: {"Retry-After": "0"}, body: ""}, {status: 200, body: "{""ok"":true}"}])
     result = requestJson("https://example.test/api")
     if result.ok <> true or m.calls <> 2 then stop
+    if m.observedLimit <> 16000000 then stop
+    resetHttpTest([{status: 200, body: "[]"}])
+    m.maxResponseBytes = 1048576
+    if requestJson("https://example.test/api") = invalid then stop
+    if m.observedLimit <> 1048576 then stop
     resetHttpTest([{status: 503, headers: {"Retry-After": "0"}, body: ""}])
     if requestJson("https://example.test/api", {mutation: true}) <> invalid then stop
     if m.calls <> 1 then stop ' never automatically repeat a mutation
@@ -23,9 +28,9 @@ sub main()
     resetHttpTest([{status: 200, body: "not json"}])
     if requestJson("https://example.test/api") <> invalid then stop
     if m.httpFailure.category <> "invalid-response" then stop
-    resetHttpTest([{status: 200, body: "", error: "too-large", bytes: 8388609}])
+    resetHttpTest([{status: 200, body: "", error: "too-large", bytes: 16000001}])
     if requestJson("https://example.test/api") <> invalid then stop
-    if m.httpFailure.category <> "response-too-large" or m.httpFailure.sizeBucket <> "at-least-8-mib" then stop
+    if m.httpFailure.category <> "response-too-large" or m.httpFailure.sizeBucket <> "at-least-16-mb" then stop
     resetHttpTest([{status: 200, body: "", error: "memory"}])
     if requestJson("https://example.test/api") <> invalid then stop
     if m.httpFailure.category <> "memory-pressure" then stop
@@ -48,10 +53,12 @@ sub resetHttpTest(responses as object)
     m.calls = 0
     m.timeout = 1000
     m.deadlineMs = invalid
+    m.maxResponseBytes = invalid
 end sub
 
 function httpTransferOnce(url as string, body as dynamic, bearer as string, timeoutMs as integer, maxBytes as integer) as object
     m.calls++
+    m.observedLimit = maxBytes
     result = m.responses.shift()
     if result.cancelNext = true then m.top.cancelRequested = true
     if result.headers = invalid then result.headers = {}

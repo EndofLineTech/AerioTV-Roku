@@ -128,6 +128,39 @@ function vodPage(payload as dynamic, kind as string, base as string, limit = 20 
     return result
 end function
 
+function vodEnabledProviders(rows as object) as object
+    enabled = {}
+    for each row in rows
+        if type(row) = "roAssociativeArray"
+            if row.is_active = true and row.enable_vod = true
+                id = textValue(row.id)
+                if CreateObject("roRegex", "^[0-9]+$", "").isMatch(id) then enabled[id] = true
+            end if
+        end if
+    end for
+    return enabled
+end function
+
+function vodEnabledCategories(rows as object, providers as object, categoryType as string, providerId = "" as string) as object
+    visible = []
+    for each row in rows
+        if type(row) = "roAssociativeArray"
+            if row.category_type = categoryType and type(row.m3u_accounts) = "roArray"
+                for each relation in row.m3u_accounts
+                    if type(relation) = "roAssociativeArray"
+                        id = textValue(relation.m3u_account)
+                        if relation.enabled = true and providers.doesExist(id) and (providerId = "" or providerId = id)
+                            visible.push({id: row.id, name: row.name})
+                            exit for
+                        end if
+                    end if
+                end for
+            end if
+        end if
+    end for
+    return visible
+end function
+
 function vodCategoryPage(payload as dynamic, page as integer, base as string) as object
     result = {ok: false, items: [], total: 0, next: "", categories: true, message: "Categories unavailable; use title search."}
     rows = apiRows(payload)

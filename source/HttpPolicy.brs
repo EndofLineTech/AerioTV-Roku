@@ -78,5 +78,6 @@ function httpResponseSizeBucket(responseBytes as dynamic, maxBytes as dynamic) a
     if type(responseBytes) <> "Integer" and type(responseBytes) <> "roInt" then return ""
     if type(maxBytes) <> "Integer" and type(maxBytes) <> "roInt" then return ""
     if responseBytes <= maxBytes or maxBytes < 1048576 then return ""
+    if maxBytes = 16000000 then return "at-least-16-mb"
     return "at-least-" + int(maxBytes / 1048576).toStr() + "-mib"
 end function

@@ -20,6 +20,30 @@ sub main()
     page = vodCategoryPage(categories, 2, "https://host.test")
     if not page.ok or page.items.count() <> 5 or page.total <> 25 or page.next <> "" then stop
     if instr(1, FormatJson(page), "private") > 0 then stop
+    providers = vodEnabledProviders([
+        {id: 1, is_active: true, enable_vod: true, password: "private"}
+        {id: 2, is_active: true, enable_vod: false}
+        {id: 3, is_active: false, enable_vod: true}
+        {id: 4, is_active: true}
+        {id: 5, is_active: true, enable_vod: false}
+    ])
+    if providers.count() <> 1 or not providers.doesExist("1") then stop
+    categories = []
+    for i = 1 to 30
+        categories.push({id: i, name: "Disabled", category_type: "movie", m3u_accounts: [{m3u_account: 2, enabled: true}]})
+    end for
+    for i = 31 to 40
+        categories.push({id: i, name: "Enabled", category_type: "movie", m3u_accounts: [{m3u_account: 1, enabled: true}, {m3u_account: 1, enabled: true}]})
+    end for
+    categories.push({id: 41, name: "Disabled category", category_type: "movie", m3u_accounts: [{m3u_account: 1, enabled: false}]})
+    categories.push({id: 42, name: "Inactive provider", category_type: "movie", m3u_accounts: [{m3u_account: 3, enabled: true}]})
+    categories.push({id: 43, name: "Show", category_type: "series", m3u_accounts: [{m3u_account: 1, enabled: true}]})
+    visible = vodEnabledCategories(categories, providers, "movie")
+    page = vodCategoryPage(visible, 1, "https://host.test")
+    if page.total <> 10 or page.items.count() <> 10 or page.next <> "" then stop
+    if vodEnabledCategories(categories, providers, "series").count() <> 1 then stop
+    if vodEnabledCategories(categories, providers, "movie", "2").count() <> 0 then stop
+    if instr(1, FormatJson(visible), "m3u_account") > 0 then stop
     item.tmdbId = "603"
     item.trailerId = "abcdefghijk"
     if vodExternalLinks(item).count() <> 2 then stop

@@ -13,6 +13,8 @@ sub main()
     if diagnosticEvents(events, 9000, "secret").count() <> 0 then stop
     responseLimit = guideMetadataDiagnosticText({stage: "mapping", source: "network", category: "response-too-large", sizeBucket: "at-least-8-mib", message: "Metadata response exceeds this device's safe loading budget."})
     if responseLimit <> "mapping network response-too-large at-least-8-mib Metadata response exceeds this device's safe loading budget." then stop
+    restoredLimit = guideMetadataDiagnosticText({stage: "mapping", source: "network", category: "response-too-large", sizeBucket: "at-least-16-mb", message: ""})
+    if instr(1, restoredLimit, "at-least-16-mb") = 0 then stop
     memoryPressure = guideMetadataDiagnosticText({stage: "mapping", source: "network", category: "memory-pressure", message: "Device memory pressure stopped the metadata download."})
     if memoryPressure <> "mapping network memory-pressure Device memory pressure stopped the metadata download." then stop
     print "ALL TESTS PASSED"

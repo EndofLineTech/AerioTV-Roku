@@ -62,7 +62,8 @@ function requestJson(url as string, body = invalid as dynamic, bearer = "" as st
         remaining = 60000 - m.pagesClock.totalMilliseconds()
         if remaining < timeout then timeout = remaining
     end if
-    maxBytes = 8388608
+    ' Restore v0.3.8's decimal 16 MB ceiling; task-specific limits still apply.
+    maxBytes = 16000000
     if m.maxResponseBytes <> invalid then maxBytes = m.maxResponseBytes
     clock = CreateObject("roTimespan")
     clock.mark()

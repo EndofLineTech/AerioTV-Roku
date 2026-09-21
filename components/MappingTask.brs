@@ -28,8 +28,8 @@ sub loadMappings()
         end for
         rows = []
         ' Explicit channel assignments require their authoritative mapped tvg_id.
-        ' Keep this endpoint paged as in v0.3.8 so a large account never becomes
-        ' one oversized Roku response.
+        ' Dispatcharr 0.31 ignores pagination here. Retain the legacy query and
+        ' next-link support, but the HTTP response ceiling still bounds the list.
         if allowed.count() > 0 then rows = requestPages("/api/epg/epgdata/?page=1&page_size=500")
         if rows <> invalid
             links = {}

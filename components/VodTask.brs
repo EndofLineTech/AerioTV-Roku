@@ -38,6 +38,24 @@ sub loadVod()
         categoryType = "movie"
         if m.top.kind <> "movie" then categoryType = "series"
         path = "/api/vod/categories/?category_type=" + categoryType
+        if m.top.operation = "categories"
+            accounts = requestPages("/api/m3u/accounts/")
+            if accounts = invalid
+                publishVod({ok: false, categories: true, message: "Could not verify enabled VOD providers. " + m.failure})
+                return
+            end if
+            enabledProviders = vodEnabledProviders(accounts)
+            accounts = invalid
+            rows = requestPages(path)
+            if rows = invalid
+                publishVod({ok: false, categories: true, message: "Could not load VOD categories. " + m.failure})
+                return
+            end if
+            visible = vodEnabledCategories(rows, enabledProviders, categoryType, m.top.providerId)
+            rows = invalid
+            publishVod(vodCategoryPage(visible, m.top.pageNumber, m.base))
+            return
+        end if
         if m.top.operation = "providers"
             if cap.level < 10
                 publishVod({ok: false, message: "Provider listing requires an authorized admin account."})
