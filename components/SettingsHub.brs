@@ -7,16 +7,24 @@ sub init()
     m.stack = []
     m.choice = invalid
     m.top.visible = false
+    buildSettingsRail()
+    headingFont = m.heading.font
+    headingFont.size = uiTypeSize("section")
+    m.heading.font = headingFont
+    noteFont = m.note.font
+    noteFont.size = uiTypeSize("secondary")
+    m.note.font = noteFont
 end sub
 
 sub onActive()
     m.top.visible = m.top.active
     if not m.top.active then return
-    m.page = ""
+    m.page = "live"
     m.stack = []
     m.choice = invalid
+    m.railSelected = 0
     renderSettings()
-    m.list.setFocus(true)
+    focusSettingsRail()
 end sub
 
 sub renderSettings()
@@ -36,7 +44,7 @@ sub renderSettings()
     end if
     m.heading.text = "Settings"
     titles = {live: "Live TV", player: "Player", remote: "Remote control", remotePlayer: "While watching", remoteGuide: "In the TV Guide", appearance: "Appearance", general: "General", connection: "Connection", about: "About", whatsNew: "What's New", licenses: "License notices"}
-    if titles.doesExist(m.page) then m.heading.text += " / " + titles[m.page]
+    if titles.doesExist(m.page) then m.heading.text = titles[m.page]
     m.note.text = "Changes are saved on this Roku. Back returns to the previous page without moving the guide."
     if m.page = "player" then m.note.text = "Archive skip supports whole-minute provider windows. Audio compatibility changes take effect on the next tune."
     if m.page = "appearance" then m.note.text = "Overlay changes apply immediately without interrupting playback. All fields default to On."
@@ -88,6 +96,7 @@ sub renderSettings()
     end for
     m.list.content = content
     if focused >= 0 and focused < m.items.count() then m.list.jumpToItem = focused
+    drawSettingsRail()
 end sub
 
 sub onSettingSelected(event as object)
@@ -135,7 +144,7 @@ end sub
 
 sub goBackSettings()
     if m.stack.count() = 0
-        m.top.closed = true
+        if m.focusRegion = "detail" then focusSettingsRail() else m.top.closed = true
         return
     end if
     previous = m.stack.pop()
@@ -144,6 +153,8 @@ sub goBackSettings()
     renderSettings()
     m.list.jumpToItem = previous.index
     m.list.setFocus(true)
+    m.focusRegion = "detail"
+    drawSettingsRail()
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
@@ -152,7 +163,8 @@ end function
 
 function handleSettingsKey(key as string, press as boolean) as boolean
     if not m.top.active then return false
-    if press and key = "back"
+    if handleSettingsRailKey(key, press) then return true
+    if press and (key = "back" or key = "left")
         goBackSettings()
         return true
     end if

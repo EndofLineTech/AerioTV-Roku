@@ -16,30 +16,36 @@ sub settingsProbeTick()
         openSettingsHub()
         m.settingsProbeStage = 1
     else if m.settingsProbeStage = 1
-        m.settingsHub.callFunc("selectSetting", 3) ' General
+        m.settingsHub.callFunc("selectSettingsCategory", 2) ' Remote control
         m.settingsProbeStage = 2
     else if m.settingsProbeStage = 2
-        m.settingsHub.callFunc("selectSetting", 2) ' Guide Replay action
+        m.settingsHub.callFunc("selectSetting", 1) ' In the TV Guide
         m.settingsProbeStage = 3
     else if m.settingsProbeStage = 3
-        m.settingsHub.callFunc("selectSetting", 1) ' Open guide options
+        m.settingsHub.callFunc("selectSetting", 6) ' Replay
         m.settingsProbeStage = 4
     else if m.settingsProbeStage = 4
-        m.settingsHub.callFunc("selectSetting", 3) ' Network request timeout
+        m.settingsHub.callFunc("selectSetting", 1) ' Open guide options
         m.settingsProbeStage = 5
     else if m.settingsProbeStage = 5
-        m.settingsHub.callFunc("selectSetting", 0) ' 10 seconds
+        m.settingsHub.callFunc("selectSettingsCategory", 4) ' General
         m.settingsProbeStage = 6
     else if m.settingsProbeStage = 6
-        entries = settingsHubEntries("general", m.settingsHub.model)
-        m.settingsHub.callFunc("selectSetting", entries.count() - 1) ' About
+        m.settingsHub.callFunc("selectSetting", 2) ' Request timeout
         m.settingsProbeStage = 7
     else if m.settingsProbeStage = 7
-        m.settingsHub.callFunc("selectSetting", 2) ' License notices
+        m.settingsHub.callFunc("selectSetting", 0) ' 10 seconds
         m.settingsProbeStage = 8
     else if m.settingsProbeStage = 8
+        entries = settingsHubEntries("general", m.settingsHub.model)
+        m.settingsHub.callFunc("selectSetting", entries.count() - 1) ' About
+        m.settingsProbeStage = 9
+    else if m.settingsProbeStage = 9
+        m.settingsHub.callFunc("selectSetting", 2) ' License notices
+        m.settingsProbeStage = 10
+    else if m.settingsProbeStage = 10
         list = m.settingsHub.findNode("list")
-        print "[settings-probe] licenses="; list.content.getChildCount(); " timeout="; m.global.networkTimeoutMs; " replay="; m.devicePreferences.guideReplayAction
+        print "[settings-probe] licenses="; list.content.getChildCount(); " timeout="; m.global.networkTimeoutMs; " replay="; resolveRemoteAction(m.devicePreferences.remoteMap, "guide", "replay")
         m.devicePreferences = m.settingsProbeDevice
         m.accountPreferences = m.settingsProbeAccount
         m.preferenceStore.device = m.devicePreferences

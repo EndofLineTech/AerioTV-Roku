@@ -36,6 +36,17 @@ function uiControlStyle(kind as string, selected as boolean, focused as boolean,
             result.ring = p.clear
         end if
     end if
+    if kind = "row"
+        result.fill = p.clear
+        result.ink = p.text
+        result.ring = p.clear
+        if selected then result.fill = p.card
+        if focused
+            result.fill = p.focusWash
+            result.ring = p.accent
+            result.scale = 1.02
+        end if
+    end if
     if not enabled
         result.ink = p.disabled
         result.fill = p.clear

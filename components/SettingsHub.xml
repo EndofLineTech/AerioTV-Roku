@@ -7,17 +7,21 @@
     <field id="closed" type="boolean" alwaysNotify="true" />
     <function name="handleSettingsKey" />
     <function name="selectSetting" />
+    <function name="selectSettingsCategory" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="pkg:/source/RemoteMapModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SettingsModel.brs" />
   <script type="text/brightscript" uri="SettingsHub.brs" />
+  <script type="text/brightscript" uri="SettingsRail.brs" />
   <children>
     <Rectangle width="1920" height="1080" color="0x081525F5" />
-    <Label id="heading" translation="[180,100]" width="1560" height="64" font="font:LargeBoldSystemFont" />
-    <Label id="note" translation="[180,180]" width="1560" height="72" wrap="true" color="0x9EB5C9FF" font="font:SmallSystemFont" />
-    <LabelList id="list" translation="[180,290]" itemSize="[1560,76]" numRows="7" itemSpacing="[0,8]" />
-    <Label translation="[180,960]" width="1560" height="50" text="Up / Down  Select     OK  Open / Set     Back  Previous page" font="font:SmallSystemFont" color="0x9EB5C9FF" />
+    <Label translation="[96,100]" width="412" height="64" text="Settings" font="font:LargeBoldSystemFont" />
+    <AerioSurface translation="[548,90]" width="1276" height="846" radius="24" color="0x0D1E35FF" />
+    <Label id="heading" translation="[584,120]" width="1204" height="54" font="font:MediumBoldSystemFont" />
+    <Label id="note" translation="[584,184]" width="1204" height="80" wrap="true" color="0x9EB5C9FF" font="font:SmallSystemFont" />
+    <LabelList id="list" translation="[584,294]" itemSize="[1204,68]" numRows="8" itemSpacing="[0,8]" focusBitmapUri="pkg:/images/ui-focus-pill.png" focusBitmapBlendColor="0x1AC4D8FF" focusedColor="0x0A1628FF" color="0xE8F3FAFF" />
+    <Label translation="[96,974]" width="1728" height="40" text="Up / Down  Select     OK / Right  Open     Left / Back  Previous pane" font="font:SmallSystemFont" color="0x9EB5C9FF" />
   </children>
 </component>
