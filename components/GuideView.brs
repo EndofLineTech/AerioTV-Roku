@@ -543,10 +543,14 @@ sub renderCells(row as object, cells as object, selected as boolean)
         title = uiLabel(root, "", 14, 14, 70, 37, 25)
         title.maxLines = 1
         time = uiLabel(root, "", 14, 55, 70, 29, 20, "0x9EB5C9FF")
-        row.tiles.push({root: root, border: border, fill: fill, title: title, time: time})
+        time.vertAlign = "center"
+        row.tiles.push({root: root, border: border, fill: fill, title: title, time: time, badges: []})
     end while
     for i = 0 to row.tiles.count() - 1
         tile = row.tiles[i]
+        for each badge in tile.badges
+            badge.root.visible = false
+        end for
         tile.root.visible = i < cells.count()
         if tile.root.visible
             cell = cells[i]
@@ -564,6 +568,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
             if textWidth < 1 then textWidth = 1
             tile.title.width = textWidth
             tile.time.width = textWidth
+            tile.time.translation = [14, 55]
             focused = selected and cell.startsAt <= m.anchor and cell.endsAt > m.anchor and not m.primaryNavigation.active and not m.navigator.active and m.picker = invalid and not m.details.active and not m.searchView.active
             inset = 2
             if focused then inset = 4
@@ -586,8 +591,35 @@ sub renderCells(row as object, cells as object, selected as boolean)
                 program = cell.program
                 tile.title.text = program.title
                 tile.time.text = uiTime(program.startsAt) + " - " + uiTime(program.endsAt)
-                badges = programBadges(program, m.settings)
-                if width > 360 and badges <> "" then tile.time.text = badges + " | " + tile.time.text
+                flags = programFlagPills(program, m.settings, textWidth)
+                offset = 0
+                for j = 0 to flags.count() - 1
+                    flag = flags[j]
+                    if j >= tile.badges.count()
+                        badgeRoot = tile.root.createChild("Group")
+                        surface = uiSurface(badgeRoot, 0, 0, flag.width, 24, 12, flag.color)
+                        label = uiLabel(badgeRoot, "", 0, 0, flag.width, 24, 16, "0xFFFFFFFF")
+                        label.horizAlign = "center"
+                        label.vertAlign = "center"
+                        tile.badges.push({root: badgeRoot, surface: surface, label: label})
+                    end if
+                    badge = tile.badges[j]
+                    badge.root.visible = true
+                    badge.root.translation = [14 + flag.x, 57]
+                    badge.surface.width = flag.width
+                    badge.surface.color = flag.color
+                    badge.label.width = flag.width
+                    badge.label.text = flag.label
+                    offset = flag.x + flag.width + 8
+                end for
+                remaining = textWidth - offset
+                tile.time.visible = remaining >= 100
+                if remaining >= 100
+                    tile.time.translation = [14 + offset, 55]
+                    tile.time.width = remaining
+                    episode = programEpisodeText(program, m.settings)
+                    if episode <> "" then tile.time.text = episode + " | " + tile.time.text
+                end if
                 if hasReminder(m.reminders, row.uuid, program.id) then tile.title.text = "REM | " + tile.title.text
             end if
         end if

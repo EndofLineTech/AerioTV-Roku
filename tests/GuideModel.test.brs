@@ -83,6 +83,19 @@ sub main()
     cells = guideCells(programs, base, base + 8928)
     assertEqual(cells.count(), 5, "large lineup renders only requested row")
     assertEqual(cells[4].endsAt, 1704076128, "partial last program clipped")
+    settings = {badges: {live: true, new: true, premiere: true, finale: true, episode: true}}
+    flags = programFlagPills({is_live: true, is_new: true}, settings, 300)
+    if flags.count() <> 2 or flags[0].label <> "LIVE" or flags[1].label <> "NEW" then stop
+    if flags[0].color <> "0xFF4757FF" or flags[1].color <> "0x27AE60FF" then stop
+    if flags[1].x <> flags[0].width + 6 then stop
+    if programFlagPills({is_live: true, is_new: true}, settings, 55).count() <> 0 then stop
+    if programFlagPills({is_live: true, is_new: true}, settings, 56).count() <> 1 then stop
+    if programFlagPills({startsAt: 0, endsAt: 2147480000}, settings, 300).count() <> 0 then stop
+    settings.badges.live = false
+    if programFlagPills({is_live: true, is_new: true}, settings, 300)[0].label <> "NEW" then stop
+    flags = programFlagPills({is_premiere: true, is_finale: true}, settings, 300)
+    if flags[0].color <> "0x9B59B6FF" or flags[1].color <> "0x9B59B6FF" then stop
+    if programEpisodeText({season: "2", episode: "3"}, settings) <> "S2E3" then stop
     print "ALL TESTS PASSED"
 end sub
 

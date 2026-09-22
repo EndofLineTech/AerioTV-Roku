@@ -108,6 +108,31 @@ function programBadges(program as object, settings as object) as string
     return result.trim()
 end function
 
+' Feed flags, not clock-derived "airing now". Colors match both upstream TV apps.
+function programFlagPills(program as object, settings as object, availableWidth as float) as object
+    result = []
+    used = 0
+    definitions = [{key: "live", label: "LIVE", color: "0xFF4757FF", width: 56}, {key: "new", label: "NEW", color: "0x27AE60FF", width: 46}, {key: "premiere", label: "PREMIERE", color: "0x9B59B6FF", width: 96}, {key: "finale", label: "FINALE", color: "0x9B59B6FF", width: 76}]
+    for each flag in definitions
+        if settings.badges[flag.key] and program["is_" + flag.key] = true
+            if used + flag.width > availableWidth then exit for
+            flag.x = used
+            result.push(flag)
+            used += flag.width + 6
+        end if
+    end for
+    return result
+end function
+
+function programEpisodeText(program as object, settings as object) as string
+    result = ""
+    if settings.badges.episode
+        if textValue(program.season) <> "" then result += "S" + textValue(program.season)
+        if textValue(program.episode) <> "" then result += "E" + textValue(program.episode)
+    end if
+    return result
+end function
+
 function programCategory(program as object, settings = invalid as dynamic) as string
     text = ""
     if type(program.categories) = "roArray"

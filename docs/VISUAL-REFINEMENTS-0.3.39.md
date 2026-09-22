@@ -15,3 +15,10 @@ Local captures: `out/visual-pills-0.3.39.jpg`,
 `out/visual-settings-0.3.39.jpg`, `out/visual-vod-0.3.39.jpg`.
 The normal development build is restored after capture fixtures; no public release
 is created by these refinements.
+
+`faa.20`: five group pills are now visible at the top instead of three.
+`faa.21`: guide EPG flags are separate rounded badges using the upstream palette:
+LIVE red (`FF4757`), NEW green (`27AE60`), PREMIERE/FINALE purple (`9B59B6`).
+Episode numbers and times remain plain text. Existing visibility preferences are
+respected; recycled cells hide old badges and omit pills that cannot fit.
+Native capture: `out/visual-badges-0.3.39.jpg`.
