@@ -16,23 +16,13 @@ sub init()
     m.choice = invalid
     m.top.visible = false
     buildSettingsRail()
-    headingFont = m.heading.font
-    headingFont.size = uiTypeSize("section")
-    m.heading.font = headingFont
-    noteFont = m.note.font
-    noteFont.size = uiTypeSize("secondary")
-    m.note.font = noteFont
-    listFont = m.list.font
-    listFont.size = uiTypeSize("body")
-    m.list.font = listFont
-    focusedFont = m.list.focusedFont
-    focusedFont.size = uiTypeSize("body")
-    m.list.focusedFont = focusedFont
+    uiSetFont(m.heading, uiTypeSize("section"))
+    uiSetFont(m.note, uiTypeSize("secondary"), "font", true)
+    uiSetFont(m.list, uiTypeSize("body"), "font", false, 68)
+    uiSetFont(m.list, uiTypeSize("body"), "focusedFont", false, 68)
     for each entry in [{id: "railTitle", role: "heading"}]
         label = m.top.findNode(entry.id)
-        font = label.font
-        font.size = uiTypeSize(entry.role)
-        label.font = font
+        uiSetFont(label, uiTypeSize(entry.role))
     end for
 end sub
 

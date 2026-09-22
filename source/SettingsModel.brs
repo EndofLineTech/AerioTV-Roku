@@ -24,6 +24,9 @@ function settingsHubEntries(page as string, model as object) as object
         {title: "Appearance mode", scope: "device", key: "appearanceMode", values: ["dark", "light"]}
         {title: "Custom accent (hex RGB)", action: "customAccent"}
         {title: "Panel style", scope: "device", key: "panelStyle", values: ["translucent", "solid"]}
+        {title: "Text size", scope: "device", key: "textSize", values: [90, 100, 110, 120]}
+        {title: "Secondary text size", scope: "device", key: "subtextSize", values: [90, 100, 110, 120]}
+        {title: "Contrast", scope: "device", key: "contrastMode", values: ["standard", "high"]}
         {title: "Reset appearance", action: "resetAppearance"}
         {title: "Group navigation", scope: "guide", key: "groupLayout", values: ["modal", "pills", "sidebar"]}
         {title: "Category colors", scope: "guide", key: "categoryColors", values: [true, false]}
@@ -114,6 +117,7 @@ function settingsHubChangeAllowed(model as object, scope as string, key as strin
 end function
 
 function settingsValueText(value as dynamic, key = "" as string) as string
+    if key = "textSize" or key = "subtextSize" then return value.toStr() + "%"
     if key = "themePreset"
         names = {aerio: "AerioTV", midnight: "Midnight", sunset: "Sunset", forest: "Forest", lavender: "Lavender", monochrome: "Monochrome", light: "Neutral"}
         if names.doesExist(textValue(value)) then return names[value]

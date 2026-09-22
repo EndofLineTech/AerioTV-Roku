@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="TopNavigation" extends="Group">
   <interface>
+    <function name="configureNavigation" />
     <field id="availableWidth" type="float" value="0" />
     <field id="style" type="string" value="primary" />
     <field id="items" type="array" onChange="configureNavigation" />

@@ -11,6 +11,8 @@ sub init()
     m.list.itemSize = [900, 64]
     m.list.itemSpacing = [0, 0]
     m.list.numRows = 8
+    uiSetFont(m.list, 24, "font", false, 64)
+    uiSetFont(m.list, 24, "focusedFont", false, 64)
     uiSetColor(m.list, "0xE8F3FAFF")
     uiSetColor(m.list, "0x0A1629FF", "focusedColor")
     uiSetColor(m.list, "0x1AC4D8FF", "focusBitmapBlendColor")

@@ -38,6 +38,13 @@ sub main()
     assertEqual(prefs.themePreset, "aerio", "safe migration preset")
     assertEqual(prefs.appearanceMode, "dark", "no invented system appearance")
     assertEqual(prefs.customAccent, "", "invalid accent cleared")
+    assertEqual(uiScaledFontSize(24, 68, false, {textSize: 120, subtextSize: 100}), 29, "large primary text")
+    assertEqual(uiScaledFontSize(24, 68, false, {textSize: 90, subtextSize: 100}), 22, "small primary text")
+    assertEqual(uiScaledFontSize(20, 36, true, {textSize: 120, subtextSize: 110}), 26, "independent secondary scale")
+    if uiScaledFontSize(24, 24, false, {textSize: 120}) > 21 then stop
+    if normalizeDevicePreferences({textSize: 999, subtextSize: -1}).textSize <> 100 then stop
+    high = uiResolvedPalette({contrastMode: "high", appearanceMode: "light"})
+    assertEqual(high.secondary, high.text, "high contrast raises secondary ink")
     assertEqual(uiControlStyle("primary", false, true).fill, "0xFFFFFFFF", "primary focus is white")
     assertEqual(uiControlStyle("primary", true, false).fill, "0x1AC4D8FF", "unfocused selection is accent")
     assertEqual(uiControlStyle("choice", true, true).ring, "0xFFFFFFFF", "selected pill focus ring")

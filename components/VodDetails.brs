@@ -10,15 +10,12 @@ sub init()
     uiSetColor(m.actions, "0xE8F3FAFF")
     uiSetColor(m.actions, "0x0A1629FF", "focusedColor")
     uiSetColor(m.actions, "0x1AC4D8FF", "focusBitmapBlendColor")
-    font = m.actions.font
-    font.size = 24
-    m.actions.font = font
-    focusedFont = m.actions.focusedFont
-    focusedFont.size = 26
-    m.actions.focusedFont = focusedFont
-    messageFont = m.top.findNode("message").font
-    messageFont.size = 24
-    m.top.findNode("message").font = messageFont
+    uiSetFont(m.actions, 24, "font", false, 62)
+    uiSetFont(m.actions, 26, "focusedFont", false, 62)
+    uiSetFont(m.top.findNode("message"), 24)
+    uiSetFont(m.top.findNode("title"), 36)
+    uiSetFont(m.top.findNode("placeholder"), 20, "font", true)
+    uiSetFont(m.top.findNode("attribution"), 18, "font", true)
     m.poster = m.top.findNode("poster")
     m.placeholder = m.top.findNode("placeholder")
     m.actions.observeField("itemSelected", "onAction")

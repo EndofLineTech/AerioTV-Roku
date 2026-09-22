@@ -2070,6 +2070,8 @@ sub applyDevicePreferences()
         uiSetColor(m.top.findNode("miniCaption"), "0x1AC4D8FF")
         uiSetColor(m.top.findNode("noticeBackground"), "0x172D43F5")
         uiSetColor(m.top.findNode("noticeText"), "0xE8F3FAFF")
+        uiSetFont(m.top.findNode("noticeText"), 24)
+        uiSetFont(m.top.findNode("miniCaption"), 22)
         uiApplyAppearanceTree(m.top)
     end if
     m.global.networkTimeoutMs = m.devicePreferences.networkTimeoutSeconds * 1000

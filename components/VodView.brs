@@ -344,10 +344,31 @@ sub drawVod()
                 tile.fact.translation = [4, 354]
                 tile.fact.width = 328
                 uiSetColor(tile.fact, "0x9EB5C9FF")
+                if uiAppearance().textSize = 110 or uiAppearance().textSize = 120
+                    tile.border.translation = [76, 0]
+                    tile.border.width = 184
+                    tile.border.height = 272
+                    tile.poster.translation = [80, 4]
+                    tile.poster.width = 176
+                    tile.poster.height = 264
+                    tile.title.translation = [4, 282]
+                    tile.title.height = 68
+                else
+                    tile.poster.translation = [72, 4]
+                    tile.poster.width = 192
+                    tile.poster.height = 288
+                    tile.title.height = 52
+                end if
             end if
-            for each corner in tile.corners
+            for j = 0 to tile.corners.count() - 1
+                corner = tile.corners[j]
                 corner.visible = not compact
                 uiSetColor(corner, borderColor, "blendColor")
+                px = tile.poster.translation[0]
+                py = tile.poster.translation[1]
+                if j mod 2 = 1 then px += tile.poster.width - 8
+                if j >= 2 then py += tile.poster.height - 8
+                corner.translation = [px, py]
             end for
             tile.title.text = item.title
             tile.fact.text = item.year + "  " + item.rating
@@ -372,6 +393,10 @@ sub drawVod()
             tile.poster.uri = ""
         end if
     end for
+end sub
+
+sub refreshAppearance()
+    if m.heading <> invalid then drawVod()
 end sub
 
 sub onVodDetailAction(event as object)

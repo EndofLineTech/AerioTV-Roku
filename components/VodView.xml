@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="VodView" extends="Group">
   <interface>
+    <function name="refreshAppearance" />
     <field id="config" type="assocarray" onChange="configureVod" />
     <field id="active" type="boolean" onChange="activateVod" />
     <field id="playRequested" type="assocarray" alwaysNotify="true" />

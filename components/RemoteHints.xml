@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="RemoteHints" extends="Group">
   <interface>
+    <function name="renderHints" />
     <field id="text" type="string" onChange="renderHints" />
     <field id="width" type="float" value="1728" onChange="renderHints" />
     <field id="height" type="float" value="36" onChange="renderHints" />

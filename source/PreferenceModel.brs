@@ -35,6 +35,14 @@ function normalizeDevicePreferences(raw as dynamic) as object
     result.customAccent = ucase(textValue(result.customAccent))
     if not CreateObject("roRegex", "^[0-9A-F]{6}$", "").isMatch(result.customAccent) then result.customAccent = ""
     if result.panelStyle <> "solid" then result.panelStyle = "translucent"
+    for each field in ["textSize", "subtextSize"]
+        size = 100
+        for each allowed in [90, 100, 110, 120]
+            if result[field] = allowed then size = allowed
+        end for
+        result[field] = size
+    end for
+    if result.contrastMode <> "high" then result.contrastMode = "standard"
     result.channelDirection = textValue(result.channelDirection)
     result.videoScale = textValue(result.videoScale)
     result.audioMode = textValue(result.audioMode)

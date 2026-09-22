@@ -795,6 +795,8 @@ sub openPicker(title as string, items as object, kind as string)
     list.itemSize = [900, 64]
     list.itemSpacing = [0, 0]
     list.numRows = 8
+    uiSetFont(list, 24, "font", false, 64)
+    uiSetFont(list, 24, "focusedFont", false, 64)
     list.clippingRect = [0, 0, 900, 512]
     uiSetColor(list, "0xE8F3FAFF")
     uiSetColor(list, "0x0A1629FF", "focusedColor")

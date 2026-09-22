@@ -30,3 +30,18 @@ accent ink, invalid-value migration, custom colors and semantic EPG colors.
 Native in-memory light-Lavender Settings capture succeeded (`out/faa-light.jpg`)
 without changing saved preferences or Video content. Final physical appearance
 and custom-accent keyboard acceptance remain in the final worksheet.
+
+## faa.4 — text/subtext and contrast
+
+Device preferences now expose 90/100/110/120% primary and independent secondary
+text scaling, plus Standard/High contrast. Original font faces/sizes are retained
+as metadata so changes never compound. Text is bounded by its available line box;
+compact badges may cap growth to stay inside their control. Navigation/hint strips
+remeasure their text, settings lists retain safe clipping, and VOD large-text mode
+trades some artwork height for two-line title space. High contrast raises secondary
+ink and makes themed surfaces solid. Native/system keyboard styling stays native.
+
+Unit tests cover scaling/migration/clamping and contrast. A native 120% primary +
+120% secondary/high-contrast Settings capture (`out/faa-large.jpg`) was inspected:
+controls and footer stay in their safe areas. Living-room and spoken-feedback
+acceptance remain in the final physical worksheet.

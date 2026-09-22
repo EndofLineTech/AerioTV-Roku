@@ -51,6 +51,9 @@ sub onSettingsHubSelection(event as object)
         m.devicePreferences.appearanceMode = "dark"
         m.devicePreferences.customAccent = ""
         m.devicePreferences.panelStyle = "translucent"
+        m.devicePreferences.textSize = 100
+        m.devicePreferences.subtextSize = 100
+        m.devicePreferences.contrastMode = "standard"
         if not persistPreferences()
             m.devicePreferences = before
             m.preferenceStore.device = before

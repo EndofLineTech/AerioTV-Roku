@@ -20,7 +20,7 @@ end function
 
 function uiResolvedPalette(preferences as object) as object
     cacheKey = ""
-    for each key in ["themePreset", "appearanceMode", "customAccent", "panelStyle"]
+    for each key in ["themePreset", "appearanceMode", "customAccent", "panelStyle", "contrastMode"]
         if GetInterface(preferences[key], "ifString") <> invalid then cacheKey += preferences[key]
         cacheKey += "|"
     end for
@@ -63,6 +63,11 @@ function uiResolvedPalette(preferences as object) as object
     result.onAccent = "0x000000FF"
     if uiContrastRatio(result.accent, "0xFFFFFFFF") > uiContrastRatio(result.accent, "0x000000FF") then result.onAccent = "0xFFFFFFFF"
     result.solid = preferences.panelStyle = "solid"
+    if preferences.contrastMode = "high"
+        result.secondary = result.text
+        result.border = uiMixColor(result.card, result.text, 0.65)
+        result.solid = true
+    end if
     m.uiPaletteCacheKey = cacheKey
     m.uiPaletteCache = result
     return result
@@ -143,6 +148,11 @@ end sub
 ' Repaint tracked nodes in place; never recreate Video or reassign its content.
 sub uiApplyAppearanceTree(node as object)
     if node = invalid then return
+    kind = node.subtype()
+    if kind = "TopNavigation" then node.callFunc("configureNavigation")
+    if kind = "GroupNavigator" and node.model <> invalid then node.callFunc("applyPresentation", node.model)
+    if kind = "RemoteHints" then node.callFunc("renderHints")
+    if kind = "VodView" then node.callFunc("refreshAppearance")
     if node.hasField("uiPaint")
         palette = uiResolvedPalette(uiAppearance())
         for each field in node.uiPaint
@@ -150,9 +160,49 @@ sub uiApplyAppearanceTree(node as object)
             node[field] = uiColorForPalette(paint.color, palette, paint.isText)
         end for
     end if
+    if node.hasField("uiTypography")
+        for each field in node.uiTypography
+            entry = node.uiTypography[field]
+            uiSetFont(node, entry.size, field, entry.secondary, entry.height)
+        end for
+    end if
     for each child in node.getChildren(-1, 0)
         uiApplyAppearanceTree(child)
     end for
+end sub
+
+function uiScaledFontSize(base as integer, height as float, secondary as boolean, preferences as object) as integer
+    scale = 100
+    for each allowed in [90, 100, 110, 120]
+        if preferences.textSize = allowed then scale = allowed
+    end for
+    subscale = 100
+    if secondary
+        for each allowed in [90, 100, 110, 120]
+            if preferences.subtextSize = allowed then subscale = allowed
+        end for
+    end if
+    if scale = 100 and subscale = 100 then return base
+    size = int(base * scale * subscale / 10000.0 + 0.5)
+    if height > 0 and size * 1.12 > height then size = int(height / 1.12)
+    if size < 10 then size = 10
+    return size
+end function
+
+sub uiSetFont(node as object, size as integer, field = "font" as string, secondary = false as boolean, height = 0 as float)
+    if type(node) <> "roAssociativeArray"
+        if not node.hasField("uiTypography") then node.addField("uiTypography", "assocarray", false)
+        info = node.uiTypography
+        if type(info) <> "roAssociativeArray" then info = {}
+        info[field] = {size: size, secondary: secondary, height: height}
+        node.uiTypography = info
+        if height = 0 and node.hasField("height") then height = node.height
+    else if height = 0 and node.height <> invalid
+        height = node.height
+    end if
+    font = node[field]
+    font.size = uiScaledFontSize(size, height, secondary, uiAppearance())
+    node[field] = font
 end sub
 
 function uiTypeSize(role as string) as integer
@@ -259,9 +309,8 @@ function uiLabel(parent as object, text as string, x as float, y as float, w as 
     uiSetColor(node, color)
     ' Label provides a resolved system font. A new Font with no uri has no
     ' font face and renders no text on Roku, even when size is specified.
-    font = node.font
-    font.size = size
-    node.font = font
+    secondary = color = "0x9EB5C9FF" or color = "0xBDD0E0FF"
+    uiSetFont(node, size, "font", secondary)
     return node
 end function
 
