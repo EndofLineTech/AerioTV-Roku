@@ -78,6 +78,14 @@ function uiPillContent(w as float, h as float, textWidth as float, iconWidth = 0
     return {iconX: start, iconY: (h - iconWidth) / 2, textX: start + iconWidth + gap, textWidth: textWidth}
 end function
 
+function uiCenteredStripX(count as integer, itemWidth as float, gap as float, availableWidth as float) as float
+    if count <= 0 then return availableWidth / 2
+    width = count * itemWidth + (count - 1) * gap
+    start = (availableWidth - width) / 2
+    if start < 0 then start = 0
+    return start
+end function
+
 ' Non-overlapping rectangles and quarter-circle masks avoid alpha seams.
 function uiSurfaceBoxes(w as float, h as float, radius as float) as object
     if w < 0 then w = 0

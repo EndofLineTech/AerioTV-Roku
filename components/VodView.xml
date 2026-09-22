@@ -27,7 +27,7 @@
   <script type="text/brightscript" uri="VodView.brs" />
   <script type="text/brightscript" uri="VodMetadata.brs" />
   <children>
-    <TopNavigation id="primaryNavigation" translation="[560,20]" selected="vod" />
+    <TopNavigation id="primaryNavigation" translation="[96,20]" availableWidth="1728" selected="vod" />
     <TopNavigation id="libraryNavigation" translation="[560,88]" allowUp="true" selected="movie" style="choice" />
   </children>
 </component>

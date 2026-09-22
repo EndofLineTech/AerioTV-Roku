@@ -11,8 +11,10 @@ sub configureNavigation()
     m.items = m.top.items
     m.top.removeChildrenIndex(m.top.getChildCount(), 0)
     m.cells = []
+    start = 0
+    if m.top.availableWidth > 0 then start = uiCenteredStripX(m.items.count(), 200, 12, m.top.availableWidth)
     for i = 0 to m.items.count() - 1
-        x = i * 212
+        x = start + i * 212
         bg = uiSurface(m.top, x, 0, 200, 50, 25, "0x00000000")
         fill = uiSurface(m.top, x + 3, 3, 194, 44, 22, "0x00000000")
         icon = m.top.createChild("Poster")

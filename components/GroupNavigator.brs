@@ -26,8 +26,10 @@ sub applyPresentation(model as dynamic)
     m.rows = []
     count = 5
     if m.layout = "sidebar" then count = 7
+    if count > m.groups.count() then count = m.groups.count()
+    stripStart = uiCenteredStripX(count, 235, 10, 1920)
     for i = 0 to count - 1
-        x = 580 + i * 245
+        x = stripStart + i * 245
         y = 98
         width = 235
         height = 40
@@ -47,7 +49,11 @@ sub applyPresentation(model as dynamic)
         m.rows.push({bg: bg, fill: fill, label: label})
     end for
     if m.layout = "sidebar" then uiLabel(m.canvas, "Groups", 96, 270, 280, 32, 22, "0x1AC4D8FF")
-    if m.layout = "pills" then m.caption = uiLabel(m.canvas, "", 580, 73, 1215, 24, 18, "0x1AC4D8FF")
+    if m.layout = "pills"
+        m.caption = uiLabel(m.canvas, "", 96, 73, 1728, 24, 18, "0x1AC4D8FF")
+        m.caption.horizAlign = "center"
+        m.caption.vertAlign = "center"
+    end if
     draw()
 end sub
 

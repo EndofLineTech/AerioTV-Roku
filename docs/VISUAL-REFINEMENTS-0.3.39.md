@@ -22,3 +22,13 @@ LIVE red (`FF4757`), NEW green (`27AE60`), PREMIERE/FINALE purple (`9B59B6`).
 Episode numbers and times remain plain text. Existing visibility preferences are
 respected; recycled cells hide old badges and omit pills that cannot fit.
 Native capture: `out/visual-badges-0.3.39.jpg`.
+
+`faa.22`: primary tab rows are centered within the 1728px safe area on Guide and
+VOD. Group strips center their actual visible count (up to five) across 1920px;
+the count caption is centered too. Library subnavigation keeps its heading-safe
+placement. Geometry tests cover one/five groups and two/three primary tabs.
+
+Full verification passed. Final native capture `out/visual-centered-0.3.39.jpg`
+confirms centered top/group strips, colored program badges, and key-only footer
+capsules. The final normal ZIP was installed and ECP confirmed 0.3.39. SHA-256:
+`fc43f554c536ce9d7e3b345009563054081376f44f2cadcc5d300cea800f513e`.

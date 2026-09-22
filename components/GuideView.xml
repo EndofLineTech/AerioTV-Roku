@@ -59,7 +59,7 @@
   <script type="text/brightscript" uri="GuideDetails.brs" />
   <children>
     <Group id="canvas" />
-    <TopNavigation id="primaryNavigation" translation="[560,20]" selected="live" />
+    <TopNavigation id="primaryNavigation" translation="[96,20]" availableWidth="1728" selected="live" />
     <GroupNavigator id="groupNavigator" visible="false" />
     <ProgramSearchView id="programSearch" visible="false" />
     <ProgramDetails id="programDetails" visible="false" />
