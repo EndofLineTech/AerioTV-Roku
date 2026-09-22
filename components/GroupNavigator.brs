@@ -24,7 +24,7 @@ sub applyPresentation(model as dynamic)
     m.canvas.removeChildrenIndex(m.canvas.getChildCount(), 0)
     m.caption = invalid
     m.rows = []
-    count = 3
+    count = 5
     if m.layout = "sidebar" then count = 7
     for i = 0 to count - 1
         x = 580 + i * 245
@@ -47,7 +47,7 @@ sub applyPresentation(model as dynamic)
         m.rows.push({bg: bg, fill: fill, label: label})
     end for
     if m.layout = "sidebar" then uiLabel(m.canvas, "Groups", 96, 270, 280, 32, 22, "0x1AC4D8FF")
-    if m.layout = "pills" then m.caption = uiLabel(m.canvas, "", 580, 73, 740, 24, 18, "0x1AC4D8FF")
+    if m.layout = "pills" then m.caption = uiLabel(m.canvas, "", 580, 73, 1215, 24, 18, "0x1AC4D8FF")
     draw()
 end sub
 
