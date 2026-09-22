@@ -36,28 +36,12 @@ sub onSettingsHubSelection(event as object)
         return
     end if
     if item.action = "setRemoteAction"
-        before = copyJson(m.devicePreferences)
-        m.devicePreferences.remoteMap = setRemoteAction(m.devicePreferences.remoteMap, item.context, item.slot, item.value)
-        m.devicePreferences = normalizeDevicePreferences(m.devicePreferences)
-        if not persistPreferences()
-            m.devicePreferences = before
-            m.preferenceStore.device = before
-            refreshSettingsHub()
-            return
-        end if
+        persistRemoteMap(setRemoteAction(m.devicePreferences.remoteMap, item.context, item.slot, item.value))
         refreshSettingsHub()
         return
     end if
     if item.action = "resetRemoteMap"
-        before = copyJson(m.devicePreferences)
-        m.devicePreferences.remoteMap = resetRemoteMap()
-        m.devicePreferences = normalizeDevicePreferences(m.devicePreferences)
-        if not persistPreferences()
-            m.devicePreferences = before
-            m.preferenceStore.device = before
-            refreshSettingsHub()
-            return
-        end if
+        persistRemoteMap(resetRemoteMap())
         refreshSettingsHub()
         return
     end if
@@ -101,3 +85,18 @@ sub onSettingsHubSelection(event as object)
     end if
     refreshSettingsHub()
 end sub
+
+function persistRemoteMap(map as object) as boolean
+    before = copyJson(m.devicePreferences)
+    m.devicePreferences.remoteMap = map
+    m.devicePreferences = normalizeDevicePreferences(m.devicePreferences)
+    saved = persistPreferences()
+    if not saved
+        m.devicePreferences = before
+        m.preferenceStore.device = before
+    end if
+    ' SceneGraph fields are copies: Guide must receive the effective map again,
+    ' including the restored map after a failed write.
+    applyDevicePreferences()
+    return saved
+end function

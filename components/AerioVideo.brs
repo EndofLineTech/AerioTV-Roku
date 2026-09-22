@@ -4,6 +4,7 @@ sub init()
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    if key = "home" then return false
     ' Fullscreen Options belongs to Roku. Only forward where explicitly enabled
     ' for the mini-guide; fullscreen app options use hold OK or transport.
     if key = "options"

@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 
-for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'GuideTaskCache', 'GuideMappingFallback', 'MappingTask', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'CatchupModel', 'CatchupTask', 'DiagnosticModel', 'OnDemandPlayer', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask', 'RemoteMapModel']) {
+for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'PlayerRemoteInput', 'GuideRemoteInput', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'GuideTaskCache', 'GuideMappingFallback', 'MappingTask', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'CatchupModel', 'CatchupTask', 'DiagnosticModel', 'OnDemandPlayer', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask', 'RemoteMapModel']) {
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
@@ -18,6 +18,7 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport',
     'source/DiagnosticModel.brs',
     'source/NavigationModel.brs', 'source/DescriptionModel.brs',
     ...(suite === 'SettingsModel' ? ['source/SettingsModel.brs'] : []),
+    ...(suite === 'SettingsModel' ? ['components/SettingsNavigation.brs'] : []),
     ...(['TmdbModel', 'TmdbTask'].includes(suite) ? ['source/TmdbModel.brs'] : []),
     ...(suite === 'TmdbTask' ? ['components/TmdbTask.brs'] : []),
     ...(suite === 'VodShelfTask' ? ['components/VodShelfTask.brs'] : []),
@@ -27,6 +28,8 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'TaskSupport',
     ...(suite === 'LogoCache' ? ['components/LogoCacheTask.brs'] : []),
     ...(suite === 'VideoInput' ? ['components/AerioVideo.brs'] : []),
     ...(suite === 'GuideInput' ? ['components/GuideView.brs'] : []),
+    ...(['GuideInput', 'GuideRemoteInput'].includes(suite) ? ['components/GuideRemoteInput.brs'] : []),
+    ...(['PlayerLifecycle', 'PlayerRemoteInput'].includes(suite) ? ['components/PlayerRemoteInput.brs'] : []),
     ...(suite === 'GroupInput' ? ['components/GroupNavigator.brs'] : []),
     ...(['PlayerOkHold', 'PlayerLifecycle'].includes(suite) ? ['components/PlayerOptionsShortcut.brs'] : []),
     ...(['StartupRecovery', 'PlayerLifecycle'].includes(suite) ? ['components/StartupRecovery.brs'] : []),

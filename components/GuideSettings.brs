@@ -54,6 +54,7 @@ sub onGroupPreview(event as object)
 end sub
 
 sub onNavigatorClosed()
+    m.guideLeftReleasePending = false
     if m.top.active
         drawGuide()
         m.top.setFocus(true)

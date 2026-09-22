@@ -29,5 +29,31 @@ sub main()
     model.catchup = "denied"
     if settingsHubEntries("player", model).count() <> 2 then stop
     if settingsHubChangeAllowed(model, "device", "archiveSkipSeconds", 120) then stop
+    m.devicePreferences = normalizeDevicePreferences(invalid)
+    m.preferenceStore = {device: m.devicePreferences}
+    m.saveOk = true
+    m.applyCount = 0
+    custom = setRemoteAction(defaultRemoteMap(), "guide", "replay", "openOptions")
+    if not persistRemoteMap(custom) then stop
+    if resolveRemoteAction(m.published.remoteMap, "guide", "replay") <> "openOptions" then stop
+    if m.applyCount <> 1 then stop
+    m.saveOk = false
+    if persistRemoteMap(resetRemoteMap()) then stop
+    if resolveRemoteAction(m.published.remoteMap, "guide", "replay") <> "openOptions" then stop
+    if resolveRemoteAction(m.preferenceStore.device.remoteMap, "guide", "replay") <> "openOptions" then stop
+    m.saveOk = true
+    if not persistRemoteMap(resetRemoteMap()) then stop
+    if resolveRemoteAction(m.published.remoteMap, "guide", "replay") <> "jumpToNow" then stop
+    if m.applyCount <> 3 then stop
     print "ALL TESTS PASSED"
+end sub
+
+function persistPreferences() as boolean
+    m.preferenceStore.device = m.devicePreferences
+    return m.saveOk
+end function
+
+sub applyDevicePreferences()
+    m.published = copyJson(m.devicePreferences)
+    m.applyCount++
 end sub

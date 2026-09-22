@@ -52,19 +52,22 @@ sub main()
     repeatGuideHold()
     if not m.navigator.active or m.anchor <> 123 then stop
     if m.holdKey <> "" then stop
+    onKeyEvent("left", false)
     m.picker = invalid
     m.settings.groupLayout = "modal"
     m.navigator.active = false
     m.primaryNavigation = {active: false}
-    onKeyEvent("left", true)
-    repeatGuideHold()
-    if not m.primaryNavigation.active or m.anchor <> 123 then stop
+    m.selected = 0
+    onKeyEvent("up", true)
+    if not m.primaryNavigation.active then stop
+    m.primaryNavigation.active = false
     m.navigator.active = false
     m.settings.groupLayout = "pills"
     onKeyEvent("left", true)
     if m.anchor <> 123 then stop
     repeatGuideHold()
     if not m.navigator.active or m.anchor <> 123 then stop
+    onKeyEvent("left", false)
     m.navigator.active = false
     onKeyEvent("down", true)
     m.picker = {}

@@ -13,6 +13,7 @@
   <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
   <script type="text/brightscript" uri="AerioScene.brs" />
   <script type="text/brightscript" uri="PlayerOptionsShortcut.brs" />
+  <script type="text/brightscript" uri="PlayerRemoteInput.brs" />
   <script type="text/brightscript" uri="StartupRecovery.brs" />
   <script type="text/brightscript" uri="LiveRecovery.brs" />
   <script type="text/brightscript" uri="PlaybackFailure.brs" />

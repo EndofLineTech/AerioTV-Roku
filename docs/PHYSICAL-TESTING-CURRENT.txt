@@ -55,13 +55,13 @@ cases; record a regression if observed. Visible source label: _________________
 
 REMOTE MAP - SETTINGS, PERSISTENCE, AND FIXED KEYS
 ---------------------------------------------------
-[  FAIL - doesn't appear   ] RM01 Remote Control settings navigation
+[  PASS  ] RM01 Remote Control settings navigation
 Guide -> Settings -> Remote control. Open While watching, In the TV Guide, and
 Reset remote controls. Each row names the physical button/gesture and its current
 action; only supported actions are listed. Back restores the prior row/page and
 then the guide without a focus trap.
 
-[  SKIP   ] RM02 Default map and dynamic hints
+[  PASS   ] RM02 Default map and dynamic hints
 Reset to defaults, confirm the confirmation flow, then inspect fullscreen player
 and guide hints. Expected defaults: Player OK=info/Hold OK=options, Up/Down=
 channel up/down, Left=channels, Right=previous channel, Replay=recent, Play=
@@ -69,7 +69,7 @@ play/pause, Rew=rewind history; Guide OK=watch/details, Left/Right=navigate,
 Hold Left=groups, Rew/FF=page, Replay=Jump to Now, Play in mini=fullscreen.
 Hints must match the effective mapping and remain readable. Result: ___________
 
-[  SKIP   ] RM03 Player OK short and hold mappings
+[  PASS   ] RM03 Player OK short and hold mappings
 For each value offered by Settings -> Remote control -> While watching -> OK and
 OK (hold), test it on a fullscreen live channel. Record every offered value:
 OK short Toggle info ______ Open options ______ Do nothing ______
@@ -77,7 +77,7 @@ OK hold Open options ______ Do nothing ______
 Expected: short/hold recognition stays bounded; an initiating release never
 selects Stop or another menu row; Do nothing does not leak into another action.
 
-[  SKIP   ] RM04 Player directional mappings
+[  PASS   ] RM04 Player directional mappings
 For EACH Player Up, Down, Left, and Right row, assign every displayed action and
 record its result. Values can include Channel up/down, Recently watched, Channel
 list, Previous channel, Show/hide info, Return to TV Guide, and Do nothing.
@@ -89,7 +89,7 @@ Expected: channel actions select the intended filtered-lineup neighbor; held
 channel surfing commits only the final choice on release; unavailable edge shows
 an honest notice; no mapping strands focus or starts multiple streams.
 
-[ SKIP    ] RM05 Player dedicated action mappings
+[ PASS    ] RM05 Player dedicated action mappings
 Test every displayed value for Replay, Play/Pause, and Rewind:
 Replay Recent ______ Rewind history ______ Do nothing ______
 Play/Pause Play/Pause ______ Do nothing ______
@@ -97,13 +97,13 @@ Rewind Rewind history ______ Recently watched ______ Do nothing ______
 Expected: provider rewind remains provider-backed and preserves honest unavailable
 handling; pause/resume affects only the current player; None consumes no other key.
 
-[  SKIP   ] RM06 Guide OK mapping
+[  PASS   ] RM06 Guide OK mapping
 On a current program and a future/ended program, test every displayed Guide OK
 value: Play selected channel ______ Program details ______ Do nothing ______.
 Expected: current selection can tune; future/ended behavior remains honest;
 details opens the selected program; Do nothing neither tunes nor traps focus.
 
-[  SKIP   ] RM07 Guide Left/Right and Hold Left mappings
+[  PASS   ] RM07 Guide Left/Right and Hold Left mappings
 For EACH offered action, test Guide Left, Right, and Left (hold). Record values:
 Left Move focus ______ Jump to Now ______ Jump to top ______ Open groups ______
      Open options ______ Do nothing ______
@@ -114,7 +114,7 @@ Expected: normal navigation/time movement remains usable when mapped to Move
 focus; groups works in Modal/Pills/Sidebar; no mapping leaves an empty group or
 guide without an escape route.
 
-[ SKIP    ] RM08 Guide paging, Replay, and mini-player Play mappings
+[ PASS    ] RM08 Guide paging, Replay, and mini-player Play mappings
 Test each displayed value:
 Rew/FF Page up ______ Page down ______ Jump to Now ______ Jump to top ______
        Do nothing ______
@@ -123,14 +123,14 @@ Play/Pause while mini Return to player ______ Do nothing ______
 Expected: page actions clamp at lineup bounds; Replay hint changes with the map;
 mini-player mapping does not retune or leak to fullscreen star behavior.
 
-[  SKIP   ] RM09 Persistence, account scope, and reset
+[  PASS   ] RM09 Persistence, account scope, and reset
 Set non-default Player and Guide values, exit/relaunch, and reconnect to the same
 account. Expected: the device-local map and hints persist. If an existing second
 account is available, confirm the same Roku map remains while account data stays
 isolated. Reset and relaunch: defaults return atomically. Same account ______
 Second account/skip reason ______ Reset ______
 
-[  SKIP   ] RM10 Fixed-key and recovery boundaries
+[  PASS   ] RM10 Fixed-key and recovery boundaries
 In every mapped state above, verify Back dismisses/returns/minimizes by its normal
 context contract and can always recover focus. Press Home: Roku exits normally;
 relaunch has no unintended autoplay. In fullscreen press *: Roku owns it. In the

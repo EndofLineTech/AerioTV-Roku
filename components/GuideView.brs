@@ -481,14 +481,10 @@ sub drawGuide()
     x = timeX + (now - m.viewStart) / 6
     m.nowLine.visible = x >= timeX and x < 1824
     if m.nowLine.visible then m.nowLine.translation = [x, 300]
-    m.footer.text = "Hold Left  Live TV / VOD     OK  Watch / Details     *  Guide options     Back  Connection"
-    if m.top.miniActive then m.footer.text = "OK  Watch / Details     Back or Play  Fullscreen     *  Options / Stop playback"
-    if m.settings.groupLayout = "sidebar" then m.footer.text = "Hold Left  Groups     Left in groups  Live TV / VOD     OK  Watch / Details     *  Options"
-    if m.settings.groupLayout = "pills" then m.footer.text = "Hold Left  Groups     Up in groups  Live TV / VOD     OK  Watch / Details     *  Options"
+    m.footer.text = guideRemoteHint()
     remote = m.top.remotePreferences
     if type(remote) = "roAssociativeArray"
         m.footer.visible = remote.infoHints <> false
-        m.footer.text += "     Replay  " + remoteActionText(guideRemoteAction("replay"))
     end if
     if m.query <> "" then m.footer.text = "Search ALL: " + m.query + "    * > Clear search to restore the selected group"
     if m.connectionWarning <> "" then m.footer.text = m.connectionWarning
@@ -771,6 +767,7 @@ sub openPicker(title as string, items as object, kind as string)
 end sub
 
 sub closePicker()
+    m.guideLeftReleasePending = false
     m.pickerList = invalid
     if m.picker <> invalid
         m.top.removeChild(m.picker)
@@ -1106,54 +1103,6 @@ sub openDatePicker()
     openPicker("Jump to date", [{title: "Jump to Now", action: "now"}, {title: "Today", days: today}, {title: "Upcoming", days: future}, {title: "Previous", days: past}], "dateCategory")
 end sub
 
-sub cancelGuideHold()
-    m.holdKey = ""
-    if m.holdTimer <> invalid then m.holdTimer.control = "stop"
-end sub
-
-sub beginGuideHold(key as string)
-    m.holdKey = key
-    m.holdClock = CreateObject("roTimespan")
-    m.holdClock.mark()
-    m.holdTimer.duration = 0.4
-    m.holdTimer.control = "start"
-end sub
-
-sub repeatGuideHold()
-    if not m.top.active or m.picker <> invalid or m.navigator.active or m.searchView.active or m.details.active
-        cancelGuideHold()
-        return
-    end if
-    if m.holdKey = "" then return
-    if m.filtered.count() = 0
-        cancelGuideHold()
-        m.selected = 0
-        return
-    end if
-    if m.holdClock.totalMilliseconds() > 10000
-        m.holdTimer.control = "stop"
-        return
-    end if
-    if m.holdKey = "left"
-        cancelGuideHold()
-        executeGuideRemoteAction(guideRemoteAction("leftLong"))
-        return
-    end if
-    stepSize = guideHoldStep(m.holdClock.totalMilliseconds())
-    if m.holdKey = "up" then stepSize = -stepSize
-    m.selected += stepSize
-    if m.selected < 0 then m.selected = 0
-    if m.selected >= m.filtered.count() then m.selected = m.filtered.count() - 1
-    m.holdTimer.duration = 0.12
-    drawGuide()
-    ' Defer network requests until the gesture settles, not on every repeat.
-    m.loadDelay.control = "stop"
-    m.loadDelay.duration = 0.3
-    m.loadDelay.control = "start"
-    m.saveDelay.control = "stop"
-    m.saveDelay.control = "start"
-end sub
-
 sub moveGuideTime(key as string)
     m.followNow = false
     m.direction = 1
@@ -1164,34 +1113,6 @@ sub moveGuideTime(key as string)
         if m.direction < 0 then target = cell.startsAt - 1
         m.anchor = guideTimeClamp(target, uiNow(), m.settings)
         keepAnchorVisible()
-    end if
-end sub
-
-function guideRemoteAction(slot as string) as string
-    map = defaultRemoteMap()
-    if type(m.top.remotePreferences) = "roAssociativeArray" then map = m.top.remotePreferences.remoteMap
-    return resolveRemoteAction(map, "guide", slot)
-end function
-
-sub executeGuideRemoteAction(action as string)
-    if action = "jumpToNow"
-        jumpTo(uiNow())
-    else if action = "jumpToTop"
-        m.selected = 0
-    else if action = "openGroups"
-        if m.settings.groupLayout = "modal" then focusPrimaryNavigation() else m.navigator.active = true
-    else if action = "openOptions"
-        openOptions()
-    else if action = "pageUp" or action = "pageDown"
-        delta = m.rowCount
-        if action = "pageUp" then delta = -delta
-        m.selected += delta
-        if m.selected < 0 then m.selected = 0
-        if m.selected >= m.filtered.count() then m.selected = m.filtered.count() - 1
-    else if action = "resumePlayer" and m.top.miniActive
-        m.top.playerRequest = "expandPlayer"
-    else if action = "programDetails"
-        showDetails()
     end if
 end sub
 
@@ -1208,25 +1129,14 @@ sub activateGuideSelection()
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    if key = "home" then return false
     if not m.top.active then return false
     ' The committing LabelList OK must not tune the grid after closing a picker.
     if m.pickerWakeKey = key
         if not press then m.pickerWakeKey = ""
         return true
     end if
-    if m.holdKey <> ""
-        if key = m.holdKey
-            if not press
-                shortLeft = key = "left"
-                cancelGuideHold()
-                if shortLeft then moveGuideTime("left")
-                drawGuide()
-                scheduleLoad()
-            end if
-            return true
-        end if
-        if press then cancelGuideHold()
-    end if
+    if handleGuideHeldKey(key, press) then return true
     if not press then return false
     if m.picker <> invalid
         if key = "back" or key = "options"
@@ -1252,8 +1162,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     if key = "play" and m.top.miniActive
-        executeGuideRemoteAction(guideRemoteAction("playPause"))
-        return true
+        return handleGuideMappedKey(key)
     end if
     if key = "up" and m.selected = 0 and m.settings.groupLayout <> "modal"
         m.navigator.active = true
@@ -1264,9 +1173,8 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     if m.filtered.count() = 0 then return true
-    if key = "fastforward" or key = "rewind"
-        executeGuideRemoteAction(guideRemoteAction(key))
-    else if len(key) = 1 and instr(1, "0123456789", key) > 0
+    if handleGuideMappedKey(key) then return true
+    if len(key) = 1 and instr(1, "0123456789", key) > 0
         openGuideKeyboard("number", "Channel number in current list", key)
         return true
     else if key = "up"
@@ -1275,26 +1183,6 @@ function onKeyEvent(key as string, press as boolean) as boolean
     else if key = "down"
         if m.selected < m.filtered.count() - 1 then m.selected++
         beginGuideHold(key)
-    else if key = "left" or key = "right"
-        action = guideRemoteAction(key + "Short")
-        if action <> "navigate"
-            executeGuideRemoteAction(action)
-            drawGuide()
-            scheduleLoad()
-            return true
-        end if
-        if key = "left"
-            beginGuideHold(key)
-            return true
-        end if
-        moveGuideTime(key)
-    else if key = "OK"
-        action = guideRemoteAction("okShort")
-        if action = "programDetails" then showDetails() else if action = "activateSelection" then activateGuideSelection()
-        return true
-    else if key = "replay"
-        executeGuideRemoteAction(guideRemoteAction("replay"))
-        return true
     else
         return false
     end if

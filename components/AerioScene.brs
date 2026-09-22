@@ -770,8 +770,7 @@ sub showChannelBanner(channel as object, hint as string)
 end sub
 
 function playerInfoHint() as string
-    hint = "OK  " + remoteActionText(playerRemoteAction("okShort")) + "    Hold OK  " + remoteActionText(playerRemoteAction("okLong")) + "    Up  " + remoteActionText(playerRemoteAction("upShort")) + "    Down  " + remoteActionText(playerRemoteAction("downShort")) + "    Replay  " + remoteActionText(playerRemoteAction("replay")) + "    Back  Guide"
-    if m.userInfoOpen then hint = "OK  Hide info    Hold OK  Options    Up/Down  Controls    Back  Hide info"
+    hint = playerRemoteHint(m.userInfoOpen = true)
     if m.video.state = "buffering"
         stage = "Buffering... "
         if m.startupWatch <> invalid then stage = "Starting stream (" + m.startupWatch.clock.totalSeconds().toStr() + "s)... "
@@ -781,31 +780,6 @@ function playerInfoHint() as string
     remaining = sleepTimerRemaining(m.sleepDeadline, uiNow())
     if remaining > 0 then hint += "    Sleep " + ((remaining + 59) \ 60).toStr() + "m"
     return hint
-end function
-
-function playerRemoteAction(slot as string) as string
-    return resolveRemoteAction(m.devicePreferences.remoteMap, "player", slot)
-end function
-
-function executePlayerRemoteAction(action as string) as boolean
-    if action = "none" then return true
-    if action = "toggleInfo" then togglePlayerInfo() else if action = "openOptions" then openPlayerOptions() else if action = "recentChannels" then openChannelBrowser("recent") else if action = "channelList" then openChannelBrowser() else if action = "lastChannel" then zapPreviousChannel() else if action = "rewindHistory" then openLiveRewind() else if action = "minimizeToGuide" then minimizePlayback() else if action = "playPause" then togglePause() else return false
-    return true
-end function
-
-function beginMappedChannelSwitch(action as string, key as string) as boolean
-    direction = 0
-    if action = "channelUp" then direction = 1
-    if action = "channelDown" then direction = -1
-    if direction = 0 then return false
-    m.heldZap = key
-    m.heldZapDirection = direction
-    m.heldZapClock = CreateObject("roTimespan")
-    m.heldZapClock.mark()
-    m.heldZapTimer.duration = 0.4
-    m.heldZapTimer.control = "start"
-    queueChannelSwitch(direction)
-    return true
 end function
 
 sub onPlaybackInfo(event as object)
@@ -1950,6 +1924,7 @@ sub closeMessage(event as object)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    if key = "home" then return false
     if m.page = "archiveLoading" and key = "back" and press
         cancelArchiveLoad()
         releaseArchive()
@@ -2012,15 +1987,13 @@ function onKeyEvent(key as string, press as boolean) as boolean
             return true
         end if
         if key = "play"
-            executePlayerRemoteAction(playerRemoteAction("playPause"))
-            return true
+            return handlePlayerMappedKey(key)
         else if key = "playonly"
             if m.video.state = "paused" then m.video.control = "resume"
             return true
         end if
         if key = "rewind"
-            executePlayerRemoteAction(playerRemoteAction("rewind"))
-            return true
+            return handlePlayerMappedKey(key)
         end if
         if m.userInfoOpen
             if key = "down" or key = "up"
@@ -2028,17 +2001,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
             end if
             return true
         end if
-        if key = "left" or key = "right" or key = "replay"
-            slot = key + "Short"
-            if key = "replay" then slot = "replay"
-            executePlayerRemoteAction(playerRemoteAction(slot))
-            return true
-        end if
-        if key = "up" or key = "down"
-            beginMappedChannelSwitch(playerRemoteAction(key + "Short"), key)
-            return true
-        end if
-        return false
+        return handlePlayerMappedKey(key)
     end if
     if m.page <> "setup" then return false
     if m.busy

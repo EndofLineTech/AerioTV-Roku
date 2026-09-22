@@ -105,3 +105,10 @@ function remoteActionText(action as string) as string
     if labels.doesExist(action) then return labels[action]
     return action
 end function
+
+' Compact labels for the single-line TV hints; settings retain full descriptions.
+function remoteActionHint(action as string) as string
+    labels = {toggleInfo: "Info", openOptions: "Options", channelUp: "Next channel", channelDown: "Prev channel", recentChannels: "Recent", channelList: "Channels", lastChannel: "Last channel", minimizeToGuide: "Guide", rewindHistory: "Rewind", playPause: "Pause/resume", activateSelection: "Watch/details", programDetails: "Details", navigate: "Move focus", jumpToNow: "Now", jumpToTop: "Top", openGroups: "Groups", pageUp: "Page up", pageDown: "Page down", resumePlayer: "Fullscreen", none: "None"}
+    if labels.doesExist(action) then return labels[action]
+    return ""
+end function

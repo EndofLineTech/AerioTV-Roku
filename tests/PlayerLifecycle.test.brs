@@ -144,6 +144,23 @@ sub main()
     assertEqual(onKeyEvent("up", false), true, "release captured")
     assertEqual(m.heldZap, "", "release clears held state")
     assertEqual(m.channelTuneTimer.control, "start", "one deferred tune after release")
+    m.pendingChannel = invalid
+    m.devicePreferences.remoteMap = setRemoteAction(defaultRemoteMap(), "player", "leftShort", "channelUp")
+    assertEqual(onKeyEvent("left", true), true, "custom Left channel mapping routes through actual Scene")
+    assertEqual(m.pendingChannel.uuid, "b", "custom Left queues adjacent channel")
+    repeatHeldZap()
+    assertEqual(m.pendingChannel.uuid, "c", "custom Left supports held channel repeat")
+    onKeyEvent("left", false)
+    assertEqual(m.heldZap, "", "custom Left release ends hold")
+    m.pendingChannel = invalid
+    m.devicePreferences.remoteMap = setRemoteAction(defaultRemoteMap(), "player", "upShort", "toggleInfo")
+    onKeyEvent("up", true)
+    assertEqual(m.userInfoOpen, true, "custom Up non-channel action routes through actual Scene")
+    assertEqual(m.pendingChannel, invalid, "custom Up info does not tune")
+    assertEqual(onKeyEvent("home", true), false, "Home remains system-owned even with info visible")
+    onKeyEvent("back", true)
+    assertEqual(m.userInfoOpen, false, "Back still dismisses custom-opened info")
+    m.devicePreferences.remoteMap = defaultRemoteMap()
     m.playerOptions.active = false
     m.transport.active = false
     m.userInfoOpen = false

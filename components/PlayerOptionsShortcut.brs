@@ -63,7 +63,13 @@ sub onPlayerOkHold()
     end if
     if m.playerOkClock = invalid then return
     if m.playerOkClock.totalMilliseconds() < 1000 then return
-    cancelPlayerOkHold()
     action = playerOkRemoteAction("okLong")
+    if action = "none"
+        ' Keep the key latched until release so native repeats cannot fire short OK.
+        m.playerOkClock = invalid
+        m.playerOkTimer.control = "stop"
+        return
+    end if
+    cancelPlayerOkHold()
     executePlayerOkAction(action)
 end sub
