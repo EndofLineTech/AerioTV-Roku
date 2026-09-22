@@ -9,7 +9,8 @@ bd ready              # Find available work
 bd show <id>          # View issue details
 bd update <id> --status in_progress  # Claim work
 bd close <id>         # Complete work
-bd sync               # Sync with git
+node scripts/beads-sync.mjs pull  # Fetch Beads database updates before work
+node scripts/beads-sync.mjs push  # Push Beads database after updates
 ```
 
 <!-- BEGIN BEADS INTEGRATION -->
@@ -20,7 +21,7 @@ bd sync               # Sync with git
 ### Why bd?
 
 - Dependency-aware: Track blockers and relationships between issues
-- Git-friendly: Auto-syncs to JSONL for version control
+- Git-backed Dolt remote: full database/history at refs/dolt/data
 - Agent-optimized: JSON output, ready work detection, discovered-from links
 - Prevents duplicate tracking systems and confusion
 
@@ -77,13 +78,14 @@ bd close bd-42 --reason "Completed" --json
    - `bd create "Found bug" --description="Details about what was found" -p 1 --deps discovered-from:<parent-id>`
 5. **Complete**: `bd close <id> --reason "Done"`
 
-### Auto-Sync
+### Database synchronization
 
-bd automatically syncs with git:
-
-- Exports to `.beads/issues.jsonl` after changes (5s debounce)
-- Imports from JSONL when newer (e.g., after `git pull`)
-- No manual export/import needed!
+This installation uses Dolt, not JSONL auto-sync. Use
+`node scripts/beads-sync.mjs pull` before work and
+`node scripts/beads-sync.mjs push` after issue updates. Application Git pushes
+do not sync the database. `bd sync` is a deprecated no-op; `bd dolt push/pull`
+in installed bd 0.56.1 fail to initialize the store. See `docs/BEADS-SYNC.md`
+for the tested workaround, approved public destination, and restore procedure.
 
 ### Important Rules
 
@@ -111,7 +113,7 @@ For more details, see README.md and docs/QUICKSTART.md.
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd sync
+   node scripts/beads-sync.mjs push
    git push
    git status  # MUST show "up to date with origin"
    ```
