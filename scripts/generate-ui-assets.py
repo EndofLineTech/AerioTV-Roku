@@ -9,7 +9,7 @@ def chunk(kind, data):
     return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data))
 
 
-def corner_png(size, right=False, bottom=False):
+def corner_png(size, right=False, bottom=False, cutout=False):
     rows = bytearray()
     for y in range(size):
         rows.append(0)
@@ -24,7 +24,8 @@ def corner_png(size, right=False, bottom=False):
                     if bottom:
                         py = size - py
                     hits += (px - size) ** 2 + (py - size) ** 2 <= size ** 2
-            rows.extend((255, 255, 255, round(255 * hits / 16)))
+            alpha = round(255 * hits / 16)
+            rows.extend((255, 255, 255, 255 - alpha if cutout else alpha))
     return (b'\x89PNG\r\n\x1a\n'
             + chunk(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 6, 0, 0, 0))
             + chunk(b'IDAT', zlib.compress(bytes(rows), 9)) + chunk(b'IEND', b''))
@@ -86,6 +87,7 @@ if __name__ == '__main__':
     root = pathlib.Path(__file__).resolve().parent.parent / 'images'
     for name, right, bottom in [('tl', False, False), ('tr', True, False), ('bl', False, True), ('br', True, True)]:
         (root / f'ui-corner-{name}.png').write_bytes(corner_png(64, right, bottom))
+        (root / f'ui-cutout-{name}.png').write_bytes(corner_png(64, right, bottom, cutout=True))
     print('Generated four reusable 64px UI corner masks.')
     for name in ['live', 'vod', 'settings', 'movie', 'series', 'continue', 'watchlist', 'hidden', 'categories', 'play', 'pause', 'channels', 'recent', 'minimize', 'options', 'stop']:
         (root / f'ui-icon-{name}.png').write_bytes(icon_png(name))

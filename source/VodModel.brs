@@ -128,6 +128,17 @@ function vodPage(payload as dynamic, kind as string, base as string, limit = 20 
     return result
 end function
 
+function vodVisualTile(index as integer, focused as integer, total as integer, compact as boolean) as object
+    row = index \ 5
+    first = focused \ 5 - 1
+    if first < 0 then first = 0
+    lastFirst = (total + 4) \ 5 - 2
+    if lastFirst < 0 then lastFirst = 0
+    if first > lastFirst then first = lastFirst
+    if compact then return {x: 96 + (index mod 5) * 348, y: 220 + row * 150, visible: index < total}
+    return {x: 96 + (index mod 5) * 348, y: 210 + (row - first) * 380, visible: index < total and row >= first and row < first + 2}
+end function
+
 function vodEnabledProviders(rows as object) as object
     enabled = {}
     for each row in rows

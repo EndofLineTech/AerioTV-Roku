@@ -1,4 +1,18 @@
 sub main()
+    for focused = 0 to 19
+        shown = 0
+        for i = 0 to 19
+            position = vodVisualTile(i, focused, 20, false)
+            if position.visible
+                shown++
+                if position.x < 96 or position.x + 336 > 1824 or position.y < 200 or position.y + 380 > 980 then stop
+            end if
+        end for
+        if shown <> 10 or not vodVisualTile(focused, focused, 20, false).visible then stop
+    end for
+    if not vodVisualTile(0, 0, 1, false).visible then stop
+    if vodVisualTile(1, 0, 1, false).visible then stop
+    if not vodVisualTile(19, 0, 20, true).visible then stop
     art = vodNormalize({id: 42, uuid: "episode", name: "Episode", series: {id: 1, name: "Series", logo: {id: 5}}}, "episode")
     if art.seriesTitle <> "Series" or art.seriesLogoId <> "5" then stop
     if vodArtworkUrl("https://host.test", art) <> "https://host.test/api/vod/episodes/42/image/?kind=movie_image" then stop

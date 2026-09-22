@@ -31,21 +31,34 @@ sub init()
     m.heading = uiLabel(m.top, "Movies", 96, 91, 440, 55, 38)
     m.status = uiLabel(m.top, "", 96, 154, 1728, 40, 24, "0x9EB5C9FF")
     for i = 0 to 19
-        x = 96 + (i mod 5) * 348
-        y = 210 + (i \ 5) * 181
-        border = uiRect(m.top, x, y, 336, 170, "0x17344AFF")
-        poster = m.top.createChild("Poster")
-        poster.translation = [x + 8, y + 8]
-        poster.width = 104
-        poster.height = 154
-        poster.loadWidth = 104
-        poster.loadHeight = 154
+        root = m.top.createChild("Group")
+        border = uiSurface(root, 68, 0, 200, 296, 12, "0x263549FF")
+        poster = root.createChild("Poster")
+        poster.translation = [72, 4]
+        poster.width = 192
+        poster.height = 288
+        poster.loadWidth = 192
+        poster.loadHeight = 288
         poster.loadDisplayMode = "scaleToFit"
-        title = uiLabel(m.top, "", x + 122, y + 16, 203, 103, 24)
+        corners = []
+        names = ["tl", "tr", "bl", "br"]
+        positions = [[72, 4], [256, 4], [72, 284], [256, 284]]
+        for j = 0 to 3
+            mask = root.createChild("Poster")
+            mask.uri = "pkg:/images/ui-cutout-" + names[j] + ".png"
+            mask.translation = positions[j]
+            mask.width = 8
+            mask.height = 8
+            mask.loadDisplayMode = "scaleToFill"
+            corners.push(mask)
+        end for
+        title = uiLabel(root, "", 4, 304, 328, 52, uiTypeSize("body"))
         title.wrap = true
-        title.maxLines = 3
-        fact = uiLabel(m.top, "", x + 122, y + 122, 203, 30, 19, "0x9EB5C9FF")
-        m.tiles.push({border: border, poster: poster, title: title, fact: fact})
+        title.maxLines = 2
+        title.horizAlign = "center"
+        fact = uiLabel(root, "", 4, 354, 328, 26, uiTypeSize("caption"), "0x9EB5C9FF")
+        fact.horizAlign = "center"
+        m.tiles.push({root: root, border: border, poster: poster, title: title, fact: fact, corners: corners})
     end for
     uiLabel(m.top, "Up from first row  Navigation    OK  Details    *  Library options    FF / Rew  Pages    Back  Return", 96, 990, 1728, 40, 23, "0x9EB5C9FF")
 end sub
@@ -292,25 +305,59 @@ sub drawVod()
     if (m.shelf = "related" or m.shelf = "person") and m.failure = "" and textValue(m.discoveryMessage) <> "" then m.status.text = m.discoveryMessage
     for i = 0 to 19
         tile = m.tiles[i]
+        compact = m.shelf = "categories" or m.shelf = "providers" or m.shelf = "versions"
+        placement = vodVisualTile(i, m.index, m.items.count(), compact)
+        tile.root.translation = [placement.x, placement.y]
+        tile.root.visible = placement.visible
         tile.border.visible = i < m.items.count()
-        tile.poster.visible = i < m.items.count()
+        tile.poster.visible = i < m.items.count() and not compact
         tile.title.visible = i < m.items.count()
         tile.fact.visible = i < m.items.count()
         if i < m.items.count()
             item = m.items[i]
-            tile.border.color = "0x17344AFF"
-            if i = m.index then tile.border.color = "0x146779FF"
+            tile.border.color = "0x263549FF"
+            if i = m.index then tile.border.color = "0x1AC4D8FF"
+            tile.title.color = "0xE8F3FAFF"
+            if compact
+                style = uiControlStyle("action", false, i = m.index)
+                tile.border.translation = [0, 0]
+                tile.border.width = 336
+                tile.border.height = 116
+                tile.border.radius = 24
+                tile.border.color = style.fill
+                tile.title.translation = [16, 18]
+                tile.title.width = 304
+                tile.title.color = style.ink
+                tile.fact.color = style.ink
+                tile.fact.translation = [16, 78]
+                tile.fact.width = 304
+            else
+                tile.border.translation = [68, 0]
+                tile.border.width = 200
+                tile.border.height = 296
+                tile.border.radius = 12
+                tile.title.translation = [4, 304]
+                tile.title.width = 328
+                tile.fact.translation = [4, 354]
+                tile.fact.width = 328
+                tile.fact.color = "0x9EB5C9FF"
+            end if
+            for each corner in tile.corners
+                corner.visible = not compact
+                corner.blendColor = tile.border.color
+            end for
             tile.title.text = item.title
             tile.fact.text = item.year + "  " + item.rating
             if item.kind = "episode" then tile.fact.text = "S" + item.season + " E" + item.episode
             if m.shelf = "continue" and item.kind = "episode" and textValue(item.seriesTitle) <> "" then tile.title.text = item.seriesTitle + " — " + item.title
             uri = vodArtworkUrl(m.top.config.baseUrl, item)
+            if not placement.visible or compact then uri = ""
             if item.metadataPending = true then tile.fact.text = "Refresh to verify"
             if item.unavailable = true
                 tile.fact.text = "Unavailable — * to remove"
                 uri = ""
             end if
-            if uri = "" and tmdbImagePath(item.tmdbPosterPath) <> "" then uri = "https://image.tmdb.org/t/p/w185" + item.tmdbPosterPath
+            if placement.visible and not compact and uri = "" and tmdbImagePath(item.tmdbPosterPath) <> "" then uri = "https://image.tmdb.org/t/p/w185" + item.tmdbPosterPath
             if tile.poster.uri <> uri
                 agent = CreateObject("roHttpAgent")
                 agent.setCertificatesFile("common:/certs/ca-bundle.crt")
