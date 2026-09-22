@@ -6,6 +6,8 @@
     <field id="radius" type="float" value="25" onChange="layoutSurface" />
     <field id="color" type="color" value="0x0D1E35FF" onChange="layoutSurface" />
     <field id="focusScale" type="float" value="1" onChange="animateSurface" />
+    <field id="pressedScale" type="float" value="1" onChange="animateSurface" />
+    <field id="pressed" type="boolean" value="false" onChange="animateSurface" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="AerioSurface.brs" />
@@ -13,6 +15,9 @@
     <Group id="shape" />
     <Animation id="focusAnimation" duration="0.15" easeFunction="inOutQuad">
       <Vector2DFieldInterpolator id="focusScaleInterpolator" key="[0,1]" fieldToInterp="shape.scale" />
+    </Animation>
+    <Animation id="pressAnimation" duration="0.08" easeFunction="inOutQuad">
+      <Vector2DFieldInterpolator id="pressScaleInterpolator" key="[0,1]" fieldToInterp="shape.scale" />
     </Animation>
   </children>
 </component>

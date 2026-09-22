@@ -41,6 +41,7 @@ function handleGuideMappedKey(key as string) as boolean
     if key = "left"
         ' All short Left actions wait for release, independently of the hold map.
         beginGuideHold(key)
+        if m.filtered.count() > 0 then uiAnnounce(m.filtered[m.selected].name + ", " + textValue(m.filtered[m.selected].number))
         return true
     end if
     slot = ""
@@ -52,6 +53,7 @@ function handleGuideMappedKey(key as string) as boolean
     action = guideRemoteAction(slot)
     if action = "navigate" then moveGuideTime(key) else executeGuideRemoteAction(action)
     finishGuideMappedAction()
+    if (key = "right" or key = "OK") and m.filtered.count() > 0 then uiAnnounce(m.filtered[m.selected].name + ", " + textValue(m.filtered[m.selected].number))
     return true
 end function
 
@@ -124,6 +126,7 @@ sub repeatGuideHold()
     m.selected += stepSize
     if m.selected < 0 then m.selected = 0
     if m.selected >= m.filtered.count() then m.selected = m.filtered.count() - 1
+    if m.holdKey = "up" or m.holdKey = "down" then uiAnnounce(m.filtered[m.selected].name + ", " + textValue(m.filtered[m.selected].number))
     m.holdTimer.duration = 0.12
     drawGuide()
     ' Defer network requests until the gesture settles, not on every repeat.

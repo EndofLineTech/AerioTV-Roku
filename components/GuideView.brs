@@ -560,6 +560,8 @@ sub renderCells(row as object, cells as object, selected as boolean)
     end while
     for i = 0 to row.tiles.count() - 1
         tile = row.tiles[i]
+        tile.root.accessible = true
+        tile.focusable = true
         for each badge in tile.badges
             badge.root.visible = false
         end for
@@ -603,6 +605,8 @@ sub renderCells(row as object, cells as object, selected as boolean)
                 program = cell.program
                 tile.title.text = program.title
                 tile.time.text = uiTime(program.startsAt) + " - " + uiTime(program.endsAt)
+                ' Set accessibility label for screen reader
+                uiSetAccessible(tile.root, program.title + ", " + uiTime(program.startsAt) + " to " + uiTime(program.endsAt), "Program airing from " + uiTime(program.startsAt) + " to " + uiTime(program.endsAt))
                 flags = programFlagPills(program, m.settings, textWidth)
                 offset = 0
                 for j = 0 to flags.count() - 1
@@ -1241,9 +1245,11 @@ function onKeyEvent(key as string, press as boolean) as boolean
     else if key = "up"
         if m.selected > 0 then m.selected--
         beginGuideHold(key)
+        uiAnnounce(m.filtered[m.selected].name + ", " + textValue(m.filtered[m.selected].number))
     else if key = "down"
         if m.selected < m.filtered.count() - 1 then m.selected++
         beginGuideHold(key)
+        uiAnnounce(m.filtered[m.selected].name + ", " + textValue(m.filtered[m.selected].number))
     else
         return false
     end if

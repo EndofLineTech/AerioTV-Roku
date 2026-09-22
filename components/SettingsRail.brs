@@ -17,7 +17,7 @@ sub drawSettingsRail()
     if m.railCells = invalid then return
     for i = 0 to m.railCells.count() - 1
         cell = m.railCells[i]
-        style = uiControlStyle("row", i = m.railSelected, m.focusRegion = "rail" and i = m.railIndex)
+        style = uiControlStyle("row", i = m.railSelected, m.focusRegion = "rail" and i = m.railIndex, true, false)
         uiSetColor(cell.ring, style.ring)
         uiSetColor(cell.fill, style.fill)
         uiSetColor(cell.label, style.ink)

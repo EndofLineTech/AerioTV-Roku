@@ -1,5 +1,6 @@
 sub init()
     m.index = 0
+    m.lastAnnouncedIndex = -1
     m.actions = ["play", "channels", "recent", "minimize", "options", "stop"]
     m.labels = ["Pause", "Channels", "Recent", "Minimize", "Options", "Stop"]
     m.cells = []
@@ -14,6 +15,8 @@ sub init()
         label = uiLabel(m.top, m.labels[i], x, 661, 140, 28, uiTypeSize("caption"))
         label.horizAlign = "center"
         label.vertAlign = "center"
+        label.accessible = true
+        label.accessibleLabel = m.labels[i]
         m.cells.push({fill: fill, label: label, icon: icon})
     end for
     draw()
@@ -39,6 +42,10 @@ sub draw()
         uiSetColor(cell.icon, style.ink, "blendColor")
         cell.label.visible = focused
     end for
+    if m.top.active and m.index <> m.lastAnnouncedIndex then
+        uiAnnounce(m.labels[m.index] + " " + (m.actions[m.index]))
+        m.lastAnnouncedIndex = m.index
+    end if
     m.cells[0].label.text = "Pause"
     m.cells[0].icon.uri = "pkg:/images/ui-icon-pause.png"
     if m.top.paused then m.cells[0].label.text = "Play"

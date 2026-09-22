@@ -51,7 +51,7 @@ sub drawNavigation()
     if m.cells = invalid then return
     for i = 0 to m.cells.count() - 1
         cell = m.cells[i]
-        style = uiControlStyle(m.top.style, m.items[i].id = m.top.selected, m.top.active and i = m.index, m.items[i].enabled = true)
+        style = uiControlStyle(m.top.style, m.items[i].id = m.top.selected, m.top.active and i = m.index, m.items[i].enabled = true, false)
         uiSetColor(cell.bg, style.ring)
         uiSetColor(cell.fill, style.fill)
         cell.bg.focusScale = style.scale

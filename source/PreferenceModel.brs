@@ -75,6 +75,7 @@ function normalizeDevicePreferences(raw as dynamic) as object
     if result.infoDescription <> false then result.infoDescription = true
     if result.infoNext <> false then result.infoNext = true
     if result.infoHints <> false then result.infoHints = true
+    if type(result.audioGuide) <> "Boolean" and type(result.audioGuide) <> "roBoolean" then result.audioGuide = false
     skip = result.archiveSkipSeconds
     ' Keep one canonical key even if a JSON dictionary contains case variants.
     for each key in result.keys()

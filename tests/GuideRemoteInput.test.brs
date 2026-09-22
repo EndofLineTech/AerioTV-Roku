@@ -94,7 +94,7 @@ sub setupGuide()
     m.loadDelay = {control: "stop"}
     m.filtered = []
     for i = 0 to 19
-        m.filtered.push({uuid: i.toStr()})
+        m.filtered.push({uuid: i.toStr(), name: "Channel " + i.toStr(), number: i.toStr()})
     end for
     m.selected = 10
     m.rowCount = 6

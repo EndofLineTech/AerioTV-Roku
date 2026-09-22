@@ -321,7 +321,7 @@ sub drawVod()
             uiSetColor(tile.border, borderColor)
             uiSetColor(tile.title, "0xE8F3FAFF")
             if compact
-                style = uiControlStyle("action", false, i = m.index)
+                style = uiControlStyle("action", false, i = m.index, true, false)
                 tile.border.translation = [0, 0]
                 tile.border.width = 336
                 tile.border.height = 116

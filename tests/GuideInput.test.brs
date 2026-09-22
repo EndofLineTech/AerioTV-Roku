@@ -16,7 +16,7 @@ sub main()
     m.selected = 1
     m.filtered = []
     for i = 0 to 19
-        m.filtered.push({uuid: i.toStr()})
+        m.filtered.push({uuid: i.toStr(), name: "Channel " + i.toStr(), number: i.toStr()})
     end for
     m.picker = {}
     m.pickerList = {isSameNode: function(node as object) as boolean

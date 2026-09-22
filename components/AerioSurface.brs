@@ -30,8 +30,23 @@ end sub
 
 sub animateSurface()
     if m.shape = invalid then return
-    animation = m.top.findNode("focusAnimation")
-    animation.control = "stop"
-    m.top.findNode("focusScaleInterpolator").keyValue = [m.shape.scale, [m.top.focusScale, m.top.focusScale]]
-    animation.control = "start"
+    focusAnim = m.top.findNode("focusAnimation")
+    pressAnim = m.top.findNode("pressAnimation")
+    if m.top.focusScale <> m.shape.scale then
+        focusAnim.control = "stop"
+        m.top.findNode("focusScaleInterpolator").keyValue = [m.shape.scale, [m.top.focusScale, m.top.focusScale]]
+        focusAnim.control = "start"
+    end if
+    if m.top.pressedScale <> m.shape.scale then
+        pressAnim.control = "stop"
+        m.top.findNode("pressScaleInterpolator").keyValue = [m.shape.scale, [m.top.pressedScale, m.top.pressedScale]]
+        pressAnim.control = "start"
+    end if
+    if m.top.pressed then
+        if m.top.pressedScale = 0.95 then
+            pressAnim.control = "stop"
+            m.top.findNode("pressScaleInterpolator").keyValue = [m.shape.scale, [0.95, 0.95]]
+            pressAnim.control = "start"
+        end if
+    end if
 end sub

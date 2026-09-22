@@ -52,6 +52,7 @@ function settingsHubEntries(page as string, model as object) as object
             entries.push({title: "VOD libraries for this account", scope: "account", key: "vodEnabled", values: [true, false]})
             entries.push({title: "Optional TMDB VOD enrichment", scope: "account", key: "vodTmdbEnabled", values: [true, false]})
         end if
+        entries.push({title: "Audio Guide (screen reader)", scope: "device", key: "audioGuide", values: [true, false]})
         entries.push({title: "About, licenses and What's New", action: "about"})
         return entries
     end if
