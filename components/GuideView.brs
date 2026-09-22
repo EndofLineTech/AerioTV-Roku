@@ -608,7 +608,10 @@ sub renderCells(row as object, cells as object, selected as boolean)
                     badge.root.translation = [14 + flag.x, 57]
                     badge.surface.width = flag.width
                     badge.surface.color = flag.color
-                    badge.label.width = flag.width
+                    labelBounds = uiFlagLabelBounds(flag.label, flag.width)
+                    badge.label.translation = [labelBounds.x, labelBounds.y]
+                    badge.label.width = labelBounds.width
+                    badge.label.height = labelBounds.height
                     badge.label.text = flag.label
                     offset = flag.x + flag.width + 8
                 end for

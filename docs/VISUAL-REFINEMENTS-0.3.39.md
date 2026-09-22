@@ -31,4 +31,15 @@ placement. Geometry tests cover one/five groups and two/three primary tabs.
 Full verification passed. Final native capture `out/visual-centered-0.3.39.jpg`
 confirms centered top/group strips, colored program badges, and key-only footer
 capsules. The final normal ZIP was installed and ECP confirmed 0.3.39. SHA-256:
-`fc43f554c536ce9d7e3b345009563054081376f44f2cadcc5d300cea800f513e`.
+`fc43f554c536ce9d7e3b345009563054081376f44f2cadcc5d300cea800f513e`
+(strip-centering build, superseded by the badge-alignment correction below).
+
+`faa.23`: adjusted the 16px uppercase badge text box for optical centering.
+Native image measurement showed excess space below NEW and LIVE (roughly 2px
+vertical offset) and unequal LIVE side bearings (roughly 1px horizontal offset).
+The new inset moves glyphs down 2px and compensates LIVE horizontally while keeping
+all label boxes within their capsules. Before/after captures are
+`out/badge-alignment-before.jpg` and `out/badge-alignment-after.jpg`; colored-edge
+measurements are approximate because screenshots are JPEG. Tests and native build/
+package/install checks passed. Current normal 0.3.39 ZIP SHA-256:
+`fa67ec079bb2c571a2eef00a01f23f8e2a017d06a1c8656c152ea40cb7a4fd1d`.

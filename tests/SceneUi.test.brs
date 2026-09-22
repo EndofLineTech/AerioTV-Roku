@@ -33,6 +33,11 @@ sub main()
     assertEqual(uiCenteredStripX(3, 200, 12, 1728) + 96, 648, "three primary tabs centered in safe area")
     assertEqual(uiCenteredStripX(2, 200, 12, 1728) + 96, 754, "two primary tabs centered")
     assertEqual(uiCenteredStripX(1, 235, 10, 1920), 842.5, "single group centered")
+    for each flag in [{label: "LIVE", width: 56}, {label: "NEW", width: 46}, {label: "PREMIERE", width: 96}, {label: "FINALE", width: 76}]
+        bounds = uiFlagLabelBounds(flag.label, flag.width)
+        assertEqual(bounds.y + bounds.height / 2, 14, "uppercase optical center is two pixels below line-box center")
+        if bounds.x < 0 or bounds.x + bounds.width > flag.width or bounds.y + bounds.height > 24 then stop
+    end for
     for each dims in [[200, 50, 25], [60, 60, 30], [10, 4, 50], [200, 50, 0]]
         boxes = uiSurfaceBoxes(dims[0], dims[1], dims[2])
         assertEqual(boxes.count(), 7, "fixed bounded surface node count")

@@ -86,6 +86,14 @@ function uiCenteredStripX(count as integer, itemWidth as float, gap as float, av
     return start
 end function
 
+' The 16px system font's uppercase ink sits above its line-box center on Roku.
+' Keep the text box inside the 24px pill, with the native-measured optical inset.
+function uiFlagLabelBounds(label as string, width as float) as object
+    x = 4
+    if label = "LIVE" then x = 5 ' compensate the LIVE run's unequal side bearings
+    return {x: x, y: 4, width: width - 8, height: 20}
+end function
+
 ' Non-overlapping rectangles and quarter-circle masks avoid alpha seams.
 function uiSurfaceBoxes(w as float, h as float, radius as float) as object
     if w < 0 then w = 0
