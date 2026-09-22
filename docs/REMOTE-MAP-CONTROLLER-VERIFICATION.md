@@ -1,7 +1,7 @@
 # Remote-map controller verification
 
-Issue: `AerioTV-Roku-b17.6.3`. Local source changes after v0.3.36; the published
-v0.3.36 artifact does not contain these repairs.
+Issue: `AerioTV-Roku-b17.6.3`. Repairs after v0.3.36, committed as `2684900` and
+included in v0.3.37. The published v0.3.36 artifact does not contain these repairs.
 
 ## Repairs
 
