@@ -446,6 +446,8 @@ sub drawGuide()
     if not m.navigator.active then m.navigator.model = {groups: m.groups, layout: m.settings.groupLayout, selected: m.groups[m.groupIndex].id}
     m.dateLabel.text = uiLocalDate(m.viewStart)
     m.dateLabel.translation = [gridX, 270]
+    m.rowHeight = 96
+    if m.guideDensity = "basic" then m.rowHeight = 64
     for i = 0 to m.ticks.count() - 1
         m.ticks[i].text = uiTime(m.viewStart + i * 1800)
         tickX = timeX + 10 + i * 300
@@ -454,7 +456,7 @@ sub drawGuide()
     end for
     for i = 0 to m.rows.count() - 1
         row = m.rows[i]
-        row.root.translation = [gridX, 306 + i * 96]
+        row.root.translation = [gridX, 306 + i * m.rowHeight]
         index = m.rowStart + i
         row.root.visible = index < m.filtered.count()
         if row.root.visible
@@ -477,6 +479,9 @@ sub drawGuide()
             uri = ""
             if channel.logoId <> "" then uri = m.base + "/api/channels/logos/" + channel.logoId + "/cache/"
             if row.logo.uri <> uri then row.logo.uri = uri
+            row.logo.visible = m.showLogos
+            row.number.visible = m.showNumbers
+            row.name.visible = m.showNames
             renderCells(row, rowCells(channel), index = m.selected)
         end if
     end for
@@ -488,6 +493,11 @@ sub drawGuide()
     if type(remote) = "roAssociativeArray"
         m.footer.visible = remote.infoHints <> false
     end if
+    m.guideDensity = m.settings.guideDensity
+    m.showLogos = m.settings.showLogos
+    m.showNumbers = m.settings.showNumbers
+    m.showNames = m.settings.showNames
+    m.showSubtitles = m.settings.showSubtitles
     if m.query <> "" then m.footer.text = "Search ALL: " + m.query + "    * > Clear search to restore the selected group"
     if m.connectionWarning <> "" then m.footer.text = m.connectionWarning
     if m.message <> "" then m.footer.text = m.message
@@ -536,6 +546,8 @@ sub renderCells(row as object, cells as object, selected as boolean)
         cells = [{startsAt: m.viewStart, endsAt: m.viewStart + m.span, program: invalid}]
         m.message = "This schedule is too dense to display. Live tuning is available."
     end if
+    m.tileHeight = 95
+    if m.guideDensity = "basic" then m.tileHeight = 60
     while row.tiles.count() < cells.count()
         root = row.root.createChild("Group")
         border = uiRect(root, 0, 0, 100, 95, "0x17344AFF")
@@ -576,7 +588,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
             fillWidth = width - inset * 2
             if fillWidth < 1 then fillWidth = 1
             tile.fill.width = fillWidth
-            tile.fill.height = 95 - inset * 2
+            tile.fill.height = m.tileHeight - inset * 2
             tile.fill.visible = width > inset * 2
             uiSetColor(tile.border, "0x17344AFF")
             uiSetColor(tile.fill, "0x0D1E35FF")
@@ -621,7 +633,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
                     tile.time.translation = [14 + offset, 55]
                     tile.time.width = remaining
                     episode = programEpisodeText(program, m.settings)
-                    if episode <> "" then tile.time.text = episode + " | " + tile.time.text
+                    if episode <> "" and m.showSubtitles then tile.time.text = episode + " | " + tile.time.text
                 end if
                 if hasReminder(m.reminders, row.uuid, program.id) then tile.title.text = "REM | " + tile.title.text
             end if

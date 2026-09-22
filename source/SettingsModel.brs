@@ -4,6 +4,11 @@ function settingsHubEntries(page as string, model as object) as object
         {title: "Guide history days", scope: "guide", key: "historyDays", values: [1, 3, 7, 14, 30]}
         {title: "Guide future days", scope: "guide", key: "futureDays", values: [1, 3, 7, 14, 30]}
         {title: "Channel sort", scope: "guide", key: "channelSort", values: ["number", "name", "id"]}
+        {title: "Guide density", scope: "guide", key: "guideDensity", values: ["preview", "basic"]}
+        {title: "Show channel logos", scope: "guide", key: "showLogos", values: [true, false]}
+        {title: "Show channel numbers", scope: "guide", key: "showNumbers", values: [true, false]}
+        {title: "Show channel names", scope: "guide", key: "showNames", values: [true, false]}
+        {title: "Show program subtitles", scope: "guide", key: "showSubtitles", values: [true, false]}
     ]
     if page = "player"
         entries = []

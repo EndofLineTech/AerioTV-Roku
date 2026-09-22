@@ -34,6 +34,11 @@ function normalizeGuideSettings(raw as dynamic) as object
     if type(p.tmdbFallback) <> "Boolean" and type(p.tmdbFallback) <> "roBoolean" then p.tmdbFallback = false
     if type(p.palette) <> "roAssociativeArray" then p.palette = {}
     if type(p.categoryRules) <> "roAssociativeArray" then p.categoryRules = {}
+    if p.guideDensity <> "preview" and p.guideDensity <> "basic" then p.guideDensity = "preview"
+    if type(p.showLogos) <> "Boolean" and type(p.showLogos) <> "roBoolean" then p.showLogos = true
+    if type(p.showNumbers) <> "Boolean" and type(p.showNumbers) <> "roBoolean" then p.showNumbers = true
+    if type(p.showNames) <> "Boolean" and type(p.showNames) <> "roBoolean" then p.showNames = true
+    if type(p.showSubtitles) <> "Boolean" and type(p.showSubtitles) <> "roBoolean" then p.showSubtitles = true
     return p
 end function
 
