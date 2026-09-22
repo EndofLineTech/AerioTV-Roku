@@ -29,7 +29,7 @@ sub init()
     m.credits.wrap = true
     m.buttons = []
     for i = 0 to 2
-        bg = uiRect(m.top, 460, 750 + i * 74, 1320, 64, "0x17344AFF")
+        bg = uiSurface(m.top, 460, 750 + i * 74, 1320, 64, 14, "0x263549FF")
         label = uiLabel(m.top, "", 480, 768 + i * 74, 1280, 40, 25)
         m.buttons.push({bg: bg, label: label})
     end for
@@ -109,12 +109,9 @@ sub render()
         row.label.visible = row.bg.visible
         if row.bg.visible
             row.label.text = labels[i]
-            row.bg.color = "0x17344AFF"
-            row.label.color = "0xE8F3FAFF"
-            if i = m.index
-                row.bg.color = "0x1AC4D8FF"
-                row.label.color = "0x0A1628FF"
-            end if
+            style = uiControlStyle("action", false, i = m.index)
+            row.bg.color = style.fill
+            row.label.color = style.ink
         end if
     end for
 end sub

@@ -66,6 +66,22 @@ def icon_png(kind, size=48):
     return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(bytes(rows), 9)) + chunk(b'IEND', b'')
 
 
+def pill_png(width=900, height=64):
+    rows = bytearray()
+    r = height / 2
+    for y in range(height):
+        rows.append(0)
+        for x in range(width):
+            hits = 0
+            for sy in range(4):
+                for sx in range(4):
+                    px, py = x + (sx + .5) / 4, y + (sy + .5) / 4
+                    cx = max(r, min(width - r, px))
+                    hits += (px - cx) ** 2 + (py - r) ** 2 <= r ** 2
+            rows.extend((255, 255, 255, round(255 * hits / 16)))
+    return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(bytes(rows), 9)) + chunk(b'IEND', b'')
+
+
 if __name__ == '__main__':
     root = pathlib.Path(__file__).resolve().parent.parent / 'images'
     for name, right, bottom in [('tl', False, False), ('tr', True, False), ('bl', False, True), ('br', True, True)]:
@@ -74,3 +90,4 @@ if __name__ == '__main__':
     for name in ['live', 'vod', 'settings', 'movie', 'series', 'continue', 'watchlist', 'hidden', 'categories', 'play', 'pause', 'channels', 'recent', 'minimize', 'options', 'stop']:
         (root / f'ui-icon-{name}.png').write_bytes(icon_png(name))
     print('Generated original navigation and transport glyphs.')
+    (root / 'ui-focus-pill.png').write_bytes(pill_png())

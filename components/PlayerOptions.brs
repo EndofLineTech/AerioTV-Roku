@@ -2,8 +2,7 @@ sub init()
     m.top.focusable = true
     m.top.visible = false
     uiRect(m.top, 0, 0, 1920, 1080, "0x000000BB")
-    uiRect(m.top, 460, 155, 1000, 755, "0x0D1E35FF")
-    uiRect(m.top, 460, 155, 1000, 3, "0x1AC4D8FF")
+    uiSurface(m.top, 460, 155, 1000, 755, 24, "0x0D1E35F0")
     m.title = uiLabel(m.top, "Player options", 510, 197, 900, 60, 36)
     m.note = uiLabel(m.top, "", 510, 265, 900, 54, 22, "0x9EB5C9FF")
     m.note.wrap = true
@@ -15,6 +14,7 @@ sub init()
     m.list.color = "0xE8F3FAFF"
     m.list.focusedColor = "0x0A1628FF"
     m.list.focusBitmapBlendColor = "0x1AC4D8FF"
+    m.list.focusBitmapUri = "pkg:/images/ui-focus-pill.png"
     m.list.observeField("itemSelected", "onSelected")
     m.list.observeField("itemFocused", "onFocused")
 end sub

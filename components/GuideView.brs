@@ -563,11 +563,19 @@ sub renderCells(row as object, cells as object, selected as boolean)
             tile.title.width = textWidth
             tile.time.width = textWidth
             focused = selected and cell.startsAt <= m.anchor and cell.endsAt > m.anchor
+            inset = 2
+            if focused then inset = 4
+            tile.fill.translation = [inset, inset]
+            fillWidth = width - inset * 2
+            if fillWidth < 1 then fillWidth = 1
+            tile.fill.width = fillWidth
+            tile.fill.height = 95 - inset * 2
+            tile.fill.visible = width > inset * 2
             tile.border.color = "0x17344AFF"
             tile.fill.color = "0x0D1E35FF"
             if focused
-                tile.border.color = "0x1AC4D8FF"
-                tile.fill.color = "0x10344AFF"
+                tile.border.color = "0xFFFFFFFF"
+                tile.fill.color = "0x365163FF"
             end if
             tile.title.text = gapText()
             tile.time.text = ""
@@ -743,7 +751,7 @@ sub openPicker(title as string, items as object, kind as string)
     m.pickerItems = items
     m.picker = m.top.createChild("Group")
     uiRect(m.picker, 0, 0, 1920, 1080, "0x000000CC")
-    uiRect(m.picker, 460, 130, 1000, 810, "0x0D1E35FF")
+    uiSurface(m.picker, 460, 130, 1000, 810, 24, "0x0D1E35F0")
     uiLabel(m.picker, title, 510, 170, 900, 66, 38)
     list = m.picker.createChild("LabelList")
     list.translation = [510, 265]
@@ -754,6 +762,7 @@ sub openPicker(title as string, items as object, kind as string)
     list.color = "0xE8F3FAFF"
     list.focusedColor = "0x0A1628FF"
     list.focusBitmapBlendColor = "0x1AC4D8FF"
+    list.focusBitmapUri = "pkg:/images/ui-focus-pill.png"
     content = CreateObject("roSGNode", "ContentNode")
     for each item in items
         child = content.createChild("ContentNode")

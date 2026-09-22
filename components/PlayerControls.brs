@@ -4,12 +4,16 @@ sub init()
     m.labels = ["Pause", "Channels", "Recent", "Minimize", "Options", "Stop"]
     m.cells = []
     for i = 0 to 5
-        x = 864 + i * 160
-        border = uiRect(m.top, x, 606, 150, 66, "0x17344AFF")
-        fill = uiRect(m.top, x + 3, 609, 144, 60, "0x0D1E35EE")
-        label = uiLabel(m.top, m.labels[i], x + 4, 625, 142, 39, 23)
+        x = 540 + i * 140
+        fill = uiSurface(m.top, x + 40, 598, 60, 60, 30, "0x263549EE")
+        icon = m.top.createChild("Poster")
+        icon.translation = [x + 54, 612]
+        icon.width = 32
+        icon.height = 32
+        icon.uri = "pkg:/images/ui-icon-" + m.actions[i] + ".png"
+        label = uiLabel(m.top, m.labels[i], x, 661, 140, 28, uiTypeSize("caption"))
         label.horizAlign = "center"
-        m.cells.push({border: border, fill: fill, label: label})
+        m.cells.push({fill: fill, label: label, icon: icon})
     end for
     draw()
 end sub
@@ -27,15 +31,17 @@ sub draw()
     if m.cells = invalid then return
     for i = 0 to m.cells.count() - 1
         cell = m.cells[i]
-        cell.border.color = "0x17344AFF"
-        cell.fill.color = "0x0D1E35EE"
-        if m.top.active and i = m.index
-            cell.border.color = "0x1AC4D8FF"
-            cell.fill.color = "0x10344AFF"
-        end if
+        focused = m.top.active and i = m.index
+        style = uiControlStyle("action", false, focused)
+        cell.fill.color = style.fill
+        cell.fill.focusScale = style.scale
+        cell.icon.blendColor = style.ink
+        cell.label.visible = focused
     end for
     m.cells[0].label.text = "Pause"
+    m.cells[0].icon.uri = "pkg:/images/ui-icon-pause.png"
     if m.top.paused then m.cells[0].label.text = "Play"
+    if m.top.paused then m.cells[0].icon.uri = "pkg:/images/ui-icon-play.png"
 end sub
 
 function handlePlayerKey(key as string, press as boolean) as boolean

@@ -3,8 +3,7 @@ sub init()
     m.base = ""
     m.logo = m.top.findNode("logo")
     canvas = m.top.findNode("canvas")
-    m.background = uiRect(canvas, 96, 684, 1728, 328, "0x0A1628EF")
-    uiRect(canvas, 96, 684, 1728, 3, "0x1AC4D8FF")
+    m.background = uiSurface(canvas, 96, 694, 1728, 318, 20, "0x0A1628EF")
     m.channelName = uiLabel(canvas, "", 246, 705, 1150, 38, 26, "0x1AC4D8FF")
     m.state = uiLabel(canvas, "", 1410, 705, 240, 36, 23, "0x1AC4D8FF")
     m.state.horizAlign = "right"
