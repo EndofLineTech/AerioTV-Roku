@@ -37,7 +37,10 @@ sub applyPresentation(model as dynamic)
             width = 280
             height = 94
         end if
-        bg = uiRect(m.canvas, x, y, width, height, "0x0D1E35FF")
+        radius = height / 2
+        if m.layout = "sidebar" then radius = 14
+        bg = uiSurface(m.canvas, x, y, width, height, radius, "0x00000000")
+        fill = uiSurface(m.canvas, x + 3, y + 3, width - 6, height - 6, radius - 3, "0x263549FF")
         labelY = y + 7
         labelHeight = height - 8
         if m.layout = "sidebar"
@@ -45,7 +48,7 @@ sub applyPresentation(model as dynamic)
             labelHeight = height - 18
         end if
         label = uiLabel(m.canvas, "", x + 12, labelY, width - 24, labelHeight, 23)
-        m.rows.push({bg: bg, label: label})
+        m.rows.push({bg: bg, fill: fill, label: label})
     end for
     if m.layout = "sidebar" then uiLabel(m.canvas, "Groups", 96, 270, 280, 32, 22, "0x1AC4D8FF")
     if m.layout = "pills" then m.caption = uiLabel(m.canvas, "", 580, 73, 740, 24, 18, "0x1AC4D8FF")
@@ -69,19 +72,16 @@ sub draw()
     for i = 0 to m.rows.count() - 1
         row = m.rows[i]
         row.bg.visible = first + i < m.groups.count()
+        row.fill.visible = row.bg.visible
         row.label.visible = row.bg.visible
         if row.bg.visible
             row.label.text = m.groups[first + i].name
-            row.bg.color = "0x0D1E35FF"
-            row.label.color = "0xE8F3FAFF"
-            if first + i = m.index
-                row.bg.color = "0x10344AFF"
-                row.label.color = "0x1AC4D8FF"
-                if m.top.active
-                    row.bg.color = "0x1AC4D8FF"
-                    row.label.color = "0x0A1628FF"
-                end if
-            end if
+            style = uiControlStyle("choice", first + i = m.index, m.top.active and first + i = m.index)
+            row.bg.color = style.ring
+            row.fill.color = style.fill
+            row.label.color = style.ink
+            row.bg.focusScale = style.scale
+            row.fill.focusScale = style.scale
         end if
     end for
 end sub

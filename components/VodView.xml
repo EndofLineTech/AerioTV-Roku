@@ -28,6 +28,6 @@
   <script type="text/brightscript" uri="VodMetadata.brs" />
   <children>
     <TopNavigation id="primaryNavigation" translation="[560,20]" selected="vod" />
-    <TopNavigation id="libraryNavigation" translation="[560,88]" allowUp="true" selected="movie" />
+    <TopNavigation id="libraryNavigation" translation="[560,88]" allowUp="true" selected="movie" style="choice" />
   </children>
 </component>

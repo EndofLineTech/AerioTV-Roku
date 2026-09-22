@@ -13,11 +13,16 @@ sub configureNavigation()
     m.cells = []
     for i = 0 to m.items.count() - 1
         x = i * 212
-        bg = uiRect(m.top, x, 0, 200, 50, "0x0D1E35FF")
-        label = uiLabel(m.top, m.items[i].label, x + 10, 9, 180, 36, 28)
+        bg = uiSurface(m.top, x, 0, 200, 50, 25, "0x00000000")
+        fill = uiSurface(m.top, x + 3, 3, 194, 44, 22, "0x00000000")
+        icon = m.top.createChild("Poster")
+        icon.translation = [x + 16, 13]
+        icon.width = 24
+        icon.height = 24
+        icon.uri = "pkg:/images/ui-icon-" + m.items[i].id + ".png"
+        label = uiLabel(m.top, m.items[i].label, x + 43, 9, 146, 36, uiTypeSize("button"))
         label.horizAlign = "center"
-        underline = uiRect(m.top, x + 12, 48, 176, 3, "0x1AC4D8FF")
-        m.cells.push({bg: bg, label: label, underline: underline})
+        m.cells.push({bg: bg, fill: fill, label: label, icon: icon})
     end for
     m.index = navigationFirst(m.items, focused)
     drawNavigation()
@@ -40,14 +45,13 @@ sub drawNavigation()
     if m.cells = invalid then return
     for i = 0 to m.cells.count() - 1
         cell = m.cells[i]
-        cell.bg.color = "0x0D1E35FF"
-        cell.label.color = "0xE8F3FAFF"
-        if m.items[i].enabled <> true then cell.label.color = "0x627384FF"
-        cell.underline.visible = m.items[i].id = m.top.selected
-        if m.top.active and i = m.index
-            cell.bg.color = "0x1AC4D8FF"
-            cell.label.color = "0x0A1628FF"
-        end if
+        style = uiControlStyle(m.top.style, m.items[i].id = m.top.selected, m.top.active and i = m.index, m.items[i].enabled = true)
+        cell.bg.color = style.ring
+        cell.fill.color = style.fill
+        cell.bg.focusScale = style.scale
+        cell.fill.focusScale = style.scale
+        cell.label.color = style.ink
+        cell.icon.blendColor = style.ink
     end for
 end sub
 
