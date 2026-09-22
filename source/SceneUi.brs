@@ -7,6 +7,65 @@ function uiRect(parent as object, x as float, y as float, w as float, h as float
     return node
 end function
 
+function uiPalette() as object
+    return {background: "0x0A1628FF", card: "0x0D1E35FF", elevated: "0x263549FF", accent: "0x1AC4D8FF", text: "0xE8F3FAFF", secondary: "0x9EB5C9FF", disabled: "0x627384FF", clear: "0x00000000", white: "0xFFFFFFFF", ink: "0x0A1628FF", focusWash: "0x365163FF"}
+end function
+
+function uiTypeSize(role as string) as integer
+    sizes = {heading: 36, section: 28, body: 24, secondary: 20, button: 24, caption: 18}
+    if sizes.doesExist(role) then return sizes[role]
+    return 24
+end function
+
+function uiControlStyle(kind as string, selected as boolean, focused as boolean, enabled = true as boolean) as object
+    p = uiPalette()
+    result = {fill: p.elevated, ink: p.secondary, ring: p.clear, scale: 1.0}
+    if kind = "primary" then result.fill = p.clear
+    if selected
+        result.fill = p.accent
+        result.ink = p.ink
+    end if
+    if focused
+        result.scale = 1.04
+        result.ink = p.white
+        result.ring = p.accent
+        if selected then result.ring = p.white
+        if kind = "primary" or kind = "action"
+            result.fill = p.white
+            result.ink = p.ink
+            result.ring = p.clear
+        end if
+    end if
+    if not enabled
+        result.ink = p.disabled
+        result.fill = p.clear
+        result.ring = p.clear
+        result.scale = 1.0
+    end if
+    return result
+end function
+
+function uiSurface(parent as object, x as float, y as float, w as float, h as float, radius as float, color as string) as object
+    node = parent.createChild("AerioSurface")
+    node.translation = [x, y]
+    node.width = w
+    node.height = h
+    node.radius = radius
+    node.color = color
+    return node
+end function
+
+' Non-overlapping rectangles and quarter-circle masks avoid alpha seams.
+function uiSurfaceBoxes(w as float, h as float, radius as float) as object
+    if w < 0 then w = 0
+    if h < 0 then h = 0
+    r = radius
+    if r < 0 then r = 0
+    if r > w / 2 then r = w / 2
+    if r > h / 2 then r = h / 2
+    return [{x: r, y: 0, w: w - 2 * r, h: h}, {x: 0, y: r, w: r, h: h - 2 * r}, {x: w - r, y: r, w: r, h: h - 2 * r}, {x: 0, y: 0, w: r, h: r}, {x: w - r, y: 0, w: r, h: r}, {x: 0, y: h - r, w: r, h: r}, {x: w - r, y: h - r, w: r, h: r}]
+end function
+
 function uiLabel(parent as object, text as string, x as float, y as float, w as float, h as float, size as integer, color = "0xE8F3FAFF" as string) as object
     node = parent.createChild("Label")
     node.translation = [x, y]

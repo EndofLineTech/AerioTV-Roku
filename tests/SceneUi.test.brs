@@ -17,6 +17,19 @@ sub main()
     assertEqual(formatClock(0, 5, "12"), "12:05 AM", "midnight")
     assertEqual(formatClock(12, 0, "12"), "12:00 PM", "noon")
     assertEqual(formatClock(23, 59, "24"), "23:59", "24-hour")
+    assertEqual(uiControlStyle("primary", false, true).fill, "0xFFFFFFFF", "primary focus is white")
+    assertEqual(uiControlStyle("primary", true, false).fill, "0x1AC4D8FF", "unfocused selection is accent")
+    assertEqual(uiControlStyle("choice", true, true).ring, "0xFFFFFFFF", "selected pill focus ring")
+    assertEqual(uiControlStyle("choice", false, true).ring, "0x1AC4D8FF", "unselected pill focus ring")
+    assertEqual(uiControlStyle("primary", true, true, false).scale, 1.0, "disabled never grows")
+    for each dims in [[200, 50, 25], [60, 60, 30], [10, 4, 50], [200, 50, 0]]
+        boxes = uiSurfaceBoxes(dims[0], dims[1], dims[2])
+        assertEqual(boxes.count(), 7, "fixed bounded surface node count")
+        for each bounds in boxes
+            if bounds.w < 0 or bounds.h < 0 or bounds.x < 0 or bounds.y < 0 then stop
+            if bounds.x + bounds.w > dims[0] or bounds.y + bounds.h > dims[1] then stop
+        end for
+    end for
     print "ALL TESTS PASSED"
 end sub
 

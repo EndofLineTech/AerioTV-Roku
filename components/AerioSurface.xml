@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="AerioSurface" extends="Group">
+  <interface>
+    <field id="width" type="float" value="100" onChange="layoutSurface" />
+    <field id="height" type="float" value="50" onChange="layoutSurface" />
+    <field id="radius" type="float" value="25" onChange="layoutSurface" />
+    <field id="color" type="color" value="0x0D1E35FF" onChange="layoutSurface" />
+    <field id="focusScale" type="float" value="1" onChange="animateSurface" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="AerioSurface.brs" />
+  <children>
+    <Group id="shape" />
+    <Animation id="focusAnimation" duration="0.15" easeFunction="inOutQuad">
+      <Vector2DFieldInterpolator id="focusScaleInterpolator" key="[0,1]" fieldToInterp="shape.scale" />
+    </Animation>
+  </children>
+</component>
