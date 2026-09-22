@@ -29,6 +29,7 @@ sub visualProbeTick()
     m.visualProbeTicks++
     if m.visualProbeTicks >= 8
         m.visualProbeTimer.control = "stop"
+        hideNotice()
         print "[visual-probe] ready "; m.visualProbeScreen
     end if
 end sub

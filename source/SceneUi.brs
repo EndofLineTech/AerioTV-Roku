@@ -66,6 +66,18 @@ function uiSurface(parent as object, x as float, y as float, w as float, h as fl
     return node
 end function
 
+' Center the entire icon + measured label run, not the label's leftover column.
+function uiPillContent(w as float, h as float, textWidth as float, iconWidth = 0 as float) as object
+    gap = 0
+    if iconWidth > 0 then gap = 8
+    maxText = w - 24 - iconWidth - gap
+    if maxText < 0 then maxText = 0
+    if textWidth > maxText then textWidth = maxText
+    if textWidth < 0 then textWidth = 0
+    start = (w - iconWidth - gap - textWidth) / 2
+    return {iconX: start, iconY: (h - iconWidth) / 2, textX: start + iconWidth + gap, textWidth: textWidth}
+end function
+
 ' Non-overlapping rectangles and quarter-circle masks avoid alpha seams.
 function uiSurfaceBoxes(w as float, h as float, radius as float) as object
     if w < 0 then w = 0

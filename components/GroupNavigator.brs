@@ -41,13 +41,9 @@ sub applyPresentation(model as dynamic)
         if m.layout = "sidebar" then radius = 14
         bg = uiSurface(m.canvas, x, y, width, height, radius, "0x00000000")
         fill = uiSurface(m.canvas, x + 3, y + 3, width - 6, height - 6, radius - 3, "0x263549FF")
-        labelY = y + 7
-        labelHeight = height - 8
-        if m.layout = "sidebar"
-            labelY = y + 16
-            labelHeight = height - 18
-        end if
-        label = uiLabel(m.canvas, "", x + 12, labelY, width - 24, labelHeight, 23)
+        label = uiLabel(m.canvas, "", x + 12, y, width - 24, height, 23)
+        label.vertAlign = "center"
+        if m.layout = "pills" then label.horizAlign = "center"
         m.rows.push({bg: bg, fill: fill, label: label})
     end for
     if m.layout = "sidebar" then uiLabel(m.canvas, "Groups", 96, 270, 280, 32, 22, "0x1AC4D8FF")

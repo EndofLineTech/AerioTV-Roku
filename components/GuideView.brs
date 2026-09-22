@@ -773,7 +773,8 @@ sub openPicker(title as string, items as object, kind as string)
     list.content = content
     list.observeField("itemSelected", "onPickerSelected")
     m.pickerList = list
-    uiLabel(m.picker, "Up/Down  Scroll choices     OK  Select     Back  Close", 510, 866, 900, 36, 21, "0x9EB5C9FF")
+    hints = uiRemoteHints(m.picker, 510, 866, 900, 36, 21)
+    hints.text = "Up/Down  Scroll choices     OK  Select     Back  Close"
     list.setFocus(true)
 end sub
 

@@ -13,6 +13,7 @@ sub init()
         icon.uri = "pkg:/images/ui-icon-" + m.actions[i] + ".png"
         label = uiLabel(m.top, m.labels[i], x, 661, 140, 28, uiTypeSize("caption"))
         label.horizAlign = "center"
+        label.vertAlign = "center"
         m.cells.push({fill: fill, label: label, icon: icon})
     end for
     draw()

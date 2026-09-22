@@ -20,7 +20,7 @@ sub init()
     focusedFont = m.list.focusedFont
     focusedFont.size = uiTypeSize("body")
     m.list.focusedFont = focusedFont
-    for each entry in [{id: "railTitle", role: "heading"}, {id: "footer", role: "secondary"}]
+    for each entry in [{id: "railTitle", role: "heading"}]
         label = m.top.findNode(entry.id)
         font = label.font
         font.size = uiTypeSize(entry.role)

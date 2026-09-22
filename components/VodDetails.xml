@@ -27,6 +27,6 @@
     </Group>
     <Poster id="tmdbLogo" uri="pkg:/images/tmdb-logo.png" translation="[120,850]" width="250" height="45" loadDisplayMode="scaleToFit" visible="false" />
     <Label id="attribution" translation="[460,855]" width="1300" height="80" wrap="true" color="0x9EB5C9FF" font="font:SmallestSystemFont" />
-    <Label translation="[120,982]" width="1680" height="44" text="Up/Down  Actions     OK  Select     Back  Library" color="0x9EB5C9FF" font="font:SmallSystemFont" />
+    <RemoteHints translation="[120,982]" width="1680" height="44" fontSize="22" text="Up/Down  Actions     OK  Select     Back  Library" />
   </children>
 </component>

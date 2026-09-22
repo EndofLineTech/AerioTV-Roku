@@ -60,7 +60,8 @@ sub init()
         fact.horizAlign = "center"
         m.tiles.push({root: root, border: border, poster: poster, title: title, fact: fact, corners: corners})
     end for
-    uiLabel(m.top, "Up from first row  Navigation    OK  Details    *  Library options    FF / Rew  Pages    Back  Return", 96, 990, 1728, 40, 23, "0x9EB5C9FF")
+    hints = uiRemoteHints(m.top, 96, 990, 1728, 40, 23)
+    hints.text = "Up from first row  Navigation    OK  Details    *  Library options    FF / Rew  Pages    Back  Return"
 end sub
 
 sub configureVod()

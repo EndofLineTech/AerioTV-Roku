@@ -16,12 +16,16 @@ sub configureNavigation()
         bg = uiSurface(m.top, x, 0, 200, 50, 25, "0x00000000")
         fill = uiSurface(m.top, x + 3, 3, 194, 44, 22, "0x00000000")
         icon = m.top.createChild("Poster")
-        icon.translation = [x + 16, 13]
         icon.width = 24
         icon.height = 24
         icon.uri = "pkg:/images/ui-icon-" + m.items[i].id + ".png"
-        label = uiLabel(m.top, m.items[i].label, x + 43, 9, 146, 36, uiTypeSize("button"))
+        label = uiLabel(m.top, m.items[i].label, 0, 0, 0, 50, uiTypeSize("button"))
+        content = uiPillContent(200, 50, label.localBoundingRect().width, 24)
+        icon.translation = [x + content.iconX, content.iconY]
+        label.translation = [x + content.textX, 0]
+        label.width = content.textWidth
         label.horizAlign = "center"
+        label.vertAlign = "center"
         m.cells.push({bg: bg, fill: fill, label: label, icon: icon})
     end for
     m.index = navigationFirst(m.items, focused)

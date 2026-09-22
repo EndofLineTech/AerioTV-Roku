@@ -2,9 +2,9 @@
 <component name="RemoteHints" extends="Group">
   <interface>
     <field id="text" type="string" onChange="renderHints" />
-    <field id="width" type="float" value="1728" />
-    <field id="height" type="float" value="36" />
-    <field id="fontSize" type="integer" value="22" />
+    <field id="width" type="float" value="1728" onChange="renderHints" />
+    <field id="height" type="float" value="36" onChange="renderHints" />
+    <field id="fontSize" type="integer" value="22" onChange="renderHints" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="RemoteHints.brs" />

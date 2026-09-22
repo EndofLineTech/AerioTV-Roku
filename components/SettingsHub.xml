@@ -22,6 +22,6 @@
     <Label id="heading" translation="[584,120]" width="1204" height="54" font="font:MediumBoldSystemFont" />
     <Label id="note" translation="[584,184]" width="1204" height="80" wrap="true" color="0x9EB5C9FF" font="font:SmallSystemFont" />
     <LabelList id="list" translation="[584,294]" itemSize="[1204,68]" numRows="8" itemSpacing="[0,8]" focusBitmapUri="pkg:/images/ui-focus-row.png" focusBitmapBlendColor="0x365163FF" focusedColor="0xFFFFFFFF" color="0xE8F3FAFF" />
-    <Label id="footer" translation="[96,974]" width="1728" height="40" text="Up / Down  Select     OK / Right  Open     Left / Back  Previous pane" font="font:SmallSystemFont" color="0x9EB5C9FF" />
+    <RemoteHints id="footer" translation="[96,974]" width="1728" height="40" fontSize="20" text="Up / Down  Select     OK / Right  Open     Left / Back  Previous pane" />
   </children>
 </component>
