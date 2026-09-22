@@ -22,7 +22,7 @@ sub renderHints()
             helpX = 0
             if button <> ""
                 surface = uiSurface(group, 0, 0, 0, m.top.height, m.top.height / 2, "0x294357FF")
-                keyLabel = uiLabel(group, button, 14, 0, 0, m.top.height, size, "0xFFFFFFFF")
+                keyLabel = uiLabel(group, button, 14, 0, 0, m.top.height, size, "0xE8F3FAFF")
                 keyWidth = keyLabel.localBoundingRect().width
                 if keyWidth + 28 >= remaining
                     m.top.removeChild(group)

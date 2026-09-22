@@ -20,6 +20,11 @@ function settingsHubEntries(page as string, model as object) as object
     if page = "remotePlayer" then return remoteSlotEntries("player")
     if page = "remoteGuide" then return remoteSlotEntries("guide")
     if page = "appearance" then return [
+        {title: "Color theme", scope: "device", key: "themePreset", values: ["aerio", "midnight", "sunset", "forest", "lavender", "monochrome", "light"]}
+        {title: "Appearance mode", scope: "device", key: "appearanceMode", values: ["dark", "light"]}
+        {title: "Custom accent (hex RGB)", action: "customAccent"}
+        {title: "Panel style", scope: "device", key: "panelStyle", values: ["translucent", "solid"]}
+        {title: "Reset appearance", action: "resetAppearance"}
         {title: "Group navigation", scope: "guide", key: "groupLayout", values: ["modal", "pills", "sidebar"]}
         {title: "Category colors", scope: "guide", key: "categoryColors", values: [true, false]}
         {title: "Show player logo", scope: "device", key: "infoLogo", values: [true, false]}
@@ -92,6 +97,10 @@ function settingsHubValue(model as object, scope as string, key as string) as dy
 end function
 
 function settingsHubChangeAllowed(model as object, scope as string, key as string, value as dynamic) as boolean
+    if scope = "device" and key = "customAccent"
+        if GetInterface(value, "ifString") = invalid then return false
+        return value = "" or CreateObject("roRegex", "^[0-9A-Fa-f]{6}$", "").isMatch(value)
+    end if
     for each page in ["live", "player", "appearance", "general"]
         for each entry in settingsHubEntries(page, model)
             if entry.scope = scope and entry.key = key
@@ -105,6 +114,13 @@ function settingsHubChangeAllowed(model as object, scope as string, key as strin
 end function
 
 function settingsValueText(value as dynamic, key = "" as string) as string
+    if key = "themePreset"
+        names = {aerio: "AerioTV", midnight: "Midnight", sunset: "Sunset", forest: "Forest", lavender: "Lavender", monochrome: "Monochrome", light: "Neutral"}
+        if names.doesExist(textValue(value)) then return names[value]
+    end if
+    if key = "appearanceMode"
+        if value = "light" then return "Light" else return "Dark"
+    end if
     if key = "archiveSkipSeconds"
         if value = 60 then return "1 minute"
         if value = 120 then return "2 minutes"

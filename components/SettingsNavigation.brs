@@ -45,6 +45,20 @@ sub onSettingsHubSelection(event as object)
         refreshSettingsHub()
         return
     end if
+    if item.action = "resetAppearance"
+        before = copyJson(m.devicePreferences)
+        m.devicePreferences.themePreset = "aerio"
+        m.devicePreferences.appearanceMode = "dark"
+        m.devicePreferences.customAccent = ""
+        m.devicePreferences.panelStyle = "translucent"
+        if not persistPreferences()
+            m.devicePreferences = before
+            m.preferenceStore.device = before
+        end if
+        applyDevicePreferences()
+        refreshSettingsHub()
+        return
+    end if
     allowed = settingsHubChangeAllowed(m.settingsHub.model, item.scope, item.key, item.value)
     if not allowed then return
     if item.scope = "device"

@@ -24,6 +24,20 @@ sub main()
     assertEqual(uiColorForPalette("0x0A1628FF", palette, false), "0x111111FF", "background uses theme")
     assertEqual(uiColorForPalette("0x0A1628FF", palette, true), palette.ink, "dark focus ink is not light-mode background")
     assertEqual(uiColorForPalette("0xFF4757FF", palette, false), "0xFF4757FF", "EPG semantic red is not recolored")
+    for each preset in ["aerio", "midnight", "sunset", "forest", "lavender", "monochrome", "light"]
+        for each mode in ["dark", "light"]
+            themed = uiResolvedPalette({themePreset: preset, appearanceMode: mode})
+            if uiContrastRatio(themed.text, themed.background) < 4.5 then stop
+            if uiContrastRatio(themed.onAccent, themed.accent) < 4.5 then stop
+        end for
+    end for
+    assertEqual(uiResolvedPalette({themePreset: "lavender"}).accent, "0xA78BFAFF", "upstream lavender accent")
+    assertEqual(uiResolvedPalette({customAccent: "FF8800"}).accent, "0xFF8800FF", "custom accent override")
+    assertEqual(uiResolvedPalette({customAccent: "not-hex"}).accent, "0x1AC4D8FF", "malformed accent fallback")
+    prefs = normalizeDevicePreferences({themePreset: "unknown", appearanceMode: "system", customAccent: "invalid"})
+    assertEqual(prefs.themePreset, "aerio", "safe migration preset")
+    assertEqual(prefs.appearanceMode, "dark", "no invented system appearance")
+    assertEqual(prefs.customAccent, "", "invalid accent cleared")
     assertEqual(uiControlStyle("primary", false, true).fill, "0xFFFFFFFF", "primary focus is white")
     assertEqual(uiControlStyle("primary", true, false).fill, "0x1AC4D8FF", "unfocused selection is accent")
     assertEqual(uiControlStyle("choice", true, true).ring, "0xFFFFFFFF", "selected pill focus ring")

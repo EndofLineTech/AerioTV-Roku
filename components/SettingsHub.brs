@@ -51,7 +51,7 @@ sub renderSettings()
     if m.top.model = invalid then return
     focused = m.list.itemFocused
     model = m.top.model
-    if m.choice <> invalid and m.choice.action <> "remoteSlot" and m.choice.action <> "resetRemoteMapConfirm"
+    if m.choice <> invalid and m.choice.action <> "remoteSlot" and m.choice.action <> "resetRemoteMapConfirm" and m.choice.action <> "resetAppearanceConfirm"
         currentValue = settingsHubValue(model, m.choice.scope, m.choice.key)
         if not settingsHubChangeAllowed(model, m.choice.scope, m.choice.key, currentValue)
             m.choice = invalid
@@ -67,7 +67,7 @@ sub renderSettings()
     if titles.doesExist(m.page) then m.heading.text = titles[m.page]
     m.note.text = "Changes are saved on this Roku. Back returns to the previous page without moving the guide."
     if m.page = "player" then m.note.text = "Archive skip supports whole-minute provider windows. Audio compatibility changes take effect on the next tune."
-    if m.page = "appearance" then m.note.text = "Overlay changes apply immediately without interrupting playback. All fields default to On."
+    if m.page = "appearance" then m.note.text = "Appearance changes apply on this Roku without interrupting playback. Reset restores the default colors."
     if m.page = "general" then m.note.text = "Guide startup never plays automatically. Mini startup resumes only the last available channel after it starts."
     if m.page = "about" then m.note.text = "This is an independent Roku client. License and attribution text is included in the installed package."
     if m.page = "whatsNew" then m.note.text = "Release notes describe implemented Roku features. Marking read only dismisses this version's startup notice."
@@ -82,9 +82,9 @@ sub renderSettings()
             if value = current then title = "[Selected] " + title
             m.items.push({title: title, value: value})
         end for
-    else if m.choice <> invalid and m.choice.action = "resetRemoteMapConfirm"
-        m.heading.text = "Reset remote controls?"
-        m.note.text = "This restores the standard Player and Guide mappings."
+    else if m.choice <> invalid and (m.choice.action = "resetRemoteMapConfirm" or m.choice.action = "resetAppearanceConfirm")
+        m.heading.text = m.choice.title
+        m.note.text = "Restore defaults? Other preferences are retained."
         m.items = [{title: "Reset to defaults", value: "reset"}, {title: "Cancel", value: "cancel"}]
     else if m.choice <> invalid
         m.heading.text = m.choice.title
@@ -110,6 +110,11 @@ sub renderSettings()
     content = CreateObject("roSGNode", "ContentNode")
     for each item in m.items
         label = item.title
+        if item.action = "customAccent"
+            accent = textValue(model.device.customAccent)
+            if accent = "" then accent = "Preset"
+            label += ": " + accent
+        end if
         if item.action = "remoteSlot" then label += ": " + remoteActionText(resolveRemoteAction(model.device.remoteMap, item.context, item.slot))
         if item.key <> invalid then label += ": " + settingsValueText(settingsHubValue(model, item.scope, item.key), item.key)
         content.createChild("ContentNode").title = "   " + label
@@ -134,8 +139,10 @@ sub selectSetting(index as integer)
         choice = m.choice
         m.top.selection = {account: m.top.model.account, action: "setRemoteAction", context: choice.context, slot: choice.slot, value: item.value}
         goBackSettings()
-    else if m.choice <> invalid and m.choice.action = "resetRemoteMapConfirm"
-        if item.value = "reset" then m.top.selection = {account: m.top.model.account, action: "resetRemoteMap"}
+    else if m.choice <> invalid and (m.choice.action = "resetRemoteMapConfirm" or m.choice.action = "resetAppearanceConfirm")
+        action = "resetRemoteMap"
+        if m.choice.action = "resetAppearanceConfirm" then action = "resetAppearance"
+        if item.value = "reset" then m.top.selection = {account: m.top.model.account, action: action}
         goBackSettings()
     else if m.choice <> invalid
         choice = m.choice
@@ -143,6 +150,14 @@ sub selectSetting(index as integer)
         goBackSettings()
     else if item.action = "connection"
         m.top.selection = {account: m.top.model.account, action: "connection"}
+    else if item.action = "customAccent"
+        m.accentDialog = CreateObject("roSGNode", "KeyboardDialog")
+        m.accentDialog.title = "Accent: 6 hex digits (empty = preset)"
+        m.accentDialog.text = textValue(m.top.model.device.customAccent)
+        m.accentDialog.buttons = ["Save", "Cancel"]
+        m.accentDialog.observeField("buttonSelected", "onAccentChoice")
+        m.accentDialog.observeField("wasClosed", "onAccentClosed")
+        m.top.getScene().dialog = m.accentDialog
     else if item.action = "about" or item.action = "whatsNew" or item.action = "licenses"
         m.stack.push({page: m.page, index: index})
         m.page = item.action
@@ -151,9 +166,9 @@ sub selectSetting(index as integer)
     else if item.action = "markWhatsNew"
         m.top.selection = {account: m.top.model.account, action: "markWhatsNew", value: m.top.model.version}
         goBackSettings()
-    else if item.action = "resetRemoteMap"
+    else if item.action = "resetRemoteMap" or item.action = "resetAppearance"
         m.stack.push({page: m.page, index: index})
-        m.choice = {title: "Reset remote controls", action: "resetRemoteMapConfirm"}
+        m.choice = {title: item.title + "?", action: item.action + "Confirm"}
         renderSettings()
         m.list.jumpToItem = 0
     else
@@ -162,6 +177,27 @@ sub selectSetting(index as integer)
         renderSettings()
         m.list.jumpToItem = 0
     end if
+end sub
+
+sub onAccentChoice(event as object)
+    if m.accentDialog = invalid then return
+    if not m.accentDialog.isSameNode(event.getRoSGNode()) then return
+    if event.getData() = 0
+        value = ucase(m.accentDialog.text.trim())
+        if not settingsHubChangeAllowed(m.top.model, "device", "customAccent", value)
+            m.accentDialog.title = "Use exactly 6 hex digits, or leave empty"
+            return
+        end if
+        m.top.selection = {account: m.top.model.account, scope: "device", key: "customAccent", value: value}
+    end if
+    m.accentDialog.close = true
+end sub
+
+sub onAccentClosed(event as object)
+    if m.accentDialog = invalid then return
+    if not m.accentDialog.isSameNode(event.getRoSGNode()) then return
+    m.accentDialog = invalid
+    if m.top.active then m.list.setFocus(true)
 end sub
 
 sub goBackSettings()

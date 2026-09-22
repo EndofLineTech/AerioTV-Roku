@@ -26,6 +26,15 @@ end function
 function normalizeDevicePreferences(raw as dynamic) as object
     result = {}
     if type(raw) = "roAssociativeArray" then result = copyJson(raw)
+    preset = "aerio"
+    for each choice in ["aerio", "midnight", "sunset", "forest", "lavender", "monochrome", "light"]
+        if result.themePreset = choice then preset = choice
+    end for
+    result.themePreset = preset
+    if result.appearanceMode <> "light" then result.appearanceMode = "dark"
+    result.customAccent = ucase(textValue(result.customAccent))
+    if not CreateObject("roRegex", "^[0-9A-F]{6}$", "").isMatch(result.customAccent) then result.customAccent = ""
+    if result.panelStyle <> "solid" then result.panelStyle = "translucent"
     result.channelDirection = textValue(result.channelDirection)
     result.videoScale = textValue(result.videoScale)
     result.audioMode = textValue(result.audioMode)

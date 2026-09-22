@@ -19,9 +19,88 @@ function uiAppearance() as object
 end function
 
 function uiResolvedPalette(preferences as object) as object
+    cacheKey = ""
+    for each key in ["themePreset", "appearanceMode", "customAccent", "panelStyle"]
+        if GetInterface(preferences[key], "ifString") <> invalid then cacheKey += preferences[key]
+        cacheKey += "|"
+    end for
+    if m.uiPaletteCacheKey = cacheKey and m.uiPaletteCache <> invalid then return m.uiPaletteCache
     result = uiPalette()
-    result.onAccent = result.ink
+    presets = {
+        aerio: ["0A1628", "0D1E35", "1AC4D8", "F2F7FA", "0E8FA0"]
+        midnight: ["0A0F1A", "111827", "60A5FA", "F4F6FB", "2563EB"]
+        sunset: ["0F0A07", "1A1108", "FB923C", "FCF7F2", "E8590C"]
+        forest: ["080F0A", "0E1A10", "4ADE80", "F3F8F4", "16A34A"]
+        lavender: ["0C0A12", "130F1E", "A78BFA", "F7F5FC", "7C3AED"]
+        monochrome: ["0A0A0A", "111111", "E2E8F0", "F5F5F5", "475569"]
+        light: ["0E1518", "17211F", "3E9EAC", "F6F8FA", "2B7A86"]
+    }
+    preset = "aerio"
+    if GetInterface(preferences.themePreset, "ifString") <> invalid
+        if presets.doesExist(preferences.themePreset) then preset = preferences.themePreset
+    end if
+    selected = presets[preset]
+    result.background = "0x" + selected[0] + "FF"
+    result.card = "0x" + selected[1] + "FF"
+    result.accent = "0x" + selected[2] + "FF"
+    result.lightMode = preferences.appearanceMode = "light"
+    if result.lightMode
+        result.background = "0x" + selected[3] + "FF"
+        result.card = "0xFFFFFFFF"
+        result.accent = "0x" + selected[4] + "FF"
+        result.text = "0x0F1B24FF"
+        result.secondary = "0x435366FF"
+        result.disabled = "0x697687FF"
+    end if
+    if GetInterface(preferences.customAccent, "ifString") <> invalid
+        if CreateObject("roRegex", "^[0-9A-Fa-f]{6}$", "").isMatch(preferences.customAccent) then result.accent = "0x" + ucase(preferences.customAccent) + "FF"
+    end if
+    result.elevated = uiMixColor(result.card, result.text, 0.12)
+    result.focusWash = uiMixColor(result.card, result.accent, 0.24)
+    result.border = uiMixColor(result.card, result.text, 0.22)
+    result.focusBorder = "0xFFFFFFFF"
+    if result.lightMode then result.focusBorder = result.accent
+    result.onAccent = "0x000000FF"
+    if uiContrastRatio(result.accent, "0xFFFFFFFF") > uiContrastRatio(result.accent, "0x000000FF") then result.onAccent = "0xFFFFFFFF"
+    result.solid = preferences.panelStyle = "solid"
+    m.uiPaletteCacheKey = cacheKey
+    m.uiPaletteCache = result
     return result
+end function
+
+function uiHexByte(color as string, position as integer) as integer
+    digits = "0123456789ABCDEF"
+    high = instr(1, digits, ucase(mid(color, position, 1))) - 1
+    low = instr(1, digits, ucase(mid(color, position + 1, 1))) - 1
+    return high * 16 + low
+end function
+
+function uiMixColor(base as string, tint as string, amount as float) as string
+    digits = "0123456789ABCDEF"
+    result = "0x"
+    for each position in [3, 5, 7]
+        value = int(uiHexByte(base, position) * (1 - amount) + uiHexByte(tint, position) * amount + 0.5)
+        result += mid(digits, (value \ 16) + 1, 1) + mid(digits, (value mod 16) + 1, 1)
+    end for
+    return result + "FF"
+end function
+
+function uiLuminance(color as string) as float
+    result = 0.0
+    weights = [0.2126, 0.7152, 0.0722]
+    for i = 0 to 2
+        value = uiHexByte(color, 3 + i * 2) / 255.0
+        if value <= 0.04045 then value /= 12.92 else value = ((value + 0.055) / 1.055) ^ 2.4
+        result += value * weights[i]
+    end for
+    return result
+end function
+
+function uiContrastRatio(a as string, b as string) as float
+    first = uiLuminance(a)
+    second = uiLuminance(b)
+    if first > second then return (first + 0.05) / (second + 0.05)
+    return (second + 0.05) / (first + 0.05)
 end function
 
 function uiColorForPalette(color as string, palette as object, isText as boolean) as string
@@ -38,9 +117,12 @@ function uiColorForPalette(color as string, palette as object, isText as boolean
     if rgb = "365163" or rgb = "10344A" then role = "focusWash"
     if rgb = "17344A" then role = "border"
     if rgb = "0A1629" then role = "onAccent"
+    if rgb = "FFFFFE" then role = "focusBorder"
     if isText and (rgb = "0A1628" or rgb = "081525") then role = "ink"
     if role = "" then return color
-    return left(palette[role], 8) + right(color, 2)
+    alpha = right(color, 2)
+    if palette.solid = true and (role = "background" or role = "card" or role = "elevated") and alpha <> "00" then alpha = "FF"
+    return left(palette[role], 8) + alpha
 end function
 
 sub uiSetColor(node as object, color as string, field = "color" as string)
@@ -96,6 +178,7 @@ function uiControlStyle(kind as string, selected as boolean, focused as boolean,
             result.fill = p.white
             result.ink = p.ink
             result.ring = p.clear
+            if uiAppearance().appearanceMode = "light" then result.ring = p.accent
         end if
     end if
     if kind = "row"

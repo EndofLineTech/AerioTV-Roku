@@ -22,6 +22,15 @@ sub visualProbeTick()
         else if m.visualProbeScreen = "pills"
             m.guide.callFunc("applyHubGuideSetting", "groupLayout", "pills")
             m.guide.findNode("primaryNavigation").active = true
+        else if m.visualProbeScreen = "lavender" or m.visualProbeScreen = "light"
+            m.devicePreferences = copyJson(m.devicePreferences)
+            m.devicePreferences.themePreset = "lavender"
+            m.devicePreferences.customAccent = ""
+            m.devicePreferences.appearanceMode = "dark"
+            if m.visualProbeScreen = "light" then m.devicePreferences.appearanceMode = "light"
+            applyDevicePreferences()
+            openSettingsHub()
+            m.settingsHub.callFunc("selectSettingsCategory", 3)
         end if
         m.visualProbeStage = 1
         return

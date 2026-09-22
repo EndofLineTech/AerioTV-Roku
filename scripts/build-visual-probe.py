@@ -4,7 +4,7 @@ from pathlib import Path
 import zipfile
 
 parser = argparse.ArgumentParser()
-parser.add_argument('screen', choices=['settings', 'vod', 'pills'])
+parser.add_argument('screen', choices=['settings', 'vod', 'pills', 'lavender', 'light'])
 args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
 with zipfile.ZipFile(root / 'out/aeriotv-roku.zip') as source:

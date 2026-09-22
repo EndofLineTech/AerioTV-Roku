@@ -581,7 +581,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
             uiSetColor(tile.border, "0x17344AFF")
             uiSetColor(tile.fill, "0x0D1E35FF")
             if focused
-                uiSetColor(tile.border, "0xFFFFFFFF")
+                uiSetColor(tile.border, "0xFFFFFEFF")
                 uiSetColor(tile.fill, "0x365163FF")
             end if
             tile.title.text = gapText()
