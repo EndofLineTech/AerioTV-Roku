@@ -1,5 +1,5 @@
 sub init()
-    m.global.addFields({metadataSession: CreateObject("roDeviceInfo").getRandomUUID(), cacheEpoch: CreateObject("roDeviceInfo").getRandomUUID(), networkTimeoutMs: 20000})
+    m.global.addFields({metadataSession: CreateObject("roDeviceInfo").getRandomUUID(), cacheEpoch: CreateObject("roDeviceInfo").getRandomUUID(), networkTimeoutMs: 20000, appearance: {}})
     m.top.focusable = true
     m.top.backgroundColor = "0x0A1628FF"
     m.top.backgroundUri = ""
@@ -2064,6 +2064,14 @@ sub applyClockFormat()
 end sub
 
 sub applyDevicePreferences()
+    m.global.appearance = m.devicePreferences
+    if type(m.top) <> "roAssociativeArray"
+        uiSetColor(m.top.findNode("miniBorder"), "0x1AC4D8FF")
+        uiSetColor(m.top.findNode("miniCaption"), "0x1AC4D8FF")
+        uiSetColor(m.top.findNode("noticeBackground"), "0x172D43F5")
+        uiSetColor(m.top.findNode("noticeText"), "0xE8F3FAFF")
+        uiApplyAppearanceTree(m.top)
+    end if
     m.global.networkTimeoutMs = m.devicePreferences.networkTimeoutSeconds * 1000
     if m.capabilityClock <> invalid then m.capabilityClock.duration = m.devicePreferences.refreshSeconds
     if m.guide <> invalid then m.guide.remotePreferences = m.devicePreferences

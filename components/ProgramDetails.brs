@@ -110,8 +110,8 @@ sub render()
         if row.bg.visible
             row.label.text = labels[i]
             style = uiControlStyle("action", false, i = m.index)
-            row.bg.color = style.fill
-            row.label.color = style.ink
+            uiSetColor(row.bg, style.fill)
+            uiSetColor(row.label, style.ink)
         end if
     end for
 end sub

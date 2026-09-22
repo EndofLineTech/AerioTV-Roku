@@ -144,10 +144,10 @@ sub draw()
         group.root.visible = m.groupsOpen and groupStart + i < m.groups.count()
         if group.root.visible
             group.title.text = m.groups[groupStart + i].name
-            group.bg.color = "0x0D1E3540"
-            if groupStart + i = m.groupIndex then group.bg.color = "0x10344AFF"
-            group.title.color = "0xE8F3FAFF"
-            if groupStart + i = m.groupIndex and m.focus = "groups" then group.title.color = "0x1AC4D8FF"
+            uiSetColor(group.bg, "0x0D1E3540")
+            if groupStart + i = m.groupIndex then uiSetColor(group.bg, "0x10344AFF")
+            uiSetColor(group.title, "0xE8F3FAFF")
+            if groupStart + i = m.groupIndex and m.focus = "groups" then uiSetColor(group.title, "0x1AC4D8FF")
         end if
         row = m.rows[i]
         row.root.translation = [x, 202 + i * 90]
@@ -171,11 +171,11 @@ sub draw()
             end if
             if m.resetFailed and row.logo.loadStatus = "failed" then row.logo.uri = ""
             if row.logo.uri <> uri then row.logo.uri = uri
-            row.border.color = "0x17344A20"
-            row.fill.color = "0x0D1E3530"
+            uiSetColor(row.border, "0x17344A20")
+            uiSetColor(row.fill, "0x0D1E3530")
             if m.focus = "channels" and m.start + i = m.selected
-                row.border.color = "0x1AC4D8FF"
-                row.fill.color = "0x10344AFF"
+                uiSetColor(row.border, "0x1AC4D8FF")
+                uiSetColor(row.fill, "0x10344AFF")
             end if
         end if
     end for

@@ -18,9 +18,9 @@ sub drawSettingsRail()
     for i = 0 to m.railCells.count() - 1
         cell = m.railCells[i]
         style = uiControlStyle("row", i = m.railSelected, m.focusRegion = "rail" and i = m.railIndex)
-        cell.ring.color = style.ring
-        cell.fill.color = style.fill
-        cell.label.color = style.ink
+        uiSetColor(cell.ring, style.ring)
+        uiSetColor(cell.fill, style.fill)
+        uiSetColor(cell.label, style.ink)
         cell.ring.focusScale = style.scale
         cell.fill.focusScale = style.scale
     end for

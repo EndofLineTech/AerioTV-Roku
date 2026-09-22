@@ -79,9 +79,9 @@ sub draw()
         if row.bg.visible
             row.label.text = m.groups[first + i].name
             style = uiControlStyle("choice", first + i = m.index, m.top.active and first + i = m.index)
-            row.bg.color = style.ring
-            row.fill.color = style.fill
-            row.label.color = style.ink
+            uiSetColor(row.bg, style.ring)
+            uiSetColor(row.fill, style.fill)
+            uiSetColor(row.label, style.ink)
             row.bg.focusScale = style.scale
             row.fill.focusScale = style.scale
         end if

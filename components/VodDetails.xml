@@ -15,9 +15,10 @@
     <function name="focusActions" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="VodDetails.brs" />
   <children>
-    <Rectangle width="1920" height="1080" color="0x081525FF" />
+    <Rectangle id="background" width="1920" height="1080" color="0x081525FF" />
     <Label id="title" translation="[460,90]" width="1300" height="100" wrap="true" maxLines="2" font="font:LargeBoldSystemFont" />
     <Label id="placeholder" translation="[128,370]" width="292" height="80" wrap="true" text="Artwork unavailable" color="0x9EB5C9FF" font="font:SmallSystemFont" />
     <Poster id="poster" translation="[120,210]" width="300" height="450" loadWidth="300" loadHeight="450" loadDisplayMode="scaleToFit" />

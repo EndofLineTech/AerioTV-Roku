@@ -61,13 +61,13 @@ sub render()
         row.root.visible = at < m.entries.count()
         if row.root.visible
             entry = m.entries[at]
-            row.background.color = "0x0D1E35FF"
-            row.title.color = "0xE8F3FAFF"
-            row.subtitle.color = "0x9EB5C9FF"
+            uiSetColor(row.background, "0x0D1E35FF")
+            uiSetColor(row.title, "0xE8F3FAFF")
+            uiSetColor(row.subtitle, "0x9EB5C9FF")
             if at = m.index
-                row.background.color = "0x1AC4D8FF"
-                row.title.color = "0x0A1628FF"
-                row.subtitle.color = "0x0A1628FF"
+                uiSetColor(row.background, "0x1AC4D8FF")
+                uiSetColor(row.title, "0x0A1629FF")
+                uiSetColor(row.subtitle, "0x0A1629FF")
             end if
             row.subtitle.text = ""
             if entry.program <> invalid

@@ -17,6 +17,13 @@ sub main()
     assertEqual(formatClock(0, 5, "12"), "12:05 AM", "midnight")
     assertEqual(formatClock(12, 0, "12"), "12:00 PM", "noon")
     assertEqual(formatClock(23, 59, "24"), "23:59", "24-hour")
+    palette = uiPalette()
+    palette.accent = "0xA78BFAFF"
+    palette.background = "0x111111FF"
+    assertEqual(uiColorForPalette("0x1AC4D840", palette, false), "0xA78BFA40", "theme recolors accent while retaining opacity")
+    assertEqual(uiColorForPalette("0x0A1628FF", palette, false), "0x111111FF", "background uses theme")
+    assertEqual(uiColorForPalette("0x0A1628FF", palette, true), palette.ink, "dark focus ink is not light-mode background")
+    assertEqual(uiColorForPalette("0xFF4757FF", palette, false), "0xFF4757FF", "EPG semantic red is not recolored")
     assertEqual(uiControlStyle("primary", false, true).fill, "0xFFFFFFFF", "primary focus is white")
     assertEqual(uiControlStyle("primary", true, false).fill, "0x1AC4D8FF", "unfocused selection is accent")
     assertEqual(uiControlStyle("choice", true, true).ring, "0xFFFFFFFF", "selected pill focus ring")

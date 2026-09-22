@@ -11,9 +11,9 @@ sub init()
     m.list.itemSize = [900, 64]
     m.list.itemSpacing = [0, 0]
     m.list.numRows = 8
-    m.list.color = "0xE8F3FAFF"
-    m.list.focusedColor = "0x0A1628FF"
-    m.list.focusBitmapBlendColor = "0x1AC4D8FF"
+    uiSetColor(m.list, "0xE8F3FAFF")
+    uiSetColor(m.list, "0x0A1629FF", "focusedColor")
+    uiSetColor(m.list, "0x1AC4D8FF", "focusBitmapBlendColor")
     m.list.focusBitmapUri = "pkg:/images/ui-focus-pill.png"
     m.list.observeField("itemSelected", "onSelected")
     m.list.observeField("itemFocused", "onFocused")

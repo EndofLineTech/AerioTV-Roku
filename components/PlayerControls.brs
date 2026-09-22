@@ -34,9 +34,9 @@ sub draw()
         cell = m.cells[i]
         focused = m.top.active and i = m.index
         style = uiControlStyle("action", false, focused)
-        cell.fill.color = style.fill
+        uiSetColor(cell.fill, style.fill)
         cell.fill.focusScale = style.scale
-        cell.icon.blendColor = style.ink
+        uiSetColor(cell.icon, style.ink, "blendColor")
         cell.label.visible = focused
     end for
     m.cells[0].label.text = "Pause"

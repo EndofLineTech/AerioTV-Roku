@@ -316,20 +316,22 @@ sub drawVod()
         tile.fact.visible = i < m.items.count()
         if i < m.items.count()
             item = m.items[i]
-            tile.border.color = "0x263549FF"
-            if i = m.index then tile.border.color = "0x1AC4D8FF"
-            tile.title.color = "0xE8F3FAFF"
+            borderColor = "0x263549FF"
+            if i = m.index then borderColor = "0x1AC4D8FF"
+            uiSetColor(tile.border, borderColor)
+            uiSetColor(tile.title, "0xE8F3FAFF")
             if compact
                 style = uiControlStyle("action", false, i = m.index)
                 tile.border.translation = [0, 0]
                 tile.border.width = 336
                 tile.border.height = 116
                 tile.border.radius = 24
-                tile.border.color = style.fill
+                borderColor = style.fill
+                uiSetColor(tile.border, borderColor)
                 tile.title.translation = [16, 18]
                 tile.title.width = 304
-                tile.title.color = style.ink
-                tile.fact.color = style.ink
+                uiSetColor(tile.title, style.ink)
+                uiSetColor(tile.fact, style.ink)
                 tile.fact.translation = [16, 78]
                 tile.fact.width = 304
             else
@@ -341,11 +343,11 @@ sub drawVod()
                 tile.title.width = 328
                 tile.fact.translation = [4, 354]
                 tile.fact.width = 328
-                tile.fact.color = "0x9EB5C9FF"
+                uiSetColor(tile.fact, "0x9EB5C9FF")
             end if
             for each corner in tile.corners
                 corner.visible = not compact
-                corner.blendColor = tile.border.color
+                uiSetColor(corner, borderColor, "blendColor")
             end for
             tile.title.text = item.title
             tile.fact.text = item.year + "  " + item.rating

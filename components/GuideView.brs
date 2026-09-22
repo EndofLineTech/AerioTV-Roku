@@ -578,16 +578,16 @@ sub renderCells(row as object, cells as object, selected as boolean)
             tile.fill.width = fillWidth
             tile.fill.height = 95 - inset * 2
             tile.fill.visible = width > inset * 2
-            tile.border.color = "0x17344AFF"
-            tile.fill.color = "0x0D1E35FF"
+            uiSetColor(tile.border, "0x17344AFF")
+            uiSetColor(tile.fill, "0x0D1E35FF")
             if focused
-                tile.border.color = "0xFFFFFFFF"
-                tile.fill.color = "0x365163FF"
+                uiSetColor(tile.border, "0xFFFFFFFF")
+                uiSetColor(tile.fill, "0x365163FF")
             end if
             tile.title.text = gapText()
             tile.time.text = ""
             if cell.program <> invalid
-                if not focused then tile.fill.color = programTint(cell.program, m.settings)
+                if not focused then uiSetColor(tile.fill, programTint(cell.program, m.settings))
                 program = cell.program
                 tile.title.text = program.title
                 tile.time.text = uiTime(program.startsAt) + " - " + uiTime(program.endsAt)
@@ -607,7 +607,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
                     badge.root.visible = true
                     badge.root.translation = [14 + flag.x, 57]
                     badge.surface.width = flag.width
-                    badge.surface.color = flag.color
+                    uiSetColor(badge.surface, flag.color)
                     labelBounds = uiFlagLabelBounds(flag.label, flag.width)
                     badge.label.translation = [labelBounds.x, labelBounds.y]
                     badge.label.width = labelBounds.width
@@ -796,9 +796,9 @@ sub openPicker(title as string, items as object, kind as string)
     list.itemSpacing = [0, 0]
     list.numRows = 8
     list.clippingRect = [0, 0, 900, 512]
-    list.color = "0xE8F3FAFF"
-    list.focusedColor = "0x0A1628FF"
-    list.focusBitmapBlendColor = "0x1AC4D8FF"
+    uiSetColor(list, "0xE8F3FAFF")
+    uiSetColor(list, "0x0A1629FF", "focusedColor")
+    uiSetColor(list, "0x1AC4D8FF", "focusBitmapBlendColor")
     list.focusBitmapUri = "pkg:/images/ui-focus-pill.png"
     content = CreateObject("roSGNode", "ContentNode")
     for each item in items

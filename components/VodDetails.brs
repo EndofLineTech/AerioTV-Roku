@@ -1,5 +1,15 @@
 sub init()
     m.actions = m.top.findNode("actions")
+    uiSetColor(m.top.findNode("background"), "0x0A1628FF")
+    for each id in ["title", "message"]
+        uiSetColor(m.top.findNode(id), "0xE8F3FAFF")
+    end for
+    for each id in ["placeholder", "attribution"]
+        uiSetColor(m.top.findNode(id), "0x9EB5C9FF")
+    end for
+    uiSetColor(m.actions, "0xE8F3FAFF")
+    uiSetColor(m.actions, "0x0A1629FF", "focusedColor")
+    uiSetColor(m.actions, "0x1AC4D8FF", "focusBitmapBlendColor")
     font = m.actions.font
     font.size = 24
     m.actions.font = font

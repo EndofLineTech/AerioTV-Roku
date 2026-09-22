@@ -3,13 +3,75 @@ function uiRect(parent as object, x as float, y as float, w as float, h as float
     node.translation = [x, y]
     node.width = w
     node.height = h
-    node.color = color
+    uiSetColor(node, color)
     return node
 end function
 
 function uiPalette() as object
-    return {background: "0x0A1628FF", card: "0x0D1E35FF", elevated: "0x263549FF", accent: "0x1AC4D8FF", text: "0xE8F3FAFF", secondary: "0x9EB5C9FF", disabled: "0x627384FF", clear: "0x00000000", white: "0xFFFFFFFF", ink: "0x0A1628FF", focusWash: "0x365163FF"}
+    return {background: "0x0A1628FF", card: "0x0D1E35FF", elevated: "0x263549FF", accent: "0x1AC4D8FF", text: "0xE8F3FAFF", secondary: "0x9EB5C9FF", disabled: "0x627384FF", clear: "0x00000000", white: "0xFFFFFFFF", ink: "0x0A1628FF", onAccent: "0x0A1629FF", focusWash: "0x365163FF", border: "0x17344AFF"}
 end function
+
+function uiAppearance() as object
+    if m.global <> invalid
+        if type(m.global.appearance) = "roAssociativeArray" then return m.global.appearance
+    end if
+    return {}
+end function
+
+function uiResolvedPalette(preferences as object) as object
+    result = uiPalette()
+    result.onAccent = result.ink
+    return result
+end function
+
+function uiColorForPalette(color as string, palette as object, isText as boolean) as string
+    if len(color) <> 10 or lcase(left(color, 2)) <> "0x" then return color
+    rgb = ucase(mid(color, 3, 6))
+    role = ""
+    if rgb = "0A1628" or rgb = "081525" then role = "background"
+    if rgb = "0D1E35" or rgb = "172D43" then role = "card"
+    if rgb = "263549" or rgb = "294357" then role = "elevated"
+    if rgb = "1AC4D8" then role = "accent"
+    if rgb = "E8F3FA" then role = "text"
+    if rgb = "9EB5C9" or rgb = "BDD0E0" then role = "secondary"
+    if rgb = "627384" then role = "disabled"
+    if rgb = "365163" or rgb = "10344A" then role = "focusWash"
+    if rgb = "17344A" then role = "border"
+    if rgb = "0A1629" then role = "onAccent"
+    if isText and (rgb = "0A1628" or rgb = "081525") then role = "ink"
+    if role = "" then return color
+    return left(palette[role], 8) + right(color, 2)
+end function
+
+sub uiSetColor(node as object, color as string, field = "color" as string)
+    isText = field = "focusedColor" or field = "blendColor"
+    if type(node) = "roAssociativeArray"
+        isText = isText or node.font <> invalid
+    else
+        isText = isText or node.subtype() = "Label" or node.subtype() = "LabelList"
+        if not node.hasField("uiPaint") then node.addField("uiPaint", "assocarray", false)
+        paint = node.uiPaint
+        if type(paint) <> "roAssociativeArray" then paint = {}
+        paint[field] = {color: color, isText: isText}
+        node.uiPaint = paint
+    end if
+    node[field] = uiColorForPalette(color, uiResolvedPalette(uiAppearance()), isText)
+end sub
+
+' Repaint tracked nodes in place; never recreate Video or reassign its content.
+sub uiApplyAppearanceTree(node as object)
+    if node = invalid then return
+    if node.hasField("uiPaint")
+        palette = uiResolvedPalette(uiAppearance())
+        for each field in node.uiPaint
+            paint = node.uiPaint[field]
+            node[field] = uiColorForPalette(paint.color, palette, paint.isText)
+        end for
+    end if
+    for each child in node.getChildren(-1, 0)
+        uiApplyAppearanceTree(child)
+    end for
+end sub
 
 function uiTypeSize(role as string) as integer
     sizes = {heading: 36, section: 28, body: 24, secondary: 20, button: 24, caption: 18}
@@ -23,7 +85,7 @@ function uiControlStyle(kind as string, selected as boolean, focused as boolean,
     if kind = "primary" then result.fill = p.clear
     if selected
         result.fill = p.accent
-        result.ink = p.ink
+        result.ink = p.onAccent
     end if
     if focused
         result.scale = 1.04
@@ -62,7 +124,7 @@ function uiSurface(parent as object, x as float, y as float, w as float, h as fl
     node.width = w
     node.height = h
     node.radius = radius
-    node.color = color
+    uiSetColor(node, color)
     return node
 end function
 
@@ -111,7 +173,7 @@ function uiLabel(parent as object, text as string, x as float, y as float, w as 
     node.width = w
     node.height = h
     node.text = text
-    node.color = color
+    uiSetColor(node, color)
     ' Label provides a resolved system font. A new Font with no uri has no
     ' font face and renders no text on Roku, even when size is specified.
     font = node.font

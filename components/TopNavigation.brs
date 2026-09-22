@@ -52,12 +52,12 @@ sub drawNavigation()
     for i = 0 to m.cells.count() - 1
         cell = m.cells[i]
         style = uiControlStyle(m.top.style, m.items[i].id = m.top.selected, m.top.active and i = m.index, m.items[i].enabled = true)
-        cell.bg.color = style.ring
-        cell.fill.color = style.fill
+        uiSetColor(cell.bg, style.ring)
+        uiSetColor(cell.fill, style.fill)
         cell.bg.focusScale = style.scale
         cell.fill.focusScale = style.scale
-        cell.label.color = style.ink
-        cell.icon.blendColor = style.ink
+        uiSetColor(cell.label, style.ink)
+        uiSetColor(cell.icon, style.ink, "blendColor")
     end for
 end sub
 
