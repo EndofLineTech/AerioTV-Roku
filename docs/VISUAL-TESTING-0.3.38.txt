@@ -1,0 +1,77 @@
+AerioTV Roku - 0.3.38 development visual acceptance
+==================================================
+Use the installed 0.3.38 development build, not public v0.3.37.
+The earlier PHYSICAL-TESTING-CURRENT.txt results are preserved historical evidence.
+These NEW visual checks have not been marked passed on your behalf.
+
+Build: __________  Roku/OS: __________  Date/tester: __________
+Mark PASS, FAIL, or SKIP. Do not include credentials or server URLs in evidence.
+
+[         ] V01 Startup and basic guide regression
+Launch. Verify readable text, populated guide, and no blank/black/error screen.
+Confirm the installed version via Settings > General > About.
+
+[         ] V02 Primary navigation shapes and states
+Move focus to the top navigation (Up at the top of the guide). Live TV / VOD /
+Settings should use icon+text capsules. Focused tab is white with dark text;
+the selected tab retains cyan when focus moves away. Only the active focus owner
+should show focus. Check subtle growth, no overlap, no square edges.
+
+[         ] V03 Group pills and sidebar
+Settings > Appearance > Group navigation. Check Pills, Sidebar, and Modal.
+Pills have capsule ends; Sidebar uses rounded rows. Selected group is cyan;
+focus follows the rounded outline. Long labels remain readable/truncate cleanly.
+Restore the preferred layout. Modal Open groups must show the visible picker.
+
+[         ] V04 Guide grid focus
+Navigate rows and times. Program cells stay SQUARE. The current cell has a clear
+white outline, including category-colored programs. Moving focus into top/group
+navigation removes that outline; returning restores the current guide selection.
+
+[         ] V05 Player controls
+Tune a working channel, show info and move to controls. Verify circular icons,
+readable focused captions, white focus background/dark glyph, and Pause/Play icon
+changes. Exercise Channels, Recent, Minimize, Options and explicit Stop. Check
+picture/audio continuity and unchanged Back behavior. Fullscreen * remains Roku's.
+
+[         ] V06 Player info, options and program details
+Check rounded info/options panels and choice highlights. Open future program
+details and return. Verify labels, long descriptions, correct actions, Back/focus
+restoration, and no overlap with the transport row or screen edge.
+
+[         ] V07 VOD poster library
+Open Movies and TV Shows. Titles should use portrait artwork with names/facts
+below and a cyan focused border. Navigate ALL four rows of a 20-item page; two
+rows should remain visible at once. FF/Rew paging must keep working. Test a title
+without art, a long title, details/back focus restoration and playback.
+
+[         ] V08 VOD category/source/saved pages
+Categories and versions use compact rounded text cards rather than empty posters.
+Confirm disabled-provider categories stay excluded. Check Continue/Watchlist/Hidden
+navigation, missing images, empty pages and returning to the correct title.
+
+[         ] V09 Settings rail and detail
+Open Settings: six categories on the left, detail on the right. Up/Down moves rail
+focus without changing values; OK/Right enters the category. Left/Back unwinds
+choices/subpages, then returns to the selected rail row. Back from rail returns
+to guide. Check all categories, choices, reset confirmation and long values.
+
+[         ] V10 Settings persistence and remote-map regression
+Change a harmless preference, leave/reopen Settings and confirm it persists.
+Test one custom Player and Guide mapping, immediate application, reset and Back
+recovery. Restore originals. About/What's New/license text rows must not open
+empty editors when selected.
+
+[         ] V11 Living-room readability and stability
+Inspect text at normal viewing distance, safe edges, animations, fast navigation
+and repeated screen changes. Record actual issues and before/after uptime if doing
+a sustained run. This is not a claim of measured peak texture/memory or a new soak.
+
+[         ] V12 Audio Guide - conditional
+If enabled, record actual announced controls/order and missing labels. SKIP if not
+tested. Icon captions alone do not prove spoken-feedback support (tracked faa.8).
+
+Failure ID: ____ Screen/buttons: _____________________________________________
+Expected: _____________________ Actual: ______________________________________
+Screenshot path (review/redact first): ________________________________________
+Restore layout, map and any preferences changed during this test.

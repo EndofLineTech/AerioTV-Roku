@@ -67,9 +67,9 @@ def icon_png(kind, size=48):
     return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(bytes(rows), 9)) + chunk(b'IEND', b'')
 
 
-def pill_png(width=900, height=64):
+def pill_png(width=900, height=64, radius=None):
     rows = bytearray()
-    r = height / 2
+    r = height / 2 if radius is None else radius
     for y in range(height):
         rows.append(0)
         for x in range(width):
@@ -78,7 +78,8 @@ def pill_png(width=900, height=64):
                 for sx in range(4):
                     px, py = x + (sx + .5) / 4, y + (sy + .5) / 4
                     cx = max(r, min(width - r, px))
-                    hits += (px - cx) ** 2 + (py - r) ** 2 <= r ** 2
+                    cy = max(r, min(height - r, py))
+                    hits += (px - cx) ** 2 + (py - cy) ** 2 <= r ** 2
             rows.extend((255, 255, 255, round(255 * hits / 16)))
     return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(bytes(rows), 9)) + chunk(b'IEND', b'')
 
@@ -93,3 +94,4 @@ if __name__ == '__main__':
         (root / f'ui-icon-{name}.png').write_bytes(icon_png(name))
     print('Generated original navigation and transport glyphs.')
     (root / 'ui-focus-pill.png').write_bytes(pill_png())
+    (root / 'ui-focus-row.png').write_bytes(pill_png(1204, 68, 14))

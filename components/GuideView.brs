@@ -4,12 +4,14 @@ sub init()
     m.primaryNavigation = m.top.findNode("primaryNavigation")
     m.primaryNavigation.observeField("selection", "onPrimarySelection")
     m.primaryNavigation.observeField("exitRequested", "onPrimaryExit")
+    m.primaryNavigation.observeField("active", "onGuideChromeFocus")
     updatePrimaryTabs()
     m.navigator = m.top.findNode("groupNavigator")
     m.navigator.observeField("preview", "onGroupPreview")
     m.navigator.observeField("closed", "onNavigatorClosed")
     m.navigator.observeField("optionsRequested", "handleOptionsShortcut")
     m.navigator.observeField("topRequested", "focusPrimaryNavigation")
+    m.navigator.observeField("active", "onGuideChromeFocus")
     m.holdKey = ""
     m.pickerWakeKey = ""
     m.holdTimer = m.top.findNode("holdTimer")
@@ -562,7 +564,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
             if textWidth < 1 then textWidth = 1
             tile.title.width = textWidth
             tile.time.width = textWidth
-            focused = selected and cell.startsAt <= m.anchor and cell.endsAt > m.anchor
+            focused = selected and cell.startsAt <= m.anchor and cell.endsAt > m.anchor and not m.primaryNavigation.active and not m.navigator.active and m.picker = invalid and not m.details.active and not m.searchView.active
             inset = 2
             if focused then inset = 4
             tile.fill.translation = [inset, inset]
@@ -1207,6 +1209,10 @@ sub updatePrimaryTabs()
     enabled = m.top.moviesPermission = "allowed" or m.top.seriesPermission = "allowed"
     items = [{id: "live", label: "Live TV", enabled: true}, {id: "vod", label: "VOD", enabled: enabled}, {id: "settings", label: "Settings", enabled: true}]
     if FormatJson(m.primaryNavigation.items) <> FormatJson(items) then m.primaryNavigation.items = items
+end sub
+
+sub onGuideChromeFocus()
+    if m.ready = true and m.top.active then drawGuide()
 end sub
 
 sub focusPrimaryNavigation()

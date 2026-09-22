@@ -14,6 +14,18 @@ sub init()
     noteFont = m.note.font
     noteFont.size = uiTypeSize("secondary")
     m.note.font = noteFont
+    listFont = m.list.font
+    listFont.size = uiTypeSize("body")
+    m.list.font = listFont
+    focusedFont = m.list.focusedFont
+    focusedFont.size = uiTypeSize("body")
+    m.list.focusedFont = focusedFont
+    for each entry in [{id: "railTitle", role: "heading"}, {id: "footer", role: "secondary"}]
+        label = m.top.findNode(entry.id)
+        font = label.font
+        font.size = uiTypeSize(entry.role)
+        label.font = font
+    end for
 end sub
 
 sub onActive()
@@ -92,7 +104,7 @@ sub renderSettings()
         label = item.title
         if item.action = "remoteSlot" then label += ": " + remoteActionText(resolveRemoteAction(model.device.remoteMap, item.context, item.slot))
         if item.key <> invalid then label += ": " + settingsValueText(settingsHubValue(model, item.scope, item.key), item.key)
-        content.createChild("ContentNode").title = label
+        content.createChild("ContentNode").title = "   " + label
     end for
     m.list.content = content
     if focused >= 0 and focused < m.items.count() then m.list.jumpToItem = focused
@@ -108,6 +120,8 @@ sub selectSetting(index as integer)
     if not m.top.active then return
     if index < 0 or index >= m.items.count() then return
     item = m.items[index]
+    ' Informational About/license/What's New rows are not choice editors.
+    if m.choice = invalid and item.page = invalid and item.action = invalid and item.values = invalid then return
     if m.choice <> invalid and m.choice.action = "remoteSlot"
         choice = m.choice
         m.top.selection = {account: m.top.model.account, action: "setRemoteAction", context: choice.context, slot: choice.slot, value: item.value}

@@ -67,6 +67,21 @@ means the Roku policy forbids it. Do not change the policy merely to collect
 evidence. Use a physical camera instead, remove any credentials/URLs from the
 image, and retain only redacted evidence outside Git. `out/` is ignored.
 
+On the current target ECP screenshot returns 404, but the authenticated Developer
+Mode capture facility works. With the already-approved `ROKU_DEV_PASSWORD` set in
+the environment, use:
+
+```sh
+python3 scripts/capture-roku-screenshot.py --developer-mode --output out/native-screenshot.jpg
+```
+
+This requests a screenshot through `/plugin_inspect` and retrieves the resulting
+image. It does not enable ECP key injection or change device policy. Treat captures
+as private until reviewed/redacted. For scripted visual inspection only,
+`scripts/build-visual-probe.py settings|vod|pills` creates `out/visual-probe.zip`
+from the normal built ZIP. Reinstall `out/aeriotv-roku.zip` afterward; fixtures are
+excluded from the normal package and do not establish physical-remote acceptance.
+
 ## Stability sampling
 
 Capture the whitelisted model, OS, UI resolution, and uptime before installation,

@@ -50,8 +50,9 @@ function settingsHubEntries(page as string, model as object) as object
     ]
     if page = "whatsNew" then return [
         {title: "Version " + model.version},
-        {title: "VOD enrichment, saved-library reconciliation and focused acceptance."},
-        {title: "Read release notes in docs/RELEASE-0.3.28.md."},
+        {title: "TV styling: pill navigation, rounded controls and a poster-led library."},
+        {title: "Settings now has a category rail and detail pane."},
+        {title: "Development visual refresh; see the GitHub releases page for published builds."},
         {title: "Mark this version read", action: "markWhatsNew"}
     ]
     if page = "connection" then return [{title: "Open connection settings (edit / forget / reconnect)", action: "connection"}]
