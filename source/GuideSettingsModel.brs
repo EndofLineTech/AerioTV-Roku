@@ -42,6 +42,11 @@ function normalizeGuideSettings(raw as dynamic) as object
     return p
 end function
 
+function guidePresentationGeometry(density as string) as object
+    if density = "basic" then return {basic: true, rowHeight: 64, rowCount: 10, tileHeight: 60, titleY: 3, titleHeight: 27, timeY: 32, timeHeight: 24, badgeY: 34}
+    return {basic: false, rowHeight: 96, rowCount: 7, tileHeight: 95, titleY: 14, titleHeight: 37, timeY: 55, timeHeight: 29, badgeY: 57}
+end function
+
 function copyGuideValue(value as dynamic) as dynamic
     if type(value) = "roAssociativeArray" or type(value) = "roArray" then return copyJson(value)
     return value

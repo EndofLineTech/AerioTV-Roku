@@ -73,7 +73,7 @@ sub render()
             if entry.program <> invalid
                 p = entry.program
                 row.title.text = p.title
-                row.subtitle.text = entry.channel.number + "  " + entry.channel.name + "  |  " + programSearchState(p, uiNow()) + "  |  " + uiLocalDate(p.startsAt) + " " + uiTime(p.startsAt) + " - " + uiTime(p.endsAt)
+                row.subtitle.text = channelHeading(entry.channel.number, entry.channel.name) + "  |  " + programSearchState(p, uiNow()) + "  |  " + uiLocalDate(p.startsAt) + " " + uiTime(p.startsAt) + " - " + uiTime(p.endsAt)
             else
                 row.title.text = entry.title
             end if

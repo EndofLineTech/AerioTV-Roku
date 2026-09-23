@@ -52,6 +52,10 @@ function settingsHubEntries(page as string, model as object) as object
             entries.push({title: "VOD libraries for this account", scope: "account", key: "vodEnabled", values: [true, false]})
             entries.push({title: "Optional TMDB VOD enrichment", scope: "account", key: "vodTmdbEnabled", values: [true, false]})
         end if
+        if model.dvr = "manage"
+            entries.push({title: "DVR start early (minutes)", scope: "account", key: "dvrPreRollMinutes", values: [0, 5, 10, 15, 30]})
+            entries.push({title: "DVR end late (minutes)", scope: "account", key: "dvrPostRollMinutes", values: [0, 5, 10, 15, 30]})
+        end if
         entries.push({title: "Audio Guide (screen reader)", scope: "device", key: "audioGuide", values: [true, false]})
         entries.push({title: "About, licenses and What's New", action: "about"})
         return entries

@@ -21,6 +21,12 @@ sub main()
     assertEqual(m.saved.groupLayout, "sidebar", "direct layout route saves sidebar")
     assertEqual(m.renderedLayout, "sidebar", "renderer receives the selected layout")
     assertEqual(m.navigator.appliedLayout, "sidebar", "sidebar also applies without relaunch")
+    m.ready = true
+    m.channels = []
+    for each change in [{key: "guideDensity", value: "basic"}, {key: "showLogos", value: false}, {key: "showNumbers", value: false}, {key: "showNames", value: false}, {key: "showSubtitles", value: false}]
+        if applyHubGuideSetting(change.key, change.value) = invalid then stop
+        assertEqual(m.saved[lcase(change.key)], change.value, "new Live TV setting applies and saves")
+    end for
     print "ALL TESTS PASSED"
 end sub
 

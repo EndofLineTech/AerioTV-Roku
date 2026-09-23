@@ -41,7 +41,6 @@ function handleGuideMappedKey(key as string) as boolean
     if key = "left"
         ' All short Left actions wait for release, independently of the hold map.
         beginGuideHold(key)
-        if m.filtered.count() > 0 then uiAnnounce(m.filtered[m.selected].name + ", " + textValue(m.filtered[m.selected].number))
         return true
     end if
     slot = ""
@@ -53,7 +52,7 @@ function handleGuideMappedKey(key as string) as boolean
     action = guideRemoteAction(slot)
     if action = "navigate" then moveGuideTime(key) else executeGuideRemoteAction(action)
     finishGuideMappedAction()
-    if (key = "right" or key = "OK") and m.filtered.count() > 0 then uiAnnounce(m.filtered[m.selected].name + ", " + textValue(m.filtered[m.selected].number))
+    if key = "right" or key = "OK" then announceGuidePosition()
     return true
 end function
 
@@ -83,9 +82,21 @@ function handleGuideHeldKey(key as string, press as boolean) as boolean
             if action = "navigate" then moveGuideTime("left") else executeGuideRemoteAction(action)
         end if
         finishGuideMappedAction()
+        if shortLeft then announceGuidePosition()
     end if
     return true
 end function
+
+sub announceGuidePosition()
+    if m.filtered.count() = 0 then return
+    channel = m.filtered[m.selected]
+    label = channel.name + ", " + textValue(channel.number)
+    if m.ready = true
+        cell = selectedCell()
+        if cell <> invalid and cell.program <> invalid then label += ", " + cell.program.title
+    end if
+    uiAnnounce(label)
+end sub
 
 sub cancelGuideHold()
     m.holdKey = ""

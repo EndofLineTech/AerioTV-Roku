@@ -62,7 +62,7 @@ sub renderInfo()
             unknownClock = true
         end if
     end if
-    m.channelName.text = channel.number + "  " + channel.name
+    m.channelName.text = channelHeading(channel.number, channel.name)
     uri = ""
     if channel.logoId <> "" and m.base <> "" then uri = m.base + "/api/channels/logos/" + channel.logoId + "/cache/"
     if m.logo.uri <> uri then m.logo.uri = uri

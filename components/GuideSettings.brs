@@ -32,7 +32,7 @@ end sub
 
 function applyHubGuideSetting(key as string, value as dynamic) as dynamic
     if not m.ready then return invalid
-    if key <> "historyDays" and key <> "futureDays" and key <> "channelSort" and key <> "groupLayout" and key <> "categoryColors" then return invalid
+    if key <> "historyDays" and key <> "futureDays" and key <> "channelSort" and key <> "groupLayout" and key <> "categoryColors" and key <> "guideDensity" and key <> "showLogos" and key <> "showNumbers" and key <> "showNames" and key <> "showSubtitles" then return invalid
     m.settings[lcase(key)] = value
     m.settings = normalizeGuideSettings(m.settings)
     m.anchor = guideTimeClamp(m.anchor, uiNow(), m.settings)
@@ -154,7 +154,7 @@ sub openGuideSetting(kind as string)
         if items.count() = 0 then items.push({title: "No saved reminders", action: "close"})
     else if kind = "favoriteOrder"
         for each c in organizedChannels(m.channels, "favorites", m.favorites, [], [], m.settings, "")
-            items.push({title: c.number + " " + c.name, favoriteId: c.id})
+            items.push({title: channelHeading(c.number, c.name), favoriteId: c.id})
         end for
         if items.count() = 0 then items.push({title: "No favorites yet", action: "close"})
     else if kind = "badges"

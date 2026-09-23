@@ -1,3 +1,26 @@
+sub openDvrLibrary()
+    if m.page <> "guide" then return
+    if m.capabilities.dvr <> "view" and m.capabilities.dvr <> "manage" then return
+    if m.serverAccountId = "" or m.guide.config = invalid then return
+    stopPlayback()
+    m.guide.active = false
+    m.guide.visible = false
+    m.screen.visible = false
+    m.page = "dvr"
+    m.dvr.config = {baseUrl: m.baseUrl, apiKey: m.apiKey, accountId: m.serverAccountId, scope: m.accountIdentity, permission: m.capabilities.dvr, channels: m.guide.config.channels}
+    m.dvr.active = true
+end sub
+
+sub closeDvrLibrary()
+    if m.page <> "dvr" then return
+    cancelDvrPlayback()
+    m.dvr.active = false
+    m.dvr.config = invalid
+    m.page = "guide"
+    m.guide.visible = true
+    m.guide.active = true
+end sub
+
 sub openVodLibrary(kind as string)
     if m.accountPreferences.vodEnabled = false then return
     if kind = "movie" and m.capabilities.movies <> "allowed" then return
@@ -47,6 +70,22 @@ sub updateLibraryPermissions()
         m.guide.seriesPermission = "denied"
     end if
     m.vod.permissions = {movies: m.guide.moviesPermission, series: m.guide.seriesPermission, level: m.capabilities.level}
+    if m.page = "dvr"
+        if m.capabilities.dvr <> "view" and m.capabilities.dvr <> "manage"
+            closeDvrLibrary()
+        else
+            config = m.dvr.config
+            if type(config) = "roAssociativeArray"
+                if config.permission <> m.capabilities.dvr
+                    updated = {}
+                    updated.append(config)
+                    updated.permission = m.capabilities.dvr
+                    ' DvrView.onDvrConfig drops old dialogs and in-flight operations.
+                    m.dvr.config = updated
+                end if
+            end if
+        end if
+    end if
     if m.settingsHub <> invalid
         if m.settingsHub.active then refreshSettingsHub()
     end if
@@ -81,7 +120,11 @@ sub onMediaClosed()
     m.archiveSeeking = false
     cancelArchiveLoad()
     releaseArchive()
-    if m.mediaReturn = "library"
+    if m.mediaReturn = "dvr"
+        m.dvrPlayback = invalid
+        m.page = "dvr"
+        m.dvr.active = true
+    else if m.mediaReturn = "library"
         m.page = "library"
         m.vod.active = true
     else
@@ -257,6 +300,7 @@ sub releaseArchive()
 end sub
 
 sub resetMediaNavigation()
+    cancelDvrPlayback()
     if m.settingsHub <> invalid then m.settingsHub.active = false
     m.archiveSeeking = false
     m.vodTransport = invalid
@@ -275,6 +319,10 @@ sub onMediaProgress(event as object)
     if not m.mediaPlayer.isSameNode(event.getRoSGNode()) then return
     progress = event.getData()
     if progress.account <> m.accountIdentity then return
+    if progress.mode = "recording"
+        onDvrProgress(progress)
+        return
+    end if
     if progress.mode = "vod" and m.mediaItem <> invalid
         if progress.identity <> m.mediaIdentity or progress.key <> m.mediaItem.key or not mediaNumber(progress.position) or not mediaNumber(progress.duration) then return
         if progress.duration <= 0 then return

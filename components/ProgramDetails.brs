@@ -28,9 +28,9 @@ sub init()
     m.credits = uiLabel(m.top, "", 460, 660, 1320, 62, 22, "0x9EB5C9FF")
     m.credits.wrap = true
     m.buttons = []
-    for i = 0 to 2
-        bg = uiSurface(m.top, 460, 750 + i * 74, 1320, 64, 14, "0x263549FF")
-        label = uiLabel(m.top, "", 480, 768 + i * 74, 1280, 40, 25)
+    for i = 0 to 3
+        bg = uiSurface(m.top, 460, 730 + i * 64, 1320, 58, 14, "0x263549FF")
+        label = uiLabel(m.top, "", 480, 742 + i * 64, 1280, 36, 25)
         m.buttons.push({bg: bg, label: label})
     end for
     m.attribution = uiLabel(m.top, "", 96, 1005, 1728, 38, 20, "0x9EB5C9FF")
@@ -40,6 +40,7 @@ sub onActive()
     m.top.visible = m.top.active
     if m.top.active
         m.index = 0
+        m.announcedIndex = -1
         m.top.setFocus(true)
         render()
     end if
@@ -102,8 +103,17 @@ sub render()
         m.actions = ["restart", "watch", "close"]
         labels = ["Restart Program (provider availability)", "Watch channel LIVE", "Close"]
     end if
+    if recordingScheduleEligible(textValue(model.dvrPermission), model.channel, p, uiNow())
+        m.actions.unshift("record")
+        labels.unshift("Record on server")
+    end if
     if m.index >= labels.count() then m.index = labels.count() - 1
-    for i = 0 to 2
+    if m.top.active and (m.announcedIndex <> m.index or m.announcedLabel <> labels[m.index])
+        uiAnnounce(labels[m.index])
+        m.announcedIndex = m.index
+        m.announcedLabel = labels[m.index]
+    end if
+    for i = 0 to 3
         row = m.buttons[i]
         row.bg.visible = i < labels.count()
         row.label.visible = row.bg.visible

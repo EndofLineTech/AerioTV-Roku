@@ -7,6 +7,21 @@ function textValue(value as dynamic) as string
     return ""
 end function
 
+' Provider names sometimes include the channel number as a separate heading.
+' Only accept an exact delimited prefix, not names such as 24Kitchen or 2400.
+function channelHeading(number as string, name as string) as string
+    number = number.trim()
+    name = name.trim()
+    if number = "" then return name
+    if name = "" then return number
+    if left(name, len(number)) = number
+        suffix = mid(name, len(number) + 1)
+        if suffix = "" or left(suffix, 1) = "|" or left(suffix, 1) = ":" then return name
+        if left(suffix, 2) = " |" or left(suffix, 2) = " :" or left(suffix, 2) = " -" then return name
+    end if
+    return number + "  " + name
+end function
+
 function normalizeBaseUrl(value as string) as string
     value = value.trim()
     pattern = CreateObject("roRegex", "^https?://[^/?#@\s]+(/[^?#\s]*)?$", "i")

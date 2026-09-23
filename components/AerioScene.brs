@@ -1,5 +1,5 @@
 sub init()
-    m.global.addFields({metadataSession: CreateObject("roDeviceInfo").getRandomUUID(), cacheEpoch: CreateObject("roDeviceInfo").getRandomUUID(), networkTimeoutMs: 20000, appearance: {}})
+    m.global.addFields({metadataSession: CreateObject("roDeviceInfo").getRandomUUID(), cacheEpoch: CreateObject("roDeviceInfo").getRandomUUID(), networkTimeoutMs: 20000, appearance: {}, audioGuide: false})
     m.top.focusable = true
     m.top.backgroundColor = "0x0A1628FF"
     m.top.backgroundUri = ""
@@ -18,6 +18,10 @@ sub init()
     m.mediaPlayer.observeField("skipPreference", "onArchiveSkipPreference")
     m.screen = m.top.findNode("screen")
     m.guide = m.top.findNode("guide")
+    m.dvr = m.top.findNode("dvrView")
+    m.dvr.observeField("closed", "closeDvrLibrary")
+    m.dvr.observeField("playRequested", "onDvrPlayRequested")
+    m.dvr.observeField("deleted", "onDvrDeleted")
     m.settingsHub = m.top.findNode("settingsHub")
     m.settingsHub.observeField("selection", "onSettingsHubSelection")
     m.settingsHub.observeField("closed", "closeSettingsHub")
@@ -116,6 +120,7 @@ sub init()
     m.guide.observeField("watchChannel", "onWatchChannel")
     m.guide.observeField("exitRequested", "showConnection")
     m.guide.observeField("archiveRequest", "onArchiveRequested")
+    m.guide.observeField("recordRequest", "onRecordRequested")
     m.guide.observeField("metadataEvent", "onMetadataDiagnostic")
     m.guide.observeField("preferences", "onPreferences")
     m.guide.observeField("playbackInfo", "onPlaybackInfo")
@@ -531,6 +536,8 @@ sub onCapabilities(event as object)
     end if
     m.guide.channelFacts = m.channelFacts
     m.guide.catchupPermission = m.capabilities.catchup
+    m.guide.dvrPermission = m.capabilities.dvr
+    if m.capabilities.dvr <> "manage" then cancelRecordFlow()
     updateLibraryPermissions()
     enforceMediaCapabilities()
     processAacWait()
@@ -614,6 +621,12 @@ end sub
 
 sub showConnection()
     resetMediaNavigation()
+    cancelRecordFlow()
+    cancelDvrPlayback()
+    if m.dvr <> invalid
+        m.dvr.active = false
+        m.dvr.config = invalid
+    end if
     m.guide.active = false
     m.guide.visible = false
     m.screen.visible = true
@@ -625,6 +638,12 @@ end sub
 
 sub forgetConnection()
     resetMediaNavigation()
+    cancelRecordFlow()
+    cancelDvrPlayback()
+    if m.dvr <> invalid
+        m.dvr.active = false
+        m.dvr.config = invalid
+    end if
     cancelPlaybackFailure()
     m.metadataForgetTask = m.guide.callFunc("forgetStoredMetadata")
     m.browser.callFunc("invalidateLogos")
@@ -652,6 +671,7 @@ sub forgetConnection()
     m.top.removeChild(m.guide)
     m.guide = CreateObject("roSGNode", "GuideView")
     m.guide.observeField("archiveRequest", "onArchiveRequested")
+    m.guide.observeField("recordRequest", "onRecordRequested")
     m.guide.observeField("metadataEvent", "onMetadataDiagnostic")
     m.guide.visible = false
     m.top.insertChild(m.guide, 1)
@@ -741,7 +761,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         content.url += "&output_profile=0"
     end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.40"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.71"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true
@@ -1034,6 +1054,10 @@ sub onGuidePlayerRequest(event as object)
         openSettingsHub()
         return
     end if
+    if event.getData() = "dvrHome"
+        openDvrLibrary()
+        return
+    end if
     if event.getData() = "vodHome"
         if m.capabilities.movies = "allowed" then openVodLibrary("movie") else if m.capabilities.series = "allowed" then openVodLibrary("series")
         return
@@ -1204,6 +1228,9 @@ sub openPlayerOptions(kind = "main" as string)
     else if m.capabilities.switchStreams = "unknown"
         items.unshift({title: "Refresh source-switch permissions", action: "refreshCapabilities"})
     end if
+    if kind = "main" and m.capabilities.dvr = "manage" and m.playingChannel <> invalid
+        items.unshift({title: "Record current program on server", action: "recordCurrent"})
+    end if
     if kind = "clock"
         title = "Clock format"
         items = []
@@ -1326,6 +1353,12 @@ sub onPlayerOption(event as object)
         m.playerOptions.active = false
         onPlayerOptionsClosed()
         openLiveRewind()
+        return
+    end if
+    if item.action = "recordCurrent"
+        m.playerOptions.active = false
+        onPlayerOptionsClosed()
+        requestPlayerRecording()
         return
     end if
     if item.action = "clockMenu"
@@ -1873,9 +1906,13 @@ sub onLineupRefresh(event as object)
         return
     end if
     if result.accountId <> m.serverAccountId
+        cancelRecordFlow()
         showNotice("Account changed. Reconnect to load the new account.")
         return
     end if
+    ' Do not detach an already submitted Task: its result must remain observable
+    ' so a lineup refresh cannot allow a second submission before server review.
+    if m.recordTask = invalid then cancelRecordFlow()
     cancelPlaybackFailure()
     m.accountPreferences = reconcileWatchHistory(m.accountPreferences, result.channels)
     removedPlaying = false
@@ -1951,6 +1988,9 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     if m.top.dialog <> invalid
+        ' Some dialog types have no readable wasClosed value until closure.
+        ' Let the dialog own input rather than applying not to Invalid.
+        if m.top.dialog.wasClosed = invalid then return false
         if not m.top.dialog.wasClosed then return false
     end if
     if handlePlayerOkKey(key, press) then return true
@@ -2065,6 +2105,7 @@ end sub
 
 sub applyDevicePreferences()
     m.global.appearance = m.devicePreferences
+    m.global.audioGuide = m.devicePreferences.audioGuide = true
     if type(m.top) <> "roAssociativeArray"
         uiSetColor(m.top.findNode("miniBorder"), "0x1AC4D8FF")
         uiSetColor(m.top.findNode("miniCaption"), "0x1AC4D8FF")

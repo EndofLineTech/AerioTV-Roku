@@ -5,6 +5,13 @@ sub main()
         m.focused = value
         return true
     end function}
+    m.page = "guide"
+    m.heldZap = ""
+    m.heldZapTimer = {control: "stop"}
+    m.pictureWakeKey = ""
+    m.top.dialog = {}
+    assertEqual(onKeyEvent("OK", true), false, "uninitialized dialog close field cannot crash input")
+    m.top.dialog = invalid
     m.playerInput = m.top
     m.playerOkTimer = {control: "stop"}
     m.page = "player"
@@ -119,6 +126,12 @@ sub main()
     assertEqual(m.playerOptions.active, false, "star does not open app options")
     openPlayerOptions()
     assertEqual(m.playerOptions.menu.title, "AerioTV player options", "clearly branded app menu")
+    m.capabilities.dvr = "manage"
+    openPlayerOptions()
+    assertEqual(m.playerOptions.menu.items[0].action, "recordCurrent", "authorized player offers current-program recording")
+    m.capabilities.dvr = "view"
+    openPlayerOptions()
+    assertEqual(m.playerOptions.menu.items[0].action = "recordCurrent", false, "view-only player does not offer recording")
     assertEqual(m.video.content.programId, "a", "focus repair preserves content")
     m.userInfoOpen = false
     m.transport.active = false
@@ -207,6 +220,20 @@ sub main()
     assertEqual(m.startupWatch, invalid, "startup-recovery clock does not run during profile discovery")
     assertEqual(onKeyEvent("back", true), true, "Back cancels deferred AAC tune")
     assertEqual(m.pendingAacTune, invalid, "cancelled profile wait cannot tune later")
+    pendingRecording = {control: "RUN"}
+    m.recordTask = pendingRecording
+    m.recordDialog = {title: "existing picker"}
+    m.refreshTask = {isSameNode: function(node as object) as boolean
+        return true
+    end function, unobserveField: sub(field as string)
+    end sub}
+    onLineupRefresh({getRoSGNode: function() as object
+        return {}
+    end function, getData: function() as object
+        return {ok: false, message: "try again"}
+    end function})
+    assertEqual(m.recordTask.control, "RUN", "failed lineup refresh keeps recording Task owned")
+    assertEqual(m.recordDialog.title, "existing picker", "failed lineup refresh does not orphan dialog")
     print "ALL TESTS PASSED"
 end sub
 

@@ -1,0 +1,102 @@
+AerioTV Roku — morning physical test worksheet (development build)
+==============================================================
+Fill in actual observations, not a pass inferred from the compiler or ECP.
+Build/version (Settings > General > About): ______  Roku/OS: ______
+Installed development build: 0.3.71 (verify on TV).
+Date/tester: ______  Start/end uptime: ______ / ______
+Mark PASS, FAIL or SKIP. Keep server URLs, keys, passwords, real media labels
+and unreviewed screenshots out of shared evidence. Report failure ID and steps.
+
+VISUAL / ACCESSIBILITY (faa)
+[       ] F01 Launch and guide: populated rows, logos, badges, category tints;
+           focus follows guide/group pills/top navigation without a trap.
+[       ] F02 Settings > Live TV: Preview = 7 usable rows, Basic = 10 compact
+           nonoverlapping rows. Move through all ten; check names/time/badges
+           at 1080p. Restore your starting density: ______
+[       ] F03 Toggle logos, numbers, names, subtitles one at a time. Confirm
+           immediate change, leave/reopen Settings to check persistence, then
+           restore original values: ______
+[       ] F04 Test a channel whose provider name begins with its exact channel
+           number and a genuinely numbered name (e.g. 24Kitchen). Player heading
+           must not double the exact number or strip the real title.
+[       ] F05 With Roku system screen reader AND app General > Audio Guide On,
+           use physical Up/Down, Left/Right, Settings rail/detail, ProgramDetails,
+           player controls and VOD. Record exactly what was spoken; silence is
+           FAIL. Restore both accessibility choices to their starting values.
+           Spoken labels/order: ____________________________________________
+            Previous controlled listen on 0.3.41: NO guide speech despite
+            system speech. Treat the installed version as a fresh FAIL/PASS
+            test, not prepassed.
+           App preference was restored to Off overnight. The Roku system
+           screen reader was enabled by the owner; check its current state.
+[       ] F06 Inspect branded launch/setup and long-text/large-text focus on TV.
+
+VOD (l4j)
+[       ] V01 Movies and TV Shows: categories, paging, all poster rows, source
+           selection, detail/episode/back focus. Check loading, empty/error and
+           long/missing artwork. Do not infer missing synopsis completion.
+[       ] V02 Continue Watching resume/from beginning, Watchlist/Hidden, episode
+           watched state, refresh/relaunch and account-scoped isolation.
+[       ] V03 Search by title, provider/category and supported sort; note alphabet
+           and rating-sort availability honestly rather than assuming endpoints.
+[       ] V04 Optional TMDB detail/person/related artwork and attribution only
+           with the account opt-in. Unmatched recommendations must not play.
+[       ] V05 Playback, captions/audio, seek/resume and provider version choice
+           using known-working media. Existing provider6 405 is separate upstream
+           work; do not call an alternate source a repair.
+
+MULTIVIEW (wt1)
+[  SKIP ] M01 Multiview was deferred by the PO after the second native Video
+            returned mediaplayer errcode 16, "only one playing instance
+            supported" on 0.3.52 (including a same-source trial). Do not
+            expect a grid in the normal build. See dedicated evidence.
+[  SKIP ] M02 No multiview layout or simultaneous playback acceptance is claimed.
+
+SERVER DVR (a59)
+[       ] D01 Guide and player record action: permitted program, saved/per-item
+            padding, exact padded dates/times, Cancel/Back, repeat-OK handling.
+            Earlier 0.3.58 disposable UI schedule survived exit/relaunch and
+            was cancelled; 0.3.59 showed padded confirmation. 0.3.65 player
+            Options opened the same picker and Cancel returned to playback.
+            No new schedule is authorized.
+[       ] D02 Browse Now/Scheduled/Recent/Rules, artwork fallback, search by title,
+            channel name/number, date/title sort, 60s refresh, focus/Back and
+            stale-account/capability downgrade. 0.3.65 showed a selected channel
+            logo and compact rows; external items lacking art have a blank art
+            area. Confirm readability on the TV.
+[       ] D03 Series: preview all/new with title/description/channel choices,
+            duplicate/error cases and rule removal. One zero-match rule and a
+            second rule matching TWO future programs were created and removed
+            with owner approval. Scheduled went 0->2->0; fresh launch showed
+            zero rules and zero scheduled items. Rule deletion briefly displayed
+            a stale shelf; 0.3.66 refreshes on shelf switch.
+[       ] D04 Playback: completed file, resume/from beginning, seek, captions,
+            growing HLS, completion while playing, error/Range behavior and Back.
+            Decoder logs reported playing for a completed and processed file;
+            0.3.65 also played growing HLS, paused/resumed, and played stopped
+            partial MKV. The owner confirmed picture and sound for both states
+            and reported continued picture/sound during a third growing capture
+            across its scheduled end.
+            0.3.70 native logs showed saved seek to second 67 and playing at
+            second 67 after exit/relaunch. Injected Range failures remain
+            model-tested, not reproduced against the live server.
+[       ] D05 Management: future cancel and completed delete passed only on
+            owner-approved disposable items. Active Stop passed on a second
+            short test capture; refusal when status changes is model-tested.
+            Never act on the existing completed item to fill another gap.
+[       ] D06 Comskip: first disposable recording later reported segments removed
+            and Roku reached playing (no owner physical listen then). A final
+            disposable recording reported no commercials detected; Roku reached
+            playing after that outcome and the owner confirmed picture/audio.
+            A perceptual comparison of actual cut segments was not performed.
+[       ] D07 Local media storage excluded by PO decision; server DVR is the
+            supported path. See docs/DVR-SERVER-ONLY-SCOPE.md.
+
+No additional DVR server write is authorized. See docs/DVR-EPIC-0.3.71.md for
+engineering evidence; fill physical observations independently.
+
+Failure ID: ____  Screen/action: __________________________________________
+Expected: _________________________________________________________________
+Actual and exact steps: ____________________________________________________
+Device/console evidence (sanitized): _______________________________________
+Restore prior guide/audio/remote/server state; note anything not restored: ___

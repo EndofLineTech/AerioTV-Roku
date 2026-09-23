@@ -22,6 +22,11 @@ sub main()
     resetHttpTest([{status: 503, headers: {"Retry-After": "0"}, body: ""}])
     if requestJson("https://example.test/api", {mutation: true}) <> invalid then stop
     if m.calls <> 1 then stop ' never automatically repeat a mutation
+    resetHttpTest([{status: 503, body: ""}])
+    if requestJson("https://example.test/api/1/", invalid, "", "DELETE") <> invalid or m.calls <> 1 then stop
+    if m.observedMethod <> "DELETE" then stop
+    resetHttpTest([{status: 204, body: ""}])
+    if requestJson("https://example.test/api/1/", invalid, "", "DELETE") = invalid then stop
     resetHttpTest([{status: 429, headers: {"Retry-After": "3600"}, body: ""}])
     if requestJson("https://example.test/api") <> invalid or m.calls <> 1 then stop
     if m.httpFailure.category <> "rate-limit" then stop
@@ -56,9 +61,10 @@ sub resetHttpTest(responses as object)
     m.maxResponseBytes = invalid
 end sub
 
-function httpTransferOnce(url as string, body as dynamic, bearer as string, timeoutMs as integer, maxBytes as integer) as object
+function httpTransferOnce(url as string, body as dynamic, bearer as string, timeoutMs as integer, maxBytes as integer, method = "GET" as string) as object
     m.calls++
     m.observedLimit = maxBytes
+    m.observedMethod = method
     result = m.responses.shift()
     if result.cancelNext = true then m.top.cancelRequested = true
     if result.headers = invalid then result.headers = {}

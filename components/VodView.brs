@@ -111,6 +111,7 @@ end sub
 sub activateVod()
     m.top.visible = m.top.active
     if m.top.active
+        m.lastSpokenVod = ""
         if m.shelf <> "catalog" and m.shelf <> "categories" and m.shelf <> "providers" then loadVodPage()
         drawVod()
         m.top.setFocus(true)
@@ -303,6 +304,14 @@ sub drawVod()
         if m.providerId <> "" and m.shelf = "catalog" then m.status.text += "  |  Provider " + m.providerId
     end if
     if m.failure <> "" then m.status.text = m.failure
+    if m.top.active and m.items.count() > m.index and m.index >= 0 and not m.primaryNavigation.active and not m.libraryNavigation.active and m.detail = invalid
+        focused = m.items[m.index]
+        identity = m.shelf + "|" + textValue(focused.kind) + "|" + textValue(focused.id) + "|" + m.index.toStr()
+        if identity <> m.lastSpokenVod
+            uiAnnounce(focused.title)
+            m.lastSpokenVod = identity
+        end if
+    end if
     if (m.shelf = "related" or m.shelf = "person") and m.failure = "" and textValue(m.discoveryMessage) <> "" then m.status.text = m.discoveryMessage
     for i = 0 to 19
         tile = m.tiles[i]

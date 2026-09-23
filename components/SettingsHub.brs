@@ -11,6 +11,7 @@ sub init()
     uiSetColor(m.list, "0xE8F3FAFF", "focusedColor")
     uiSetColor(m.list, "0x365163FF", "focusBitmapBlendColor")
     m.list.observeField("itemSelected", "onSettingSelected")
+    m.list.observeField("itemFocused", "onSettingFocused")
     m.page = ""
     m.stack = []
     m.choice = invalid
@@ -117,6 +118,18 @@ end sub
 sub onSettingSelected(event as object)
     if not m.top.active or not m.list.isSameNode(event.getRoSGNode()) then return
     selectSetting(event.getData())
+end sub
+
+sub onSettingFocused(event as object)
+    if not m.top.active or m.focusRegion <> "detail" then return
+    index = event.getData()
+    if index < 0 or index >= m.items.count() then return
+    label = m.items[index].title
+    if m.choice = invalid
+        item = m.items[index]
+        if item.key <> invalid then label += ", " + settingsValueText(settingsHubValue(m.top.model, item.scope, item.key), item.key)
+    end if
+    uiAnnounce(label)
 end sub
 
 sub selectSetting(index as integer)

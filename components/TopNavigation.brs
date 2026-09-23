@@ -20,7 +20,9 @@ sub configureNavigation()
         icon = m.top.createChild("Poster")
         icon.width = 24
         icon.height = 24
-        icon.uri = "pkg:/images/ui-icon-" + m.items[i].id + ".png"
+        iconName = m.items[i].id
+        if iconName = "dvr" then iconName = "recent"
+        icon.uri = "pkg:/images/ui-icon-" + iconName + ".png"
         label = uiLabel(m.top, m.items[i].label, 0, 0, 0, 50, uiTypeSize("button"))
         content = uiPillContent(200, 50, label.localBoundingRect().width, 24)
         icon.translation = [x + content.iconX, content.iconY]

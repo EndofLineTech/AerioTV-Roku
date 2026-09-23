@@ -145,23 +145,11 @@ sub uiSetColor(node as object, color as string, field = "color" as string)
     node[field] = uiColorForPalette(color, uiResolvedPalette(uiAppearance()), isText)
 end sub
 
-' Announce text to Roku Audio Guide (screen reader)
+' roAudioGuide speaks only while the device screen reader is enabled.
 sub uiAnnounce(text as string)
-    if m.global <> invalid and m.global.audioGuide = true
-        screen = CreateObject("roScreen")
-        if screen <> invalid then screen.announce(text)
-    end if
-end sub
-
-' Set accessibility label on a node for screen readers
-sub uiSetAccessible(node as object, label as string, hint as string)
-    if node = invalid then return
-    kind = node.subtype()
-    if kind = "Label" or kind = "Button" or kind = "Poster" or kind = "Group"
-        node.accessible = true
-        node.accessibleLabel = label
-        if hint <> "" then node.accessibleHint = hint
-    end if
+    if text = "" or m.global = invalid or m.global.audioGuide <> true then return
+    if m.audioGuide = invalid then m.audioGuide = CreateObject("roAudioGuide")
+    if m.audioGuide <> invalid then m.audioGuide.say(left(text, 300), true, true)
 end sub
 
 ' Repaint tracked nodes in place; never recreate Video or reassign its content.

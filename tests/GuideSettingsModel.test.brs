@@ -16,6 +16,13 @@ sub main()
     parsed["grouplayout"] = "modal"
     parsed["groupLayout"] = "pills"
     assertEqual(normalizeGuideSettings(parsed).groupLayout, "pills", "migrate case-sensitive dynamic layout selection")
+    basic = guidePresentationGeometry("basic")
+    preview = guidePresentationGeometry("preview")
+    assertEqual(basic.rowCount * basic.rowHeight <= 692, true, "basic rows fit above guide footer")
+    assertEqual(basic.tileHeight < basic.rowHeight, true, "basic rows do not overlap")
+    assertEqual(basic.timeY + basic.timeHeight <= basic.tileHeight, true, "basic time fits tile")
+    assertEqual(basic.badgeY + 24 <= basic.tileHeight, true, "basic badges fit tile")
+    assertEqual(preview.rowCount, 7, "preview keeps seven rows")
     server = [{id: "1", name: "Sports"}, {id: "2", name: "News"}]
     settings.hiddenGroups = ["group:1"]
     groups = organizedGroups(server, [], settings)

@@ -45,7 +45,7 @@ sub openMedia()
     content.url = request.url
     content.streamFormat = request.streamFormat
     if request.streamFormat = "mpegts" then content.streamFormat = "ts"
-    content.live = false
+    content.live = request.growing = true
     content.title = request.title
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
     ' Dispatcharr's VOD proxy forwards Authorization upstream. X-API-Key alone
@@ -53,16 +53,18 @@ sub openMedia()
     content.httpHeaders = mediaPlaybackHeaders(request.apiKey)
     m.pendingResume = 0
     m.resumeNoticeUntil = 0
+    m.resumeTarget = 0
+    m.resumeWatch = invalid
     if request.resume <> invalid then m.pendingResume = int(request.resume)
     m.video.content = content
     print "[on-demand] reader="; content.streamFormat; " mode="; request.mode
-    m.video.enableUI = request.mode <> "catchup"
-    m.video.enableTrickPlay = request.mode <> "catchup"
+    m.video.enableUI = request.mode <> "catchup" and request.growing <> true
+    m.video.enableTrickPlay = request.mode <> "catchup" and request.growing <> true
     m.video.visible = true
     m.top.visible = true
     m.opening = false
     m.video.control = "play"
-    if request.mode = "catchup" then m.top.setFocus(true) else m.video.setFocus(true)
+    if request.mode = "catchup" or request.growing = true then m.top.setFocus(true) else m.video.setFocus(true)
     m.elapsed = CreateObject("roTimespan")
     m.elapsed.mark()
     m.clock.control = "start"
@@ -83,9 +85,16 @@ sub onMediaState()
             m.pendingResume = 0
             if m.video.duration > target
                 m.message.text = "Resuming..."
+                if m.session.mode = "recording" then print "[dvr-resume] seeking saved second="; target
+                if m.session.mode = "recording"
+                    m.resumeTarget = target
+                    m.resumeWatch = CreateObject("roTimespan")
+                    m.resumeWatch.mark()
+                end if
                 m.video.seek = target
                 return
             else
+                if m.session.mode = "recording" then print "[dvr-resume] saved position unavailable in current file"
                 m.resumeNoticeUntil = uiNow() + 8
             end if
         end if
@@ -139,6 +148,27 @@ sub reportProgress()
         m.session.state = m.video.state
     end if
     m.top.progress = {account: m.session.account, identity: m.session.identity, key: m.session.item, mode: m.session.mode, position: m.session.position, duration: m.session.duration, finished: m.finished, state: m.video.state, closing: m.closing}
+    if m.session.mode = "recording" and m.video.state = "playing"
+        if m.resumeTarget <> invalid
+            if m.resumeTarget > 0
+                if mediaNumber(m.video.position)
+                    if m.video.position >= m.resumeTarget - 2
+                        print "[dvr-resume] reached saved second="; int(m.video.position)
+                        m.resumeTarget = 0
+                        m.resumeWatch = invalid
+                    end if
+                end if
+                if m.resumeWatch <> invalid
+                    if m.resumeWatch.totalSeconds() >= 10
+                        print "[dvr-resume] seek did not reach saved position"
+                        m.message.text = "Resume was not confirmed; use Play from beginning if the server file changed."
+                        m.resumeTarget = 0
+                        m.resumeWatch = invalid
+                    end if
+                end if
+            end if
+        end if
+    end if
     if m.session.mode = "catchup" and (m.video.state = "playing" or m.video.state = "paused")
         renderArchiveProgress()
     end if
@@ -234,6 +264,12 @@ function handleArchiveKey(key as string, press as boolean) as boolean
             openArchiveActions()
             return true
         end if
+        if key = "play" or key = "OK"
+            if m.video.state = "paused" then m.video.control = "resume" else if m.video.state = "playing" then m.video.control = "pause"
+        end if
+        return key <> "options"
+    end if
+    if m.session.mode = "recording" and m.top.request.growing = true
         if key = "play" or key = "OK"
             if m.video.state = "paused" then m.video.control = "resume" else if m.video.state = "playing" then m.video.control = "pause"
         end if

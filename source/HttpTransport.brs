@@ -1,6 +1,6 @@
 ' Task-thread transport. GET bodies stage in tmp and are size-checked before
 ' reading/ParseJSON. tmp is not a hard byte quota: also abort on memory pressure.
-function httpTransferOnce(url as string, body as dynamic, bearer as string, timeoutMs as integer, maxBytes as integer) as object
+function httpTransferOnce(url as string, body as dynamic, bearer as string, timeoutMs as integer, maxBytes as integer, method = "GET" as string) as object
     result = {status: 0, headers: {}, body: "", bytes: -1, error: ""}
     port = CreateObject("roMessagePort")
     transfer = CreateObject("roUrlTransfer")
@@ -19,7 +19,10 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
     file = ""
     fs = CreateObject("roFileSystem")
     monitor = CreateObject("roAppMemoryMonitor")
-    if body = invalid
+    if method = "DELETE"
+        transfer.setRequest("DELETE")
+        started = transfer.asyncGetToString()
+    else if body = invalid
         file = "tmp:/aeriotv-http-" + CreateObject("roDeviceInfo").getRandomUUID() + ".json"
         started = transfer.asyncGetToFile(file)
     else

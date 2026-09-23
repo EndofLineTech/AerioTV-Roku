@@ -8,5 +8,6 @@
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DvrPresentationModel.brs" />
   <script type="text/brightscript" uri="ProgramDetails.brs" />
 </component>

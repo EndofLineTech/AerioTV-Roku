@@ -15,8 +15,6 @@ sub init()
         label = uiLabel(m.top, m.labels[i], x, 661, 140, 28, uiTypeSize("caption"))
         label.horizAlign = "center"
         label.vertAlign = "center"
-        label.accessible = true
-        label.accessibleLabel = m.labels[i]
         m.cells.push({fill: fill, label: label, icon: icon})
     end for
     draw()
@@ -43,9 +41,12 @@ sub draw()
         cell.label.visible = focused
     end for
     if m.top.active and m.index <> m.lastAnnouncedIndex then
-        uiAnnounce(m.labels[m.index] + " " + (m.actions[m.index]))
+        label = m.labels[m.index]
+        if m.index = 0 and m.top.paused then label = "Play"
+        uiAnnounce(label)
         m.lastAnnouncedIndex = m.index
     end if
+    if not m.top.active then m.lastAnnouncedIndex = -1
     m.cells[0].label.text = "Pause"
     m.cells[0].icon.uri = "pkg:/images/ui-icon-pause.png"
     if m.top.paused then m.cells[0].label.text = "Play"

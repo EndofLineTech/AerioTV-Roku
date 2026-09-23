@@ -1,7 +1,7 @@
 ' Schedule UTC and native media seconds are separate clocks. Duration alone is
 ' not evidence of seek support, especially for finite MPEG-TS archives.
 function mediaSession(account as string, identity as string, mode as string, item as string, now as integer) as object
-    known = mode = "live" or mode = "delayed" or mode = "catchup" or mode = "vod"
+    known = mode = "live" or mode = "delayed" or mode = "catchup" or mode = "vod" or mode = "recording"
     if not known then mode = "unknown"
     return {account: account, identity: identity, mode: mode, item: item, state: "opening", openedAt: now, programStart: invalid, position: invalid, duration: invalid, bounds: invalid, seek: "unknown", liveEdge: "unknown"}
 end function

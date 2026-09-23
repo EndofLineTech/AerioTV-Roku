@@ -26,6 +26,19 @@ end function
 function normalizeDevicePreferences(raw as dynamic) as object
     result = {}
     if type(raw) = "roAssociativeArray" then result = copyJson(raw)
+    ' Earlier Settings writes lowercased camel-case keys on ParseJson's
+    ' case-sensitive map. Migrate the displayed choice to the canonical field.
+    for each field in ["archiveSkipSeconds", "audioMode", "videoScale", "themePreset", "appearanceMode", "panelStyle", "textSize", "subtextSize", "contrastMode", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints", "networkTimeoutSeconds", "refreshSeconds", "clockFormat", "audioGuide"]
+        alias = lcase(field)
+        exactAlias = CreateObject("roRegex", "^" + alias + "$", "")
+        for each key in result.keys()
+            if exactAlias.isMatch(key)
+                value = result[key]
+                result.delete(key)
+                result[field] = value
+            end if
+        end for
+    end for
     preset = "aerio"
     for each choice in ["aerio", "midnight", "sunset", "forest", "lavender", "monochrome", "light"]
         if result.themePreset = choice then preset = choice
@@ -102,12 +115,39 @@ function compactIds(raw as dynamic, limit as integer) as object
     return result
 end function
 
+function normalizeDvrPositions(raw as dynamic) as object
+    result = {}
+    if type(raw) <> "roAssociativeArray" then return result
+    numericId = CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "")
+    for each id in raw
+        if numericId.isMatch(id) and result.count() < 50
+            position = raw[id]
+            if GetInterface(position, "ifInt") <> invalid
+                if position > 0 and position < 86400 then result[id] = position
+            end if
+        end if
+    end for
+    return result
+end function
+
 function normalizeAccountPreferences(raw as dynamic) as object
     result = {}
     if type(raw) = "roAssociativeArray" then result = copyJson(raw)
+    for each field in ["startupBehavior", "vodEnabled", "vodTmdbEnabled", "dvrPreRollMinutes", "dvrPostRollMinutes"]
+        alias = lcase(field)
+        exactAlias = CreateObject("roRegex", "^" + alias + "$", "")
+        for each key in result.keys()
+            if exactAlias.isMatch(key)
+                value = result[key]
+                result.delete(key)
+                result[field] = value
+            end if
+        end for
+    end for
     result.favoriteIds = compactIds(result.favoriteIds, 2000)
     result.recent = compactIds(result.recent, 25)
     result.aacChannels = compactIds(result.aacChannels, 100)
+    result.dvrPositions = normalizeDvrPositions(result.dvrPositions)
     result.guide = normalizeGuideSettings(result.guide)
     result.collections = normalizeCollections(result.collections)
     result.reminders = normalizeReminders(result.reminders)
@@ -118,6 +158,13 @@ function normalizeAccountPreferences(raw as dynamic) as object
     if result.group = "" then result.group = "all"
     result.startupBehavior = textValue(result.startupBehavior)
     if result.startupBehavior <> "mini" then result.startupBehavior = "guide"
+    for each field in ["dvrPreRollMinutes", "dvrPostRollMinutes"]
+        selected = 0
+        for each allowed in [0, 5, 10, 15, 30]
+            if result[field] = allowed then selected = allowed
+        end for
+        result[field] = selected
+    end for
     result.whatsNewVersion = left(textValue(result.whatsNewVersion), 32)
     aspects = {}
     if type(result.videoAspects) = "roAssociativeArray"

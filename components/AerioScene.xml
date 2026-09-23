@@ -10,6 +10,7 @@
   <script type="text/brightscript" uri="pkg:/source/VideoGeometry.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideSettingsModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DvrPresentationModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
   <script type="text/brightscript" uri="AerioScene.brs" />
   <script type="text/brightscript" uri="PlayerOptionsShortcut.brs" />
@@ -28,10 +29,14 @@
   <script type="text/brightscript" uri="AacStartup.brs" />
   <script type="text/brightscript" uri="pkg:/source/SettingsModel.brs" />
   <script type="text/brightscript" uri="SettingsNavigation.brs" />
+  <script type="text/brightscript" uri="DvrNavigation.brs" />
+  <script type="text/brightscript" uri="DvrPlayback.brs" />
+  <script type="text/brightscript" uri="DvrSeriesNavigation.brs" />
   <children>
     <Group id="screen" />
     <GuideView id="guide" visible="false" />
     <VodView id="vodLibrary" visible="false" />
+    <DvrView id="dvrView" visible="false" />
     <OnDemandPlayer id="onDemandPlayer" visible="false" />
     <Group id="miniFrame" visible="false">
       <Rectangle id="miniBorder" translation="[1420,12]" width="408" height="233" color="0x1AC4D8FF" />

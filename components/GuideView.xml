@@ -2,11 +2,13 @@
 <component name="GuideView" extends="Group">
   <interface>
     <field id="archiveRequest" type="assocarray" alwaysNotify="true" />
+    <field id="recordRequest" type="assocarray" alwaysNotify="true" />
     <field id="metadataEvent" type="assocarray" alwaysNotify="true" />
     <field id="channelFacts" type="assocarray" onChange="onCatchupCapabilities" />
     <field id="catchupPermission" type="string" value="unknown" onChange="onCatchupCapabilities" />
     <field id="moviesPermission" type="string" value="unknown" onChange="updatePrimaryTabs" />
     <field id="seriesPermission" type="string" value="unknown" onChange="updatePrimaryTabs" />
+    <field id="dvrPermission" type="string" value="unknown" onChange="updatePrimaryTabs" />
     <field id="vodEnabled" type="boolean" value="true" />
     <field id="config" type="assocarray" onChange="configure" />
     <field id="active" type="boolean" value="false" onChange="onActive" />
@@ -48,6 +50,7 @@
   <script type="text/brightscript" uri="pkg:/source/RemoteMapModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideSettingsModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DvrPresentationModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />

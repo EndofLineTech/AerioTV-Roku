@@ -1,0 +1,127 @@
+AerioTV Roku - 0.3.40 development visual & accessibility acceptance
+=====================================================================
+Use the installed 0.3.40 development build, not public v0.3.37 or v0.3.38.
+The earlier VISUAL-TESTING-0.3.38.txt results are preserved historical evidence.
+These NEW visual and accessibility checks have not been marked passed on your behalf.
+
+Build: __________  Roku/OS: __________  Date/tester: __________
+Mark PASS, FAIL, or SKIP. Do not include credentials or server URLs in evidence.
+
+[         ] A01 Startup and basic guide regression
+Launch. Verify readable text, populated guide, and no blank/black/error screen.
+Confirm the installed version via Settings > General > About (should show 0.3.40).
+
+[         ] A02 Primary navigation shapes and states (faa.14, faa.22)
+Move focus to the top navigation (Up at the top of the guide). Live TV / VOD /
+Settings should use icon+text capsules. Focused tab is white with dark text;
+the selected tab retains cyan when focus moves away. Only the active focus owner
+should show focus. Check subtle growth (1.04x), no overlap, no square edges.
+Verify centered strip: 3 tabs centered in 1728px safe area (start x ≈ 648px).
+
+[         ] A03 Group pills and sidebar (faa.20, faa.22)
+Settings > Appearance > Group navigation. Check Pills, Sidebar, and Modal.
+Pills have capsule ends; Sidebar uses rounded rows. Selected group is cyan;
+focus follows the rounded outline. Long labels remain readable/truncate cleanly.
+Count: exactly 5 pills visible when ≥5 groups exist; caption centered above strip.
+Strip centered on 1920px canvas (start x ≈ 352px for 5 groups). Restore layout.
+
+[         ] A04 Guide grid focus and EPG flag badges (faa.21, faa.23)
+Navigate rows and times. Program cells stay SQUARE. The current cell has a clear
+white outline (0xFFFFFEFF), including category-colored programs. Moving focus into
+top/group navigation removes that outline; returning restores the current guide selection.
+Check EPG flag pills: LIVE (red #FF4757), NEW (green #27AE60), PREMIERE/FINALE (purple #9B59B6).
+Badges are centered vertically/horizontally in capsule (y=4, height=20). LIVE badge has
+x=5 offset; others x=4. Badges do not overlap time text; time shifts right when badges present.
+Episode numbers (S/E) and subtitle toggle (showSubtitles) respected.
+
+[         ] A05 Player controls and info (faa.15)
+Tune a working channel, show info and move to controls. Verify circular icons,
+readable focused captions, white focus background/dark glyph, and Pause/Play icon
+changes. Exercise Channels, Recent, Minimize, Options and explicit Stop. Check
+picture/audio continuity and unchanged Back behavior. Fullscreen * remains Roku's.
+Focus announcement: channel name + number announced on Up/Down navigation.
+
+[         ] A06 Player info, options and program details (faa.15)
+Check rounded info/options panels and choice highlights. Open future program
+details and return. Verify labels, long descriptions, correct actions, Back/focus
+restoration, and no overlap with the transport row or screen edge.
+ProgramDetails buttons announce on focus.
+
+[         ] A07 VOD poster library (faa.16)
+Open Movies and TV Shows. Titles use portrait artwork with names/facts below
+and a cyan focused border. Navigate ALL four rows of a 20-item page; two rows
+should remain visible at once. FF/Rew paging must keep working. Test a title
+without art, a long title, details/back focus restoration and playback.
+Compact mode (Categories/Providers/Versions) shows rounded text cards only.
+
+[         ] A08 VOD category/source/saved pages
+Categories and versions use compact rounded text cards rather than empty posters.
+Confirm disabled-provider categories stay excluded. Check Continue/Watchlist/Hidden
+navigation, missing images, empty pages and returning to the correct title.
+Library subnav (Movies/TV Shows/Categories/Providers/Versions) centered in 1728px.
+
+[         ] A09 Settings rail and detail (faa.17)
+Open Settings: six categories on the left, detail on the right. Up/Down moves rail
+focus without changing values; OK/Right enters the category. Left/Back unwinds
+choices/subpages, then returns to the selected rail row. Back from rail returns
+to guide. Check all categories, choices, reset confirmation and long values.
+Settings text uses scaled fonts (body/secondary sizes respond to textSize pref).
+
+[         ] A10 Settings persistence, appearance, and remote-map regression
+Change a harmless preference, leave/reopen Settings and confirm it persists.
+Test one custom Player and Guide mapping, immediate application, reset and Back
+recovery. Restore originals. About/What's New/license text rows must not open
+empty editors when selected.
+Appearance: 7 presets (AerioTV, Midnight, Sunset, Forest, Lavender, Monochrome,
+Neutral) + Dark/Light mode + custom hex accent + Translucent/Solid panel style.
+Audio Guide toggle present (off by default). Reset Appearance confirms.
+Remote-map changes apply immediately; failed save rolls back and restores prior map.
+Remote hint footer: key-only capsules + plain help text; key pills centered.
+
+[         ] A11 Visual/focus audit (Q01)
+At 1080p, inspect long channel/program names, every Remote Control page, choice
+list, reset confirmation, guide, fullscreen info, mini-player, and VOD return.
+Expected: no clipping, overlap, unreadable contrast, lost focus, or focus trap.
+Use Roku Audio Guide if enabled and record announced labels/order. Result: ______
+
+[         ] A12 Captions/audio and playback regression - conditional (Q02)
+On a naturally captioned/live sample, confirm picture, audible sound, captions,
+and configured video scale are readable in fullscreen and mini-player. Restore any
+caption/scale setting. SKIP if no suitable sample exists.
+
+[         ] A13 Sustained browse/playback resource run (Q03)
+Record `python3 scripts/roku_device_info.py` uptime before. Browse guide/remote
+settings/VOD and play a known-working live channel for at least 30 minutes, using
+several map changes but restoring defaults before the end. Record uptime after and
+any sanitized native errors. No restart, crash, accumulating artifact, or degraded
+focus/playback is PASS. Before ______ After ______ Duration ______ Result ______
+
+[         ] A14 Longer stability soak (Q04)
+Perform a separate 60-minute ordinary guide/live playback run after the map is
+stable. Capture uptime before/after and note real channel/media labels privately.
+No restart or late action from a prior map/session is PASS. Before ______ After
+______ Duration ______ Result ______
+
+[         ] A15 Audio Guide - functional (faa.8)
+Enable Settings > General > Audio Guide. Navigate guide, player, settings.
+Verify announcements:
+- Guide Up/Down: "Channel Name, Channel Number"
+- Guide Left/Right: channel name + number on release
+- Guide OK: program title or details
+- Guide *: Options menu
+- Player Up/Down/Left/Right/OK/Play/Back: control names announced
+- Settings rail/detail: category names, option names, values announced
+- Settings footer: key pills announced, help text NOT announced
+- VOD library: title announced on focus
+Record announced labels/order. Missing/incorrect labels = FAIL.
+
+[         ] A16 Visual reference comparison (faa.11)
+Compare setup, guide, details, player, options, settings against annotated source
+reference (docs/PLAYER-CONTRACT.md). Record actual Roku captures, long text, text
+scale/safe-area and focus observations, intentional platform differences, and any
+defects as linked issues. Do not claim pixel parity from source inspection.
+
+Failure ID: ____ Screen/buttons: _____________________________________________
+Expected: _____________________ Actual: ______________________________________
+Screenshot path (review/redact first): ________________________________________
+Restore layout, map and any preferences changed during this test.

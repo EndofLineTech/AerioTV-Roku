@@ -44,7 +44,7 @@ function requestPagedRows(path as string) as dynamic
     return rows
 end function
 
-function requestJson(url as string, body = invalid as dynamic, bearer = "" as string) as dynamic
+function requestJson(url as string, body = invalid as dynamic, bearer = "" as string, method = "GET" as string) as dynamic
     m.failure = ""
     m.httpFailure = invalid
     m.httpAttempts = 0
@@ -78,12 +78,13 @@ function requestJson(url as string, body = invalid as dynamic, bearer = "" as st
             return invalid
         end if
         m.httpAttempts++
-        response = httpTransferOnce(url, body, bearer, remaining, maxBytes)
+        response = httpTransferOnce(url, body, bearer, remaining, maxBytes, method)
         if response.error = "" and response.status >= 200 and response.status < 300
             if len(response.body) > maxBytes
                 setHttpFailure(httpFailure(0, {}, 0, "too-large", len(response.body), maxBytes))
                 return invalid
             end if
+            if method = "DELETE" and response.body.trim() = "" then return {}
             if not CreateObject("roRegex", "^\s*[\{\[]", "").isMatch(response.body)
                 setHttpFailure(httpFailure(response.status, {}, 0, "invalid-response"))
                 return invalid
@@ -95,7 +96,7 @@ function requestJson(url as string, body = invalid as dynamic, bearer = "" as st
         failure = httpFailure(response.status, response.headers, CreateObject("roDateTime").asSeconds(), response.error, response.bytes, maxBytes)
         setHttpFailure(failure)
         ' Never auto-repeat login/source-switch/catch-up mutations.
-        if body <> invalid or attempt > 0 or not failure.retryable then return invalid
+        if method <> "GET" or body <> invalid or attempt > 0 or not failure.retryable then return invalid
         delay = failure.retryAfter
         if delay < 0 then delay = 1
         remaining = timeout - clock.totalMilliseconds()

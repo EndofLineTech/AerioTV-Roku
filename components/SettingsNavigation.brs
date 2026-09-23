@@ -1,7 +1,7 @@
 sub refreshSettingsHub()
     info = CreateObject("roAppInfo")
     version = info.getValue("major_version") + "." + info.getValue("minor_version") + "." + info.getValue("build_version")
-    m.settingsHub.model = {account: m.accountIdentity, version: version, device: m.devicePreferences, guide: m.accountPreferences.guide, vodEnabled: m.accountPreferences.vodEnabled <> false, vodTmdbEnabled: m.accountPreferences.vodTmdbEnabled = true, startupBehavior: m.accountPreferences.startupBehavior, whatsNewVersion: m.accountPreferences.whatsNewVersion, movies: m.capabilities.movies, series: m.capabilities.series, catchup: m.capabilities.catchup}
+    m.settingsHub.model = {account: m.accountIdentity, version: version, device: m.devicePreferences, guide: m.accountPreferences.guide, vodEnabled: m.accountPreferences.vodEnabled <> false, vodTmdbEnabled: m.accountPreferences.vodTmdbEnabled = true, startupBehavior: m.accountPreferences.startupBehavior, dvrPreRollMinutes: m.accountPreferences.dvrPreRollMinutes, dvrPostRollMinutes: m.accountPreferences.dvrPostRollMinutes, whatsNewVersion: m.accountPreferences.whatsNewVersion, movies: m.capabilities.movies, series: m.capabilities.series, catchup: m.capabilities.catchup, dvr: m.capabilities.dvr}
 end sub
 
 sub openSettingsHub()
@@ -66,7 +66,7 @@ sub onSettingsHubSelection(event as object)
     if not allowed then return
     if item.scope = "device"
         before = copyJson(m.devicePreferences)
-        m.devicePreferences[lcase(item.key)] = item.value
+        m.devicePreferences[item.key] = item.value
         m.devicePreferences = normalizeDevicePreferences(m.devicePreferences)
         if not persistPreferences()
             m.devicePreferences = before
@@ -91,7 +91,7 @@ sub onSettingsHubSelection(event as object)
         end if
     else if item.scope = "account"
         before = copyJson(m.accountPreferences)
-        m.accountPreferences[lcase(item.key)] = item.value
+        m.accountPreferences[item.key] = item.value
         if not persistAccountPreferences()
             m.accountPreferences = before
             m.preferenceStore.accounts[preferenceScope(m.accountIdentity)] = before

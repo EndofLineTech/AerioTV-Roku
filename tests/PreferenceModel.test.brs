@@ -1,4 +1,6 @@
 sub main()
+    positions = normalizeDvrPositions({"12": 420, "13": -1, "14/15": 60, "16": 999999})
+    if positions.count() <> 1 or positions["12"] <> 420 then stop
     store = defaultPreferenceStore()
     assertEqual(store.device.channelDirection, "apple", "approved new default")
     assertEqual(store.device.archiveSkipSeconds, 60, "minute-window skip default")
@@ -12,6 +14,15 @@ sub main()
     assertEqual(device.networkTimeoutSeconds, 20, "safe request timeout default")
     assertEqual(device.refreshSeconds, 300, "safe active refresh default")
     assertEqual(device.infoHints, true, "overlay hints default on")
+    wrongCase = {}
+    wrongCase.setModeCaseSensitive()
+    wrongCase.audioGuide = false
+    wrongCase.audioguide = true
+    wrongCase.themePreset = "aerio"
+    wrongCase.themepreset = "lavender"
+    repaired = normalizeDevicePreferences(wrongCase)
+    assertEqual(repaired.audioGuide, true, "displayed Audio Guide choice migrates to runtime field")
+    assertEqual(repaired.themePreset, "lavender", "displayed theme choice migrates to runtime field")
     migratedRemote = normalizeDevicePreferences({guideReplayAction: "options", playerReplayAction: "rewind"})
     assertEqual(migratedRemote.guideReplayAction, invalid, "legacy guide preference removed")
     assertEqual(resolveRemoteAction(migratedRemote.remoteMap, "guide", "replay"), "openOptions", "legacy guide preference migrates")
@@ -27,6 +38,17 @@ sub main()
     assertEqual(a.startupBehavior, "guide", "guide no-autoplay default")
     assertEqual(a.whatsNewVersion, "", "what's new starts unread")
     assertEqual(normalizeAccountPreferences({startupBehavior: "mini", whatsNewVersion: "0.3.29"}).startupBehavior, "mini", "valid mini startup survives")
+    assertEqual(normalizeAccountPreferences({dvrPreRollMinutes: 10, dvrPostRollMinutes: 15}).dvrPostRollMinutes, 15, "bounded account DVR padding survives")
+    assertEqual(normalizeAccountPreferences({dvrPreRollMinutes: 999}).dvrPreRollMinutes, 0, "invalid DVR padding rejected")
+    wrongAccount = {}
+    wrongAccount.setModeCaseSensitive()
+    wrongAccount.startupBehavior = "guide"
+    wrongAccount.startupbehavior = "mini"
+    wrongAccount.vodEnabled = true
+    wrongAccount.vodenabled = false
+    repairedAccount = normalizeAccountPreferences(wrongAccount)
+    assertEqual(repairedAccount.startupBehavior, "mini", "displayed startup choice migrates")
+    assertEqual(repairedAccount.vodEnabled, false, "displayed VOD choice migrates")
     assertEqual(accountPreferences(store, "url|B", "url|A", legacy).favoriteIds.count(), 0, "legacy isolation")
     assertEqual(preferenceScope("url|A") <> preferenceScope("url|a"), true, "case sensitive identity")
     a = recordWatched(a, "a")

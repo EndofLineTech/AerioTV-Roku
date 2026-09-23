@@ -6,7 +6,8 @@ sub main()
     m.video = {state: "buffering", position: 60, duration: 100, visible: true, errorCode: -1, errorStr: "HTTP 500 https://host/private"}
     m.elapsed = {totalSeconds: function()
         return 2
-    end function}
+    end function, mark: sub()
+    end sub}
     m.message = {text: ""}
     m.clock = {control: "start"}
     m.opening = false
@@ -70,5 +71,15 @@ sub main()
     m.session.identity = "replacement"
     handleArchiveKey("fastforward", false)
     if m.top.archiveSeek <> invalid then stop
+    m.session = mediaSession("account", "recording-session", "recording", "recording-id", 1000)
+    m.top.request = {account: "account", apiKey: "private", title: "Test recording", mode: "recording"}
+    m.video = {state: "playing", position: 0, duration: 120, visible: true, seek: 0}
+    m.startPaused = false
+    m.pendingResume = 80
+    onMediaState()
+    if m.video.seek <> 80 or m.pendingResume <> 0 then stop
+    m.video.position = 81
+    reportProgress()
+    if m.resumeTarget <> 0 then stop
     print "ALL TESTS PASSED"
 end sub

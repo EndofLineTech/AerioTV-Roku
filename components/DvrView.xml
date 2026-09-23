@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="DvrView" extends="Group">
+  <interface>
+    <field id="active" type="boolean" value="false" onChange="onDvrActive" />
+    <field id="config" type="assocarray" onChange="onDvrConfig" />
+    <field id="closed" type="boolean" alwaysNotify="true" />
+    <field id="playRequested" type="assocarray" alwaysNotify="true" />
+    <field id="deleted" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DvrPresentationModel.brs" />
+  <script type="text/brightscript" uri="DvrView.brs" />
+  <children>
+    <Rectangle width="1920" height="1080" color="0x0A1628FF" />
+    <Label id="heading" translation="[96,92]" width="1728" height="60" text="Server recordings" font="font:LargeBoldSystemFont" />
+    <Label id="status" translation="[96,168]" width="1728" height="54" font="font:MediumSystemFont" color="0x9EB5C9FF" />
+    <LabelList id="recordings" translation="[96,332]" itemSize="[1320,62]" numRows="9" itemSpacing="[0,8]" clippingRect="[0,0,1320,630]" focusBitmapUri="pkg:/images/ui-focus-row.png" focusBitmapBlendColor="0x365163FF" focusedColor="0xFFFFFFFF" color="0xE8F3FAFF" />
+    <Poster id="artwork" translation="[1480,332]" width="330" height="495" loadWidth="660" loadHeight="990" loadDisplayMode="scaleToFit" />
+    <Timer id="refreshTimer" duration="60" repeat="true" />
+  </children>
+</component>

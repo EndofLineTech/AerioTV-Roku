@@ -1,11 +1,12 @@
 import { spawnSync } from 'node:child_process';
 
-for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'RemoteHints', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'PlayerRemoteInput', 'GuideRemoteInput', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'GuideTaskCache', 'GuideMappingFallback', 'MappingTask', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'CatchupModel', 'CatchupTask', 'DiagnosticModel', 'OnDemandPlayer', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask', 'RemoteMapModel', 'SettingsRail', 'SettingsHubInput']) {
+for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'AerioSurface', 'RemoteHints', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'PlayerRemoteInput', 'GuideRemoteInput', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'DvrRecordingModel', 'DvrPresentationModel', 'DvrNavigation', 'DvrView', 'GuideTaskCache', 'GuideMappingFallback', 'MappingTask', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'CatchupModel', 'CatchupTask', 'DiagnosticModel', 'OnDemandPlayer', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask', 'RemoteMapModel', 'SettingsRail', 'SettingsHubInput']) {
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
     'source/PlaybackModel.brs',
     ...(suite === 'RemoteHints' ? ['components/RemoteHints.brs'] : []),
+    ...(suite === 'AerioSurface' ? ['components/AerioSurface.brs'] : []),
     'source/NowNextModel.brs',
     'source/RemoteMapModel.brs', 'source/PreferenceModel.brs',
     'source/CapabilityModel.brs',
@@ -15,6 +16,9 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'RemoteHints',
     'source/ReminderModel.brs',
     ...(['TmdbTask', 'VodShelfTask'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
     'source/HttpPolicy.brs',
+    ...(suite === 'DvrRecordingModel' ? ['source/DvrRecordingModel.brs'] : []),
+    ...(suite === 'DvrRecordingModel' ? ['source/DvrSeriesModel.brs'] : []),
+    ...(['DvrPresentationModel', 'DvrNavigation', 'DvrView'].includes(suite) ? ['source/DvrPresentationModel.brs'] : []),
     'source/MediaSessionModel.brs', 'source/VodModel.brs', 'source/VodState.brs', 'source/CatchupModel.brs',
     'source/DiagnosticModel.brs',
     'source/NavigationModel.brs', 'source/DescriptionModel.brs',
@@ -37,7 +41,9 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'RemoteHints',
     ...(['PlayerOkHold', 'PlayerLifecycle'].includes(suite) ? ['components/PlayerOptionsShortcut.brs'] : []),
     ...(['StartupRecovery', 'PlayerLifecycle'].includes(suite) ? ['components/StartupRecovery.brs'] : []),
     ...(suite === 'PlayerLifecycle' ? ['components/LiveRecovery.brs', 'components/PlaybackFailure.brs'] : []),
-    ...(suite === 'PlayerLifecycle' ? ['components/MediaNavigation.brs'] : []),
+    ...(suite === 'PlayerLifecycle' ? ['components/MediaNavigation.brs', 'components/DvrPlayback.brs'] : []),
+    ...(suite === 'DvrNavigation' ? ['components/MediaNavigation.brs', 'components/DvrNavigation.brs', 'components/DvrSeriesNavigation.brs', 'components/DvrPlayback.brs'] : []),
+    ...(suite === 'DvrView' ? ['components/DvrView.brs'] : []),
     ...(suite === 'PlayerLifecycle' ? ['components/Diagnostics.brs'] : []),
     ...(suite === 'CatchupTask' ? ['components/CatchupTask.brs'] : []),
     ...(suite === 'OnDemandPlayer' ? ['components/OnDemandPlayer.brs'] : []),
@@ -59,5 +65,8 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'SceneUi', 'RemoteHints',
   process.stdout.write(result.stdout ?? '');
   process.stderr.write(result.stderr ?? '');
   if (result.error) throw result.error;
-  if (result.status !== 0 || !result.stdout.includes('ALL TESTS PASSED')) process.exit(1);
+  if (result.status !== 0 || !result.stdout.includes('ALL TESTS PASSED')) {
+    process.stderr.write(`Failed suite: ${suite}\n`);
+    process.exit(1);
+  }
 }

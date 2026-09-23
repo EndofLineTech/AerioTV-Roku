@@ -31,6 +31,7 @@ sub focusSettingsRail()
     m.railIndex = m.railSelected
     m.top.setFocus(true)
     drawSettingsRail()
+    if m.railItems <> invalid then uiAnnounce(m.railItems[m.railIndex].title)
 end sub
 
 sub selectSettingsCategory(index as integer)
@@ -50,8 +51,10 @@ end sub
 function handleSettingsRailKey(key as string, press as boolean) as boolean
     if m.focusRegion <> "rail" or not press then return false
     if key = "home" or key = "options" then return false
+    previous = m.railIndex
     if key = "up" and m.railIndex > 0 then m.railIndex--
     if key = "down" and m.railIndex < m.railItems.count() - 1 then m.railIndex++
+    if m.railIndex <> previous then uiAnnounce(m.railItems[m.railIndex].title)
     if key = "OK" or key = "right"
         selectSettingsCategory(m.railIndex)
         return true

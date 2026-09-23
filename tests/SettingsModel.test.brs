@@ -3,9 +3,9 @@ sub main()
     root = settingsHubEntries("", model)
     if root.count() <> 6 or root[1].page <> "player" or root[2].page <> "remote" then stop
     general = settingsHubEntries("general", model)
-    if general.count() <> 5 then stop
+    if general.count() <> 6 then stop
     model.movies = "allowed"
-    if settingsHubEntries("general", model).count() <> 7 then stop
+    if settingsHubEntries("general", model).count() <> 8 then stop
     player = settingsHubEntries("player", model)
     if player[0].key <> "archiveSkipSeconds" or player[0].values[0] <> 60 or player[0].values[2] <> 300 then stop
     if not settingsHubChangeAllowed(model, "device", "archiveSkipSeconds", 120) then stop

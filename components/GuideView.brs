@@ -53,6 +53,7 @@ sub configure()
     m.top.catchupPermission = "unknown"
     m.top.moviesPermission = "unknown"
     m.top.seriesPermission = "unknown"
+    m.top.dvrPermission = "unknown"
     m.metadataElapsed = CreateObject("roTimespan")
     m.metadataElapsed.mark()
     cancelMetadataLoads()
@@ -148,10 +149,11 @@ sub buildCanvas()
         m.ticks.push(uiLabel(m.canvas, "", 346 + i * 300, 270, 280, 30, 22, "0x9EB5C9FF"))
     end for
     m.rows = []
-    for i = 0 to m.rowCount - 1
+    ' Reuse the same nodes for seven Preview rows or ten Basic rows.
+    for i = 0 to 9
         root = m.canvas.createChild("Group")
         root.translation = [96, 306 + i * 96]
-        uiRect(root, 0, 0, 239, 95, "0x0D1E35FF")
+        background = uiRect(root, 0, 0, 239, 95, "0x0D1E35FF")
         number = uiLabel(root, "", 12, 4, 170, 27, 20, "0x1AC4D8FF")
         badge = uiLabel(root, "", 180, 4, 55, 27, 18, "0x1AC4D8FF")
         logo = root.createChild("Poster")
@@ -171,7 +173,7 @@ sub buildCanvas()
         catchup.height = 20
         catchup.loadDisplayMode = "scaleToFit"
         catchup.visible = false
-        m.rows.push({root: root, number: number, badge: badge, catchup: catchup, logo: logo, name: name, tiles: []})
+        m.rows.push({root: root, background: background, number: number, badge: badge, catchup: catchup, logo: logo, name: name, tiles: []})
     end for
     m.nowLine = uiRect(m.canvas, 336, 300, 2, 678, "0x1AC4D8AA")
     m.footer = uiRemoteHints(m.canvas, 96, 998, 1728, 36, 22)
@@ -427,6 +429,8 @@ end function
 
 sub drawGuide()
     if not m.ready then return
+    geometry = guidePresentationGeometry(m.settings.guideDensity)
+    m.rowCount = geometry.rowCount
     gridX = 96
     if m.settings.groupLayout = "sidebar" then gridX = 400
     timeX = gridX + 240
@@ -446,8 +450,8 @@ sub drawGuide()
     if not m.navigator.active then m.navigator.model = {groups: m.groups, layout: m.settings.groupLayout, selected: m.groups[m.groupIndex].id}
     m.dateLabel.text = uiLocalDate(m.viewStart)
     m.dateLabel.translation = [gridX, 270]
-    m.rowHeight = 96
-    if m.guideDensity = "basic" then m.rowHeight = 64
+    m.rowHeight = geometry.rowHeight
+    m.nowLine.height = m.rowCount * m.rowHeight
     for i = 0 to m.ticks.count() - 1
         m.ticks[i].text = uiTime(m.viewStart + i * 1800)
         tickX = timeX + 10 + i * 300
@@ -458,8 +462,24 @@ sub drawGuide()
         row = m.rows[i]
         row.root.translation = [gridX, 306 + i * m.rowHeight]
         index = m.rowStart + i
-        row.root.visible = index < m.filtered.count()
+        row.root.visible = i < m.rowCount and index < m.filtered.count()
         if row.root.visible
+            row.background.height = geometry.tileHeight
+            if geometry.basic
+                row.logo.translation = [12, 27]
+                row.logo.width = 32
+                row.logo.height = 30
+                row.name.translation = [54, 26]
+                row.name.height = 32
+                row.name.maxLines = 1
+            else
+                row.logo.translation = [12, 33]
+                row.logo.width = 58
+                row.logo.height = 52
+                row.name.translation = [80, 34]
+                row.name.height = 56
+                row.name.maxLines = 2
+            end if
             channel = m.filtered[index]
             row.uuid = channel.uuid
             row.number.text = channel.number
@@ -479,9 +499,9 @@ sub drawGuide()
             uri = ""
             if channel.logoId <> "" then uri = m.base + "/api/channels/logos/" + channel.logoId + "/cache/"
             if row.logo.uri <> uri then row.logo.uri = uri
-            row.logo.visible = m.showLogos
-            row.number.visible = m.showNumbers
-            row.name.visible = m.showNames
+            row.logo.visible = m.settings.showLogos
+            row.number.visible = m.settings.showNumbers
+            row.name.visible = m.settings.showNames
             renderCells(row, rowCells(channel), index = m.selected)
         end if
     end for
@@ -493,11 +513,6 @@ sub drawGuide()
     if type(remote) = "roAssociativeArray"
         m.footer.visible = remote.infoHints <> false
     end if
-    m.guideDensity = m.settings.guideDensity
-    m.showLogos = m.settings.showLogos
-    m.showNumbers = m.settings.showNumbers
-    m.showNames = m.settings.showNames
-    m.showSubtitles = m.settings.showSubtitles
     if m.query <> "" then m.footer.text = "Search ALL: " + m.query + "    * > Clear search to restore the selected group"
     if m.connectionWarning <> "" then m.footer.text = m.connectionWarning
     if m.message <> "" then m.footer.text = m.message
@@ -546,8 +561,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
         cells = [{startsAt: m.viewStart, endsAt: m.viewStart + m.span, program: invalid}]
         m.message = "This schedule is too dense to display. Live tuning is available."
     end if
-    m.tileHeight = 95
-    if m.guideDensity = "basic" then m.tileHeight = 60
+    geometry = guidePresentationGeometry(m.settings.guideDensity)
     while row.tiles.count() < cells.count()
         root = row.root.createChild("Group")
         border = uiRect(root, 0, 0, 100, 95, "0x17344AFF")
@@ -560,8 +574,6 @@ sub renderCells(row as object, cells as object, selected as boolean)
     end while
     for i = 0 to row.tiles.count() - 1
         tile = row.tiles[i]
-        tile.root.accessible = true
-        tile.focusable = true
         for each badge in tile.badges
             badge.root.visible = false
         end for
@@ -572,17 +584,21 @@ sub renderCells(row as object, cells as object, selected as boolean)
             if width < 1 then width = 1
             tile.root.translation = [240 + (cell.startsAt - m.viewStart) / 6, 0]
             tile.border.width = width
+            tile.border.height = geometry.tileHeight
             fillWidth = width - 4
             if fillWidth < 1 then fillWidth = 1
             tile.fill.width = fillWidth
             tile.fill.visible = width > 4
             tile.title.visible = width > 40
+            tile.title.translation = [14, geometry.titleY]
+            tile.title.height = geometry.titleHeight
             tile.time.visible = width > 180
             textWidth = width - 28
             if textWidth < 1 then textWidth = 1
             tile.title.width = textWidth
             tile.time.width = textWidth
-            tile.time.translation = [14, 55]
+            tile.time.translation = [14, geometry.timeY]
+            tile.time.height = geometry.timeHeight
             focused = selected and cell.startsAt <= m.anchor and cell.endsAt > m.anchor and not m.primaryNavigation.active and not m.navigator.active and m.picker = invalid and not m.details.active and not m.searchView.active
             inset = 2
             if focused then inset = 4
@@ -590,7 +606,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
             fillWidth = width - inset * 2
             if fillWidth < 1 then fillWidth = 1
             tile.fill.width = fillWidth
-            tile.fill.height = m.tileHeight - inset * 2
+            tile.fill.height = geometry.tileHeight - inset * 2
             tile.fill.visible = width > inset * 2
             uiSetColor(tile.border, "0x17344AFF")
             uiSetColor(tile.fill, "0x0D1E35FF")
@@ -605,8 +621,6 @@ sub renderCells(row as object, cells as object, selected as boolean)
                 program = cell.program
                 tile.title.text = program.title
                 tile.time.text = uiTime(program.startsAt) + " - " + uiTime(program.endsAt)
-                ' Set accessibility label for screen reader
-                uiSetAccessible(tile.root, program.title + ", " + uiTime(program.startsAt) + " to " + uiTime(program.endsAt), "Program airing from " + uiTime(program.startsAt) + " to " + uiTime(program.endsAt))
                 flags = programFlagPills(program, m.settings, textWidth)
                 offset = 0
                 for j = 0 to flags.count() - 1
@@ -621,7 +635,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
                     end if
                     badge = tile.badges[j]
                     badge.root.visible = true
-                    badge.root.translation = [14 + flag.x, 57]
+                    badge.root.translation = [14 + flag.x, geometry.badgeY]
                     badge.surface.width = flag.width
                     uiSetColor(badge.surface, flag.color)
                     labelBounds = uiFlagLabelBounds(flag.label, flag.width)
@@ -634,10 +648,10 @@ sub renderCells(row as object, cells as object, selected as boolean)
                 remaining = textWidth - offset
                 tile.time.visible = remaining >= 100
                 if remaining >= 100
-                    tile.time.translation = [14 + offset, 55]
+                    tile.time.translation = [14 + offset, geometry.timeY]
                     tile.time.width = remaining
                     episode = programEpisodeText(program, m.settings)
-                    if episode <> "" and m.showSubtitles then tile.time.text = episode + " | " + tile.time.text
+                    if episode <> "" and m.settings.showSubtitles then tile.time.text = episode + " | " + tile.time.text
                 end if
                 if hasReminder(m.reminders, row.uuid, program.id) then tile.title.text = "REM | " + tile.title.text
             end if
@@ -1263,7 +1277,9 @@ end function
 sub updatePrimaryTabs()
     if m.primaryNavigation = invalid then return
     enabled = m.top.moviesPermission = "allowed" or m.top.seriesPermission = "allowed"
-    items = [{id: "live", label: "Live TV", enabled: true}, {id: "vod", label: "VOD", enabled: enabled}, {id: "settings", label: "Settings", enabled: true}]
+    items = [{id: "live", label: "Live TV", enabled: true}, {id: "vod", label: "VOD", enabled: enabled}]
+    if m.top.dvrPermission = "view" or m.top.dvrPermission = "manage" then items.push({id: "dvr", label: "DVR", enabled: true})
+    items.push({id: "settings", label: "Settings", enabled: true})
     if FormatJson(m.primaryNavigation.items) <> FormatJson(items) then m.primaryNavigation.items = items
 end sub
 
@@ -1282,6 +1298,8 @@ sub onPrimarySelection(event as object)
     m.top.setFocus(true)
     if event.getData() = "vod"
         m.top.playerRequest = "vodHome"
+    else if event.getData() = "dvr"
+        m.top.playerRequest = "dvrHome"
     else if event.getData() = "settings"
         m.top.playerRequest = "settingsHub"
     else
