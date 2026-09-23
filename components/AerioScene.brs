@@ -138,10 +138,17 @@ sub init()
     m.noticeText = m.top.findNode("noticeText")
     m.noticeTimer = m.top.findNode("noticeTimer")
     m.noticeTimer.observeField("fire", "hideNotice")
-    m.baseUrl = m.registry.read("serverUrl")
-    m.remember = loadRememberPolicy(m.registry)
+    m.connectionStore = loadConnectionStore(m.registry)
+    m.selectedConnectionId = m.connectionStore.selected
+    selectedConnection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    m.baseUrl = ""
+    m.remember = false
     m.apiKey = ""
-    if m.remember then m.apiKey = m.registry.read("apiKey")
+    if selectedConnection <> invalid
+        m.baseUrl = selectedConnection.url
+        m.remember = selectedConnection.remember
+        if m.remember then m.apiKey = storedConnectionKey(m.registry, selectedConnection)
+    end if
     m.username = ""
     m.password = ""
     m.authMode = "key"
@@ -165,7 +172,11 @@ sub drawSetup()
     if m.authMode = "password" then method = "Dashboard username and password"
     urlText = m.baseUrl
     if urlText = "" then urlText = "http://your-dispatcharr-server:9191"
+    chosenName = "Add a connection"
+    selectedConnection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if selectedConnection <> invalid then chosenName = selectedConnection.name + " (" + m.connectionStore.entries.count().toStr() + " saved)"
     m.setupRows = [
+        {field: "connection", title: "Connection", value: chosenName}
         {field: "url", title: "Server URL", value: urlText}
         {field: "method", title: "Sign-in method", value: method}
     ]
@@ -185,7 +196,7 @@ sub drawSetup()
     connect = "CONNECT TO DISPATCHARR"
     if m.busy then connect = "CONNECTING..."
     m.setupRows.push({field: "connect", title: "Connect", value: connect})
-    m.setupRows.push({field: "forget", title: "Forget connection", value: "Remove saved credentials and preferences"})
+    m.setupRows.push({field: "forget", title: "Forget selected", value: "Remove this connection's saved key and account preferences"})
     if m.setupIndex >= m.setupRows.count() then m.setupIndex = m.setupRows.count() - 1
     for i = 0 to m.setupRows.count() - 1
         row = m.setupRows[i]
@@ -238,9 +249,11 @@ sub editSetupField()
     if field = "connect"
         connectServer()
         return
+    else if field = "connection"
+        openConnectionPicker()
+        return
     else if field = "remember"
-        m.remember = not m.remember
-        if not saveRememberPolicy(m.registry, m.remember) then showNotice("Could not save the Remember API key policy or remove its saved key. The choice is active for this session; retry before exiting.")
+        changeConnectionRemember(not m.remember)
         drawSetup()
         return
     else if field = "method"
@@ -273,13 +286,7 @@ sub onKeyboardButton(event as object)
             if base = ""
                 m.status = "Enter an http:// or https:// URL without credentials or query parameters."
             else
-                if m.baseUrl <> base
-                    ' Never silently reuse the old server's credential at a new URL.
-                    m.apiKey = ""
-                    m.password = ""
-                end if
-                m.baseUrl = base
-                m.status = "Server URL updated. Enter credentials for this server."
+                updateConnectionUrl(base)
             end if
         else if m.editingField = "username"
             m.username = dialog.text.trim()
@@ -301,6 +308,11 @@ end sub
 
 sub connectServer()
     if m.busy then return
+    if connectionStoreEntry(m.connectionStore, m.selectedConnectionId) = invalid
+        m.status = "Add or select a connection before signing in."
+        drawSetup()
+        return
+    end if
     resetMediaNavigation()
     cancelPlaybackFailure()
     if m.playingChannel <> invalid then stopPlayback()
@@ -407,28 +419,39 @@ sub completeConnection(result as dynamic)
     recordDiagnostic("connect", 0, "Authorized lineup ready", m.connectionElapsed.totalMilliseconds())
     m.serverAccountId = result.accountId
     m.authMode = "key"
-    m.accountIdentity = m.baseUrl + "|" + result.accountId
+    connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if connection = invalid
+        m.status = "The selected connection was removed during sign-in. Select a connection and retry."
+        drawSetup()
+        return
+    end if
+    m.accountIdentity = connectionPreferenceIdentity(connection, result.accountId)
     m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
     legacy = invalid
     legacyJson = m.registry.read("preferences")
     if legacyJson <> "" then legacy = ParseJson(legacyJson)
+    if connection.id = "legacy"
+        oldIdentity = m.baseUrl + "|" + result.accountId
+        priorKey = preferenceScope(oldIdentity)
+        newKey = preferenceScope(m.accountIdentity)
+        if m.preferenceStore.accounts.doesExist(priorKey) and not m.preferenceStore.accounts.doesExist(newKey)
+            m.preferenceStore.accounts[newKey] = m.preferenceStore.accounts[priorKey]
+            m.preferenceStore.accounts.delete(priorKey)
+        end if
+        if legacy <> invalid and legacyConnectionPreferencesMatch(m.registry, m.baseUrl, result.accountId) and not m.preferenceStore.accounts.doesExist(newKey)
+            m.preferenceStore.accounts[newKey] = normalizeAccountPreferences(legacy)
+        end if
+    end if
     prefs = accountPreferences(m.preferenceStore, m.accountIdentity, m.registry.read("accountIdentity"), legacy)
     m.accountPreferences = reconcileWatchHistory(prefs, result.channels)
     prefs = m.accountPreferences
     if persistAccountPreferences() then m.registry.delete("preferences")
-    savedUrl = m.registry.write("serverUrl", m.baseUrl)
-    savedIdentity = m.registry.write("accountIdentity", m.accountIdentity)
-    savedKey = true
-    if m.remember then savedKey = m.registry.write("apiKey", m.apiKey)
-    savedPolicy = saveRememberPolicy(m.registry, m.remember)
-    if not savedUrl or not savedIdentity or not savedKey or not savedPolicy
-        result.warning = "Could not save this connection. Check Roku app storage."
-    end if
+    if not rememberConnectedAccount(result.accountId) then result.warning = "Could not save this connection. Check Roku app storage and reconnect before exiting."
     m.guide.config = {
         channels: result.channels, groups: result.groups, warning: result.warning
         baseUrl: m.baseUrl, apiKey: m.apiKey, preferences: prefs
         tmdbKey: m.registry.read("tmdbApiKey")
-        scope: result.scope, generation: result.generation
+        scope: result.scope + "|" + m.selectedConnectionId, generation: result.generation
     }
     m.banner.session = {baseUrl: m.baseUrl, apiKey: m.apiKey}
     m.banner.preferences = m.devicePreferences
@@ -544,6 +567,7 @@ sub onCapabilities(event as object)
 end sub
 
 sub onPreferences(event as object)
+    if not m.guide.isSameNode(event.getRoSGNode()) then return
     if m.accountIdentity = "" then return
     m.accountPreferences = mergeAccountPreferences(m.accountPreferences, event.getData())
     persistAccountPreferences()
@@ -637,58 +661,11 @@ sub showConnection()
 end sub
 
 sub forgetConnection()
-    resetMediaNavigation()
-    cancelRecordFlow()
-    cancelDvrPlayback()
-    if m.dvr <> invalid
-        m.dvr.active = false
-        m.dvr.config = invalid
-    end if
-    cancelPlaybackFailure()
-    m.metadataForgetTask = m.guide.callFunc("forgetStoredMetadata")
-    m.browser.callFunc("invalidateLogos")
-    cancelCapabilityRefresh()
-    m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
-    m.serverAccountId = ""
-    m.channelFacts = {}
-    if m.playingChannel <> invalid then stopPlayback()
-    if m.accountIdentity <> ""
-        m.preferenceStore.accounts.delete(preferenceScope(m.accountIdentity))
-        persistPreferences()
-    end if
-    for each key in ["serverUrl", "apiKey", "accountIdentity", "preferences"]
-        m.registry.delete(key)
-    end for
-    m.registry.flush()
-    m.baseUrl = ""
-    m.apiKey = ""
-    m.username = ""
-    m.password = ""
-    m.accountIdentity = ""
-    m.accountPreferences = normalizeAccountPreferences(invalid)
-    m.guide.active = false
-    ' Recreate the guide to release account data, cached programs and HTTP agent.
-    m.top.removeChild(m.guide)
-    m.guide = CreateObject("roSGNode", "GuideView")
-    m.guide.observeField("archiveRequest", "onArchiveRequested")
-    m.guide.observeField("recordRequest", "onRecordRequested")
-    m.guide.observeField("metadataEvent", "onMetadataDiagnostic")
-    m.guide.visible = false
-    m.top.insertChild(m.guide, 1)
-    m.guide.observeField("watchChannel", "onWatchChannel")
-    m.guide.observeField("exitRequested", "showConnection")
-    m.guide.observeField("preferences", "onPreferences")
-    m.guide.observeField("playbackInfo", "onPlaybackInfo")
-    m.guide.observeField("playerRequest", "onGuidePlayerRequest")
-    m.guide.observeField("devicePreference", "onDevicePreference")
-    m.banner.session = invalid
-    m.banner.channel = invalid
-    m.banner.info = invalid
-    m.status = "Saved connection and preferences removed."
-    drawSetup()
+    openRemoveConnectionConfirmation()
 end sub
 
 sub onWatchChannel(event as object)
+    if not m.guide.isSameNode(event.getRoSGNode()) or m.page <> "guide" then return
     startPlayback(event.getData())
 end sub
 
@@ -761,7 +738,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         content.url += "&output_profile=0"
     end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.71"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.72"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true
@@ -2122,6 +2099,7 @@ sub applyDevicePreferences()
 end sub
 
 sub onDevicePreference(event as object)
+    if not m.guide.isSameNode(event.getRoSGNode()) then return
     change = event.getData()
     if change.tmdbKey <> invalid
         written = true

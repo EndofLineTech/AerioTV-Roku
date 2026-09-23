@@ -1,0 +1,69 @@
+sub main()
+    registry = {values: {serverUrl: "https://example.test", apiKey: "test-only", rememberApiKey: "true"}, read: function(key as string) as string
+        value = m.values[key]
+        if value = invalid then return ""
+        return value
+    end function, write: function(key as string, value as string) as boolean
+        m.values[key] = value
+        return true
+    end function, delete: function(key as string) as boolean
+        m.values.delete(key)
+        return true
+    end function, flush: function() as boolean
+        return true
+    end function}
+    store = loadConnectionStore(registry)
+    assertEqual(store.entries.count(), 1, "legacy connection migrates in memory")
+    assertEqual(store.selected, "legacy", "legacy selection stays active")
+    assertEqual(store.entries[0].remember, true, "legacy Remember setting retained")
+    assertEqual(store.entries[0].apiKey, invalid, "key never copied into metadata")
+    assertEqual(registry.read("connectionsV1"), "", "legacy registry untouched before successful migration")
+    assertEqual(connectionPreferenceIdentity(store.entries[0], "9"), "https://example.test|9|legacy", "playlist scoped preferences")
+
+    store = connectionStoreAdd(store, "slot-two", "Family")
+    assertEqual(store.entries.count(), 2, "named slot added")
+    assertEqual(store.entries[1].remember, false, "new slot defaults session-only")
+    store = connectionStoreSelect(store, "slot-two")
+    assertEqual(store.selected, "slot-two", "select slot without changing first account")
+    store = connectionStoreRename(store, "slot-two", "Family TV")
+    assertEqual(store.entries[1].name, "Family TV", "renaming preserves ID")
+    store = connectionStoreMove(store, "slot-two", -1)
+    assertEqual(store.entries[0].id, "slot-two", "reorder preserves selected ID")
+    assertEqual(store.selected, "slot-two", "reorder preserves selection")
+    configured = connectionStoreUpdate(store, "slot-two", {url: "https://family.example.test"})
+    configured = connectionStoreUpdate(configured, "slot-two", {remember: true, accountId: "11", profileId: "4"})
+    assertEqual(configured.entries[0].url, "https://family.example.test", "connection endpoint saved")
+    assertEqual(configured.entries[0].remember, true, "explicit Remember can be enabled after endpoint validation")
+    rotated = connectionStoreUpdate(configured, "slot-two", {url: "https://other.example.test"})
+    assertEqual(rotated.entries[0].remember, false, "changing host clears Remember")
+    assertEqual(rotated.entries[0].accountId, "", "changing host drops old account identity")
+    assertEqual(rotated.entries[0].profileId, "", "changing host drops old profile selection")
+    assertEqual(connectionStoreUpdate(store, "slot-two", {url: "https://user:pass@host.test"}), invalid, "credentialed URL rejected")
+    store = connectionStoreAdd(store, "third", "Third")
+    store = connectionStoreAdd(store, "fourth", "Fourth")
+    assertEqual(connectionStoreAdd(store, "fifth", "Too many"), invalid, "four-slot bound")
+    assertEqual(connectionStoreAdd(store, "bad/id", "Invalid"), invalid, "unsafe registry key rejected")
+    assertEqual(connectionStoreRename(store, "third", ""), invalid, "blank name rejected")
+    store = connectionStoreRemove(store, "slot-two")
+    assertEqual(store.entries.count(), 3, "remove only selected slot")
+    assertEqual(store.selected <> "slot-two", true, "remove chooses remaining slot")
+
+    malicious = {schema: 1, selected: "safe", entries: [{id: "safe", name: "Safe", provider: "dispatcharr", url: "https://example.test", remember: true, password: "must-not-store", apiKey: "must-not-store", accountId: "9"}]}
+    cleaned = normalizeConnectionStore(malicious)
+    assertEqual(cleaned.entries[0].password, invalid, "provider password excluded")
+    assertEqual(cleaned.entries[0].apiKey, invalid, "API key excluded from JSON")
+    assertEqual(saveConnectionStore(registry, cleaned), true, "bounded metadata persists")
+    saved = registry.read("connectionsV1")
+    assertEqual(instr(1, saved, "must-not-store"), 0, "no secret serialized")
+    assertEqual(loadConnectionStore(registry).selected, "safe", "saved selection reloaded")
+    assertEqual(normalizeConnectionStore({schema: 2, entries: []}).schema, 2, "newer schema read-only")
+    assertEqual(saveConnectionStore(registry, {schema: 2, entries: []}), false, "newer format never overwritten")
+    print "ALL TESTS PASSED"
+end sub
+
+sub assertEqual(actual as dynamic, expected as dynamic, label as string)
+    if actual <> expected
+        print "FAIL "; label; " expected="; expected; " actual="; actual
+        stop
+    end if
+end sub
