@@ -23,9 +23,17 @@ removes that slot's key and preferences without removing other slots.
 `ConnectionStore.test.brs` and `ConnectionNavigation.test.brs` exercise
 bounded storage, legacy migration, scope isolation, failed replacement-key
 writes, and queued stale-guide preference events. `npm run verify` passes for
-this candidate. On the Roku, initial guide startup, setup navigation, picker,
-add, and rename were observed on the earlier candidate. The latest fixes to
-key-write failure handling, guide observer detachment, and preference migration
-still require a new native install and account-switch/Forget/restart checks.
-The screenshots are private under ignored `out/`; scripted navigation alone
-does not establish physical-remote acceptance.
+this candidate.
+
+On the Roku, the patched build installed and launched. A prior session's
+renamed session-only slot survived the install. Selecting remembered **Main**
+repopulated the authorized guide; switching back to the session-only slot
+showed no saved key and did not reconnect. Its Forget confirmation named the
+selected slot; confirming removed that slot and returned to **Main (1 saved)**
+with Remember still on and its key masked. Roku Home then relaunch restored
+Main's populated guide without entering credentials. These are scripted ECP
+navigation and local private screenshot observations, not physical-remote or
+audio/video acceptance. The screenshots remain under ignored `out/`. A second
+authorized account, actual key revocation, and failed registry writes were not
+exercised on the device; the failure and stale-event paths have controller
+tests only.

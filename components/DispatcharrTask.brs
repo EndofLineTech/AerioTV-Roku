@@ -37,7 +37,7 @@ sub loadChannels()
         user = requestJson(m.base + "/api/accounts/users/me/")
     end if
     if type(user) <> "roAssociativeArray"
-        publishError("Could not verify the Dispatcharr account. " + m.failure)
+        publishError("Could not verify the Dispatcharr account. " + m.failure, httpAccountRejected(m.httpFailure))
         return
     end if
     if textValue(user.id) = "" or m.key = ""
@@ -102,10 +102,10 @@ sub loadChannels()
     m.top.apiKey = ""
 end sub
 
-sub publishError(message as string)
+sub publishError(message as string, relogin = false as boolean)
     m.key = ""
     m.top.apiKey = ""
     m.top.password = ""
     if m.top.cancelRequested = true then return
-    m.top.result = {ok: false, message: message}
+    m.top.result = {ok: false, message: message, relogin: relogin}
 end sub

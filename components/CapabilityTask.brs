@@ -11,7 +11,7 @@ sub refreshCapabilities()
     m.deadlineMs = 45000
     user = requestJson(m.base + "/api/accounts/users/me/")
     if type(user) <> "roAssociativeArray"
-        finish({ok: false, message: "Could not refresh account permissions. " + m.failure})
+        finish({ok: false, relogin: httpAccountRejected(m.httpFailure), message: "Could not refresh account permissions. " + m.failure})
         return
     end if
     if textValue(user.id) <> accountId

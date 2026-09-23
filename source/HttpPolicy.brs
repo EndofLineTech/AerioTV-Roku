@@ -74,6 +74,13 @@ function httpFailure(status as integer, headers as dynamic, now as integer, erro
     return result
 end function
 
+function httpAccountRejected(failure as dynamic) as boolean
+    if type(failure) <> "roAssociativeArray" then return false
+    ' Apply only to an explicit /users/me verification request. Other 403s
+    ' can mean an optional capability is denied, not that the key is revoked.
+    return failure.status = 401 or failure.status = 403
+end function
+
 function httpResponseSizeBucket(responseBytes as dynamic, maxBytes as dynamic) as string
     if type(responseBytes) <> "Integer" and type(responseBytes) <> "roInt" then return ""
     if type(maxBytes) <> "Integer" and type(maxBytes) <> "roInt" then return ""

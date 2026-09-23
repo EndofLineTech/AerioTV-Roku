@@ -411,6 +411,10 @@ sub completeConnection(result as dynamic)
     end if
     if not result.ok
         recordDiagnostic("connect", -1, result.message)
+        if result.relogin = true
+            requireConnectionRelogin(result.message)
+            return
+        end if
         m.status = result.message
         drawSetup()
         return
@@ -550,11 +554,9 @@ sub onCapabilities(event as object)
         m.aacDiscoveryState = "error"
         m.aacDiscoveryMessage = result.message
         m.channelFacts = {}
-        if result.identityChanged = true
-            if m.playingChannel <> invalid then stopPlayback()
-            showConnection()
-            m.status = result.message
-            drawSetup()
+        if result.identityChanged = true or result.relogin = true
+            requireConnectionRelogin(result.message)
+            return
         end if
     end if
     m.guide.channelFacts = m.channelFacts
@@ -738,7 +740,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         content.url += "&output_profile=0"
     end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.72"]
+    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.73"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true

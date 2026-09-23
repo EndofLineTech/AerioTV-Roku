@@ -174,6 +174,21 @@ sub resetConnectionRuntime()
     m.top.setFocus(true)
 end sub
 
+sub requireConnectionRelogin(message as string)
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    removed = true
+    if entry <> invalid then removed = deleteStoredConnectionKey(entry)
+    resetConnectionRuntime()
+    applySelectedConnection()
+    ' A failed registry deletion cannot reauthorize this session via the old
+    ' in-memory key, even if the app registry still needs manual cleanup.
+    m.apiKey = ""
+    m.authMode = "key"
+    m.status = message + " Sign in again to verify this connection."
+    if not removed then m.status += " The saved key could not be removed; retry Forget before relaunching."
+    drawSetup()
+end sub
+
 sub openConnectionPicker()
     if m.busy or m.connectionDialog <> invalid then return
     if m.connectionStore.readOnly = true

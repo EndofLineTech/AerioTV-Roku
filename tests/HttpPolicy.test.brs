@@ -1,6 +1,14 @@
 sub main()
     if httpFailure(401, {}, 1000).category <> "authentication" then stop
     if httpFailure(403, {}, 1000).category <> "permission" then stop
+    if not httpAccountRejected(httpFailure(401, {}, 1000)) then stop
+    if not httpAccountRejected(httpFailure(403, {}, 1000)) then stop
+    if httpAccountRejected(httpFailure(503, {}, 1000)) or httpAccountRejected(invalid) then stop
+    for each rejected in [401, 403]
+        resetHttpTest([{status: rejected, body: ""}])
+        if requestJson("https://example.test/api/accounts/users/me/") <> invalid or m.calls <> 1 then stop
+        if not httpAccountRejected(m.httpFailure) then stop
+    end for
     if httpFailure(409, {}, 1000).retryable then stop
     tooLarge = httpFailure(0, {}, 1000, "too-large", 8388609, 8388608)
     if tooLarge.category <> "response-too-large" or tooLarge.sizeBucket <> "at-least-8-mib" then stop
