@@ -173,9 +173,28 @@ sub init()
     m.status = "Dispatcharr 0.31  |  Live TV and guide"
     if m.connectionStore.readOnly = true then m.status = "Saved connections use an unsupported or unreadable format. This build will not overwrite them."
     m.page = "setup"
-    drawSetup()
+    if connectionWelcomeNeeded(m.connectionStore)
+        m.page = "welcome"
+        drawWelcome()
+    else
+        drawSetup()
+    end if
     m.top.setFocus(true)
     if m.baseUrl <> "" and m.apiKey <> "" then connectServer()
+end sub
+
+sub drawWelcome()
+    m.screen.removeChildrenIndex(m.screen.getChildCount(), 0)
+    uiLabel(m.screen, "Welcome to AerioTV", 160, 170, 1600, 96, 64)
+    uiLabel(m.screen, "Your TV guide, movies and shows in one place.", 164, 310, 1550, 56, 34, "0x1AC4D8FF")
+    description = "Connect to your own Dispatcharr server, M3U playlist or Xtream provider. " + "Choose a connection on the next screen and enter its details with the Roku remote."
+    message = uiLabel(m.screen, description, 164, 396, 1480, 160, 29, "0xE8F3FAFF")
+    message.wrap = true
+    uiRect(m.screen, 160, 675, 800, 92, "0xFFFFFFFF")
+    uiRect(m.screen, 164, 679, 792, 84, "0x1AC4D8FF")
+    action = uiLabel(m.screen, "CONTINUE TO SETUP", 180, 699, 760, 48, 31, "0x0A1628FF")
+    action.horizAlign = "center"
+    uiLabel(m.screen, "Press OK or Back to continue. Saved connections open directly next time.", 164, 799, 1550, 52, 24, "0x9EB5C9FF")
 end sub
 
 sub drawSetup()
@@ -2148,6 +2167,14 @@ function onKeyEvent(key as string, press as boolean) as boolean
         ' Let the dialog own input rather than applying not to Invalid.
         if m.top.dialog.wasClosed = invalid then return false
         if not m.top.dialog.wasClosed then return false
+    end if
+    if m.page = "welcome"
+        if press and (key = "OK" or key = "back")
+            m.page = "setup"
+            m.setupIndex = 0
+            drawSetup()
+        end if
+        return true
     end if
     if handlePlayerOkKey(key, press) then return true
     if m.page = "player"

@@ -1,4 +1,6 @@
 sub main()
+    assertEqual(connectionWelcomeNeeded(defaultConnectionStore()), true, "new install opens welcome before setup")
+    assertEqual(connectionWelcomeNeeded({schema: 2, selected: "", entries: [], readOnly: true}), false, "unreadable saved roster shows recovery setup instead")
     registry = {values: {serverUrl: "https://example.test", apiKey: "test-only", rememberApiKey: "true"}, read: function(key as string) as string
         value = m.values[key]
         if value = invalid then return ""
@@ -13,6 +15,7 @@ sub main()
         return true
     end function}
     store = loadConnectionStore(registry)
+    assertEqual(connectionWelcomeNeeded(store), false, "legacy remembered connection skips welcome")
     assertEqual(store.entries.count(), 1, "legacy connection migrates in memory")
     assertEqual(store.selected, "legacy", "legacy selection stays active")
     assertEqual(store.entries[0].remember, true, "legacy Remember setting retained")
@@ -68,6 +71,7 @@ sub main()
     assertEqual(normalizeConnectionStore({schema: 2, entries: []}).schema, 2, "newer schema read-only")
     assertEqual(saveConnectionStore(registry, {schema: 2, entries: []}), false, "newer format never overwritten")
     direct = connectionStoreAdd(defaultConnectionStore(), "playlist-one", "Live feed", "m3u")
+    assertEqual(connectionWelcomeNeeded(direct), false, "session-only connection skips welcome on relaunch")
     assertEqual(direct.entries[0].provider, "m3u", "direct M3U slot selected")
     direct = connectionStoreUpdate(direct, "playlist-one", {url: "https://example.test/output/m3u/live", epgUrl: "https://example.test/output/epg/live", remember: true})
     direct = connectionStoreUpdate(direct, "playlist-one", {referer: "https://example.test"})

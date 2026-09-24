@@ -45,3 +45,30 @@ Unit tests cover scaling/migration/clamping and contrast. A native 120% primary 
 120% secondary/high-contrast Settings capture (`out/faa-large.jpg`) was inspected:
 controls and footer stay in their safe areas. Living-room and spoken-feedback
 acceptance remain in the final physical worksheet.
+
+## faa.7 / faa.9 — onboarding and numbered headings
+
+The attributed Roku launcher/splash assets remain in the manifest at their
+verified FHD/HD/SD sizes (see `images/README.md` and
+`docs/DEVICE-VALIDATION.md`). A first-run empty connection roster now opens a
+single remote-readable welcome page; OK or Back enters the existing setup form.
+An existing saved roster, including a session-only connection, bypasses welcome;
+an unreadable/newer roster still shows the recovery setup message. No onboarding
+state is written to the registry and automatic remembered-key connection is
+unchanged. The ConnectionStore model test covers those entry gates and the full
+`npm run verify` passes.
+
+On the target 3820RW2 / OS 15.3.4 a disposable visual probe displayed the
+welcome page; a Developer Mode capture was inspected privately under ignored
+`out/` and showed legible 1080p copy and an unobstructed Continue button. The
+normal 0.3.80 ZIP was then reinstalled, and the disposable ZIP removed. This
+probe did not reset the real connection, demonstrate the *actual* first-run
+branch, or verify physical remote/Audio Guide behavior. An ECP Select attempt
+timed out, so no native OK-to-setup claim is made. First-run remote, warm sign-in,
+and perceived delay remain for the PO on the delivered build (`faa.7`).
+
+The shared `channelHeading` helper removes an exact delimited number prefix;
+the existing model tests distinguish channel 24 from 240, 24Kitchen/24 Hours,
+decimal numbers and missing numbers. The observed provider-number heading is
+still pending a genuine native playback/physical check (`faa.9`). No synthetic
+model test substitutes for that screen observation.

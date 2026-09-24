@@ -4,6 +4,12 @@ function defaultConnectionStore() as object
     return {schema: 1, selected: "", entries: []}
 end function
 
+' Only a genuinely empty first-run roster gets onboarding. A newer/corrupt
+' roster must reach setup's recovery message rather than look like a new install.
+function connectionWelcomeNeeded(store as object) as boolean
+    return store.readOnly <> true and store.schema = 1 and store.entries.count() = 0
+end function
+
 function connectionRegistryKey(id as string) as string
     if not CreateObject("roRegex", "^[A-Za-z0-9-]{1,40}$", "").isMatch(id) then return ""
     return "connKey_" + id

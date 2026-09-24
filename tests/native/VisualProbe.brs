@@ -12,7 +12,14 @@ end sub
 
 sub visualProbeTick()
     if m.visualProbeStage = 0
-        if m.page <> "guide" then return
+        if m.visualProbeTicks = 0 then print "[visual-probe] waiting for page="; m.page
+        m.visualProbeTicks++
+        if m.visualProbeScreen = "welcome"
+            if m.page <> "guide" and m.page <> "setup" then return
+            if m.page = "setup" and m.busy then return
+        else if m.page <> "guide"
+            return
+        end if
         if m.visualProbeScreen = "settings"
             openSettingsHub()
             m.settingsHub.callFunc("selectSettingsCategory", 2)
@@ -22,6 +29,15 @@ sub visualProbeTick()
         else if m.visualProbeScreen = "pills"
             m.guide.callFunc("applyHubGuideSetting", "groupLayout", "pills")
             m.guide.findNode("primaryNavigation").active = true
+        else if m.visualProbeScreen = "welcome"
+            ' Render first-run artwork without touching a saved connection or
+            ' installing a different account fixture on the shared Roku.
+            m.guide.active = false
+            m.guide.visible = false
+            m.screen.visible = true
+            m.page = "welcome"
+            drawWelcome()
+            m.top.setFocus(true)
         else if m.visualProbeScreen = "lavender" or m.visualProbeScreen = "light"
             m.devicePreferences = copyJson(m.devicePreferences)
             m.devicePreferences.themePreset = "lavender"
