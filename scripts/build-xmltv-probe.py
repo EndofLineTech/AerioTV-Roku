@@ -1,6 +1,7 @@
 """Package an isolated, credential-free native XMLTV file/fragment probe."""
 import os
 import json
+import gzip
 from pathlib import Path
 import zipfile
 
@@ -25,5 +26,7 @@ with zipfile.ZipFile(root / "out/aeriotv-roku.zip") as source:
         target.writestr("components/XmltvProbe.brs", scene_probe)
         target.writestr("components/XmltvProbeTask.xml", (root / "tests/native/XmltvProbeTask.xml").read_bytes())
         target.writestr("components/XmltvProbeTask.brs", (root / "tests/native/XmltvProbeTask.brs").read_bytes())
-        target.writestr("data/xmltv-probe.txt", (root / "tests/native/XmltvProbeFixture.txt").read_bytes())
+        fixture = (root / "tests/native/XmltvProbeFixture.txt").read_bytes()
+        target.writestr("data/xmltv-probe.txt", fixture)
+        target.writestr("data/xmltv-probe.gz", gzip.compress(fixture, mtime=0))
 print("Built out/xmltv-probe.zip")

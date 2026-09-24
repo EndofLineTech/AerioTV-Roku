@@ -40,12 +40,32 @@ function xmltvUtf8PrefixLength(bytes as object) as integer
     return size
 end function
 
+function xmltvFileEncoding(path as string, size as integer) as string
+    bytes = CreateObject("roByteArray")
+    length = size
+    if length > 16 then length = 16
+    if length < 2 or not bytes.readFile(path, 0, length) then return "invalid"
+    if bytes[0] = 31 and bytes[1] = 139 then return "gzip"
+    first = 0
+    if bytes.count() >= 3
+        if bytes[0] = 239 and bytes[1] = 187 and bytes[2] = 191 then first = 3
+    end if
+    for i = first to bytes.count() - 1
+        if bytes[i] = 60 then return "xml"
+        if bytes[i] <> 9 and bytes[i] <> 10 and bytes[i] <> 13 and bytes[i] <> 32 then exit for
+    end for
+    return "invalid"
+end function
+
 function xmltvReadWindowFile(path as string, windowStart as integer, windowEnd as integer, allowedKeys as object, parser = invalid as dynamic, maxBytes = 75497472 as integer, chunkSize = 8192 as integer) as object
     fs = CreateObject("roFileSystem")
     stat = fs.stat(path)
     if type(stat) <> "roAssociativeArray" then return {ok: false, message: "XMLTV file unavailable."}
     if GetInterface(stat.size, "ifInt") = invalid then return {ok: false, message: "XMLTV file size unavailable."}
     if stat.size < 1 or stat.size > maxBytes then return {ok: false, message: "XMLTV feed exceeds this device's file budget."}
+    encoding = xmltvFileEncoding(path, stat.size)
+    if encoding = "gzip" then return {ok: false, message: "Raw .xml.gz needs the server to send Content-Encoding: gzip."}
+    if encoding <> "xml" then return {ok: false, message: "The guide is not an XMLTV document."}
     if chunkSize < 8 or chunkSize > 16384 then return {ok: false, message: "Invalid XMLTV read size."}
     state = xmltvWindowState(windowStart, windowEnd, allowedKeys, parser)
     clock = CreateObject("roTimespan")

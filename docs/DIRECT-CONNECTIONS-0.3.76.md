@@ -28,6 +28,10 @@ load latency, cancellation, resource use, gzip variants, and signed feed URLs
 remain verification work. No private screenshots, URLs or media names are
 committed.
 
+An isolated native probe confirmed raw `.xml.gz` magic is rejected before text
+parsing; transparent HTTP `Content-Encoding: gzip` is enabled through Roku's
+transfer API, but the supplied XMLTV fixture is uncompressed.
+
 On the 0.3.76 native candidate, the same-server Xtream endpoint accepted an
 authorized session-only login, loaded its live categories/channels, displayed
 an XMLTV-backed grid, and opened a native TS stream. Roku ECP reported the

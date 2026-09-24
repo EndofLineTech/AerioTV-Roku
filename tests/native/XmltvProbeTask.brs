@@ -16,7 +16,8 @@ sub runProbe()
         return
     end if
     result = xmltvReadWindowFile("pkg:/data/xmltv-probe.txt", start, start + 10800, allowed, invalid, 4096, 37)
-    if result.ok and result.count = 1 and result.index["station.alpha"][0].title = "News & Weather"
+    compressed = xmltvReadWindowFile("pkg:/data/xmltv-probe.gz", start, start + 10800, allowed, invalid, 4096, 37)
+    if result.ok and result.count = 1 and result.index["station.alpha"][0].title = "News & Weather" and not compressed.ok and instr(1, compressed.message, ".xml.gz") > 0
         if m.top.feedUrl <> ""
             m.top.result = probeLargeFeed()
         else

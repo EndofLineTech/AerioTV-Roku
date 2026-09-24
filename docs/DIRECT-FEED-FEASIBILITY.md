@@ -27,9 +27,22 @@ The isolated ZIP `out/xmltv-probe.zip` is assembled by
 It checked a package fixture via native `roXMLElement`/`roByteArray` and a
 full read-only copy of the real feed on Streaming Stick 4K (OS 15.3.4). A
 953-channel live three-hour window indexed 1,751 programmes in **17 seconds**
-after download, within the probe's 45-second scan bound. This establishes a
-viable native parser path, not a delivered guide connection: selectable setup,
-network cancellation, cache retention, playback isolation, and gzip feed
-behavior still need implementation and device validation. The ignored probe
-ZIP may contain the private test endpoint; no URL, credential, channel name or
+after download, within the probe's 45-second scan bound. This established a
+native parser path before it was wired into selectable direct connections in
+0.3.76; see [device checks](DIRECT-CONNECTIONS-0.3.76.md). The ignored probe ZIP
+may contain the private test endpoint; no URL, credential, channel name or
 programme title is committed here.
+
+The supplied XMLTV response is plain XML; asking it for HTTP gzip returned an
+identity-encoded response. The Roku transport enables HTTP compression, so a
+server that responds with `Content-Encoding: gzip` can be handled after
+transparent decoding. A native package fixture verified that a **raw gzip
+file** is detected and rejected before UTF-8/XML parsing, rather than causing
+a Task runtime error. Raw `.xml.gz` decompression is not yet implemented or
+claimed; no matching provider fixture was supplied.
+
+A later public `.xml.gz`-named candidate returned plain `<?xml` bytes with
+identity Content-Encoding, despite an application/gzip MIME type. Its HTTP
+Content-Range advertised roughly 312 MB, above the Roku's 72-MiB staging cap.
+Only bounded HEAD/Range/full-GET header samples were read; this endpoint
+cannot establish raw gzip decoding or a feasible full-device guide load.
