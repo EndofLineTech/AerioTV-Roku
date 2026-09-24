@@ -78,6 +78,8 @@ sub configure()
     m.groups = organizedGroups(m.serverGroups, m.collections, m.settings, false, m.channels)
     m.base = config.baseUrl
     m.key = config.apiKey
+    m.providerType = textValue(config.providerType)
+    m.guideUrl = textValue(config.guideUrl)
     m.tmdbKey = textValue(config.tmdbKey)
     m.favorites = {}
     m.allowedKeys = guideDictionary()
@@ -124,7 +126,7 @@ sub configure()
     end if
     agent = CreateObject("roHttpAgent")
     agent.setCertificatesFile("common:/certs/ca-bundle.crt")
-    agent.setHeaders({"X-API-Key": m.key, "Authorization": "ApiKey " + m.key})
+    if m.providerType = "m3u" or m.providerType = "xtream" then agent.setHeaders({}) else agent.setHeaders({"X-API-Key": m.key, "Authorization": "ApiKey " + m.key})
     m.canvas.setHttpAgent(agent)
     buildCanvas()
     m.ready = true
@@ -273,6 +275,8 @@ sub loadVisibleWindows()
             if retry
                 m.task = CreateObject("roSGNode", "GuideTask")
                 m.task.baseUrl = m.base
+                m.task.providerType = m.providerType
+                m.task.guideUrl = m.guideUrl
                 m.task.apiKey = m.key
                 m.task.windowStart = start
                 m.task.allowedKeys = m.allowedKeys
@@ -882,6 +886,13 @@ sub openOptions()
         {title: "Refresh channel lineup", action: "refreshChannels"}
         {title: "Clear guide/detail cache", action: "clearCache"}
     ]
+    if m.providerType = "m3u" or m.providerType = "xtream"
+        visible = []
+        for each item in items
+            if item.action <> "programSearch" and item.action <> "toggleVod" then visible.push(item)
+        end for
+        items = visible
+    end if
     if m.top.miniActive
         items.unshift({title: "Stop playback", action: "stopPlayer"})
         if m.top.sleepActive then items.unshift({title: "Cancel sleep timer", action: "cancelSleep"})
@@ -892,7 +903,7 @@ sub openOptions()
     if m.top.seriesPermission = "allowed" then items.push({title: "TV Shows", action: "series"})
     label = "Enable VOD libraries for this connection"
     if m.top.vodEnabled then label = "Disable VOD libraries for this connection"
-    items.push({title: label, action: "toggleVod"})
+    if m.providerType <> "m3u" and m.providerType <> "xtream" then items.push({title: label, action: "toggleVod"})
     if m.top.pendingTune then items.unshift({title: "Cancel pending channel tune", action: "cancelPendingTune"})
     openPicker("Guide options", items, "options")
 end sub

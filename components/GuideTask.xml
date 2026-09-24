@@ -3,6 +3,8 @@
   <interface>
     <field id="cancelRequested" type="boolean" />
     <field id="baseUrl" type="string" />
+    <field id="providerType" type="string" />
+    <field id="guideUrl" type="string" />
     <field id="apiKey" type="string" />
     <field id="windowStart" type="integer" />
     <field id="allowedKeys" type="assocarray" />
@@ -21,4 +23,7 @@
   <script type="text/brightscript" uri="GuideTask.brs" />
   <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MetadataCacheStore.brs" />
+  <script type="text/brightscript" uri="pkg:/source/XmltvModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/XmltvTransport.brs" />
+  <script type="text/brightscript" uri="XmltvGuideTask.brs" />
 </component>

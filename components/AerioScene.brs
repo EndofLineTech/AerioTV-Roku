@@ -142,10 +142,14 @@ sub init()
     m.selectedConnectionId = m.connectionStore.selected
     selectedConnection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     m.baseUrl = ""
+    m.guideUrl = ""
+    m.xcUsername = ""
+    m.xcPassword = ""
     m.remember = false
     m.apiKey = ""
     if selectedConnection <> invalid
         m.baseUrl = selectedConnection.url
+        m.guideUrl = selectedConnection.epgUrl
         m.remember = selectedConnection.remember
         if m.remember then m.apiKey = storedConnectionKey(m.registry, selectedConnection)
     end if
@@ -166,34 +170,60 @@ end sub
 sub drawSetup()
     m.screen.removeChildrenIndex(m.screen.getChildCount(), 0)
     uiLabel(m.screen, "AerioTV", 160, 70, 1600, 86, 64)
-    uiLabel(m.screen, "Dispatcharr Direct Connect", 164, 171, 1500, 50, 34, "0x1AC4D8FF")
+    selectedConnection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    directM3u = selectedConnection <> invalid and selectedConnection.provider = "m3u"
+    directXtream = selectedConnection <> invalid and selectedConnection.provider = "xtream"
+    subtitle = "Dispatcharr Direct Connect"
+    if directM3u then subtitle = "Direct M3U and XMLTV"
+    if directXtream then subtitle = "Xtream Codes Live TV"
+    uiLabel(m.screen, subtitle, 164, 171, 1500, 50, 34, "0x1AC4D8FF")
     uiLabel(m.screen, "Your Live TV guide. Three days back, seven days ahead.", 164, 233, 1500, 42, 26, "0x9EB5C9FF")
     method = "API key"
     if m.authMode = "password" then method = "Dashboard username and password"
     urlText = m.baseUrl
     if urlText = "" then urlText = "http://your-dispatcharr-server:9191"
     chosenName = "Add a connection"
-    selectedConnection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if selectedConnection <> invalid then chosenName = selectedConnection.name + " (" + m.connectionStore.entries.count().toStr() + " saved)"
     m.setupRows = [
         {field: "connection", title: "Connection", value: chosenName}
         {field: "url", title: "Server URL", value: urlText}
-        {field: "method", title: "Sign-in method", value: method}
     ]
-    if m.authMode = "password"
-        m.setupRows.push({field: "username", title: "Username", value: m.username})
-        value = "Select to enter"
-        if m.password <> "" then value = "****************"
-        m.setupRows.push({field: "password", title: "Dashboard password", value: value})
+    if directM3u
+        m.setupRows[1].title = "M3U URL"
+        if m.baseUrl = "" then m.setupRows[1].value = "http://your-server/output/m3u/playlist"
+        guideText = m.guideUrl
+        if guideText = "" then guideText = "Optional: http://your-server/output/epg/playlist"
+        m.setupRows.push({field: "epg", title: "XMLTV URL", value: guideText})
+    else if directXtream
+        m.setupRows[1].title = "Xtream server"
+        if m.baseUrl = "" then m.setupRows[1].value = "http://your-dispatcharr-server:9191"
+        m.setupRows.push({field: "username", title: "XC username", value: m.username})
+        passwordText = "Select to enter (session only)"
+        if m.password <> "" then passwordText = "****************"
+        m.setupRows.push({field: "password", title: "XC password", value: passwordText})
     else
-        value = "Select to enter"
-        if m.apiKey <> "" then value = "****************"
-        m.setupRows.push({field: "key", title: "API key", value: value})
+        m.setupRows.push({field: "method", title: "Sign-in method", value: method})
     end if
-    remember = "Off — this session only"
-    if m.remember then remember = "On — stored in this Roku's app registry"
-    m.setupRows.push({field: "remember", title: "Remember API key", value: remember})
+    if not directM3u and not directXtream
+        if m.authMode = "password"
+            m.setupRows.push({field: "username", title: "Username", value: m.username})
+            value = "Select to enter"
+            if m.password <> "" then value = "****************"
+            m.setupRows.push({field: "password", title: "Dashboard password", value: value})
+        else
+            value = "Select to enter"
+            if m.apiKey <> "" then value = "****************"
+            m.setupRows.push({field: "key", title: "API key", value: value})
+        end if
+    end if
+    if not directM3u and not directXtream
+        remember = "Off — this session only"
+        if m.remember then remember = "On — stored in this Roku's app registry"
+        m.setupRows.push({field: "remember", title: "Remember API key", value: remember})
+    end if
     connect = "CONNECT TO DISPATCHARR"
+    if directM3u then connect = "OPEN M3U PLAYLIST"
+    if directXtream then connect = "OPEN XTREAM LIVE TV"
     if m.busy then connect = "CONNECTING..."
     m.setupRows.push({field: "connect", title: "Connect", value: connect})
     m.setupRows.push({field: "forget", title: "Forget selected", value: "Remove this connection's saved key and account preferences"})
@@ -272,6 +302,7 @@ sub editSetupField()
     if field = "username" then dialog.text = m.username
     if field = "password" then dialog.text = m.password
     if field = "key" then dialog.text = m.apiKey
+    if field = "epg" then dialog.text = m.guideUrl
     if field = "password" or field = "key" then dialog.keyboard.textEditBox.secureMode = true
     dialog.observeField("buttonSelected", "onKeyboardButton")
     dialog.observeField("wasClosed", "onDialogClosed")
@@ -287,6 +318,13 @@ sub onKeyboardButton(event as object)
                 m.status = "Enter an http:// or https:// URL without credentials or query parameters."
             else
                 updateConnectionUrl(base)
+            end if
+        else if m.editingField = "epg"
+            base = normalizeBaseUrl(dialog.text)
+            if dialog.text.trim() <> "" and base = ""
+                m.status = "Enter an http:// or https:// XMLTV URL without credentials or query parameters."
+            else
+                updateConnectionGuideUrl(base)
             end if
         else if m.editingField = "username"
             m.username = dialog.text.trim()
@@ -308,7 +346,8 @@ end sub
 
 sub connectServer()
     if m.busy then return
-    if connectionStoreEntry(m.connectionStore, m.selectedConnectionId) = invalid
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid
         m.status = "Add or select a connection before signing in."
         drawSetup()
         return
@@ -321,8 +360,12 @@ sub connectServer()
     m.channelFacts = {}
     validCredential = m.apiKey <> ""
     if m.authMode = "password" then validCredential = m.username <> "" and m.password <> ""
+    if entry.provider = "m3u" then validCredential = true
+    if entry.provider = "xtream" then validCredential = m.username <> "" and m.password <> ""
     if normalizeBaseUrl(m.baseUrl) = "" or not validCredential
         m.status = "Enter a valid server URL and credentials for the selected sign-in method."
+        if entry.provider = "m3u" then m.status = "Enter a valid M3U playlist URL before connecting."
+        if entry.provider = "xtream" then m.status = "Enter a valid Xtream server URL, username and password."
         drawSetup()
         return
     end if
@@ -334,6 +377,28 @@ sub connectServer()
     m.connectionElapsed.mark()
     m.status = "Starting connection..."
     drawSetup()
+    if entry.provider = "m3u"
+        m.task = CreateObject("roSGNode", "M3uTask")
+        m.task.url = m.baseUrl
+        m.task.connectionId = entry.id
+        m.task.observeField("result", "onChannelsLoaded")
+        m.task.observeField("progress", "onConnectionProgress")
+        m.connectionClock.control = "start"
+        m.task.control = "RUN"
+        return
+    end if
+    if entry.provider = "xtream"
+        m.task = CreateObject("roSGNode", "XtreamTask")
+        m.task.baseUrl = m.baseUrl
+        m.task.username = m.username
+        m.task.password = m.password
+        m.task.connectionId = entry.id
+        m.task.observeField("result", "onChannelsLoaded")
+        m.task.observeField("progress", "onConnectionProgress")
+        m.connectionClock.control = "start"
+        m.task.control = "RUN"
+        return
+    end if
     m.task = CreateObject("roSGNode", "DispatcharrTask")
     m.task.cacheEpoch = m.global.cacheEpoch
     m.task.baseUrl = m.baseUrl
@@ -393,6 +458,7 @@ sub failConnection(message as string)
         m.task = invalid
     end if
     m.busy = false
+    m.password = ""
     m.status = message
     drawSetup()
 end sub
@@ -403,13 +469,14 @@ sub completeConnection(result as dynamic)
     m.task.unobserveField("progress")
     m.task = invalid
     m.busy = false
-    m.password = ""
     if type(result) <> "roAssociativeArray"
+        m.password = ""
         m.status = "Unexpected connection result. Please retry."
         drawSetup()
         return
     end if
     if not result.ok
+        m.password = ""
         recordDiagnostic("connect", -1, result.message)
         if result.relogin = true
             requireConnectionRelogin(result.message)
@@ -419,6 +486,18 @@ sub completeConnection(result as dynamic)
         drawSetup()
         return
     end if
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry <> invalid
+        if entry.provider = "m3u"
+            completeDirectConnection(result, entry)
+            return
+        end if
+        if entry.provider = "xtream"
+            completeDirectConnection(result, entry, m.username, m.password)
+            return
+        end if
+    end if
+    m.password = ""
     m.apiKey = result.apiKey
     recordDiagnostic("connect", 0, "Authorized lineup ready", m.connectionElapsed.totalMilliseconds())
     m.serverAccountId = result.accountId
@@ -655,6 +734,13 @@ sub showConnection()
     end if
     m.guide.active = false
     m.guide.visible = false
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry <> invalid
+        if entry.provider = "xtream" and m.xcPassword <> ""
+            m.username = m.xcUsername
+            m.password = m.xcPassword
+        end if
+    end if
     m.screen.visible = true
     m.page = "setup"
     m.status = "Edit connection settings, or select Connect to reload."
@@ -692,6 +778,20 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         end if
     end if
     descriptor = livePlaybackDescriptor(m.baseUrl, channel)
+    connection = invalid
+    if m.connectionStore <> invalid then connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    directM3u = connection <> invalid and connection.provider = "m3u"
+    directXtream = connection <> invalid and connection.provider = "xtream"
+    if directM3u or directXtream
+        streamUrl = m3uStreamUrl(textValue(channel.streamUrl))
+        if directXtream then streamUrl = xtreamLiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, textValue(channel.streamId))
+        descriptor = invalid
+        if streamUrl <> ""
+            format = "ts"
+            if CreateObject("roRegex", "[.]m3u8([?]|$)", "i").isMatch(streamUrl) then format = "hls"
+            descriptor = {url: streamUrl, streamFormat: format, live: true, title: textValue(channel.name), programId: textValue(channel.uuid)}
+        end if
+    end if
     if descriptor = invalid
         showPlaybackFailure(-4, "Channel or server information is missing or invalid.")
         return
@@ -733,14 +833,15 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
             if id = channel.uuid then useAac = true
         end for
     end if
-    if useAac and m.aacProfile <> invalid
+    if not directM3u and not directXtream and useAac and m.aacProfile <> invalid
         m.activeAudioProfile = m.aacProfile.id
         content.url += "&output_profile=" + m.activeAudioProfile
-    else if m.devicePreferences.audioMode = "direct"
+    else if not directM3u and not directXtream and m.devicePreferences.audioMode = "direct"
         content.url += "&output_profile=0"
     end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.73"]
+    content.httpHeaders = ["User-Agent: AerioTV-Roku/0.3.76"]
+    if not directM3u and not directXtream then content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.76"]
     m.video.content = content
     m.page = "player"
     m.video.visible = true
@@ -1067,6 +1168,19 @@ sub onGuidePlayerRequest(event as object)
         return
     end if
     if event.getData() = "refreshChannels"
+        entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+        if entry <> invalid
+            if entry.provider = "m3u" or entry.provider = "xtream"
+                if m.playingChannel <> invalid then stopPlayback()
+                if entry.provider = "xtream"
+                    m.username = m.xcUsername
+                    m.password = m.xcPassword
+                end if
+                showConnection()
+                connectServer()
+                return
+            end if
+        end if
         refreshChannelLineup()
         return
     end if
@@ -1733,7 +1847,7 @@ sub onVideoState()
             m.bannerTimer.control = "stop"
             if not m.transport.active and not m.userInfoOpen then m.bannerTimer.control = "start"
         end if
-        if m.startMiniAfterPlayback
+        if m.startMiniAfterPlayback = true
             m.startMiniAfterPlayback = false
             minimizePlayback()
         end if

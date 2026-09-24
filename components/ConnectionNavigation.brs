@@ -25,16 +25,35 @@ end function
 sub applySelectedConnection()
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     m.baseUrl = ""
+    m.guideUrl = ""
     m.remember = false
     m.apiKey = ""
     if entry <> invalid
         m.baseUrl = entry.url
+        m.guideUrl = entry.epgUrl
         m.remember = entry.remember
         m.apiKey = storedConnectionKey(m.registry, entry)
     end if
     m.username = ""
     m.password = ""
     m.authMode = "key"
+    m.xcUsername = ""
+    m.xcPassword = ""
+end sub
+
+sub updateConnectionGuideUrl(url as string)
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid or entry.provider <> "m3u" then return
+    if entry.epgUrl = url then return
+    updated = connectionStoreUpdate(m.connectionStore, entry.id, {epgUrl: url})
+    if updated = invalid or not saveConnectionStore(m.registry, updated)
+        m.status = "Could not save this connection's XMLTV URL."
+        return
+    end if
+    resetConnectionRuntime()
+    m.connectionStore = updated
+    applySelectedConnection()
+    m.status = "Guide URL updated. Connect to load this playlist's guide."
 end sub
 
 function rememberConnectedAccount(accountId as string) as boolean
@@ -125,6 +144,7 @@ sub updateConnectionUrl(base as string)
     m.selectedConnectionId = updated.selected
     applySelectedConnection()
     m.status = "Server URL updated; old credentials were removed. Sign in to verify the new server."
+    if entry.provider = "m3u" then m.status = "M3U URL updated. Connect to load this playlist."
 end sub
 
 sub resetConnectionRuntime()
@@ -167,8 +187,11 @@ sub resetConnectionRuntime()
     m.serverAccountId = ""
     m.accountPreferences = normalizeAccountPreferences(invalid)
     m.apiKey = ""
+    m.guideUrl = ""
     m.password = ""
     m.username = ""
+    m.xcUsername = ""
+    m.xcPassword = ""
     m.page = "setup"
     m.screen.visible = true
     m.top.setFocus(true)
@@ -189,6 +212,47 @@ sub requireConnectionRelogin(message as string)
     drawSetup()
 end sub
 
+sub completeDirectConnection(result as object, entry as object, xcUsername = "" as string, xcPassword = "" as string)
+    if result.channels.count() = 0
+        m.status = "This connection contains no supported live channels."
+        drawSetup()
+        return
+    end if
+    resetConnectionRuntime()
+    applySelectedConnection()
+    m.startMiniAfterPlayback = false
+    m.xcUsername = xcUsername
+    m.xcPassword = xcPassword
+    if entry.provider = "xtream" then m.guideUrl = result.guideUrl
+    m.accountIdentity = connectionPreferenceIdentity(entry, result.accountId)
+    m.accountPreferences = reconcileWatchHistory(accountPreferences(m.preferenceStore, m.accountIdentity), result.channels)
+    persistAccountPreferences()
+    m.capabilities.movies = "denied"
+    m.capabilities.series = "denied"
+    m.capabilities.catchup = "denied"
+    m.capabilities.dvr = "none"
+    m.capabilities.switchStreams = "denied"
+    m.guide.config = {
+        channels: result.channels, groups: result.groups, warning: result.warning
+        baseUrl: urlOrigin(m.baseUrl), apiKey: "", providerType: entry.provider, guideUrl: m.guideUrl
+        preferences: m.accountPreferences, tmdbKey: ""
+        scope: result.scope, generation: result.generation
+    }
+    m.guide.catchupPermission = "denied"
+    m.guide.dvrPermission = "none"
+    m.banner.session = {baseUrl: urlOrigin(m.baseUrl), apiKey: ""}
+    m.banner.preferences = m.devicePreferences
+    m.guide.remotePreferences = m.devicePreferences
+    m.page = "guide"
+    m.screen.visible = false
+    m.guide.visible = true
+    m.guide.active = true
+    updateLibraryPermissions()
+    m.reminderClock.control = "start"
+    recordDiagnostic("connect", 0, "Direct live lineup ready", m.connectionElapsed.totalMilliseconds())
+    print "[direct-live] normalized lineup channels="; result.channels.count()
+end sub
+
 sub openConnectionPicker()
     if m.busy or m.connectionDialog <> invalid then return
     if m.connectionStore.readOnly = true
@@ -207,7 +271,7 @@ sub openConnectionPicker()
 end sub
 
 sub openConnectionManager()
-    choices = [{title: "Add new connection (session-only)", action: "add"}]
+    choices = [{title: "Add Dispatcharr connection (session-only)", action: "add"}, {title: "Add direct M3U and XMLTV connection", action: "addM3u"}, {title: "Add Xtream Codes connection (session-only)", action: "addXtream"}]
     if m.selectedConnectionId <> ""
         choices.push({title: "Rename selected connection", action: "rename"})
         choices.push({title: "Move selected up", action: "move", direction: -1})
@@ -261,6 +325,10 @@ sub onConnectionChoice(event as object)
         openConnectionManager()
     else if choice.action = "add"
         addSavedConnection()
+    else if choice.action = "addM3u"
+        addSavedConnection("m3u")
+    else if choice.action = "addXtream"
+        addSavedConnection("xtream")
     else if choice.action = "rename"
         openConnectionRename()
     else if choice.action = "move"
@@ -291,8 +359,11 @@ sub switchSavedConnection(id as string)
     if m.baseUrl <> "" and m.apiKey <> "" then connectServer()
 end sub
 
-sub addSavedConnection()
-    candidate = connectionStoreAdd(m.connectionStore, CreateObject("roDeviceInfo").getRandomUUID(), "Connection " + (m.connectionStore.entries.count() + 1).toStr())
+sub addSavedConnection(provider = "dispatcharr" as string)
+    name = "Connection " + (m.connectionStore.entries.count() + 1).toStr()
+    if provider = "m3u" then name = "M3U " + (m.connectionStore.entries.count() + 1).toStr()
+    if provider = "xtream" then name = "Xtream " + (m.connectionStore.entries.count() + 1).toStr()
+    candidate = connectionStoreAdd(m.connectionStore, CreateObject("roDeviceInfo").getRandomUUID(), name, provider)
     if candidate = invalid or not saveConnectionStore(m.registry, candidate)
         showNotice("At most four connections are supported, or app storage is unavailable.")
         return
@@ -302,6 +373,8 @@ sub addSavedConnection()
     m.selectedConnectionId = candidate.selected
     applySelectedConnection()
     m.status = "New session-only connection. Enter a server URL and sign-in credentials."
+    if provider = "m3u" then m.status = "Direct M3U connection. Enter playlist and optional XMLTV URLs."
+    if provider = "xtream" then m.status = "Xtream connection. Enter its Dispatcharr URL and session-only credentials."
     drawSetup()
 end sub
 

@@ -31,6 +31,18 @@ end function
 
 sub loadMappings(bypass = false as boolean)
     cancelMappingLoad()
+    if m.providerType = "m3u" or m.providerType = "xtream"
+        m.mappingState = "ready"
+        m.mappingWarning = ""
+        m.allowedKeys = guideDictionary()
+        for each channel in m.channels
+            channel.epgKey = channel.tvgId
+            m.allowedKeys[channel.uuid] = true
+            if channel.epgKey <> "" then m.allowedKeys[channel.epgKey] = true
+        end for
+        scheduleLoad()
+        return
+    end if
     m.mappingState = "loading"
     m.mappingWarning = ""
     m.mappingTask = CreateObject("roSGNode", "MappingTask")

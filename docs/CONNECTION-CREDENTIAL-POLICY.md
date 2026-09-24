@@ -8,7 +8,7 @@ Keychain or an encrypted credential vault. Anyone with access to the signed-in
 device can use a remembered account. Clearing Remember removes that connection's
 saved key; Forget removes its saved key and account-scoped preferences.
 
-Dashboard passwords and Xtream/provider passwords are **never stored on the
+Dashboard passwords and Xtream/provider passwords are **never persisted on the
 Roku**. A dashboard password is sent once to the configured Dispatcharr origin
 to obtain the signed-in account's API key, then cleared from the Scene and Task.
 Provider credentials entered by an authorized administrator for a Dispatcharr
@@ -19,6 +19,16 @@ stored M3U-account passwords in **admin** list responses; the Roku Task must
 whitelist non-secret fields and discard those response values before publishing
 to the Scene. No provider password, secret URL or raw provider playlist is
 written to Roku preferences or public evidence.
+
+The later approved **direct Xtream connection** changes the runtime boundary:
+the XC username/password live in Scene/Task memory for the current session only,
+because `/player_api.php`, `/xmltv.php` and `/live/...` require them in the
+configured server's URL. A new app launch requires re-entry. They are never
+written into the registry, preference store or metadata cache, never printed,
+and are cleared on switch/Forget/failed verification. Send them only to the
+explicit Xtream origin. Direct M3U/XMLTV URLs saved in a connection cannot
+contain userinfo or query parameters; signed private URLs need a different
+session-only design before support can be claimed.
 
 When an API key expires or is revoked, the Roku will stop using it and show
 explicit re-login. There is no automatic dashboard password replay and no

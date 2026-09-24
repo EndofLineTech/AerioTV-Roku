@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tv><programme start="20260923133000 -0500" stop="20260923140000 -0500" channel="station.alpha"><title>News &amp; Weather</title><desc>Café updates</desc><category>News</category><new/></programme></tv>

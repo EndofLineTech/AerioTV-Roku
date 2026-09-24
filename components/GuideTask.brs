@@ -26,6 +26,10 @@ sub loadWindow()
         end if
         m.top.cached = restored
     end if
+    if m.top.providerType = "m3u" or m.top.providerType = "xtream"
+        loadXmltvWindow()
+        return
+    end if
     start = CreateObject("roDateTime")
     finish = CreateObject("roDateTime")
     start.fromSeconds(windowStart)

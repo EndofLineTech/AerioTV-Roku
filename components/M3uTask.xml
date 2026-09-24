@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="M3uTask" extends="Task">
+  <interface>
+    <field id="cancelRequested" type="boolean" />
+    <field id="url" type="string" />
+    <field id="connectionId" type="string" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+    <field id="progress" type="string" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/M3uModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
+  <script type="text/brightscript" uri="M3uTask.brs" />
+</component>

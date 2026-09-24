@@ -20,10 +20,14 @@ function normalizeConnectionEntry(raw as dynamic) as dynamic
     if connectionRegistryKey(id) = "" then return invalid
     name = textValue(raw.name)
     if not connectionNameValid(name) then return invalid
-    if raw.provider <> "dispatcharr" then return invalid
+    if raw.provider <> "dispatcharr" and raw.provider <> "m3u" and raw.provider <> "xtream" then return invalid
     url = textValue(raw.url)
     if len(url) > 256 then return invalid
     if url <> "" and normalizeBaseUrl(url) = "" then return invalid
+    epgUrl = textValue(raw.epgUrl)
+    if len(epgUrl) > 256 then return invalid
+    if epgUrl <> "" and normalizeBaseUrl(epgUrl) = "" then return invalid
+    if raw.provider <> "m3u" then epgUrl = ""
     localUrl = textValue(raw.localUrl)
     if len(localUrl) > 256 then return invalid
     if localUrl <> "" and normalizeBaseUrl(localUrl) = "" then return invalid
@@ -36,9 +40,10 @@ function normalizeConnectionEntry(raw as dynamic) as dynamic
     profileId = textValue(raw.profileId)
     if not CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(profileId) then profileId = ""
     return {
-        id: id, name: name, provider: "dispatcharr", url: normalizeBaseUrl(url)
+        id: id, name: name, provider: raw.provider, url: normalizeBaseUrl(url)
+        epgUrl: normalizeBaseUrl(epgUrl)
         localUrl: normalizeBaseUrl(localUrl), userAgent: agent, authMode: mode
-        accountId: accountId, profileId: profileId, remember: raw.remember = true
+        accountId: accountId, profileId: profileId, remember: raw.remember = true and raw.provider = "dispatcharr"
     }
 end function
 
@@ -98,9 +103,9 @@ function connectionStoreSelect(store as object, id as string) as dynamic
     return result
 end function
 
-function connectionStoreAdd(store as object, id as string, name as string) as dynamic
+function connectionStoreAdd(store as object, id as string, name as string, provider = "dispatcharr" as string) as dynamic
     if store.readOnly = true or store.entries.count() >= 4 or connectionStoreEntry(store, id) <> invalid then return invalid
-    entry = normalizeConnectionEntry({id: id, name: name, provider: "dispatcharr", url: "", remember: false})
+    entry = normalizeConnectionEntry({id: id, name: name, provider: provider, url: "", remember: false})
     if entry = invalid then return invalid
     result = copyJson(store)
     result.entries.push(entry)
@@ -124,7 +129,7 @@ function connectionStoreUpdate(store as object, id as string, patch as object) a
     result = copyJson(store)
     for each entry in result.entries
         if entry.id = id
-            for each key in ["url", "localUrl", "userAgent", "authMode", "accountId", "profileId", "remember"]
+            for each key in ["url", "epgUrl", "localUrl", "userAgent", "authMode", "accountId", "profileId", "remember"]
                 if patch.doesExist(key) then entry[key] = patch[key]
             end for
             if entry.url <> previous.url
@@ -132,6 +137,7 @@ function connectionStoreUpdate(store as object, id as string, patch as object) a
                 entry.accountId = ""
                 entry.profileId = ""
                 entry.localUrl = ""
+                if not patch.doesExist("epgUrl") then entry.epgUrl = ""
             end if
             normalized = normalizeConnectionEntry(entry)
             if normalized = invalid then return invalid
