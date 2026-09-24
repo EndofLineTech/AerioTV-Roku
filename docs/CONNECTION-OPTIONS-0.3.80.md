@@ -1,4 +1,4 @@
-# Connection profiles and request identity (0.3.79 candidate)
+# Connection profiles and request identity (0.3.80 candidate)
 
 The Dispatcharr setup screen now lists a channel profile. With an authenticated
 API key, the viewer can request only the server profiles permitted for that
@@ -18,8 +18,14 @@ key header choices: X-API-Key only (the safe default), an explicit compatible
 dual-header option, and Authorization: ApiKey only. On the target Roku, the
 supplied API key returned HTTP 400 with dual or Authorization-only headers but
 loaded the 921-channel guide using X-API-Key alone. Python read-only probes
-returned 200 for the alternate headers; their native incompatibility is
-reported with an X-API-Key recovery path. Dispatcharr 0.31 uses Bearer for a
+returned 200 for the alternate headers. A 0.3.80 connection Task that sees
+HTTP 400 on a verified alternate-mode GET attempts **one** X-API-Key retry to
+the same configured origin, then records the working mode if successful. No
+mutation or cross-origin fallback is made. On the 0.3.80 native candidate,
+Authorization-only was rejected, the single X-API-Key fallback opened the
+921-channel guide, and the connection manager then showed X-API-Key as the
+saved mode. The test key remained session-only; Roku Home ended the session.
+Dispatcharr 0.31 uses Bearer for a
 short-lived **JWT**, not for its API keys; the UI does not offer a misleading
 Bearer API-key mode. API Tasks, Guide/Player/VOD/DVR artwork and direct-feed
 downloads receive the configured agent/header choice. The media proxy may

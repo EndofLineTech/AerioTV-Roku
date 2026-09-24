@@ -10,6 +10,7 @@ sub loadChannels()
     m.deadlineMs = 115000
     m.base = normalizeBaseUrl(m.top.baseUrl)
     m.key = m.top.apiKey
+    m.requestMode = dispatcharrHeaderMode(textValue(m.top.authMode))
     m.failure = ""
     if m.base = ""
         publishError("Enter a valid server URL.")
@@ -35,6 +36,14 @@ sub loadChannels()
         if type(user) = "roAssociativeArray" then m.key = textValue(user.api_key)
     else if m.key <> ""
         user = requestJson(m.base + "/api/accounts/users/me/")
+        if type(user) <> "roAssociativeArray" and m.requestMode <> "x-api-key"
+            if type(m.httpFailure) = "roAssociativeArray"
+                if m.httpFailure.status = 400
+                    m.requestMode = "x-api-key"
+                    user = requestJson(m.base + "/api/accounts/users/me/")
+                end if
+            end if
+        end if
     end if
     if type(user) <> "roAssociativeArray"
         publishError("Could not verify the Dispatcharr account. " + m.failure, httpAccountRejected(m.httpFailure))
@@ -108,7 +117,7 @@ sub loadChannels()
         m.top.password = ""
         return
     end if
-    m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id), profileId: m.top.profileId, scope: scope, generation: generation}
+    m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id), profileId: m.top.profileId, authModeUsed: m.requestMode, scope: scope, generation: generation}
     m.key = ""
     m.top.apiKey = ""
 end sub

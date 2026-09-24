@@ -22,6 +22,7 @@ sub main()
     }
     m.connectionStore = loadConnectionStore(m.registry)
     m.selectedConnectionId = "legacy"
+    m.baseUrl = "https://example.test"
     m.apiKey = "new-key"
     m.remember = true
     assertEqual(legacyConnectionPreferencesMatch(m.registry, "https://example.test", "7"), true, "same legacy server and account can migrate preferences")
@@ -31,6 +32,11 @@ sub main()
     assertEqual(m.registry.read("apiKey"), "", "old single-slot key removed")
     assertEqual(m.registry.read("connKey_legacy"), "new-key", "verified key saved to selected slot")
     assertEqual(m.connectionStore.entries[0].accountId, "7", "verified account saved")
+    assertEqual(m.registry.read("serverUrl"), "https://example.test", "legacy URL kept as bounded recovery fallback")
+    m.registry.delete("connectionsV1")
+    recovered = loadConnectionStore(m.registry)
+    assertEqual(recovered.selected, "legacy", "missing roster recovers the legacy slot")
+    assertEqual(storedConnectionKey(m.registry, recovered.entries[0]), "new-key", "recovered slot uses scoped key without copying it into metadata")
 
     m.registry.failKeyWrite = true
     m.apiKey = "replacement-key"

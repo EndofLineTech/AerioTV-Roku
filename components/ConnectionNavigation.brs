@@ -57,6 +57,19 @@ sub cancelProfileTask()
     m.profileSlotId = ""
 end sub
 
+sub applyVerifiedHeaderMode(mode as string)
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid or entry.provider <> "dispatcharr" then return
+    mode = dispatcharrHeaderMode(mode)
+    if entry.authMode = mode then return
+    updated = connectionStoreUpdate(m.connectionStore, entry.id, {authMode: mode})
+    if updated <> invalid
+        if saveConnectionStore(m.registry, updated) then m.connectionStore = updated
+    end if
+    m.global.authHeaderMode = mode
+    showNotice("Alternate API-key header was rejected. This session uses X-API-Key only; reopen request settings if the choice could not be saved.")
+end sub
+
 sub openPermittedProfiles()
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid or entry.provider <> "dispatcharr" then return
@@ -71,6 +84,7 @@ sub openPermittedProfiles()
     m.profileTask.apiKey = m.apiKey
     m.profileTask.accountId = m.serverAccountId
     m.profileTask.profileId = entry.profileId
+    m.profileTask.authMode = entry.authMode
     m.profileTask.observeField("result", "onPermittedProfiles")
     m.profileElapsed = CreateObject("roTimespan")
     m.profileElapsed.mark()
@@ -113,6 +127,7 @@ sub finishPermittedProfiles(result as dynamic)
         drawSetup()
         return
     end if
+    applyVerifiedHeaderMode(textValue(result.authModeUsed))
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid then return
     choices = []
@@ -183,12 +198,15 @@ function rememberConnectedAccount(accountId as string) as boolean
     end if
     m.connectionStore = updated
     if entry.id = "legacy"
-        ' Only drop the prior single-slot values after the roster and new key
-        ' were safely saved. A failed cleanup remains a same-origin fallback.
-        m.registry.delete("serverUrl")
-        m.registry.delete("accountIdentity")
-        if m.remember then m.registry.delete("apiKey")
-        m.registry.flush()
+        ' Keep only non-secret legacy identity metadata as a recovery fallback
+        ' if the roster is later unavailable. The scoped key is authoritative.
+        backup = m.registry.write("serverUrl", m.baseUrl)
+        backup = m.registry.write("accountIdentity", m.baseUrl + "|" + accountId) and backup
+        policy = "false"
+        if m.remember then policy = "true"
+        backup = m.registry.write("rememberApiKey", policy) and backup
+        if m.registry.read("apiKey") <> "" then backup = m.registry.delete("apiKey") and backup
+        if not m.registry.flush() or not backup then return false
     end if
     return true
 end function
@@ -207,6 +225,11 @@ sub changeConnectionRemember(remember as boolean)
     end if
     m.connectionStore = updated
     m.remember = remember
+    if entry.id = "legacy"
+        policy = "false"
+        if remember then policy = "true"
+        if not m.registry.write("rememberApiKey", policy) or not m.registry.flush() then showNotice("Could not update legacy recovery metadata; reconnect before exiting.")
+    end if
     if remember and m.apiKey <> "" and entry.accountId = m.serverAccountId and m.serverAccountId <> ""
         if not m.registry.write(connectionRegistryKey(entry.id), m.apiKey) or not m.registry.flush()
             showNotice("Remember is selected, but the verified key could not be saved. Reconnect before exiting.")
@@ -246,6 +269,12 @@ sub updateConnectionUrl(base as string)
     m.connectionStore = updated
     m.selectedConnectionId = updated.selected
     applySelectedConnection()
+    if entry.id = "legacy"
+        saved = m.registry.write("serverUrl", base)
+        saved = m.registry.write("accountIdentity", "") and saved
+        saved = m.registry.write("rememberApiKey", "false") and saved
+        if not m.registry.flush() or not saved then showNotice("URL changed, but recovery metadata could not be updated. Reconnect before exiting.")
+    end if
     m.status = "Server URL updated; old credentials were removed. Sign in to verify the new server."
     if entry.provider = "m3u" then m.status = "M3U URL updated. Connect to load this playlist."
 end sub

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="LegacyRosterProbeTask" extends="Task">
+  <interface>
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/ConnectionStoreModel.brs" />
+  <script type="text/brightscript" uri="pkg:/components/ConnectionNavigation.brs" />
+  <script type="text/brightscript" uri="LegacyRosterProbeTask.brs" />
+</component>

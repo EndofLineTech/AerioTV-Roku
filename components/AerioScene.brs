@@ -423,6 +423,7 @@ sub connectServer()
     m.task.cacheEpoch = m.global.cacheEpoch
     m.task.baseUrl = m.baseUrl
     m.task.apiKey = m.apiKey
+    m.task.authMode = entry.authMode
     m.task.profileId = entry.profileId
     if m.authMode = "password"
         m.task.username = m.username
@@ -533,6 +534,7 @@ sub completeConnection(result as dynamic)
         drawSetup()
         return
     end if
+    applyVerifiedHeaderMode(textValue(result.authModeUsed))
     print "[profile-connected] selected="; connection.profileId; " task="; textValue(result.profileId); " channels="; result.channels.count()
     m.accountIdentity = connectionPreferenceIdentity(connection, result.accountId)
     m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
@@ -2025,7 +2027,10 @@ sub refreshChannelLineup()
     m.refreshTask.baseUrl = m.baseUrl
     m.refreshTask.apiKey = m.apiKey
     selected = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
-    if selected <> invalid then m.refreshTask.profileId = selected.profileId
+    if selected <> invalid
+        m.refreshTask.profileId = selected.profileId
+        m.refreshTask.authMode = selected.authMode
+    end if
     m.refreshTask.observeField("result", "onLineupRefresh")
     m.refreshTask.control = "RUN"
 end sub
@@ -2044,6 +2049,7 @@ sub onLineupRefresh(event as object)
         showNotice("Account changed. Reconnect to load the new account.")
         return
     end if
+    applyVerifiedHeaderMode(textValue(result.authModeUsed))
     ' Do not detach an already submitted Task: its result must remain observable
     ' so a lineup refresh cannot allow a second submission before server review.
     if m.recordTask = invalid then cancelRecordFlow()

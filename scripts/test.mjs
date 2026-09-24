@@ -91,3 +91,16 @@ if (profileSuite.status !== 0 || !profileSuite.stdout.includes('ALL TESTS PASSED
   process.stderr.write('Failed suite: ChannelProfileModel\n');
   process.exit(1);
 }
+
+const profileTaskSuite = spawnSync(process.execPath, [
+  'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
+  'source/DispatcharrModel.brs', 'source/ChannelProfileModel.brs', 'source/HttpPolicy.brs',
+  'components/ProfileTask.brs', 'tests/ProfileTask.test.brs',
+], { encoding: 'utf8' });
+process.stdout.write(profileTaskSuite.stdout ?? '');
+process.stderr.write(profileTaskSuite.stderr ?? '');
+if (profileTaskSuite.error) throw profileTaskSuite.error;
+if (profileTaskSuite.status !== 0 || !profileTaskSuite.stdout.includes('ALL TESTS PASSED')) {
+  process.stderr.write('Failed suite: ProfileTask\n');
+  process.exit(1);
+}

@@ -5,6 +5,7 @@
     <field id="cacheEpoch" type="string" />
     <field id="baseUrl" type="string" />
     <field id="apiKey" type="string" />
+    <field id="authMode" type="string" />
     <field id="profileId" type="string" />
     <field id="username" type="string" />
     <field id="password" type="string" />

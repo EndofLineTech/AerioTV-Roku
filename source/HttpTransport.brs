@@ -14,6 +14,7 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
         mode = textValue(m.global.authHeaderMode)
         agent = textValue(m.global.httpUserAgent)
     end if
+    if m.requestMode <> invalid then mode = textValue(m.requestMode)
     headers = dispatcharrRequestHeaders(m.key, mode, agent)
     for each name in headers
         if name <> "X-API-Key" and name <> "Authorization" then transfer.addHeader(name, headers[name])

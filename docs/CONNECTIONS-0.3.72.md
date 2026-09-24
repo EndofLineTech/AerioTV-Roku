@@ -37,3 +37,14 @@ audio/video acceptance. The screenshots remain under ignored `out/`. A second
 authorized account, actual key revocation, and failed registry writes were not
 exercised on the device; the failure and stale-event paths have controller
 tests only.
+
+In the later 0.3.80 candidate, the migrated legacy slot retains its
+non-secret server URL/account identity and the former Remember choice as a
+bounded recovery fallback; only the legacy key is removed after its scoped
+key is saved. A credential-free Task probe used a separate Roku registry
+section to migrate a dummy legacy slot, delete the saved roster, and confirm
+the slot and its scoped key were recovered. The probe cleaned its keys and
+the normal development channel was restored. An earlier unexplained loss of
+the real Main slot during experimental sideloads did not reproduce with a
+disposable Dispatcharr slot across a normal reinstall or a deliberate early
+startup crash; it remains tracked separately as `AerioTV-Roku-itx`.
