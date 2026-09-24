@@ -6,6 +6,7 @@
     <field id="active" type="boolean" onChange="activateVod" />
     <field id="playRequested" type="assocarray" alwaysNotify="true" />
     <field id="exitRequested" type="boolean" alwaysNotify="true" />
+    <field id="authRejected" type="boolean" alwaysNotify="true" />
     <field id="savedState" type="array" />
     <field id="permissions" type="assocarray" onChange="updateLibraryTabs" />
     <field id="stateChange" type="assocarray" alwaysNotify="true" />

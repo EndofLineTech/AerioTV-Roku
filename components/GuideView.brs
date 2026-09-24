@@ -80,6 +80,7 @@ sub configure()
     m.key = config.apiKey
     m.providerType = textValue(config.providerType)
     m.guideUrl = textValue(config.guideUrl)
+    if m.providerType = "dispatcharr" and m.guideUrl <> "" then m.cacheGeneration = metadataCacheDigest(m.lineupGeneration + "|xmltv|" + m.guideUrl)
     m.tmdbKey = textValue(config.tmdbKey)
     m.favorites = {}
     m.allowedKeys = guideDictionary()

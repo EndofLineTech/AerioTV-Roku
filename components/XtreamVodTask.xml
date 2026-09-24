@@ -1,13 +1,19 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<component name="XtreamTask" extends="Task">
+<component name="XtreamVodTask" extends="Task">
   <interface>
-    <field id="cancelRequested" type="boolean" />
     <field id="baseUrl" type="string" />
     <field id="username" type="string" />
     <field id="password" type="string" />
-    <field id="connectionId" type="string" />
+    <field id="accountScope" type="string" />
+    <field id="kind" type="string" />
+    <field id="operation" type="string" value="page" />
+    <field id="pageNumber" type="integer" value="1" />
+    <field id="category" type="string" />
+    <field id="query" type="string" />
+    <field id="seriesId" type="string" />
+    <field id="itemId" type="string" />
+    <field id="cancelRequested" type="boolean" />
     <field id="result" type="assocarray" alwaysNotify="true" />
-    <field id="progress" type="string" alwaysNotify="true" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/XtreamModel.brs" />
@@ -16,6 +22,5 @@
   <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
-  <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
-  <script type="text/brightscript" uri="XtreamTask.brs" />
+  <script type="text/brightscript" uri="XtreamVodTask.brs" />
 </component>

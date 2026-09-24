@@ -93,6 +93,7 @@ sub configureVod()
     m.relationId = ""
     m.versionFor = ""
     m.shelf = "catalog"
+    if textValue(m.top.config.providerType) = "xtream" then m.shelf = "categories"
     m.failure = ""
     saved = m.top.config.bookmark
     if type(saved) = "roAssociativeArray"
@@ -104,6 +105,12 @@ sub configureVod()
         if m.pageNumber < 1 then m.pageNumber = 1
         m.index = textValue(saved.index).toInt()
         if m.index < 0 or m.index > 19 then m.index = 0
+    end if
+    if textValue(m.top.config.providerType) = "xtream"
+        m.pageNumber = 1
+        m.index = 0
+        m.category = ""
+        m.query = ""
     end if
     loadVodPage()
 end sub
@@ -157,6 +164,23 @@ sub loadVodPage(itemId = "" as string)
         m.items = []
     end if
     m.status.text = "Loading... Back cancels."
+    if textValue(m.top.config.providerType) = "xtream"
+        m.task = CreateObject("roSGNode", "XtreamVodTask")
+        m.task.baseUrl = m.top.config.baseUrl
+        m.task.username = m.top.config.username
+        m.task.password = m.top.config.password
+        m.task.accountScope = m.top.config.accountScope
+        m.task.kind = m.kind
+        m.task.pageNumber = m.pageNumber
+        m.task.query = m.query
+        m.task.category = m.category
+        m.task.seriesId = m.seriesId
+        m.task.itemId = itemId
+        if m.shelf = "categories" then m.task.operation = "categories"
+        m.task.observeField("result", "onVodLoaded")
+        m.task.control = "RUN"
+        return
+    end if
     if itemId = "" and (m.shelf = "continue" or m.shelf = "watchlist" or m.shelf = "hidden")
         m.task = CreateObject("roSGNode", "VodShelfTask")
         m.task.baseUrl = m.top.config.baseUrl
@@ -205,6 +229,10 @@ sub onVodLoaded(event as object)
     m.task.unobserveField("result")
     m.task = invalid
     if not result.ok
+        if result.relogin = true and textValue(m.top.config.providerType) = "xtream"
+            m.top.authRejected = true
+            return
+        end if
         if detail
             m.relationId = ""
             m.versionFor = ""
@@ -241,10 +269,20 @@ sub onVodLoaded(event as object)
         m.tmdbNotice = ""
         entry = vodStateEntry(m.top.savedState, m.detail)
         menu = vodDetailMenu(m.detail, entry)
+        if textValue(m.top.config.providerType) = "xtream"
+            directMenu = {actions: [], buttons: []}
+            for i = 0 to menu.actions.count() - 1
+                if menu.actions[i] <> "watchlist" and menu.actions[i] <> "hidden" and menu.actions[i] <> "watched"
+                    directMenu.actions.push(menu.actions[i])
+                    directMenu.buttons.push(menu.buttons[i])
+                end if
+            end for
+            menu = directMenu
+        end if
         menu.actions.pop()
         menu.buttons.pop()
         if type(m.top.permissions) = "roAssociativeArray"
-            if m.top.permissions.level >= 10 and m.detail.kind <> "series"
+            if m.top.permissions.level >= 10 and m.detail.kind <> "series" and textValue(m.top.config.providerType) <> "xtream"
                 menu.actions.push("versions")
                 menu.buttons.push("Choose source version")
                 if textValue(entry.relationId) <> ""
@@ -384,6 +422,7 @@ sub drawVod()
             if item.kind = "episode" then tile.fact.text = "S" + item.season + " E" + item.episode
             if m.shelf = "continue" and item.kind = "episode" and textValue(item.seriesTitle) <> "" then tile.title.text = item.seriesTitle + " — " + item.title
             uri = vodArtworkUrl(m.top.config.baseUrl, item)
+            if textValue(m.top.config.providerType) = "xtream" then uri = ""
             if not placement.visible or compact then uri = ""
             if item.metadataPending = true then tile.fact.text = "Refresh to verify"
             if item.unavailable = true
@@ -545,6 +584,7 @@ sub renderDetailDescription()
     if type(m.dialog) <> "roAssociativeArray"
         if m.dialog.subtype() = "VodDetails"
             uri = vodArtworkUrl(m.top.config.baseUrl, m.detail)
+            if textValue(m.top.config.providerType) = "xtream" then uri = ""
             m.dialog.posterUri = uri
             fallback = ""
             if textValue(m.detail.seriesLogoId) <> "" then fallback = m.top.config.baseUrl + "/api/vod/vodlogos/" + m.detail.seriesLogoId + "/cache/"
@@ -557,6 +597,7 @@ end sub
 
 sub beginDescription()
     cancelDescription()
+    if textValue(m.top.config.providerType) = "xtream" then return
     if descriptionLanguage(m.detail.description) = "en" then return
     if m.detail.kind <> "movie" and m.detail.kind <> "series" then return
     m.descriptionNotice = "Checking for an English summary... Playback is available."
@@ -607,6 +648,20 @@ end sub
 sub openVodOptions()
     dialog = CreateObject("roSGNode", "Dialog")
     dialog.title = "Library options"
+    if textValue(m.top.config.providerType) = "xtream"
+        labels = []
+        m.optionCodes = []
+        if m.top.permissions.movies = "allowed" then labels.push("Movies") : m.optionCodes.push(1)
+        if m.top.permissions.series = "allowed" then labels.push("TV Shows") : m.optionCodes.push(2)
+        labels.append(["Categories", "Search this category", "Refresh", "Close"])
+        m.optionCodes.append([8, 0, 4, 10])
+        dialog.buttons = labels
+        dialog.observeField("buttonSelected", "onVodOption")
+        dialog.observeField("wasClosed", "onVodDialogClosed")
+        m.dialog = dialog
+        m.top.getScene().dialog = dialog
+        return
+    end if
     labels = ["Search"]
     m.optionCodes = [0]
     permissions = m.top.permissions
@@ -654,6 +709,11 @@ sub onVodOption(event as object)
     dismissVodDialog()
     if choice = 4 then m.bypassCache = true
     if choice = 0
+        if textValue(m.top.config.providerType) = "xtream" and m.category = ""
+            m.failure = "Choose a category before searching Xtream titles."
+            drawVod()
+            return
+        end if
         openVodSearch()
         return
     else if choice = 1 or choice = 2
@@ -674,6 +734,7 @@ sub onVodOption(event as object)
     else if choice = 8
         m.shelf = "categories"
         m.query = ""
+        m.category = ""
     else if choice = 9
         m.top.stateChange = {scope: m.top.config.accountScope, clearHidden: true}
         m.shelf = "catalog"
@@ -689,6 +750,7 @@ sub onVodOption(event as object)
     else if choice <> 4
         return
     end if
+    if textValue(m.top.config.providerType) = "xtream" and (choice = 1 or choice = 2) then m.shelf = "categories"
     m.pageNumber = 1
     m.index = 0
     m.items = []
@@ -719,6 +781,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if key = "back"
         saveLibraryBookmark()
         cancelVod()
+        if textValue(m.top.config.providerType) = "xtream" and m.shelf = "categories"
+            m.top.exitRequested = true
+            return true
+        end if
         if (m.shelf = "people" or m.shelf = "related" or m.shelf = "person") and m.discoveryStack.count() > 0
             restoreDiscovery()
             return true
@@ -740,7 +806,15 @@ function onKeyEvent(key as string, press as boolean) as boolean
             loadVodPage()
         else if m.shelf <> "catalog"
             m.shelf = "catalog"
+            if textValue(m.top.config.providerType) = "xtream" then m.shelf = "categories"
             m.category = ""
+            m.pageNumber = 1
+            m.index = 0
+            loadVodPage()
+        else if textValue(m.top.config.providerType) = "xtream"
+            m.shelf = "categories"
+            m.category = ""
+            m.query = ""
             m.pageNumber = 1
             m.index = 0
             loadVodPage()
@@ -778,7 +852,12 @@ function onKeyEvent(key as string, press as boolean) as boolean
                 m.seriesId = ""
                 m.parentPage = invalid
             end if
-            if m.shelf = "categories" then m.category = m.items[m.index].value + "|" + categoryType else m.providerId = m.items[m.index].id
+            if m.shelf = "categories"
+                m.category = m.items[m.index].value + "|" + categoryType
+                if textValue(m.top.config.providerType) = "xtream" then m.category = m.items[m.index].value
+            else
+                m.providerId = m.items[m.index].id
+            end if
             m.shelf = "catalog"
             m.pageNumber = 1
             m.index = 0
@@ -826,7 +905,11 @@ sub updateLibraryTabs()
     end if
     primary = [{id: "live", label: "Live TV", enabled: true}, {id: "vod", label: "VOD", enabled: movies or series}]
     libraries = [{id: "movie", label: "Movies", enabled: movies}, {id: "series", label: "TV Shows", enabled: series}]
-    for each destination in [{id: "continue", label: "Continue"}, {id: "watchlist", label: "Watchlist"}, {id: "hidden", label: "Hidden"}, {id: "categories", label: "Categories"}]
+    destinations = [{id: "continue", label: "Continue"}, {id: "watchlist", label: "Watchlist"}, {id: "hidden", label: "Hidden"}, {id: "categories", label: "Categories"}]
+    if m.top.config <> invalid
+        if textValue(m.top.config.providerType) = "xtream" then destinations = [{id: "categories", label: "Categories"}]
+    end if
+    for each destination in destinations
         destination.enabled = movies or series
         libraries.push(destination)
     end for
@@ -854,6 +937,7 @@ sub onLibraryTabSelection(event as object)
             m.kind = "series"
             m.seriesId = ""
         end if
+        if selected = "categories" then m.category = ""
         loadVodPage()
         m.top.setFocus(true)
         return

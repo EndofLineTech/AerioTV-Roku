@@ -94,7 +94,13 @@ function xtreamLiveLineup(rows as dynamic, categories as dynamic, base as string
             number = textValue(row.num)
             if number = "" then number = (channels.count() + 1).toStr()
             uuid = "xc-" + id
-            channels.push({id: uuid, uuid: uuid, name: left(name, 120), number: left(number, 12), groupId: groupId, tvgId: left(textValue(row.epg_channel_id), 128), epgId: "", epgKey: left(textValue(row.epg_channel_id), 128), logoId: "", streamId: id})
+            archiveDays = 0
+            if textValue(row.tv_archive) = "1"
+                archiveDays = textValue(row.tv_archive_duration).toInt()
+                if archiveDays < 0 then archiveDays = 0
+                if archiveDays > 30 then archiveDays = 30
+            end if
+            channels.push({id: uuid, uuid: uuid, name: left(name, 120), number: left(number, 12), groupId: groupId, tvgId: left(textValue(row.epg_channel_id), 128), epgId: "", epgKey: left(textValue(row.epg_channel_id), 128), logoId: "", streamId: id, archiveDays: archiveDays})
             seen[id] = true
         end if
     end for

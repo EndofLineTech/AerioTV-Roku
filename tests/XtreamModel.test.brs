@@ -9,7 +9,7 @@ sub main()
     assertEqual(xtreamEscape("p@ss/word"), "p%40ss%2Fword", "credential path delimiters encoded")
     assertEqual(xtreamCredentialsValid("viewer", "é"), false, "unsupported non-ASCII credential rejected without misencoding")
     categories = [{category_id: "7", category_name: "Local"}]
-    streams = [{stream_id: 19, name: "Alpha TV", num: 2, epg_channel_id: "2", category_id: "7", stream_icon: "https://unrelated.test/icon.png"}]
+    streams = [{stream_id: 19, name: "Alpha TV", num: 2, epg_channel_id: "2", category_id: "7", stream_icon: "https://unrelated.test/icon.png", tv_archive: 1, tv_archive_duration: 45}]
     lineup = xtreamLiveLineup(streams, categories, "https://example.test", "viewer", "must-not-publish")
     assertEqual(lineup.ok, true, "authorized live lineup mapped")
     assertEqual(lineup.channels[0].uuid, "xc-19", "stable stream identity")
@@ -18,6 +18,7 @@ sub main()
     assertEqual(xtreamLiveUrl("https://example.test", "viewer", "must-not-publish", lineup.channels[0].streamId), "https://example.test/live/viewer/must-not-publish/19.ts", "live URL constructed only when tuning")
     assertEqual(instr(1, FormatJson(lineup), "must-not-publish"), 0, "lineup contains no provider password")
     assertEqual(lineup.channels[0].logoId, "", "untrusted remote artwork URL excluded")
+    assertEqual(lineup.channels[0].archiveDays, 30, "advertised archive retention bounded without enabling unsupported playback")
     assertEqual(xtreamLiveLineup([{stream_id: "bad/id", name: "Invalid"}], categories, "https://example.test", "viewer", "pass").ok, false, "unsafe stream IDs rejected")
     assertEqual(xtreamLiveLineup(streams, categories, "https://user:pass@example.test", "viewer", "pass").ok, false, "credentialed base URL rejected")
     print "ALL TESTS PASSED"

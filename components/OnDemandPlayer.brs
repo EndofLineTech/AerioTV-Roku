@@ -108,7 +108,13 @@ sub onMediaState()
         m.top.diagnostic = {mode: m.session.mode, code: m.video.errorCode, message: sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)}
         print "[on-demand] failure code="; m.video.errorCode; " detail="; sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)
         m.message.text = playbackFailureText(m.video.errorCode, sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)) + chr(10) + "OK Retry    Back Return"
-        if m.session.mode = "vod" then m.message.text += chr(10) + "If this source keeps failing: Back to the title, then Choose source version (authorized accounts)."
+        if m.session.mode = "vod"
+            if m.top.request.providerType = "xtream"
+                m.message.text += chr(10) + "If this title keeps failing, return to its category or sign in again."
+            else
+                m.message.text += chr(10) + "If this source keeps failing: Back to the title, then Choose source version (authorized accounts)."
+            end if
+        end if
         if m.session.mode = "catchup" then m.message.text = "Archive unavailable or expired. Return to the guide and open the program again for a new session." + chr(10) + "OK / Back  Return"
         if m.top.request.restart = true or m.top.request.rewind = true
             if nativePlaybackRefusal(m.video.errorStr) = "" then m.message.text = "Archive not yet available, or playback was interrupted. Try again later." else m.message.text = playbackFailureText(m.video.errorCode, sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey))

@@ -29,6 +29,11 @@ sub main()
     m.top.cancelRequested = true
     loadWindow()
     check(m.requests = 0 and m.top.result = invalid and m.top.apiKey = "", "pre-cancel prevents network and publication")
+    resetTask()
+    m.top.providerType = "dispatcharr"
+    m.top.guideUrl = "https://guide.example.test/feed.xml"
+    loadWindow()
+    check(m.xml and m.requests = 0, "opt-in Dispatcharr XMLTV uses external file Task, never server JSON guide")
     print "ALL TESTS PASSED"
 end sub
 
@@ -36,6 +41,7 @@ sub resetTask()
     m.top = {baseUrl: "http://fixture.invalid", apiKey: "test-only", windowStart: "1700000000".toInt(), allowedKeys: {Station: true}, scope: "account", generation: "lineup", bypassCache: false, cancelRequested: false}
     m.cached = {state: "miss"}
     m.requests = 0
+    m.xml = false
     m.writes = 0
     m.cancelDuringRequest = false
     m.failure = "Unavailable"
@@ -43,6 +49,11 @@ sub resetTask()
         {id: 1, title: "Authorized", tvg_id: "Station", start_time: "2023-11-14T22:13:20Z", end_time: "2023-11-14T23:13:20Z", poster_url: "https://provider.invalid/signed?token=example"},
         {id: 2, title: "Unauthorized", tvg_id: "Other", start_time: "2023-11-14T22:13:20Z", end_time: "2023-11-14T23:13:20Z"}
     ]
+end sub
+
+sub loadXmltvWindow()
+    m.xml = true
+    m.top.apiKey = ""
 end sub
 
 function metadataCacheRead(scope, kind, key, generation, now, authorized)

@@ -27,13 +27,19 @@ function normalizeConnectionEntry(raw as dynamic) as dynamic
     epgUrl = textValue(raw.epgUrl)
     if len(epgUrl) > 256 then return invalid
     if epgUrl <> "" and normalizeBaseUrl(epgUrl) = "" then return invalid
-    if raw.provider <> "m3u" then epgUrl = ""
+    if raw.provider = "xtream" then epgUrl = ""
     localUrl = textValue(raw.localUrl)
     if len(localUrl) > 256 then return invalid
     if localUrl <> "" and normalizeBaseUrl(localUrl) = "" then return invalid
     agent = textValue(raw.userAgent)
     if len(agent) > 80 or CreateObject("roRegex", "[\x00-\x1F]", "").isMatch(agent) then return invalid
     if agent <> "" and dispatcharrUserAgent(agent) <> agent then return invalid
+    referer = textValue(raw.referer)
+    if raw.provider <> "m3u" then referer = ""
+    if len(referer) > 256 then return invalid
+    if referer <> ""
+        if normalizeBaseUrl(referer) <> referer or urlOrigin(referer) <> referer then return invalid
+    end if
     mode = textValue(raw.authMode)
     mode = dispatcharrHeaderMode(mode)
     accountId = textValue(raw.accountId)
@@ -43,7 +49,7 @@ function normalizeConnectionEntry(raw as dynamic) as dynamic
     return {
         id: id, name: name, provider: raw.provider, url: normalizeBaseUrl(url)
         epgUrl: normalizeBaseUrl(epgUrl)
-        localUrl: normalizeBaseUrl(localUrl), userAgent: agent, authMode: mode
+        localUrl: normalizeBaseUrl(localUrl), userAgent: agent, referer: referer, authMode: mode
         accountId: accountId, profileId: profileId, remember: raw.remember = true and raw.provider = "dispatcharr"
     }
 end function
@@ -130,7 +136,7 @@ function connectionStoreUpdate(store as object, id as string, patch as object) a
     result = copyJson(store)
     for each entry in result.entries
         if entry.id = id
-            for each key in ["url", "epgUrl", "localUrl", "userAgent", "authMode", "accountId", "profileId", "remember"]
+            for each key in ["url", "epgUrl", "localUrl", "userAgent", "referer", "authMode", "accountId", "profileId", "remember"]
                 if patch.doesExist(key) then entry[key] = patch[key]
             end for
             if entry.url <> previous.url
@@ -138,6 +144,7 @@ function connectionStoreUpdate(store as object, id as string, patch as object) a
                 entry.accountId = ""
                 entry.profileId = ""
                 entry.localUrl = ""
+                entry.referer = ""
                 if not patch.doesExist("epgUrl") then entry.epgUrl = ""
             end if
             normalized = normalizeConnectionEntry(entry)

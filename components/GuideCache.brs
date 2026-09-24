@@ -31,12 +31,14 @@ end function
 
 sub loadMappings(bypass = false as boolean)
     cancelMappingLoad()
-    if m.providerType = "m3u" or m.providerType = "xtream"
+    if m.providerType = "m3u" or m.providerType = "xtream" or (m.providerType = "dispatcharr" and m.guideUrl <> "")
+        if m.providerType = "dispatcharr" then m.cacheGeneration = metadataCacheDigest(m.lineupGeneration + "|xmltv|" + m.guideUrl)
         m.mappingState = "ready"
         m.mappingWarning = ""
         m.allowedKeys = guideDictionary()
         for each channel in m.channels
             channel.epgKey = channel.tvgId
+            if m.providerType = "dispatcharr" then channel.epgKey = externalGuideKey(channel)
             m.allowedKeys[channel.uuid] = true
             if channel.epgKey <> "" then m.allowedKeys[channel.epgKey] = true
         end for
@@ -86,6 +88,12 @@ function guideMappingKey(channel as object, result as object) as string
     key = textValue(channel.tvgId)
     if result.ok and channel.epgId <> "" and result.links.doesExist(channel.epgId) then key = textValue(result.links[channel.epgId])
     return key
+end function
+
+function externalGuideKey(channel as object) as string
+    key = textValue(channel.number)
+    if key <> "" then return key
+    return textValue(channel.tvgId)
 end function
 
 sub onWindowCached(event as object)

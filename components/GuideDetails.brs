@@ -9,6 +9,8 @@ end sub
 
 sub loadProgramDetail()
     if not m.ready or not m.top.active then return
+    ' XMLTV programme IDs belong to the feed, not Dispatcharr's programme API.
+    if m.providerType = "m3u" or m.providerType = "xtream" or m.guideUrl <> "" then return
     cell = selectedCell()
     if cell = invalid then return
     if cell.program = invalid then return
@@ -94,6 +96,7 @@ sub updateRichDetails()
     days = catchupChannelDays(m.top.catchupPermission, m.top.channelFacts, m.detailChannel.id)
     eligible = m.top.catchupPermission = "allowed" and catchupEligible(m.detailProgram, days, uiNow())
     restart = catchupRestartPlan(m.detailProgram, days, uiNow()) <> invalid
+    if m.providerType = "xtream" then restart = false
     m.details.model = {program: m.detailProgram, channel: m.detailChannel, baseUrl: m.base, apiKey: m.key, settings: m.settings, reminded: hasReminder(m.reminders, m.detailChannel.uuid, m.detailProgram.id), catchupAvailable: eligible, restartAvailable: restart, catchupRetention: catchupRetentionLabel(days), dvrPermission: m.top.dvrPermission}
 end sub
 

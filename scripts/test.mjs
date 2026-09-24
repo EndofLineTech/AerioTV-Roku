@@ -1,12 +1,14 @@
 import { spawnSync } from 'node:child_process';
 
-for (const suite of ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel', 'XtreamModel', 'XtreamTask', 'SceneUi', 'AerioSurface', 'RemoteHints', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'ConnectionStore', 'ConnectionNavigation', 'ConnectionAuthTask', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'PlayerRemoteInput', 'GuideRemoteInput', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'DvrRecordingModel', 'DvrPresentationModel', 'DvrNavigation', 'DvrView', 'GuideTaskCache', 'GuideMappingFallback', 'MappingTask', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'CatchupModel', 'DiagnosticModel', 'OnDemandPlayer', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask', 'RemoteMapModel', 'SettingsRail', 'SettingsHubInput']) {
+for (const suite of ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel', 'XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'SceneUi', 'AerioSurface', 'RemoteHints', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'ConnectionStore', 'ConnectionNavigation', 'ConnectionAuthTask', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'PlayerRemoteInput', 'GuideRemoteInput', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'DvrRecordingModel', 'DvrPresentationModel', 'DvrNavigation', 'DvrView', 'GuideTaskCache', 'GuideMappingFallback', 'MappingTask', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'CatchupModel', 'DiagnosticModel', 'OnDemandPlayer', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask', 'RemoteMapModel', 'SettingsRail', 'SettingsHubInput']) {
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
     ...(suite === 'XmltvModel' ? ['source/XmltvModel.brs'] : []),
     ...(['M3uModel', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/M3uModel.brs'] : []),
-    ...(['XtreamModel', 'XtreamTask', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/XtreamModel.brs'] : []),
+    ...(['XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/XtreamModel.brs'] : []),
+    ...(['XtreamArchiveModel', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/XtreamArchiveModel.brs'] : []),
+    ...(['XtreamVodModel', 'XtreamVodTask', 'XtreamTask', 'PlayerLifecycle'].includes(suite) ? ['source/XtreamVodModel.brs'] : []),
     'source/PlaybackModel.brs',
     ...(suite === 'RemoteHints' ? ['components/RemoteHints.brs'] : []),
     ...(suite === 'AerioSurface' ? ['components/AerioSurface.brs'] : []),
@@ -19,7 +21,7 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel',
     'source/VideoGeometry.brs',
     'source/GuideSettingsModel.brs',
     'source/ReminderModel.brs',
-    ...(['TmdbTask', 'VodShelfTask'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
+    ...(['TmdbTask', 'VodShelfTask', 'XtreamTask'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
     'source/HttpPolicy.brs',
     ...(suite === 'DvrRecordingModel' ? ['source/DvrRecordingModel.brs'] : []),
     ...(suite === 'DvrRecordingModel' ? ['source/DvrSeriesModel.brs'] : []),
@@ -38,6 +40,7 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel',
     ...(suite === 'ConnectionNavigation' ? ['components/ConnectionNavigation.brs'] : []),
     ...(suite === 'ConnectionAuthTask' ? ['components/DispatcharrTask.brs'] : []),
     ...(suite === 'XtreamTask' ? ['components/XtreamTask.brs'] : []),
+    ...(suite === 'XtreamVodTask' ? ['components/XtreamVodTask.brs'] : []),
     ...(suite === 'StreamSourceTask' ? ['components/StreamSourceTask.brs'] : []),
     ...(suite === 'GuideMenu' ? ['components/GuideSettings.brs'] : []),
     ...(suite === 'LogoCache' ? ['components/LogoCacheTask.brs'] : []),

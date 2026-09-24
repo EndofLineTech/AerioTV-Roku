@@ -36,23 +36,46 @@ sub loadXtream()
     m.top.progress = "Loading Xtream live categories"
     categories = requestJson(xtreamApiUrl(m.base, username, password, "get_live_categories"))
     if type(categories) <> "roArray"
-        publishXtreamFailure("Could not load Xtream live categories. " + m.failure)
+        publishXtreamFailure("Could not load Xtream live categories. " + m.failure, httpAccountRejected(m.httpFailure))
         return
     end if
     m.top.progress = "Loading Xtream live channels"
     rows = requestJson(xtreamApiUrl(m.base, username, password, "get_live_streams"))
     result = xtreamLiveLineup(rows, categories, m.base, username, password)
+    rejected = httpAccountRejected(m.httpFailure)
     categories = invalid
     rows = invalid
     if not result.ok
-        publishXtreamFailure(result.message)
+        publishXtreamFailure(result.message, rejected)
         return
     end if
+    m.top.progress = "Checking Xtream movie access"
+    movieCategories = requestJson(xtreamApiUrl(m.base, username, password, "get_vod_categories"))
+    if type(m.httpFailure) = "roAssociativeArray"
+        if m.httpFailure.status = 401
+            publishXtreamFailure("Xtream credentials rejected. Sign in again.", true)
+            return
+        end if
+    end if
+    movies = type(movieCategories) = "roArray"
+    if movies then movies = xtreamVodCategories(movieCategories, 1).ok and movieCategories.count() > 0
+    movieCategories = invalid
+    m.top.progress = "Checking Xtream series access"
+    seriesCategories = requestJson(xtreamApiUrl(m.base, username, password, "get_series_categories"))
+    if type(m.httpFailure) = "roAssociativeArray"
+        if m.httpFailure.status = 401
+            publishXtreamFailure("Xtream credentials rejected. Sign in again.", true)
+            return
+        end if
+    end if
+    series = type(seriesCategories) = "roArray"
+    if series then series = xtreamVodCategories(seriesCategories, 1).ok and seriesCategories.count() > 0
+    seriesCategories = invalid
     guideUrl = xtreamGuideUrl(m.base, username, password)
     accountScope = metadataCacheDigest("xc|" + m.base + "|" + username + "|" + m.top.connectionId)
     generation = metadataCacheDigest(FormatJson(result.channels))
     m.top.username = ""
     m.top.password = ""
     if m.top.cancelRequested = true then return
-    m.top.result = {ok: true, channels: result.channels, groups: result.groups, scope: accountScope, generation: generation, accountId: "xc-" + left(metadataCacheDigest(m.base + "|" + username), 24), guideUrl: guideUrl, apiKey: "", warning: ""}
+    m.top.result = {ok: true, channels: result.channels, groups: result.groups, scope: accountScope, generation: generation, accountId: "xc-" + left(metadataCacheDigest(m.base + "|" + username), 24), timezone: account.timezone, movies: movies, series: series, guideUrl: guideUrl, apiKey: "", warning: ""}
 end sub

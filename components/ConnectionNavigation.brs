@@ -39,12 +39,15 @@ sub applySelectedConnection()
     m.authMode = "key"
     m.global.authHeaderMode = "x-api-key"
     m.global.httpUserAgent = dispatcharrUserAgent("")
+    m.global.httpReferer = ""
     if entry <> invalid
         m.global.authHeaderMode = entry.authMode
         m.global.httpUserAgent = dispatcharrUserAgent(entry.userAgent)
+        m.global.httpReferer = textValue(entry.referer)
     end if
     m.xcUsername = ""
     m.xcPassword = ""
+    m.xcTimezone = ""
     m.selectedProfileName = ""
 end sub
 
@@ -161,17 +164,19 @@ end sub
 
 sub updateConnectionGuideUrl(url as string)
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
-    if entry = invalid or entry.provider <> "m3u" then return
+    if entry = invalid or entry.provider = "xtream" then return
     if entry.epgUrl = url then return
     updated = connectionStoreUpdate(m.connectionStore, entry.id, {epgUrl: url})
     if updated = invalid or not saveConnectionStore(m.registry, updated)
         m.status = "Could not save this connection's XMLTV URL."
         return
     end if
+    sessionKey = m.apiKey
     resetConnectionRuntime()
     m.connectionStore = updated
     applySelectedConnection()
-    m.status = "Guide URL updated. Connect to load this playlist's guide."
+    if entry.provider = "dispatcharr" and m.apiKey = "" then m.apiKey = sessionKey
+    m.status = "XMLTV URL updated. Reconnect to load this connection's guide."
 end sub
 
 function rememberConnectedAccount(accountId as string) as boolean
@@ -316,6 +321,7 @@ sub resetConnectionRuntime()
     m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
     m.global.authHeaderMode = "x-api-key"
     m.global.httpUserAgent = dispatcharrUserAgent("")
+    m.global.httpReferer = ""
     m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
     m.channelFacts = {}
     m.accountIdentity = ""
@@ -327,6 +333,7 @@ sub resetConnectionRuntime()
     m.username = ""
     m.xcUsername = ""
     m.xcPassword = ""
+    m.xcTimezone = ""
     m.selectedProfileName = ""
     m.page = "setup"
     m.setupIndex = 0
@@ -360,13 +367,23 @@ sub completeDirectConnection(result as object, entry as object, xcUsername = "" 
     m.startMiniAfterPlayback = false
     m.xcUsername = xcUsername
     m.xcPassword = xcPassword
+    m.xcTimezone = textValue(result.timezone)
     if entry.provider = "xtream" then m.guideUrl = result.guideUrl
     m.accountIdentity = connectionPreferenceIdentity(entry, result.accountId)
     m.accountPreferences = reconcileWatchHistory(accountPreferences(m.preferenceStore, m.accountIdentity), result.channels)
     persistAccountPreferences()
     m.capabilities.movies = "denied"
     m.capabilities.series = "denied"
+    if entry.provider = "xtream"
+        if result.movies = true then m.capabilities.movies = "allowed"
+        if result.series = true then m.capabilities.series = "allowed"
+    end if
     m.capabilities.catchup = "denied"
+    m.channelFacts = {}
+    if entry.provider = "xtream"
+        m.channelFacts = xtreamArchiveFacts(result.channels, m.xcTimezone)
+        if m.channelFacts.count() > 0 then m.capabilities.catchup = "allowed"
+    end if
     m.capabilities.dvr = "none"
     m.capabilities.switchStreams = "denied"
     m.guide.config = {
@@ -375,7 +392,8 @@ sub completeDirectConnection(result as object, entry as object, xcUsername = "" 
         preferences: m.accountPreferences, tmdbKey: ""
         scope: result.scope, generation: result.generation
     }
-    m.guide.catchupPermission = "denied"
+    m.guide.channelFacts = m.channelFacts
+    m.guide.catchupPermission = m.capabilities.catchup
     m.guide.dvrPermission = "none"
     m.banner.session = {baseUrl: urlOrigin(m.baseUrl), apiKey: ""}
     m.banner.preferences = m.devicePreferences
@@ -427,6 +445,12 @@ sub openConnectionAdvanced()
     if entry.userAgent <> "" then userAgent = left(entry.userAgent, 35)
     choices = [{title: "User-Agent: " + userAgent, action: "editAgent"}]
     if entry.userAgent <> "" then choices.push({title: "Restore default User-Agent", action: "resetAgent"})
+    if entry.provider = "m3u"
+        referer = "None (default)"
+        if entry.referer <> "" then referer = entry.referer
+        choices.push({title: "Origin Referer: " + referer, action: "editReferer"})
+        if entry.referer <> "" then choices.push({title: "Remove Referer", action: "resetReferer"})
+    end if
     if entry.provider = "dispatcharr"
         name = "X-API-Key header (recommended)"
         if entry.authMode = "compatible" then name = "Compatible dual API-key headers"
@@ -478,6 +502,28 @@ sub openConnectionAgentEditor()
     dialog.observeField("wasClosed", "onConnectionDialogClosed")
     m.connectionDialog = dialog
     m.top.dialog = dialog
+end sub
+
+sub openConnectionRefererEditor()
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid or entry.provider <> "m3u" then return
+    dialog = CreateObject("roSGNode", "KeyboardDialog")
+    dialog.title = "Source Referer origin (optional)"
+    dialog.text = entry.referer
+    dialog.buttons = ["Save", "Cancel"]
+    dialog.observeField("buttonSelected", "onConnectionRefererSaved")
+    dialog.observeField("wasClosed", "onConnectionDialogClosed")
+    m.connectionDialog = dialog
+    m.top.dialog = dialog
+end sub
+
+sub onConnectionRefererSaved(event as object)
+    if m.connectionDialog = invalid or not m.connectionDialog.isSameNode(event.getRoSGNode()) then return
+    value = m.connectionDialog.text.trim()
+    saved = event.getData() = 0
+    closeConnectionDialog()
+    if saved then saveConnectionRequestChoice({referer: value}, "M3U Referer choice saved.")
+    m.top.setFocus(true)
 end sub
 
 sub onConnectionAgentSaved(event as object)
@@ -546,6 +592,10 @@ sub onConnectionChoice(event as object)
         openConnectionAgentEditor()
     else if choice.action = "resetAgent"
         saveConnectionRequestChoice({userAgent: ""}, "Default User-Agent restored.")
+    else if choice.action = "editReferer"
+        openConnectionRefererEditor()
+    else if choice.action = "resetReferer"
+        saveConnectionRequestChoice({referer: ""}, "M3U Referer removed.")
     else if choice.action = "authModes"
         openConnectionAuthModes()
     else if choice.action = "setAuthMode"

@@ -1,5 +1,5 @@
 sub init()
-    m.global.addFields({metadataSession: CreateObject("roDeviceInfo").getRandomUUID(), cacheEpoch: CreateObject("roDeviceInfo").getRandomUUID(), networkTimeoutMs: 20000, appearance: {}, audioGuide: false, authHeaderMode: "x-api-key", httpUserAgent: dispatcharrUserAgent("")})
+    m.global.addFields({metadataSession: CreateObject("roDeviceInfo").getRandomUUID(), cacheEpoch: CreateObject("roDeviceInfo").getRandomUUID(), networkTimeoutMs: 20000, appearance: {}, audioGuide: false, authHeaderMode: "x-api-key", httpUserAgent: dispatcharrUserAgent(""), httpReferer: ""})
     m.top.focusable = true
     m.top.backgroundColor = "0x0A1628FF"
     m.top.backgroundUri = ""
@@ -8,6 +8,7 @@ sub init()
     m.vod.observeField("stateChange", "onVodStateChange")
     m.vod.observeField("bookmark", "onVodBookmark")
     m.vod.observeField("exitRequested", "closeVodLibrary")
+    m.vod.observeField("authRejected", "onXtreamVodAuthRejected")
     m.vod.observeField("destination", "onLibraryDestination")
     m.mediaPlayer = m.top.findNode("onDemandPlayer")
     m.mediaPlayer.observeField("closed", "onMediaClosed")
@@ -147,6 +148,7 @@ sub init()
     m.guideUrl = ""
     m.xcUsername = ""
     m.xcPassword = ""
+    m.xcTimezone = ""
     m.remember = false
     m.apiKey = ""
     if selectedConnection <> invalid
@@ -156,6 +158,7 @@ sub init()
         if m.remember then m.apiKey = storedConnectionKey(m.registry, selectedConnection)
         m.global.authHeaderMode = selectedConnection.authMode
         m.global.httpUserAgent = dispatcharrUserAgent(selectedConnection.userAgent)
+        m.global.httpReferer = textValue(selectedConnection.referer)
     end if
     m.username = ""
     m.password = ""
@@ -211,6 +214,9 @@ sub drawSetup()
         m.setupRows.push({field: "password", title: "XC password", value: passwordText})
     else
         m.setupRows.push({field: "method", title: "Sign-in method", value: method})
+        guideText = m.guideUrl
+        if guideText = "" then guideText = "Server guide (default); select for optional XMLTV URL"
+        m.setupRows.push({field: "epg", title: "Guide override", value: guideText})
     end if
     if not directM3u and not directXtream
         if m.authMode = "password"
@@ -562,6 +568,7 @@ sub completeConnection(result as dynamic)
     m.guide.config = {
         channels: result.channels, groups: result.groups, warning: result.warning
         baseUrl: m.baseUrl, apiKey: m.apiKey, preferences: prefs
+        providerType: "dispatcharr", guideUrl: connection.epgUrl
         tmdbKey: m.registry.read("tmdbApiKey")
         scope: result.scope, generation: result.generation
     }
@@ -876,6 +883,13 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         userAgent = connection.userAgent
     end if
     content.httpHeaders = dispatcharrHeaderLines("", mode, userAgent)
+    if directM3u and connection <> invalid
+        if textValue(connection.referer) <> ""
+            headers = dispatcharrHeaderLines("", mode, userAgent)
+            headers.push("Referer: " + connection.referer)
+            content.httpHeaders = headers
+        end if
+    end if
     if not directM3u and not directXtream
         ' Proxy playback can forward Authorization to the source. The safe
         ' Dispatcharr-only key remains available even in API auth-only mode.

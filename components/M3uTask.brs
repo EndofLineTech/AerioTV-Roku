@@ -17,6 +17,7 @@ sub loadM3u()
     transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
     transfer.setUrl(url)
     transfer.addHeader("User-Agent", dispatcharrUserAgent(textValue(m.global.httpUserAgent)))
+    if textValue(m.global.httpReferer) <> "" then transfer.addHeader("Referer", m.global.httpReferer)
     if not transfer.asyncGetToFile(path)
         m.top.result = {ok: false, message: "Could not start M3U download."}
         return

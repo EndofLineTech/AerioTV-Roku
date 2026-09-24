@@ -26,7 +26,7 @@ sub loadWindow()
         end if
         m.top.cached = restored
     end if
-    if m.top.providerType = "m3u" or m.top.providerType = "xtream"
+    if m.top.providerType = "m3u" or m.top.providerType = "xtream" or (m.top.providerType = "dispatcharr" and m.top.guideUrl <> "")
         loadXmltvWindow()
         return
     end if

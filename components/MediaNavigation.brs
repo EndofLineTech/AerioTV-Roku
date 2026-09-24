@@ -33,7 +33,12 @@ sub openVodLibrary(kind as string)
     m.vod.savedState = vodState(m.accountPreferences.vod)
     bookmark = invalid
     if type(m.accountPreferences.vodBrowse) = "roAssociativeArray" then bookmark = m.accountPreferences.vodBrowse[kind]
-    m.vod.config = {kind: kind, baseUrl: m.baseUrl, apiKey: m.apiKey, accountId: m.serverAccountId, accountScope: normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId, bookmark: bookmark, tmdbKey: m.registry.read("tmdbApiKey"), tmdbEnabled: m.accountPreferences.vodTmdbEnabled = true}
+    connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if connection <> invalid and connection.provider = "xtream"
+        m.vod.config = {kind: kind, providerType: "xtream", baseUrl: m.baseUrl, username: m.xcUsername, password: m.xcPassword, accountScope: m.accountIdentity, apiKey: "", accountId: "", bookmark: bookmark, tmdbEnabled: false}
+    else
+        m.vod.config = {kind: kind, baseUrl: m.baseUrl, apiKey: m.apiKey, accountId: m.serverAccountId, accountScope: normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId, bookmark: bookmark, tmdbKey: m.registry.read("tmdbApiKey"), tmdbEnabled: m.accountPreferences.vodTmdbEnabled = true}
+    end if
     m.vod.active = true
 end sub
 
@@ -41,6 +46,9 @@ sub closeVodLibrary()
     m.vod.callFunc("saveLibraryBookmark")
     m.vod.callFunc("cancelVod")
     m.vod.active = false
+    if m.vod.config <> invalid
+        if textValue(m.vod.config.providerType) = "xtream" then m.vod.config = invalid
+    end if
     m.page = "guide"
     m.guide.visible = true
     m.guide.active = true
@@ -51,10 +59,19 @@ sub onLibraryDestination(event as object)
     openVodLibrary(event.getData())
 end sub
 
+sub onXtreamVodAuthRejected(event as object)
+    if not m.vod.isSameNode(event.getRoSGNode()) or m.page <> "library" then return
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid or entry.provider <> "xtream" then return
+    requireConnectionRelogin("Xtream credentials were rejected by the provider.")
+end sub
+
 sub onVodBookmark(event as object)
     if not m.vod.isSameNode(event.getRoSGNode()) then return
     value = event.getData()
-    if value.scope <> normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId then return
+    scope = normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId
+    if m.vod.config <> invalid then scope = textValue(m.vod.config.accountScope)
+    if value.scope <> scope then return
     if value.kind <> "movie" and value.kind <> "series" then return
     if type(m.accountPreferences.vodBrowse) <> "roAssociativeArray" then m.accountPreferences.vodBrowse = {}
     m.accountPreferences.vodBrowse[value.kind] = {query: left(textValue(value.query), 120), category: left(textValue(value.category), 240), providerId: left(textValue(value.providerId), 20), ordering: left(textValue(value.ordering), 30), page: value.page, index: value.index}
@@ -94,8 +111,11 @@ end sub
 sub onVodPlay(event as object)
     if not m.vod.isSameNode(event.getRoSGNode()) or m.page <> "library" then return
     item = event.getData()
-    if textValue(item.accountScope) <> normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId then return
-    saveVodChange(item, {relationId: textValue(item.relationId)})
+    scope = normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId
+    connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    directXtream = connection <> invalid and connection.provider = "xtream"
+    if directXtream then scope = m.accountIdentity
+    if textValue(item.accountScope) <> scope then return
     identity = "roku_" + CreateObject("roDeviceInfo").getRandomUUID()
     transport = identity
     if m.vodTransport <> invalid
@@ -103,7 +123,12 @@ sub onVodPlay(event as object)
     end if
     m.vodTransport = {account: m.accountIdentity, key: item.key, id: transport, version: textValue(item.relationId)}
     url = vodPlaybackUrl(m.baseUrl, item, transport)
-    if url = "" then return
+    if directXtream then url = xtreamVodStreamUrl(m.baseUrl, m.xcUsername, m.xcPassword, item)
+    if url = ""
+        if directXtream then showNotice("Xtream title format is not supported for this Roku.")
+        return
+    end if
+    saveVodChange(item, {relationId: textValue(item.relationId)})
     m.mediaReturn = "library"
     m.mediaItem = item
     recordDiagnostic("vod", 0, "Opening " + item.kind + " using " + item.streamFormat)
@@ -112,7 +137,9 @@ sub onVodPlay(event as object)
     m.lastVodState = ""
     m.vod.active = false
     m.page = "onDemand"
-    m.mediaPlayer.request = {account: m.accountIdentity, identity: identity, key: item.key, mode: "vod", url: url, title: item.title, apiKey: m.apiKey, streamFormat: item.streamFormat, resume: item.resume}
+    providerType = "dispatcharr"
+    if directXtream then providerType = "xtream"
+    m.mediaPlayer.request = {account: m.accountIdentity, identity: identity, key: item.key, mode: "vod", providerType: providerType, url: url, title: item.title, apiKey: m.apiKey, streamFormat: item.streamFormat, resume: item.resume}
 end sub
 
 sub onMediaClosed()
@@ -142,6 +169,13 @@ sub onArchiveRequested(event as object)
     if textValue(selected.scope) <> textValue(m.guide.config.scope) then return
     channel = m.guide.callFunc("channelByUuid", selected.channel.uuid)
     if channel = invalid then return
+    connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if connection <> invalid
+        if connection.provider = "xtream"
+            startXtreamArchive(channel, selected.program, selected.restart = true)
+            return
+        end if
+    end if
     days = catchupChannelDays(m.capabilities.catchup, m.channelFacts, channel.id)
     program = selected.program
     restarting = selected.restart = true
@@ -174,6 +208,38 @@ sub onArchiveRequested(event as object)
     m.guide.active = false
     m.top.setFocus(true)
     if restarting then showNotice("Opening Restart Program... Archive may not yet be available. Back cancels.") else showNotice("Opening archive... Back cancels.")
+end sub
+
+sub startXtreamArchive(channel as object, program as object, restarting as boolean)
+    if restarting
+        showNotice("Restart of an in-progress Xtream programme is not available. Choose a completed programme.")
+        return
+    end if
+    days = catchupChannelDays(m.capabilities.catchup, m.channelFacts, channel.id)
+    if not catchupEligible(program, days, uiNow())
+        showNotice("The provider no longer advertises an archive for this completed programme.")
+        return
+    end if
+    url = xtreamArchiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, m.xcTimezone, channel, program, uiNow())
+    if url = ""
+        showNotice("Xtream archive request is not supported for this programme or timezone.")
+        return
+    end if
+    stopPlayback()
+    cancelArchiveLoad()
+    releaseArchive()
+    m.archiveContext = {baseUrl: m.baseUrl, apiKey: "", account: m.accountIdentity, channel: channel, program: program, providerType: "xtream", restart: false}
+    m.archiveOffset = 0
+    m.archiveStartPaused = false
+    m.archiveSeeking = false
+    m.lastArchiveReport = 0
+    m.mediaReturn = "guide"
+    m.guide.active = false
+    m.guide.visible = false
+    m.page = "onDemand"
+    m.mediaPlayer.skipSeconds = m.devicePreferences.archiveSkipSeconds
+    m.mediaPlayer.broadcastInfo = invalid
+    m.mediaPlayer.request = {account: m.accountIdentity, identity: CreateObject("roDeviceInfo").getRandomUUID(), key: textValue(program.id), mode: "catchup", providerType: "xtream", url: url, title: program.title, apiKey: "", streamFormat: "ts", programStart: program.startsAt, program: program, offset: 0, startPaused: false, restart: false, rewind: false}
 end sub
 
 sub openLiveRewind()
@@ -371,6 +437,25 @@ end sub
 
 sub onArchiveSeek(event as object)
     if not m.mediaPlayer.isSameNode(event.getRoSGNode()) or m.page <> "onDemand" then return
+    if m.archiveContext <> invalid
+        if m.archiveContext.providerType = "xtream"
+            program = m.archiveContext.program
+            plan = catchupSeekPlan(program, event.getData(), uiNow())
+            if plan = invalid then return
+            channel = m.guide.callFunc("channelByUuid", m.archiveContext.channel.uuid)
+            if channel = invalid or m.archiveContext.account <> m.accountIdentity then return
+            url = xtreamArchiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, m.xcTimezone, channel, plan.program, uiNow())
+            if url = ""
+                showNotice("Provider archive seek is no longer available. Return to the guide.")
+                return
+            end if
+            state = m.mediaPlayer.callFunc("suspendArchive")
+            m.archiveOffset = plan.offset
+            m.archiveStartPaused = state.paused
+            m.mediaPlayer.request = {account: m.accountIdentity, identity: CreateObject("roDeviceInfo").getRandomUUID(), key: textValue(program.id), mode: "catchup", providerType: "xtream", url: url, title: program.title, apiKey: "", streamFormat: "ts", programStart: program.startsAt, program: program, offset: m.archiveOffset, startPaused: m.archiveStartPaused, restart: false, rewind: false}
+            return
+        end if
+    end if
     if m.archiveSeeking = true or m.archiveSession = invalid or m.archiveContext = invalid then return
     plan = catchupSeekPlan(m.archiveContext.program, event.getData(), uiNow())
     if m.archiveContext.rewind = true then plan = rewindSeekPlan(m.archiveContext.program, m.archiveContext.tuneStart, event.getData(), uiNow())
@@ -439,7 +524,9 @@ end sub
 sub onVodStateChange(event as object)
     if not m.vod.isSameNode(event.getRoSGNode()) then return
     change = event.getData()
-    if textValue(change.scope) <> normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId then return
+    scope = normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId
+    if m.vod.config <> invalid then scope = textValue(m.vod.config.accountScope)
+    if textValue(change.scope) <> scope then return
     if type(change.availability) = "roArray"
         before = m.accountPreferences.vod
         m.accountPreferences.vod = vodApplyAvailability(before, change.availability)

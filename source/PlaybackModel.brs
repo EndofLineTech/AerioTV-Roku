@@ -122,6 +122,8 @@ function sanitizePlaybackDiagnostic(detail as string, apiKey = "" as string) as 
         end while
     end if
     detail = CreateObject("roRegex", "https?://[^\s]+", "i").replaceAll(detail, "[media URL]")
+    detail = CreateObject("roRegex", "/(live|movie|series|timeshift)/[^/\s]+/[^/\s]+/[^?\s]+", "i").replaceAll(detail, "[media path]")
+    detail = CreateObject("roRegex", "(username|password)\s*[:=][^\s&]+", "i").replaceAll(detail, "[credential]")
     detail = CreateObject("roRegex", "(authorization|x-api-key)\s*[:=][^\r\n]*", "i").replaceAll(detail, "[credential header]")
     return left(detail, 500)
 end function

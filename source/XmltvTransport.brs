@@ -7,6 +7,7 @@ function xmltvDownloadToFile(url as string, path as string, maxBytes = 75497472 
     transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
     transfer.setUrl(url)
     transfer.addHeader("User-Agent", dispatcharrUserAgent(textValue(m.global.httpUserAgent)))
+    if textValue(m.global.httpReferer) <> "" then transfer.addHeader("Referer", m.global.httpReferer)
     transfer.enableEncodings(true)
     if not transfer.asyncGetToFile(path) then return {ok: false, message: "Could not start XMLTV download."}
     monitor = CreateObject("roAppMemoryMonitor")
