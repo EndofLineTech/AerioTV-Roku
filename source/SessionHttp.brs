@@ -5,7 +5,15 @@ function sessionMutation(url as string, method as string, body = invalid as dyna
     transfer.setMessagePort(port)
     transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
     transfer.setUrl(url)
-    transfer.setHeaders({"X-API-Key": m.key, "Authorization": "ApiKey " + m.key, "Content-Type": "application/json"})
+    mode = "x-api-key"
+    agent = ""
+    if m.global <> invalid
+        mode = textValue(m.global.authHeaderMode)
+        agent = textValue(m.global.httpUserAgent)
+    end if
+    headers = dispatcharrRequestHeaders(m.key, mode, agent)
+    headers["Content-Type"] = "application/json"
+    transfer.setHeaders(headers)
     transfer.retainBodyOnError(true)
     transfer.setRequest(method)
     started = false

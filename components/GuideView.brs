@@ -126,7 +126,7 @@ sub configure()
     end if
     agent = CreateObject("roHttpAgent")
     agent.setCertificatesFile("common:/certs/ca-bundle.crt")
-    if m.providerType = "m3u" or m.providerType = "xtream" then agent.setHeaders({}) else agent.setHeaders({"X-API-Key": m.key, "Authorization": "ApiKey " + m.key})
+    agent.setHeaders(dispatcharrRequestHeaders(m.key, textValue(m.global.authHeaderMode), textValue(m.global.httpUserAgent)))
     m.canvas.setHttpAgent(agent)
     buildCanvas()
     m.ready = true

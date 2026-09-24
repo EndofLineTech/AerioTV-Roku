@@ -8,13 +8,22 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
     transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
     transfer.setUrl(url)
     transfer.addHeader("Accept", "application/json")
-    transfer.addHeader("User-Agent", "AerioTV-Roku/0.3")
+    mode = "x-api-key"
+    agent = ""
+    if m.global <> invalid
+        mode = textValue(m.global.authHeaderMode)
+        agent = textValue(m.global.httpUserAgent)
+    end if
+    headers = dispatcharrRequestHeaders(m.key, mode, agent)
+    for each name in headers
+        if name <> "X-API-Key" and name <> "Authorization" then transfer.addHeader(name, headers[name])
+    end for
     transfer.enableEncodings(true)
     if bearer <> ""
         transfer.addHeader("Authorization", "Bearer " + bearer)
-    else if m.key <> ""
-        transfer.addHeader("X-API-Key", m.key)
-        transfer.addHeader("Authorization", "ApiKey " + m.key)
+    else
+        if headers["X-API-Key"] <> invalid then transfer.addHeader("X-API-Key", headers["X-API-Key"])
+        if headers.Authorization <> invalid then transfer.addHeader("Authorization", headers.Authorization)
     end if
     file = ""
     fs = CreateObject("roFileSystem")

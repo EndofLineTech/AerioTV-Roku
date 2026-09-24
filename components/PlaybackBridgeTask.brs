@@ -25,7 +25,8 @@ sub holdConnection()
     transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
     transfer.setUrl(m.top.url)
     transfer.addHeader("X-API-Key", m.top.apiKey)
-    transfer.addHeader("Authorization", "ApiKey " + m.top.apiKey)
+    ' The TS proxy can forward Authorization upstream. X-API-Key authenticates
+    ' Dispatcharr without forwarding an extra Authorization credential.
     transfer.addHeader("User-Agent", agent)
     clock = CreateObject("roTimespan")
     clock.mark()

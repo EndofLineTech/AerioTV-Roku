@@ -50,7 +50,7 @@ sub openMedia()
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
     ' Dispatcharr's VOD proxy forwards Authorization upstream. X-API-Key alone
     ' authenticates to Dispatcharr without forwarding that credential header.
-    content.httpHeaders = mediaPlaybackHeaders(request.apiKey)
+    content.httpHeaders = mediaPlaybackHeaders(request.apiKey, textValue(m.global.httpUserAgent))
     m.pendingResume = 0
     m.resumeNoticeUntil = 0
     m.resumeTarget = 0

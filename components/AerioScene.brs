@@ -1,5 +1,5 @@
 sub init()
-    m.global.addFields({metadataSession: CreateObject("roDeviceInfo").getRandomUUID(), cacheEpoch: CreateObject("roDeviceInfo").getRandomUUID(), networkTimeoutMs: 20000, appearance: {}, audioGuide: false})
+    m.global.addFields({metadataSession: CreateObject("roDeviceInfo").getRandomUUID(), cacheEpoch: CreateObject("roDeviceInfo").getRandomUUID(), networkTimeoutMs: 20000, appearance: {}, audioGuide: false, authHeaderMode: "x-api-key", httpUserAgent: dispatcharrUserAgent("")})
     m.top.focusable = true
     m.top.backgroundColor = "0x0A1628FF"
     m.top.backgroundUri = ""
@@ -89,6 +89,8 @@ sub init()
     m.pictureWakeKey = ""
     m.connectionClock = m.top.findNode("connectionClock")
     m.connectionClock.observeField("fire", "onConnectionTick")
+    m.profileClock = m.top.findNode("profileClock")
+    m.profileClock.observeField("fire", "onProfileTick")
     m.channelTuneTimer = m.top.findNode("channelTuneTimer")
     m.channelTuneTimer.observeField("fire", "commitChannelSwitch")
     m.heldZapTimer = m.top.findNode("heldZapTimer")
@@ -152,6 +154,8 @@ sub init()
         m.guideUrl = selectedConnection.epgUrl
         m.remember = selectedConnection.remember
         if m.remember then m.apiKey = storedConnectionKey(m.registry, selectedConnection)
+        m.global.authHeaderMode = selectedConnection.authMode
+        m.global.httpUserAgent = dispatcharrUserAgent(selectedConnection.userAgent)
     end if
     m.username = ""
     m.password = ""
@@ -159,8 +163,12 @@ sub init()
     m.setupIndex = 0
     m.busy = false
     m.task = invalid
+    m.profileTask = invalid
+    m.profileSlotId = ""
+    m.selectedProfileName = ""
     m.accountIdentity = ""
     m.status = "Dispatcharr 0.31  |  Live TV and guide"
+    if m.connectionStore.readOnly = true then m.status = "Saved connections use an unsupported or unreadable format. This build will not overwrite them."
     m.page = "setup"
     drawSetup()
     m.top.setFocus(true)
@@ -220,6 +228,12 @@ sub drawSetup()
         remember = "Off — this session only"
         if m.remember then remember = "On — stored in this Roku's app registry"
         m.setupRows.push({field: "remember", title: "Remember API key", value: remember})
+        profileText = "Server-authorized default"
+        if selectedConnection <> invalid
+            if selectedConnection.profileId <> "" then profileText = "Profile #" + selectedConnection.profileId
+        end if
+        if m.selectedProfileName <> "" then profileText = m.selectedProfileName
+        m.setupRows.push({field: "profile", title: "Channel profile", value: profileText})
     end if
     connect = "CONNECT TO DISPATCHARR"
     if directM3u then connect = "OPEN M3U PLAYLIST"
@@ -228,10 +242,12 @@ sub drawSetup()
     m.setupRows.push({field: "connect", title: "Connect", value: connect})
     m.setupRows.push({field: "forget", title: "Forget selected", value: "Remove this connection's saved key and account preferences"})
     if m.setupIndex >= m.setupRows.count() then m.setupIndex = m.setupRows.count() - 1
+    spacing = 78
+    if m.setupRows.count() > 8 then spacing = 68
     for i = 0 to m.setupRows.count() - 1
         row = m.setupRows[i]
         if row.field = "connect" or row.field = "forget" then exit for
-        y = 310 + i * 78
+        y = 310 + i * spacing
         border = "0x17344AFF"
         fill = "0x0D1E35FF"
         if i = m.setupIndex
@@ -243,7 +259,7 @@ sub drawSetup()
         uiLabel(m.screen, row.title, 186, y + 18, 380, 40, 25, "0x1AC4D8FF")
         uiLabel(m.screen, row.value, 570, y + 18, 1155, 40, 25)
     end for
-    actionY = 310 + (m.setupRows.count() - 2) * 78 + 22
+    actionY = 310 + (m.setupRows.count() - 2) * spacing + 22
     uiRect(m.screen, 160, actionY - 12, 1600, 1, "0x17344AFF")
     focusedConnect = m.setupIndex = m.setupRows.count() - 2
     focusedForget = m.setupIndex = m.setupRows.count() - 1
@@ -285,6 +301,9 @@ sub editSetupField()
     else if field = "remember"
         changeConnectionRemember(not m.remember)
         drawSetup()
+        return
+    else if field = "profile"
+        openPermittedProfiles()
         return
     else if field = "method"
         if m.authMode = "key" then m.authMode = "password" else m.authMode = "key"
@@ -352,6 +371,7 @@ sub connectServer()
         drawSetup()
         return
     end if
+    cancelProfileTask()
     resetMediaNavigation()
     cancelPlaybackFailure()
     if m.playingChannel <> invalid then stopPlayback()
@@ -403,6 +423,7 @@ sub connectServer()
     m.task.cacheEpoch = m.global.cacheEpoch
     m.task.baseUrl = m.baseUrl
     m.task.apiKey = m.apiKey
+    m.task.profileId = entry.profileId
     if m.authMode = "password"
         m.task.username = m.username
         m.task.password = m.password
@@ -483,6 +504,10 @@ sub completeConnection(result as dynamic)
             return
         end if
         m.status = result.message
+        selected = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+        if selected <> invalid
+            if selected.provider = "dispatcharr" then m.status = dispatcharrConnectionError(result.message, selected.authMode)
+        end if
         drawSetup()
         return
     end if
@@ -508,6 +533,7 @@ sub completeConnection(result as dynamic)
         drawSetup()
         return
     end if
+    print "[profile-connected] selected="; connection.profileId; " task="; textValue(result.profileId); " channels="; result.channels.count()
     m.accountIdentity = connectionPreferenceIdentity(connection, result.accountId)
     m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
     legacy = invalid
@@ -526,7 +552,8 @@ sub completeConnection(result as dynamic)
         end if
     end if
     prefs = accountPreferences(m.preferenceStore, m.accountIdentity, m.registry.read("accountIdentity"), legacy)
-    m.accountPreferences = reconcileWatchHistory(prefs, result.channels)
+    m.accountPreferences = prefs
+    if connection.profileId = "" then m.accountPreferences = reconcileWatchHistory(prefs, result.channels)
     prefs = m.accountPreferences
     if persistAccountPreferences() then m.registry.delete("preferences")
     if not rememberConnectedAccount(result.accountId) then result.warning = "Could not save this connection. Check Roku app storage and reconnect before exiting."
@@ -534,7 +561,7 @@ sub completeConnection(result as dynamic)
         channels: result.channels, groups: result.groups, warning: result.warning
         baseUrl: m.baseUrl, apiKey: m.apiKey, preferences: prefs
         tmdbKey: m.registry.read("tmdbApiKey")
-        scope: result.scope + "|" + m.selectedConnectionId, generation: result.generation
+        scope: result.scope, generation: result.generation
     }
     m.banner.session = {baseUrl: m.baseUrl, apiKey: m.apiKey}
     m.banner.preferences = m.devicePreferences
@@ -840,8 +867,20 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         content.url += "&output_profile=0"
     end if
     content.httpCertificatesFile = "common:/certs/ca-bundle.crt"
-    content.httpHeaders = ["User-Agent: AerioTV-Roku/0.3.76"]
-    if not directM3u and not directXtream then content.httpHeaders = ["X-API-Key: " + m.apiKey, "Authorization: ApiKey " + m.apiKey, "User-Agent: AerioTV-Roku/0.3.76"]
+    mode = "x-api-key"
+    userAgent = ""
+    if connection <> invalid
+        mode = connection.authMode
+        userAgent = connection.userAgent
+    end if
+    content.httpHeaders = dispatcharrHeaderLines("", mode, userAgent)
+    if not directM3u and not directXtream
+        ' Proxy playback can forward Authorization to the source. The safe
+        ' Dispatcharr-only key remains available even in API auth-only mode.
+        playbackMode = mode
+        if playbackMode = "authorization" then playbackMode = "x-api-key"
+        content.httpHeaders = dispatcharrHeaderLines(m.apiKey, playbackMode, userAgent)
+    end if
     m.video.content = content
     m.page = "player"
     m.video.visible = true
@@ -1985,6 +2024,8 @@ sub refreshChannelLineup()
     m.refreshTask.cacheEpoch = m.global.cacheEpoch
     m.refreshTask.baseUrl = m.baseUrl
     m.refreshTask.apiKey = m.apiKey
+    selected = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if selected <> invalid then m.refreshTask.profileId = selected.profileId
     m.refreshTask.observeField("result", "onLineupRefresh")
     m.refreshTask.control = "RUN"
 end sub
@@ -2007,7 +2048,9 @@ sub onLineupRefresh(event as object)
     ' so a lineup refresh cannot allow a second submission before server review.
     if m.recordTask = invalid then cancelRecordFlow()
     cancelPlaybackFailure()
-    m.accountPreferences = reconcileWatchHistory(m.accountPreferences, result.channels)
+    selected = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if selected = invalid then return
+    if selected.profileId = "" then m.accountPreferences = reconcileWatchHistory(m.accountPreferences, result.channels)
     removedPlaying = false
     if m.playingChannel <> invalid
         current = invalid

@@ -37,8 +37,111 @@ sub applySelectedConnection()
     m.username = ""
     m.password = ""
     m.authMode = "key"
+    m.global.authHeaderMode = "x-api-key"
+    m.global.httpUserAgent = dispatcharrUserAgent("")
+    if entry <> invalid
+        m.global.authHeaderMode = entry.authMode
+        m.global.httpUserAgent = dispatcharrUserAgent(entry.userAgent)
+    end if
     m.xcUsername = ""
     m.xcPassword = ""
+    m.selectedProfileName = ""
+end sub
+
+sub cancelProfileTask()
+    if m.profileTask = invalid then return
+    m.profileClock.control = "stop"
+    m.profileTask.unobserveField("result")
+    cancelNetworkTask(m.profileTask)
+    m.profileTask = invalid
+    m.profileSlotId = ""
+end sub
+
+sub openPermittedProfiles()
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid or entry.provider <> "dispatcharr" then return
+    if m.baseUrl = "" or m.apiKey = ""
+        showNotice("Connect with an API key first, then return to setup to choose a permitted channel profile.")
+        return
+    end if
+    if m.profileTask <> invalid then return
+    m.profileSlotId = entry.id
+    m.profileTask = CreateObject("roSGNode", "ProfileTask")
+    m.profileTask.baseUrl = m.baseUrl
+    m.profileTask.apiKey = m.apiKey
+    m.profileTask.accountId = m.serverAccountId
+    m.profileTask.profileId = entry.profileId
+    m.profileTask.observeField("result", "onPermittedProfiles")
+    m.profileElapsed = CreateObject("roTimespan")
+    m.profileElapsed.mark()
+    m.profileClock.control = "start"
+    m.profileTask.control = "RUN"
+    m.status = "Checking permitted channel profiles..."
+    drawSetup()
+end sub
+
+sub onPermittedProfiles(event as object)
+    if not isCurrentTaskEvent(event, m.profileTask) then return
+    finishPermittedProfiles(event.getData())
+end sub
+
+sub onProfileTick()
+    if m.profileTask = invalid then return
+    if m.profileTask.state = "done" or m.profileTask.state = "stop"
+        finishPermittedProfiles(m.profileTask.result)
+    else if m.profileElapsed.totalSeconds() > 60
+        cancelProfileTask()
+        m.status = "Profile request timed out. Reconnect and retry."
+        drawSetup()
+    end if
+end sub
+
+sub finishPermittedProfiles(result as dynamic)
+    if m.profileTask = invalid then return
+    m.profileClock.control = "stop"
+    m.profileTask.unobserveField("result")
+    m.profileTask = invalid
+    if m.page <> "setup" or m.profileSlotId <> m.selectedConnectionId then return
+    m.profileSlotId = ""
+    if type(result) <> "roAssociativeArray"
+        m.status = "Profile request stopped without a result. Reconnect and retry."
+        drawSetup()
+        return
+    end if
+    if not result.ok
+        m.status = result.message
+        drawSetup()
+        return
+    end if
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid then return
+    choices = []
+    for each profile in result.choices
+        choices.push({title: profile.title, id: profile.id, action: "profile"})
+    end for
+    choices.push({title: "Back", action: "cancel"})
+    openConnectionDialog("Channel profiles", "Only permitted server profiles are shown. A choice narrows the verified lineup.", choices)
+end sub
+
+sub selectPermittedProfile(choice as object)
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid or entry.provider <> "dispatcharr" then return
+    print "[profile-choice] previous="; entry.profileId; " requested="; choice.id
+    if entry.profileId = choice.id then return
+    updated = connectionStoreUpdate(m.connectionStore, entry.id, {profileId: choice.id})
+    if updated = invalid or not saveConnectionStore(m.registry, updated)
+        showNotice("Could not save this connection's profile choice.")
+        return
+    end if
+    print "[profile-choice] stored="; connectionStoreEntry(updated, entry.id).profileId
+    sessionKey = m.apiKey
+    resetConnectionRuntime()
+    m.connectionStore = updated
+    applySelectedConnection()
+    if m.apiKey = "" then m.apiKey = sessionKey
+    m.selectedProfileName = choice.title
+    m.status = "Profile selected. Connect to load only its permitted live channels."
+    drawSetup()
 end sub
 
 sub updateConnectionGuideUrl(url as string)
@@ -152,6 +255,7 @@ sub resetConnectionRuntime()
     cancelDvrPlayback()
     cancelPlaybackFailure()
     cancelCapabilityRefresh()
+    cancelProfileTask()
     m.reminderClock.control = "stop"
     if m.playingChannel <> invalid then stopPlayback()
     resetMediaNavigation()
@@ -181,6 +285,8 @@ sub resetConnectionRuntime()
     m.banner.channel = invalid
     m.banner.info = invalid
     m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
+    m.global.authHeaderMode = "x-api-key"
+    m.global.httpUserAgent = dispatcharrUserAgent("")
     m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
     m.channelFacts = {}
     m.accountIdentity = ""
@@ -192,7 +298,9 @@ sub resetConnectionRuntime()
     m.username = ""
     m.xcUsername = ""
     m.xcPassword = ""
+    m.selectedProfileName = ""
     m.page = "setup"
+    m.setupIndex = 0
     m.screen.visible = true
     m.top.setFocus(true)
 end sub
@@ -274,12 +382,82 @@ sub openConnectionManager()
     choices = [{title: "Add Dispatcharr connection (session-only)", action: "add"}, {title: "Add direct M3U and XMLTV connection", action: "addM3u"}, {title: "Add Xtream Codes connection (session-only)", action: "addXtream"}]
     if m.selectedConnectionId <> ""
         choices.push({title: "Rename selected connection", action: "rename"})
+        choices.push({title: "Request identity and header settings", action: "advanced"})
         choices.push({title: "Move selected up", action: "move", direction: -1})
         choices.push({title: "Move selected down", action: "move", direction: 1})
         choices.push({title: "Forget selected connection", action: "forget"})
     end if
     choices.push({title: "Back", action: "cancel"})
     openConnectionDialog("Manage saved connections", "At most four. Forget affects only the selected connection.", choices)
+end sub
+
+sub openConnectionAdvanced()
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid then return
+    userAgent = "Default Roku application agent"
+    if entry.userAgent <> "" then userAgent = left(entry.userAgent, 35)
+    choices = [{title: "User-Agent: " + userAgent, action: "editAgent"}]
+    if entry.userAgent <> "" then choices.push({title: "Restore default User-Agent", action: "resetAgent"})
+    if entry.provider = "dispatcharr"
+        name = "X-API-Key header (recommended)"
+        if entry.authMode = "compatible" then name = "Compatible dual API-key headers"
+        if entry.authMode = "authorization" then name = "Authorization: ApiKey only"
+        choices.push({title: "API auth header: " + name, action: "authModes"})
+    end if
+    choices.push({title: "Back", action: "cancel"})
+    openConnectionDialog("Connection request settings", "User-Agent applies to APIs, artwork and media. JWT Bearer is not an API-key mode.", choices)
+end sub
+
+sub openConnectionAuthModes()
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid or entry.provider <> "dispatcharr" then return
+    choices = []
+    for each mode in [{value: "x-api-key", title: "X-API-Key only (recommended)"}, {value: "compatible", title: "Dual: X-API-Key and ApiKey"}, {value: "authorization", title: "Authorization: ApiKey only"}]
+        title = mode.title
+        if mode.value = entry.authMode then title = "[Selected] " + title
+        choices.push({title: title, action: "setAuthMode", value: mode.value})
+    end for
+    choices.push({title: "Back", action: "cancel"})
+    openConnectionDialog("API key header", "Both schemes are supported by Dispatcharr 0.31. Media proxy playback uses X-API-Key to avoid upstream forwarding.", choices)
+end sub
+
+sub saveConnectionRequestChoice(patch as object, description as string)
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid then return
+    updated = connectionStoreUpdate(m.connectionStore, entry.id, patch)
+    if updated = invalid or not saveConnectionStore(m.registry, updated)
+        showNotice("Invalid request setting or app storage unavailable; previous value retained.")
+        return
+    end if
+    sessionKey = m.apiKey
+    resetConnectionRuntime()
+    m.connectionStore = updated
+    applySelectedConnection()
+    if m.apiKey = "" and entry.provider = "dispatcharr" then m.apiKey = sessionKey
+    m.status = description + " Reconnect to apply it to this connection."
+    drawSetup()
+end sub
+
+sub openConnectionAgentEditor()
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid then return
+    dialog = CreateObject("roSGNode", "KeyboardDialog")
+    dialog.title = "User-Agent override (blank = default)"
+    dialog.text = entry.userAgent
+    dialog.buttons = ["Save", "Cancel"]
+    dialog.observeField("buttonSelected", "onConnectionAgentSaved")
+    dialog.observeField("wasClosed", "onConnectionDialogClosed")
+    m.connectionDialog = dialog
+    m.top.dialog = dialog
+end sub
+
+sub onConnectionAgentSaved(event as object)
+    if m.connectionDialog = invalid or not m.connectionDialog.isSameNode(event.getRoSGNode()) then return
+    value = m.connectionDialog.text.trim()
+    saved = event.getData() = 0
+    closeConnectionDialog()
+    if saved then saveConnectionRequestChoice({userAgent: value}, "User-Agent choice saved.")
+    m.top.setFocus(true)
 end sub
 
 sub openConnectionDialog(title as string, message as string, choices as object)
@@ -329,8 +507,20 @@ sub onConnectionChoice(event as object)
         addSavedConnection("m3u")
     else if choice.action = "addXtream"
         addSavedConnection("xtream")
+    else if choice.action = "profile"
+        selectPermittedProfile(choice)
     else if choice.action = "rename"
         openConnectionRename()
+    else if choice.action = "advanced"
+        openConnectionAdvanced()
+    else if choice.action = "editAgent"
+        openConnectionAgentEditor()
+    else if choice.action = "resetAgent"
+        saveConnectionRequestChoice({userAgent: ""}, "Default User-Agent restored.")
+    else if choice.action = "authModes"
+        openConnectionAuthModes()
+    else if choice.action = "setAuthMode"
+        saveConnectionRequestChoice({authMode: choice.value}, "API header mode saved.")
     else if choice.action = "move"
         moved = connectionStoreMove(m.connectionStore, m.selectedConnectionId, choice.direction)
         if moved <> invalid and saveConnectionStore(m.registry, moved) then m.connectionStore = moved else showNotice("Could not reorder saved connections.")

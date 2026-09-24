@@ -1,22 +1,17 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<component name="DispatcharrTask" extends="Task">
+<component name="ProfileTask" extends="Task">
   <interface>
     <field id="cancelRequested" type="boolean" />
-    <field id="cacheEpoch" type="string" />
     <field id="baseUrl" type="string" />
     <field id="apiKey" type="string" />
+    <field id="accountId" type="string" />
     <field id="profileId" type="string" />
-    <field id="username" type="string" />
-    <field id="password" type="string" />
     <field id="result" type="assocarray" alwaysNotify="true" />
-    <field id="progress" type="string" alwaysNotify="true" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ChannelProfileModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
-  <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
-  <script type="text/brightscript" uri="pkg:/source/MetadataCacheStore.brs" />
-  <script type="text/brightscript" uri="DispatcharrTask.brs" />
+  <script type="text/brightscript" uri="ProfileTask.brs" />
 </component>

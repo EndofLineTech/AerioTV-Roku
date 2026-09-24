@@ -51,7 +51,7 @@ sub configure()
         m.logoPrefix = "tmp:/aeriotv-logos-" + CreateObject("roDeviceInfo").getRandomUUID()
         agent = CreateObject("roHttpAgent")
         agent.setCertificatesFile("common:/certs/ca-bundle.crt")
-        agent.setHeaders({"X-API-Key": data.apiKey, "Authorization": "ApiKey " + data.apiKey})
+        agent.setHeaders(dispatcharrRequestHeaders(data.apiKey, textValue(m.global.authHeaderMode), textValue(m.global.httpUserAgent)))
         if m.rows <> invalid
             for each row in m.rows
                 row.logo.uri = ""

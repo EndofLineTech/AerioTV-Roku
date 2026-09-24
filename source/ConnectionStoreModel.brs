@@ -33,8 +33,9 @@ function normalizeConnectionEntry(raw as dynamic) as dynamic
     if localUrl <> "" and normalizeBaseUrl(localUrl) = "" then return invalid
     agent = textValue(raw.userAgent)
     if len(agent) > 80 or CreateObject("roRegex", "[\x00-\x1F]", "").isMatch(agent) then return invalid
+    if agent <> "" and dispatcharrUserAgent(agent) <> agent then return invalid
     mode = textValue(raw.authMode)
-    if mode <> "bearer" then mode = "api-key"
+    mode = dispatcharrHeaderMode(mode)
     accountId = textValue(raw.accountId)
     if not CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(accountId) then accountId = ""
     profileId = textValue(raw.profileId)

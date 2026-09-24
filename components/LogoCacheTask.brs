@@ -24,8 +24,8 @@ sub downloadLogos()
             transfer.setMessagePort(port)
             transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
             transfer.setUrl(m.top.baseUrl + "/api/channels/logos/" + id + "/cache/")
-            transfer.addHeader("X-API-Key", m.top.apiKey)
-            transfer.addHeader("Authorization", "ApiKey " + m.top.apiKey)
+            headers = dispatcharrRequestHeaders(m.top.apiKey, textValue(m.global.authHeaderMode), textValue(m.global.httpUserAgent))
+            transfer.setHeaders(headers)
             if transfer.asyncGetToFile(path)
                 active[transfer.getIdentity().toStr()] = {id: id, path: path, transfer: transfer}
             else

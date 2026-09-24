@@ -12,6 +12,7 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel',
     ...(suite === 'AerioSurface' ? ['components/AerioSurface.brs'] : []),
     'source/NowNextModel.brs',
     'source/RemoteMapModel.brs', 'source/PreferenceModel.brs',
+    ...(suite === 'ConnectionAuthTask' ? ['source/ChannelProfileModel.brs'] : []),
     ...(['ConnectionStore', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/ConnectionStoreModel.brs'] : []),
     'source/CapabilityModel.brs',
     'source/ProgramSearchModel.brs',
@@ -76,4 +77,17 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel',
     process.stderr.write(`Failed suite: ${suite}\n`);
     process.exit(1);
   }
+}
+
+const profileSuite = spawnSync(process.execPath, [
+  'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
+  'source/DispatcharrModel.brs', 'source/ChannelProfileModel.brs',
+  'tests/ChannelProfileModel.test.brs',
+], { encoding: 'utf8' });
+process.stdout.write(profileSuite.stdout ?? '');
+process.stderr.write(profileSuite.stderr ?? '');
+if (profileSuite.error) throw profileSuite.error;
+if (profileSuite.status !== 0 || !profileSuite.stdout.includes('ALL TESTS PASSED')) {
+  process.stderr.write('Failed suite: ChannelProfileModel\n');
+  process.exit(1);
 }

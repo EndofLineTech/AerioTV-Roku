@@ -122,3 +122,42 @@ function filterChannels(channels as object, filter as string, favorites as objec
     end for
     return result
 end function
+
+' 0.31 accepts both API-key forms; Bearer is a short-lived JWT and is not
+' interchangeable with a remembered Dispatcharr API key.
+function dispatcharrHeaderMode(mode as string) as string
+    if mode = "compatible" or mode = "authorization" then return mode
+    return "x-api-key"
+end function
+
+function dispatcharrUserAgent(override as string) as string
+    defaultAgent = "AerioTV-Roku/0.3.79"
+    if override = "" or len(override) > 80 then return defaultAgent
+    if not CreateObject("roRegex", "^[\x20-\x7E]{1,80}$", "").isMatch(override) then return defaultAgent
+    return override
+end function
+
+function dispatcharrRequestHeaders(key as string, mode as string, userAgent as string) as object
+    result = {"User-Agent": dispatcharrUserAgent(userAgent)}
+    if key = "" then return result
+    mode = dispatcharrHeaderMode(mode)
+    if mode <> "authorization" then result["X-API-Key"] = key
+    if mode = "compatible" or mode = "authorization" then result.Authorization = "ApiKey " + key
+    return result
+end function
+
+function dispatcharrHeaderLines(key as string, mode as string, userAgent as string) as object
+    fields = dispatcharrRequestHeaders(key, mode, userAgent)
+    result = []
+    if fields["X-API-Key"] <> invalid then result.push("X-API-Key: " + fields["X-API-Key"])
+    if fields.Authorization <> invalid then result.push("Authorization: " + fields.Authorization)
+    result.push("User-Agent: " + fields["User-Agent"])
+    return result
+end function
+
+function dispatcharrConnectionError(message as string, mode as string) as string
+    if dispatcharrHeaderMode(mode) <> "x-api-key" and instr(1, message, "HTTP 400") > 0
+        return "Server rejected the selected API authorization header on this Roku. In Connection request settings, choose X-API-Key only and retry."
+    end if
+    return message
+end function

@@ -394,7 +394,7 @@ sub drawVod()
             if tile.poster.uri <> uri
                 agent = CreateObject("roHttpAgent")
                 agent.setCertificatesFile("common:/certs/ca-bundle.crt")
-                if trustedPageUrl(m.top.config.baseUrl, uri) <> "" then agent.setHeaders({"X-API-Key": m.top.config.apiKey})
+                if trustedPageUrl(m.top.config.baseUrl, uri) <> "" then agent.setHeaders(dispatcharrRequestHeaders(m.top.config.apiKey, textValue(m.global.authHeaderMode), textValue(m.global.httpUserAgent)))
                 tile.poster.setHttpAgent(agent)
                 tile.poster.uri = uri
             end if

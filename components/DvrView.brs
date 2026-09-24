@@ -58,7 +58,7 @@ sub onDvrConfig()
     if m.poster <> invalid
         agent = CreateObject("roHttpAgent")
         agent.setCertificatesFile("common:/certs/ca-bundle.crt")
-        if type(config) = "roAssociativeArray" then agent.setHeaders({"X-API-Key": config.apiKey})
+        if type(config) = "roAssociativeArray" then agent.setHeaders(dispatcharrRequestHeaders(config.apiKey, textValue(m.global.authHeaderMode), textValue(m.global.httpUserAgent)))
         m.poster.setHttpAgent(agent)
     end if
     if type(config) = "roAssociativeArray"

@@ -6,10 +6,12 @@ function mediaSession(account as string, identity as string, mode as string, ite
     return {account: account, identity: identity, mode: mode, item: item, state: "opening", openedAt: now, programStart: invalid, position: invalid, duration: invalid, bounds: invalid, seek: "unknown", liveEdge: "unknown"}
 end function
 
-function mediaPlaybackHeaders(apiKey as string) as object
+function mediaPlaybackHeaders(apiKey as string, userAgent = "" as string) as object
     ' The VOD proxy forwards Authorization to its upstream. Authenticate using
     ' the Dispatcharr-specific header only; never send that extra credential.
-    return ["X-API-Key: " + apiKey]
+    result = ["X-API-Key: " + apiKey]
+    if userAgent <> "" then result.push("User-Agent: " + dispatcharrUserAgent(userAgent))
+    return result
 end function
 
 function mediaNumber(value as dynamic) as boolean

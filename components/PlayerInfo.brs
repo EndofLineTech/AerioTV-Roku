@@ -36,7 +36,7 @@ sub configureSession()
     session = m.top.session
     if type(session) = "roAssociativeArray"
         m.base = session.baseUrl
-        agent.setHeaders({"X-API-Key": session.apiKey, "Authorization": "ApiKey " + session.apiKey})
+        agent.setHeaders(dispatcharrRequestHeaders(session.apiKey, textValue(m.global.authHeaderMode), textValue(m.global.httpUserAgent)))
     end if
     m.top.setHttpAgent(agent)
     renderInfo()

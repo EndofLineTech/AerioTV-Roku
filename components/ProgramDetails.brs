@@ -82,7 +82,7 @@ sub render()
         agent = CreateObject("roHttpAgent")
         agent.setCertificatesFile("common:/certs/ca-bundle.crt")
         if same <> ""
-            agent.setHeaders({"X-API-Key": model.apiKey, "Authorization": "ApiKey " + model.apiKey})
+            agent.setHeaders(dispatcharrRequestHeaders(model.apiKey, textValue(m.global.authHeaderMode), textValue(m.global.httpUserAgent)))
         end if
         m.poster.setHttpAgent(agent)
         m.posterScope = scope

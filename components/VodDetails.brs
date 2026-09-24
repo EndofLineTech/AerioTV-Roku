@@ -58,7 +58,7 @@ sub setPosterUri(uri as string)
     if not protected and not CreateObject("roRegex", "^https://image\.tmdb\.org/t/p/w[0-9]+/[A-Za-z0-9_-]+\.(jpg|png)$", "i").isMatch(uri) then uri = ""
     agent = CreateObject("roHttpAgent")
     agent.setCertificatesFile("common:/certs/ca-bundle.crt")
-    if protected then agent.setHeaders({"X-API-Key": m.top.apiKey})
+            if protected then agent.setHeaders(dispatcharrRequestHeaders(m.top.apiKey, textValue(m.global.authHeaderMode), textValue(m.global.httpUserAgent)))
     m.poster.setHttpAgent(agent)
     m.loadedUri = uri
     m.poster.uri = uri

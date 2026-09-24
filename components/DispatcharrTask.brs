@@ -53,7 +53,18 @@ sub loadChannels()
         publishError("Could not load channels. " + m.failure)
         return
     end if
-    scope = metadataCacheDigest(m.base + "|" + textValue(user.id))
+    if m.top.profileId <> ""
+        m.progressLabel = "Checking permitted channel profile"
+        profiles = requestPages("/api/channels/profiles/?page=1&page_size=200")
+        narrowed = profileRestrictedLineup(rows, profiles, m.top.profileId)
+        profiles = invalid
+        if not narrowed.ok
+            publishError(narrowed.message)
+            return
+        end if
+        rows = narrowed.channels
+    end if
+    scope = metadataCacheDigest(m.base + "|" + textValue(user.id) + "|profile:" + m.top.profileId)
     generation = metadataCacheDigest(FormatJson(rows))
     cached = metadataCacheRead(scope, "channels", "summary", generation, CreateObject("roDateTime").asSeconds(), true)
     channels = []
@@ -97,7 +108,7 @@ sub loadChannels()
         m.top.password = ""
         return
     end if
-    m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id), scope: scope, generation: generation}
+    m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id), profileId: m.top.profileId, scope: scope, generation: generation}
     m.key = ""
     m.top.apiKey = ""
 end sub

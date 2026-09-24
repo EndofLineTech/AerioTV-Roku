@@ -9,5 +9,6 @@
     <field id="asset" type="assocarray" alwaysNotify="true" />
     <field id="result" type="assocarray" alwaysNotify="true" />
   </interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="LogoCacheTask.brs" />
 </component>
