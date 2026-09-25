@@ -1,9 +1,18 @@
 # Multiview beyond two SceneGraph Video nodes — research update
 
 Engineering research for `AerioTV-Roku-7le`, requested after the measured
-deferral in `AerioTV-Roku-wt1`. This does **not** reverse the PO's existing
-decision, add a server, or establish physical picture/sound acceptance.
+deferral in `AerioTV-Roku-wt1`. This historical comparison adds no server or
+physical picture/sound acceptance; its former deferral decision is now
+superseded by the PO's native-concurrency requirement below.
 Target remains Streaming Stick 4K 3820RW2 / Roku OS 15.3.4, Dispatcharr 0.31.0.
+
+**Scope and evidence correction:** The PO has now specified that the Roku must
+open multiple concurrent streams itself. Server-composed and precomposed feeds
+below are historical comparisons, **not implementation candidates**. Further
+research found a [Roku Summit multidecode slide](https://miro.medium.com/v2/resize:fit:1600/1*9S4UeCGc76hf8_iQgFCJDg.png)
+explicitly naming Logan hardware and a [Fubo device matrix](https://support.fubo.tv/hc/en-us/articles/30574847628045-How-does-Multiview-work-on-Roku)
+listing 3820X2 for two simultaneous views. The native-focused evidence and
+remaining SDK access gap are in [MULTIVIEW-NATIVE-RESEARCH.md](MULTIVIEW-NATIVE-RESEARCH.md).
 
 ## What the earlier failure proves
 
@@ -34,15 +43,19 @@ separate authorized control or variant-stream mechanism. Cropping a one-feed
 mosaic on the Roku can enlarge a tile, but cannot regain source resolution or
 independently decode/audio-select a tile that the feed did not preserve.
 
-## Native multi-decode possibility: distinct from ordinary Video
+## Native multi-decode: distinct from ordinary Video
 
-A [Roku developer forum discussion](https://forum.developer.roku.com/t/roku-multiview/11357)
-mentions `roMultiDecode`, a possible beta/developer token, and the failure of
-multiple plain Video nodes even on an Ultra 4850X. Another
+A Roku Developer Summit slide announces **`roMultiDecode`** for hardware
+decoding of concurrent streams on Brewster, Bailey, Logan and select TVs.
+Fubo lists the Logan 3820X2 family for two views. A
+[Roku developer forum discussion](https://forum.developer.roku.com/t/roku-multiview/11357)
+mentions a *possible* beta/developer token and the failure of multiple plain
+Video nodes even on an Ultra 4850X. Another
 [forum reply](https://forum.developer.roku.com/t/getting-this-error-message-in-roku-video-only-one-playing-instance-supported/11362)
 points to Roku's [2024 SceneGraph Summit session](https://developer.roku.com/videos/demos/summit-2024.md).
-Those posts are **community reports/speculation**, not a public API contract,
-sample app, entitlement, or 3820RW2 capability result. The public
+The token idea is **community speculation**, not a published entitlement rule.
+The slide/device matrix establish a supported-model lead, not a public API
+contract, sample app, or AerioTV hardware playback result. The public
 [hardware table](https://developer.roku.com/dev/docs/hardware) lists the
 3820X2 family at 1 GB RAM and 1080p UI/4K playback, but a maximum *single*
 playback resolution and RAM size do not specify simultaneous decoder count.
@@ -83,7 +96,7 @@ manufacture a test. If a provider already offers an authorized precomposed
 mosaic as a normal channel, Roku could play that *one* feed with the existing
 player; its actual availability and audio/caption control are unverified.
 
-## Viable decision order
+## Historical alternatives (excluded by the PO's native-only requirement)
 
 1. **No server changes:** check only authorized catalog metadata for a provider
    mosaic channel, if one exists; one-feed playback is feasible to probe on the
@@ -104,6 +117,6 @@ player; its actual availability and audio/caption control are unverified.
 Do not substitute periodically refreshed thumbnails, sequential retuning, an
 ordinary multi-item playlist, or a large set of buffered feeds for concurrent
 live playback. Those approaches do not meet the multiview user story and can
-exhaust memory, bandwidth or provider connections. Leave the existing
-MPEG-TS live path and prior `wt1` decision intact until a new scoped approval
-and measured useful result exist.
+exhaust memory, bandwidth or provider connections. The PO's native-only
+requirement supersedes the earlier deferral as product direction; delivery
+still requires a supported SDK path and measured useful playback.
