@@ -83,6 +83,26 @@ function vodStreamFormat(extension as string) as string
     return "unknown"
 end function
 
+' Only catalog movies/series support server ordering. Saved shelves and episode
+' grids have their own semantic order; offering a sort there would do nothing.
+function vodCatalogSortChoices(ordering as string, shelf as string, kind as string) as object
+    if shelf <> "catalog" or (kind <> "movie" and kind <> "series") then return []
+    choices = [
+        {value: "name", title: "Title (A-Z)"}
+        {value: "-created_at", title: "Newest added"}
+        {value: "-year", title: "Year (newest first)"}
+    ]
+    known = false
+    for each choice in choices
+        if choice.value = ordering then known = true
+    end for
+    if not known then ordering = "name"
+    for each choice in choices
+        if choice.value = ordering then choice.title = "[Selected] " + choice.title
+    end for
+    return choices
+end function
+
 function vodVersionPage(payload as dynamic, page as integer) as object
     result = {ok: false, items: [], total: 0, next: "", message: "Source versions unavailable."}
     rows = apiRows(payload)

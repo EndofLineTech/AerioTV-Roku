@@ -72,5 +72,13 @@ sub main()
     if not versions.ok or versions.items[0].providerId <> "19" then stop
     if instr(1, FormatJson(versions), "secret") > 0 or instr(1, FormatJson(versions), "private") > 0 then stop
     if vodStreamFormat("mpegts") <> "ts" then stop
+    sort = vodCatalogSortChoices("-year", "catalog", "movie")
+    if sort.count() <> 3 then stop
+    if sort[0].value <> "name" or sort[1].value <> "-created_at" or sort[2].value <> "-year" then stop
+    if instr(1, sort[2].title, "[Selected]") <> 1 then stop
+    if instr(1, sort[0].title, "[Selected]") > 0 then stop
+    if vodCatalogSortChoices("name", "watchlist", "movie").count() <> 0 then stop
+    if vodCatalogSortChoices("name", "catalog", "episode").count() <> 0 then stop
+    if instr(1, vodCatalogSortChoices("invalid", "catalog", "series")[0].title, "[Selected]") <> 1 then stop
     print "ALL TESTS PASSED"
 end sub

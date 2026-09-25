@@ -669,8 +669,14 @@ sub openVodOptions()
         if permissions.movies = "allowed" then labels.push("Movies") : m.optionCodes.push(1)
         if permissions.series = "allowed" then labels.push("TV Shows") : m.optionCodes.push(2)
     end if
-    labels.append(["Sort: title / newest / year", "Refresh", "Continue Watching", "Watchlist", "Hidden titles", "Categories", "Reset hidden list", "Close"])
-    m.optionCodes.append([3, 4, 5, 6, 7, 8, 9, 10])
+    for each choice in vodCatalogSortChoices(m.ordering, m.shelf, m.kind)
+        labels.push("Sort: " + choice.title)
+        if choice.value = "name" then m.optionCodes.push(14)
+        if choice.value = "-created_at" then m.optionCodes.push(15)
+        if choice.value = "-year" then m.optionCodes.push(16)
+    end for
+    labels.append(["Refresh", "Continue Watching", "Watchlist", "Hidden titles", "Categories", "Reset hidden list", "Close"])
+    m.optionCodes.append([4, 5, 6, 7, 8, 9, 10])
     if type(permissions) = "roAssociativeArray"
         if permissions.level >= 10
             labels.push("Filter by provider") : m.optionCodes.push(12)
@@ -725,8 +731,11 @@ sub onVodOption(event as object)
         m.seriesId = ""
         m.query = ""
         m.parentPage = invalid
-    else if choice = 3
-        if m.ordering = "name" then m.ordering = "-created_at" else if m.ordering = "-created_at" then m.ordering = "-year" else m.ordering = "name"
+    else if choice = 14 or choice = 15 or choice = 16
+        if m.shelf <> "catalog" or (m.kind <> "movie" and m.kind <> "series") then return
+        if choice = 14 then m.ordering = "name"
+        if choice = 15 then m.ordering = "-created_at"
+        if choice = 16 then m.ordering = "-year"
     else if choice = 5 or choice = 6 or choice = 7
         if choice = 5 then m.shelf = "continue"
         if choice = 6 then m.shelf = "watchlist"

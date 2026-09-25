@@ -122,3 +122,14 @@ Physical checks for this increment are in `PHYSICAL-VOD-0.3.29.txt`; the existin
 Dispatcharr supports paginated title/year/recent ordering, but no prefix filter
 or rating ordering. No invented backend filter or whole-library client sort is
 advertised. Provider 6's upstream 405 remains the separate `l4j.16` follow-up.
+
+## Later development note — explicit catalog sorts
+
+The current development candidate offers explicit Title (A-Z), Newest added and
+Year (newest first) choices under Movies/TV Shows `*` > Library options. The
+selected choice is labeled. Sort is absent from saved shelves and episode grids,
+whose order does not follow the movie/series catalog sort. The earlier E18
+physical result above applies to the older cycling UI, not this change. This
+does not implement a global alphabet jump or rating sort: the Dispatcharr 0.31
+movie/series viewsets list `name`, `year`, and `created_at` as ordering fields,
+and their `name` filter uses `icontains`, not a prefix lookup.
