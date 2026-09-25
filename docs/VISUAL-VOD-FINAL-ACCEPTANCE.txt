@@ -1,0 +1,168 @@
+AerioTV Roku — visual/accessibility + VOD final physical acceptance
+===================================================================
+Use this ONE sheet for the remaining faa/ige and Roku-side l4j checks.
+Prior completed worksheets are historical; no box here is pre-passed by a
+model test, Roku console, native probe or earlier build. The separate upstream
+provider6 HTTP 405 (l4j.16) is not repaired by changing source versions.
+
+Install the verified current out/aeriotv-roku.zip before this pass (Developer
+Mode workflow: docs/NATIVE-DEVICE-WORKFLOW.md). An older ZIP can show the same
+0.3.80 About version. Candidate built from app commit dbca672; SHA-256 of
+the verified ZIP: cc01e975237abb997305cff0228c8abbd9d22a42314d2617a1c42a11437609b0.
+Record the actual ZIP/commit used. Do not delete the
+working connection to force a first-run screen. This pass must use the TV and
+physical remote for focus, picture and sound. Stop and send failures by ID.
+
+Date / tester: __________  Roku model / OS: __________
+Settings > General > About version: ______  ZIP/commit: __________
+Account fixture labels (no identities/keys/URLs): ______________________
+Working movie / episode / two available source labels (private): ________
+Guide channel with an exact duplicated number prefix (if any): __________
+Original density: ______  visibility toggles: _________________________
+Original appearance / text / contrast / TMDB: _________________________
+
+Mark PASS, FAIL, or SKIP in each box; leave it blank until attempted. SKIP
+requires the missing prerequisite or accepted platform limitation. Do not
+mark a multi-part entry PASS if a required branch was not observed: record
+the branch as SKIP in notes, or mark the entry SKIP if none was exercised.
+No secrets, playable URLs, private artwork, media titles or raw screenshots
+belong in shared notes. Photo filenames only after local review/redaction.
+Use existing authorized accounts/media; do not change shared provider grants,
+delete titles, create a fault or interrupt another viewer for a fixture.
+
+VISUAL / ACCESSIBILITY (faa, ige)
+---------------------------------
+[        ] F01 Launch and welcome — faa.7
+Normal saved-connection cold/warm launch: the guide opens with focus and no
+unexpected first-run page or old-account content. If a genuinely empty-roster
+device is available, verify Welcome is readable and OK/Back leads to setup,
+then setup fields mask secrets; otherwise SKIP just that first-run branch.
+Note cold/warm and first-run branch: _________________________________
+
+[        ] F02 Guide density — ige
+Settings > Live TV: Basic shows ten readable compact rows; Preview seven.
+Navigate top/bottom rows and long titles/badges/times without overlap or
+missing focus. Return to Settings, relaunch, verify chosen density persists.
+Restore original density. Observed counts / clipping: _________________
+
+[        ] F03 Visibility — ige
+In the same page, change logos, channel numbers, names and subtitles one at
+a time. Each affects the guide immediately, survives leaving/reopening
+Settings and app relaunch; restore each original value. For subtitles, use a
+program with a subtitle if available; otherwise record that branch SKIP.
+Observed untested branch / persistence: ______________________________
+
+[        ] F04 Real numbered heading — faa.9
+Play an already authorized channel whose provider name begins with its exact
+channel number. Player info shows the number only once. If available, also
+play a genuinely numbered title (e.g. 24Kitchen, not a fabricated fixture):
+the real title stays intact. SKIP unavailable sample branches; do not infer
+PASS from formatter tests. Sample labels privately / branch: ___________
+
+[        ] F05 Focus, scale and readability — faa.8, faa.11
+On guide/group navigation, program details, fullscreen player information,
+player controls/options, Settings rail/details and VOD, move focus and Back.
+Selected content/action and error/loading state stay readable and unambiguous;
+no focus trap, clipping, overlap or lost remote input. Check 120% primary and
+secondary text plus High contrast, then restore original settings. Note any
+surface unavailable rather than claiming it passed. Surface/issue: _______
+
+[        ] F06 Reference comparison — faa.11
+Compare actual Roku setup, guide, program details, player info, options and
+Settings at 1080p with the source-derived reference in docs/PLAYER-CONTRACT.md
+and the documented Roku styling in docs/FAA-COMPLETION.md. Record photo or
+redacted capture filenames per surface, long text/safe area/focus observations,
+and intended platform differences. A running tvOS side-by-side capture is
+optional and must be marked SKIP unless actually available; source inspection
+is not pixel parity. Files / differences / missing surfaces: __________
+
+[        ] F07 Accepted Audio Guide limitation — faa.8
+On this 3820RW2 the PO accepted missing custom AerioTV speech; system menu
+speech was heard previously, not app guide speech. Mark this speech check SKIP
+(accepted platform limitation), NOT PASS. An optional repeat listen may be
+noted but is not required. F05 separately checks visible focus/labels.
+Observed / SKIP reason: _______________________________________________
+
+VOD (l4j; l4j.8/.9/.10/.11/.12/.18)
+---------------------------------
+[        ] V01 Library and episode navigation
+Movies / TV Shows -> poster grid, page forward/back, categories and an exact
+series -> ordered seasons/episodes -> details -> Back. Titles/art fallback,
+empty results and long text remain readable with stable focus. Record any
+unavailable conditional fixture. Observation: ________________________
+
+[        ] V02 Continue, watchlist and watched state — l4j.8/.10
+On known-working media, watch past 30 seconds, Back -> Continue Watching ->
+Resume near watched scene (keyframe tolerance), then Play from beginning
+resets that item. Add/remove Watchlist; hide/unhide a title; mark an episode
+watched/unwatched and verify shelf changes, series grouping, relaunch and
+restored account state. Restore test title. Observed scene/branch: ______
+
+[        ] V03 Removed saved title — conditional l4j.8/.10
+ONLY if an already unavailable saved title exists: Refresh Continue,
+Watchlist and Hidden. It disappears from Continue; unavailable Watchlist/
+Hidden placeholder remains removable. Record real fixture and action, not a
+synthetic fixture. SKIP without one; do not delete server content to test.
+Result / SKIP reason: ________________________________________________
+
+[        ] V04 Restricted second account — conditional l4j.8/.10
+ONLY if an existing suitably restricted account is available: switch from
+account A with saved content to B. B must not reveal A's progress, artwork,
+hidden/watchlist entries or denied catalog/discovery titles. Return to A
+and verify its own state. SKIP if no suitable account exists; an account
+with only full catalog access does not prove the denied-title branch.
+Result / SKIP reason: ________________________________________________
+
+[        ] V05 Search and supported sorts — l4j.9
+From Movies/TV Shows * -> Library options, select explicit Title, Newest
+added and Year sort, check the selected label and resulting page. Search a
+title, filter provider/category where permitted, page and Back/reopen without
+lost focus or cross-account results. No global alphabet rail or rating sort
+is promised on Dispatcharr 0.31. Optional provider filter SKIP if no admin.
+Selected/sort/filter and branches: ____________________________________
+
+[        ] V06 English description and honest fallback — l4j.18
+On a known English-base movie, enrichment must not overwrite English with
+French. On another series/movie, prefer available English provider/TMDB text;
+missing text honestly shows provider text or unavailable state, not invented
+translation or blocked Play. While metadata loads, move detail-button focus,
+Back and open a second title: no focus reset or stale first-title summary.
+SKIP timing or missing-data branches not actually witnessed. Language/branch:
+_______________________________________________________________________
+
+[        ] V07 Optional TMDB discovery — l4j.11
+If account opt-in and device key already exist: open enriched movie, series
+and episode details, check attribution, synopsis/art, cast/person and related
+permitted title; hidden/denied or unmatched external titles must not play.
+Back restores parent focus. Restore original TMDB toggle. SKIP if not enabled
+or if a specific discovery/hidden fixture is absent. Result/branch: ______
+
+[        ] V08 Source choice, links and resume — l4j.12
+If two authorized copies of a working title exist: title details -> Choose
+source version -> Play; Back, pick the other source -> Resume near the saved
+position if compatible. If offset is unavailable on the new rendition, an
+explicit explanation and beginning playback are acceptable. Use Auto source
+to clear override; verify selection/focus after relaunch. External TMDB/trailer
+links contain only public title identifiers, display as text for another
+device, and do not promise inline playback. SKIP unavailable second-copy or
+link branches. Never print the underlying provider URL. Result: __________
+
+[        ] V09 Picture/sound and live return — l4j
+Play a known-working movie and episode; physically confirm moving picture,
+audible sound, native pause/seek/resume and Back to matching library focus.
+Return to guide and play an authorized live channel with sound. The separate
+provider6 405 may still fail: record the visible error but do not call a
+working alternate source a fix for that upstream issue. Result: __________
+
+FINISH
+------
+Restore the normal connection, density/visibility, appearance/text/contrast,
+TMDB and any changed local VOD state. Stop this Roku's own playback. Do not
+mark parent epics faa/l4j complete while a required check has FAIL, a missing
+physical observation, or an unaccepted SKIP branch.
+
+PASS: ____  FAIL: ____  SKIP: ____  Blank: ____  (16 entries: F01-F07, V01-V09)
+ID / starting screen and remote sequence: ______________________________
+Expected vs actual; scene/offset or untested branch: ____________________
+Redacted photo filename or SKIP prerequisite: ___________________________
+Additional failure notes by ID: ________________________________________
