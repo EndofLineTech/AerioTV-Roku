@@ -14,38 +14,31 @@ records the original baseline. The feature table below describes this release.
 
 ## Download the testing build
 
-**[Download v0.3.37 — testing prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.37)**
+**[Download v0.3.80 — testing prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.80)**
 
-Under **Assets**, download **`aeriotv-roku-v0.3.37.zip`**. Keep it zipped.
+Under **Assets**, download **`aeriotv-roku-v0.3.80.zip`**. Keep it zipped.
 Do **not** download GitHub's automatically generated **Source code (zip)** for
 installation; that is the repository, not the Roku application package.
 
 You do not need Node.js, npm, Git, or a compiler to install the release ZIP.
 This is a sideloaded testing preview, not a Roku Streaming Store release.
 
-### New in v0.3.37
+### New since v0.3.37
 
-- **Remote-map repairs:** all offered Player directional actions now execute;
-  Guide Left short/hold actions work independently. Map changes and resets apply
-  immediately, hints reflect the selected actions, and Modal groups open a visible
-  picker. Physical remote checks RM01–RM10 passed on the development candidate.
-- **16 MB metadata response limit (from v0.3.36):** restores the `v0.3.8` default of 16,000,000
-  bytes while retaining file-backed downloads and memory-pressure protection.
-  Dispatcharr 0.31 does not paginate EPG mappings; the previous pagination claim
-  was incorrect. The affected user confirmed guide recovery with the restored limit.
-- **VOD category filtering:** Movies and Shows list only categories enabled on
-  active, VOD-enabled providers, with filtering applied before display pagination.
-  The affected user confirmed this fix in v0.3.36.
-- **Remote Control settings:** customize supported Player and Guide button actions
-  per context, with safe defaults, persistence, reset, and matching hints. Back,
-  Home, and fullscreen `*` remain fixed/Roku-owned.
-- **Startup and network preferences:** choose Guide/no autoplay or resume the last
-  channel in a mini-player; select bounded request timeouts and active refresh
-  intervals.
-- **About and notices:** Settings now provides installed version, What's New, GPL,
-  and Material attribution pages.
-- **Optional VOD enrichment:** account-opt-in TMDB details add artwork, cast/crew,
-  people and related-title discovery while keeping provider/catalog access rules.
+- **Connections:** up to four named connection slots with scoped credentials,
+  optional channel profile, safe API headers and explicit re-login. Direct M3U
+  with bounded XMLTV and session-only Xtream live/VOD/archive adapters are
+  available for supported feed/transport variants.
+- **Server DVR:** browse, schedule, manage and play permitted Dispatcharr
+  recordings, including guarded resume and supported growing files. No local
+  recording service is added.
+- **Presentation:** source-informed pill navigation, poster-led VOD, rounded
+  settings and player controls, appearance/text preferences, a first-run welcome
+  screen, and model-tested guide density/visibility settings.
+- **Testing status:** this is a development prerelease. Physical checks for the
+  final build remain unmarked. Basic guide layout/visibility needs TV verification;
+  Audio Guide speech previously failed on the target and remains unresolved.
+  Multiview is not implemented; Roku's `roMultiDecode` SDK access is pending.
 
 ### Included since v0.3.8
 
@@ -63,20 +56,20 @@ This is a sideloaded testing preview, not a Roku Streaming Store release.
   startup/midstream recovery, contextual Retry and sanitized diagnostics.
 - **Hold OK** opens app player options; fullscreen star remains Roku-owned.
 
-[v0.3.37 release notes](docs/RELEASE-0.3.37.md)
+[v0.3.80 release notes and known limitations](docs/RELEASE-0.3.80.md)
 
 ## Roku vs. Apple TV and Android TV
 
-**Roku now includes Dispatcharr live TV, the guide, movies/series, and conditional
-catch-up/restart/rewind, but not full upstream feature parity.** DVR, multiview,
-direct Xtream/M3U setup and cross-device sync remain unimplemented. Rewind uses
-provider archives; it is not a guaranteed local buffer or available on every channel.
+**Roku includes Dispatcharr live TV, the guide, movies/series, server DVR,
+supported direct Xtream/M3U connections and conditional catch-up/restart/rewind,
+but not full upstream feature parity.** Multiview and cross-device sync remain
+unimplemented. Rewind uses provider archives; it is not a guaranteed local buffer.
 
-| Feature | Roku — v0.3.37 preview | Apple TV — upstream | Android TV / Google TV — upstream |
+| Feature | Roku — v0.3.80 preview | Apple TV — upstream | Android TV / Google TV — upstream |
 | --- | --- | --- | --- |
 | Dispatcharr connection | **Available** — API key or dashboard login | Available | Available |
-| Direct Xtream Codes connection | **Not implemented**; import through Dispatcharr instead | Available | Available |
-| Direct M3U + XMLTV connection | **Not implemented**; import through Dispatcharr instead | Available | Available |
+| Direct Xtream Codes connection | **Implemented for tested variants**; session-only credentials, bounded live/VOD/archive | Available | Available |
+| Direct M3U + XMLTV connection | **Implemented for supported URL feeds**; raw gzip and oversized feeds remain limited | Available | Available |
 | Live TV and EPG grid | **Available** | Available | Available |
 | Favorites, group visibility and channel sorting | **Available** | Available | Available |
 | Mini-player while browsing the guide | **Available** — same playback session | Available | Available |
@@ -84,7 +77,7 @@ provider archives; it is not a guaranteed local buffer or available on every cha
 | Video scaling | **Fit / Fill / Stretch**; source-aspect setting may be required | Available | Available |
 | Programme reminders | **Foreground alerts only**, while the app is open | Saved reminder state; background delivery not established on tvOS | Documented reminders; notification delivery depends on device |
 | Movies/series and Continue Watching | **Available** with supported provider renditions; local progress/watchlists | Available with supported providers | Available with supported providers |
-| DVR scheduling and recording management | **Not implemented** | Available; server-side DVR uses Dispatcharr | Available; server-side DVR uses Dispatcharr |
+| DVR scheduling and recording management | **Implemented against Dispatcharr server DVR**; final-build physical checks pending | Available; server-side DVR uses Dispatcharr | Available; server-side DVR uses Dispatcharr |
 | Multiview | **Not implemented** | Up to 9 streams, device/resource dependent | Up to 9 streams, device/resource dependent |
 | Live rewind / completed-program catch-up | **Provider-backed** catch-up, Restart and up to 60 minutes of history since tuning on eligible channels | Implemented, subject to settings/provider support | Not verified in this comparison |
 | Cross-device preference/watch-progress sync | **Not implemented**; local Roku preferences only | iCloud | Optional Google Drive sync |
@@ -97,7 +90,7 @@ versions; provider permissions and device capabilities still apply. "Not verifie
 is not a claim that the feature is absent. Mobile-only features are not assumed
 to be available on a TV.
 
-Upstream comparison sources reviewed 2026-09-19; Roku column updated for v0.3.37:
+Upstream comparison sources reviewed 2026-09-19; Roku column updated for v0.3.80:
 - [Apple upstream README, pinned revision](https://github.com/jonzey231/AerioTV/blob/8d5818456e0f4421d93b8ff120ad878d63331091/README.md)
   and the [source-level tvOS audit](docs/PARITY-AUDIT.md). The audit's Roku column
   is an older baseline; the table above describes this release.
@@ -156,7 +149,7 @@ If Developer Mode is already enabled, proceed to the next step.
 
 ### 3. Upload and install the release ZIP
 
-1. Click **Upload** / **Choose File** and select **`aeriotv-roku-v0.3.37.zip`**.
+1. Click **Upload** / **Choose File** and select **`aeriotv-roku-v0.3.80.zip`**.
 2. Click **Install** or **Install with zip**, depending on the installer version.
    Some versions also offer **Install with squashfs**.
 3. Wait for **Install Success**. AerioTV should launch on the TV automatically.
@@ -167,20 +160,25 @@ Upload the ZIP itself—do not extract it first. The release package has its
 `manifest` at the ZIP root. If your browser automatically extracts ZIP downloads,
 disable that behavior or download it again using a browser that preserves ZIPs.
 
-### 4. Connect to Dispatcharr
+### 4. Connect to a source
 
-On the Roku's AerioTV connection screen:
+On a first install, press **OK** at Welcome to open setup. On the Roku's
+connection screen:
 
-1. Enter your **Dispatcharr base URL**, such as `http://<dispatcharr-host>:9191`.
+1. Select or add a connection. Dispatcharr is the default; **Connection →
+   Manage saved connections** can also add a direct M3U/XMLTV or Xtream slot.
+2. For Dispatcharr, enter your **base URL**, such as `http://<dispatcharr-host>:9191`.
    Use the final URL your Roku can reach; `localhost` would refer to the Roku,
    and a Docker-internal hostname may not be reachable from your home network.
-2. Choose **API key** or **Dashboard username and password**, then enter the
+3. Choose **API key** or **Dashboard username and password**, then enter the
    credentials for your Dispatcharr account. These are **Dispatcharr dashboard
    credentials**, not provider/Xtream Codes credentials or the `rokudev` login.
-3. Choose whether to enable **Remember API key**. See [connection storage](#connection-storage)
+   For direct M3U, supply a permitted playlist URL and optional XMLTV URL;
+   for direct Xtream, enter its URL and session-only username/password.
+4. Choose whether to enable **Remember API key** for Dispatcharr. See [connection storage](#connection-storage)
    for what is saved on the device.
-4. Select **Connect**. The guide opens after the authorized lineup loads.
-5. Highlight a currently airing channel/program and press **OK** to watch.
+5. Select **Connect**. The guide opens after the authorized lineup loads.
+6. Highlight a currently airing channel/program and press **OK** to watch.
 
 ## Essential controls and known testing limitations
 

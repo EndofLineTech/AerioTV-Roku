@@ -1,0 +1,55 @@
+AerioTV Roku v0.3.80 testing prerelease — physical checks
+==========================================================
+All entries below are NOT RUN. Do not infer PASS from automated tests, native
+player state, or Developer Mode screenshots. Mark PASS / FAIL / SKIP only after
+the physical remote/TV observation. This worksheet does not edit a shared
+server, create provider fixtures, or change other viewers' connections.
+
+Actual installed version (Settings > General > About): __________
+Roku model / OS: __________   Date / tester: __________
+Connection kind(s) tried (no URLs or credentials): __________
+
+[          ] R01 Startup and connection
+Cold and warm launch: Welcome on genuinely empty connection roster, OK/Back
+to setup, and remembered Dispatcharr sign-in if already configured. Confirm
+remote focus, masked keys, guide arrival and no previous-account content.
+SKIP genuine first-run if it would require deleting the working connection.
+
+[          ] R02 Live TV regression
+Browse the guide, tune one already authorized MPEG-TS channel; confirm actual
+moving picture, audible sound, working player options, mini/fullscreen, Stop
+and Back to the same guide location. Note any buffering or failure privately.
+
+[          ] R03 Basic and Preview / visibility — ige
+Settings > Live TV: select Basic (10 compact rows) then Preview (7 rows).
+Inspect all rows, focus, time, flags, footer and no overlap. Toggle logos,
+numbers, names and subtitles one at a time; confirm immediate effect, leave
+Settings, relaunch, and confirm persistence. Restore original preferences.
+
+[          ] R04 Audio Guide — zvi
+With Roku system screen reader AND app Audio Guide enabled, navigate guide,
+player, Settings and VOD. Record what is audibly spoken versus silence. The
+prior target listen heard no custom guide speech; a code invocation is not PASS.
+Restore accessibility preferences afterward.
+
+[          ] R05 VOD and server DVR
+On already permitted media, check movie/series details, episodes, Continue,
+source choice and seek/resume; then browse existing DVR items and supported
+playback. Confirm picture/sound/remote, account boundaries and Back focus.
+Do not create/cancel recordings or alter provider copies merely for this test.
+SKIP any case lacking a safe fixture.
+
+[          ] R06 Direct-provider paths — conditional
+If existing direct M3U/XMLTV and/or Xtream credentials are legitimately
+available, use their session-only setup to browse/tune a live channel and
+return cleanly; check actual picture/sound. For an authorized archived item,
+check pause, bounded seek and Go Live. Do not enter signed private URLs or
+credentials in this worksheet. SKIP unavailable variants and raw gzip.
+
+[          ] R07 Final state
+Return to the normal remembered connection and your original preferences.
+Confirm a fresh launch returns to a readable guide with no disposable probe
+and no multiview or playback-speed control advertised as working.
+
+Failure ID / actual remote steps / observed result (redacted): __________
+Any SKIP reason and preferences not restored: __________
