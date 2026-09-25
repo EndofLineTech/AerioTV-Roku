@@ -4,7 +4,7 @@ from pathlib import Path
 import zipfile
 
 parser = argparse.ArgumentParser()
-parser.add_argument('screen', choices=['settings', 'vod', 'pills', 'lavender', 'light', 'large', 'large-vod', 'welcome'])
+parser.add_argument('screen', choices=['settings', 'vod', 'pills', 'lavender', 'light', 'large', 'large-vod', 'large-guide-options', 'welcome'])
 parser.add_argument('--output', default='out/visual-probe.zip', help='Disposable ZIP path under out/')
 args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent

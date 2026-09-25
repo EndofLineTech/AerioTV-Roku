@@ -826,13 +826,16 @@ sub openPicker(title as string, items as object, kind as string)
     uiSurface(m.picker, 460, 130, 1000, 810, 24, "0x0D1E35F0")
     uiLabel(m.picker, title, 510, 170, 900, 66, 38)
     list = m.picker.createChild("LabelList")
-    list.translation = [510, 265]
-    list.itemSize = [900, 64]
+    ' Keep the label aligned with the heading while extending its focus pill
+    ' into the modal's side margins. The transparent list icon supplies 28px
+    ' of actual text inset; a bare LabelList starts glyphs on the pill edge.
+    list.translation = [484, 265]
+    list.itemSize = [952, 64]
     list.itemSpacing = [0, 0]
     list.numRows = 8
     uiSetFont(list, 24, "font", false, 64)
     uiSetFont(list, 24, "focusedFont", false, 64)
-    list.clippingRect = [0, 0, 900, 512]
+    list.clippingRect = [0, 0, 952, 512]
     uiSetColor(list, "0xE8F3FAFF")
     uiSetColor(list, "0x0A1629FF", "focusedColor")
     uiSetColor(list, "0x1AC4D8FF", "focusBitmapBlendColor")
@@ -841,6 +844,8 @@ sub openPicker(title as string, items as object, kind as string)
     for each item in items
         child = content.createChild("ContentNode")
         child.title = item.title
+        child.hdListItemIconURL = "pkg:/images/ui-list-inset.png"
+        child.hdListItemIconSelectedURL = "pkg:/images/ui-list-inset.png"
     end for
     list.content = content
     list.observeField("itemSelected", "onPickerSelected")

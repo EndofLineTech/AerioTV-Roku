@@ -47,13 +47,15 @@ sub visualProbeTick()
             applyDevicePreferences()
             openSettingsHub()
             m.settingsHub.callFunc("selectSettingsCategory", 3)
-        else if m.visualProbeScreen = "large" or m.visualProbeScreen = "large-vod"
+        else if m.visualProbeScreen = "large" or m.visualProbeScreen = "large-vod" or m.visualProbeScreen = "large-guide-options"
             m.devicePreferences = copyJson(m.devicePreferences)
             m.devicePreferences.textSize = 120
             m.devicePreferences.subtextSize = 120
             m.devicePreferences.contrastMode = "high"
             applyDevicePreferences()
-            if m.visualProbeScreen = "large-vod"
+            if m.visualProbeScreen = "large-guide-options"
+                m.guide.callFunc("handleOptionsShortcut")
+            else if m.visualProbeScreen = "large-vod"
                 if m.capabilities.movies <> "allowed" then return
                 openVodLibrary("movie")
             else

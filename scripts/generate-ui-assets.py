@@ -84,6 +84,15 @@ def pill_png(width=900, height=64, radius=None):
     return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(bytes(rows), 9)) + chunk(b'IEND', b'')
 
 
+def transparent_icon_png(size=28):
+    # LabelList places item text after its icon. A transparent fixed-width icon
+    # creates real text padding without adding spaces to spoken ContentNode text.
+    rows = (b'\x00' + b'\xff\xff\xff\x00' * size) * size
+    return (b'\x89PNG\r\n\x1a\n'
+            + chunk(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 6, 0, 0, 0))
+            + chunk(b'IDAT', zlib.compress(rows, 9)) + chunk(b'IEND', b''))
+
+
 if __name__ == '__main__':
     root = pathlib.Path(__file__).resolve().parent.parent / 'images'
     for name, right, bottom in [('tl', False, False), ('tr', True, False), ('bl', False, True), ('br', True, True)]:
@@ -95,3 +104,4 @@ if __name__ == '__main__':
     print('Generated original navigation and transport glyphs.')
     (root / 'ui-focus-pill.png').write_bytes(pill_png())
     (root / 'ui-focus-row.png').write_bytes(pill_png(1204, 68, 14))
+    (root / 'ui-list-inset.png').write_bytes(transparent_icon_png())
