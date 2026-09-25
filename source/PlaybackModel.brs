@@ -211,6 +211,11 @@ function isStartupBufferingStall(code as integer, detail as string) as boolean
     return instr(1, lcase(detail), "buffering is stalled") > 0
 end function
 
+function isUnsupportedAacStream(code as integer, detail as string) as boolean
+    if code <> -5 then return false
+    return CreateObject("roRegex", "unsupported\s+aac\s+stream", "i").isMatch(detail)
+end function
+
 function nativePlaybackRefusal(detail as string) as string
     text = lcase(detail)
     if instr(1, text, "connection limit") > 0 or instr(1, text, "max connections") > 0 or instr(1, text, "maximum connections") > 0 then return "connection-limit"

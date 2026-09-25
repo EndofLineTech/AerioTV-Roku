@@ -49,6 +49,7 @@ sub init()
     m.aacWaitTimer = m.top.findNode("aacWaitTimer")
     m.aacWaitTimer.observeField("fire", "processAacWait")
     m.activeAudioProfile = ""
+    m.aacDecodeRetried = false
     m.sourceWatch = m.top.findNode("sourceWatch")
     m.sourceWatch.observeField("fire", "checkSourceVideo")
     m.sourceWatchState = invalid
@@ -866,6 +867,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     m.guide.miniActive = false
     cancelStartupWatch()
     if not preserveStartupBudget then m.startupRetryCount = 0
+    if not preserveStartupBudget then m.aacDecodeRetried = false
     if not preserveStartupBudget then m.liveRetryCount = 0
     m.liveBufferWatch = invalid
     m.video.control = "stop"
@@ -1889,12 +1891,14 @@ sub onVideoState()
         print "[playback] code="; code; " detail="; detail
         recordDiagnostic("playback", code, detail)
         if m.pendingChannel <> invalid or m.heldZap <> "" then return
+        if retryUnsupportedAacDecode(code, detail) then return
         if handleStartupFailure(code, detail) then return
         if retryInterruptedLive("error", code, detail) then return
         if m.startupWatch <> invalid and m.startupRetryCount > 0 then detail += chr(10) + "One startup retry was already attempted."
         failLivePlayback(code, detail)
     else if m.video.state = "finished"
         if m.pendingChannel <> invalid or m.heldZap <> "" then return
+        if ignoreOutgoingAacFinish() then return
         if retryInterruptedLive("finished", 0, "") then return
         failLivePlayback(-1, "The live stream ended unexpectedly. Automatic recovery is unavailable or already used.")
     else if m.video.state = "buffering" or m.video.state = "paused"

@@ -58,6 +58,41 @@ sub main()
     m.devicePreferences.audioMode = "auto"
     if deferRequiredAacTune({uuid: "first"}, false, false, false) then stop
     if not deferRequiredAacTune({uuid: "first"}, true, true, true) then stop
+
+    resetAacTest()
+    m.devicePreferences.audioMode = "auto"
+    m.aacProfile = {id: "7"}
+    if not retryUnsupportedAacDecode(-5, "decoder:pump:Unsupported AAC stream:clip") then stop
+    if m.starts <> 1 or m.started.channel.uuid <> "first" then stop
+    if not m.started.force or not m.started.useAac or not m.started.preserveBudget then stop
+    if m.started.tuneStartedAt <> 900 or not m.aacDecodeRetried then stop
+    if retryUnsupportedAacDecode(-5, "Unsupported AAC stream") or m.starts <> 1 then stop
+
+    for each mode in ["direct", "aac"]
+        resetAacTest()
+        m.devicePreferences.audioMode = mode
+        m.aacProfile = {id: "7"}
+        if retryUnsupportedAacDecode(-5, "Unsupported AAC stream") then stop
+    end for
+    resetAacTest()
+    m.devicePreferences.audioMode = "auto"
+    m.aacProfile = {id: "7"}
+    if retryUnsupportedAacDecode(-5, "unsupported video codec") then stop
+    if retryUnsupportedAacDecode(-1, "Unsupported AAC stream") then stop
+    m.streamReady = true
+    if retryUnsupportedAacDecode(-5, "Unsupported AAC stream") then stop
+    m.streamReady = false
+    m.activeAudioProfile = "7"
+    if retryUnsupportedAacDecode(-5, "Unsupported AAC stream") then stop
+    m.activeAudioProfile = ""
+    m.pendingChannel = {uuid: "new"}
+    if retryUnsupportedAacDecode(-5, "Unsupported AAC stream") then stop
+    m.pendingChannel = invalid
+    m.connectionStore.entries[0].provider = "m3u"
+    if retryUnsupportedAacDecode(-5, "Unsupported AAC stream") then stop
+    m.connectionStore.entries[0].provider = "dispatcharr"
+    m.aacProfile = invalid
+    if retryUnsupportedAacDecode(-5, "Unsupported AAC stream") or m.starts <> 0 then stop
     print "ALL TESTS PASSED"
 end sub
 
@@ -75,7 +110,24 @@ sub resetAacTest()
     m.noticeTimer = {control: "stop"}
     m.starts = 0
     m.failures = 0
+    m.playingChannel = {uuid: "first"}
+    m.liveSession = {openedAt: 900}
+    m.page = "player"
+    m.streamReady = false
+    m.activeAudioProfile = ""
+    m.aacDecodeRetried = false
+    m.pendingChannel = invalid
+    m.heldZap = ""
+    m.selectedConnectionId = "current"
+    m.connectionStore = {entries: [{id: "current", provider: "dispatcharr"}]}
 end sub
+
+function connectionStoreEntry(store as object, id as string) as dynamic
+    for each entry in store.entries
+        if entry.id = id then return entry
+    end for
+    return invalid
+end function
 
 sub refreshCapabilities()
     m.aacDiscoveryState = "pending"

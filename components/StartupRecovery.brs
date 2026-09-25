@@ -21,6 +21,21 @@ sub completeStartupWatch()
     cancelStartupWatch()
 end sub
 
+' A replaced Video reader can publish its old finished event after the AAC
+' replacement ContentNode has already been assigned. Ignore only that first
+' immediate terminal event; if the new reader never buffers/plays, the normal
+' 25-second startup watchdog still fails/retries with a bounded budget.
+function ignoreOutgoingAacFinish() as boolean
+    if m.aacDecodeRetried <> true or m.activeAudioProfile = "" or m.streamReady then return false
+    if m.page <> "player" or m.video.state <> "finished" then return false
+    if not startupWatchIsCurrent() then return false
+    if m.startupWatch.ignoredOutgoingFinish = true then return false
+    if m.startupWatch.clock.totalMilliseconds() > 2000 then return false
+    m.startupWatch.ignoredOutgoingFinish = true
+    print "[aac-recovery] ignored outgoing reader finish"
+    return true
+end function
+
 function retryStartupPlayback() as boolean
     if not startupWatchIsCurrent() then return false
     if m.startupRetryCount >= 1 or m.page = "setup" then return false
@@ -59,7 +74,10 @@ sub checkStartupPlayback()
         completeStartupWatch()
         return
     end if
-    if m.video.state <> "buffering" and m.video.state <> "none" then return
+    if m.video.state <> "buffering" and m.video.state <> "none"
+        if m.startupWatch.ignoredOutgoingFinish <> true then return
+        if m.video.state <> "finished" and m.video.state <> "stopped" then return
+    end if
     if m.pendingChannel <> invalid or m.heldZap <> "" then return
     ' Monotonic elapsed time prevents a late clock callback from an earlier tune
     ' expiring a new attempt. Once-per-second clock gives a bounded ~25s deadline.

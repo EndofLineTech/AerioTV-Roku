@@ -51,3 +51,25 @@ sub processAacWait()
         showAacUnavailable(request, message)
     end if
 end sub
+
+' Roku may reject AAC while opening the decoder, before it ever reports
+' playing. The after-playing silence check cannot see this error. Auto may
+' replace only this client's first failed direct attempt with one existing
+' copy-video/AAC profile; Direct mode and direct providers stay untouched.
+function retryUnsupportedAacDecode(code as integer, detail as string) as boolean
+    if not isUnsupportedAacStream(code, detail) then return false
+    if m.devicePreferences.audioMode <> "auto" or m.aacProfile = invalid then return false
+    if m.activeAudioProfile <> "" or m.aacDecodeRetried = true or m.streamReady then return false
+    if m.page <> "player" or m.playingChannel = invalid or m.liveSession = invalid then return false
+    if m.pendingChannel <> invalid or m.heldZap <> "" then return false
+    if m.connectionStore = invalid then return false
+    connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if connection = invalid or connection.provider <> "dispatcharr" then return false
+    m.aacDecodeRetried = true
+    channel = m.playingChannel
+    tuneStartedAt = m.liveSession.openedAt
+    startPlayback(channel, true, true, true, tuneStartedAt)
+    showNotice("Roku could not decode source AAC. Retrying this player with the existing AAC compatibility profile.")
+    print "[aac-recovery] local decoder fallback 1/1"
+    return true
+end function

@@ -61,6 +61,34 @@ sub main()
     m.video.state = "paused"
     checkStartupPlayback()
     if m.startupWatch <> invalid then stop
+
+    resetStartupTest()
+    m.page = "player"
+    m.streamReady = false
+    m.aacDecodeRetried = true
+    beginStartupWatch(m.video.content)
+    m.startupWatch.clock = elapsedClock(350)
+    m.video.state = "finished"
+    if not ignoreOutgoingAacFinish() or not m.startupWatch.ignoredOutgoingFinish then stop
+    if ignoreOutgoingAacFinish() then stop ' only the first outgoing event is ignored
+    m.video.state = "stopped" ' old stop can be reported after finished
+    checkStartupPlayback()
+    if m.startupWatch = invalid or m.stops <> 0 then stop
+    m.startupWatch.clock = elapsedClock(25000)
+    checkStartupPlayback()
+    if m.startupRetryCount <> 1 then stop ' still bounded by startup retry budget
+
+    resetStartupTest()
+    beginStartupWatch(m.video.content)
+    m.startupWatch.clock = elapsedClock(350)
+    m.video.state = "finished"
+    if ignoreOutgoingAacFinish() then stop ' regular terminal state is not suppressed
+    m.aacDecodeRetried = true
+    m.streamReady = true
+    if ignoreOutgoingAacFinish() then stop
+    m.streamReady = false
+    m.startupWatch.clock = elapsedClock(3000)
+    if ignoreOutgoingAacFinish() then stop
     print "ALL TESTS PASSED"
 end sub
 
@@ -78,6 +106,8 @@ sub resetStartupTest()
     m.banner = {playbackState: "buffering"}
     m.sleepDeadline = 123
     m.activeAudioProfile = "7"
+    m.aacDecodeRetried = false
+    m.streamReady = false
     m.stops = 0
     m.failure = ""
 end sub

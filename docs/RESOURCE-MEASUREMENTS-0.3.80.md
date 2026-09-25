@@ -59,3 +59,10 @@ Cold/warm timing is measured from the app's numeric native console markers;
 "after lineup" is not an absolute launch-to-first-frame time. The 15-minute
 live run was limited to already authorized media and stopped locally. The
 device's normal development app/remembered guide was restored afterward.
+
+Later follow-up: `ssq` traced one source's early native AAC decoder refusal
+in Auto mode, implemented a bounded local compatibility retry and verified a
+working-channel retune to that source with native audio/video state and PO
+physical picture/sound. See `AAC-RETUNE-RECOVERY-0.3.80.md`. The historical
+resource samples above remain their original measured outcomes, not
+retroactively successful retune measurements.
