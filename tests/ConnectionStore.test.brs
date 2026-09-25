@@ -70,6 +70,16 @@ sub main()
     assertEqual(loadConnectionStore(registry).selected, "safe", "saved selection reloaded")
     assertEqual(normalizeConnectionStore({schema: 2, entries: []}).schema, 2, "newer schema read-only")
     assertEqual(saveConnectionStore(registry, {schema: 2, entries: []}), false, "newer format never overwritten")
+    for each damaged in ["{truncated", "null", "[]", "123"]
+        registry.values.connectionsV1 = damaged
+        unreadable = loadConnectionStore(registry)
+        assertEqual(unreadable.readOnly, true, "non-empty corrupt roster is not treated as first install")
+        assertEqual(connectionWelcomeNeeded(unreadable), false, "corrupt saved roster goes to recovery setup")
+        assertEqual(saveConnectionStore(registry, unreadable), false, "corrupt roster is never overwritten")
+        assertEqual(registry.read("connectionsV1"), damaged, "original corrupt bytes remain for recovery")
+    end for
+    registry.values.delete("connectionsV1")
+    assertEqual(loadConnectionStore(registry).selected, "legacy", "genuinely missing roster still recovers the valid legacy slot")
     direct = connectionStoreAdd(defaultConnectionStore(), "playlist-one", "Live feed", "m3u")
     assertEqual(connectionWelcomeNeeded(direct), false, "session-only connection skips welcome on relaunch")
     assertEqual(direct.entries[0].provider, "m3u", "direct M3U slot selected")

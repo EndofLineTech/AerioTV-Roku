@@ -32,6 +32,19 @@ sub probeLegacyRoster()
         ready = recovered.selected = "legacy" and recovered.entries.count() = 1
         if ready then ready = storedConnectionKey(m.registry, recovered.entries[0]) = "fixture-only"
     end if
+    if ready
+        ' Non-empty truncated metadata is not a fresh install. Preserve the
+        ' legacy key and corrupt bytes for operator recovery; never replace it.
+        corrupt = "{truncated"
+        ready = m.registry.write("connectionsV1", corrupt) and m.registry.flush()
+        if ready
+            damaged = loadConnectionStore(m.registry)
+            ready = damaged.readOnly = true and not connectionWelcomeNeeded(damaged)
+            ready = not saveConnectionStore(m.registry, damaged) and ready
+            ready = m.registry.read("connectionsV1") = corrupt and ready
+            ready = m.registry.read("connKey_legacy") = "fixture-only" and ready
+        end if
+    end if
     for each key in ["connectionsV1", "serverUrl", "accountIdentity", "apiKey", "connKey_legacy", "rememberApiKey"]
         m.registry.delete(key)
     end for

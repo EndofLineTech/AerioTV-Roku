@@ -56,5 +56,8 @@ Xtream flows, plain XMLTV, and explicit re-login have engineering evidence.
 Local/WAN reachability switching was not delivered; raw `.xml.gz` is rejected;
 real revoked/rotated-key and final per-path remote/picture/sound checks were
 not recorded. `docs/PHYSICAL-RELEASE-0.3.80.txt` remains unmarked for those
-paths. The separately discovered, non-reproduced roster-loss investigation
-`AerioTV-Roku-itx` is **not** a child of `ah5` and remains open.
+paths. The separately discovered roster-loss investigation
+`AerioTV-Roku-itx` is **not** a child of `ah5`. Later work guarded unreadable
+non-empty rosters against being mistaken for a fresh installation, with an
+isolated native regression probe; the original one-time loss was not
+reproduced. See `ROSTER-CORRUPTION-RECOVERY-0.3.80.md`.

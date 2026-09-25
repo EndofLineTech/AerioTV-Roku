@@ -61,7 +61,10 @@ function normalizeConnectionEntry(raw as dynamic) as dynamic
 end function
 
 function normalizeConnectionStore(raw as dynamic) as object
-    if type(raw) <> "roAssociativeArray" then return defaultConnectionStore()
+    ' This path is reached only for a non-empty saved roster. Malformed JSON or
+    ' an unexpected root is not a new install: preserve the original registry
+    ' value rather than showing Welcome and allowing an Add to overwrite it.
+    if type(raw) <> "roAssociativeArray" then return {schema: 1, selected: "", entries: [], readOnly: true}
     if raw.schema <> 1 then return {schema: textValue(raw.schema).toInt(), selected: "", entries: [], readOnly: true}
     if type(raw.entries) <> "roArray" then return {schema: 1, selected: "", entries: [], readOnly: true}
     if raw.entries.count() > 4 then return {schema: 1, selected: "", entries: [], readOnly: true}
