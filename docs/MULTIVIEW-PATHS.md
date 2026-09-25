@@ -1,5 +1,12 @@
 # Multiview beyond two SceneGraph Video nodes — research update
 
+Current PO direction (2026-09-25): a **separate sidecar container on the
+Dispatcharr host** will compose multiple authorized streams into one Roku
+output. This supersedes the native-only choice discussed below; server-side
+composition is now the chosen design direction, not a delivered feature.
+See [MULTIVIEW-SIDECAR-SCOPE.md](MULTIVIEW-SIDECAR-SCOPE.md) and bead
+`AerioTV-Roku-cba`. The comparisons that follow are historical evidence.
+
 Engineering research for `AerioTV-Roku-7le`, requested after the measured
 deferral in `AerioTV-Roku-wt1`. This historical comparison adds no server or
 physical picture/sound acceptance; its former deferral decision is now
@@ -96,7 +103,7 @@ manufacture a test. If a provider already offers an authorized precomposed
 mosaic as a normal channel, Roku could play that *one* feed with the existing
 player; its actual availability and audio/caption control are unverified.
 
-## Historical alternatives (excluded by the PO's native-only requirement)
+## Historical alternatives (the native-only constraint was later superseded)
 
 1. **No server changes:** check only authorized catalog metadata for a provider
    mosaic channel, if one exists; one-feed playback is feasible to probe on the
@@ -117,6 +124,6 @@ player; its actual availability and audio/caption control are unverified.
 Do not substitute periodically refreshed thumbnails, sequential retuning, an
 ordinary multi-item playlist, or a large set of buffered feeds for concurrent
 live playback. Those approaches do not meet the multiview user story and can
-exhaust memory, bandwidth or provider connections. The PO's native-only
-requirement supersedes the earlier deferral as product direction; delivery
-still requires a supported SDK path and measured useful playback.
+exhaust memory, bandwidth or provider connections. The PO's later sidecar
+decision supersedes the native-only direction; delivery requires a measured
+host-side composition path and real Roku picture/audio acceptance.

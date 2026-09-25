@@ -26,3 +26,7 @@ invalid-key test, not a real key rotation or provider revocation. Private
 captures remain under ignored `out/`. A real revocation, changed-user account
 and storage-write failure still need authorized fixtures; they are not inferred
 from tests. See [connection policy](CONNECTION-CREDENTIAL-POLICY.md).
+
+The PO closed `ah5.3` on 2026-09-25 with these fixture limits accepted.
+Real revoked/rotated-key and storage-write cases are not retroactively marked
+as physical PASS.

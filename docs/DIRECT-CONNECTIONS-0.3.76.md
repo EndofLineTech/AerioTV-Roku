@@ -46,3 +46,9 @@ own playlist/guide URL without copying any Xtream credential or prior guide
 rows. The M3U guide then repopulated on demand. Xtream uses the server's
 compact channel numbering; M3U preserves its own `tvg-chno` values. The two
 surfaces intentionally have distinct account/cache identities.
+
+PO scope update (2026-09-25): `ah5.9` closed with bounded plain XMLTV and
+the current direct-feed integration. True raw `.xml.gz` decoding, compressed
+provider fixtures and repeated-window performance were retired from current
+acceptance; the existing raw-gzip rejection and 72-MiB budget remain. This
+does not claim physical picture/audio acceptance for every direct path.

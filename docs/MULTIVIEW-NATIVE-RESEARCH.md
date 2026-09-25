@@ -1,5 +1,11 @@
 # Native concurrent-stream multiview: Logan Roku evidence
 
+Historical native-path research. The PO superseded its Roku-native delivery
+direction on 2026-09-25 with a separate Dispatcharr-host sidecar, tracked by
+`AerioTV-Roku-cba` and described in [MULTIVIEW-SIDECAR-SCOPE.md](MULTIVIEW-SIDECAR-SCOPE.md).
+Native `cw0`/`wt1` closed as superseded, **not** as multiview delivered. The
+following notes preserve the earlier technical evidence and proposal only.
+
 Research update for `AerioTV-Roku-cw0`. Product requirement: the **Roku opens
 and displays at least two distinct live streams concurrently**. A one-feed
 server mosaic, provider composite, rapidly refreshed images, and sequential

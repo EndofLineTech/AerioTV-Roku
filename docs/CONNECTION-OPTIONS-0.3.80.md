@@ -45,3 +45,16 @@ selecting another permitted profile narrowed the same account to 163 and
 restored its own guide, without adding channels outside the authorized
 summary. Returning to the default cleared the selected profile in the roster
 across a Home/relaunch. No key or private screenshot is included here.
+
+## PO connection-scope closure — 2026-09-25
+
+The PO closed the `ah5` epic and all its children for the current Roku scope.
+This is an explicit acceptance of bounded delivered paths and a retirement of
+unfinished criteria, **not** a physical PASS for every connection. Named
+connections, permitted Dispatcharr profiles, header selection, direct M3U and
+Xtream flows, plain XMLTV, and explicit re-login have engineering evidence.
+Local/WAN reachability switching was not delivered; raw `.xml.gz` is rejected;
+real revoked/rotated-key and final per-path remote/picture/sound checks were
+not recorded. `docs/PHYSICAL-RELEASE-0.3.80.txt` remains unmarked for those
+paths. The separately discovered, non-reproduced roster-loss investigation
+`AerioTV-Roku-itx` is **not** a child of `ah5` and remains open.

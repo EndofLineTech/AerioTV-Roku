@@ -103,6 +103,9 @@ implementation needs model/Task tests, `npm run verify`, and Roku cold/warm
 authorization and remote/navigation checks. Native player state alone does
 not prove picture, sound or spoken feedback.
 
+Later PO update (2026-09-25): close `4vg.4` as retired deferred scope; normal
+app launch remains supported, but content deep links were not implemented.
+
 References: [upstream audit and links](PARITY-AUDIT.md#cross-device-and-platform-specific-features),
 [Roku deep linking](https://developer.roku.com/docs/developer-program/discovery/implementing-deep-linking),
 [Roku ECP](https://developer.roku.com/docs/developer-program/debugging/external-control-api),
