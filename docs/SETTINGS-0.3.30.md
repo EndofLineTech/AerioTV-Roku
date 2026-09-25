@@ -65,3 +65,9 @@ not physical-remote acceptance. The fixture is retained only under
 Physical checks are in `PHYSICAL-SETTINGS-0.3.30.txt`. Device scripted checks and
 model tests do not pre-fill physical results. `b17` remains in progress pending
 that acceptance and final Product Owner review.
+
+Later reconciliation: `PHYSICAL-TESTING-CURRENT.txt` S01-S06 superseded that
+focused worksheet; RM01-RM10 and final visual F05/F06 were also accepted.
+The PO approved and closed `b17` on 2026-09-25; see
+`SETTINGS-ACCEPTANCE-RECONCILIATION.md`. This does not retroactively fill the
+older 0.3.30 worksheet.

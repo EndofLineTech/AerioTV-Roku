@@ -24,7 +24,17 @@ Remote-map acceptance is separately detailed in
 `REMOTE-MAP-CONTROLLER-VERIFICATION.md`: RM01–RM10 all PASS on the installed local
 development build, whose source was committed as `2684900`.
 
-`b17.11` (new-release notifications) remains **open, backlog-only**. No update
-checker or automatic updater is delivered by this reconciliation. The `b17` epic
-remains open for that added story and eventual final epic review. This document
-does not close the separate `rgs` resource/accessibility acceptance items.
+`b17.11` (new-release notifications) was subsequently closed by the PO as not
+valuable for the current scope. No update checker or automatic updater is
+delivered by this reconciliation. The separate `rgs` resource/accessibility
+acceptance items are not covered here.
+
+## Final Product Owner review — 2026-09-25
+
+The PO approved closure of the `b17` settings epic after all child stories
+closed. Existing `PHYSICAL-TESTING-CURRENT.txt` S01-S06 and RM01-RM10 provide
+physical settings/remote evidence. The final candidate's visual worksheet
+`VISUAL-VOD-FINAL-ACCEPTANCE.txt` marks F05/F06 PASS for Settings focus,
+readability and actual Roku comparison captures. This approval does not claim
+new native measurements, an update checker or a physically injected storage
+failure beyond the prior accepted conditional S06 result.

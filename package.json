@@ -9,7 +9,7 @@
     "build": "bsc --project bsconfig.json",
     "test": "node scripts/test.mjs",
     "test:package": "node --test scripts/verify-package.test.mjs",
-    "test:tools": "python3 -m unittest scripts/roku_device_info_test.py",
+    "test:tools": "python3 -m unittest scripts/roku_device_info_test.py scripts/measure_roku_resources_test.py",
     "verify": "npm test && npm run test:package && npm run test:tools && npm run check && npm run build && node scripts/verify-package.mjs",
     "release:prepare": "npm run verify && node scripts/prepare-release.mjs"
   },
