@@ -31,6 +31,10 @@ With Roku system screen reader AND app Audio Guide enabled, navigate guide,
 player, Settings and VOD. Record what is audibly spoken versus silence. The
 prior target listen heard no custom guide speech; a code invocation is not PASS.
 Restore accessibility preferences afterward.
+PO scope update 2026-09-25: custom AerioTV speech is an accepted limitation on
+3820RW2. Do not mark spoken navigation PASS; mark this speech check SKIP with
+the accepted-limitation reason, noting any actual listening separately. Check
+visual focus/labels under R03/R05.
 
 [          ] R05 VOD and server DVR
 On already permitted media, check movie/series details, episodes, Continue,

@@ -84,6 +84,12 @@ documented `Say(text, flushSpeech, dontRepeat)` signature matches the current
 owner previously heard system-menu speech but no custom guide speech on the
 target (`docs/OVERNIGHT-EVIDENCE-0.3.50.md`). The public compatibility list
 could be incomplete; it is a platform-support warning, not proof of a device
-fault or an accepted accessibility adaptation. No replacement speech API or
-spoken-label PASS is claimed. Keep `zvi` and `faa.8` open until a supported
-target-device path and actual spoken guide/player/settings/VOD checks exist.
+fault. No replacement speech API or spoken-label PASS is claimed.
+
+**Product Owner decision, 2026-09-25:** Absent custom AerioTV speech on this
+3820RW2 is an accepted platform limitation for the current Roku scope. This
+does not change the earlier observed silence into a PASS or establish the
+cause conclusively. `zvi` is closed as an accepted limitation; `faa.8` remains
+open for final-build physical verification of visual focus, readable selected
+content/actions, menus, loading/errors and large-text behavior. Do not present
+the app as providing verified spoken navigation on this target.

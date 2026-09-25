@@ -103,3 +103,10 @@ single-player regression and reinstall the normal verified Roku ZIP. A device
 feature query or creating an object without dual picture/audio does not qualify
 as a two-stream PASS. Resuming deferred delivery stories `wt1.3` and `wt1.4`
 requires this proof and scoped PO review.
+
+Product Owner decision (2026-09-25): the initial supported two-view experience
+must keep both distinct pictures moving and give audio ownership to the
+focused/selected tile; changing tile changes audible source. Mixed audio and
+mute-only multiview are not accepted substitutes. Decoder limits, layout and
+resource budgets still depend on obtaining the supported Roku API and native
+measurements; this decision does not unblock `cw0` or advertise multiview.

@@ -1,6 +1,6 @@
 # Cross-device and platform crosswalk (engineering research)
 
-Status: proposal for Product Owner review, not an approved integration scope.
+Status: engineering crosswalk with Product Owner scope decisions recorded below.
 Baseline: `docs/PARITY-AUDIT.md` I01–I07, pinned upstream revision
 `8d5818456e0f4421d93b8ff120ad878d63331091`; Roku 3820RW2 / OS 15.3.4,
 Dispatcharr 0.31.0. No additional runtime service is assumed. Source evidence
@@ -77,16 +77,31 @@ Frequency would require bounded, account-scoped completed tune/view events,
 validity checks after account changes, and a decided ranking/retention policy.
 The existing in-app surfaces are the least invasive candidate if useful; system
 recommendations and deep links depend on a verified platform/publication path.
-No ranking or system-home product behavior has been selected by the PO.
+The PO's current-scope choice is recorded below; no ranking or system-home
+feature is promised.
 
-## Decision and verification gates
+## Product Owner scope decisions — 2026-09-25
 
-PO review is pending for the exclusion crosswalk (`4vg.1`), export/sync scope
-(`4vg.2`), companion feasibility disposition (`4vg.3`), any deep-link IDs and
-media-type scope (`4vg.4`), and in-app versus system-home ranking (`4vg.5`).
-For any later implementation: model/Task tests, `npm run verify`, and Roku
-cold/warm authorization and remote/navigation tests precede acceptance; native
-player state alone is not a picture/sound or spoken-feedback result.
+- `4vg.1`: Approved Apple-only exclusions above. The active Roku Channels
+  overlay is not the disabled standalone tvOS List; in-app features are not
+  Apple Top Shelf, Cast/AirPlay sending or cross-app PiP.
+- `4vg.2`: Defer cross-device sync and import/export. Preferences and VOD
+  progress stay local; no backend, transfer service or credential export is
+  approved. The account/conflict/deletion design above remains a constraint
+  if sharing is proposed in a future scope.
+- `4vg.3`: Defer companion discovery, pairing and control. The Roku remote is
+  the supported path; OS ECP does not establish authenticated Aerio feedback.
+- `4vg.4`: Defer content deep links. Normal app launch stays supported and
+  `supports_input_launch` remains disabled. Do not advertise content routes
+  without verified opaque IDs and cold/warm/auth/missing-item behavior.
+- `4vg.5`: Accept the existing in-app Recent Channels and VOD Continue Watching
+  as the Roku home-discovery adaptation. Recent is recency, not watch frequency;
+  neither surface is a Roku system-home recommendation.
+
+These scope decisions do not constitute new device acceptance. Any later
+implementation needs model/Task tests, `npm run verify`, and Roku cold/warm
+authorization and remote/navigation checks. Native player state alone does
+not prove picture, sound or spoken feedback.
 
 References: [upstream audit and links](PARITY-AUDIT.md#cross-device-and-platform-specific-features),
 [Roku deep linking](https://developer.roku.com/docs/developer-program/discovery/implementing-deep-linking),

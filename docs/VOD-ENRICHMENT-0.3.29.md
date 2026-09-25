@@ -133,3 +133,24 @@ physical result above applies to the older cycling UI, not this change. This
 does not implement a global alphabet jump or rating sort: the Dispatcharr 0.31
 movie/series viewsets list `name`, `year`, and `created_at` as ordering fields,
 and their `name` filter uses `icontains`, not a prefix lookup.
+
+## Product Owner scope decisions — 2026-09-25
+
+- For Dispatcharr 0.31, title search and the supported title/year/newest sorts
+  are the accepted Roku adaptation. A global alphabet jump and rating sort
+  are not required; do not approximate them from a page of results.
+- Prefer available English provider/TMDB descriptions. If neither authorized
+  source has one, retain the provider text or show an honest unavailable
+  state. A description for every title is not promised.
+- Source selection from title details followed by Resume on a compatible
+  rendition is accepted; an in-player seamless switch is not required.
+  Validated public TMDB/trailer URLs in a text dialog are accepted for opening
+  on another device; QR and inline trailer playback are not required.
+- Normal-speed-only VOD is accepted. The 1.5x transition jumped in the native
+  trial; no speed selector is advertised as supported.
+- Conditional removed-title and restricted-account saved-state behavior still
+  requires real physical evidence. Synthetic/native tests cannot be marked as
+  a physical PASS; use SKIP with the missing prerequisite when appropriate.
+
+Previously submitted physical results remain historical evidence. These
+decisions do not pre-mark any final-build physical check as PASS.
