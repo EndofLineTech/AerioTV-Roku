@@ -61,6 +61,29 @@ platform/model; they are not enough to compile a supported channel integration.
 In particular, we have not confirmed that the development-slot app can request
 the same capability without partner enrollment or a particular publisher key.
 
+Further public search: the [Roku developer forum's own `roMultiDecode` search](https://forum.developer.roku.com/search?q=roMultiDecode)
+returns one July 2025 post asking where its documentation is; public code and
+GitHub-issue searches for the exact name found no usable sample. The public
+[Roku Partner Knowledge Center search](https://partnersuccess.roku.com/hc/en-us/search?query=multidecode)
+returns no article for `multidecode` (nor for `multiview`). These are bounded
+search results, not evidence that an unpublished partner contract does not
+exist. The [Partner Knowledge Center request form](https://partnersuccess.roku.com/hc/en-us/requests/new)
+is the official next contact path; no request has been sent from this project.
+
+Suggested technical request to Roku Developer/Partner Support (no server,
+account or device credentials needed):
+
+> Your 2024 Developer Summit announced `roMultiDecode` for Logan hardware.
+> Fubo lists the 3820X2 family as supporting two views. We develop a native
+> SceneGraph app for Streaming Stick 4K 3820RW2, Roku OS 15.3.4. Where can we
+> obtain the `roMultiDecode` API reference and minimal two-stream sample? Is
+> it available to a sideloaded developer app, and are a publisher entitlement,
+> developer token, or enrollment required? Please specify the supported OS,
+> model, creation/control/lifecycle interface, per-stream HTTP authentication,
+> live MPEG-TS versus HLS/DASH support, simultaneous decoder limits, and
+> single-audio/caption ownership. What is the supported route for an independent
+> publisher to test and ship this on Logan?
+
 **Next internet/platform inquiry** (via Roku's developer program, not guessed
 methods): request the `roMultiDecode`/multiview SDK contract and example for
 3820X2/Logan on OS 15.3.4; ask whether sideloaded apps can use it, whether an
