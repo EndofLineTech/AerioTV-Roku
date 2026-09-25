@@ -72,3 +72,18 @@ the existing model tests distinguish channel 24 from 240, 24Kitchen/24 Hours,
 decimal numbers and missing numbers. The observed provider-number heading is
 still pending a genuine native playback/physical check (`faa.9`). No synthetic
 model test substitutes for that screen observation.
+
+## Audio Guide platform investigation — zvi / faa.8
+
+Roku's current [roAudioGuide reference](https://developer.roku.com/dev/docs/roaudioguide)
+and [ifAudioGuide reference](https://developer.roku.com/dev/docs/ifaudioguide)
+explicitly list older 3600X/3700X/3710X/4620X/4630X/4640X devices and Roku TVs
+as supported. The target 3820RW2 Streaming Stick 4K is not on that list. The
+documented `Say(text, flushSpeech, dontRepeat)` signature matches the current
+`uiAnnounce` call, but its returned ID does not establish audible speech. The
+owner previously heard system-menu speech but no custom guide speech on the
+target (`docs/OVERNIGHT-EVIDENCE-0.3.50.md`). The public compatibility list
+could be incomplete; it is a platform-support warning, not proof of a device
+fault or an accepted accessibility adaptation. No replacement speech API or
+spoken-label PASS is claimed. Keep `zvi` and `faa.8` open until a supported
+target-device path and actual spoken guide/player/settings/VOD checks exist.
