@@ -1,0 +1,43 @@
+AerioTV Roku v0.3.82 testing prerelease — physical checks
+==========================================================
+All cases are NOT RUN until a person with the remote observes the actual TV.
+Developer Mode screenshots and Video state do not establish picture or sound.
+
+Installed version (Settings > General > About): __________
+Roku model / OS: __________   Date / tester: __________
+
+[          ] R01 Subtitle-rich guide and compact option
+Open a permitted guide program with a genuine EPG sub-title (for example,
+College Football with a matchup). Confirm the default Preview shows title and
+subtitle without badges crossing a row. Scroll past six channels and return.
+In Settings > Live TV, turn Program subtitles / taller Preview Off: confirm
+seven compact rows and no subtitle. Turn it back On to restore the default.
+Basic density still shows ten compact rows if chosen.
+
+[          ] R02 Movies, series and Continue Watching
+Open a permitted series with known numbered episodes. Check Play/Resume/Next
+chooses the expected available episode without auto-playing, Back returns to
+the same series tile, and a completed episode can surface the next permitted
+episode in Continue Watching. Check a saved Watchlist/Hidden choice persists
+across relaunch; do not infer unlimited local capacity from this test.
+
+[          ] R03 Growing recording — only with an approved disposable fixture
+With an active permitted server DVR recording, compare Aerio's pill controls
+to Live TV. Confirm real picture and audible sound before and after pause,
+Rew/FF and bounded seek; Back returns to DVR without stopping the recording.
+Record exact behavior as the HLS transitions to completed. If no fixture is
+approved, SKIP rather than changing an existing recording. Report any Roku
+playlist-size error separately from a UI focus error.
+
+[          ] R04 Completed/stopped recording
+Play a permitted existing completed or stopped recording. Confirm native
+FF/REW timeline, resumed picture/sound, Back focus and the original item
+still available. Do not delete or change an existing server recording.
+
+[          ] R05 Cleanup and preferences
+Confirm the original program-subtitle preference, account and saved guide
+state; no disposable test recording remains. Record focus, audio or video
+issues with exact remote steps and installed build.
+
+Failure ID / sanitized steps / observed behavior: __________________________
+SKIP reason (if applicable): _______________________________________________

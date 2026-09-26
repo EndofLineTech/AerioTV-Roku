@@ -14,21 +14,36 @@ records the original baseline. The feature table below describes this release.
 
 ## Download the testing build
 
-**[Download v0.3.81 — testing prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.81)**
+**[Download v0.3.82 — testing prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.82)**
 
-Under **Assets**, download **`aeriotv-roku-v0.3.81.zip`**. Keep it zipped.
+Under **Assets**, download **`aeriotv-roku-v0.3.82.zip`**. Keep it zipped.
 Do **not** download GitHub's automatically generated **Source code (zip)** for
 installation; that is the repository, not the Roku application package.
 
 You do not need Node.js, npm, Git, or a compiler to install the release ZIP.
 This is a sideloaded testing preview, not a Roku Streaming Store release.
 
-### New since v0.3.80
+### New since v0.3.81
+
+- **Guide:** program matchup subtitles appear beneath the main title on wide
+  Preview tiles and in the selected-program header. The default six-row Preview
+  has taller tiles; **Settings → Live TV → Program subtitles / taller Preview →
+  Off** returns to the original seven-row compact Preview. Basic stays at ten
+  rows.
+- **VOD:** Watchlist, Hidden and Watched choices survive beyond 20 recent titles
+  within bounded local storage. Series detail can select a verified first,
+  resumable or next episode; completed episodes can advance Continue Watching.
+- **Growing server recordings:** Aerio's live-TV-style control pills replace
+  Roku's native “Rewind live TV” overlay for active HLS recordings. Rew/FF use
+  bounded 30-second steps with an in-app seek preview; completed files retain
+  Roku's native transport. A near-end growing-HLS playlist-size error remains
+  under investigation; see the [release notes](docs/RELEASE-0.3.82.md).
+
+### Also included since v0.3.80
 
 - **Server DVR:** Recording Now, Scheduled, Recent and Series Rules share a
-  single list with clear section headings. Growing Dispatcharr recordings
-  expose Roku's native FF/REW availability window; completed files retain
-  native seek controls. Supported seek depth depends on the recording source.
+  single list with clear section headings. Playback and recording actions remain
+  permission-checked; supported seek depth depends on the recording source.
 - **Reliability and navigation:** bounded AAC decoder retry, saved-connection
   recovery, VOD sort choices and improved guide-options focus labels.
 
@@ -65,7 +80,7 @@ This is a sideloaded testing preview, not a Roku Streaming Store release.
   startup/midstream recovery, contextual Retry and sanitized diagnostics.
 - **Hold OK** opens app player options; fullscreen star remains Roku-owned.
 
-[v0.3.81 release notes and known limitations](docs/RELEASE-0.3.81.md)
+[v0.3.82 release notes and known limitations](docs/RELEASE-0.3.82.md)
 
 ## Roku vs. Apple TV and Android TV
 
@@ -74,18 +89,18 @@ supported direct Xtream/M3U connections and conditional catch-up/restart/rewind,
 but not full upstream feature parity.** Multiview and cross-device sync remain
 unimplemented. Rewind uses provider archives; it is not a guaranteed local buffer.
 
-| Feature | Roku — v0.3.81 preview | Apple TV — upstream | Android TV / Google TV — upstream |
+| Feature | Roku — v0.3.82 preview | Apple TV — upstream | Android TV / Google TV — upstream |
 | --- | --- | --- | --- |
 | Dispatcharr connection | **Available** — API key or dashboard login | Available | Available |
 | Direct Xtream Codes connection | **Implemented for tested variants**; session-only credentials, bounded live/VOD/archive | Available | Available |
 | Direct M3U + XMLTV connection | **Implemented for supported URL feeds**; raw gzip and oversized feeds remain limited | Available | Available |
-| Live TV and EPG grid | **Available** | Available | Available |
+| Live TV and EPG grid | **Available** — source subtitles in default six-row Preview, compact option | Available | Available |
 | Favorites, group visibility and channel sorting | **Available** | Available | Available |
 | Mini-player while browsing the guide | **Available** — same playback session | Available | Available |
 | Audio/subtitle selection and sleep timer | **Available**, limited to tracks Roku exposes | Available | Available |
 | Video scaling | **Fit / Fill / Stretch**; source-aspect setting may be required | Available | Available |
 | Programme reminders | **Foreground alerts only**, while the app is open | Saved reminder state; background delivery not established on tvOS | Documented reminders; notification delivery depends on device |
-| Movies/series and Continue Watching | **Available** with supported provider renditions; local progress/watchlists | Available with supported providers | Available with supported providers |
+| Movies/series and Continue Watching | **Available** with bounded local curation and verified series Play/Resume/Next targets | Available with supported providers | Available with supported providers |
 | DVR scheduling and recording management | **Implemented against Dispatcharr server DVR**; final-build physical checks pending | Available; server-side DVR uses Dispatcharr | Available; server-side DVR uses Dispatcharr |
 | Multiview | **Not implemented** | Up to 9 streams, device/resource dependent | Up to 9 streams, device/resource dependent |
 | Live rewind / completed-program catch-up | **Provider-backed** catch-up, Restart and up to 60 minutes of history since tuning on eligible channels | Implemented, subject to settings/provider support | Not verified in this comparison |
@@ -99,7 +114,7 @@ versions; provider permissions and device capabilities still apply. "Not verifie
 is not a claim that the feature is absent. Mobile-only features are not assumed
 to be available on a TV.
 
-Upstream comparison sources reviewed 2026-09-19; Roku column updated for v0.3.81:
+Upstream comparison sources reviewed 2026-09-19; Roku column updated for v0.3.82:
 - [Apple upstream README, pinned revision](https://github.com/jonzey231/AerioTV/blob/8d5818456e0f4421d93b8ff120ad878d63331091/README.md)
   and the [source-level tvOS audit](docs/PARITY-AUDIT.md). The audit's Roku column
   is an older baseline; the table above describes this release.
@@ -158,7 +173,7 @@ If Developer Mode is already enabled, proceed to the next step.
 
 ### 3. Upload and install the release ZIP
 
-1. Click **Upload** / **Choose File** and select **`aeriotv-roku-v0.3.81.zip`**.
+1. Click **Upload** / **Choose File** and select **`aeriotv-roku-v0.3.82.zip`**.
 2. Click **Install** or **Install with zip**, depending on the installer version.
    Some versions also offer **Install with squashfs**.
 3. Wait for **Install Success**. AerioTV should launch on the TV automatically.
@@ -208,10 +223,12 @@ connection screen:
 - **DVR** shows Recording Now, Scheduled, Recent and Series Rules under separate
   subheadings in one scrolling list. Active recordings appear first; **Replay**
   refreshes server items. Select a row with **OK** for facts and available playback.
-- Recordings use Roku's native FF/REW timeline. During a Dispatcharr recording,
-  the available seek window grows from the recording start; press Play to resume
-  from a selected position. Availability and playback continuity depend on the
-  server's HLS stream. Completed and stopped files retain native transport.
+- An active Dispatcharr HLS recording uses Aerio's player pills and 30-second
+  Rew/FF steps. A tap seeks; hold to preview, then OK/Play commits or Back
+  cancels. Back/Stop leaves the server recording running. Seek availability and
+  picture/audio continuity depend on the growing server stream; a near-end
+  playlist-size failure remains under investigation. Completed and stopped
+  files retain Roku's native FF/REW transport.
 - For catch-up/Restart, open **Program details** and select the separate archive
   or Restart action. **Watch channel LIVE** remains a distinct choice.
 - During live playback, **Rew** or player options → **Rewind history (provider)**
