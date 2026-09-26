@@ -29,6 +29,20 @@ sub loadVod()
         publishVod({ok: false, message: "This account cannot access this catalog.", category: "permission"})
         return
     end if
+    if m.top.operation = "seriesTarget"
+        if m.top.kind <> "series" or not CreateObject("roRegex", "^[0-9]+$", "").isMatch(m.top.seriesId)
+            publishVod({ok: false, message: "Invalid series target."})
+            return
+        end if
+        catalog = vodLoadSeriesEpisodes(m.top.seriesId, m.top.providerId)
+        if not catalog.ok
+            publishVod({ok: false, message: "Could not verify episodes. Browse episodes or refresh."})
+        else
+            selection = vodSeriesTarget(catalog.items, m.top.savedState, m.top.seriesId, catalog.complete)
+            publishVod({ok: true, target: selection})
+        end if
+        return
+    end if
     path = vodKindPath(m.top.kind)
     if path = "" or m.top.pageNumber < 1
         publishVod({ok: false, message: "Invalid catalog request."})
@@ -209,6 +223,7 @@ end sub
 sub publishVod(result as object)
     m.key = ""
     m.top.apiKey = ""
+    m.top.savedState = invalid
     if m.top.cancelRequested then return
     m.top.result = result
 end sub

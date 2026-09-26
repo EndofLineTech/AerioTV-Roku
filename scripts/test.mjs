@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 
-for (const suite of ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel', 'XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'SceneUi', 'AerioSurface', 'RemoteHints', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'ConnectionStore', 'ConnectionNavigation', 'ConnectionAuthTask', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'PlayerRemoteInput', 'GuideRemoteInput', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'DvrRecordingModel', 'DvrPresentationModel', 'DvrNavigation', 'DvrView', 'GuideTaskCache', 'GuideMappingFallback', 'MappingTask', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'CatchupModel', 'DiagnosticModel', 'OnDemandPlayer', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask', 'RemoteMapModel', 'SettingsRail', 'SettingsHubInput']) {
+for (const suite of ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel', 'XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'SceneUi', 'AerioSurface', 'RemoteHints', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'ConnectionStore', 'ConnectionNavigation', 'ConnectionAuthTask', 'CapabilityModel', 'ProgramSearchModel', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'PlayerRemoteInput', 'GuideRemoteInput', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'DvrRecordingModel', 'DvrPresentationModel', 'DvrNavigation', 'DvrView', 'GuideTaskCache', 'GuideMappingFallback', 'MappingTask', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'VodSeriesTarget', 'VodSeriesTask', 'CatchupModel', 'DiagnosticModel', 'OnDemandPlayer', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask', 'RemoteMapModel', 'SettingsRail', 'SettingsHubInput']) {
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
@@ -21,12 +21,13 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel',
     'source/VideoGeometry.brs',
     'source/GuideSettingsModel.brs',
     'source/ReminderModel.brs',
-    ...(['TmdbTask', 'VodShelfTask', 'XtreamTask'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
+    ...(['TmdbTask', 'VodShelfTask', 'VodSeriesTask', 'XtreamTask'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
     'source/HttpPolicy.brs',
     ...(suite === 'DvrRecordingModel' ? ['source/DvrRecordingModel.brs'] : []),
     ...(suite === 'DvrRecordingModel' ? ['source/DvrSeriesModel.brs'] : []),
     ...(['DvrPresentationModel', 'DvrNavigation', 'DvrView'].includes(suite) ? ['source/DvrPresentationModel.brs'] : []),
-    'source/MediaSessionModel.brs', 'source/VodModel.brs', 'source/VodState.brs', 'source/CatchupModel.brs',
+    'source/MediaSessionModel.brs', 'source/VodModel.brs', 'source/VodState.brs',
+    ...(['VodSeriesTarget', 'VodSeriesTask', 'VodShelfTask'].includes(suite) ? ['source/VodSeriesTarget.brs'] : []), 'source/CatchupModel.brs',
     'source/DiagnosticModel.brs',
     'source/NavigationModel.brs', 'source/DescriptionModel.brs',
     ...(['SettingsModel', 'SettingsRail', 'SettingsHubInput'].includes(suite) ? ['source/SettingsModel.brs'] : []),
@@ -60,7 +61,8 @@ for (const suite of ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel',
     ...(suite === 'OnDemandPlayer' ? ['components/OnDemandPlayer.brs'] : []),
     ...(suite === 'PlayerInfoClock' ? ['components/PlayerInfo.brs'] : []),
     ...(suite === 'ArchiveController' ? ['components/MediaNavigation.brs'] : []),
-    ...(suite === 'VodSeriesLoader' ? ['source/VodSeriesLoader.brs'] : []),
+    ...(['VodSeriesLoader', 'VodSeriesTask', 'VodShelfTask'].includes(suite) ? ['source/VodSeriesLoader.brs'] : []),
+    ...(suite === 'VodSeriesTask' ? ['components/VodTask.brs'] : []),
     ...(suite === 'VodDescriptionInput' ? ['components/VodView.brs', 'components/VodMetadata.brs'] : []),
     ...(suite === 'LiveRecovery' ? ['components/LiveRecovery.brs'] : []),
     ...(suite === 'PlaybackFailure' ? ['components/PlaybackFailure.brs'] : []),

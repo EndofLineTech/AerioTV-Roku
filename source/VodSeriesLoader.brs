@@ -57,3 +57,27 @@ function vodHydrateEpisodes(seriesId as string, pageUrl as string, providerId as
     failure.providerListAvailable = variants <> invalid
     return failure
 end function
+
+' Bounded, account-verified caller only. Incomplete catalogs are not mistaken
+' for a final episode; at most four pages/80 normalized entries are retained.
+function vodLoadSeriesEpisodes(seriesId as string, providerId as string) as object
+    failure = {ok: false, complete: false, items: []}
+    numeric = CreateObject("roRegex", "^[0-9]+$", "")
+    if not numeric.isMatch(seriesId) or m.top.cancelRequested then return failure
+    if providerId <> "" and not numeric.isMatch(providerId) then return failure
+    items = []
+    for page = 1 to 4
+        if m.top.cancelRequested or m.clock.totalMilliseconds() > 27000 then return failure
+        url = m.base + "/api/vod/episodes/?page_size=20&page=" + page.toStr() + "&ordering=season_number%2Cepisode_number&series=" + seriesId
+        if providerId <> "" then url += "&m3u_account=" + providerId
+        data = vodPage(requestJson(url), "episode", m.base)
+        if page = 1 and data.ok and data.items.count() = 0 then data = vodHydrateEpisodes(seriesId, url, providerId)
+        if not data.ok then return failure
+        for each item in data.items
+            if item.seriesId <> seriesId then return failure
+            items.push(item)
+        end for
+        if data.next = "" then return {ok: true, complete: true, items: items}
+    end for
+    return {ok: true, complete: false, items: items}
+end function

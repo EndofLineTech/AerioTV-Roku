@@ -60,6 +60,31 @@ sub main()
     m.top.cancelRequested = true
     loadShelf()
     if m.top.result <> invalid then stop
+
+    resetShelfTest()
+    m.top.shelf = "continue"
+    m.top.savedState = [{id: 1, uuid: "episode-1", kind: "episode", title: "Completed", seriesId: "42", watched: true, touch: 3, authorization: "current"}]
+    m.seriesPage = true
+    loadShelf()
+    if not m.top.result.ok or m.top.result.items.count() <> 1 then stop
+    if m.top.result.items[0].uuid <> "episode-2" or m.top.result.items[0].nextUp <> true then stop
+    if m.calls > 6 then stop
+
+    resetShelfTest()
+    m.top.shelf = "continue"
+    m.top.savedState = [{id: 1, uuid: "episode-1", kind: "episode", title: "Completed", seriesId: "42", watched: true, touch: 3, authorization: "current"}]
+    m.seriesPage = true
+    m.denyEpisode = true
+    loadShelf()
+    if m.top.result.items.count() <> 0 then stop
+
+    resetShelfTest()
+    m.top.shelf = "continue"
+    m.top.savedState = [{id: 1, uuid: "episode-1", kind: "episode", title: "Completed", seriesId: "42", watched: true, touch: 3, authorization: "current"}, {id: 2, uuid: "episode-2", kind: "episode", title: "Old resume", seriesId: "42", position: 100, duration: 1000, touch: 2, authorization: "current"}]
+    m.seriesPage = true
+    loadShelf()
+    if m.top.result.items.count() <> 1 or m.top.result.items[0].uuid <> "episode-2" then stop
+    if m.top.result.items[0].nextUp <> true or m.top.result.items[0].savedPosition <> 100 then stop
     print "ALL TESTS PASSED"
 end sub
 
@@ -68,6 +93,8 @@ sub resetShelfTest()
     m.status = 200
     m.user = {id: 1, user_level: 10, custom_properties: {}}
     m.raw = {id: 1, uuid: "movie-uuid", name: "Fresh title", year: 1999}
+    m.seriesPage = false
+    m.denyEpisode = false
     m.top = {baseUrl: "https://dispatch.test", apiKey: "server-secret", accountId: "1", shelf: "watchlist", cancelRequested: false}
     m.top.savedState = [{id: "1", uuid: "movie-uuid", kind: "movie", title: "Old title", watchlist: true, position: 100, duration: 1000, authorization: "current"}]
 end sub
@@ -76,6 +103,14 @@ function requestJson(url as string) as dynamic
     m.calls++
     if m.key <> "server-secret" then stop
     if instr(1, url, "/users/me/") > 0 then return m.user
+    if m.seriesPage and instr(1, url, "/api/vod/episodes/") > 0
+        if instr(1, url, "?page_size=20") > 0
+            return {count: 2, results: [{id: 1, uuid: "episode-1", name: "First", series: {id: 42, name: "Series"}, season_number: 0, episode_number: 1}, {id: 2, uuid: "episode-2", name: "Second", series: {id: 42, name: "Series"}, season_number: 0, episode_number: 2}], next: invalid}
+        end if
+        if m.denyEpisode then m.httpFailure = {status: 403} : return invalid
+        if instr(1, url, "/2/") > 0 then return {id: 2, uuid: "episode-2", name: "Second", series: {id: 42, name: "Series"}, season_number: 0, episode_number: 2}
+        return {id: 1, uuid: "episode-1", name: "First", series: {id: 42, name: "Series"}, season_number: 0, episode_number: 1}
+    end if
     m.httpFailure = {status: m.status}
     if m.status <> 200 then return invalid
     return m.raw

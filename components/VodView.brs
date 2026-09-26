@@ -16,6 +16,9 @@ sub init()
     m.seriesId = ""
     m.ordering = "name"
     m.shelf = "catalog"
+    m.targetDetailKind = ""
+    m.pendingSeriesTarget = invalid
+    m.pendingShelfNext = invalid
     m.failure = ""
     m.bypassCache = false
     background = uiRect(m.top, 0, 0, 1920, 1080, "0x0A1628FF")
@@ -92,6 +95,9 @@ sub configureVod()
     m.versionReturn = invalid
     m.relationId = ""
     m.versionFor = ""
+    m.targetDetailKind = ""
+    m.pendingSeriesTarget = invalid
+    m.pendingShelfNext = invalid
     m.shelf = "catalog"
     if textValue(m.top.config.providerType) = "xtream" then m.shelf = "categories"
     m.failure = ""
@@ -203,6 +209,7 @@ sub loadVodPage(itemId = "" as string)
     m.task.providerId = m.providerId
     m.task.seriesId = m.seriesId
     m.task.itemId = itemId
+    if m.targetDetailKind <> "" and itemId <> "" then m.task.kind = m.targetDetailKind
     m.task.relationId = m.relationId
     m.task.ordering = m.ordering
     m.task.cacheEpoch = m.global.cacheEpoch
@@ -224,11 +231,37 @@ sub onVodLoaded(event as object)
     if not isCurrentTaskEvent(event, m.task) then return
     result = event.getData()
     shelfResult = m.task.subtype() = "VodShelfTask"
+    targetResult = not shelfResult and m.task.operation = "seriesTarget"
     detail = false
     if not shelfResult then detail = m.task.itemId <> "" and m.task.operation <> "versions"
     m.task.unobserveField("result")
     m.task = invalid
+    if targetResult
+        if not result.ok
+            m.pendingSeriesTarget = invalid
+            m.failure = result.message
+            drawVod()
+            return
+        end if
+        selection = result.target
+        if selection.status = "browse" or selection.status = "end"
+            m.pendingSeriesTarget = invalid
+            if selection.status = "end" then m.failure = "No next unwatched episode was confirmed. Browse episodes for this series."
+            if selection.status = "browse" then m.failure = "The episode list is incomplete. Browse episodes to choose explicitly."
+            drawVod()
+            return
+        end if
+        if m.pendingSeriesTarget = invalid then return
+        m.pendingSeriesTarget.key = selection.item.key
+        m.pendingSeriesTarget.action = selection.status
+        m.targetDetailKind = "episode"
+        loadVodPage(selection.item.id)
+        return
+    end if
     if not result.ok
+        if m.targetDetailKind <> "" then m.pendingSeriesTarget = invalid
+        m.pendingShelfNext = invalid
+        m.targetDetailKind = ""
         if result.relogin = true and textValue(m.top.config.providerType) = "xtream"
             m.top.authRejected = true
             return
@@ -253,10 +286,25 @@ sub onVodLoaded(event as object)
         m.total = m.items.count()
         m.hasNext = false
         if m.index >= m.items.count() then m.index = 0
+        if result.partial = true then m.failure = "Some completed series need explicit episode selection in TV Shows."
         drawVod()
         return
     end if
     if detail
+        if m.pendingSeriesTarget <> invalid or m.pendingShelfNext <> invalid
+            expected = m.pendingSeriesTarget
+            if expected = invalid then expected = m.pendingShelfNext
+            validTarget = result.item <> invalid
+            if validTarget then validTarget = result.item.kind = "episode" and result.item.seriesId = expected.seriesId and result.item.key = expected.key
+            if not validTarget
+                m.targetDetailKind = ""
+                m.pendingSeriesTarget = invalid
+                m.pendingShelfNext = invalid
+                m.failure = "The next episode could not be verified. Browse episodes to choose explicitly."
+                drawVod()
+                return
+            end if
+        end if
         m.detail = result.item
         dismissVodDialog()
         dialog = CreateObject("roSGNode", "VodDetails")
@@ -269,6 +317,19 @@ sub onVodLoaded(event as object)
         m.tmdbNotice = ""
         entry = vodStateEntry(m.top.savedState, m.detail)
         menu = vodDetailMenu(m.detail, entry)
+        if m.pendingSeriesTarget <> invalid and (menu.actions[0] = "play" or menu.actions[0] = "resume")
+            verb = "Play"
+            if m.pendingSeriesTarget.action = "resume" then verb = "Resume"
+            menu.buttons[0] = verb + " S" + m.detail.season + " E" + m.detail.episode
+        end if
+        if m.pendingShelfNext <> invalid and menu.actions[0] = "play" then menu.buttons[0] = "Play next S" + m.detail.season + " E" + m.detail.episode
+        m.targetDetailKind = ""
+        m.pendingSeriesTarget = invalid
+        m.pendingShelfNext = invalid
+        if m.detail.kind = "series" and textValue(m.top.config.providerType) <> "xtream"
+            menu.actions.unshift("seriesTarget")
+            menu.buttons.unshift("Play / resume next episode")
+        end if
         if textValue(m.top.config.providerType) = "xtream"
             directMenu = {actions: [], buttons: []}
             for i = 0 to menu.actions.count() - 1
@@ -454,6 +515,23 @@ sub onVodDetailAction(event as object)
     action = m.detailActions[choice]
     dismissVodDialog()
     if action = "back" then return
+    if action = "seriesTarget"
+        if m.detail.kind <> "series" or textValue(m.top.config.providerType) = "xtream" then return
+        cancelVod()
+        m.pendingSeriesTarget = {seriesId: m.detail.id, key: "", action: ""}
+        m.task = CreateObject("roSGNode", "VodTask")
+        m.task.baseUrl = m.top.config.baseUrl
+        m.task.apiKey = m.top.config.apiKey
+        m.task.accountId = m.top.config.accountId
+        m.task.kind = "series"
+        m.task.operation = "seriesTarget"
+        m.task.seriesId = m.detail.id
+        m.task.savedState = m.top.savedState
+        m.task.observeField("result", "onVodLoaded")
+        m.task.control = "RUN"
+        m.status.text = "Checking episodes... Back cancels."
+        return
+    end if
     if action = "people" or action = "related"
         enterDiscovery(action, m.detail)
         return
@@ -874,7 +952,11 @@ function onKeyEvent(key as string, press as boolean) as boolean
             m.index = 0
             loadVodPage()
         else
-            if m.shelf <> "catalog" then m.kind = m.items[m.index].kind
+            if m.shelf <> "catalog"
+                m.targetDetailKind = m.items[m.index].kind
+                m.pendingShelfNext = invalid
+                if m.items[m.index].nextUp = true then m.pendingShelfNext = {key: m.items[m.index].key, seriesId: m.items[m.index].seriesId}
+            end if
             loadVodPage(m.items[m.index].id)
         end if
     else

@@ -37,6 +37,12 @@ sub main()
     if vodStateUpdate(state, overflow, {watchlist: true}) = invalid then stop
     legacy = vodState([{id: 55, uuid: "legacy", kind: "movie", title: "Legacy", watchlist: true, hidden: true}])
     if not legacy[0].watchlist or not legacy[0].hidden then stop
+    first = vodNormalize({id: 501, uuid: "chronology-first", name: "First"}, "episode")
+    second = vodNormalize({id: 502, uuid: "chronology-second", name: "Second"}, "episode")
+    chronology = vodStateUpdate([], first, {watched: true})
+    chronology = vodStateUpdate(chronology, second, {position: 200, duration: 1000})
+    if vodStateEntry(chronology, second).touch <= vodStateEntry(chronology, first).touch then stop
+    if vodState(chronology)[0].key <> first.key then stop ' storage groups pinned choices, not chronology
     legacy = []
     for i = 1 to 20
         legacy.push({id: i, uuid: "old-" + i.toStr(), kind: "movie", title: "Old", watchlist: true})

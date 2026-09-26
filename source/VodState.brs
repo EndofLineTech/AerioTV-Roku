@@ -15,6 +15,9 @@ function vodState(raw as dynamic) as object
                     if mediaNumber(row.duration) then item.duration = int(row.duration)
                     if item.position < 0 or item.position > 864000 then item.position = 0
                     if item.duration < 0 or item.duration > 864000 then item.duration = 0
+                    touch = 0
+                    if mediaNumber(row.touch) then touch = int(row.touch)
+                    if touch < 0 or touch > 999999999 then touch = 0
                     item.watchlist = row.watchlist = true
                     item.hidden = row.hidden = true
                     item.watched = row.watched = true
@@ -22,7 +25,7 @@ function vodState(raw as dynamic) as object
                     if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(relation) then relation = ""
                     availability = textValue(row.availability)
                     if availability <> "missing" and availability <> "denied" and availability <> "available" then availability = "unknown"
-                    entry = {id: item.id, uuid: item.uuid, key: item.key, kind: item.kind, title: left(item.title, 120), position: item.position, duration: item.duration, watchlist: item.watchlist, hidden: item.hidden, watched: item.watched, seriesId: left(textValue(row.seriesId), 20), seriesTitle: left(textValue(row.seriesTitle), 120), authorization: left(textValue(row.authorization), 64), relationId: relation, availability: availability}
+                    entry = {id: item.id, uuid: item.uuid, key: item.key, kind: item.kind, title: left(item.title, 120), position: item.position, duration: item.duration, touch: touch, watchlist: item.watchlist, hidden: item.hidden, watched: item.watched, seriesId: left(textValue(row.seriesId), 20), seriesTitle: left(textValue(row.seriesTitle), 120), authorization: left(textValue(row.authorization), 64), relationId: relation, availability: availability}
                     seen[item.key] = true
                     if vodStatePinned(entry)
                         if curated.count() < 40 then curated.push(entry)
@@ -52,7 +55,7 @@ function vodStateEntry(raw as dynamic, item as object) as object
             return entry
         end if
     end for
-    return {id: item.id, uuid: item.uuid, key: item.key, kind: item.kind, title: left(item.title, 120), position: 0, duration: 0, watchlist: false, hidden: false, watched: false, seriesId: textValue(item.seriesId), authorization: textValue(item.authorization)}
+    return {id: item.id, uuid: item.uuid, key: item.key, kind: item.kind, title: left(item.title, 120), position: 0, duration: 0, touch: 0, watchlist: false, hidden: false, watched: false, seriesId: textValue(item.seriesId), authorization: textValue(item.authorization)}
 end function
 
 function vodItemHidden(raw as dynamic, item as object) as boolean
@@ -111,6 +114,12 @@ function vodStateUpdate(raw as dynamic, item as object, patch as object) as obje
     prior = vodState(raw)
     entry = vodStateEntry(prior, item)
     wasPinned = vodStatePinned(entry)
+    newest = 0
+    for each saved in prior
+        if saved.touch > newest then newest = saved.touch
+    end for
+    if newest >= 999999999 then newest = 0
+    entry.touch = newest + 1
     for each key in ["position", "duration", "watchlist", "hidden", "watched", "relationId"]
         if patch.doesExist(key) then entry[key] = patch[key]
     end for

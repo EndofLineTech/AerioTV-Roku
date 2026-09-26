@@ -19,6 +19,21 @@ sub main()
     m.top.cancelRequested = true
     result = vodHydrateEpisodes("42", "https://host.test/episodes", "")
     if result.ok or m.requests <> 0 then stop
+
+    resetSeriesTest()
+    m.pageTotal = 2
+    result = vodLoadSeriesEpisodes("42", "")
+    if not result.ok or not result.complete or result.items.count() <> 40 then stop
+    if result.items[0].season <> "0" or result.items[0].seriesId <> "42" then stop
+    resetSeriesTest()
+    m.pageTotal = 6
+    result = vodLoadSeriesEpisodes("42", "")
+    if not result.ok or result.complete or result.items.count() <> 80 then stop
+    resetSeriesTest()
+    if vodLoadSeriesEpisodes("../bad", "").ok or m.requests <> 0 then stop
+    resetSeriesTest()
+    m.top.cancelRequested = true
+    if vodLoadSeriesEpisodes("42", "").ok or m.requests <> 0 then stop
     print "ALL TESTS PASSED"
 end sub
 
@@ -30,10 +45,28 @@ sub resetSeriesTest()
     m.loaded = false
     m.requests = 0
     m.hydrations = []
+    m.clock = CreateObject("roTimespan")
+    m.clock.mark()
+    m.pageTotal = 0
 end sub
 
 function requestJson(url)
     m.requests++
+    if instr(1, url, "/api/vod/episodes/") > 0 and m.pageTotal > 0
+        page = 1
+        for i = 2 to 6
+            if instr(1, url, "page=" + i.toStr()) > 0 then page = i
+        end for
+        if page > m.pageTotal then return invalid
+        rows = []
+        for i = 1 to 20
+            id = (page - 1) * 20 + i
+            rows.push({id: id, uuid: "episode-" + id.toStr(), name: "Episode", series: {id: 42, name: "Series"}, season_number: 0, episode_number: id})
+        end for
+        nextUrl = invalid
+        if page < m.pageTotal then nextUrl = "https://host.test/api/vod/episodes/?page=" + (page + 1).toStr()
+        return {count: m.pageTotal * 20, results: rows, next: nextUrl}
+    end if
     if instr(1, url, "/providers/") > 0
         return [{id: 1, m3u_account: {id: 6}}, {id: 2, m3u_account: {id: 6}}, {id: 3, m3u_account: {id: 19}}, {id: 4, m3u_account: {id: 22}}]
     end if
