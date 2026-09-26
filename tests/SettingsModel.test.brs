@@ -12,6 +12,9 @@ sub main()
     if settingsHubChangeAllowed(model, "device", "archiveSkipSeconds", 15) then stop
     if settingsHubChangeAllowed(model, "device", "apiKey", "private") then stop
     if settingsHubChangeAllowed(model, "guide", "historyDays", 365) then stop
+    live = settingsHubEntries("live", model)
+    if live[7].key <> "showSubtitles" or live[7].values[0] <> true or live[7].values[1] <> false then stop
+    if instr(1, live[7].title, "Preview") = 0 then stop
     remote = settingsHubEntries("remote", model)
     if remote.count() <> 3 or remote[0].page <> "remotePlayer" then stop
     remotePlayer = settingsHubEntries("remotePlayer", model)

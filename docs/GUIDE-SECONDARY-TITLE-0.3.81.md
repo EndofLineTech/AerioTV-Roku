@@ -41,9 +41,27 @@ Up/Down focus keeps the selected channel visible as the six-row window scrolls.
 - A six-second resource sample of the earlier compact candidate peaked at
   92,553,216 process bytes. Subsequent Roku graphics counters were also high
   under the previous release ZIP (~87 MB single-instance texture), so they
-  cannot isolate this UI change's graphics cost. No provider/server write or
-  display setting was made. The verified v0.3.81 release ZIP was reinstalled
-  and its authorized guide launched after the check.
+  cannot isolate this UI change's graphics cost. The initial 31z check made no
+  provider/server write or display-setting change. The verified v0.3.81 release
+  ZIP was reinstalled and its authorized guide launched after the check.
 
-Rollback: reinstall the previous v0.3.81 ZIP. No persisted guide schema or
-account setting was changed by the subtitle display work.
+## Default and compact option — AerioTV-Roku-80l
+
+The account-local setting **Settings → Live TV → Program subtitles / taller
+Preview** defaults to **On**. On keeps six 112-pixel Preview rows with source
+subtitles. Off hides the secondary line and restores the original seven
+96-pixel Preview rows, using the same 672-pixel viewport. Basic density stays
+at ten rows regardless of this choice. No additional setting or registry
+schema was introduced.
+
+The changed build showed the On setting and six-row matchup view on the target
+Roku. Selecting Off through the TV settings rendered seven compact rows without
+the matchup and retained Off after Home/relaunch. Selecting On restored six
+rows and the matchup. The original On setting was restored before the verified
+release ZIP was reinstalled. Private device captures remain ignored under
+`out/guide-subtitle-*.jpg`; model and Settings Hub tests exercise the defaults,
+saved setting and both geometry branches. No provider/server configuration was
+changed.
+
+Rollback: reinstall the previous v0.3.81 ZIP. There is no guide-schema
+migration; the account's original On selection was restored after verification.

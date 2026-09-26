@@ -8,7 +8,7 @@ function settingsHubEntries(page as string, model as object) as object
         {title: "Show channel logos", scope: "guide", key: "showLogos", values: [true, false]}
         {title: "Show channel numbers", scope: "guide", key: "showNumbers", values: [true, false]}
         {title: "Show channel names", scope: "guide", key: "showNames", values: [true, false]}
-        {title: "Show program subtitles", scope: "guide", key: "showSubtitles", values: [true, false]}
+        {title: "Program subtitles / taller Preview", scope: "guide", key: "showSubtitles", values: [true, false]}
     ]
     if page = "player"
         entries = []

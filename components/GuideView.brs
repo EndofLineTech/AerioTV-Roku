@@ -436,7 +436,7 @@ end function
 
 sub drawGuide()
     if not m.ready then return
-    geometry = guidePresentationGeometry(m.settings.guideDensity)
+    geometry = guidePresentationGeometry(m.settings.guideDensity, m.settings.showSubtitles)
     m.rowCount = geometry.rowCount
     gridX = 96
     if m.settings.groupLayout = "sidebar" then gridX = 400
@@ -583,7 +583,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
         cells = [{startsAt: m.viewStart, endsAt: m.viewStart + m.span, program: invalid}]
         m.message = "This schedule is too dense to display. Live tuning is available."
     end if
-    geometry = guidePresentationGeometry(m.settings.guideDensity)
+    geometry = guidePresentationGeometry(m.settings.guideDensity, m.settings.showSubtitles)
     while row.tiles.count() < cells.count()
         root = row.root.createChild("Group")
         border = uiRect(root, 0, 0, 100, 95, "0x17344AFF")

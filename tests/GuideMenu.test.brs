@@ -27,6 +27,10 @@ sub main()
         if applyHubGuideSetting(change.key, change.value) = invalid then stop
         assertEqual(m.saved[lcase(change.key)], change.value, "new Live TV setting applies and saves")
     end for
+    applyHubGuideSetting("guideDensity", "preview")
+    assertEqual(guidePresentationGeometry(m.saved.guideDensity, m.saved.showSubtitles).rowCount, 7, "saved Off restores compact Preview")
+    applyHubGuideSetting("showSubtitles", true)
+    assertEqual(guidePresentationGeometry(m.saved.guideDensity, m.saved.showSubtitles).rowCount, 6, "saved On restores subtitle-rich Preview")
     print "ALL TESTS PASSED"
 end sub
 
