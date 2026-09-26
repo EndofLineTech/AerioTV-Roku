@@ -234,6 +234,46 @@ sub main()
     end function})
     assertEqual(m.recordTask.control, "RUN", "failed lineup refresh keeps recording Task owned")
     assertEqual(m.recordDialog.title, "existing picker", "failed lineup refresh does not orphan dialog")
+    m.preferenceStore = defaultPreferenceStore()
+    m.accountPreferences = normalizeAccountPreferences(invalid)
+    m.vod = {savedState: []}
+    m.registry = {data: "", failWrite: false, failFlush: false
+        read: function(key as string) as string
+            return m.data
+        end function
+        write: function(key as string, value as string) as boolean
+            if m.failWrite then return false
+            m.data = value
+            return true
+        end function
+        flush: function() as boolean
+            return not m.failFlush
+        end function
+    }
+    savedItem = vodNormalize({id: 301, uuid: "saved-item", name: "Saved"}, "movie")
+    saveVodChange(savedItem, {watchlist: true})
+    assertEqual(m.vod.savedState[0].watchlist, true, "scene saves explicit choice")
+    replacement = vodNormalize({id: 302, uuid: "next-item", name: "Next"}, "movie")
+    m.registry.failWrite = true
+    saveVodChange(replacement, {hidden: true})
+    assertEqual(m.vod.savedState.count(), 1, "failed save restores shelf")
+    assertEqual(m.accountPreferences.vod.count(), 1, "failed save restores account state")
+    assertEqual(m.preferenceStore.accounts[preferenceScope(m.accountIdentity)].vod.count(), 1, "failed save restores preference store")
+    assertEqual(vodStateEntry(loadPreferenceStore(m.registry).accounts[preferenceScope(m.accountIdentity)].vod, savedItem).watchlist, true, "failed save preserves registry")
+    m.registry.failWrite = false
+    m.registry.failFlush = true
+    saveVodChange(replacement, {hidden: true})
+    assertEqual(m.vod.savedState.count(), 1, "failed flush restores shelf")
+    assertEqual(m.preferenceStore.accounts[preferenceScope(m.accountIdentity)].vod.count(), 1, "failed flush restores preference store")
+    m.registry.failFlush = false
+    for i = 2 to 40
+        item = vodNormalize({id: 400 + i, uuid: "pin-" + i.toStr(), name: "Pinned"}, "movie")
+        saveVodChange(item, {hidden: true})
+    end for
+    assertEqual(m.vod.savedState.count(), 40, "scene retains all explicit choices")
+    saveVodChange(replacement, {watchlist: true})
+    assertEqual(m.vod.savedState.count(), 40, "full shelf cannot evict older choice")
+    assertEqual(m.noticeText.text.instr(0, "Saved titles are full") >= 0, true, "visible capacity notice")
     print "ALL TESTS PASSED"
 end sub
 

@@ -100,6 +100,38 @@ sub main()
     assertEqual(savePreferenceStore(registry, store), true, "valid save")
     assertEqual(loadPreferenceStore(registry).accounts[preferenceScope("url|A")].recent.count(), 2, "reload history")
     assertEqual(savePreferenceStore(registry, normalizePreferenceStore({schema: 2})), false, "future schema write refused")
+    curatedStore = defaultPreferenceStore()
+    curated = vodNormalize({id: 301, uuid: "saved", name: "Saved"}, "movie")
+    curated.authorization = "A"
+    entries = vodStateUpdate([], curated, {watchlist: true, hidden: true})
+    for i = 1 to 30
+        episode = vodNormalize({id: i, uuid: "ep-" + i.toStr(), name: "Episode"}, "episode")
+        entries = vodStateUpdate(entries, episode, {position: 100, duration: 1000})
+    end for
+    curatedStore.accounts[preferenceScope("url|A")] = {vod: entries}
+    other = vodNormalize({id: 302, uuid: "other", name: "Other"}, "movie")
+    other.authorization = "B"
+    curatedStore.accounts[preferenceScope("url|B")] = {vod: vodStateUpdate([], other, {watchlist: true})}
+    assertEqual(savePreferenceStore(registry, curatedStore), true, "bounded curation saved to account registry")
+    restored = loadPreferenceStore(registry)
+    assertEqual(restored.accounts[preferenceScope("url|A")].vod.count(), 21, "curation and recent progress reload")
+    assertEqual(vodStateEntry(restored.accounts[preferenceScope("url|A")].vod, curated).hidden, true, "older explicit choice survives relaunch")
+    assertEqual(vodShelfEntries(restored.accounts[preferenceScope("url|A")].vod, "hidden", {movies: "allowed", series: "allowed", authorization: "A"}).count(), 1, "saved choice appears after relaunch")
+    assertEqual(vodShelfEntries(restored.accounts[preferenceScope("url|B")].vod, "watchlist", {movies: "allowed", series: "allowed", authorization: "A"}).count(), 0, "another account cannot see this shelf")
+    assertEqual(vodShelfEntries(restored.accounts[preferenceScope("url|B")].vod, "watchlist", {movies: "allowed", series: "allowed", authorization: "B"}).count(), 1, "second account sees its own shelf")
+    assertEqual(vodStateEntry(restored.accounts[preferenceScope("url|B")].vod, curated).watchlist, false, "account choices isolated")
+    replacement = vodNormalize({id: 303, uuid: "replace", name: "Replace"}, "movie")
+    curatedStore.accounts[preferenceScope("url|A")].vod = vodStateUpdate(entries, replacement, {hidden: true})
+    registry.failWrite = true
+    assertEqual(savePreferenceStore(registry, curatedStore), false, "new curation write failure reported")
+    registry.failWrite = false
+    assertEqual(vodStateEntry(loadPreferenceStore(registry).accounts[preferenceScope("url|A")].vod, replacement).hidden, false, "failed write leaves prior choices")
+    registry.failFlush = true
+    assertEqual(savePreferenceStore(registry, curatedStore), false, "new curation flush failure reported")
+    registry.failFlush = false
+    assertEqual(vodStateEntry(loadPreferenceStore(registry).accounts[preferenceScope("url|A")].vod, replacement).hidden, false, "failed flush restores prior choices")
+    assertEqual(savePreferenceStore(registry, curatedStore, 10), false, "curation quota failure reported")
+    assertEqual(vodStateEntry(loadPreferenceStore(registry).accounts[preferenceScope("url|A")].vod, curated).watchlist, true, "quota failure leaves prior choices")
     policy = {
         values: {}, failFlush: false
         read: function(key as string) as string

@@ -1,7 +1,8 @@
 ' Compact device-local state, nested under the existing account preference scope.
 function vodState(raw as dynamic) as object
-    result = []
-    if type(raw) <> "roArray" then return result
+    curated = []
+    recent = []
+    if type(raw) <> "roArray" then return curated
     seen = {}
     for each row in raw
         if type(row) = "roAssociativeArray"
@@ -21,14 +22,26 @@ function vodState(raw as dynamic) as object
                     if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(relation) then relation = ""
                     availability = textValue(row.availability)
                     if availability <> "missing" and availability <> "denied" and availability <> "available" then availability = "unknown"
-                    result.push({id: item.id, uuid: item.uuid, key: item.key, kind: item.kind, title: left(item.title, 120), position: item.position, duration: item.duration, watchlist: item.watchlist, hidden: item.hidden, watched: item.watched, seriesId: left(textValue(row.seriesId), 20), seriesTitle: left(textValue(row.seriesTitle), 120), authorization: left(textValue(row.authorization), 64), relationId: relation, availability: availability})
+                    entry = {id: item.id, uuid: item.uuid, key: item.key, kind: item.kind, title: left(item.title, 120), position: item.position, duration: item.duration, watchlist: item.watchlist, hidden: item.hidden, watched: item.watched, seriesId: left(textValue(row.seriesId), 20), seriesTitle: left(textValue(row.seriesTitle), 120), authorization: left(textValue(row.authorization), 64), relationId: relation, availability: availability}
                     seen[item.key] = true
-                    if result.count() >= 20 then exit for
+                    if vodStatePinned(entry)
+                        if curated.count() < 40 then curated.push(entry)
+                    else
+                        if recent.count() < 20 then recent.push(entry)
+                    end if
+                    if curated.count() >= 40 and recent.count() >= 20 then exit for
                 end if
             end if
         end if
     end for
-    return result
+    for each entry in recent
+        curated.push(entry)
+    end for
+    return curated
+end function
+
+function vodStatePinned(entry as object) as boolean
+    return entry.watchlist or entry.hidden or entry.watched
 end function
 
 function vodStateEntry(raw as dynamic, item as object) as object
@@ -95,13 +108,23 @@ function vodApplyAvailability(raw as dynamic, patches as dynamic) as object
 end function
 
 function vodStateUpdate(raw as dynamic, item as object, patch as object) as object
-    entry = vodStateEntry(raw, item)
+    prior = vodState(raw)
+    entry = vodStateEntry(prior, item)
+    wasPinned = vodStatePinned(entry)
     for each key in ["position", "duration", "watchlist", "hidden", "watched", "relationId"]
         if patch.doesExist(key) then entry[key] = patch[key]
     end for
+    if vodStatePinned(entry) and not wasPinned
+        pins = 0
+        for each saved in prior
+            if vodStatePinned(saved) then pins++
+        end for
+        ' A new explicit choice must never evict an older one at capacity.
+        if pins >= 40 then return invalid
+    end if
     result = [entry]
-    for each prior in vodState(raw)
-        if prior.key <> entry.key then result.push(prior)
+    for each saved in prior
+        if saved.key <> entry.key then result.push(saved)
     end for
     return vodState(result)
 end function

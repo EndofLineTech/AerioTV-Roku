@@ -467,7 +467,8 @@ sub onVodDetailAction(event as object)
         m.relationId = ""
         m.versionFor = m.detail.id
         m.top.stateChange = {scope: m.detail.accountScope, item: m.detail, patch: {relationId: ""}}
-        m.top.savedState = vodStateUpdate(m.top.savedState, m.detail, {relationId: ""})
+        updated = vodStateUpdate(m.top.savedState, m.detail, {relationId: ""})
+        if updated <> invalid then m.top.savedState = updated
         loadVodPage(m.detail.id)
         return
     end if
@@ -501,7 +502,8 @@ sub onVodDetailAction(event as object)
         patch[action] = not entry[action]
         if action = "watched" then patch.position = 0
         m.top.stateChange = {scope: m.detail.accountScope, item: m.detail, patch: patch}
-        m.top.savedState = vodStateUpdate(m.top.savedState, m.detail, patch)
+        updated = vodStateUpdate(m.top.savedState, m.detail, patch)
+        if updated <> invalid then m.top.savedState = updated
         if action = "hidden" or m.shelf <> "catalog" then loadVodPage()
         return
     end if

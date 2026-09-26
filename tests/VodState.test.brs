@@ -9,12 +9,43 @@ sub main()
     if vodResumePosition(state[0], 1000) <> 0 then stop
     state = vodStateUpdate(state, item, {watched: false, position: 0})
     if not state[0].watchlist or state[0].position <> 0 then stop
+    state = []
     for i = 1 to 30
         item = vodNormalize({id: i, uuid: "title-" + i.toStr(), name: "Title"}, "movie")
         state = vodStateUpdate(state, item, {position: 100})
     end for
     if state.count() <> 20 then stop
     if state[0].uuid <> "title-30" then stop
+    curated = vodNormalize({id: 901, uuid: "saved-movie", name: "Saved movie"}, "movie")
+    state = vodStateUpdate(state, curated, {watchlist: true, hidden: true})
+    for i = 31 to 70
+        episode = vodNormalize({id: i, uuid: "episode-" + i.toStr(), name: "Episode"}, "episode")
+        state = vodStateUpdate(state, episode, {position: 100, duration: 1000})
+    end for
+    if state.count() <> 21 or not vodStateEntry(state, curated).watchlist or not vodStateEntry(state, curated).hidden then stop
+    if state[1].uuid <> "episode-70" then stop
+    for i = 1 to 39
+        pin = vodNormalize({id: 1000 + i, uuid: "pin-" + i.toStr(), name: "Pinned"}, "episode")
+        state = vodStateUpdate(state, pin, {watched: true})
+    end for
+    if state.count() <> 60 or not vodStateEntry(state, curated).hidden then stop
+    overflow = vodNormalize({id: 2000, uuid: "overflow", name: "Overflow"}, "movie")
+    if vodStateUpdate(state, overflow, {watchlist: true}) <> invalid then stop
+    if vodStateEntry(state, curated).watchlist <> true then stop
+    ' Removing an explicit choice makes space again without evicting another.
+    state = vodStateUpdate(state, curated, {watchlist: false, hidden: false})
+    if vodStateUpdate(state, overflow, {watchlist: true}) = invalid then stop
+    legacy = vodState([{id: 55, uuid: "legacy", kind: "movie", title: "Legacy", watchlist: true, hidden: true}])
+    if not legacy[0].watchlist or not legacy[0].hidden then stop
+    legacy = []
+    for i = 1 to 20
+        legacy.push({id: i, uuid: "old-" + i.toStr(), kind: "movie", title: "Old", watchlist: true})
+    end for
+    for i = 1 to 30
+        episode = vodNormalize({id: i, uuid: "new-" + i.toStr(), name: "Episode"}, "episode")
+        legacy = vodStateUpdate(legacy, episode, {position: 100})
+    end for
+    if legacy.count() <> 40 or not vodStateEntry(legacy, vodNormalize({id: 20, uuid: "old-20", name: "Old"}, "movie")).watchlist then stop
     if vodState([{id: "../bad", uuid: "bad", kind: "movie"}]).count() <> 0 then stop
     item.authorization = "current"
     state = vodStateUpdate([], item, {position: 100, duration: 1000})

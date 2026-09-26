@@ -539,22 +539,30 @@ sub onVodStateChange(event as object)
         return
     end if
     if textValue(change.removeKey) <> ""
+        before = m.accountPreferences.vod
         kept = []
-        for each entry in vodState(m.accountPreferences.vod)
+        for each entry in vodState(before)
             if entry.key <> change.removeKey then kept.push(entry)
         end for
         m.accountPreferences.vod = kept
-        persistAccountPreferences()
-        m.vod.savedState = kept
+        if not persistAccountPreferences()
+            m.accountPreferences.vod = before
+            m.preferenceStore.accounts[preferenceScope(m.accountIdentity)] = m.accountPreferences
+        end if
+        m.vod.savedState = vodState(m.accountPreferences.vod)
         return
     end if
     if change.clearHidden = true
-        m.accountPreferences.vod = vodState(m.accountPreferences.vod)
+        before = m.accountPreferences.vod
+        m.accountPreferences.vod = vodState(before)
         for each entry in m.accountPreferences.vod
             entry.hidden = false
         end for
-        persistAccountPreferences()
-        m.vod.savedState = m.accountPreferences.vod
+        if not persistAccountPreferences()
+            m.accountPreferences.vod = before
+            m.preferenceStore.accounts[preferenceScope(m.accountIdentity)] = m.accountPreferences
+        end if
+        m.vod.savedState = vodState(m.accountPreferences.vod)
         return
     end if
     saveVodChange(change.item, change.patch)
@@ -562,7 +570,13 @@ end sub
 
 sub saveVodChange(item as object, patch as object)
     before = m.accountPreferences.vod
-    m.accountPreferences.vod = vodStateUpdate(before, item, patch)
+    updated = vodStateUpdate(before, item, patch)
+    if updated = invalid
+        showNotice("Saved titles are full (40). Remove a Watchlist, Hidden or Watched choice before adding another.")
+        m.vod.savedState = vodState(before)
+        return
+    end if
+    m.accountPreferences.vod = updated
     if not persistAccountPreferences()
         m.accountPreferences.vod = before
         m.preferenceStore.accounts[preferenceScope(m.accountIdentity)] = m.accountPreferences
