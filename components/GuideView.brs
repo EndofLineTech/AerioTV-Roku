@@ -45,7 +45,7 @@ sub init()
     m.picker = invalid
     m.ready = false
     m.span = 8928 ' 1488 pixels at upstream's 600 pixels/hour.
-    m.rowCount = 7
+    m.rowCount = 6
 end sub
 
 sub configure()
@@ -143,6 +143,8 @@ sub buildCanvas()
     m.liveUnderline = uiRect(m.canvas, 580, 129, 112, 3, "0x1AC4D8FF")
     m.heading = uiLabel(m.canvas, "", 1000, 82, 820, 38, 25, "0x9EB5C9FF")
     m.title = uiLabel(m.canvas, "", 96, 150, 1728, 50, 34)
+    m.subtitle = uiLabel(m.canvas, "", 96, 201, 1728, 28, 24, "0xB6DCE7FF")
+    m.subtitle.visible = false
     m.description = uiLabel(m.canvas, "", 96, 205, 1728, 57, 23, "0x9EB5C9FF")
     m.description.wrap = true
     m.description.maxLines = 2
@@ -152,7 +154,7 @@ sub buildCanvas()
         m.ticks.push(uiLabel(m.canvas, "", 346 + i * 300, 270, 280, 30, 22, "0x9EB5C9FF"))
     end for
     m.rows = []
-    ' Reuse the same nodes for seven Preview rows or ten Basic rows.
+    ' Reuse the same nodes for six Preview rows or ten Basic rows.
     for i = 0 to 9
         root = m.canvas.createChild("Group")
         root.translation = [96, 306 + i * 96]
@@ -478,11 +480,11 @@ sub drawGuide()
                 row.name.height = 32
                 row.name.maxLines = 1
             else
-                row.logo.translation = [12, 33]
+                row.logo.translation = [12, 40]
                 row.logo.width = 58
-                row.logo.height = 52
-                row.name.translation = [80, 34]
-                row.name.height = 56
+                row.logo.height = 58
+                row.name.translation = [80, 40]
+                row.name.height = 62
                 row.name.maxLines = 2
             end if
             channel = m.filtered[index]
@@ -538,12 +540,27 @@ sub drawGuide()
     retention = catchupRetentionLabel(catchupChannelDays(m.top.catchupPermission, m.top.channelFacts, channel.id))
     cell = selectedCell()
     m.title.text = channel.name
+    m.subtitle.text = ""
+    m.subtitle.visible = false
+    m.description.translation = [96, 205]
+    m.description.height = 57
+    m.description.wrap = true
+    m.description.maxLines = 2
     m.description.text = gapText() + "  |  OK to watch live."
     if retention <> "" then m.description.text = retention + " (provider advertised)  |  " + m.description.text
     if cell <> invalid
         if cell.program <> invalid
             program = cell.program
             m.title.text = program.title
+            secondary = guideProgramSecondary(program, m.settings)
+            if secondary <> ""
+                m.subtitle.text = secondary
+                m.subtitle.visible = true
+                m.description.translation = [96, 233]
+                m.description.height = 29
+                m.description.wrap = false
+                m.description.maxLines = 1
+            end if
             m.description.text = channel.name + "  |  " + uiTime(program.startsAt) + " - " + uiTime(program.endsAt) + "  " + program.description
             if retention <> "" then m.description.text = retention + " (provider advertised)  |  " + m.description.text
         end if
@@ -575,7 +592,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
         title.maxLines = 1
         time = uiLabel(root, "", 14, 55, 70, 29, 20, "0x9EB5C9FF")
         time.vertAlign = "center"
-        row.tiles.push({root: root, border: border, fill: fill, title: title, time: time, badges: []})
+        row.tiles.push({root: root, border: border, fill: fill, title: title, subtitle: invalid, time: time, badges: []})
     end while
     for i = 0 to row.tiles.count() - 1
         tile = row.tiles[i]
@@ -588,6 +605,8 @@ sub renderCells(row as object, cells as object, selected as boolean)
             width = (cell.endsAt - cell.startsAt) / 6 - 1
             if width < 1 then width = 1
             tile.root.translation = [240 + (cell.startsAt - m.viewStart) / 6, 0]
+            ' Label and pill nodes must never paint over the adjacent program or row.
+            tile.root.clippingRect = [0, 0, width, geometry.tileHeight]
             tile.border.width = width
             tile.border.height = geometry.tileHeight
             fillWidth = width - 4
@@ -597,6 +616,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
             tile.title.visible = width > 40
             tile.title.translation = [14, geometry.titleY]
             tile.title.height = geometry.titleHeight
+            if tile.subtitle <> invalid then tile.subtitle.visible = false
             tile.time.visible = width > 180
             textWidth = width - 28
             if textWidth < 1 then textWidth = 1
@@ -604,6 +624,8 @@ sub renderCells(row as object, cells as object, selected as boolean)
             tile.time.width = textWidth
             tile.time.translation = [14, geometry.timeY]
             tile.time.height = geometry.timeHeight
+            timeY = geometry.timeY
+            badgeY = geometry.badgeY
             focused = selected and cell.startsAt <= m.anchor and cell.endsAt > m.anchor and not m.primaryNavigation.active and not m.navigator.active and m.picker = invalid and not m.details.active and not m.searchView.active
             inset = 2
             if focused then inset = 4
@@ -625,6 +647,27 @@ sub renderCells(row as object, cells as object, selected as boolean)
                 if not focused then uiSetColor(tile.fill, programTint(cell.program, m.settings))
                 program = cell.program
                 tile.title.text = program.title
+                secondary = guideTileSecondary(program, m.settings, width)
+                if secondary <> ""
+                    secondaryLayout = geometry.withSubtitle
+                    if tile.subtitle = invalid
+                        tile.subtitle = uiLabel(tile.root, "", 14, secondaryLayout.subtitleY, textWidth, secondaryLayout.subtitleHeight, 21, "0x9EB5C9FF")
+                        tile.subtitle.maxLines = 1
+                    end if
+                    tile.title.translation = [14, secondaryLayout.titleY]
+                    tile.title.height = secondaryLayout.titleHeight
+                    tile.subtitle.text = secondary
+                    tile.subtitle.visible = true
+                    tile.subtitle.translation = [14, secondaryLayout.subtitleY]
+                    tile.subtitle.height = secondaryLayout.subtitleHeight
+                    tile.subtitle.width = textWidth
+                    uiSetColor(tile.subtitle, "0x9EB5C9FF")
+                    if focused then uiSetColor(tile.subtitle, "0xE8F3FAFF")
+                    timeY = secondaryLayout.timeY
+                    badgeY = secondaryLayout.badgeY
+                    tile.time.translation = [14, timeY]
+                    tile.time.height = secondaryLayout.timeHeight
+                end if
                 tile.time.text = uiTime(program.startsAt) + " - " + uiTime(program.endsAt)
                 flags = programFlagPills(program, m.settings, textWidth)
                 offset = 0
@@ -640,7 +683,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
                     end if
                     badge = tile.badges[j]
                     badge.root.visible = true
-                    badge.root.translation = [14 + flag.x, geometry.badgeY]
+                    badge.root.translation = [14 + flag.x, badgeY]
                     badge.surface.width = flag.width
                     uiSetColor(badge.surface, flag.color)
                     labelBounds = uiFlagLabelBounds(flag.label, flag.width)
@@ -653,7 +696,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
                 remaining = textWidth - offset
                 tile.time.visible = remaining >= 100
                 if remaining >= 100
-                    tile.time.translation = [14 + offset, geometry.timeY]
+                    tile.time.translation = [14 + offset, timeY]
                     tile.time.width = remaining
                     episode = programEpisodeText(program, m.settings)
                     if episode <> "" and m.settings.showSubtitles then tile.time.text = episode + " | " + tile.time.text
@@ -760,10 +803,12 @@ end function
 sub updateMiniLayout()
     if not m.ready then return
     m.title.width = 1728
+    m.subtitle.width = 1728
     m.description.width = 1728
     m.heading.width = 820
     if m.top.miniActive
         m.title.width = 1180
+        m.subtitle.width = 1180
         m.description.width = 1180
         m.heading.width = 330
     end if
@@ -1276,11 +1321,11 @@ function onKeyEvent(key as string, press as boolean) as boolean
     else if key = "up"
         if m.selected > 0 then m.selected--
         beginGuideHold(key)
-        uiAnnounce(m.filtered[m.selected].name + ", " + textValue(m.filtered[m.selected].number))
+        announceGuidePosition()
     else if key = "down"
         if m.selected < m.filtered.count() - 1 then m.selected++
         beginGuideHold(key)
-        uiAnnounce(m.filtered[m.selected].name + ", " + textValue(m.filtered[m.selected].number))
+        announceGuidePosition()
     else
         return false
     end if

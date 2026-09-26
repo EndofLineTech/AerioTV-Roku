@@ -44,7 +44,7 @@ end function
 
 function guidePresentationGeometry(density as string) as object
     if density = "basic" then return {basic: true, rowHeight: 64, rowCount: 10, tileHeight: 60, titleY: 3, titleHeight: 27, timeY: 32, timeHeight: 24, badgeY: 34}
-    return {basic: false, rowHeight: 96, rowCount: 7, tileHeight: 95, titleY: 14, titleHeight: 37, timeY: 55, timeHeight: 29, badgeY: 57}
+    return {basic: false, rowHeight: 112, rowCount: 6, tileHeight: 111, titleY: 14, titleHeight: 37, timeY: 74, timeHeight: 25, badgeY: 75, withSubtitle: {titleY: 8, titleHeight: 31, subtitleY: 43, subtitleHeight: 27, timeY: 78, timeHeight: 23, badgeY: 77}}
 end function
 
 function copyGuideValue(value as dynamic) as dynamic

@@ -22,7 +22,15 @@ sub main()
     assertEqual(basic.tileHeight < basic.rowHeight, true, "basic rows do not overlap")
     assertEqual(basic.timeY + basic.timeHeight <= basic.tileHeight, true, "basic time fits tile")
     assertEqual(basic.badgeY + 24 <= basic.tileHeight, true, "basic badges fit tile")
-    assertEqual(preview.rowCount, 7, "preview keeps seven rows")
+    assertEqual(preview.rowCount, 6, "preview shows six taller rows")
+    assertEqual(preview.rowCount * preview.rowHeight, 672, "preview uses the same bounded guide viewport")
+    assertEqual(preview.tileHeight < preview.rowHeight, true, "tall preview rows retain a gap")
+    assertEqual(basic.withSubtitle, invalid, "basic density does not reserve subtitle space")
+    subtitleLayout = preview.withSubtitle
+    assertEqual(subtitleLayout.subtitleY + subtitleLayout.subtitleHeight < subtitleLayout.badgeY, true, "subtitle clears flag row")
+    assertEqual(subtitleLayout.badgeY + 24 <= preview.tileHeight - 4, true, "subtitle flags stay inside selected inset")
+    assertEqual(subtitleLayout.badgeY + 24 <= preview.tileHeight - 10, true, "subtitle flags leave a visible bottom gutter")
+    assertEqual(subtitleLayout.timeY + subtitleLayout.timeHeight <= preview.tileHeight - 4, true, "subtitle clock stays inside selected inset")
     server = [{id: "1", name: "Sports"}, {id: "2", name: "News"}]
     settings.hiddenGroups = ["group:1"]
     groups = organizedGroups(server, [], settings)

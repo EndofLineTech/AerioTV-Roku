@@ -76,8 +76,25 @@ sub main()
     hint = guideRemoteHint()
     check(instr(1, hint, "OK  Details") > 0 and instr(1, hint, "Hold Left  None") > 0, "custom guide hints")
     check(instr(1, hint, "Play  None") > 0 and instr(1, hint, "Back  Fullscreen") > 0, "mini hints distinguish fixed Back from mapped Play")
+    setupGuide()
+    m.ready = true
+    m.settings.showSubtitles = true
+    m.currentCell = {program: {title: "College Football", subtitle: "Ole Miss at Florida"}}
+    m.global = {audioGuide: true}
+    m.audioGuide = {spoken: "", say: sub(text as string, interrupt as boolean, queued as boolean)
+        m.spoken = text
+    end sub}
+    announceGuidePosition()
+    check(instr(1, m.audioGuide.spoken, "Ole Miss at Florida") > 0, "screen reader announces matchup")
+    m.settings.showSubtitles = false
+    announceGuidePosition()
+    check(instr(1, m.audioGuide.spoken, "Ole Miss at Florida") = 0, "hidden subtitle not announced")
     print "ALL TESTS PASSED"
 end sub
+
+function selectedCell() as dynamic
+    return m.currentCell
+end function
 
 sub setupGuide()
     m.top = {active: true, miniActive: true, playerRequest: "", remotePreferences: {remoteMap: defaultRemoteMap()}}

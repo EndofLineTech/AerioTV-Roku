@@ -93,7 +93,11 @@ sub announceGuidePosition()
     label = channel.name + ", " + textValue(channel.number)
     if m.ready = true
         cell = selectedCell()
-        if cell <> invalid and cell.program <> invalid then label += ", " + cell.program.title
+        if cell <> invalid and cell.program <> invalid
+            label += ", " + cell.program.title
+            secondary = guideProgramSecondary(cell.program, m.settings)
+            if secondary <> "" then label += ", " + secondary
+        end if
     end if
     uiAnnounce(label)
 end sub

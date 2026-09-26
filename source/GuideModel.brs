@@ -74,6 +74,18 @@ function normalizeProgram(raw as dynamic) as dynamic
     return result
 end function
 
+function guideProgramSecondary(program as dynamic, settings as object) as string
+    if type(program) <> "roAssociativeArray" or settings.showSubtitles <> true then return ""
+    subtitle = textValue(program.subtitle)
+    if subtitle = "" or lcase(subtitle) = lcase(textValue(program.title)) then return ""
+    return left(subtitle, 256)
+end function
+
+function guideTileSecondary(program as dynamic, settings as object, width as integer) as string
+    if settings.guideDensity <> "preview" or width < 260 then return ""
+    return guideProgramSecondary(program, settings)
+end function
+
 function programTextList(raw as dynamic, limit as integer) as object
     result = []
     if type(raw) <> "roArray" then return result
