@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="GrowingControlsProbe" extends="Scene">
+  <script type="text/brightscript" uri="GrowingControlsProbe.brs" />
+  <children>
+    <OnDemandPlayer id="player" visible="false" />
+    <Timer id="sample" duration="2" repeat="true" />
+  </children>
+</component>

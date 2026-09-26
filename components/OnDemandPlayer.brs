@@ -17,6 +17,27 @@ sub init()
     m.archiveFill.visible = false
     m.message = uiLabel(m.top, "", 160, 780, 1600, 230, 28)
     m.message.wrap = true
+    m.recordingPanel = uiSurface(m.top, 96, 694, 1728, 318, 20, "0x0A1628EF")
+    m.recordingTrack = uiRect(m.top, 128, 933, 1664, 6, "0x294357FF")
+    m.recordingFill = uiRect(m.top, 128, 933, 0, 6, "0x1AC4D8FF")
+    m.recordingPreview = uiRect(m.top, 128, 927, 4, 18, "0xFFFFFFFF")
+    m.recordingMessage = uiLabel(m.top, "", 128, 750, 1664, 174, uiTypeSize("body"))
+    m.recordingMessage.wrap = true
+    m.recordingPanel.visible = false
+    m.recordingTrack.visible = false
+    m.recordingFill.visible = false
+    m.recordingPreview.visible = false
+    m.recordingMessage.visible = false
+    m.recordingTimer = m.top.createChild("Timer")
+    m.recordingTimer.duration = 8
+    m.recordingTimer.observeField("fire", "onRecordingIntroTimeout")
+    m.recordingControls = m.top.createChild("PlayerControls")
+    m.recordingControls.id = "recordingControls"
+    m.recordingControls.context = "recording"
+    m.recordingControls.visible = false
+    m.recordingControls.observeField("action", "onRecordingControlAction")
+    m.recordingControls.observeField("dismissed", "onRecordingControlsDismissed")
+    m.recordingControls.observeField("infoFocus", "onRecordingInfoFocus")
     m.session = invalid
     m.opening = false
     m.seekingArchive = false
@@ -30,6 +51,8 @@ sub openMedia()
     m.archivePanel.visible = request.mode = "catchup"
     m.archiveTrack.visible = false
     m.archiveFill.visible = false
+    hideRecordingOverlay()
+    m.message.visible = true
     closeArchiveActions()
     m.opening = true
     m.seekingArchive = false
@@ -58,14 +81,15 @@ sub openMedia()
     if request.resume <> invalid then m.pendingResume = int(request.resume)
     m.video.content = content
     print "[on-demand] reader="; content.streamFormat; " mode="; request.mode
-    m.video.enableUI = request.mode <> "catchup"
-    m.video.enableTrickPlay = request.mode <> "catchup"
+    appControls = request.mode = "catchup" or (request.mode = "recording" and request.growing = true)
+    m.video.enableUI = not appControls
+    m.video.enableTrickPlay = not appControls
     m.video.enableLiveAvailabilityWindow = request.mode = "recording" and request.growing = true
     m.video.visible = true
     m.top.visible = true
     m.opening = false
     m.video.control = "play"
-    if request.mode = "catchup" then m.top.setFocus(true) else m.video.setFocus(true)
+    if appControls then m.top.setFocus(true) else m.video.setFocus(true)
     m.elapsed = CreateObject("roTimespan")
     m.elapsed.mark()
     m.clock.control = "start"
@@ -102,9 +126,16 @@ sub onMediaState()
         m.message.text = ""
         if m.resumeNoticeUntil > uiNow() then m.message.text = "Resume unavailable for this rendition; playing from beginning."
         if m.session.mode = "catchup" then m.message.text = "ARCHIVE: " + m.top.request.title + chr(10) + "Play/Pause  Pause    Rew / FF  Previous / next minute    Up  Controls / Go Live    Back  Guide"
+        if m.session.mode = "recording" and m.top.request.growing = true
+            m.message.visible = false
+            m.recordingControls.paused = state = "paused"
+            if not m.recordingPanel.visible then showRecordingInfo()
+        end if
         reportProgress()
     else if state = "error"
         cancelArchiveScrub()
+        hideRecordingOverlay()
+        m.message.visible = true
         m.mediaFailed = true
         m.top.diagnostic = {mode: m.session.mode, code: m.video.errorCode, message: sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)}
         print "[on-demand] failure code="; m.video.errorCode; " detail="; sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)
@@ -126,6 +157,7 @@ sub onMediaState()
         m.clock.control = "stop"
     else if state = "finished"
         cancelArchiveScrub()
+        hideRecordingOverlay()
         if m.mediaFailed then return
         m.finished = true
         if m.top.request.restart = true or m.top.request.rewind = true
@@ -179,8 +211,14 @@ sub reportProgress()
     if m.session.mode = "catchup" and (m.video.state = "playing" or m.video.state = "paused")
         renderArchiveProgress()
     end if
+    if m.session.mode = "recording" and m.top.request.growing = true
+        if m.video.state = "playing" or m.video.state = "paused" then renderRecordingProgress()
+    end if
     if m.video.state = "buffering"
         m.message.text = "Buffering (" + m.elapsed.totalSeconds().toStr() + "s). Back returns."
+        if m.session.mode = "recording" and m.top.request.growing = true and m.recordingPanel.visible
+            m.recordingMessage.text = "Buffering recording... Back returns to DVR."
+        end if
         if m.elapsed.totalSeconds() >= 45
             m.mediaFailed = true
             m.video.control = "stop"
@@ -196,8 +234,127 @@ sub reportProgress()
     end if
 end sub
 
+sub hideRecordingOverlay()
+    if m.recordingTimer <> invalid then m.recordingTimer.control = "stop"
+    if m.recordingControls <> invalid
+        m.recordingControls.active = false
+        m.recordingControls.visible = false
+    end if
+    if m.recordingPanel <> invalid then m.recordingPanel.visible = false
+    if m.recordingTrack <> invalid then m.recordingTrack.visible = false
+    if m.recordingFill <> invalid then m.recordingFill.visible = false
+    if m.recordingPreview <> invalid then m.recordingPreview.visible = false
+    if m.recordingMessage <> invalid then m.recordingMessage.visible = false
+    if m.message <> invalid then m.message.visible = true
+end sub
+
+sub showRecordingInfo()
+    if m.session = invalid then return
+    if m.session.mode <> "recording" or m.top.request.growing <> true then return
+    m.recordingPanel.visible = true
+    m.recordingMessage.visible = true
+    m.recordingControls.visible = true
+    m.message.visible = false
+    if not m.recordingControls.active
+        m.recordingTimer.control = "stop"
+        m.recordingTimer.control = "start"
+    end if
+    renderRecordingProgress()
+end sub
+
+sub enterRecordingControls()
+    showRecordingInfo()
+    m.recordingTimer.control = "stop"
+    m.recordingControls.active = true
+    m.recordingControls.setFocus(true)
+end sub
+
+sub onRecordingIntroTimeout()
+    if m.recordingControls.active or m.scrub <> invalid then return
+    hideRecordingOverlay()
+    if m.session <> invalid then m.top.setFocus(true)
+end sub
+
+sub onRecordingControlsDismissed()
+    cancelArchiveScrub()
+    hideRecordingOverlay()
+    if m.session <> invalid then m.top.setFocus(true)
+end sub
+
+sub onRecordingInfoFocus()
+    if m.session = invalid then return
+    m.recordingControls.active = false
+    showRecordingInfo()
+    m.recordingTimer.control = "stop"
+    m.top.setFocus(true)
+end sub
+
+sub onRecordingControlAction(event as object)
+    if m.session = invalid or m.session.mode <> "recording" or m.top.request.growing <> true then return
+    action = event.getData()
+    if action = "play"
+        if m.scrub <> invalid
+            commitRecordingScrub()
+            return
+        end if
+        if m.video.state = "paused" then m.video.control = "resume" else if m.video.state = "playing" then m.video.control = "pause"
+    else if action = "rewind" or action = "fastforward"
+        if m.video.state <> "playing" and m.video.state <> "paused"
+            m.recordingMessage.text = "Wait for recording playback before seeking."
+            return
+        end if
+        direction = 1
+        if action = "rewind" then direction = -1
+        plan = recordingSeekTarget(m.video.position, m.video.duration, direction, 30, true)
+        if plan = invalid
+            m.recordingMessage.text = "Seek range unavailable. Playback continues."
+        else if plan.moved
+            print "[recording-controls] seek="; plan.position
+            m.video.seek = plan.position
+        else
+            m.recordingMessage.text = "Already at the available recording limit."
+        end if
+    else if action = "stop"
+        closeMedia() ' Stops this viewer, never the server's recording.
+    end if
+end sub
+
+sub renderRecordingProgress()
+    if m.session = invalid or not m.recordingPanel.visible then return
+    if m.session.mode <> "recording" or m.top.request.growing <> true then return
+    m.recordingControls.paused = m.video.state = "paused"
+    duration = m.video.duration
+    position = m.video.position
+    if not mediaNumber(duration) or not mediaNumber(position) or duration < 12 or position < 0
+        m.recordingTrack.visible = false
+        m.recordingFill.visible = false
+        m.recordingMessage.text = "RECORDING: " + left(m.top.request.title, 100) + chr(10) + "Seek range unavailable. Play/Pause still works; Back returns to DVR."
+        return
+    end if
+    m.recordingTrack.visible = true
+    m.recordingFill.visible = true
+    fraction = position / duration
+    if fraction < 0 then fraction = 0
+    if fraction > 1 then fraction = 1
+    m.recordingFill.width = 1664 * fraction
+    stateLabel = "RECORDING NOW"
+    if m.video.state = "paused" then stateLabel += " (paused)"
+    m.recordingMessage.text = stateLabel + ": " + left(m.top.request.title, 100) + chr(10)
+    m.recordingMessage.text += "Position " + catchupElapsedText(int(position)) + " / " + catchupElapsedText(int(duration)) + " (growing file)" + chr(10)
+    m.recordingMessage.text += "Rew / FF  30s / hold to preview    OK  Controls    Back  DVR"
+    if m.scrub <> invalid
+        m.recordingPreview.visible = true
+        preview = m.scrub.target / duration
+        if preview < 0 then preview = 0
+        if preview > 1 then preview = 1
+        m.recordingPreview.translation = [128 + 1660 * preview, 927]
+        m.recordingMessage.text = "RECORDING SEEK PREVIEW: " + catchupElapsedText(m.scrub.target) + " / " + catchupElapsedText(int(duration)) + chr(10) + "Preview only; no seek until confirmed." + chr(10) + "Rew / FF  Move    OK / Play  Seek    Back  Cancel"
+    end if
+end sub
+
 sub closeMedia()
     cancelArchiveScrub()
+    hideRecordingOverlay()
     closeArchiveActions()
     if m.archivePanel <> invalid
         m.archivePanel.visible = false
@@ -233,14 +390,17 @@ function handleArchiveKey(key as string, press as boolean) as boolean
         return true
     end if
     if m.session = invalid then return false
-    if m.session.mode = "catchup" and (key = "rewind" or key = "fastforward")
+    growing = m.session.mode = "recording" and m.top.request.growing = true
+    if (m.session.mode = "catchup" or growing) and (key = "rewind" or key = "fastforward")
         if press
-            beginArchiveScrub(key)
+            if growing then beginRecordingScrub(key) else beginArchiveScrub(key)
         else if m.scrub <> invalid
             if m.scrub.key = key
                 m.scrub.key = ""
                 m.scrubTimer.control = "stop"
-                if not m.scrub.held then commitArchiveScrub()
+                if not m.scrub.held
+                    if growing then commitRecordingScrub() else commitArchiveScrub()
+                end if
             end if
         end if
         return true
@@ -248,17 +408,22 @@ function handleArchiveKey(key as string, press as boolean) as boolean
     if not press then return false
     if m.scrub <> invalid
         if key = "OK" or key = "play"
-            commitArchiveScrub()
+            if growing then commitRecordingScrub() else commitArchiveScrub()
         else if key = "back"
             cancelArchiveScrub()
-            renderArchiveProgress()
+            if growing then renderRecordingProgress() else renderArchiveProgress()
         else if key = "up"
             cancelArchiveScrub()
-            openArchiveActions()
+            if growing then enterRecordingControls() else openArchiveActions()
         end if
         return true
     end if
     if key = "back"
+        if growing and m.recordingPanel.visible
+            hideRecordingOverlay()
+            m.top.setFocus(true)
+            return true
+        end if
         closeMedia()
         return true
     end if
@@ -276,10 +441,14 @@ function handleArchiveKey(key as string, press as boolean) as boolean
         end if
         return key <> "options"
     end if
-    if m.session.mode = "recording" and m.top.request.growing = true
-        if key = "rewind" or key = "fastforward" then return false
-        if key = "play" or key = "OK"
+    if growing
+        if key = "OK" or key = "up" or key = "down"
+            enterRecordingControls()
+            return true
+        end if
+        if key = "play"
             if m.video.state = "paused" then m.video.control = "resume" else if m.video.state = "playing" then m.video.control = "pause"
+            showRecordingInfo()
         end if
         return key <> "options"
     end if
@@ -347,6 +516,62 @@ function archiveSkipSeconds() as integer
     if seconds <> 60 and seconds <> 120 and seconds <> 300 then return 60
     return seconds
 end function
+
+sub beginRecordingScrub(key as string)
+    if m.video.state <> "playing" and m.video.state <> "paused" then return
+    if m.scrub <> invalid
+        if m.scrub.key = key then return
+    else
+        if not mediaNumber(m.video.position) or not mediaNumber(m.video.duration)
+            showRecordingInfo()
+            m.recordingMessage.text = "Seek range unavailable. Playback continues."
+            return
+        end if
+        m.scrub = {identity: m.session.identity, origin: int(m.video.position), target: int(m.video.position), held: false, key: ""}
+    end if
+    m.scrub.key = key
+    showRecordingInfo()
+    stepRecordingScrub()
+    if m.scrub = invalid then return
+    m.scrubTimer.control = "stop"
+    m.scrubTimer.control = "start"
+end sub
+
+sub stepRecordingScrub()
+    if m.scrub = invalid then return
+    direction = 1
+    if m.scrub.key = "rewind" then direction = -1
+    plan = recordingSeekTarget(m.scrub.target, m.video.duration, direction, 30, true)
+    if plan = invalid
+        cancelArchiveScrub()
+        m.recordingMessage.text = "Seek range unavailable. Playback continues."
+        return
+    end if
+    if not plan.moved
+        cancelArchiveScrub()
+        m.recordingMessage.text = "Already at the available recording limit."
+        return
+    end if
+    m.scrub.target = plan.position
+    renderRecordingProgress()
+end sub
+
+sub commitRecordingScrub()
+    if m.scrub = invalid or m.session = invalid then return
+    target = m.scrub.target
+    valid = m.scrub.identity = m.session.identity and target <> m.scrub.origin
+    if not mediaNumber(m.video.duration) then valid = false
+    if valid then valid = target >= 0 and target <= int(m.video.duration) - 6
+    if valid then valid = m.video.state = "playing" or m.video.state = "paused"
+    cancelArchiveScrub()
+    if valid
+        print "[recording-controls] seek="; target
+        m.video.seek = target
+        m.recordingMessage.text = "Seeking within the available recording window..."
+    else
+        m.recordingMessage.text = "Seek range changed. Playback continues at the current position."
+    end if
+end sub
 
 sub beginArchiveScrub(key as string)
     if m.video.state <> "playing" and m.video.state <> "paused" then return
@@ -419,13 +644,14 @@ sub repeatArchiveScrub()
     if m.scrub = invalid or m.session = invalid then return
     if m.scrub.key = "" then return
     m.scrub.held = true
-    stepArchiveScrub()
+    if m.session.mode = "recording" and m.top.request.growing = true then stepRecordingScrub() else stepArchiveScrub()
 end sub
 
 sub cancelArchiveScrub()
     m.scrub = invalid
     if m.scrubTimer <> invalid then m.scrubTimer.control = "stop"
     if m.archivePreview <> invalid then m.archivePreview.visible = false
+    if m.recordingPreview <> invalid then m.recordingPreview.visible = false
 end sub
 
 sub commitArchiveScrub()

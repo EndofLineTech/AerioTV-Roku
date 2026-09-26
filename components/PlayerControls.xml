@@ -3,6 +3,7 @@
   <interface>
     <field id="active" type="boolean" value="false" onChange="onActive" />
     <field id="paused" type="boolean" onChange="draw" />
+    <field id="context" type="string" value="live" onChange="configureControls" />
     <field id="action" type="string" alwaysNotify="true" />
     <field id="dismissed" type="boolean" alwaysNotify="true" />
     <field id="infoFocus" type="boolean" alwaysNotify="true" />

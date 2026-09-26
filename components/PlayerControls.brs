@@ -1,21 +1,43 @@
 sub init()
     m.index = 0
     m.lastAnnouncedIndex = -1
+    configureControls()
+end sub
+
+sub configureControls()
     m.actions = ["play", "channels", "recent", "minimize", "options", "stop"]
     m.labels = ["Pause", "Channels", "Recent", "Minimize", "Options", "Stop"]
+    if m.top.context = "recording"
+        m.actions = ["play", "rewind", "fastforward", "stop"]
+        m.labels = ["Pause", "Rewind 30s", "Forward 30s", "Back to DVR"]
+    end if
+    m.index = 0
+    m.lastAnnouncedIndex = -1
+    m.top.removeChildrenIndex(m.top.getChildCount(), 0)
     m.cells = []
-    for i = 0 to 5
-        x = 540 + i * 140
+    start = (1920 - m.actions.count() * 140) \ 2
+    for i = 0 to m.actions.count() - 1
+        x = start + i * 140
         fill = uiSurface(m.top, x + 40, 598, 60, 60, 30, "0x263549EE")
-        icon = m.top.createChild("Poster")
-        icon.translation = [x + 54, 612]
-        icon.width = 32
-        icon.height = 32
-        icon.uri = "pkg:/images/ui-icon-" + m.actions[i] + ".png"
+        icon = invalid
+        glyph = invalid
+        if m.actions[i] = "rewind" or m.actions[i] = "fastforward"
+            text = "<<"
+            if m.actions[i] = "fastforward" then text = ">>"
+            glyph = uiLabel(m.top, text, x + 40, 598, 60, 60, uiTypeSize("button"))
+            glyph.horizAlign = "center"
+            glyph.vertAlign = "center"
+        else
+            icon = m.top.createChild("Poster")
+            icon.translation = [x + 54, 612]
+            icon.width = 32
+            icon.height = 32
+            icon.uri = "pkg:/images/ui-icon-" + m.actions[i] + ".png"
+        end if
         label = uiLabel(m.top, m.labels[i], x, 661, 140, 28, uiTypeSize("caption"))
         label.horizAlign = "center"
         label.vertAlign = "center"
-        m.cells.push({fill: fill, label: label, icon: icon})
+        m.cells.push({fill: fill, label: label, icon: icon, glyph: glyph})
     end for
     draw()
 end sub
@@ -37,7 +59,8 @@ sub draw()
         style = uiControlStyle("action", false, focused)
         uiSetColor(cell.fill, style.fill)
         cell.fill.focusScale = style.scale
-        uiSetColor(cell.icon, style.ink, "blendColor")
+        if cell.icon <> invalid then uiSetColor(cell.icon, style.ink, "blendColor")
+        if cell.glyph <> invalid then uiSetColor(cell.glyph, style.ink)
         cell.label.visible = focused
     end for
     if m.top.active and m.index <> m.lastAnnouncedIndex then
@@ -60,6 +83,10 @@ end function
 function onKeyEvent(key as string, press as boolean) as boolean
     if not press or not m.top.active then return false
     if key = "options" then return false
+    if m.top.context = "recording" and (key = "rewind" or key = "fastforward")
+        m.top.action = key
+        return true
+    end if
     if key = "left"
         if m.index > 0 then m.index--
     else if key = "right"

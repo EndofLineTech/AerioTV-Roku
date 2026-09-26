@@ -82,6 +82,52 @@ sub main()
     reportProgress()
     if m.resumeTarget <> 0 then stop
     m.top.request.growing = true
-    if handleArchiveKey("fastforward", true) or handleArchiveKey("rewind", true) then stop
+    m.video.position = 60
+    m.video.seek = 0
+    m.recordingPanel = {visible: false}
+    m.recordingTrack = {visible: false}
+    m.recordingFill = {visible: false, width: 0}
+    m.recordingPreview = {visible: false, translation: []}
+    m.recordingMessage = {text: ""}
+    m.recordingControls = {visible: false, active: false, paused: false, setFocus: sub(value as boolean)
+    end sub}
+    m.recordingTimer = {control: "stop"}
+    if not handleArchiveKey("rewind", true) or m.scrub.target <> 30 then stop
+    if m.video.seek <> 0 or m.session = invalid then stop ' preview never seeks
+    handleArchiveKey("rewind", false)
+    if m.video.seek <> 30 or m.scrub <> invalid or m.session = invalid then stop
+    m.video.position = 120
+    if not handleArchiveKey("fastforward", true) then stop
+    handleArchiveKey("fastforward", false)
+    if m.video.seek <> 30 then stop ' cannot seek beyond the growing edge
+    m.video.position = 60
+    if not handleArchiveKey("OK", true) or not m.recordingControls.active then stop
+    if m.video.state <> "playing" then stop ' opening controls does not retune or pause
+    m.recordingControls.active = false
+    m.video.position = 60
+    handleArchiveKey("rewind", true)
+    repeatArchiveScrub()
+    handleArchiveKey("rewind", false)
+    if m.scrub = invalid or m.scrub.target <> 0 then stop
+    handleArchiveKey("back", true)
+    if m.scrub <> invalid or m.video.seek <> 30 or m.session = invalid then stop
+    m.video.position = 60
+    handleArchiveKey("fastforward", true)
+    repeatArchiveScrub()
+    handleArchiveKey("fastforward", false)
+    if m.scrub = invalid or m.scrub.target <> 114 then stop
+    handleArchiveKey("OK", true)
+    if m.video.seek <> 114 or m.scrub <> invalid then stop
+    onRecordingControlAction({getData: function() as string
+        return "play"
+    end function})
+    if m.video.control <> "pause" or m.session = invalid then stop
+    m.video.state = "buffering"
+    onRecordingControlAction({getData: function() as string
+        return "fastforward"
+    end function})
+    if m.video.seek <> 114 then stop ' buffering cannot accept another seek
+    m.top.request.growing = false
+    if handleArchiveKey("rewind", true) then stop ' completed recording retains native path
     print "ALL TESTS PASSED"
 end sub
