@@ -101,7 +101,7 @@ sub onSeriesCreated(event as object)
     m.recordIntent = invalid
     m.seriesDraft = invalid
     if result.ok
-        showNotice("Series rule saved and evaluated. Open DVR > Series Rules and Scheduled to review it.")
+        showNotice("Series rule saved and evaluated. Open DVR to review the rule and its scheduled recordings.")
     else
         showNotice("Series rule not confirmed: " + textValue(result.message) + " Review rules before retrying.")
     end if

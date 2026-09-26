@@ -14,16 +14,25 @@ records the original baseline. The feature table below describes this release.
 
 ## Download the testing build
 
-**[Download v0.3.80 — testing prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.80)**
+**[Download v0.3.81 — testing prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.81)**
 
-Under **Assets**, download **`aeriotv-roku-v0.3.80.zip`**. Keep it zipped.
+Under **Assets**, download **`aeriotv-roku-v0.3.81.zip`**. Keep it zipped.
 Do **not** download GitHub's automatically generated **Source code (zip)** for
 installation; that is the repository, not the Roku application package.
 
 You do not need Node.js, npm, Git, or a compiler to install the release ZIP.
 This is a sideloaded testing preview, not a Roku Streaming Store release.
 
-### New since v0.3.37
+### New since v0.3.80
+
+- **Server DVR:** Recording Now, Scheduled, Recent and Series Rules share a
+  single list with clear section headings. Growing Dispatcharr recordings
+  expose Roku's native FF/REW availability window; completed files retain
+  native seek controls. Supported seek depth depends on the recording source.
+- **Reliability and navigation:** bounded AAC decoder retry, saved-connection
+  recovery, VOD sort choices and improved guide-options focus labels.
+
+### Also included since v0.3.37
 
 - **Connections:** up to four named connection slots with scoped credentials,
   optional channel profile, safe API headers and explicit re-login. Direct M3U
@@ -35,10 +44,10 @@ This is a sideloaded testing preview, not a Roku Streaming Store release.
 - **Presentation:** source-informed pill navigation, poster-led VOD, rounded
   settings and player controls, appearance/text preferences, a first-run welcome
   screen, and model-tested guide density/visibility settings.
-- **Testing status:** this is a development prerelease. Physical checks for the
-  final build remain unmarked. Basic guide layout/visibility needs TV verification;
-  Audio Guide speech previously failed on the target and remains unresolved.
-  Multiview is not implemented; Roku's `roMultiDecode` SDK access is pending.
+- **Testing status:** this is a development prerelease. Current-build physical
+  picture/sound after DVR seeking is not confirmed. The target's missing custom
+  Audio Guide speech is an accepted platform limitation. Multiview is not
+  implemented; Roku's `roMultiDecode` SDK access is pending.
 
 ### Included since v0.3.8
 
@@ -56,7 +65,7 @@ This is a sideloaded testing preview, not a Roku Streaming Store release.
   startup/midstream recovery, contextual Retry and sanitized diagnostics.
 - **Hold OK** opens app player options; fullscreen star remains Roku-owned.
 
-[v0.3.80 release notes and known limitations](docs/RELEASE-0.3.80.md)
+[v0.3.81 release notes and known limitations](docs/RELEASE-0.3.81.md)
 
 ## Roku vs. Apple TV and Android TV
 
@@ -65,7 +74,7 @@ supported direct Xtream/M3U connections and conditional catch-up/restart/rewind,
 but not full upstream feature parity.** Multiview and cross-device sync remain
 unimplemented. Rewind uses provider archives; it is not a guaranteed local buffer.
 
-| Feature | Roku — v0.3.80 preview | Apple TV — upstream | Android TV / Google TV — upstream |
+| Feature | Roku — v0.3.81 preview | Apple TV — upstream | Android TV / Google TV — upstream |
 | --- | --- | --- | --- |
 | Dispatcharr connection | **Available** — API key or dashboard login | Available | Available |
 | Direct Xtream Codes connection | **Implemented for tested variants**; session-only credentials, bounded live/VOD/archive | Available | Available |
@@ -90,7 +99,7 @@ versions; provider permissions and device capabilities still apply. "Not verifie
 is not a claim that the feature is absent. Mobile-only features are not assumed
 to be available on a TV.
 
-Upstream comparison sources reviewed 2026-09-19; Roku column updated for v0.3.80:
+Upstream comparison sources reviewed 2026-09-19; Roku column updated for v0.3.81:
 - [Apple upstream README, pinned revision](https://github.com/jonzey231/AerioTV/blob/8d5818456e0f4421d93b8ff120ad878d63331091/README.md)
   and the [source-level tvOS audit](docs/PARITY-AUDIT.md). The audit's Roku column
   is an older baseline; the table above describes this release.
@@ -149,7 +158,7 @@ If Developer Mode is already enabled, proceed to the next step.
 
 ### 3. Upload and install the release ZIP
 
-1. Click **Upload** / **Choose File** and select **`aeriotv-roku-v0.3.80.zip`**.
+1. Click **Upload** / **Choose File** and select **`aeriotv-roku-v0.3.81.zip`**.
 2. Click **Install** or **Install with zip**, depending on the installer version.
    Some versions also offer **Install with squashfs**.
 3. Wait for **Install Success**. AerioTV should launch on the TV automatically.
@@ -194,7 +203,15 @@ connection screen:
   opens Recently Watched.
 - In pills/sidebar guide layouts, **hold Left** to focus groups from any row.
 - To reach the guide header: hold Left directly in Modal; in Sidebar, then Left
-  from groups; in Pills, then Up from groups. Select **VOD** or **Settings** there.
+  from groups; in Pills, then Up from groups. Select **VOD**, **DVR** (on permitted
+  Dispatcharr accounts), or **Settings** there.
+- **DVR** shows Recording Now, Scheduled, Recent and Series Rules under separate
+  subheadings in one scrolling list. Active recordings appear first; **Replay**
+  refreshes server items. Select a row with **OK** for facts and available playback.
+- Recordings use Roku's native FF/REW timeline. During a Dispatcharr recording,
+  the available seek window grows from the recording start; press Play to resume
+  from a selected position. Availability and playback continuity depend on the
+  server's HLS stream. Completed and stopped files retain native transport.
 - For catch-up/Restart, open **Program details** and select the separate archive
   or Restart action. **Watch channel LIVE** remains a distinct choice.
 - During live playback, **Rew** or player options → **Rewind history (provider)**

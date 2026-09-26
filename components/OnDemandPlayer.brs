@@ -58,13 +58,14 @@ sub openMedia()
     if request.resume <> invalid then m.pendingResume = int(request.resume)
     m.video.content = content
     print "[on-demand] reader="; content.streamFormat; " mode="; request.mode
-    m.video.enableUI = request.mode <> "catchup" and request.growing <> true
-    m.video.enableTrickPlay = request.mode <> "catchup" and request.growing <> true
+    m.video.enableUI = request.mode <> "catchup"
+    m.video.enableTrickPlay = request.mode <> "catchup"
+    m.video.enableLiveAvailabilityWindow = request.mode = "recording" and request.growing = true
     m.video.visible = true
     m.top.visible = true
     m.opening = false
     m.video.control = "play"
-    if request.mode = "catchup" or request.growing = true then m.top.setFocus(true) else m.video.setFocus(true)
+    if request.mode = "catchup" then m.top.setFocus(true) else m.video.setFocus(true)
     m.elapsed = CreateObject("roTimespan")
     m.elapsed.mark()
     m.clock.control = "start"
@@ -276,6 +277,7 @@ function handleArchiveKey(key as string, press as boolean) as boolean
         return key <> "options"
     end if
     if m.session.mode = "recording" and m.top.request.growing = true
+        if key = "rewind" or key = "fastforward" then return false
         if key = "play" or key = "OK"
             if m.video.state = "paused" then m.video.control = "resume" else if m.video.state = "playing" then m.video.control = "pause"
         end if

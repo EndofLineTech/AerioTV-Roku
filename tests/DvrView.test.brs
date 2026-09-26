@@ -1,6 +1,6 @@
 sub main()
     m.top = {config: {permission: "view", scope: "scope-two", accountId: "account-two", channels: []}, active: false}
-    m.tabLabels = invalid
+    m.list = invalid
     m.loaded = []
     m.rows = []
     m.task = invalid
@@ -27,8 +27,31 @@ sub main()
     end function})
     assertEqual(m.mutationTask, invalid, "old-account confirmation cannot mutate server")
     assertEqual(m.pending, invalid, "old-account confirmation cannot be replayed")
+
+    m.top.active = true
+    m.list = {jumpToItem: -1, isSameNode: function(node as object) as boolean
+        return node.id = "list"
+    end function}
+    m.rows = [{section: "now", heading: "Recording Now"}, {id: "4", title: "Live"}, {section: "scheduled", heading: "Scheduled"}, {id: "5", title: "Tomorrow"}]
+    m.lastFocusedItem = 1
+    onDvrFocused(dvrListEvent(2))
+    assertEqual(m.list.jumpToItem, 3, "down skips header and focuses next recording")
+    m.lastFocusedItem = 3
+    onDvrFocused(dvrListEvent(2))
+    assertEqual(m.list.jumpToItem, 1, "up skips header and focuses previous recording")
+    m.dialog = invalid
+    onDvrSelected(dvrListEvent(2))
+    assertEqual(m.dialog, invalid, "header cannot open a recording action")
     print "ALL TESTS PASSED"
 end sub
+
+function dvrListEvent(index as integer) as object
+    return {index: index, getRoSGNode: function() as object
+        return {id: "list"}
+    end function, getData: function() as integer
+        return m.index
+    end function}
+end function
 
 sub assertEqual(actual as dynamic, expected as dynamic, label as string)
     if actual <> expected

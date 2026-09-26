@@ -15,9 +15,9 @@
   <script type="text/brightscript" uri="DvrView.brs" />
   <children>
     <Rectangle width="1920" height="1080" color="0x0A1628FF" />
-    <Label id="heading" translation="[96,92]" width="1728" height="60" text="Server recordings" font="font:LargeBoldSystemFont" />
+    <Label id="heading" translation="[96,92]" width="1728" height="60" text="Server DVR" font="font:LargeBoldSystemFont" />
     <Label id="status" translation="[96,168]" width="1728" height="54" font="font:MediumSystemFont" color="0x9EB5C9FF" />
-    <LabelList id="recordings" translation="[96,332]" itemSize="[1320,62]" numRows="9" itemSpacing="[0,8]" clippingRect="[0,0,1320,630]" focusBitmapUri="pkg:/images/ui-focus-row.png" focusBitmapBlendColor="0x365163FF" focusedColor="0xFFFFFFFF" color="0xE8F3FAFF" />
+    <MarkupList id="recordings" translation="[96,254]" itemComponentName="DvrListRow" vertFocusAnimationStyle="floatingFocus" itemSize="[1320,62]" numRows="10" itemSpacing="[0,8]" itemClippingRect="[0,0,1320,710]" focusBitmapUri="pkg:/images/ui-focus-row.png" focusBitmapBlendColor="0x365163FF" />
     <Poster id="artwork" translation="[1480,332]" width="330" height="495" loadWidth="660" loadHeight="990" loadDisplayMode="scaleToFit" />
     <Timer id="refreshTimer" duration="60" repeat="true" />
   </children>

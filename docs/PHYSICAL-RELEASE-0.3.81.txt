@@ -1,0 +1,33 @@
+AerioTV Roku v0.3.81 testing prerelease — physical checks
+==========================================================
+All cases are NOT RUN until a person with the remote observes the actual TV.
+Do not infer picture or sound from Roku Video state or Developer Mode screenshots.
+
+Installed version (Settings > General > About): __________
+Roku model / OS: __________   Date / tester: __________
+
+[          ] R01 Guide and DVR list
+Open the authorized Dispatcharr guide, then DVR. Check that Recording Now,
+Scheduled, Recent and Series Rules are readable in one list with clear focus;
+Back returns to the previous guide location. Empty sections are not actionable.
+
+[          ] R02 Completed or stopped recording
+On an already permitted recording, verify actual picture and audible sound.
+Press FF and REW, observe the native timeline and resumed picture/sound;
+Back returns to the DVR row without changing another recording.
+
+[          ] R03 Growing recording — only if an approved fixture is available
+While a permitted server recording is running, open its Recording Now row and
+Play / resume. Check actual picture and audible sound, pause/resume, then FF,
+REW and Play at a position behind live. Confirm picture/audio after each seek,
+the available-window bound, the return to the DVR row and continued playback
+as the recording grows. If the recording ends during viewing, record the actual
+reader/return behavior separately. SKIP when no approved active fixture exists;
+do not create, stop or delete shared server recordings for this worksheet.
+
+[          ] R04 Restore state
+Confirm the normal app and saved account/guide preferences remain in place.
+Record any UI, focus, caption or seek defect with exact remote steps and build.
+
+Failure ID / sanitized steps / observed behavior: __________________________
+SKIP reason (if applicable): _______________________________________________

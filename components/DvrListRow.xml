@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="DvrListRow" extends="Group">
+  <interface>
+    <field id="itemContent" type="node" onChange="onDvrListRowContent" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="DvrListRow.brs" />
+  <children>
+    <Rectangle id="sectionBackground" width="1320" height="62" visible="false" />
+    <Label id="sectionTitle" translation="[16,0]" width="1250" height="62" vertAlign="center" font="font:MediumBoldSystemFont" visible="false" />
+    <Label id="itemTitle" translation="[32,0]" width="1250" height="62" vertAlign="center" font="font:MediumSystemFont" />
+  </children>
+</component>

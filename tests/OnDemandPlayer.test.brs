@@ -81,5 +81,7 @@ sub main()
     m.video.position = 81
     reportProgress()
     if m.resumeTarget <> 0 then stop
+    m.top.request.growing = true
+    if handleArchiveKey("fastforward", true) or handleArchiveKey("rewind", true) then stop
     print "ALL TESTS PASSED"
 end sub

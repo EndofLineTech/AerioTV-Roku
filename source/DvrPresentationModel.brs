@@ -75,7 +75,39 @@ function recordingShelfRows(rows as object, shelf as string, query as string, no
     return result
 end function
 
+function dvrLibraryRows(recordings as object, rules as object, query as string, now as integer, channelNames = invalid as dynamic, sortMode = "date" as string) as object
+    result = []
+    for each section in [{key: "now", heading: "Recording Now"}, {key: "scheduled", heading: "Scheduled"}, {key: "recent", heading: "Recent"}, {key: "rules", heading: "Series Rules"}]
+        if section.key = "rules"
+            items = seriesRuleRows(rules, query)
+        else
+            items = recordingShelfRows(recordings, section.key, query, now, channelNames, sortMode)
+        end if
+        if query.trim() = "" or items.count() > 0
+            result.push({section: section.key, heading: section.heading, itemCount: items.count()})
+            result.append(items)
+        end if
+    end for
+    return result
+end function
+
+function dvrSelectableIndex(rows as object, index as integer, direction as integer) as integer
+    if index < 0 or index >= rows.count() then return -1
+    if rows[index].heading = invalid then return index
+    delta = 1
+    if direction < 0 then delta = -1
+    for each searchStep in [delta, -delta]
+        candidate = index + searchStep
+        while candidate >= 0 and candidate < rows.count()
+            if rows[candidate].heading = invalid then return candidate
+            candidate += searchStep
+        end while
+    end for
+    return -1
+end function
+
 function dvrRowIdentity(row as object) as string
+    if row.heading <> invalid then return "section:" + textValue(row.section)
     if row.id <> invalid then return textValue(row.id)
     return "rule:" + textValue(row.tvgId) + ":" + textValue(row.title) + ":" + textValue(row.epgSourceId)
 end function

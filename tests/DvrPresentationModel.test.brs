@@ -21,6 +21,27 @@ sub main()
     if recordingShelfRows(rows, "recent", "5", now)[0].channelId <> "5" then stop
     if recordingShelfRows(rows, "recent", "sports network", now, {"5": "Sports Network"}).count() <> 1 then stop
     if recordingShelfRows(rows, "recent", "", now, invalid, "title")[0].title <> "Finished" then stop
+    rules = [{title: "Baseball", tvgId: "sports", mode: "all", epgSourceId: "1"}]
+    library = dvrLibraryRows(rows, rules, "", now)
+    if library.count() <> 9 then stop
+    if library[0].heading <> "Recording Now" or library[0].itemCount <> 1 then stop
+    if library[1].id <> "2" or library[1].displayStatus <> "recording" then stop
+    if library[2].heading <> "Scheduled" or library[3].id <> "1" then stop
+    if library[4].heading <> "Recent" or library[5].id <> "3" or library[6].id <> "4" then stop
+    if library[7].heading <> "Series Rules" or library[8].title <> "Baseball" then stop
+    if dvrSelectableIndex(library, 0, 1) <> 1 or dvrSelectableIndex(library, 2, 1) <> 3 then stop
+    if dvrSelectableIndex(library, 2, -1) <> 1 or dvrSelectableIndex(library, 7, -1) <> 6 then stop
+    if dvrSelectableIndex(library, 8, 1) <> 8 then stop
+    filtered = dvrLibraryRows(rows, rules, "baseball", now)
+    if filtered.count() <> 2 or filtered[0].heading <> "Series Rules" or filtered[1].title <> "Baseball" then stop
+    if dvrLibraryRows(rows, rules, "sports", now)[1].title <> "Baseball" then stop
+    if dvrLibraryRows(rows, rules, "missing", now).count() <> 0 then stop
+    empty = dvrLibraryRows([], [], "", now)
+    if empty.count() <> 4 or empty[0].itemCount <> 0 or empty[3].heading <> "Series Rules" then stop
+    if dvrSelectableIndex(empty, 0, 1) <> -1 then stop
+    onlyScheduled = dvrLibraryRows([upcoming], [], "", now)
+    if dvrSelectableIndex(onlyScheduled, 0, 1) <> 2 then stop
+    if dvrSelectableIndex(onlyScheduled, 1, -1) <> 2 then stop
     intent = {channelName: "Test channel", program: {title: "Test program", startsAt: now + 86400, endsAt: now + 90000}}
     padding = {pre: 5, post: 10}
     confirmation = recordingConfirmationText(intent, padding)
