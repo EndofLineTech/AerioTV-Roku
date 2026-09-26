@@ -63,6 +63,7 @@ sub openMedia()
     m.finished = false
     m.startPaused = request.startPaused = true
     m.mediaFailed = false
+    m.handoffCheckRequested = false
     m.closing = false
     content = CreateObject("roSGNode", "ContentNode")
     content.url = request.url
@@ -139,6 +140,12 @@ sub onMediaState()
         m.mediaFailed = true
         m.top.diagnostic = {mode: m.session.mode, code: m.video.errorCode, message: sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)}
         print "[on-demand] failure code="; m.video.errorCode; " detail="; sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)
+        ' Dispatcharr removes a finished recording's HLS directory and redirects
+        ' the old playlist URL to an MKV. Ask the scene to verify current status
+        ' before changing readers; a redirect is not a valid HLS playlist.
+        if m.session.mode = "recording" and m.top.request.growing = true
+            m.top.recordingHandoff = {account: m.session.account, identity: m.session.identity, id: m.session.item, position: m.session.position}
+        end if
         m.message.text = playbackFailureText(m.video.errorCode, sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)) + chr(10) + "OK Retry    Back Return"
         if m.session.mode = "vod"
             if m.top.request.providerType = "xtream"
@@ -215,6 +222,18 @@ sub reportProgress()
         if m.video.state = "playing" or m.video.state = "paused" then renderRecordingProgress()
     end if
     if m.video.state = "buffering"
+        ' A live HLS reader may stall at its final segment instead of emitting
+        ' an error when its old playlist URL starts redirecting to the MKV.
+        ' Check completion once after a sustained near-edge stall; keep the
+        ' playing/paused sample, never the speculative buffering playhead.
+        if m.session.mode = "recording" and m.top.request.growing = true and m.handoffCheckRequested <> true
+            if m.elapsed.totalSeconds() >= 10 and mediaNumber(m.session.position) and mediaNumber(m.session.duration)
+                if m.session.duration >= 12 and m.session.position >= m.session.duration - 12
+                    m.handoffCheckRequested = true
+                    m.top.recordingHandoff = {account: m.session.account, identity: m.session.identity, id: m.session.item, position: m.session.position}
+                end if
+            end if
+        end if
         m.message.text = "Buffering (" + m.elapsed.totalSeconds().toStr() + "s). Back returns."
         if m.session.mode = "recording" and m.top.request.growing = true and m.recordingPanel.visible
             m.recordingMessage.text = "Buffering recording... Back returns to DVR."

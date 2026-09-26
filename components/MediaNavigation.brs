@@ -144,6 +144,7 @@ end sub
 
 sub onMediaClosed()
     if m.page <> "onDemand" then return
+    cancelDvrHandoff()
     m.archiveSeeking = false
     cancelArchiveLoad()
     releaseArchive()

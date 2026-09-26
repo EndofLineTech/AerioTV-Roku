@@ -3,6 +3,7 @@
   <script type="text/brightscript" uri="GrowingControlsProbe.brs" />
   <children>
     <OnDemandPlayer id="player" visible="false" />
+    <Video id="nativeVideo" visible="false" width="1920" height="1080" enableUI="true" />
     <Timer id="sample" duration="2" repeat="true" />
   </children>
 </component>

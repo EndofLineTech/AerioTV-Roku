@@ -9,8 +9,12 @@ import zipfile
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--completed", action="store_true")
+parser.add_argument("--native-controls", action="store_true", help="test Roku native HLS controls without the Aerio player")
 parser.add_argument("--media-url", required=True)
+parser.add_argument("--output-name", default="", help="new ZIP name under ignored out/")
 args = parser.parse_args()
+if args.completed and args.native_controls:
+    parser.error("Native-controls baseline requires a growing HLS fixture")
 address = urlsplit(args.media_url)
 try:
     local_host = ipaddress.ip_address(address.hostname or "")
@@ -24,6 +28,12 @@ if (address.scheme != "http" or not local_host.is_private or not address.port
 root = Path(__file__).resolve().parent.parent
 out = root / "out"
 package_name = "completed-controls-probe.zip" if args.completed else "growing-controls-probe.zip"
+if args.output_name:
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,60}\.zip", args.output_name):
+        raise SystemExit("Output name must be a simple lowercase ZIP name")
+    package_name = args.output_name
+    if (out / package_name).exists():
+        raise SystemExit("Refusing to overwrite an existing probe ZIP")
 with zipfile.ZipFile(out / "aeriotv-roku.zip") as source:
     with zipfile.ZipFile(out / package_name, "w", zipfile.ZIP_DEFLATED) as target:
         for entry in source.infolist():
@@ -39,6 +49,8 @@ with zipfile.ZipFile(out / "aeriotv-roku.zip") as source:
                 data += b"dvr_controls_fixture_url=" + args.media_url.encode("ascii") + b"\n"
                 data += b"dvr_controls_fixture_format=" + format_name + b"\n"
                 data += b"dvr_controls_fixture_growing=" + growing + b"\n"
+                if args.native_controls:
+                    data += b"dvr_controls_fixture_native=true\n"
             if entry.filename == "source/Main.brs":
                 original = b'screen.createScene("AerioScene")'
                 if data.count(original) != 1:
