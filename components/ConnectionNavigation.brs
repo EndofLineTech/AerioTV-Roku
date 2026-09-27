@@ -285,6 +285,7 @@ sub updateConnectionUrl(base as string)
 end sub
 
 sub resetConnectionRuntime()
+    cancelDiagnosticShare()
     cancelRecordFlow()
     cancelDvrPlayback()
     cancelPlaybackFailure()
@@ -298,7 +299,7 @@ sub resetConnectionRuntime()
     m.guide.active = false
     m.guide.callFunc("cancelMetadataLoads")
     m.guide.config = invalid
-    for each field in ["archiveRequest", "recordRequest", "metadataEvent", "watchChannel", "exitRequested", "preferences", "playbackInfo", "playerRequest", "devicePreference"]
+    for each field in ["archiveRequest", "recordRequest", "metadataEvent", "watchChannel", "exitRequested", "preferences", "playbackInfo", "playerRequest", "searchVodSelection", "devicePreference"]
         m.guide.unobserveField(field)
     end for
     m.top.removeChild(m.guide)
@@ -311,6 +312,7 @@ sub resetConnectionRuntime()
     m.guide.observeField("preferences", "onPreferences")
     m.guide.observeField("playbackInfo", "onPlaybackInfo")
     m.guide.observeField("playerRequest", "onGuidePlayerRequest")
+    m.guide.observeField("searchVodSelection", "onUnifiedSearchVodSelection")
     m.guide.observeField("devicePreference", "onDevicePreference")
     m.guide.visible = false
     m.top.insertChild(m.guide, 1)
