@@ -19,7 +19,8 @@ and bounded HTTP policies. The mixed list caps at 240 entries per page,
 rebuilds its own next-page requests and never follows server-provided next
 URLs. Stale Task events and account changes cannot open VOD details, and a
 permission refusal empties partial results. Search remains cancelable with
-Back; source failures identify affected domains without exposing HTTP URLs.
+Back; FF/Rew move to an advertised next/previous page. Source failures
+identify affected domains without exposing HTTP URLs.
 
 Direct Xtream/M3U connections have no equivalent shared Dispatcharr index.
 The Guide options identify this limitation; direct channel search and
