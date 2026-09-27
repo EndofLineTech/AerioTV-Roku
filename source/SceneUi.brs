@@ -301,15 +301,20 @@ function uiFlagLabelBounds(label as string, width as float) as object
     return {x: x, y: 4, width: width - 8, height: 20}
 end function
 
-' Non-overlapping rectangles and quarter-circle masks avoid alpha seams.
-function uiSurfaceBoxes(w as float, h as float, radius as float) as object
+' The center and cap masks overlap slightly in scaled pills so Roku cannot
+' expose a one-pixel background line between separately rasterized nodes.
+function uiSurfaceBoxes(w as float, h as float, radius as float, capOverlap = 0 as float) as object
     if w < 0 then w = 0
     if h < 0 then h = 0
     r = radius
     if r < 0 then r = 0
     if r > w / 2 then r = w / 2
     if r > h / 2 then r = h / 2
-    return [{x: r, y: 0, w: w - 2 * r, h: h}, {x: 0, y: r, w: r, h: h - 2 * r}, {x: w - r, y: r, w: r, h: h - 2 * r}, {x: 0, y: 0, w: r, h: r}, {x: w - r, y: 0, w: r, h: r}, {x: 0, y: h - r, w: r, h: r}, {x: w - r, y: h - r, w: r, h: r}]
+    overlap = capOverlap
+    if overlap < 0 then overlap = 0
+    if overlap > 2 then overlap = 2
+    if overlap > r then overlap = r
+    return [{x: r, y: 0, w: w - 2 * r, h: h}, {x: 0, y: r, w: r, h: h - 2 * r}, {x: w - r, y: r, w: r, h: h - 2 * r}, {x: 0, y: 0, w: r + overlap, h: r}, {x: w - r - overlap, y: 0, w: r + overlap, h: r}, {x: 0, y: h - r, w: r + overlap, h: r}, {x: w - r - overlap, y: h - r, w: r + overlap, h: r}]
 end function
 
 function uiLabel(parent as object, text as string, x as float, y as float, w as float, h as float, size as integer, color = "0xE8F3FAFF" as string) as object

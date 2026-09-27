@@ -4,6 +4,12 @@ sub init()
     m.delay.observeField("fire", "publishPreview")
     m.rows = []
     m.caption = invalid
+    m.leftArrow = m.top.findNode("leftOverflowArrow")
+    m.rightArrow = m.top.findNode("rightOverflowArrow")
+    uiSetColor(m.leftArrow, "0x1AC4D8FF")
+    uiSetColor(m.rightArrow, "0x1AC4D8FF")
+    uiSetFont(m.leftArrow, 36)
+    uiSetFont(m.rightArrow, 36)
     m.groups = []
     m.index = 0
     m.layout = "modal"
@@ -43,6 +49,10 @@ sub applyPresentation(model as dynamic)
         if m.layout = "sidebar" then radius = 14
         bg = uiSurface(m.canvas, x, y, width, height, radius, "0x00000000")
         fill = uiSurface(m.canvas, x + 3, y + 3, width - 6, height - 6, radius - 3, "0x263549FF")
+        if m.layout = "pills"
+            bg.cornerOverlap = 2
+            fill.cornerOverlap = 2
+        end if
         label = uiLabel(m.canvas, "", x + 12, y, width - 24, height, 23)
         label.vertAlign = "center"
         if m.layout = "pills" then label.horizAlign = "center"
@@ -53,6 +63,8 @@ sub applyPresentation(model as dynamic)
         m.caption = uiLabel(m.canvas, "", 96, 73, 1728, 24, 18, "0x1AC4D8FF")
         m.caption.horizAlign = "center"
         m.caption.vertAlign = "center"
+        m.leftArrow.translation = [stripStart - 55, 94]
+        m.rightArrow.translation = [stripStart + count * 235 + (count - 1) * 10 + 11, 94]
     end if
     draw()
 end sub
@@ -64,13 +76,13 @@ end sub
 
 sub draw()
     m.top.visible = m.layout = "pills" or m.layout = "sidebar"
-    first = 0
-    if m.index >= m.rows.count() then first = m.index - m.rows.count() + 1
+    window = groupPillWindow(m.groups.count(), m.index, m.rows.count())
+    first = window.first
     if m.caption <> invalid
-        last = first + m.rows.count()
-        if last > m.groups.count() then last = m.groups.count()
-        m.caption.text = "CHANNEL GROUPS   <   " + (first + 1).toStr() + "-" + last.toStr() + " of " + m.groups.count().toStr() + "   >"
+        m.caption.text = "CHANNEL GROUPS   " + (first + 1).toStr() + "-" + window.last.toStr() + " of " + m.groups.count().toStr()
     end if
+    m.leftArrow.visible = m.layout = "pills" and window.left
+    m.rightArrow.visible = m.layout = "pills" and window.right
     for i = 0 to m.rows.count() - 1
         row = m.rows[i]
         row.bg.visible = first + i < m.groups.count()
@@ -87,6 +99,14 @@ sub draw()
         end if
     end for
 end sub
+
+function groupPillWindow(total as integer, selected as integer, slots as integer) as object
+    first = 0
+    if slots > 0 and selected >= slots then first = selected - slots + 1
+    last = first + slots
+    if last > total then last = total
+    return {first: first, last: last, left: first > 0, right: last < total}
+end function
 
 sub publishPreview()
     if m.top.active and m.groups.count() > 0 then m.top.preview = m.groups[m.index].id

@@ -26,6 +26,23 @@ sub main()
     assertEqual(guideProgramSecondary(football, {showSubtitles: false}), "", "viewer subtitle preference honored")
     assertEqual(guideProgramSecondary({title: "College Football", subtitle: " college FOOTBALL "}, {showSubtitles: true}), "", "duplicate main title suppressed")
     assertEqual(guideProgramSecondary({title: "College Football", description: "Matchup in description"}, {showSubtitles: true}), "", "description is not invented as subtitle")
+    episodeSettings = {showSubtitles: true, guideDensity: "preview", badges: {episode: true}}
+    episodeProgram = {title: "Young Sheldon", subtitle: "A Frankenstein's Monster", season: "7", episode: "5"}
+    assertEqual(guideProgramSecondary(episodeProgram, episodeSettings), "S7E5  A Frankenstein's Monster", "episode and subtitle share header line")
+    assertEqual(guideTileSecondary(episodeProgram, episodeSettings, 300), "S7E5  A Frankenstein's Monster", "episode precedes subtitle on wide tile")
+    assertEqual(guideTileSecondary(episodeProgram, episodeSettings, 180), "", "narrow tile keeps secondary line hidden")
+    assertEqual(guideEpisodeTitle(episodeProgram, episodeSettings, guideTileSecondary(episodeProgram, episodeSettings, 300)), "Young Sheldon", "no duplicate episode in title")
+    assertEqual(guideEpisodeTitle(episodeProgram, episodeSettings, ""), "S7E5  Young Sheldon", "narrow tile keeps episode without badge row")
+    episodeProgram.subtitle = ""
+    assertEqual(guideProgramSecondary(episodeProgram, episodeSettings), "S7E5", "episode alone gets secondary line")
+    episodeSettings.showSubtitles = false
+    assertEqual(guideProgramSecondary(episodeProgram, episodeSettings), "", "subtitle Off preserves compact layout")
+    assertEqual(guideEpisodeTitle(episodeProgram, episodeSettings, ""), "S7E5  Young Sheldon", "compact title keeps episode off LIVE/NEW row")
+    episodeSettings.showSubtitles = true
+    episodeSettings.badges.episode = false
+    episodeProgram.subtitle = "A Frankenstein's Monster"
+    assertEqual(guideProgramSecondary(episodeProgram, episodeSettings), "A Frankenstein's Monster", "episode preference hides code but retains subtitle")
+    assertEqual(guideEpisodeTitle(episodeProgram, episodeSettings, ""), "Young Sheldon", "episode Off does not prefix title")
 
     first = makeProgram("First", 100, 200)
     second = makeProgram("Second", 250, 350)

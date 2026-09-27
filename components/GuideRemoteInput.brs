@@ -94,8 +94,8 @@ sub announceGuidePosition()
     if m.ready = true
         cell = selectedCell()
         if cell <> invalid and cell.program <> invalid
-            label += ", " + cell.program.title
             secondary = guideProgramSecondary(cell.program, m.settings)
+            label += ", " + guideEpisodeTitle(cell.program, m.settings, secondary)
             if secondary <> "" then label += ", " + secondary
         end if
     end if

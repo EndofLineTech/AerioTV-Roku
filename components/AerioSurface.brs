@@ -15,7 +15,7 @@ end sub
 
 sub layoutSurface()
     if m.parts = invalid then return
-    boxes = uiSurfaceBoxes(m.top.width, m.top.height, m.top.radius)
+    boxes = uiSurfaceBoxes(m.top.width, m.top.height, m.top.radius, m.top.cornerOverlap)
     m.shape.scaleRotateCenter = [m.top.width / 2, m.top.height / 2]
     for i = 0 to m.parts.count() - 1
         part = m.parts[i]
