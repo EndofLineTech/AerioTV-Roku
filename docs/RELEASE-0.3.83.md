@@ -43,9 +43,21 @@ screenshots are distributed.
 
 ## Verification boundary
 
-The versioned asset must pass `npm ci`, `npm run release:prepare`,
-`npm audit --omit=dev --audit-level=high`, `shasum -a 256 -c SHA256SUMS`,
-and an install/remote check on the target Roku before publication.
-Use the [physical worksheet](PHYSICAL-RELEASE-0.3.83.txt) for TV-side
-perception checks that developer screenshots and native `playing` cannot
-establish. Results and the release ZIP SHA-256 are recorded after those gates.
+`npm ci`, `npm run release:prepare`, the production audit
+(`npm audit --omit=dev --audit-level=high`) and
+`shasum -a 256 -c SHA256SUMS` passed. The versioned
+ZIP passed compiler, model/controller, Python tooling, package-root and
+exclusion checks (190 package files); npm reported **zero production
+vulnerabilities**. `package.json`, `package-lock.json` and ZIP `manifest`
+agree on **0.3.83**. The versioned asset installed and launched on the target
+Roku; ECP reported developer-slot version `0.3.83`. One native Dispatcharr
+query returned interleaved EPG/Movie/TV Show results, FF and Rew moved between
+result pages, Back returned to the guide, and the guide group arrow remained
+visible. Earlier pre-release native checks exercised Movie/TV detail, Back
+focus and EPG-to-guide selection. Private screenshots remain ignored locally.
+
+These install/navigation checks do not establish physical picture or sound
+for this exact ZIP. Use the [physical worksheet](PHYSICAL-RELEASE-0.3.83.txt)
+for TV-side checks; no new server recording was created for this release.
+
+ZIP SHA-256: `d4e9b5f0447c38fb40f4380e0aff5a0f93b580a52443a3c8be46bd0ad5f012cf`

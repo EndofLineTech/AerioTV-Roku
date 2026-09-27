@@ -74,8 +74,8 @@ This is a sideloaded testing preview, not a Roku Streaming Store release.
   screen, and model-tested guide density/visibility settings.
 - **Testing status:** this is a development prerelease. The owner confirmed
   picture/sound after DVR Rewind and Forward on the published v0.3.82 build;
-  the separate near-end reader error was not reproduced. The target's missing custom
-  Audio Guide speech is an accepted platform limitation. Multiview is not
+  the separate near-end reader error was not reproduced. The target's missing
+  custom Audio Guide speech is an accepted platform limitation. Multiview is not
   implemented; Roku's `roMultiDecode` SDK access is pending.
 
 ### Included since v0.3.8
