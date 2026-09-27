@@ -130,6 +130,7 @@ sub init()
     m.guide.observeField("preferences", "onPreferences")
     m.guide.observeField("playbackInfo", "onPlaybackInfo")
     m.guide.observeField("playerRequest", "onGuidePlayerRequest")
+    m.guide.observeField("searchVodSelection", "onUnifiedSearchVodSelection")
     m.guide.observeField("devicePreference", "onDevicePreference")
     m.registry = CreateObject("roRegistrySection", "AerioTV")
     m.preferenceStore = loadPreferenceStore(m.registry)
@@ -588,7 +589,7 @@ sub completeConnection(result as dynamic)
     if not rememberConnectedAccount(result.accountId) then result.warning = "Could not save this connection. Check Roku app storage and reconnect before exiting."
     m.guide.config = {
         channels: result.channels, groups: result.groups, warning: result.warning
-        baseUrl: m.baseUrl, apiKey: m.apiKey, preferences: prefs
+        baseUrl: m.baseUrl, apiKey: m.apiKey, accountId: m.serverAccountId, preferences: prefs
         providerType: "dispatcharr", guideUrl: connection.epgUrl
         tmdbKey: m.registry.read("tmdbApiKey")
         scope: result.scope, generation: result.generation

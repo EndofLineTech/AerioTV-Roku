@@ -19,6 +19,7 @@ sub init()
     m.targetDetailKind = ""
     m.pendingSeriesTarget = invalid
     m.pendingShelfNext = invalid
+    m.fromUnifiedSearch = false
     m.failure = ""
     m.bypassCache = false
     background = uiRect(m.top, 0, 0, 1920, 1080, "0x0A1628FF")
@@ -98,6 +99,7 @@ sub configureVod()
     m.targetDetailKind = ""
     m.pendingSeriesTarget = invalid
     m.pendingShelfNext = invalid
+    m.fromUnifiedSearch = false
     m.shelf = "catalog"
     if textValue(m.top.config.providerType) = "xtream" then m.shelf = "categories"
     m.failure = ""
@@ -143,6 +145,24 @@ sub cancelVod()
         cancelNetworkTask(m.task)
         m.task = invalid
     end if
+end sub
+
+sub openUnifiedSearchResult()
+    selected = m.top.searchSelection
+    config = m.top.config
+    if not m.top.active or type(selected) <> "roAssociativeArray" or type(config) <> "roAssociativeArray" then return
+    if textValue(config.providerType) = "xtream" or selected.accountScope <> config.accountScope then return
+    if selected.kind <> m.kind or (m.kind <> "movie" and m.kind <> "series") then return
+    if not CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(textValue(selected.id)) then return
+    m.fromUnifiedSearch = true
+    m.shelf = "catalog"
+    m.query = left(textValue(selected.query), 120)
+    m.category = ""
+    m.providerId = ""
+    m.pageNumber = 1
+    m.index = 0
+    m.items = []
+    loadVodPage(selected.id)
 end sub
 
 sub loadVodPage(itemId = "" as string)
@@ -514,7 +534,10 @@ sub onVodDetailAction(event as object)
     if choice < 0 or choice >= m.detailActions.count() then return
     action = m.detailActions[choice]
     dismissVodDialog()
-    if action = "back" then return
+    if action = "back"
+        if m.fromUnifiedSearch then m.top.exitRequested = true
+        return
+    end if
     if action = "seriesTarget"
         if m.detail.kind <> "series" or textValue(m.top.config.providerType) = "xtream" then return
         cancelVod()
@@ -611,6 +634,7 @@ end sub
 sub onVodDialogClosed(event as object)
     if not isCurrentTaskEvent(event, m.dialog) then return
     dismissVodDialog()
+    if m.fromUnifiedSearch then m.top.exitRequested = true
 end sub
 
 sub dismissVodDialog()
@@ -983,7 +1007,7 @@ function handleLibraryKey(key as string, press as boolean) as boolean
 end function
 
 sub saveLibraryBookmark()
-    if m.top.config = invalid or m.shelf <> "catalog" or m.kind = "episode" then return
+    if m.fromUnifiedSearch or m.top.config = invalid or m.shelf <> "catalog" or m.kind = "episode" then return
     m.top.bookmark = {scope: m.top.config.accountScope, kind: m.kind, query: m.query, category: m.category, providerId: m.providerId, ordering: m.ordering, page: m.pageNumber, index: m.index}
 end sub
 

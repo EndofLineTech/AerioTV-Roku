@@ -29,10 +29,14 @@ sub init()
     m.mappingWarning = ""
     m.cacheScope = ""
     m.searchTask = invalid
+    m.searchMovieTask = invalid
+    m.searchSeriesTask = invalid
+    m.searchPending = 0
     m.searchView = m.top.findNode("programSearch")
     m.searchView.observeField("selection", "onProgramSearchSelection")
     m.programQuery = ""
     m.programSearchField = "title"
+    m.programSearchScope = "all"
     m.details = m.top.findNode("programDetails")
     m.details.observeField("action", "onRichDetailAction")
     m.detailDelay = m.top.findNode("detailDelay")
@@ -93,6 +97,7 @@ sub configure()
     m.message = ""
     m.query = ""
     m.programQuery = ""
+    m.programSearchScope = "all"
     m.filtered = []
     m.groupIndex = 0
     m.selected = 0
@@ -916,7 +921,7 @@ sub openOptions()
         {title: "Channel groups (list fallback)", action: "groupList"}
         {title: "Group navigation layout", action: "navigationLayout"}
         {title: "Search channels", action: "search"}
-        {title: "Search programs / movies / TV", action: "programSearch"}
+        {title: "Search EPG / movies / TV together", action: "programSearch"}
         {title: "Clear search", action: "clear"}
         {title: "Jump to date and time", action: "date"}
         {title: "Jump to Now", action: "now"}
@@ -941,6 +946,7 @@ sub openOptions()
             if item.action <> "programSearch" and item.action <> "toggleVod" then visible.push(item)
         end for
         items = visible
+        items.push({title: "Unified search requires a Dispatcharr connection", action: "searchUnsupported"})
     end if
     if m.top.miniActive
         items.unshift({title: "Stop playback", action: "stopPlayer"})
@@ -968,11 +974,9 @@ sub onPickerSelected(event as object)
     m.top.setFocus(true)
     if handleGuideSetting(kind, item) then return
     if kind = "programSearchField"
-        if item.field = "searchMovies" or item.field = "searchSeries"
-            m.top.playerRequest = item.field
-            return
-        end if
-        m.programSearchField = item.field
+        m.programSearchScope = item.scope
+        m.programSearchField = "title"
+        if item.scope = "description" then m.programSearchField = "description"
         editProgramSearch()
         return
     else if kind = "dateCategory"
@@ -1020,13 +1024,13 @@ sub onPickerSelected(event as object)
             openPicker("Channel groups", items, "groups")
             return
         else if action = "programSearch"
-            scopes = [{title: "Program title", field: "title"}, {title: "Program description", field: "description"}]
-            if m.top.vodEnabled
-                if m.top.moviesPermission = "allowed" then scopes.push({title: "Movies", field: "searchMovies"})
-                if m.top.seriesPermission = "allowed" then scopes.push({title: "TV Shows", field: "searchSeries"})
-            end if
-            openPicker("Search in", scopes, "programSearchField")
+            scopes = [{title: "All permitted EPG + VOD", scope: "all"}, {title: "EPG title", scope: "epg"}, {title: "EPG description", scope: "description"}]
+            if m.top.vodEnabled and m.top.moviesPermission = "allowed" then scopes.push({title: "Movies", scope: "movie"})
+            if m.top.vodEnabled and m.top.seriesPermission = "allowed" then scopes.push({title: "TV Shows", scope: "series"})
+            openPicker("Unified TV search", scopes, "programSearchField")
             return
+        else if action = "searchUnsupported"
+            m.message = "Direct playlists do not provide Dispatcharr's shared EPG/VOD index. Search channels here, or use Xtream's category search."
         else if action = "guideSettings" or action = "manageGroups" or action = "collections" or action = "favoriteOrder" or action = "reminders"
             openGuideSetting(action)
             return
@@ -1110,13 +1114,24 @@ sub cancelProgramSearch()
         cancelNetworkTask(m.searchTask)
         m.searchTask = invalid
     end if
+    if m.searchMovieTask <> invalid
+        m.searchMovieTask.unobserveField("result")
+        cancelNetworkTask(m.searchMovieTask)
+        m.searchMovieTask = invalid
+    end if
+    if m.searchSeriesTask <> invalid
+        m.searchSeriesTask.unobserveField("result")
+        cancelNetworkTask(m.searchSeriesTask)
+        m.searchSeriesTask = invalid
+    end if
+    m.searchPending = 0
 end sub
 
 sub editProgramSearch()
     cancelProgramSearch()
     m.searchView.active = false
     dialog = CreateObject("roSGNode", "KeyboardDialog")
-    dialog.title = "Program " + m.programSearchField + " (2-120 characters; AND/OR supported)"
+    dialog.title = "Search " + m.programSearchScope + " (2-120 characters)"
     dialog.text = m.programQuery
     dialog.buttons = ["Search", "Cancel"]
     dialog.observeField("buttonSelected", "onProgramSearchKeyboard")
@@ -1132,48 +1147,32 @@ sub onProgramSearchKeyboard(event as object)
     if submitted and m.top.active
         m.programSearchPage = 1
         m.programSearchNow = uiNow()
+        m.searchNextDomains = invalid
         loadProgramSearch()
     end if
 end sub
 
 sub loadProgramSearch()
-    cancelProgramSearch()
-    model = {items: [], query: m.programQuery, searchField: m.programSearchField, page: m.programSearchPage, hasNext: false, loading: true, message: "Searching server-indexed programs... Back cancels. Quoted phrases and AND/OR are supported."}
-    m.searchView.model = model
-    m.searchView.active = true
-    m.searchTask = CreateObject("roSGNode", "ProgramSearchTask")
-    m.searchTask.baseUrl = m.base
-    m.searchTask.apiKey = m.key
-    m.searchTask.query = m.programQuery
-    m.searchTask.searchField = m.programSearchField
-    m.searchTask.page = m.programSearchPage
-    m.searchTask.now = m.programSearchNow
-    m.searchTask.historyDays = m.settings.historyDays
-    m.searchTask.futureDays = m.settings.futureDays
-    m.searchTask.channels = m.channels
-    m.searchTask.observeField("result", "onProgramSearchResult")
-    m.searchTask.control = "RUN"
+    loadUnifiedSearchPage()
 end sub
 
 sub onProgramSearchResult(event as object)
-    if not isCurrentTaskEvent(event, m.searchTask) then return
-    result = event.getData()
-    m.searchTask.unobserveField("result")
-    m.searchTask = invalid
-    if not m.top.active or not m.searchView.active then return
-    message = result.message
-    if result.ok
-        message = "Server-indexed programs only; unindexed or overridden EPG assignments may be absent."
-        if result.items.count() = 0 then message = "No matching programs for your lineup on this page. Try another page or edit the search."
-        if result.truncated then message = "First 200 channel airings on this page shown. Narrow the search for additional matches."
-    end if
-    m.searchView.model = {items: result.items, query: m.programQuery, searchField: m.programSearchField, page: m.programSearchPage, hasNext: result.hasNext, truncated: result.truncated, loading: false, message: message}
+    finishUnifiedEpgSearch(event)
 end sub
 
 sub onProgramSearchSelection(event as object)
     item = event.getData()
     if not m.top.active then return
-    if item.program <> invalid
+    if item.vod <> invalid
+        kind = textValue(item.vod.kind)
+        if m.providerType <> "dispatcharr" or m.top.vodEnabled <> true then return
+        if kind = "movie" and m.top.moviesPermission <> "allowed" then return
+        if kind = "series" and m.top.seriesPermission <> "allowed" then return
+        if kind <> "movie" and kind <> "series" then return
+        if m.top.config = invalid then return
+        if m.programSearchAccount <> textValue(m.top.config.accountId) or m.programSearchConnectionScope <> textValue(m.top.config.scope) then return
+        m.top.searchVodSelection = {scope: m.top.config.scope, accountId: textValue(m.top.config.accountId), kind: kind, id: textValue(item.vod.id), query: m.programQuery}
+    else if item.program <> invalid
         target = channelByUuid(item.channel.uuid)
         if target = invalid then return
         found = false
@@ -1206,8 +1205,15 @@ sub onProgramSearchSelection(event as object)
     else if item.action = "edit"
         editProgramSearch()
     else
-        if item.action = "next" then m.programSearchPage++
-        if item.action = "previous" and m.programSearchPage > 1 then m.programSearchPage--
+        if item.action = "next"
+            m.programSearchPage++
+            m.searchNextDomains = m.searchHasNext
+        end if
+        if item.action = "previous" and m.programSearchPage > 1
+            m.programSearchPage--
+            m.searchNextDomains = invalid
+        end if
+        if item.action = "retry" then m.searchNextDomains = m.searchPageDomains
         loadProgramSearch()
     end if
 end sub
