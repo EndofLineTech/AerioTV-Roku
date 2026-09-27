@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Privacy Policy for the AerioTV for Roku application.">
+  <title>Privacy Policy | AerioTV for Roku</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { max-width: 48rem; margin: 2rem auto 4rem; padding: 0 1.25rem; background: #0a1628; color: #f1f6fa; font: 1rem/1.65 system-ui, sans-serif; }
+    h1, h2 { line-height: 1.25; }
+    h2 { margin-top: 2rem; }
+    a { color: #31d5df; }
+    a:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+    .date { color: #b7c8d5; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>AerioTV for Roku Privacy Policy</h1>
+    <p class="date">Last updated: September 27, 2026</p>
+    <p>This policy covers the AerioTV for Roku application maintained by <a href="https://github.com/EndofLineTech/AerioTV-Roku">EndofLineTech</a>. The app lets you connect your Roku to TV and media sources you choose, such as a Dispatcharr server or a supported playlist provider. AerioTV does not provide a hosted account, channels, or a cloud DVR service.</p>
+
+    <h2>Information the app uses</h2>
+    <p>To connect and play media, the app uses the server or playlist addresses and credentials you enter, your provider's channel and program guide data, media metadata, and your playback requests. When you sign in to Dispatcharr with a dashboard password, the app sends it to your configured server to obtain an API key; it does not save the dashboard password. Provider sign-in details for supported direct connections are used during the current app session and are not saved in the Roku app registry.</p>
+    <p>The app stores connection names and addresses, preferences, favorites and collections, reminders, watchlists, hidden and watched items, and playback progress locally on your Roku, as applicable to your source. A Dispatcharr API key can be saved in the Roku app registry when the connection's Remember option is enabled; an existing connection may already have this option enabled. The registry is device storage, not an encrypted credential vault. An optional TMDB API key is saved on the device if you choose to enter one. The app also uses bounded local caches for guide, artwork, and other media metadata.</p>
+
+    <h2>Where information goes</h2>
+    <p>The app connects directly from your Roku to the servers, feeds, and media hosts you configure or that your provider supplies. Those services may receive your Roku's network address, requests, account credentials or tokens needed for access, searches, and viewing activity, and may keep their own logs under their own policies. Dispatcharr manages server-side recordings and any associated data; uninstalling AerioTV does not delete recordings on your server. If you configure an HTTP (rather than HTTPS) source, traffic to that source is not encrypted in transit.</p>
+    <p>Testing or saving an optional TMDB API key contacts The Movie Database; enabling TMDB artwork or metadata features with that key makes additional requests. These may include a program or title name, the API key, and standard network information; artwork requests also contact the image host. TMDB's handling of those requests is governed by <a href="https://www.themoviedb.org/privacy-policy">its privacy policy</a>. The app may also fetch artwork from provider-supplied hosts. AerioTV does not include third-party advertising or app-operated analytics, and the maintainers do not receive your viewing history automatically.</p>
+
+    <h2>Diagnostics and your choices</h2>
+    <p>The app keeps a short-lived diagnostic history in memory to help troubleshoot errors. It is not automatically uploaded to the maintainers. You may choose to share a support code containing limited error categories and timing, or explicitly export diagnostic text through Developer Mode; review anything you share before sending it. You can disable Remember for a connection, forget a connection and its account-specific preferences, turn off optional TMDB features, or remove the app using Roku's controls. Data retained by your chosen server or provider must be managed with that service.</p>
+
+    <h2>This website and contact</h2>
+    <p>This policy page is hosted on GitHub Pages. It does not use cookies, tracking scripts, or analytics added by AerioTV. GitHub may process ordinary request information as described in the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub Privacy Statement</a>. For privacy questions or requests about the Roku app, <a href="https://github.com/EndofLineTech/AerioTV-Roku/issues/new">contact the maintainers through the project repository</a>; do not include passwords, API keys, private server addresses, or other sensitive information in a public issue. For information held by your media provider or Roku, contact that provider or Roku directly.</p>
+    <p>We may update this policy when the app's data practices change. The date at the top of this page identifies the latest version.</p>
+  </main>
+</body>
+</html>
