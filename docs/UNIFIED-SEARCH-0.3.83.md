@@ -41,5 +41,5 @@ picture/audio is not asserted by these search navigation checks.
 
 This feature and the accepted guide/DVR-icon polish are post-v0.3.82
 development work. The published v0.3.82 ZIP remains unchanged; a later
-testing release must exclude the unverified HLS recovery candidate per
-`docs/DVR-RECOVERY-NEXT-RELEASE.md`.
+testing release must exclude the unverified HLS recovery candidate; see
+the [v0.3.83 release boundary](RELEASE-0.3.83.md#explicit-release-scope-and-limits).
