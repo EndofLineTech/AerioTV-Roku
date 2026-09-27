@@ -104,7 +104,8 @@ through `buffering` to `playing`. After the scheduled end, native Video reported
 `finished`, not `-3`, and returned to DVR. There was **no completion error or
 near-edge buffering stall** in this run, so the production status-confirmed
 handoff branch was not invoked. Its behavior on a real Dispatcharr transition
-remains unproven; neither successful seek confirms physical A/V continuity.
+remains unproven; those native state transitions alone did not confirm physical
+A/V continuity (see the subsequent owner report below).
 The identity-matched newly created item alone was deleted through the app's
 confirmation dialog; server confirmation and a refreshed DVR returned to
 Now 0 / Scheduled 0 / Recent 1. Private screenshots remain in ignored `out/`.
@@ -112,12 +113,23 @@ The verified published v0.3.82 ZIP (SHA-256
 `e49d771a1b4c83729cfee9be490dd85574b8da12ae7f4c26c626168975e764cd`)
 was reinstalled afterward; ECP reported the developer slot at `0.3.82`.
 
+### Owner TV-side confirmation
+
+After the published v0.3.82 ZIP was restored, the owner answered **Yes** to
+all three requested physical checks: picture and sound continued after
+Rewind; picture and sound continued after Forward; playback finished cleanly
+and the recording reopened from Recent. This confirms the reported normal DVR
+controls and completed-file return on the installed build. It does not claim
+that the earlier intermittent `-3` error recurred, or that the development
+build's recovery branch ran on Dispatcharr.
+
 ## Remaining native comparison
 
 An actual server failure/near-end stall is needed to exercise the production
 status-confirmed recovery branch; the single newly authorized real recording
 was consumed and cleaned up. Request separate approval before any further
 server fixture. Confirm physical picture **and sound** after Rewind, Forward
-and any completion handoff before accepting `0i3`. The synthetic native
-comparison supports the redirect/reader-mismatch mechanism, but it does not
-prove the exact `-3` in the earlier real run came from the redirect.
+and any *recovery* handoff before closing `4vb`; the owner has confirmed normal
+Rewind, Forward and clean completion on the published build. The synthetic
+native comparison supports the redirect/reader-mismatch mechanism, but it
+does not prove the exact `-3` in the earlier real run came from the redirect.

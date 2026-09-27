@@ -41,3 +41,10 @@ issues with exact remote steps and installed build.
 
 Failure ID / sanitized steps / observed behavior: __________________________
 SKIP reason (if applicable): _______________________________________________
+
+Owner-reported partial DVR acceptance (2026-09-26, installed published v0.3.82):
+real picture and sound continued after Rewind and after Forward; playback
+finished cleanly and the recording reopened from Recent. R03/R04 include
+additional checks above and are not marked fully complete by these three
+answers. The separate intermittent HLS completion error and the development
+build's status-confirmed recovery are tracked in AerioTV-Roku-4vb.
