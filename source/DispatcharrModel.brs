@@ -131,7 +131,7 @@ function dispatcharrHeaderMode(mode as string) as string
 end function
 
 function dispatcharrUserAgent(override as string) as string
-    defaultAgent = "AerioTV-Roku/0.3.83"
+    defaultAgent = "AerioTV-Roku/0.3.84"
     if override = "" or len(override) > 80 then return defaultAgent
     if not CreateObject("roRegex", "^[\x20-\x7E]{1,80}$", "").isMatch(override) then return defaultAgent
     return override

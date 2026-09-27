@@ -1,0 +1,37 @@
+AerioTV Roku v0.3.84 testing prerelease — physical checks
+==========================================================
+All cases start NOT RUN until someone watches the actual TV with this ZIP.
+Developer Mode screenshots omit video pixels and cannot establish sound.
+
+Installed version (Settings > General > About): __________
+Roku model / OS: __________   Date / tester: __________
+
+[          ] R01 Session diagnostics support code
+Open Guide options > Diagnostics. Confirm recent events are legible, then
+select Show support code. Confirm the code is legible, the guide behind it
+is opaque, and no account/URL/program text appears inside the code screen.
+Photograph or dictate it only if needed; Back clears the display. Reopen and
+wait 90 seconds to confirm automatic dismissal. Codes already photographed
+remain decodable offline and are not credentials.
+
+[          ] R02 Account and connection boundaries
+If an alternate authorized account is available, switch accounts and verify
+the previous account's diagnostic events do not appear in the new support
+code. Reconnect to the authorized Dispatcharr connection and confirm mixed
+search still opens Movie/TV details after a Guide rebuild. SKIP rather than
+changing or exposing a shared account without approval.
+
+[          ] R03 DVR and Comskip scope
+Check the schedule dialog does not promise a per-item Remove Commercials
+toggle on Dispatcharr 0.31. The already supported Queue commercial processing
+action belongs only to an authorized completed/stopped recording. Do not
+schedule or queue any server operation solely for this worksheet; use read-only
+navigation when no separately approved disposable fixture is available.
+
+[          ] R04 Existing UI/playback regression
+Confirm the guide group arrows, mixed TV search and normal TV playback still
+respond to the remote. For any playback check, confirm actual picture and
+audible sound; do not infer either from Video state or screenshots.
+
+Failure ID / sanitized steps / observed behavior: __________________________
+SKIP reason (if applicable): _______________________________________________
