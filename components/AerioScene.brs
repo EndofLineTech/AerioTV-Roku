@@ -553,7 +553,6 @@ sub completeConnection(result as dynamic)
     end if
     m.password = ""
     m.apiKey = result.apiKey
-    recordDiagnostic("connect", 0, "Authorized lineup ready", m.connectionElapsed.totalMilliseconds())
     m.serverAccountId = result.accountId
     m.authMode = "key"
     connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
@@ -565,6 +564,7 @@ sub completeConnection(result as dynamic)
     applyVerifiedHeaderMode(textValue(result.authModeUsed))
     print "[profile-connected] selected="; connection.profileId; " task="; textValue(result.profileId); " channels="; result.channels.count()
     m.accountIdentity = connectionPreferenceIdentity(connection, result.accountId)
+    recordDiagnostic("connect", 0, "Authorized lineup ready", m.connectionElapsed.totalMilliseconds())
     m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
     legacy = invalid
     legacyJson = m.registry.read("preferences")
@@ -783,6 +783,7 @@ sub onAacFailureClosed(event as object)
 end sub
 
 sub showConnection()
+    cancelDiagnosticShare()
     resetMediaNavigation()
     cancelRecordFlow()
     cancelDvrPlayback()

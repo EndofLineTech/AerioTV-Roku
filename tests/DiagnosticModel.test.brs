@@ -17,5 +17,23 @@ sub main()
     if instr(1, restoredLimit, "at-least-16-mb") = 0 then stop
     memoryPressure = guideMetadataDiagnosticText({stage: "mapping", source: "network", category: "memory-pressure", message: "Device memory pressure stopped the metadata download."})
     if memoryPressure <> "mapping network memory-pressure Device memory pressure stopped the metadata download." then stop
+    current = [{time: 4990, scope: "account-A", stage: "playback", code: -3, elapsedMs: 510, message: "private channel secret"}, {time: 4999, scope: "account-B", stage: "vod", code: 403, elapsedMs: 900, message: "other account"}]
+    scoped = diagnosticEvents(current, 5000, "secret", "account-A")
+    if scoped.count() <> 1 or scoped[0].scope <> "account-A" then stop
+    if instr(1, FormatJson(diagnosticConsoleEvents(scoped)), "account-A") > 0 then stop
+    if diagnosticEvents(current, 5000, "secret", "account-B").count() <> 1 then stop
+    if diagnosticEvents(current, 5000, "secret", "account-C").count() <> 0 then stop
+    code = diagnosticSupportCode(current, 5000, "secret", "account-A")
+    if code <> "D113-35O2-00AW-Y" then stop ' fixed parity vector for offline decoder
+    if len(code) < 8 or len(code) > 120 or left(code, 3) <> "D11" then stop
+    if instr(1, code, "secret") > 0 or instr(1, code, "account") > 0 then stop
+    if diagnosticSupportCode(current, 5000, "secret", "account-B") = code then stop
+    if diagnosticSupportCode(current, 5000, "secret", "account-C") <> "" then stop
+    large = []
+    for i = 0 to 19
+        large.push({time: 4900 + i, scope: "account-A", stage: "guide", code: 500, elapsedMs: 500, message: "private"})
+    end for
+    code = diagnosticSupportCode(large, 5000, "secret", "account-A")
+    if left(code, 3) <> "D18" or len(code) > 120 then stop ' last eight only
     print "ALL TESTS PASSED"
 end sub
