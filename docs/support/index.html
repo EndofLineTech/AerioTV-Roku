@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Setup help, Roku remote tips, and troubleshooting for AerioTV for Roku.">
+  <title>Support | AerioTV for Roku</title>
+  <link rel="stylesheet" href="../site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <nav class="container nav" aria-label="Main navigation">
+      <a class="brand" href="../">Aerio<span>TV</span></a>
+      <div class="nav-links"><a href="../">Home</a><a href="./" aria-current="page">Support</a><a href="https://github.com/EndofLineTech/AerioTV-Roku">GitHub</a></div>
+    </nav>
+  </header>
+  <main id="main" class="container">
+    <div class="page-heading">
+      <p class="eyebrow">Help center</p>
+      <h1>AerioTV support</h1>
+      <p class="lead">Get connected, find your way around, and troubleshoot your Roku setup.</p>
+    </div>
+    <div class="content">
+      <div class="callout"><h2>Bring your own TV source</h2><p>AerioTV does not provide channels, shows, subscriptions, guide data, or DVR storage. You need a compatible source you are authorized to use. Features vary by source and account permissions.</p></div>
+
+      <section aria-labelledby="connect">
+        <h2 id="connect">Connect your Roku</h2>
+        <ol>
+          <li>Make sure your Roku and your TV source can reach each other on the network. Have the connection address and any account details ready.</li>
+          <li>Open AerioTV and follow the welcome screen to set up a connection. If you already connected, open <strong>Settings → Connection</strong> to review it.</li>
+          <li>After connecting, wait for your available channels and guide to load. Highlight a currently airing program and press <strong>OK</strong> to watch.</li>
+        </ol>
+        <p>Using a testing build? Follow the <a href="https://github.com/EndofLineTech/AerioTV-Roku#install-on-your-roku">installation instructions</a> and download the named app ZIP under <a href="https://github.com/EndofLineTech/AerioTV-Roku/releases">Releases</a>, not GitHub’s automatically generated source ZIP.</p>
+      </section>
+
+      <section aria-labelledby="remote">
+        <h2 id="remote">Roku remote basics</h2>
+        <ul>
+          <li><strong>Guide:</strong> navigate with the arrow keys; <strong>OK</strong> on a current program starts live TV. Open a program’s details for more actions.</li>
+          <li><strong>Watching live:</strong> tap <strong>OK</strong> to show or hide program information. Hold <strong>OK</strong> for about a second to open AerioTV player options.</li>
+          <li><strong>Back:</strong> returns from fullscreen playback to the guide with a mini-player. Choose <strong>Stop playback</strong> in player options to end the stream.</li>
+          <li><strong>Guide header:</strong> navigate to the top to open other available sections, including DVR when your Dispatcharr account permits it.</li>
+        </ul>
+      </section>
+
+      <section class="faq" aria-labelledby="faq-title">
+        <h2 id="faq-title">Common questions</h2>
+        <details><summary>Why can’t I connect?</summary><p>Check that your Roku can reach the server address you entered; <code>localhost</code> refers to the Roku, not another computer. Confirm your credentials with your own service, and check whether a guest network or VPN is blocking local access. If the connection was previously saved, try signing in again.</p></details>
+        <details><summary>Why is my guide empty?</summary><p>Confirm that your source has channels available to your account and that guide data is present. Try refreshing the lineup in the guide options. Some channels have no program information even when live TV works.</p></details>
+        <details><summary>Why do I have video but no sound?</summary><p>Audio support depends on the channel’s format and your Roku. Open AerioTV player options by holding OK, then check <strong>Audio compatibility</strong>. If you use Dispatcharr, an AAC output profile must already be active and available to your account for the AAC option.</p></details>
+        <details><summary>Where are my recordings?</summary><p>Server DVR is available only with a permitted Dispatcharr account. Open <strong>DVR</strong> from the guide header and use <strong>Replay</strong> to refresh. Recording schedules and files are stored on your server, not on the Roku; they can continue after you leave the app.</p></details>
+        <details><summary>Why isn’t rewind or restart available?</summary><p>These features require the source to offer eligible program history. They are not a guaranteed local buffer. Try a supported channel or check the source’s archive availability.</p></details>
+        <details><summary>Why does the star button open Roku settings?</summary><p>In fullscreen video, <strong>*</strong> belongs to Roku. Hold <strong>OK</strong> to open AerioTV player options, or tap OK, then Up or Down, then choose Options.</p></details>
+      </section>
+
+      <section aria-labelledby="contact">
+        <h2 id="contact">Still need help?</h2>
+        <p><a class="button button-primary" href="https://github.com/EndofLineTech/AerioTV-Roku/issues/new">Contact the maintainers on GitHub</a></p>
+        <p>Include your app version, Roku model and OS, what you tried, and the exact error or result. If your build has a <strong>Show support code</strong> option in Diagnostics, you can include that code. Do not post passwords, API keys, private server addresses, or provider links in a public issue.</p>
+        <p>For questions about your channels, subscription, or server-side recordings, contact your TV source or server administrator.</p>
+      </section>
+    </div>
+  </main>
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>Independent, open-source Roku app. Bring your own content.</p>
+      <nav class="footer-links" aria-label="Legal and help"><a href="../">Home</a><a href="../privacy/">Privacy Policy</a><a href="../terms/">Terms of Use</a></nav>
+    </div>
+  </footer>
+</body>
+</html>

@@ -3,15 +3,83 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AerioTV for Roku</title>
-  <style>
-    body { max-width: 44rem; margin: 3rem auto; padding: 0 1.25rem; background: #0a1628; color: #f1f6fa; font: 1.1rem/1.6 system-ui, sans-serif; }
-    a { color: #31d5df; }
-    a:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
-  </style>
+  <meta name="description" content="AerioTV for Roku brings your own TV setup to life with an interactive guide, live TV, and server DVR on supported sources.">
+  <title>AerioTV for Roku | Your TV, your way</title>
+  <link rel="stylesheet" href="site.css">
 </head>
 <body>
-  <h1>AerioTV for Roku</h1>
-  <p>Read the <a href="privacy/">Privacy Policy</a> and <a href="terms/">Terms of Use</a>, or visit the <a href="https://github.com/EndofLineTech/AerioTV-Roku">project repository</a>.</p>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <nav class="container nav" aria-label="Main navigation">
+      <a class="brand" href="./" aria-current="page">Aerio<span>TV</span> <span class="visually-hidden">for Roku</span></a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#get-started">Get started</a>
+        <a href="support/">Support</a>
+        <a href="https://github.com/EndofLineTech/AerioTV-Roku">GitHub</a>
+      </div>
+    </nav>
+  </header>
+  <main id="main">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <p class="eyebrow">AerioTV for Roku</p>
+          <h1>Your TV, your way.</h1>
+          <p class="lead">Explore live channels and what’s on next with an interactive guide built for your Roku remote. Bring your own compatible TV source, and make your lineup feel right at home.</p>
+          <div class="actions">
+            <a class="button button-primary" href="support/">Get setup help</a>
+            <a class="button button-secondary" href="https://github.com/EndofLineTech/AerioTV-Roku/releases">View testing builds</a>
+          </div>
+          <p class="small-note">AerioTV is an app, not a TV service. Channels, subscriptions, and DVR storage are not included.</p>
+        </div>
+        <div class="hero-art">
+          <img src="https://raw.githubusercontent.com/EndofLineTech/AerioTV-Roku/main/images/channel-icon-fhd.png" alt="AerioTV logo" width="540" height="405">
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-muted" id="features">
+      <div class="container">
+        <p class="eyebrow">Made for the living room</p>
+        <h2>Everything in one place.</h2>
+        <p class="section-intro">A clear way to find something to watch, built around the sources you already use. What’s available depends on your setup.</p>
+        <div class="cards">
+          <article class="card"><p class="number">01 / DISCOVER</p><h3>Interactive guide</h3><p>See what’s on now and coming up, browse program details, search, and organize your channels with favorites and groups.</p></article>
+          <article class="card"><p class="number">02 / WATCH</p><h3>Live TV and more</h3><p>Move between live channels and the guide with your Roku remote. Browse movies and shows when your connected source makes them available.</p></article>
+          <article class="card"><p class="number">03 / RECORD</p><h3>Server DVR</h3><p>With a permitted Dispatcharr account, schedule recordings from the guide and manage or play recordings stored on your own server.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="get-started">
+      <div class="container">
+        <p class="eyebrow">Get started</p>
+        <h2>From your setup to your screen.</h2>
+        <div class="steps">
+          <div class="step"><h3>1. Bring your source</h3><p>Have your own compatible TV source and any required account information ready. AerioTV does not supply content.</p></div>
+          <div class="step"><h3>2. Connect on Roku</h3><p>Open AerioTV, enter your connection details, and let the app load the channels and guide available to you.</p></div>
+          <div class="step"><h3>3. Settle in</h3><p>Pick a channel, explore what’s next, and use the features supported by your source and account.</p></div>
+        </div>
+        <div class="actions"><a class="button button-secondary" href="support/">Setup and troubleshooting →</a></div>
+      </div>
+    </section>
+
+    <section class="section section-muted">
+      <div class="container callout">
+        <h2>Need a hand?</h2>
+        <p>Find connection help, Roku remote tips, recording answers, and a way to reach the project maintainers.</p>
+        <a class="button button-primary" href="support/">Visit support</a>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p>Independent, open-source Roku app. Bring your own content.</p>
+      <nav class="footer-links" aria-label="Legal and help">
+        <a href="support/">Support</a><a href="privacy/">Privacy Policy</a><a href="terms/">Terms of Use</a>
+      </nav>
+    </div>
+  </footer>
 </body>
 </html>
