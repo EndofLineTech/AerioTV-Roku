@@ -285,6 +285,8 @@ sub updateConnectionUrl(base as string)
 end sub
 
 sub resetConnectionRuntime()
+    m.rokuRfiPending = ""
+    m.rokuRfiOffered = false
     cancelDiagnosticShare()
     cancelRecordFlow()
     cancelDvrPlayback()
@@ -404,6 +406,7 @@ sub completeDirectConnection(result as object, entry as object, xcUsername = "" 
     m.screen.visible = false
     m.guide.visible = true
     m.guide.active = true
+    signalStartupComplete()
     updateLibraryPermissions()
     m.reminderClock.control = "start"
     recordDiagnostic("connect", 0, "Direct live lineup ready", m.connectionElapsed.totalMilliseconds())
@@ -496,8 +499,9 @@ end sub
 sub openConnectionAgentEditor()
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid then return
-    dialog = CreateObject("roSGNode", "KeyboardDialog")
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
     dialog.title = "User-Agent override (blank = default)"
+    dialog.textEditBox.voiceEnabled = true
     dialog.text = entry.userAgent
     dialog.buttons = ["Save", "Cancel"]
     dialog.observeField("buttonSelected", "onConnectionAgentSaved")
@@ -509,8 +513,9 @@ end sub
 sub openConnectionRefererEditor()
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid or entry.provider <> "m3u" then return
-    dialog = CreateObject("roSGNode", "KeyboardDialog")
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
     dialog.title = "Source Referer origin (optional)"
+    dialog.textEditBox.voiceEnabled = true
     dialog.text = entry.referer
     dialog.buttons = ["Save", "Cancel"]
     dialog.observeField("buttonSelected", "onConnectionRefererSaved")
@@ -627,7 +632,7 @@ sub switchSavedConnection(id as string)
     applySelectedConnection()
     m.status = "Selected connection: " + connectionStoreEntry(updated, id).name + "."
     drawSetup()
-    if m.baseUrl <> "" and m.apiKey <> "" then connectServer()
+    if m.baseUrl <> "" and m.apiKey <> "" then connectServer(true)
 end sub
 
 sub addSavedConnection(provider = "dispatcharr" as string)
@@ -652,8 +657,9 @@ end sub
 sub openConnectionRename()
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid then return
-    dialog = CreateObject("roSGNode", "KeyboardDialog")
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
     dialog.title = "Rename connection"
+    dialog.textEditBox.voiceEnabled = true
     dialog.text = entry.name
     dialog.buttons = ["Save name", "Cancel"]
     dialog.observeField("buttonSelected", "onConnectionRenamed")

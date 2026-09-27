@@ -505,8 +505,9 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     if key = "options"
-        dialog = CreateObject("roSGNode", "KeyboardDialog")
+        dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
         dialog.title = "Search recordings and rules (blank clears), or change sort"
+        dialog.textEditBox.voiceEnabled = true
         dialog.text = m.query
         sortLabel = "Sort by title"
         if m.sortMode = "title" then sortLabel = "Sort by date"

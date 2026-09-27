@@ -5,6 +5,23 @@ sub main()
         m.focused = value
         return true
     end function}
+    m.top.beacons = []
+    m.top.signalBeacon = sub(name as string)
+        m.beacons.push(name)
+    end sub
+    m.startupDialogOpen = true
+    m.startupBeaconSent = false
+    signalStartupComplete()
+    signalStartupComplete()
+    assertEqual(m.top.beacons.count(), 2, "startup beacons fire once")
+    assertEqual(m.top.beacons[0], "AppDialogComplete", "sign-in interval ends before ready guide")
+    assertEqual(m.top.beacons[1], "AppLaunchComplete", "rendered guide completes app launch")
+    m.top.beacons = []
+    m.startupDialogOpen = false
+    m.startupBeaconSent = false
+    signalStartupComplete()
+    assertEqual(m.top.beacons.count(), 1, "first-run welcome is an operable landing screen")
+    assertEqual(m.top.beacons[0], "AppLaunchComplete", "welcome launch needs no login dialog interval")
     m.page = "guide"
     m.heldZap = ""
     m.heldZapTimer = {control: "stop"}

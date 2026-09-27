@@ -417,10 +417,15 @@ end function
 
 sub openGuideKeyboard(kind as string, title as string, text as string)
     m.guideKeyboardKind = kind
-    dialog = CreateObject("roSGNode", "KeyboardDialog")
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
     dialog.title = title
     dialog.text = text
-    if kind = "tmdbKey" then dialog.keyboard.textEditBox.secureMode = true
+    dialog.textEditBox.voiceEnabled = true
+    if kind = "number" then dialog.keyboardDomain = "numeric"
+    if kind = "tmdbKey"
+        dialog.keyboardDomain = "password"
+        dialog.textEditBox.secureMode = true
+    end if
     dialog.buttons = ["Save", "Cancel"]
     if kind = "number" then dialog.buttons = ["Go", "Cancel"]
     if kind = "tmdbKey" then dialog.buttons = ["Test and save", "Cancel"]

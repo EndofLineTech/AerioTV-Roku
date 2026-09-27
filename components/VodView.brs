@@ -801,8 +801,9 @@ end sub
 
 sub openVodSearch()
     dismissVodDialog()
-    dialog = CreateObject("roSGNode", "KeyboardDialog")
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
     dialog.title = "Search permitted library"
+    dialog.textEditBox.voiceEnabled = true
     dialog.text = m.query
     dialog.buttons = ["Search", "Cancel"]
     dialog.observeField("buttonSelected", "onVodSearch")

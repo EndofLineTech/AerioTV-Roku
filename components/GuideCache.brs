@@ -20,6 +20,16 @@ sub cancelMetadataLoads()
     end if
 end sub
 
+sub trimTransientGuideMemory()
+    if m.cache = invalid then return
+    m.detailCache = {}
+    m.detailOrder = []
+    m.detailFailures = {}
+    keep = [guideWindowStart(uiNow())]
+    if m.viewStart <> invalid then keep.push(guideWindowStart(m.viewStart))
+    guideCacheRetain(m.cache, keep)
+end sub
+
 function forgetStoredMetadata() as object
     m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
     cancelMetadataLoads()

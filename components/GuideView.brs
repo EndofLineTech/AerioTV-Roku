@@ -1058,8 +1058,9 @@ sub onPickerSelected(event as object)
             openPicker("Clock format", [{title: "System", value: "system"}, {title: "12-hour", value: "12"}, {title: "24-hour", value: "24"}], "clock")
             return
         else if action = "search"
-            dialog = CreateObject("roSGNode", "KeyboardDialog")
+            dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
             dialog.title = "Search ALL authorized channels by name or number"
+            dialog.textEditBox.voiceEnabled = true
             dialog.text = m.query
             dialog.buttons = ["Search", "Cancel"]
             dialog.observeField("buttonSelected", "onSearch")
@@ -1130,8 +1131,9 @@ end sub
 sub editProgramSearch()
     cancelProgramSearch()
     m.searchView.active = false
-    dialog = CreateObject("roSGNode", "KeyboardDialog")
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
     dialog.title = "Search " + m.programSearchScope + " (2-120 characters)"
+    dialog.textEditBox.voiceEnabled = true
     dialog.text = m.programQuery
     dialog.buttons = ["Search", "Cancel"]
     dialog.observeField("buttonSelected", "onProgramSearchKeyboard")

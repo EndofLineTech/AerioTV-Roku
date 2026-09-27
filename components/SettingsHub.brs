@@ -154,8 +154,9 @@ sub selectSetting(index as integer)
     else if item.action = "connection"
         m.top.selection = {account: m.top.model.account, action: "connection"}
     else if item.action = "customAccent"
-        m.accentDialog = CreateObject("roSGNode", "KeyboardDialog")
+        m.accentDialog = CreateObject("roSGNode", "StandardKeyboardDialog")
         m.accentDialog.title = "Accent: 6 hex digits (empty = preset)"
+        m.accentDialog.textEditBox.voiceEnabled = true
         m.accentDialog.text = textValue(m.top.model.device.customAccent)
         m.accentDialog.buttons = ["Save", "Cancel"]
         m.accentDialog.observeField("buttonSelected", "onAccentChoice")
