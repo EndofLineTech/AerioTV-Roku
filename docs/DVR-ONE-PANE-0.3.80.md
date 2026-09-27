@@ -34,3 +34,16 @@ native `playing` is not proof of physical picture or sound. No person confirmed
 either on the TV during this run. At the time of this first test, growing HLS
 disabled native trick play; subsequent native seek testing is documented in
 `docs/DVR-TRICKPLAY-0.3.80.md` (`AerioTV-Roku-3ga`).
+
+## Subsequent owner acceptance — 2026-09-26
+
+On the Roku, the Product Owner confirmed the single DVR pane's **Recording
+Now, Scheduled, Recent, and Series Rules** headings are readable together,
+focus moves through recording rows without landing on an empty heading, and
+Back returns to the guide as expected. Earlier identity-checked native runs
+showed the same item moving Scheduled → Recording Now → Recent with the active
+row at the top; physical picture and sound after recording seeks were accepted
+separately in `docs/DVR-HLS-HANDOFF-0.3.82.md`. This closes
+`AerioTV-Roku-1ds` without creating another server recording. The observed
+library had zero series rules, so this is not a separate exercise of rule
+mutations.
