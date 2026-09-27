@@ -15,8 +15,8 @@ sub init()
         m.rows.push({root: root, background: background, title: title, subtitle: subtitle})
     end for
     m.footer = uiLabel(m.top, "", 96, 980, 1728, 58, 22, "0x9EB5C9FF")
-    m.footer.wrap = true
-    m.footer.maxLines = 2
+    m.footer.wrap = false
+    m.footer.maxLines = 1
     m.entries = []
     m.index = 0
     m.clock = m.top.createChild("Timer")
@@ -91,16 +91,9 @@ sub render()
     selected = m.entries[m.index]
     if selected.program <> invalid then m.detail.text = selected.program.description
     if selected.vod <> invalid then m.detail.text = selected.vod.description
-    m.footer.text = "Page " + model.page.toStr() + "  |  OK: Guide / title detail  |  *: Edit  |  Back: Close"
-    if model.truncated = true
-        m.footer.text += chr(10) + "Page limited to 200 airings. Narrow the search to see omitted matches."
-    else if model.scope = "all"
-        m.footer.text += chr(10) + "EPG uses your lineup and configured dates; VOD uses permitted catalogs."
-    else if model.scope = "movie" or model.scope = "series"
-        m.footer.text += chr(10) + "Permitted catalog results only."
-    else
-        m.footer.text += chr(10) + "Your lineup only. Opening an outside-filter result clears channel filters."
-    end if
+    m.footer.text = "Page " + model.page.toStr() + "  |  OK Open  |  * Edit  |  Back Close"
+    if model.hasNext or model.page > 1 then m.footer.text += "  |  FF / Rew Pages"
+    if model.truncated = true then m.footer.text += "  |  EPG capped; narrow the search"
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
@@ -115,6 +108,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
     else if key = "down"
         if m.index < m.entries.count() - 1 then m.index++
         render()
+    else if key = "fastforward" and m.top.model.hasNext = true
+        m.top.selection = {action: "next"}
+    else if key = "rewind" and m.top.model.page > 1
+        m.top.selection = {action: "previous"}
     else if key = "OK"
         m.top.selection = m.entries[m.index]
     end if
