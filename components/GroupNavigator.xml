@@ -11,5 +11,9 @@
   </interface>
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="GroupNavigator.brs" />
-  <children><Timer id="previewDelay" duration="0.18" repeat="false" /></children>
+  <children>
+    <Timer id="previewDelay" duration="0.18" repeat="false" />
+    <Label id="leftOverflowArrow" text="&lt;" width="44" height="48" horizAlign="center" vertAlign="center" font="font:MediumBoldSystemFont" visible="false" />
+    <Label id="rightOverflowArrow" text="&gt;" width="44" height="48" horizAlign="center" vertAlign="center" font="font:MediumBoldSystemFont" visible="false" />
+  </children>
 </component>

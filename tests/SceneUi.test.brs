@@ -74,6 +74,14 @@ sub main()
             if bounds.x + bounds.w > dims[0] or bounds.y + bounds.h > dims[1] then stop
         end for
     end for
+    ' Pill cap masks must cover the center rectangle's sampled edge when
+    ' focus-scaled; touching exactly leaves a dark vertical seam on Roku.
+    boxes = uiSurfaceBoxes(235, 40, 20, 2)
+    assertEqual(boxes[0].x + boxes[0].w, 215, "center fill reaches right cap")
+    assertEqual(boxes[4].x, 213, "top-right cap overlaps center by two pixels")
+    assertEqual(boxes[6].x, 213, "bottom-right cap overlaps center by two pixels")
+    assertEqual(boxes[4].x + boxes[4].w, 235, "overlap preserves pill outer edge")
+    assertEqual(boxes[3].w, 22, "top-left cap covers the left join")
     print "ALL TESTS PASSED"
 end sub
 

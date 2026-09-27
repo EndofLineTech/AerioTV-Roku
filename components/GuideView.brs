@@ -551,8 +551,8 @@ sub drawGuide()
     if cell <> invalid
         if cell.program <> invalid
             program = cell.program
-            m.title.text = program.title
             secondary = guideProgramSecondary(program, m.settings)
+            m.title.text = guideEpisodeTitle(program, m.settings, secondary)
             if secondary <> ""
                 m.subtitle.text = secondary
                 m.subtitle.visible = true
@@ -646,8 +646,8 @@ sub renderCells(row as object, cells as object, selected as boolean)
             if cell.program <> invalid
                 if not focused then uiSetColor(tile.fill, programTint(cell.program, m.settings))
                 program = cell.program
-                tile.title.text = program.title
                 secondary = guideTileSecondary(program, m.settings, width)
+                tile.title.text = guideEpisodeTitle(program, m.settings, secondary)
                 if secondary <> ""
                     secondaryLayout = geometry.withSubtitle
                     if tile.subtitle = invalid
@@ -698,8 +698,6 @@ sub renderCells(row as object, cells as object, selected as boolean)
                 if remaining >= 100
                     tile.time.translation = [14 + offset, timeY]
                     tile.time.width = remaining
-                    episode = programEpisodeText(program, m.settings)
-                    if episode <> "" and m.settings.showSubtitles then tile.time.text = episode + " | " + tile.time.text
                 end if
                 if hasReminder(m.reminders, row.uuid, program.id) then tile.title.text = "REM | " + tile.title.text
             end if

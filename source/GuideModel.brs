@@ -77,13 +77,28 @@ end function
 function guideProgramSecondary(program as dynamic, settings as object) as string
     if type(program) <> "roAssociativeArray" or settings.showSubtitles <> true then return ""
     subtitle = textValue(program.subtitle)
-    if subtitle = "" or lcase(subtitle) = lcase(textValue(program.title)) then return ""
+    if lcase(subtitle) = lcase(textValue(program.title)) then subtitle = ""
+    episode = ""
+    if type(settings.badges) = "roAssociativeArray" then episode = programEpisodeText(program, settings)
+    if episode <> "" and subtitle <> "" then return left(episode + "  " + subtitle, 256)
+    if episode <> "" then return episode
     return left(subtitle, 256)
 end function
 
 function guideTileSecondary(program as dynamic, settings as object, width as integer) as string
     if settings.guideDensity <> "preview" or width < 260 then return ""
     return guideProgramSecondary(program, settings)
+end function
+
+' Without a subtitle line (narrow tile, Basic or subtitle Off), keep episode
+' metadata visible before the title instead of mixing it with LIVE/NEW/time.
+function guideEpisodeTitle(program as dynamic, settings as object, secondary as string) as string
+    if type(program) <> "roAssociativeArray" then return ""
+    title = textValue(program.title)
+    if secondary <> "" or type(settings.badges) <> "roAssociativeArray" then return title
+    episode = programEpisodeText(program, settings)
+    if episode = "" then return title
+    return left(episode + "  " + title, 256)
 end function
 
 function programTextList(raw as dynamic, limit as integer) as object

@@ -4,6 +4,7 @@
     <field id="width" type="float" value="100" onChange="layoutSurface" />
     <field id="height" type="float" value="50" onChange="layoutSurface" />
     <field id="radius" type="float" value="25" onChange="layoutSurface" />
+    <field id="cornerOverlap" type="float" value="0" onChange="layoutSurface" />
     <field id="color" type="color" value="0x0D1E35FF" onChange="layoutSurface" />
     <field id="focusScale" type="float" value="1" onChange="animateSurface" />
     <field id="pressedScale" type="float" value="1" onChange="animateSurface" />
