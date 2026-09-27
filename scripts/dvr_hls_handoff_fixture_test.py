@@ -2,6 +2,7 @@
 
 import importlib.util
 from http.client import HTTPConnection
+import json
 from pathlib import Path
 import tempfile
 import threading
@@ -24,7 +25,7 @@ class HlsHandoffFixtureTest(unittest.TestCase):
             (folder / "seg_00000.ts").write_bytes(b"segment")
             (folder / "finished.mkv").write_bytes(b"finished media")
             handler = FIXTURE.handler_for(
-                folder, "#EXTM3U\n#EXTINF:4,\nseg_00000.ts\n", transition_after=0.15
+                folder, "#EXTM3U\n#EXTINF:4,\nseg_00000.ts\n", transition_after=0.15, status_delay=0.15
             )
             with ThreadingHTTPServer(("127.0.0.1", 0), handler) as server:
                 thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -41,13 +42,23 @@ class HlsHandoffFixtureTest(unittest.TestCase):
                     segment = connection.getresponse()
                     self.assertEqual(segment.status, 200)
                     self.assertEqual(segment.read(), b"segment")
+                    connection.request("GET", "/api/channels/recordings/12/")
+                    current = json.loads(connection.getresponse().read())
+                    self.assertEqual(current["custom_properties"]["status"], "recording")
                     time.sleep(0.2)
                     connection.request("GET", "/hls/index.m3u8")
                     redirect = connection.getresponse()
                     self.assertEqual(redirect.status, 302)
                     self.assertEqual(redirect.getheader("Location"), "/file/")
                     self.assertEqual(redirect.read(), b"")
-                    connection.request("GET", "/file/", headers={"Range": "bytes=3-9"})
+                    connection.request("GET", "/api/channels/recordings/12/")
+                    current = json.loads(connection.getresponse().read())
+                    self.assertEqual(current["custom_properties"]["status"], "recording")
+                    time.sleep(0.2)
+                    connection.request("GET", "/api/channels/recordings/12/")
+                    finished = json.loads(connection.getresponse().read())
+                    self.assertEqual(finished["custom_properties"]["status"], "completed")
+                    connection.request("GET", "/api/channels/recordings/12/file/", headers={"Range": "bytes=3-9"})
                     final = connection.getresponse()
                     self.assertEqual(final.status, 206)
                     self.assertEqual(final.getheader("Content-Type"), "video/x-matroska")

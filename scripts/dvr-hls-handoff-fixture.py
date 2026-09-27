@@ -7,6 +7,7 @@ No Dispatcharr connection or recording is created by this fixture.
 import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import ipaddress
+import json
 from pathlib import Path
 import re
 import signal
@@ -48,7 +49,7 @@ def build_media(folder: Path, duration: int):
     return body, len(segments)
 
 
-def handler_for(folder: Path, playlist: str, transition_after: float):
+def handler_for(folder: Path, playlist: str, transition_after: float, status_delay: float = 0):
     class FixtureHandler(BaseHTTPRequestHandler):
         started = None
 
@@ -62,7 +63,23 @@ def handler_for(folder: Path, playlist: str, transition_after: float):
                 return
             if self.started is None and route.path == "/hls/index.m3u8":
                 FixtureHandler.started = time.monotonic()
-            completed = self.started is not None and time.monotonic() - self.started >= transition_after
+            elapsed = 0 if self.started is None else time.monotonic() - self.started
+            completed = self.started is not None and elapsed >= transition_after
+            if route.path == "/api/channels/recordings/12/":
+                ready = completed and elapsed >= transition_after + status_delay
+                properties = {"status": "completed" if ready else "recording",
+                              "file_path": "/data/recordings/synthetic.mkv"}
+                if not ready:
+                    properties["_hls_dir"] = "/data/recordings/synthetic_hls"
+                body = json.dumps({"id": 12, "channel": 1,
+                                   "custom_properties": properties}).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                print(f"[hls-fixture] recording status={properties['status']}", flush=True)
+                return
             if route.path == "/hls/index.m3u8":
                 if completed:
                     self.send_response(302)
@@ -89,7 +106,7 @@ def handler_for(folder: Path, playlist: str, transition_after: float):
                     return
                 path = folder / route.path.rsplit("/", 1)[1]
                 return self.serve_file(path, "video/mp2t")
-            if route.path == "/file/":
+            if route.path in ("/file/", "/api/channels/recordings/12/file/"):
                 return self.serve_file(folder / "finished.mkv", "video/x-matroska")
             self.send_error(404)
 
@@ -141,16 +158,18 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--duration", type=int, default=40)
     parser.add_argument("--transition-after", type=float, default=25)
+    parser.add_argument("--status-delay", type=float, default=0,
+                        help="extra seconds before the mock recording status becomes completed")
     args = parser.parse_args()
     host = ipaddress.ip_address(args.host)
     if host.version != 4 or not host.is_private or not 1024 <= args.port <= 65535:
         parser.error("Use a private IPv4 host and a port from 1024 to 65535")
-    if not 16 <= args.duration <= 120 or not 0 < args.transition_after <= 120:
+    if not 16 <= args.duration <= 120 or not 0 < args.transition_after <= 120 or not 0 <= args.status_delay <= 60:
         parser.error("Limit media to 16–120 seconds and the transition to 1–120 seconds")
     with tempfile.TemporaryDirectory(prefix="roku-hls-handoff-") as directory:
         folder = Path(directory)
         playlist, segments = build_media(folder, args.duration)
-        with ThreadingHTTPServer((args.host, args.port), handler_for(folder, playlist, args.transition_after)) as server:
+        with ThreadingHTTPServer((args.host, args.port), handler_for(folder, playlist, args.transition_after, args.status_delay)) as server:
             def end_fixture(_signal, _frame):
                 raise KeyboardInterrupt
 

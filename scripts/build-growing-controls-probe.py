@@ -10,11 +10,12 @@ import zipfile
 parser = argparse.ArgumentParser()
 parser.add_argument("--completed", action="store_true")
 parser.add_argument("--native-controls", action="store_true", help="test Roku native HLS controls without the Aerio player")
+parser.add_argument("--status-handoff", action="store_true", help="exercise actual DVR status Task and playback handoff against a local fixture")
 parser.add_argument("--media-url", required=True)
 parser.add_argument("--output-name", default="", help="new ZIP name under ignored out/")
 args = parser.parse_args()
-if args.completed and args.native_controls:
-    parser.error("Native-controls baseline requires a growing HLS fixture")
+if args.completed and (args.native_controls or args.status_handoff) or (args.native_controls and args.status_handoff):
+    parser.error("Native-controls and status-handoff probes each require a growing HLS fixture")
 address = urlsplit(args.media_url)
 try:
     local_host = ipaddress.ip_address(address.hostname or "")
@@ -42,7 +43,7 @@ with zipfile.ZipFile(out / "aeriotv-roku.zip") as source:
                 match = re.search(rb"(?m)^build_version=(\d+)$", data)
                 if match is None:
                     raise SystemExit("Missing package version")
-                offset = 2 if args.completed else 1
+                offset = 3 if args.status_handoff else (2 if args.completed else 1)
                 data = data.replace(match[0], b"build_version=" + str(int(match[1]) + offset).encode(), 1)
                 growing = b"false" if args.completed else b"true"
                 format_name = b"mp4" if args.completed else b"hls"
@@ -55,9 +56,10 @@ with zipfile.ZipFile(out / "aeriotv-roku.zip") as source:
                 original = b'screen.createScene("AerioScene")'
                 if data.count(original) != 1:
                     raise SystemExit("Unexpected main scene")
-                data = data.replace(original, b'screen.createScene("GrowingControlsProbe")', 1)
+                scene = b"DvrStatusHandoffProbe" if args.status_handoff else b"GrowingControlsProbe"
+                data = data.replace(original, b'screen.createScene("' + scene + b'")', 1)
             target.writestr(entry, data)
         for extension in ("brs", "xml"):
-            name = f"GrowingControlsProbe.{extension}"
+            name = f"{'DvrStatusHandoffProbe' if args.status_handoff else 'GrowingControlsProbe'}.{extension}"
             target.write(root / "tests/native" / name, f"components/{name}")
 print("Built synthetic OnDemandPlayer control probe in ignored out/")
