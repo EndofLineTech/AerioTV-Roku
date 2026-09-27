@@ -125,11 +125,15 @@ build's recovery branch ran on Dispatcharr.
 
 ## Remaining native comparison
 
-An actual server failure/near-end stall is needed to exercise the production
-status-confirmed recovery branch; the single newly authorized real recording
-was consumed and cleaned up. Request separate approval before any further
-server fixture. Confirm physical picture **and sound** after Rewind, Forward
-and any *recovery* handoff before closing `4vb`; the owner has confirmed normal
-Rewind, Forward and clean completion on the published build. The synthetic
-native comparison supports the redirect/reader-mismatch mechanism, but it
-does not prove the exact `-3` in the earlier real run came from the redirect.
+An actual server failure/near-end stall is needed to exercise the development
+build's status-confirmed recovery branch; the single newly authorized real
+recording was consumed and cleaned up. Request separate approval before any
+further server fixture. Confirm physical picture **and sound** after Rewind, Forward
+and any *recovery* handoff before claiming the development mitigation is
+verified; the owner has confirmed normal Rewind, Forward and clean completion
+on the published build. The synthetic native comparison supports the
+redirect/reader-mismatch mechanism, but it does not prove the exact `-3` in
+the earlier real run came from the redirect. The PO explicitly accepted this
+intermittent issue as a **known limitation of the published v0.3.82 testing
+prerelease** and closed `4vb` on that basis, not as a verified fix. The
+development recovery candidate is outside the v0.3.82 tag and ZIP.
