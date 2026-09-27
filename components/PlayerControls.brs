@@ -24,7 +24,8 @@ sub configureControls()
         if m.actions[i] = "rewind" or m.actions[i] = "fastforward"
             text = "<<"
             if m.actions[i] = "fastforward" then text = ">>"
-            glyph = uiLabel(m.top, text, x + 40, 598, 60, 60, uiTypeSize("button"))
+            ' Roku renders these font chevrons above the Label's vertical center.
+            glyph = uiLabel(m.top, text, x + 40, 601, 60, 60, uiTypeSize("button"))
             glyph.horizAlign = "center"
             glyph.vertAlign = "center"
         else
