@@ -12,6 +12,7 @@
     <field id="stateChange" type="assocarray" alwaysNotify="true" />
     <field id="bookmark" type="assocarray" alwaysNotify="true" />
     <field id="destination" type="string" alwaysNotify="true" />
+    <field id="searchSelection" type="assocarray" onChange="openUnifiedSearchResult" />
     <function name="cancelVod" />
     <function name="libraryStatus" />
     <function name="handleLibraryKey" />

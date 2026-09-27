@@ -22,6 +22,7 @@
     <field id="sleepActive" type="boolean" />
     <field id="pendingTune" type="boolean" />
     <field id="playerRequest" type="string" alwaysNotify="true" />
+    <field id="searchVodSelection" type="assocarray" alwaysNotify="true" />
     <field id="devicePreference" type="assocarray" alwaysNotify="true" />
     <field id="remotePreferences" type="assocarray" />
     <function name="adjacentPlayingChannel" />
@@ -36,6 +37,7 @@
     <function name="applyHubGuideSetting" />
     <function name="handleOptionsShortcut" />
     <function name="focusPrimaryNavigation" />
+    <function name="resumeUnifiedSearch" />
     <function name="cancelMappingLoad" />
     <function name="cancelMetadataLoads" />
     <function name="forgetStoredMetadata" />
@@ -43,6 +45,7 @@
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/ProgramSearchModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
   <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/NowNextModel.brs" />
@@ -57,6 +60,7 @@
   <script type="text/brightscript" uri="pkg:/source/CatchupModel.brs" />
   <script type="text/brightscript" uri="GuideCache.brs" />
   <script type="text/brightscript" uri="GuideView.brs" />
+  <script type="text/brightscript" uri="GuideUnifiedSearch.brs" />
   <script type="text/brightscript" uri="GuideRemoteInput.brs" />
   <script type="text/brightscript" uri="GuideSettings.brs" />
   <script type="text/brightscript" uri="GuideDetails.brs" />

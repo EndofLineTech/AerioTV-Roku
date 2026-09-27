@@ -43,6 +43,11 @@ sub openVodLibrary(kind as string)
 end sub
 
 sub closeVodLibrary()
+    restoreSearch = false
+    if m.unifiedSearchReturn <> invalid and m.guide.config <> invalid
+        restoreSearch = m.unifiedSearchReturn.account = m.accountIdentity and m.unifiedSearchReturn.scope = m.guide.config.scope
+    end if
+    m.unifiedSearchReturn = invalid
     m.vod.callFunc("saveLibraryBookmark")
     m.vod.callFunc("cancelVod")
     m.vod.active = false
@@ -52,6 +57,27 @@ sub closeVodLibrary()
     m.page = "guide"
     m.guide.visible = true
     m.guide.active = true
+    if restoreSearch then m.guide.callFunc("resumeUnifiedSearch")
+end sub
+
+sub onUnifiedSearchVodSelection(event as object)
+    if not m.guide.isSameNode(event.getRoSGNode()) or m.page <> "guide" then return
+    selection = event.getData()
+    if type(selection) <> "roAssociativeArray" or m.guide.config = invalid then return
+    if textValue(m.guide.config.providerType) <> "dispatcharr" or m.accountPreferences.vodEnabled = false then return
+    if selection.scope <> m.guide.config.scope or selection.accountId <> m.serverAccountId then return
+    kind = textValue(selection.kind)
+    if kind = "movie" and m.capabilities.movies <> "allowed" then return
+    if kind = "series" and m.capabilities.series <> "allowed" then return
+    if kind <> "movie" and kind <> "series" then return
+    if not CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(textValue(selection.id)) then return
+    m.unifiedSearchReturn = {account: m.accountIdentity, scope: selection.scope}
+    openVodLibrary(kind)
+    if m.page <> "library"
+        m.unifiedSearchReturn = invalid
+        return
+    end if
+    m.vod.searchSelection = {accountScope: normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId, kind: kind, id: selection.id, query: selection.query}
 end sub
 
 sub onLibraryDestination(event as object)
@@ -366,6 +392,7 @@ sub releaseArchive()
 end sub
 
 sub resetMediaNavigation()
+    m.unifiedSearchReturn = invalid
     cancelDvrPlayback()
     if m.settingsHub <> invalid then m.settingsHub.active = false
     m.archiveSeeking = false

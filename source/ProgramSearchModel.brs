@@ -54,3 +54,38 @@ function programSearchState(program as object, now as integer) as string
     if program.startsAt > now then return "Upcoming"
     return "Now"
 end function
+
+' One submission fans out only to authorized, server-indexed domains.
+function unifiedSearchDomains(scope as string, moviesAllowed as boolean, seriesAllowed as boolean) as object
+    result = []
+    if scope = "all" or scope = "epg" or scope = "description" then result.push("epg")
+    if (scope = "all" or scope = "movie") and moviesAllowed then result.push("movie")
+    if (scope = "all" or scope = "series") and seriesAllowed then result.push("series")
+    return result
+end function
+
+' Interleave rather than placing dozens of EPG airings before the first VOD
+' result. The three upstream pages remain bounded independently.
+function unifiedSearchRows(epg as object, movies as object, series as object, limit = 240 as integer) as object
+    rows = []
+    if limit < 1 then return rows
+    if limit > 240 then limit = 240
+    count = epg.count()
+    if movies.count() > count then count = movies.count()
+    if series.count() > count then count = series.count()
+    if count = 0 then return rows
+    for i = 0 to count - 1
+        if i < epg.count()
+            entry = {}
+            entry.append(epg[i])
+            entry.domain = "epg"
+            rows.push(entry)
+        end if
+        if rows.count() >= limit then exit for
+        if i < movies.count() then rows.push({domain: "movie", vod: movies[i]})
+        if rows.count() >= limit then exit for
+        if i < series.count() then rows.push({domain: "series", vod: series[i]})
+        if rows.count() >= limit then exit for
+    end for
+    return rows
+end function

@@ -37,6 +37,24 @@ sub main()
     expanded = programSearchParameters("news", "title", 1, now, 30, 30)
     assertEqual(guideEpoch(expanded.endAfter), now - 30 * 86400, "custom history query")
     assertEqual(guideEpoch(expanded.startBefore), now + 30 * 86400, "custom future query")
+    assertEqual(unifiedSearchDomains("all", true, true).count(), 3, "one query searches all three permitted domains")
+    domains = unifiedSearchDomains("all", false, true)
+    assertEqual(domains.count(), 2, "movies permission excludes movie queries")
+    assertEqual(domains[0], "epg", "lineup EPG remains in mixed search")
+    assertEqual(domains[1], "series", "series permission retains TV search")
+    assertEqual(unifiedSearchDomains("movie", false, true).count(), 0, "denied movie scope cannot query catalog")
+    assertEqual(unifiedSearchDomains("description", false, false)[0], "epg", "description searches only EPG")
+    assertEqual(unifiedSearchDomains("unexpected", true, true).count(), 0, "unknown scope never starts a task")
+    epg = [{channel: channels[0], program: {title: "News"}}, {channel: channels[0], program: {title: "Night news"}}]
+    movies = [{id: "1", title: "News movie", kind: "movie"}]
+    series = [{id: "2", title: "News show", kind: "series"}]
+    mixed = unifiedSearchRows(epg, movies, series)
+    assertEqual(mixed.count(), 4, "mixed items retain every bounded result")
+    assertEqual(mixed[0].program.title, "News", "EPG first in each interleaved row")
+    assertEqual(mixed[1].vod.id, "1", "movie visible in first screen")
+    assertEqual(mixed[2].vod.id, "2", "series visible in first screen")
+    assertEqual(mixed[3].program.title, "Night news", "remaining EPG stays navigable")
+    assertEqual(unifiedSearchRows(epg, movies, series, 2).count(), 2, "bounded result list never exceeds Roku limit")
     print "ALL TESTS PASSED"
 end sub
 

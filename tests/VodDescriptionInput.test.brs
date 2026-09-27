@@ -15,6 +15,21 @@ sub main()
     onDescriptionLoaded(descriptionEvent(m.descriptionTask, {ok: false, key: m.detail.key}))
     if m.detail.description <> "Texte original" then stop
     if instr(1, m.dialog.message, "No alternate English summary found") = 0 then stop
+    m.top = {config: {accountScope: "fixture"}, bookmark: invalid}
+    m.fromUnifiedSearch = true
+    m.shelf = "catalog"
+    m.kind = "movie"
+    m.query = "blue"
+    m.category = ""
+    m.providerId = ""
+    m.ordering = "name"
+    m.pageNumber = 1
+    m.index = 0
+    saveLibraryBookmark()
+    if m.top.bookmark <> invalid then stop ' search detour cannot overwrite the library bookmark
+    m.fromUnifiedSearch = false
+    saveLibraryBookmark()
+    if m.top.bookmark.query <> "blue" then stop ' normal library browsing still persists
     print "ALL TESTS PASSED"
 end sub
 

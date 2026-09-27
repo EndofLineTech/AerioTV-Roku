@@ -1,7 +1,7 @@
 sub init()
     m.top.visible = false
     uiRect(m.top, 0, 0, 1920, 1080, "0x0A1628FF")
-    uiLabel(m.top, "Program search", 96, 76, 1180, 58, 40)
+    uiLabel(m.top, "TV search", 96, 76, 1180, 58, 40)
     m.heading = uiLabel(m.top, "", 96, 151, 1180, 44, 28, "0x1AC4D8FF")
     m.detail = uiLabel(m.top, "", 96, 207, 1180, 96, 23, "0x9EB5C9FF")
     m.detail.wrap = true
@@ -16,6 +16,7 @@ sub init()
     end for
     m.footer = uiLabel(m.top, "", 96, 980, 1728, 58, 22, "0x9EB5C9FF")
     m.footer.wrap = true
+    m.footer.maxLines = 2
     m.entries = []
     m.index = 0
     m.clock = m.top.createChild("Timer")
@@ -72,8 +73,15 @@ sub render()
             row.subtitle.text = ""
             if entry.program <> invalid
                 p = entry.program
-                row.title.text = p.title
+                row.title.text = "EPG  |  " + p.title
                 row.subtitle.text = channelHeading(entry.channel.number, entry.channel.name) + "  |  " + programSearchState(p, uiNow()) + "  |  " + uiLocalDate(p.startsAt) + " " + uiTime(p.startsAt) + " - " + uiTime(p.endsAt)
+            else if entry.vod <> invalid
+                item = entry.vod
+                kind = "MOVIE"
+                if entry.domain = "series" then kind = "TV SHOW"
+                row.title.text = kind + "  |  " + item.title
+                row.subtitle.text = "Open permitted " + kind + " detail"
+                if item.year <> "" then row.subtitle.text += "  |  " + item.year
             else
                 row.title.text = entry.title
             end if
@@ -82,9 +90,14 @@ sub render()
     m.detail.text = model.message
     selected = m.entries[m.index]
     if selected.program <> invalid then m.detail.text = selected.program.description
-    m.footer.text = "Page " + model.page.toStr() + "  |  Configured guide range  |  OK: Guide  |  *: Edit  |  Back: Close"
+    if selected.vod <> invalid then m.detail.text = selected.vod.description
+    m.footer.text = "Page " + model.page.toStr() + "  |  OK: Guide / title detail  |  *: Edit  |  Back: Close"
     if model.truncated = true
         m.footer.text += chr(10) + "Page limited to 200 airings. Narrow the search to see omitted matches."
+    else if model.scope = "all"
+        m.footer.text += chr(10) + "EPG uses your lineup and configured dates; VOD uses permitted catalogs."
+    else if model.scope = "movie" or model.scope = "series"
+        m.footer.text += chr(10) + "Permitted catalog results only."
     else
         m.footer.text += chr(10) + "Your lineup only. Opening an outside-filter result clears channel filters."
     end if
