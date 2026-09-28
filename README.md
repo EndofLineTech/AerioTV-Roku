@@ -281,9 +281,12 @@ connection screen:
 
 ## Feedback
 
-If you encounter a problem, share **release version, Roku model/OS,
-Dispatcharr version, steps to reproduce, and expected/actual behavior**, plus a photo
-or exact error text when useful. Omit passwords, API keys and provider URLs.
+Use the [bug report form](https://github.com/EndofLineTech/AerioTV-Roku/issues/new?template=bug_report.yml)
+if you encounter a problem, or the [feature request form](https://github.com/EndofLineTech/AerioTV-Roku/issues/new?template=feature_request.yml)
+to suggest an improvement. For bugs, share **release version, Roku model/OS,
+Dispatcharr version (if applicable), steps to reproduce, and expected/actual
+behavior**, plus a photo or exact error text when useful. Omit passwords, API
+keys, session tokens and provider URLs.
 
 <details>
 <summary>Development notes, work tracking, and historical releases</summary>
