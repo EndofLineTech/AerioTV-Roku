@@ -8,7 +8,7 @@ test('store manifest declares supported RSG level and an unbranded title', () =>
   const fields = Object.fromEntries(manifest.trim().split('\n').map(line => line.split('=', 2)));
   assert.equal(fields.rsg_version, '1.3');
   assert.equal(fields.title, 'AerioTV');
-  assert.equal(fields.build_version, '85');
+  assert.equal(fields.build_version, '86');
 });
 
 test('no component creates a legacy keyboard dialog', () => {
@@ -24,13 +24,27 @@ test('accepts a normal Roku package layout', () => {
     'source/main.brs',
     'components/AerioScene.xml',
     'images/channel-icon-fhd.png',
-    'LICENSE.md',
-    'NOTICE.md',
+    'images/LICENSE.txt',
+    'images/NOTICE.txt',
+    'images/material-icons-LICENSE.txt',
   ]));
+});
+
+test('the packaged notices remain identical to the repository originals', () => {
+  for (const name of ['LICENSE', 'NOTICE']) {
+    assert.equal(
+      readFileSync(new URL(`../images/${name}.txt`, import.meta.url), 'utf8'),
+      readFileSync(new URL(`../${name}.md`, import.meta.url), 'utf8'),
+      `${name} attribution stays in sync`,
+    );
+  }
 });
 
 test('rejects development files and a nested package root', () => {
   assert.throws(() => assertPackageEntries(['aeriotv/manifest']));
   assert.throws(() => assertPackageEntries(['manifest', 'tests/GuideModel.test.brs']));
   assert.throws(() => assertPackageEntries(['manifest', '.env.local']));
+  const withRootNotice = ['manifest', 'source/main.brs', 'components/AerioScene.xml',
+    'images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt', 'LICENSE.md'];
+  assert.throws(() => assertPackageEntries(withRootNotice), /excluded development file/);
 });

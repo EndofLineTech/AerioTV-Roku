@@ -90,7 +90,7 @@ sub renderSettings()
         m.items = settingsHubEntries(m.page, model)
         if m.page = "licenses"
             m.items = []
-            for each path in ["pkg:/LICENSE.md", "pkg:/images/material-icons-LICENSE.txt"]
+            for each path in ["pkg:/images/LICENSE.txt", "pkg:/images/NOTICE.txt", "pkg:/images/material-icons-LICENSE.txt"]
                 for each line in CreateObject("roRegex", "\r?\n", "").split(ReadAsciiFile(path))
                     text = line.trim()
                     if text <> "" then m.items.push({title: left(text, 220)})
