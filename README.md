@@ -14,16 +14,32 @@ records the original baseline. The feature table below describes this release.
 
 ## Download the testing build
 
-**[Download v0.3.82 — testing prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.82)**
+**[Download v0.3.88 — testing prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.88)**
 
-Under **Assets**, download **`aeriotv-roku-v0.3.82.zip`**. Keep it zipped.
+Under **Assets**, download **`aeriotv-roku-v0.3.88.zip`**. Keep it zipped.
 Do **not** download GitHub's automatically generated **Source code (zip)** for
 installation; that is the repository, not the Roku application package.
 
 You do not need Node.js, npm, Git, or a compiler to install the release ZIP.
 This is a sideloaded testing preview, not a Roku Streaming Store release.
 
-### New since v0.3.81
+### New since v0.3.82
+
+- **Guide:** mapped current/next programmes, cached channel logos, wraparound
+  navigation, held FF/REW paging, direct full details, a shorter `*` menu and
+  guide time that follows the clock after playback. The restored provider EPG
+  was verified on the Roku with 36 channels.
+- **DVR and usability:** recordings use four artwork-backed poster sections;
+  VOD actions are grouped into shorter menus, and Settings focus is cleaner.
+- **Playback and connections:** bounded startup retries, clearer stop controls,
+  quieter successful AAC recovery, and newly created Dispatcharr connections
+  that default to remembering a verified API key. The Product Owner validated
+  the reported top-pill animation and AAC/AC3 behavior.
+- **Diagnostics:** an account-scoped, on-TV support code became available in
+  v0.3.84. The testing limits and exact verification scope are in the
+  [v0.3.88 release notes](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.88).
+
+### Also included since v0.3.81
 
 - **Guide:** program matchup subtitles appear beneath the main title on wide
   Preview tiles and in the selected-program header. The default six-row Preview
@@ -37,7 +53,7 @@ This is a sideloaded testing preview, not a Roku Streaming Store release.
   Roku's native “Rewind live TV” overlay for active HLS recordings. Rew/FF use
   bounded 30-second steps with an in-app seek preview; completed files retain
   Roku's native transport. A near-end growing-HLS playlist-size error remains
-  under investigation; see the [release notes](docs/RELEASE-0.3.82.md).
+  under investigation; see the [release notes](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.88).
 
 ### Also included since v0.3.80
 
@@ -80,7 +96,7 @@ This is a sideloaded testing preview, not a Roku Streaming Store release.
   startup/midstream recovery, contextual Retry and sanitized diagnostics.
 - **Hold OK** opens app player options; fullscreen star remains Roku-owned.
 
-[v0.3.82 release notes and known limitations](docs/RELEASE-0.3.82.md)
+[v0.3.88 release notes and known limitations](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.88)
 
 ## Roku vs. Apple TV and Android TV
 
@@ -89,7 +105,7 @@ supported direct Xtream/M3U connections and conditional catch-up/restart/rewind,
 but not full upstream feature parity.** Multiview and cross-device sync remain
 unimplemented. Rewind uses provider archives; it is not a guaranteed local buffer.
 
-| Feature | Roku — v0.3.82 preview | Apple TV — upstream | Android TV / Google TV — upstream |
+| Feature | Roku — v0.3.88 preview | Apple TV — upstream | Android TV / Google TV — upstream |
 | --- | --- | --- | --- |
 | Dispatcharr connection | **Available** — API key or dashboard login | Available | Available |
 | Direct Xtream Codes connection | **Implemented for tested variants**; session-only credentials, bounded live/VOD/archive | Available | Available |
@@ -105,7 +121,7 @@ unimplemented. Rewind uses provider archives; it is not a guaranteed local buffe
 | Multiview | **Not implemented** | Up to 9 streams, device/resource dependent | Up to 9 streams, device/resource dependent |
 | Live rewind / completed-program catch-up | **Provider-backed** catch-up, Restart and up to 60 minutes of history since tuning on eligible channels | Implemented, subject to settings/provider support | Not verified in this comparison |
 | Cross-device preference/watch-progress sync | **Not implemented**; local Roku preferences only | iCloud | Optional Google Drive sync |
-| Playback compatibility | Native Roku MPEG-TS; automatic HLS on compatible Dispatcharr test servers; optional existing server AAC profile | Apple/native and mpv playback routes | Media3/ExoPlayer plus bundled FFmpeg audio decoders |
+| Playback compatibility | Native Roku MPEG-TS; explicit HLS on compatible test servers; optional existing server AAC profile | Apple/native and mpv playback routes | Media3/ExoPlayer plus bundled FFmpeg audio decoders |
 | Distribution | **Developer Mode ZIP / testing prerelease** | App Store, TestFlight and upstream sideload releases | APK releases; upstream documents invite-only Google Play testing |
 
 "Available" in the upstream columns means documented or source-established,
@@ -114,7 +130,7 @@ versions; provider permissions and device capabilities still apply. "Not verifie
 is not a claim that the feature is absent. Mobile-only features are not assumed
 to be available on a TV.
 
-Upstream comparison sources reviewed 2026-09-19; Roku column updated for v0.3.82:
+Upstream comparison sources reviewed 2026-09-19; Roku column updated for v0.3.88:
 - [Apple upstream README, pinned revision](https://github.com/jonzey231/AerioTV/blob/8d5818456e0f4421d93b8ff120ad878d63331091/README.md)
   and the [source-level tvOS audit](docs/PARITY-AUDIT.md). The audit's Roku column
   is an older baseline; the table above describes this release.
@@ -173,7 +189,7 @@ If Developer Mode is already enabled, proceed to the next step.
 
 ### 3. Upload and install the release ZIP
 
-1. Click **Upload** / **Choose File** and select **`aeriotv-roku-v0.3.82.zip`**.
+1. Click **Upload** / **Choose File** and select **`aeriotv-roku-v0.3.88.zip`**.
 2. Click **Install** or **Install with zip**, depending on the installer version.
    Some versions also offer **Install with squashfs**.
 3. Wait for **Install Success**. AerioTV should launch on the TV automatically.
@@ -211,8 +227,8 @@ connection screen:
 - **Fullscreen `*` belongs to Roku.** Guide/mini-guide `*` opens app guide options.
   The retired fullscreen-star diagnostic is not included.
 - **Back** from bare fullscreen minimizes the same player into the guide;
-  Back or Play expands it. To end playback, select **Stop playback** in player
-  options or mini-guide options.
+  Back stops the mini-player, while Play expands it. To end playback, select
+  **Stop playback** in player options or mini-guide options.
 - **Up/Down** change channels in fullscreen (default: Up next, Down previous).
   **Left** opens Channels, **Right** returns to the last channel, and **Replay**
   opens Recently Watched.
