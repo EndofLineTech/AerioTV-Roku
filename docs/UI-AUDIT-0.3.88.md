@@ -1,4 +1,4 @@
-# Roku UI audit — v0.3.88 testing candidate (in progress)
+# Roku UI audit — v0.3.88 testing prerelease
 
 Target: Streaming Stick 4K 3820RW2, Roku OS 15.3.4. Captures named below
 are private, ignored files in this release worktree's `out/` or the main
@@ -24,12 +24,10 @@ Probes use fictional, credential-free metadata and do not verify a provider.
 | Connection edit/forget/reconnect and first-run setup | SKIP (destructive/unauthorized provider changes) | Setup and connection surfaces were viewed only. Saved account and server lineup were not intentionally changed. |
 | Provider-backed scheduled/active DVR, series rules, populated VOD, catch-up and recording playback | SKIP (account data) | Synthetic fixtures establish layout only. No new shared-server recordings or mappings were created. |
 | Exact versioned ZIP install and authorized guide return | PASS (native UI) | `aeriotv-roku-v0.3.88.zip` (SHA-256 `62f35262f1c5cfe24c60201924382eb07af8fdc453e2799e0b0e5c9e6dd49b40`) was installed from committed app source; read-only ECP reported developer-slot `0.3.88`, and `gh-release-exact-asset-guide-settled.jpg` shows the authorized 36-channel guide. |
-| Signed package identity and final ZIP parity | SKIP (not packaged yet) | A previous `.pkg` predates later fixes and cannot be used. |
+| Signed package identity and final ZIP parity | PASS (Roku Packager) | Packager returned success with the existing matching developer ID. Its installed-source MD5 matched the exact versioned ZIP; the new `.pkg` and ZIP pass `SHA256SUMS`. The `.pkg` is encrypted and was not exercised as a separate installed application. |
 
-Release gate: generate and inspect a signed package from the exact committed
-ZIP using the existing identity; confirm final asset parity and release scope.
-Signed package testing cannot be inferred from an unsigned ZIP or a disposable
-fixture.
+This audit combines authenticated Developer Mode screenshots and the packaged
+source parity above; signing does not independently prove physical A/V.
 Restore the normal ZIP after every disposable probe. Record physical picture
-and sound independently if witnessed; otherwise retain SKIP. Do not close the
-UI-audit bead or publish on the strength of these intermediate screenshots.
+and sound independently if witnessed; otherwise retain SKIP. The Product Owner
+confirmed the top-pill animation and AAC/AC3 reports separately.
