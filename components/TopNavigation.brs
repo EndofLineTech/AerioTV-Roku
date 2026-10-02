@@ -17,6 +17,9 @@ sub configureNavigation()
         x = start + i * 212
         bg = uiSurface(m.top, x, 0, 200, 50, 25, "0x00000000")
         fill = uiSurface(m.top, x + 3, 3, 194, 44, 22, "0x00000000")
+        ' Overlap the rounded caps with the center while scaling between pills.
+        bg.cornerOverlap = 2
+        fill.cornerOverlap = 2
         icon = m.top.createChild("Poster")
         icon.width = 24
         icon.height = 24
@@ -54,6 +57,9 @@ sub drawNavigation()
     for i = 0 to m.cells.count() - 1
         cell = m.cells[i]
         style = uiControlStyle(m.top.style, m.items[i].id = m.top.selected, m.top.active and i = m.index, m.items[i].enabled = true, false)
+        ' An invisible border still composites dark edge pixels on Roku while
+        ' the two surfaces animate independently. Do not draw it when clear.
+        cell.bg.visible = style.ring <> "0x00000000"
         uiSetColor(cell.bg, style.ring)
         uiSetColor(cell.fill, style.fill)
         cell.bg.focusScale = style.scale

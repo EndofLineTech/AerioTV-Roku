@@ -63,10 +63,17 @@ sub main()
     m.devicePreferences.audioMode = "auto"
     m.aacProfile = {id: "7"}
     if not retryUnsupportedAacDecode(-5, "decoder:pump:Unsupported AAC stream:clip") then stop
+    if m.noticeText.text <> "" then stop ' successful fallback must not show an error notification
     if m.starts <> 1 or m.started.channel.uuid <> "first" then stop
     if not m.started.force or not m.started.useAac or not m.started.preserveBudget then stop
     if m.started.tuneStartedAt <> 900 or not m.aacDecodeRetried then stop
     if retryUnsupportedAacDecode(-5, "Unsupported AAC stream") or m.starts <> 1 then stop
+
+    resetAacTest()
+    m.devicePreferences.audioMode = "auto"
+    m.ac3Profile = {id: "9"}
+    if not retryUnsupportedAacDecode(-5, "Unsupported AAC stream") then stop
+    if m.starts <> 1 or not m.started.useAac then stop
 
     for each mode in ["direct", "aac"]
         resetAacTest()
@@ -92,6 +99,7 @@ sub main()
     if retryUnsupportedAacDecode(-5, "Unsupported AAC stream") then stop
     m.connectionStore.entries[0].provider = "dispatcharr"
     m.aacProfile = invalid
+    m.ac3Profile = invalid
     if retryUnsupportedAacDecode(-5, "Unsupported AAC stream") or m.starts <> 0 then stop
     print "ALL TESTS PASSED"
 end sub
@@ -100,6 +108,7 @@ sub resetAacTest()
     m.devicePreferences = {audioMode: "aac"}
     m.accountIdentity = "account-one"
     m.aacProfile = invalid
+    m.ac3Profile = invalid
     m.aacDiscoveryState = "pending"
     m.aacDiscoveryMessage = "Profile unavailable"
     m.capabilityTask = {}

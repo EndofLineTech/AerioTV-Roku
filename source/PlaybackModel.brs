@@ -1,8 +1,17 @@
-function livePlaybackDescriptor(baseUrl as string, channel as dynamic) as dynamic
+function livePlaybackDescriptor(baseUrl as string, channel as dynamic, transport = "ts" as string) as dynamic
     base = normalizeBaseUrl(baseUrl)
     if base = "" or type(channel) <> "roAssociativeArray" then return invalid
     uuid = textValue(channel.uuid)
     if not CreateObject("roRegex", "^[A-Za-z0-9-]+$", "").isMatch(uuid) then return invalid
+    if transport = "hls"
+        ' hls-test mints a per-client capability and redirects this entry URL
+        ' to /proxy/hls/<token>/index.m3u8. Never construct a token URL here.
+        return {
+            url: base + "/proxy/ts/stream/" + uuid + "?output_format=hls"
+            streamFormat: "hls", live: true
+            title: textValue(channel.name), programId: uuid
+        }
+    end if
     ' Dispatcharr names its output mpegts; Roku's ContentNode enum is ts.
     ' mpegts is rejected as NONE, leaving reader selection to autodetection.
     return {
@@ -10,6 +19,11 @@ function livePlaybackDescriptor(baseUrl as string, channel as dynamic) as dynami
         streamFormat: "ts", live: true
         title: textValue(channel.name), programId: uuid
     }
+end function
+
+function dispatcharrLiveTransport(choice as string, hlsAvailable as dynamic) as string
+    if choice = "hls" or (choice = "auto" and hlsAvailable = true) then return "hls"
+    return "ts"
 end function
 
 function playerChannelDirection(key as string, scheme = "apple" as string) as integer
@@ -192,7 +206,7 @@ function playbackFailureText(code as integer, detail as string) as string
     if code = -2 then reason = "The channel request timed out. Check the server and network."
     if code = -5 then reason = "The Roku reported a media playback error."
     if isStartupBufferingStall(code, detail) then reason = "Playback stalled while buffering. Try this channel again."
-    if instr(1, lcase(detail), "startup buffering timed out") > 0 then reason = "The channel did not start after one automatic retry. Try again or choose another channel."
+    if instr(1, lcase(detail), "startup buffering timed out") > 0 then reason = "The channel did not start within the selected automatic retry budget. Try again or choose another channel."
     refusal = nativePlaybackRefusal(detail)
     if refusal = "connection-limit" then reason = "The server or provider connection limit was reached. Stop another session before trying again."
     if refusal = "authentication" then reason = "The media request was not authorized. Check the account and server permissions."

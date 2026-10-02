@@ -85,6 +85,26 @@ function guideProgramSecondary(program as dynamic, settings as object) as string
     return left(subtitle, 256)
 end function
 
+' Present a long guide description in bounded pages rather than silently
+' truncating it at the eight-line SceneGraph Label boundary.
+function guideDescriptionPages(description as string, limit = 300 as integer) as object
+    pages = []
+    if limit < 80 then limit = 80
+    text = description.trim()
+    if text = "" then return [""]
+    while len(text) > limit
+        split = limit
+        while split > limit \ 2 and mid(text, split, 1) <> " "
+            split--
+        end while
+        if split <= limit \ 2 then split = limit
+        pages.push(left(text, split).trim())
+        text = mid(text, split + 1).trim()
+    end while
+    pages.push(text)
+    return pages
+end function
+
 function guideTileSecondary(program as dynamic, settings as object, width as integer) as string
     if settings.guideDensity <> "preview" or width < 260 then return ""
     return guideProgramSecondary(program, settings)

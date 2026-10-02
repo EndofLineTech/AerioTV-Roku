@@ -91,6 +91,7 @@ sub draw()
         if row.bg.visible
             row.label.text = m.groups[first + i].name
             style = uiControlStyle("choice", first + i = m.index, m.top.active and first + i = m.index, true, false)
+            row.bg.visible = row.bg.visible and style.ring <> "0x00000000"
             uiSetColor(row.bg, style.ring)
             uiSetColor(row.fill, style.fill)
             uiSetColor(row.label, style.ink)

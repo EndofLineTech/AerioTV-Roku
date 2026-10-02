@@ -14,6 +14,8 @@ function settingsHubEntries(page as string, model as object) as object
         entries = []
         if model.catchup = "allowed" then entries.push({title: "Archive skip interval", scope: "device", key: "archiveSkipSeconds", values: [60, 120, 300]})
         entries.push({title: "Audio compatibility (next tune)", scope: "device", key: "audioMode", values: ["auto", "direct", "aac"]})
+        entries.push({title: "Dispatcharr live transport (next tune)", scope: "device", key: "liveTransport", values: ["auto", "ts", "hls"]})
+        entries.push({title: "Live startup retries (next tune)", scope: "device", key: "liveStartupRetries", values: [0, 1, 2, 3]})
         entries.push({title: "Video scale", scope: "device", key: "videoScale", values: ["fit", "fill", "stretch"]})
         return entries
     end if
@@ -68,9 +70,10 @@ function settingsHubEntries(page as string, model as object) as object
     ]
     if page = "whatsNew" then return [
         {title: "Version " + model.version},
-        {title: "TV styling: pill navigation, rounded controls and a poster-led library."},
-        {title: "Settings now has a category rail and detail pane."},
-        {title: "Development visual refresh; see the GitHub releases page for published builds."},
+        {title: "Live TV: longer source failover waits, configurable startup retries and player stop controls."},
+        {title: "Guide: cached logos, direct details, channel wrap and a shorter Options menu."},
+        {title: "DVR: recording poster sections. New Dispatcharr connections remember the verified API key."},
+        {title: "Roku voice entry and launch/deep-link support are in testing; see the GitHub release limits."},
         {title: "Mark this version read", action: "markWhatsNew"}
     ]
     if page = "connection" then return [{title: "Open connection settings (edit / forget / reconnect)", action: "connection"}]
@@ -127,6 +130,16 @@ function settingsHubChangeAllowed(model as object, scope as string, key as strin
 end function
 
 function settingsValueText(value as dynamic, key = "" as string) as string
+    if key = "liveStartupRetries"
+        if value = 0 then return "No automatic retries"
+        if value = 1 then return "1 retry"
+        return value.toStr() + " retries"
+    end if
+    if key = "liveTransport"
+        if value = "auto" then return "Automatic (MPEG-TS)"
+        if value = "hls" then return "HLS (test server)"
+        return "MPEG-TS"
+    end if
     if key = "textSize" or key = "subtextSize" then return value.toStr() + "%"
     if key = "themePreset"
         names = {aerio: "AerioTV", midnight: "Midnight", sunset: "Sunset", forest: "Forest", lavender: "Lavender", monochrome: "Monochrome", light: "Neutral"}

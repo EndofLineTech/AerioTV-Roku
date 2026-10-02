@@ -1,4 +1,5 @@
 sub init()
+    m.top.focusable = true
     m.list = m.top.findNode("list")
     m.heading = m.top.findNode("heading")
     m.note = m.top.findNode("note")
@@ -57,7 +58,7 @@ sub renderSettings()
     titles = {live: "Live TV", player: "Player", remote: "Remote control", remotePlayer: "While watching", remoteGuide: "In the TV Guide", appearance: "Appearance", general: "General", connection: "Connection", about: "About", whatsNew: "What's New", licenses: "License notices"}
     if titles.doesExist(m.page) then m.heading.text = titles[m.page]
     m.note.text = "Changes are saved on this Roku. Back returns to the previous page without moving the guide."
-    if m.page = "player" then m.note.text = "Archive skip supports whole-minute provider windows. Audio compatibility changes take effect on the next tune."
+    if m.page = "player" then m.note.text = "Archive skip uses whole minutes. Live startup retries apply on the next tune; each Dispatcharr attempt may wait up to 60 seconds."
     if m.page = "appearance" then m.note.text = "Appearance changes apply on this Roku without interrupting playback. Reset restores the default colors."
     if m.page = "general" then m.note.text = "Guide startup never plays automatically. Mini startup resumes only the last available channel after it starts."
     if m.page = "about" then m.note.text = "This is an independent Roku client. License and attribution text is included in the installed package."

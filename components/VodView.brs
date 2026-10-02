@@ -511,6 +511,7 @@ sub drawVod()
                 uri = ""
             end if
             if placement.visible and not compact and uri = "" and tmdbImagePath(item.tmdbPosterPath) <> "" then uri = "https://image.tmdb.org/t/p/w185" + item.tmdbPosterPath
+            if placement.visible and not compact and uri = "" and item.unavailable <> true then uri = "pkg:/images/channel-icon-hd.png"
             if tile.poster.uri <> uri
                 agent = CreateObject("roHttpAgent")
                 agent.setCertificatesFile("common:/certs/ca-bundle.crt")
@@ -749,7 +750,7 @@ sub onDescriptionLoaded(event as object)
     renderDetailDescription()
 end sub
 
-sub openVodOptions()
+sub openVodOptions(advanced = false as boolean)
     dialog = CreateObject("roSGNode", "Dialog")
     dialog.title = "Library options"
     if textValue(m.top.config.providerType) = "xtream"
@@ -792,6 +793,24 @@ sub openVodOptions()
     if m.shelf = "continue" or m.shelf = "watchlist" or m.shelf = "hidden"
         labels.push("Remove selected saved entry") : m.optionCodes.push(11)
     end if
+    filtered = []
+    codes = []
+    if advanced
+        dialog.title = "More library actions"
+        filtered.push("Back to common actions") : codes.push(18)
+    end if
+    for i = 0 to labels.count() - 1
+        code = m.optionCodes[i]
+        common = code = 0 or code = 1 or code = 2 or code = 4 or code = 5 or code = 6 or code = 7 or code = 8
+        if common <> advanced and code <> 10
+            filtered.push(labels[i])
+            codes.push(code)
+        end if
+    end for
+    if not advanced then filtered.push("More library actions") : codes.push(17)
+    filtered.push("Close") : codes.push(10)
+    m.optionCodes = codes
+    labels = filtered
     dialog.buttons = labels
     dialog.observeField("buttonSelected", "onVodOption")
     dialog.observeField("wasClosed", "onVodDialogClosed")
@@ -818,6 +837,10 @@ sub onVodOption(event as object)
     if choice < 0 or choice >= m.optionCodes.count() then return
     choice = m.optionCodes[choice]
     dismissVodDialog()
+    if choice = 17 or choice = 18
+        openVodOptions(choice = 17)
+        return
+    end if
     if choice = 4 then m.bypassCache = true
     if choice = 0
         if textValue(m.top.config.providerType) = "xtream" and m.category = ""

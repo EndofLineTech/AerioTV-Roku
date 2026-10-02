@@ -25,8 +25,13 @@ GitHub's generated Source code ZIP. Check the accompanying `SHA256SUMS`.
   timeline. A disposable authorized recording resumed native `playing` after
   a Rewind seek; a later Forward attempt near the scheduled end coincided with
   Roku error **-3**, `reader pick stream error:bad:mpr playlist file is too
-  large`. Causality and physical picture/audio continuity are unverified.
-  `AerioTV-Roku-4vb` and `AerioTV-Roku-0i3` remain open/blocked accordingly.
+  large`. A subsequent real recording completed normally; the owner confirmed
+  picture and sound after Rewind and Forward, clean completion, and reopening
+  from Recent on the published ZIP. `AerioTV-Roku-0i3` was closed after those
+  checks. The original `-3` did **not** recur or receive a verified fix:
+  `AerioTV-Roku-4vb` was closed as an explicitly accepted intermittent
+  limitation of this **testing prerelease**, not as resolved. A recovery
+  candidate on `dev` postdates this tag and is **not** in this ZIP.
 - [EPG secondary titles](GUIDE-SECONDARY-TITLE-0.3.81.md) now show provider
   `sub_title` below generic titles such as “College Football” on wide Preview
   tiles and in the selected header. **Program subtitles / taller Preview** is
@@ -47,13 +52,13 @@ GitHub's generated Source code ZIP. Check the accompanying `SHA256SUMS`.
   evidence limits are linked above. The **versioned v0.3.82 ZIP** installed
   and launched on the target; read-only ECP reported developer-slot app
   version `0.3.82`, and the six-row subtitle-rich guide appeared with the
-  previously restored On account choice. This is an install/UI check, not a
-  full physical A/V sign-off for this exact artifact.
+  previously restored On account choice. The owner's subsequent physical DVR
+  checks are recorded above; they are not a full A/V sign-off for every feature.
 - Developer Mode screenshots omit decoded video pixels; `playing` is not a
   physical picture/audio test. Use the
   [v0.3.82 physical worksheet](PHYSICAL-RELEASE-0.3.82.txt) for TV-side
-  verification. The known near-end growing-HLS reader failure is not waived by
-  this prerelease's automated checks.
+  verification. The known near-end growing-HLS reader failure remains a
+  disclosed risk despite its PO acceptance for this testing prerelease.
 
 The accepted custom Audio Guide speech limitation, source-specific VOD/codec
 limits, unverified frame-rate matching and lack of multiview remain. No new

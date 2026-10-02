@@ -1,9 +1,11 @@
 # Credential policy for Roku connections (ah5.2)
 
-The Product Owner chose **opt-in per-connection API-key persistence**. The
-existing Dispatcharr connection remains compatible with its Remember choice;
-new named connections default to session-only until their own Remember choice
-is enabled. Roku's app registry is a small persistent store, not Apple's
+The Product Owner chose **Remember API key on by default for new Dispatcharr
+connections** (2026-10-01), while retaining an explicit per-connection Off
+choice for session-only use. Existing connections retain their saved choice;
+the new default does not change them. After dashboard username/password sign-in,
+only the verified account's Dispatcharr API key is remembered, never the password.
+Roku's app registry is a small persistent store, not Apple's
 Keychain or an encrypted credential vault. Anyone with access to the signed-in
 device can use a remembered account. Clearing Remember removes that connection's
 saved key; Forget removes its saved key and account-scoped preferences.

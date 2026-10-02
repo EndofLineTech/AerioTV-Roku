@@ -20,7 +20,27 @@ sub visualProbeTick()
         else if m.page <> "guide"
             return
         end if
-        if m.visualProbeScreen = "settings"
+        if m.visualProbeScreen = "epg-details"
+            details = m.guide.findNode("programDetails")
+            startAt = uiNow() - 600
+            description = ""
+            for i = 1 to 18
+                description += "A credential-free fictional programme explains the next turn in a long story. "
+            end for
+            program = {id: "fixture", title: "The Long Programme", subtitle: "Read the entire description", description: description, startsAt: startAt, endsAt: startAt + 3600, poster: "", categories: [], rating: "", year: "", quality: "", language: "", country: "", credits: ""}
+            details.model = {channel: {id: "", name: "Synthetic channel"}, program: program, settings: m.accountPreferences.guide, baseUrl: "", apiKey: "", dvrPermission: "none", reminded: false, catchupAvailable: false, restartAvailable: false}
+            details.active = true
+        else if m.visualProbeScreen = "vod-data"
+            if m.capabilities.movies <> "allowed" then return
+            openVodLibrary("movie")
+            m.visualProbeStage = 2
+            return
+        else if m.visualProbeScreen = "dvr-sections"
+            if m.capabilities.dvr <> "manage" and m.capabilities.dvr <> "view" then return
+            openDvrLibrary()
+            m.visualProbeStage = 2
+            return
+        else if m.visualProbeScreen = "settings"
             openSettingsHub()
             m.settingsHub.callFunc("selectSettingsCategory", 2)
         else if m.visualProbeScreen = "vod"
@@ -65,6 +85,16 @@ sub visualProbeTick()
         end if
         m.visualProbeStage = 1
         return
+    end if
+    if m.visualProbeStage = 2
+        if m.visualProbeScreen = "vod-data" and m.page = "library"
+            m.vod.callFunc("seedVisualProbe")
+        else if m.visualProbeScreen = "dvr-sections" and m.page = "dvr"
+            m.dvr.callFunc("seedVisualProbe")
+        else
+            return
+        end if
+        m.visualProbeStage = 1
     end if
     m.visualProbeTicks++
     if m.visualProbeTicks >= 8

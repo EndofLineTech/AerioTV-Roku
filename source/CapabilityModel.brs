@@ -1,5 +1,19 @@
 function compatibleAacProfile(rows as dynamic) as dynamic
+    return compatibleAudioProfile(rows, "aac")
+end function
+
+function compatibleAc3Profile(rows as dynamic) as dynamic
+    return compatibleAudioProfile(rows, "ac3")
+end function
+
+function preferredAutoAudioProfile(aac as dynamic, ac3 as dynamic) as dynamic
+    if ac3 <> invalid then return ac3
+    return aac
+end function
+
+function compatibleAudioProfile(rows as dynamic, codec as string) as dynamic
     if type(rows) <> "roArray" then return invalid
+    if codec <> "aac" and codec <> "ac3" then return invalid
     for each row in rows
         if type(row) = "roAssociativeArray"
             id = textValue(row.id)
@@ -9,7 +23,7 @@ function compatibleAacProfile(rows as dynamic) as dynamic
             if type(row.is_active) = "Boolean" or type(row.is_active) = "roBoolean" then active = row.is_active
             if active and CreateObject("roRegex", "^[1-9][0-9]*$", "").isMatch(id)
                 if CreateObject("roRegex", "(^|/)ffmpeg$", "i").isMatch(command)
-                    audio = CreateObject("roRegex", "(^|\s)-(c:a|acodec)\s+aac(\s|$)", "i").isMatch(parameters)
+                    audio = CreateObject("roRegex", "(^|\s)-(c:a|acodec)\s+" + codec + "(\s|$)", "i").isMatch(parameters)
                     video = CreateObject("roRegex", "(^|\s)-(c:v|vcodec)\s+copy(\s|$)", "i").isMatch(parameters)
                     if audio and video then return {id: id, name: sanitizePlaybackDiagnostic(textValue(row.name))}
                 end if

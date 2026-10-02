@@ -1,0 +1,31 @@
+name: Feature request
+description: Suggest an improvement to AerioTV for Roku.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing an idea for AerioTV **for Roku**. Please check [existing issues](https://github.com/EndofLineTech/AerioTV-Roku/issues) before submitting. For a problem with current behavior, use the bug report form instead.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe what you are trying to do and what gets in the way today.
+      placeholder: When I use the Roku remote to..., I need to...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+      description: Describe your proposed behavior in AerioTV for Roku.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Include relevant screens, source type (Dispatcharr, M3U or Xtream), workarounds or alternatives you have tried, if useful. Do not share credentials or provider URLs.
+    validations:
+      required: false

@@ -11,6 +11,7 @@
   <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
   <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/RemoteMapModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/NavigationModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ConnectionStoreModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ChannelProfileModel.brs" />
@@ -60,6 +61,11 @@
     </Group>
     <Group id="playerInput" focusable="true" />
     <PlayerInfo id="playerBanner" visible="false" />
+    <Group id="bufferingIndicator" visible="false" translation="[1536,146]">
+      <AerioSurface width="288" height="64" radius="22" color="0x0D1E35F0" />
+      <BusySpinner id="bufferingSpinner" translation="[18,14]" uri="pkg:/images/ui-icon-buffering.png" spinInterval="0.9" control="stop" />
+      <Label translation="[70,12]" width="202" height="40" text="BUFFERING" font="font:MediumBoldSystemFont" color="0xE8F3FAFF" />
+    </Group>
     <PlayerControls id="transport" visible="false" />
     <ChannelBrowser id="channelBrowser" visible="false" />
     <PlayerOptions id="playerOptions" visible="false" />

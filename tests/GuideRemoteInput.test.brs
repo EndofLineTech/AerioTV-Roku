@@ -60,7 +60,8 @@ sub main()
     check(m.selected = 19, "page down clamps")
     m.top.miniActive = false
     handleGuideMappedKey("play")
-    check(m.top.playerRequest = "", "no mini-player means no resume request")
+    check(m.top.playerRequest = "" and m.observed = "programDetails", "Play opens program details when no mini-player exists")
+    check(instr(1, guideRemoteHint(), "Play  Details") > 0, "direct details shortcut is visible in guide hints")
     for each key in ["back", "home", "options", "up", "down"]
         check(not handleGuideMappedKey(key), "fixed navigation is not remapped")
     end for
@@ -70,12 +71,31 @@ sub main()
     repeatGuideHold()
     check(m.holdKey = "" and not m.navigator.active, "picker cancels delayed guide action")
     setupGuide()
+    handleGuideMappedKey("fastforward")
+    check(m.selected = 16 and m.holdKey = "fastforward", "FF pages once and begins held paging")
+    m.holdClock = {totalMilliseconds: function() as integer
+        return 1000
+    end function}
+    repeatGuideHold()
+    check(m.selected = 19, "held FF continues paging to end")
+    check(handleGuideHeldKey("fastforward", false) and m.holdKey = "", "release stops held FF")
+    setupGuide()
+    handleGuideMappedKey("rewind")
+    check(m.selected = 4 and m.holdKey = "rewind", "REW pages once and begins held paging")
+    m.holdClock = {totalMilliseconds: function() as integer
+        return 1000
+    end function}
+    repeatGuideHold()
+    check(m.selected = 0, "held REW continues paging to beginning")
+    setupGuide()
     map = setRemoteAction(defaultRemoteMap(), "guide", "okShort", "programDetails")
     map = setRemoteAction(map, "guide", "leftLong", "none")
     m.top.remotePreferences.remoteMap = setRemoteAction(map, "guide", "playPause", "none")
     hint = guideRemoteHint()
     check(instr(1, hint, "OK  Details") > 0 and instr(1, hint, "Hold Left  None") > 0, "custom guide hints")
-    check(instr(1, hint, "Play  None") > 0 and instr(1, hint, "Back  Fullscreen") > 0, "mini hints distinguish fixed Back from mapped Play")
+    check(instr(1, hint, "Play  None") > 0 and instr(1, hint, "Back  Stop playback") > 0, "mini Back advertises stop instead of duplicating Play")
+    m.top.miniActive = false
+    check(instr(1, guideRemoteHint(), "Back  Top menu") > 0, "guide Back advertises top-level navigation")
     setupGuide()
     m.ready = true
     m.settings.showSubtitles = true

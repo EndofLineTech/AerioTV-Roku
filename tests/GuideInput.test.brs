@@ -59,7 +59,11 @@ sub main()
     m.primaryNavigation = {active: false}
     m.selected = 0
     onKeyEvent("up", true)
-    if not m.primaryNavigation.active then stop
+    if m.primaryNavigation.active or m.selected <> m.filtered.count() - 1 then stop
+    onKeyEvent("up", false)
+    onKeyEvent("down", true)
+    if m.selected <> 0 then stop
+    onKeyEvent("down", false)
     m.primaryNavigation.active = false
     m.navigator.active = false
     m.settings.groupLayout = "pills"
@@ -73,6 +77,20 @@ sub main()
     m.picker = {}
     repeatGuideHold()
     if m.holdKey <> "" then stop
+    m.picker = invalid
+    m.primaryNavigation.active = false
+    m.top.miniActive = false
+    m.top.exitRequested = invalid
+    m.top.playerRequest = invalid
+    m.selected = 10
+    if not onKeyEvent("back", true) or not m.primaryNavigation.active then stop
+    if m.top.exitRequested <> invalid or m.selected <> 10 then stop
+    m.primaryNavigation.active = false
+    m.top.miniActive = true
+    if not onKeyEvent("back", true) or m.top.playerRequest <> "stopPlayer" then stop
+    if m.top.exitRequested <> invalid then stop
+    m.top.playerRequest = invalid
+    if not onKeyEvent("play", true) or m.top.playerRequest <> "expandPlayer" then stop
     print "ALL TESTS PASSED"
 end sub
 

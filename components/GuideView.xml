@@ -61,6 +61,7 @@
   <script type="text/brightscript" uri="pkg:/source/CatchupModel.brs" />
   <script type="text/brightscript" uri="GuideCache.brs" />
   <script type="text/brightscript" uri="GuideView.brs" />
+  <script type="text/brightscript" uri="GuideLogos.brs" />
   <script type="text/brightscript" uri="GuideUnifiedSearch.brs" />
   <script type="text/brightscript" uri="GuideRemoteInput.brs" />
   <script type="text/brightscript" uri="GuideSettings.brs" />

@@ -330,6 +330,7 @@ sub resetConnectionRuntime()
     m.channelFacts = {}
     m.accountIdentity = ""
     m.serverAccountId = ""
+    m.hlsAvailable = false
     m.accountPreferences = normalizeAccountPreferences(invalid)
     m.apiKey = ""
     m.guideUrl = ""
@@ -431,7 +432,7 @@ sub openConnectionPicker()
 end sub
 
 sub openConnectionManager()
-    choices = [{title: "Add Dispatcharr connection (session-only)", action: "add"}, {title: "Add direct M3U and XMLTV connection", action: "addM3u"}, {title: "Add Xtream Codes connection (session-only)", action: "addXtream"}]
+    choices = [{title: "Add Dispatcharr connection", action: "add"}, {title: "Add direct M3U and XMLTV connection", action: "addM3u"}, {title: "Add Xtream Codes connection (session-only)", action: "addXtream"}]
     if m.selectedConnectionId <> ""
         choices.push({title: "Rename selected connection", action: "rename"})
         choices.push({title: "Request identity and header settings", action: "advanced"})
@@ -648,7 +649,7 @@ sub addSavedConnection(provider = "dispatcharr" as string)
     m.connectionStore = candidate
     m.selectedConnectionId = candidate.selected
     applySelectedConnection()
-    m.status = "New session-only connection. Enter a server URL and sign-in credentials."
+    m.status = "New Dispatcharr connection. Remember API key is on; turn it off for session-only sign-in."
     if provider = "m3u" then m.status = "Direct M3U connection. Enter playlist and optional XMLTV URLs."
     if provider = "xtream" then m.status = "Xtream connection. Enter its Dispatcharr URL and session-only credentials."
     drawSetup()

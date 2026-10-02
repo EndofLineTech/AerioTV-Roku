@@ -25,6 +25,8 @@ sub init()
     m.description = uiLabel(m.top, "", 460, 405, 1320, 240, 24)
     m.description.wrap = true
     m.description.maxLines = 8
+    m.descriptionPage = 0
+    m.pageHint = uiLabel(m.top, "", 460, 641, 1320, 34, 21, "0x1AC4D8FF")
     m.credits = uiLabel(m.top, "", 460, 660, 1320, 62, 22, "0x9EB5C9FF")
     m.credits.wrap = true
     m.buttons = []
@@ -65,7 +67,13 @@ sub render()
         categories += left(p.categories[i], 40)
     end for
     if categories <> "" then m.facts.text += chr(10) + categories
-    m.description.text = p.subtitle + chr(10) + p.description
+    fullDescription = p.description
+    if textValue(p.subtitle) <> "" then fullDescription = p.subtitle + chr(10) + fullDescription
+    m.descriptionPages = guideDescriptionPages(fullDescription)
+    if m.descriptionPage >= m.descriptionPages.count() then m.descriptionPage = 0
+    m.description.text = m.descriptionPages[m.descriptionPage]
+    m.pageHint.text = ""
+    if m.descriptionPages.count() > 1 then m.pageHint.text = "Left / Right  Description " + (m.descriptionPage + 1).toStr() + " of " + m.descriptionPages.count().toStr()
     m.credits.text = textValue(p.credits)
     if textValue(model.message) <> "" then m.credits.text = model.message
     uri = textValue(p.poster)
@@ -90,10 +98,10 @@ sub render()
     end if
     m.actions = ["watch", "close"]
     labels = ["Watch channel LIVE", "Close"]
-    if p.startsAt > uiNow() or model.reminded
+    if p.startsAt > uiNow() or model.reminded = true
         m.actions = ["watch", "reminder", "close"]
         label = "Remind me (foreground, 5 minutes before)"
-        if model.reminded then label = "Cancel reminder"
+        if model.reminded = true then label = "Cancel reminder"
         labels = ["Watch channel LIVE", label, "Close"]
     end if
     if model.catchupAvailable = true
@@ -138,6 +146,12 @@ function onKeyEvent(key as string, press as boolean) as boolean
     else if key = "down"
         if m.index < m.actions.count() - 1 then m.index++
         render()
+    else if key = "left" or key = "right"
+        if m.descriptionPages.count() > 1
+            if key = "left" and m.descriptionPage > 0 then m.descriptionPage--
+            if key = "right" and m.descriptionPage < m.descriptionPages.count() - 1 then m.descriptionPage++
+            render()
+        end if
     end if
     return true
 end function

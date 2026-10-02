@@ -41,6 +41,7 @@ sub init()
     m.reminderClock.observeField("fire", "checkReminders")
     m.refreshTask = invalid
     m.aacProfile = invalid
+    m.ac3Profile = invalid
     m.aacDiscoveryState = "idle"
     m.aacDiscoveryMessage = ""
     m.pendingAacTune = invalid
@@ -58,6 +59,10 @@ sub init()
     m.recoveryPausePending = false
     m.pendingScale = ""
     m.banner = m.top.findNode("playerBanner")
+    m.bufferingIndicator = m.top.findNode("bufferingIndicator")
+    m.bufferingSpinner = m.top.findNode("bufferingSpinner")
+    m.bufferingSpinner.poster.width = 36
+    m.bufferingSpinner.poster.height = 36
     m.transport = m.top.findNode("transport")
     m.transport.observeField("action", "onTransportAction")
     m.transport.observeField("dismissed", "onTransportDismissed")
@@ -90,6 +95,7 @@ sub init()
     m.pictureHintTimer.observeField("fire", "hidePictureHint")
     m.pictureWakeKey = ""
     m.connectionClock = m.top.findNode("connectionClock")
+    m.setupWakeClock = invalid
     m.connectionClock.observeField("fire", "onConnectionTick")
     m.profileClock = m.top.findNode("profileClock")
     m.profileClock.observeField("fire", "onProfileTick")
@@ -101,6 +107,7 @@ sub init()
     m.playingChannel = invalid
     m.startupWatch = invalid
     m.startupRetryCount = 0
+    m.startupRetryLimit = 1
     m.pendingChannel = invalid
     m.video.observeField("state", "onVideoState")
     m.video.enableDecoderStats = true
@@ -119,6 +126,7 @@ sub init()
     m.sourceChoices = []
     m.sourceClientCount = 0
     m.serverAccountId = ""
+    m.hlsAvailable = false
     m.capabilityClock = m.top.findNode("capabilityClock")
     m.capabilityClock.observeField("fire", "refreshCapabilities")
     m.guide.observeField("watchChannel", "onWatchChannel")
@@ -641,6 +649,7 @@ sub completeConnection(result as dynamic)
     m.password = ""
     m.apiKey = result.apiKey
     m.serverAccountId = result.accountId
+    m.hlsAvailable = result.hlsAvailable = true
     m.authMode = "key"
     connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if connection = invalid
@@ -722,6 +731,7 @@ sub cancelCapabilityRefresh()
         m.refreshTask = invalid
     end if
     m.aacProfile = invalid
+    m.ac3Profile = invalid
     m.capabilityClock.control = "stop"
     if m.capabilityTask <> invalid
         m.capabilityTask.unobserveField("profileResult")
@@ -749,6 +759,7 @@ sub onAacProfileDiscovered(event as object)
     result = event.getData()
     if result.accountId <> m.serverAccountId then return
     m.aacProfile = result.profile
+    m.ac3Profile = result.ac3Profile
     m.aacDiscoveryState = result.state
     m.aacDiscoveryMessage = result.message
     print "[aac-profile] discovery="; result.state
@@ -764,6 +775,7 @@ sub onCapabilities(event as object)
     if result.ok
         m.capabilities = result.capabilities
         m.aacProfile = result.audioProfile
+        m.ac3Profile = result.ac3Profile
         if m.aacProfile <> invalid
             m.aacDiscoveryState = "ready"
         else if m.aacDiscoveryState = "pending"
@@ -776,6 +788,7 @@ sub onCapabilities(event as object)
     else
         m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
         m.aacProfile = invalid
+        m.ac3Profile = invalid
         m.aacDiscoveryState = "error"
         m.aacDiscoveryMessage = result.message
         m.channelFacts = {}
@@ -890,6 +903,10 @@ sub showConnection()
     end if
     m.screen.visible = true
     m.page = "setup"
+    ' The OK that selected Settings > Connection can reach the Scene after
+    ' the pane closes. It must not open the connection picker a second time.
+    m.setupWakeClock = CreateObject("roTimespan")
+    m.setupWakeClock.mark()
     m.rokuRfiOffered = false
     m.status = "Edit connection settings, or select Connect to reload."
     drawSetup()
@@ -925,7 +942,8 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
             return
         end if
     end if
-    descriptor = livePlaybackDescriptor(m.baseUrl, channel)
+    transport = dispatcharrLiveTransport(m.devicePreferences.liveTransport, m.hlsAvailable)
+    descriptor = livePlaybackDescriptor(m.baseUrl, channel, transport)
     connection = invalid
     if m.connectionStore <> invalid then connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     directM3u = connection <> invalid and connection.provider = "m3u"
@@ -958,7 +976,10 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     m.miniFrame.visible = false
     m.guide.miniActive = false
     cancelStartupWatch()
-    if not preserveStartupBudget then m.startupRetryCount = 0
+    if not preserveStartupBudget
+        m.startupRetryCount = 0
+        m.startupRetryLimit = m.devicePreferences.liveStartupRetries
+    end if
     if not preserveStartupBudget then m.aacDecodeRetried = false
     if not preserveStartupBudget then m.liveRetryCount = 0
     m.liveBufferWatch = invalid
@@ -982,8 +1003,10 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
             if id = channel.uuid then useAac = true
         end for
     end if
-    if not directM3u and not directXtream and useAac and m.aacProfile <> invalid
-        m.activeAudioProfile = m.aacProfile.id
+    audioProfile = m.aacProfile
+    if m.devicePreferences.audioMode = "auto" then audioProfile = preferredAutoAudioProfile(m.aacProfile, m.ac3Profile)
+    if not directM3u and not directXtream and useAac and audioProfile <> invalid
+        m.activeAudioProfile = audioProfile.id
         content.url += "&output_profile=" + m.activeAudioProfile
     else if not directM3u and not directXtream and m.devicePreferences.audioMode = "direct"
         content.url += "&output_profile=0"
@@ -1014,9 +1037,9 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     m.page = "player"
     m.video.visible = true
     ' AerioVideo forwards keys to the Scene instead of native transport actions.
-    print "[playback] tuning channel "; channel.number
+    print "[playback] tuning channel "; channel.number; " requested reader="; content.streamFormat
     focusPlaybackInput()
-    beginStartupWatch(content)
+    beginStartupWatch(content, false, connection <> invalid and connection.provider = "dispatcharr")
     m.video.control = "play"
     m.playerClock.control = "start"
     showChannelBanner(channel, playerInfoHint())
@@ -1035,6 +1058,28 @@ sub showChannelBanner(channel as object, hint as string)
     m.banner.now = uiNow()
     m.bannerTimer.control = "stop"
     if not m.transport.active and not m.userInfoOpen then m.bannerTimer.control = "start"
+    updateBufferingIndicator()
+end sub
+
+' The native live Video UI is disabled. Keep a small status outside the info
+' banner so a dismissed/expired banner stays dismissed during rebuffering.
+sub updateBufferingIndicator()
+    if m.bufferingIndicator = invalid or m.bufferingSpinner = invalid then return
+    show = m.playingChannel <> invalid and m.video.state = "buffering"
+    if m.page <> "player" and not (m.page = "guide" and m.mini) then show = false
+    if m.banner.visible or m.pictureCover.visible or m.pendingChannel <> invalid then show = false
+    if m.browser.active or m.playerOptions.active then show = false
+    if show
+        m.bufferingIndicator.translation = [1536, 146]
+        m.bufferingIndicator.scale = [1.0, 1.0]
+        if m.mini
+            m.bufferingIndicator.translation = [1590, 180]
+            m.bufferingIndicator.scale = [0.72, 0.72]
+        end if
+    end if
+    if m.bufferingIndicator.visible = show then return
+    m.bufferingIndicator.visible = show
+    if show then m.bufferingSpinner.control = "start" else m.bufferingSpinner.control = "stop"
 end sub
 
 function playerInfoHint() as string
@@ -1160,6 +1205,7 @@ sub enterPlayerControls()
     m.banner.visible = true
     m.transport.visible = true
     m.transport.active = true
+    updateBufferingIndicator()
     ' Reassert focus even when active was already true after an interrupted handoff.
     m.transport.setFocus(true)
 end sub
@@ -1169,6 +1215,7 @@ sub hideBanner()
     m.banner.visible = false
     m.userInfoOpen = false
     m.transport.visible = false
+    updateBufferingIndicator()
 end sub
 
 sub stopPlayback()
@@ -1210,6 +1257,7 @@ sub stopPlayback()
     m.banner.visible = false
     m.banner.channel = invalid
     m.banner.info = invalid
+    updateBufferingIndicator()
     m.guide.playbackChannel = invalid
     m.guide.playbackEpoch = 0
     m.guide.visible = true
@@ -1244,6 +1292,7 @@ sub minimizePlayback()
     m.screen.visible = false
     m.guide.visible = true
     m.guide.active = true
+    updateBufferingIndicator()
     print "[player] minimized without retune"
 end sub
 
@@ -1377,6 +1426,7 @@ sub openChannelBrowser(mode = "channels" as string)
     m.browser.playingUuid = m.playingChannel.uuid
     m.browser.model = model
     m.browser.active = true
+    updateBufferingIndicator()
 end sub
 
 sub onBrowserSelected(event as object)
@@ -1387,6 +1437,7 @@ end sub
 
 sub onBrowserClosed()
     if m.page = "player" then focusPlaybackInput()
+    updateBufferingIndicator()
 end sub
 
 sub onBrowserInfoRequest(event as object)
@@ -1433,6 +1484,7 @@ sub onTransportInfoFocus()
     m.transport.visible = true
     m.banner.visible = true
     m.userInfoOpen = true
+    updateBufferingIndicator()
     focusPlaybackInput()
     m.bannerTimer.control = "stop"
 end sub
@@ -1479,6 +1531,7 @@ sub openPlayerOptions(kind = "main" as string)
         {title: "Stop playback", action: "stop"}
         {title: "Close", action: "close"}
     ]
+    if m.serverAccountId <> "" then items.unshift({title: "Live transport: " + m.devicePreferences.liveTransport, action: "liveTransportMenu"})
     if m.sleepDeadline > 0 then items.unshift({title: "Cancel sleep timer", action: "cancelSleep"})
     if m.playingChannel <> invalid and m.capabilities.catchup = "allowed"
         if catchupChannelDays(m.capabilities.catchup, m.channelFacts, textValue(m.playingChannel.id)) > 0 then items.unshift({title: "Rewind history (provider)", action: "rewindHistory"})
@@ -1500,12 +1553,21 @@ sub openPlayerOptions(kind = "main" as string)
         end for
     else if kind = "audioMode"
         title = "Audio compatibility"
-        note = "Auto retries missing audio once using an existing copy-video/AAC server output profile. Retunes this client only."
+        note = "Automatic uses an existing AC3 profile, or AAC if none is available."
         items = []
-        for each choice in [{value: "auto", title: "Automatic AAC fallback"}, {value: "direct", title: "Direct source audio"}, {value: "aac", title: "Always use AAC compatibility"}]
+        for each choice in [{value: "auto", title: "Automatic compatible audio"}, {value: "direct", title: "Direct source audio"}, {value: "aac", title: "Always use AAC compatibility"}]
             label = choice.title
             if choice.value = m.devicePreferences.audioMode then label = "[Selected] " + label
             items.push({title: label, action: "audioMode", value: choice.value})
+        end for
+    else if kind = "liveTransport"
+        title = "Dispatcharr live transport"
+        note = "Automatic: MPEG-TS. HLS requires a compatible server."
+        items = []
+        for each choice in [{value: "auto", title: "Automatic (MPEG-TS)"}, {value: "ts", title: "MPEG-TS"}, {value: "hls", title: "HLS (test server)"}]
+            label = choice.title
+            if choice.value = m.devicePreferences.liveTransport then label = "[Selected] " + label
+            items.push({title: label, action: "liveTransport", value: choice.value})
         end for
     else if kind = "scale"
         title = "Video scale"
@@ -1545,7 +1607,11 @@ sub openPlayerOptions(kind = "main" as string)
         for each entry in [{label: "Video codec", key: "video"}, {label: "Audio codec", key: "audio"}, {label: "Decoded resolution", key: "resolution"}, {label: "Frame rate", key: "frameRate"}, {label: "Stream bitrate", key: "bitrate"}, {label: "Network estimate", key: "network"}, {label: "Buffering progress", key: "buffering"}]
             items.push({title: entry.label + ": " + facts[entry.key], action: "streamInfo"})
         end for
-        items.push({title: "State: " + m.video.state + "  |  Transport: MPEG-TS", action: "streamInfo"})
+        transport = "MPEG-TS"
+        if m.video.content <> invalid
+            if m.video.content.streamFormat = "hls" then transport = "HLS"
+        end if
+        items.push({title: "State: " + m.video.state + "  |  Requested transport: " + transport, action: "streamInfo"})
         for each entry in [{label: "Rendered frames", key: "rendered"}, {label: "Dropped frames", key: "dropped"}, {label: "Repeated frames", key: "repeated"}, {label: "Stream errors", key: "errors"}]
             items.push({title: entry.label + ": " + facts[entry.key], action: "streamInfo"})
         end for
@@ -1604,6 +1670,7 @@ sub openPlayerOptions(kind = "main" as string)
     end if
     m.playerOptions.menu = {title: title, note: note, items: items, focusIndex: focusIndex}
     m.playerOptions.active = true
+    updateBufferingIndicator()
 end sub
 
 sub onPlayerOption(event as object)
@@ -1631,6 +1698,15 @@ sub onPlayerOption(event as object)
         persistPreferences()
     else if item.action = "audioModeMenu"
         openPlayerOptions("audioMode")
+        return
+    else if item.action = "liveTransportMenu"
+        openPlayerOptions("liveTransport")
+        return
+    else if item.action = "liveTransport"
+        m.devicePreferences.liveTransport = item.value
+        if not persistPreferences() then showNotice("Live transport could not be saved; this tune uses the selected transport.")
+        m.playerOptions.active = false
+        startPlayback(m.playingChannel, true)
         return
     else if item.action = "audioMode"
         if item.value = "aac" and m.aacProfile = invalid and m.aacDiscoveryState <> "pending"
@@ -1872,6 +1948,7 @@ end sub
 sub onPlayerOptionsClosed()
     cancelPlayerOkHold()
     if m.page = "player" then focusPlaybackInput()
+    updateBufferingIndicator()
 end sub
 
 sub focusPlaybackInput()
@@ -1921,6 +1998,7 @@ sub hidePicture()
     m.video.alwaysShowVideoPlanes = false
     m.video.visible = false
     m.pictureCover.visible = true
+    updateBufferingIndicator()
     m.pictureHint.visible = true
     m.pictureHintTimer.control = "stop"
     m.pictureHintTimer.control = "start"
@@ -1940,6 +2018,7 @@ sub restorePicture()
         if m.playingChannel <> invalid then m.video.visible = true
     end if
     m.pictureCover.visible = false
+    updateBufferingIndicator()
     if wasHidden and m.page = "player" and m.playingChannel <> invalid then focusPlaybackInput()
 end sub
 
@@ -1974,6 +2053,7 @@ sub onVideoState()
     print "[playback] state="; m.video.state
     recordDiagnostic("playback", 0, m.video.state)
     if m.pendingChannel = invalid then m.banner.playbackState = m.video.state
+    updateBufferingIndicator()
     if m.video.state = "error"
         code = m.video.errorCode
         ' Collect diagnostics before stop/content reset. Do not log media URLs.
@@ -1986,7 +2066,7 @@ sub onVideoState()
         if retryUnsupportedAacDecode(code, detail) then return
         if handleStartupFailure(code, detail) then return
         if retryInterruptedLive("error", code, detail) then return
-        if m.startupWatch <> invalid and m.startupRetryCount > 0 then detail += chr(10) + "One startup retry was already attempted."
+        if m.startupWatch <> invalid and m.startupRetryCount > 0 then detail += chr(10) + m.startupRetryCount.toStr() + " of " + m.startupRetryLimit.toStr() + " startup retries used."
         failLivePlayback(code, detail)
     else if m.video.state = "finished"
         if m.pendingChannel <> invalid or m.heldZap <> "" then return
@@ -1994,8 +2074,10 @@ sub onVideoState()
         if retryInterruptedLive("finished", 0, "") then return
         failLivePlayback(-1, "The live stream ended unexpectedly. Automatic recovery is unavailable or already used.")
     else if m.video.state = "buffering" or m.video.state = "paused"
-        if m.pendingChannel = invalid and m.playingChannel <> invalid
-            showChannelBanner(m.playingChannel, playerInfoHint())
+        ' Update existing chrome, but do not reopen info the viewer dismissed
+        ' (or whose tune-in timer expired) on every rebuffer/pause transition.
+        if m.pendingChannel = invalid and m.banner.visible
+            m.banner.hint = playerInfoHint()
             m.bannerTimer.control = "stop"
         end if
     else if m.video.state = "playing"
@@ -2124,7 +2206,11 @@ sub checkPlaybackAudio()
         end if
         return
     end if
-    if m.aacProfile = invalid then return
+    if m.devicePreferences.audioMode = "aac"
+        if m.aacProfile = invalid then return
+    else if preferredAutoAudioProfile(m.aacProfile, m.ac3Profile) = invalid
+        return
+    end if
     if m.devicePreferences.audioMode <> "auto" and m.devicePreferences.audioMode <> "aac" then return
     if m.video.audioFormat = "none" or m.devicePreferences.audioMode = "aac"
         busy = m.playerOptions.active or m.browser.active or m.transport.active or m.pendingChannel <> invalid or m.heldZap <> ""
@@ -2139,7 +2225,6 @@ sub checkPlaybackAudio()
         wasHidden = m.pictureCover.visible
         wasInfo = m.userInfoOpen
         channel = m.playingChannel
-        showNotice("No native audio detected. Retrying this channel with AAC compatibility.")
         startPlayback(channel, true, true, true)
         if wasMini then minimizePlayback()
         if wasHidden then hidePicture()
@@ -2323,6 +2408,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return handlePlayerMappedKey(key)
     end if
     if m.page <> "setup" then return false
+    if m.setupWakeClock <> invalid
+        if setupTransitionConsumesKey(m.setupWakeClock, key) then return true
+        if m.setupWakeClock.totalMilliseconds() >= 450 then m.setupWakeClock = invalid
+    end if
     if m.busy
         if key = "back"
             failConnection("Connection cancelled.")

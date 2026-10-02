@@ -44,6 +44,9 @@ def icon_png(kind, size=48):
         if kind in ('settings', 'options'):
             d = math.hypot(x - .5, y - .5)
             return .18 <= d <= .32 or (.29 <= d <= .42 and abs(math.sin(math.atan2(y - .5, x - .5) * 4)) > .65)
+        if kind == 'buffering':
+            angle = math.atan2(y - .5, x - .5)
+            return .26 <= math.hypot(x - .5, y - .5) <= .4 and -1.9 < angle < 2.9
         if kind in ('play', 'continue'):
             return .3 <= x <= .78 and abs(y - .5) <= (.78 - x) * .7
         if kind == 'pause':
@@ -99,7 +102,7 @@ if __name__ == '__main__':
         (root / f'ui-corner-{name}.png').write_bytes(corner_png(64, right, bottom))
         (root / f'ui-cutout-{name}.png').write_bytes(corner_png(64, right, bottom, cutout=True))
     print('Generated four reusable 64px UI corner masks.')
-    for name in ['live', 'vod', 'settings', 'movie', 'series', 'continue', 'watchlist', 'hidden', 'categories', 'play', 'pause', 'channels', 'recent', 'minimize', 'options', 'stop']:
+    for name in ['live', 'vod', 'settings', 'movie', 'series', 'continue', 'watchlist', 'hidden', 'categories', 'play', 'pause', 'channels', 'recent', 'minimize', 'options', 'stop', 'buffering']:
         (root / f'ui-icon-{name}.png').write_bytes(icon_png(name))
     print('Generated original navigation and transport glyphs.')
     (root / 'ui-focus-pill.png').write_bytes(pill_png())

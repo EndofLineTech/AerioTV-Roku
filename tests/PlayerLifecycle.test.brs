@@ -54,6 +54,8 @@ sub main()
         return true
     end function}
     m.banner = {visible: true}
+    m.bufferingIndicator = {visible: false, translation: [1536, 146], scale: [1.0, 1.0]}
+    m.bufferingSpinner = {control: "stop"}
     m.bannerTimer = {control: "start"}
     m.userInfoOpen = true
     m.sleepDeadline = 123
@@ -152,9 +154,53 @@ sub main()
     assertEqual(m.video.content.programId, "a", "focus repair preserves content")
     m.userInfoOpen = false
     m.transport.active = false
+    m.playerOptions.active = false
     m.banner.visible = true
     onBannerTimeout()
     assertEqual(m.banner.visible, false, "automatic tune banner still expires")
+    m.apiKey = ""
+    m.guide.callFunc = function(name as string, channel as object, now as integer) as object
+        return {programs: [], status: "ready"}
+    end function
+    m.video.state = "buffering"
+    m.bannerTimer.control = "untouched"
+    onVideoState()
+    assertEqual(m.banner.visible, false, "midstream buffering does not reopen dismissed info")
+    assertEqual(m.bannerTimer.control, "untouched", "hidden info does not acquire a new timer")
+    assertEqual(m.bufferingIndicator.visible, true, "hidden info uses compact buffering status")
+    assertEqual(m.bufferingSpinner.control, "start", "compact status spins during buffering")
+    m.video.state = "paused"
+    onVideoState()
+    assertEqual(m.banner.visible, false, "pause does not reopen dismissed info")
+    assertEqual(m.bufferingIndicator.visible, false, "buffering status hides when paused")
+    m.userInfoOpen = true
+    m.banner.visible = true
+    m.bannerTimer.control = "start"
+    m.video.state = "buffering"
+    onVideoState()
+    assertEqual(m.banner.visible, true, "explicitly opened info remains visible during buffering")
+    assertEqual(m.bannerTimer.control, "stop", "explicit info never expires while buffering")
+    assertEqual(instr(1, m.banner.hint, "Buffering") > 0, true, "visible info describes buffering")
+    assertEqual(m.bufferingIndicator.visible, false, "visible info avoids duplicate buffering chrome")
+    m.userInfoOpen = false
+    m.banner.visible = false
+    m.mini = true
+    m.page = "guide"
+    onVideoState()
+    assertEqual(m.bufferingIndicator.visible, true, "mini-player still has compact buffering status")
+    assertEqual(m.bufferingIndicator.scale[0], 0.72, "mini indicator stays within the video tile")
+    m.pictureCover.visible = true
+    onVideoState()
+    assertEqual(m.bufferingIndicator.visible, false, "hidden-picture mode has no overlay")
+    m.pictureCover.visible = false
+    m.video.state = "playing"
+    m.mini = false
+    m.page = "player"
+    m.audioCheck = {control: "stop"}
+    m.recordedChannel = "a"
+    onVideoState()
+    assertEqual(m.bufferingIndicator.visible, false, "playing stops compact status")
+    assertEqual(m.bufferingSpinner.control, "stop", "spinner stops when playback resumes")
     m.playerOptions.active = false
     m.pendingChannel = invalid
     m.video.control = "play"
@@ -215,6 +261,7 @@ sub main()
     m.notice = {visible: false}
     m.noticeTimer = {control: "stop"}
     m.startupRetryCount = 0
+    m.startupRetryLimit = 1
     beginStartupWatch(m.video.content)
     onVideoState()
     assertEqual(m.startupRetryCount, 1, "actual Video error handler routes startup stall to bounded retry")

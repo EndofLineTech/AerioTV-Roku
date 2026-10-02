@@ -54,6 +54,11 @@ sub loadChannels()
         return
     end if
 
+    ' An unknown HLS token returning 410 only proves the route exists. The
+    ' actual entry tune can also return 410 on this server. Keep Automatic on
+    ' known-working TS; explicit HLS remains available for controlled tests.
+    hlsAvailable = false
+
     ' 0.31 summary already applies visibility, permissions, profile union and
     ' effective overrides. Avoid duplicating different access rules on Roku.
     m.progressLabel = "Loading channels"
@@ -117,7 +122,7 @@ sub loadChannels()
         m.top.password = ""
         return
     end if
-    m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id), profileId: m.top.profileId, authModeUsed: m.requestMode, scope: scope, generation: generation}
+    m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id), profileId: m.top.profileId, authModeUsed: m.requestMode, hlsAvailable: hlsAvailable, scope: scope, generation: generation}
     m.key = ""
     m.top.apiKey = ""
 end sub

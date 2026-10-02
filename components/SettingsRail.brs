@@ -29,6 +29,7 @@ end sub
 sub focusSettingsRail()
     m.focusRegion = "rail"
     m.railIndex = m.railSelected
+    m.list.setFocus(false)
     m.top.setFocus(true)
     drawSettingsRail()
     if m.railItems <> invalid then uiAnnounce(m.railItems[m.railIndex].title)

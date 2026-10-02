@@ -29,6 +29,12 @@ sub main()
     if library[2].heading <> "Scheduled" or library[3].id <> "1" then stop
     if library[4].heading <> "Recent" or library[5].id <> "3" or library[6].id <> "4" then stop
     if library[7].heading <> "Series Rules" or library[8].title <> "Baseball" then stop
+    sections = dvrPosterSections(library)
+    if sections.count() <> 4 or instr(1, sections[0].title, "Recording Now") <> 1 or sections[0].items[0].id <> "2" then stop
+    if sections[1].items.count() <> 1 or sections[2].items.count() <> 2 or sections[3].items[0].title <> "Baseball" then stop
+    if dvrPosterUrl("https://example.test", {posterLogoId: "17", channelId: "4"}, {}) <> "https://example.test/api/channels/logos/17/cache/" then stop
+    if dvrPosterUrl("https://example.test", {posterLogoId: "", channelId: "4"}, {"4": "18"}) <> "https://example.test/api/channels/logos/18/cache/" then stop
+    if dvrPosterUrl("https://example.test", {posterLogoId: "4/secret", channelId: "4"}, {}) <> "pkg:/images/channel-icon-hd.png" then stop
     if dvrSelectableIndex(library, 0, 1) <> 1 or dvrSelectableIndex(library, 2, 1) <> 3 then stop
     if dvrSelectableIndex(library, 2, -1) <> 1 or dvrSelectableIndex(library, 7, -1) <> 6 then stop
     if dvrSelectableIndex(library, 8, 1) <> 8 then stop

@@ -20,6 +20,7 @@ sub refreshCapabilities()
     end if
     profileRows = apiRows(requestJson(m.base + "/api/core/outputprofiles/"))
     audioProfile = compatibleAacProfile(profileRows)
+    ac3Profile = compatibleAc3Profile(profileRows)
     profileState = "ready"
     profileMessage = ""
     if profileRows = invalid
@@ -35,7 +36,7 @@ sub refreshCapabilities()
         finish({ok: false})
         return
     end if
-    m.top.profileResult = {accountId: accountId, state: profileState, profile: audioProfile, message: profileMessage}
+    m.top.profileResult = {accountId: accountId, state: profileState, profile: audioProfile, ac3Profile: ac3Profile, message: profileMessage}
     version = requestJson(m.base + "/api/core/version/")
     settings = requestJson(m.base + "/api/core/settings/")
     capabilities = normalizeCapabilities(user, version, settings, CreateObject("roDateTime").asSeconds())
@@ -43,7 +44,7 @@ sub refreshCapabilities()
     ' Facts supplement the lean summary but do not replace its scoped lineup.
     rows = requestPages("/api/channels/channels/?page=1&page_size=200")
     facts = normalizeChannelCapabilities(rows)
-    finish({ok: true, capabilities: capabilities, audioProfile: audioProfile, channelFacts: facts, factsAvailable: rows <> invalid})
+    finish({ok: true, capabilities: capabilities, audioProfile: audioProfile, ac3Profile: ac3Profile, channelFacts: facts, factsAvailable: rows <> invalid})
 end sub
 
 sub finish(result as object)

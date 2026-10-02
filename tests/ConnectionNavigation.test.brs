@@ -59,6 +59,28 @@ sub main()
     end function}
     onPreferences(staleEvent)
     assertEqual(m.accountPreferences.favoriteIds.count(), 0, "old guide cannot alter new account preferences")
+
+    ' Successful dashboard sign-in returns an API key; only that verified key
+    ' may be remembered across a new app process, never the dashboard password.
+    m.registry.values = {}
+    m.registry.failKeyWrite = false
+    m.connectionStore = connectionStoreAdd(defaultConnectionStore(), "new-slot", "Main")
+    m.connectionStore = connectionStoreUpdate(m.connectionStore, "new-slot", {url: "https://example.test"})
+    m.selectedConnectionId = "new-slot"
+    m.baseUrl = "https://example.test"
+    m.remember = connectionStoreEntry(m.connectionStore, "new-slot").remember
+    m.apiKey = "verified-key"
+    m.password = "dashboard-password"
+    assertEqual(m.remember, true, "new Dispatcharr account starts with Remember on")
+    assertEqual(rememberConnectedAccount("7"), true, "verified dashboard sign-in saves the returned API key")
+    restored = loadConnectionStore(m.registry)
+    assertEqual(storedConnectionKey(m.registry, restored.entries[0]), "verified-key", "relaunch can restore the verified account")
+    assertEqual(instr(1, m.registry.read("connectionsV1"), "dashboard-password"), 0, "password never stored in roster")
+    m.serverAccountId = "7"
+    changeConnectionRemember(false)
+    restored = loadConnectionStore(m.registry)
+    assertEqual(restored.entries[0].remember, false, "session-only choice persists on relaunch")
+    assertEqual(storedConnectionKey(m.registry, restored.entries[0]), "", "session-only choice deletes the saved key")
     print "ALL TESTS PASSED"
 end sub
 

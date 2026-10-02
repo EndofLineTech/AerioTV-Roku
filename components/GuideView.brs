@@ -1,5 +1,6 @@
 sub init()
     m.canvas = m.top.findNode("canvas")
+    initGuideLogos()
     m.top.focusable = true
     m.primaryNavigation = m.top.findNode("primaryNavigation")
     m.primaryNavigation.observeField("selection", "onPrimarySelection")
@@ -62,6 +63,7 @@ sub configure()
     m.metadataElapsed.mark()
     cancelMetadataLoads()
     suspendGuide()
+    resetGuideLogos()
     m.ready = false
     m.top.playbackChannel = invalid
     m.top.playbackInfo = invalid
@@ -192,6 +194,10 @@ end sub
 sub onActive()
     if not m.ready then return
     if m.top.active
+        ' The clock is stopped while playing; restore the live guide playhead
+        ' on re-entry without overriding deliberate historical/future browsing.
+        m.anchor = guideResumeAnchor(m.anchor, m.followNow, uiNow(), m.settings)
+        keepAnchorVisible()
         m.clock.control = "start"
         drawGuide()
         scheduleLoad()
@@ -216,6 +222,7 @@ sub suspendGuide()
     cancelProgramSearch()
     m.searchView.active = false
     m.clock.control = "stop"
+    m.guideLogoDelay.control = "stop"
     m.saveDelay.control = "stop"
     m.loadDelay.control = "stop"
     if m.task <> invalid
@@ -494,6 +501,7 @@ sub drawGuide()
             end if
             channel = m.filtered[index]
             row.uuid = channel.uuid
+            row.logoId = textValue(channel.logoId)
             row.number.text = channel.number
             row.catchup.visible = catchupChannelDays(m.top.catchupPermission, m.top.channelFacts, channel.id) > 0
             row.number.width = 170
@@ -509,7 +517,12 @@ sub drawGuide()
             row.badge.text = ""
             if m.favorites.doesExist(channel.uuid) then row.badge.text = "FAV"
             uri = ""
-            if channel.logoId <> "" then uri = m.base + "/api/channels/logos/" + channel.logoId + "/cache/"
+            if m.guideLogoFiles.doesExist(row.logoId)
+                uri = m.guideLogoFiles[row.logoId].uri
+                touchGuideLogo(row.logoId)
+            else if m.providerType <> "dispatcharr" and row.logoId <> ""
+                uri = m.base + "/api/channels/logos/" + row.logoId + "/cache/"
+            end if
             if row.logo.uri <> uri then row.logo.uri = uri
             row.logo.visible = m.settings.showLogos
             row.number.visible = m.settings.showNumbers
@@ -517,6 +530,7 @@ sub drawGuide()
             renderCells(row, rowCells(channel), index = m.selected)
         end if
     end for
+    scheduleGuideLogos()
     x = timeX + (now - m.viewStart) / 6
     m.nowLine.visible = x >= timeX and x < 1824
     if m.nowLine.visible then m.nowLine.translation = [x, 300]
@@ -912,7 +926,7 @@ sub closePicker()
     end if
 end sub
 
-sub openOptions()
+sub openOptions(advanced = false as boolean)
     m.navigator.active = false
     items = [
         {title: "Program details", action: "details"}
@@ -960,7 +974,9 @@ sub openOptions()
     if m.top.vodEnabled then label = "Disable VOD libraries for this connection"
     if m.providerType <> "m3u" and m.providerType <> "xtream" then items.push({title: label, action: "toggleVod"})
     if m.top.pendingTune then items.unshift({title: "Cancel pending channel tune", action: "cancelPendingTune"})
-    openPicker("Guide options", items, "options")
+    title = "Guide options"
+    if advanced then title = "More guide actions"
+    openPicker(title, guideOptionItems(items, advanced), "options")
 end sub
 
 sub onPickerSelected(event as object)
@@ -996,6 +1012,10 @@ sub onPickerSelected(event as object)
         return
     else
         action = item.action
+        if action = "moreOptions" or action = "mainOptions"
+            openOptions(action = "moreOptions")
+            return
+        end if
         if action = "expandPlayer" or action = "stopPlayer" or action = "optionsPlayer" or action = "cancelSleep" or action = "cancelPendingTune"
             m.top.playerRequest = action
             return
@@ -1301,21 +1321,16 @@ function onKeyEvent(key as string, press as boolean) as boolean
             return true
         end if
         if m.top.miniActive
-            m.top.playerRequest = "expandPlayer"
+            m.top.playerRequest = "stopPlayer"
             return true
         end if
-        savePreferences()
-        m.top.exitRequested = true
+        focusPrimaryNavigation()
         return true
     end if
     if key = "play" and m.top.miniActive
         return handleGuideMappedKey(key)
     end if
-    if key = "up" and m.selected = 0 and m.settings.groupLayout <> "modal"
-        m.navigator.active = true
-        return true
-    end if
-    if key = "up" and (m.selected = 0 or m.filtered.count() = 0)
+    if m.filtered.count() = 0 and key = "up"
         focusPrimaryNavigation()
         return true
     end if
@@ -1325,11 +1340,11 @@ function onKeyEvent(key as string, press as boolean) as boolean
         openGuideKeyboard("number", "Channel number in current list", key)
         return true
     else if key = "up"
-        if m.selected > 0 then m.selected--
+        if m.selected > 0 then m.selected-- else m.selected = m.filtered.count() - 1
         beginGuideHold(key)
         announceGuidePosition()
     else if key = "down"
-        if m.selected < m.filtered.count() - 1 then m.selected++
+        if m.selected < m.filtered.count() - 1 then m.selected++ else m.selected = 0
         beginGuideHold(key)
         announceGuidePosition()
     else

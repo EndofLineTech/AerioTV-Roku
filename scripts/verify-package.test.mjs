@@ -8,7 +8,8 @@ test('store manifest declares supported RSG level and an unbranded title', () =>
   const fields = Object.fromEntries(manifest.trim().split('\n').map(line => line.split('=', 2)));
   assert.equal(fields.rsg_version, '1.3');
   assert.equal(fields.title, 'AerioTV');
-  assert.equal(fields.build_version, '86');
+  const version = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+  assert.equal(fields.build_version, version.split('.')[2]);
 });
 
 test('no component creates a legacy keyboard dialog', () => {
