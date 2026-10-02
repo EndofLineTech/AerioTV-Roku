@@ -28,6 +28,7 @@ sub main()
     assertEqual(nativePlaybackRefusal("reader pick stream error:HTTP error:Transfer error: HTTP response code said error response code:(403):403"), "authentication", "recognize native transfer error status")
     assertEqual(nativePlaybackRefusal("HTTP response code said error response code:(429):429"), "rate-limit", "native transfer rate limit is not archive lag")
     assertEqual(instr(1, playbackFailureText(-2, ""), "timed out") > 0, true, "explain timeout")
+    assertEqual(instr(1, playbackFailureText(-2, "Startup buffering timed out while waiting for a playable stream."), "one automatic retry"), 0, "failure text respects configurable startup retry count")
     lineup = [
         {uuid: "first", name: "First"}
         {uuid: "second", name: "Second"}

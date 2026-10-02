@@ -102,6 +102,7 @@ sub init()
     m.playingChannel = invalid
     m.startupWatch = invalid
     m.startupRetryCount = 0
+    m.startupRetryLimit = 1
     m.pendingChannel = invalid
     m.video.observeField("state", "onVideoState")
     m.video.enableDecoderStats = true
@@ -869,7 +870,10 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     m.miniFrame.visible = false
     m.guide.miniActive = false
     cancelStartupWatch()
-    if not preserveStartupBudget then m.startupRetryCount = 0
+    if not preserveStartupBudget
+        m.startupRetryCount = 0
+        m.startupRetryLimit = m.devicePreferences.liveStartupRetries
+    end if
     if not preserveStartupBudget then m.aacDecodeRetried = false
     if not preserveStartupBudget then m.liveRetryCount = 0
     m.liveBufferWatch = invalid
@@ -927,7 +931,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     ' AerioVideo forwards keys to the Scene instead of native transport actions.
     print "[playback] tuning channel "; channel.number
     focusPlaybackInput()
-    beginStartupWatch(content)
+    beginStartupWatch(content, false, connection <> invalid and connection.provider = "dispatcharr")
     m.video.control = "play"
     m.playerClock.control = "start"
     showChannelBanner(channel, playerInfoHint())
@@ -1897,7 +1901,7 @@ sub onVideoState()
         if retryUnsupportedAacDecode(code, detail) then return
         if handleStartupFailure(code, detail) then return
         if retryInterruptedLive("error", code, detail) then return
-        if m.startupWatch <> invalid and m.startupRetryCount > 0 then detail += chr(10) + "One startup retry was already attempted."
+        if m.startupWatch <> invalid and m.startupRetryCount > 0 then detail += chr(10) + m.startupRetryCount.toStr() + " of " + m.startupRetryLimit.toStr() + " startup retries used."
         failLivePlayback(code, detail)
     else if m.video.state = "finished"
         if m.pendingChannel <> invalid or m.heldZap <> "" then return

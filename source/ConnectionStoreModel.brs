@@ -121,7 +121,7 @@ end function
 
 function connectionStoreAdd(store as object, id as string, name as string, provider = "dispatcharr" as string) as dynamic
     if store.readOnly = true or store.entries.count() >= 4 or connectionStoreEntry(store, id) <> invalid then return invalid
-    entry = normalizeConnectionEntry({id: id, name: name, provider: provider, url: "", remember: false})
+    entry = normalizeConnectionEntry({id: id, name: name, provider: provider, url: "", remember: provider = "dispatcharr"})
     if entry = invalid then return invalid
     result = copyJson(store)
     result.entries.push(entry)
@@ -149,7 +149,9 @@ function connectionStoreUpdate(store as object, id as string, patch as object) a
                 if patch.doesExist(key) then entry[key] = patch[key]
             end for
             if entry.url <> previous.url
-                entry.remember = false
+                ' No key can belong to an empty first-run URL. Keep the new
+                ' connection's Remember choice; changing a real server clears it.
+                if previous.url <> "" then entry.remember = false
                 entry.accountId = ""
                 entry.profileId = ""
                 entry.localUrl = ""

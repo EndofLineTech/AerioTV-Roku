@@ -1299,11 +1299,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
             return true
         end if
         if m.top.miniActive
-            m.top.playerRequest = "expandPlayer"
+            m.top.playerRequest = "stopPlayer"
             return true
         end if
-        savePreferences()
-        m.top.exitRequested = true
+        focusPrimaryNavigation()
         return true
     end if
     if key = "play" and m.top.miniActive

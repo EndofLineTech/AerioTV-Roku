@@ -162,6 +162,15 @@ end function
 function organizedChannels(channels as object, group as string, favorites as object, recent as object, collections as object, settings as object, query as string) as object
     if query <> "" then group = "all"
     rows = playerBrowserChannels(channels, group, favorites, recent, collections)
+    hidden = {}
+    for each id in settings.hiddenGroups
+        if left(id, 6) = "group:" then hidden[id] = true
+    end for
+    visible = []
+    for each channel in rows
+        if not hidden.doesExist("group:" + textValue(channel.groupId)) then visible.push(channel)
+    end for
+    rows = visible
     if group = "favorites" and settings.favoriteOrder.count() > 0
         ids = []
         index = {}

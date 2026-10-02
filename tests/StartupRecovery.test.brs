@@ -28,6 +28,56 @@ sub main()
     checkStartupPlayback()
     if m.stops <> 1 then stop
 
+    ' Dispatcharr can try several dead member streams before returning media.
+    ' Do not tear down its first connection at the generic 25-second deadline.
+    resetStartupTest()
+    beginStartupWatch(m.video.content, false, true)
+    m.startupWatch.clock = elapsedClock(25000)
+    checkStartupPlayback()
+    if m.startupRetryCount <> 0 or m.stops <> 0 then stop
+    m.startupWatch.clock = elapsedClock(59999)
+    checkStartupPlayback()
+    if m.startupRetryCount <> 0 then stop
+    m.startupWatch.clock = elapsedClock(60000)
+    checkStartupPlayback()
+    if m.startupRetryCount <> 1 or m.startupWatch = invalid then stop
+    if m.startupWatch.waitForSources <> true then stop
+    m.startupWatch.clock = elapsedClock(25000)
+    checkStartupPlayback()
+    if m.stops <> 0 then stop
+    m.startupWatch.clock = elapsedClock(60000)
+    checkStartupPlayback()
+    if m.stops <> 1 or m.startupWatch <> invalid then stop
+
+    resetStartupTest()
+    m.startupRetryLimit = 3
+    beginStartupWatch(m.video.content, false, true)
+    for retry = 1 to 3
+        m.startupWatch.clock = elapsedClock(60000)
+        checkStartupPlayback()
+        if m.startupRetryCount <> retry or m.stops <> 0 then stop
+        if instr(1, m.notice, retry.toStr() + "/3") = 0 then stop
+        if m.startupWatch.waitForSources <> true then stop
+    end for
+    m.startupWatch.clock = elapsedClock(60000)
+    checkStartupPlayback()
+    if m.stops <> 1 or m.startupWatch <> invalid then stop
+
+    resetStartupTest()
+    m.startupRetryLimit = 0
+    beginStartupWatch(m.video.content, false, true)
+    if handleStartupFailure(-5, "buffering is stalled") then stop
+    m.startupWatch.clock = elapsedClock(60000)
+    checkStartupPlayback()
+    if m.stops <> 1 or m.startupRetryCount <> 0 then stop
+
+    resetStartupTest()
+    beginStartupWatch(m.video.content, false, true)
+    m.startupWatch.clock = elapsedClock(40000)
+    m.video.state = "playing"
+    checkStartupPlayback()
+    if m.startupWatch <> invalid or m.stops <> 0 then stop
+
     resetStartupTest()
     beginStartupWatch(m.video.content)
     m.video.state = "playing"
@@ -96,6 +146,7 @@ sub resetStartupTest()
     m.playingChannel = {uuid: "test"}
     m.video = {state: "buffering", content: testStartupContent(1), control: "play"}
     m.startupRetryCount = 0
+    m.startupRetryLimit = 1
     m.startupWatch = invalid
     m.pendingChannel = invalid
     m.heldZap = ""

@@ -75,7 +75,9 @@ sub main()
     m.top.remotePreferences.remoteMap = setRemoteAction(map, "guide", "playPause", "none")
     hint = guideRemoteHint()
     check(instr(1, hint, "OK  Details") > 0 and instr(1, hint, "Hold Left  None") > 0, "custom guide hints")
-    check(instr(1, hint, "Play  None") > 0 and instr(1, hint, "Back  Fullscreen") > 0, "mini hints distinguish fixed Back from mapped Play")
+    check(instr(1, hint, "Play  None") > 0 and instr(1, hint, "Back  Stop playback") > 0, "mini Back advertises stop instead of duplicating Play")
+    m.top.miniActive = false
+    check(instr(1, guideRemoteHint(), "Back  Top menu") > 0, "guide Back advertises top-level navigation")
     setupGuide()
     m.ready = true
     m.settings.showSubtitles = true

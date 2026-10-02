@@ -2,7 +2,7 @@ sub main()
     resetLive()
     original = m.video.content
     if not retryInterruptedLive("finished", 0, "") then stop
-    if m.liveRetryCount <> 1 or m.startupRetryCount <> 1 then stop
+    if m.liveRetryCount <> 1 or m.startupRetryCount <> 3 then stop
     if m.video.content.serial = original.serial or m.video.content.url <> original.url then stop
     if m.video.control <> "play" or m.streamReady then stop
     if m.activeAudioProfile <> "7" or not m.mini then stop
@@ -54,6 +54,7 @@ sub main()
 end sub
 
 sub resetLive()
+    m.startupRetryLimit = 3
     m.liveRetryCount = 0
     m.liveBufferWatch = invalid
     m.playingChannel = {uuid: "live"}

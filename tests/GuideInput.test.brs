@@ -73,6 +73,20 @@ sub main()
     m.picker = {}
     repeatGuideHold()
     if m.holdKey <> "" then stop
+    m.picker = invalid
+    m.primaryNavigation.active = false
+    m.top.miniActive = false
+    m.top.exitRequested = invalid
+    m.top.playerRequest = invalid
+    m.selected = 10
+    if not onKeyEvent("back", true) or not m.primaryNavigation.active then stop
+    if m.top.exitRequested <> invalid or m.selected <> 10 then stop
+    m.primaryNavigation.active = false
+    m.top.miniActive = true
+    if not onKeyEvent("back", true) or m.top.playerRequest <> "stopPlayer" then stop
+    if m.top.exitRequested <> invalid then stop
+    m.top.playerRequest = invalid
+    if not onKeyEvent("play", true) or m.top.playerRequest <> "expandPlayer" then stop
     print "ALL TESTS PASSED"
 end sub
 

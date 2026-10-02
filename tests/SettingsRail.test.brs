@@ -26,7 +26,7 @@ sub main()
     if m.stack.count() <> 0 or m.choice <> invalid or m.list.jumpToItem <> 0 then stop
     if handleSettingsRailKey("down", true) then stop ' detail keeps its own input
     focusSettingsRail()
-    if m.railIndex <> 1 or not m.top.focused then stop
+    if m.railIndex <> 1 or not m.top.focused or m.list.focused then stop
     handleSettingsRailKey("down", true)
     handleSettingsRailKey("OK", true)
     if m.page <> "remote" or m.renders <> 2 then stop

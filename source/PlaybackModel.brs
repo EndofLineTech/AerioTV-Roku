@@ -192,7 +192,7 @@ function playbackFailureText(code as integer, detail as string) as string
     if code = -2 then reason = "The channel request timed out. Check the server and network."
     if code = -5 then reason = "The Roku reported a media playback error."
     if isStartupBufferingStall(code, detail) then reason = "Playback stalled while buffering. Try this channel again."
-    if instr(1, lcase(detail), "startup buffering timed out") > 0 then reason = "The channel did not start after one automatic retry. Try again or choose another channel."
+    if instr(1, lcase(detail), "startup buffering timed out") > 0 then reason = "The channel did not start within the selected automatic retry budget. Try again or choose another channel."
     refusal = nativePlaybackRefusal(detail)
     if refusal = "connection-limit" then reason = "The server or provider connection limit was reached. Stop another session before trying again."
     if refusal = "authentication" then reason = "The media request was not authorized. Check the account and server permissions."

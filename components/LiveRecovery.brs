@@ -15,7 +15,9 @@ function retryInterruptedLive(state as string, code as integer, detail as string
     m.audioCheck.control = "stop"
     m.streamReady = false
     m.decoderSnapshot = {}
-    m.startupRetryCount = 1
+    ' This is the one midstream reconnect, not a fresh startup tune. It must
+    ' never consume the user-configured startup retry budget a second time.
+    m.startupRetryCount = m.startupRetryLimit
     m.video.control = "stop"
     m.video.content = replacement
     beginStartupWatch(replacement, true)

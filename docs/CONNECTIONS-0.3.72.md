@@ -1,12 +1,15 @@
 # Named Dispatcharr connections (0.3.72 candidate)
 
 The setup screen's Connection row opens a saved-connection picker. Manage saved
-connections adds a session-only slot, renames or reorders the selected slot,
+connections adds a slot, renames or reorders the selected slot,
 and offers a confirmed Forget action. The separate Forget button acts only on
 the selected slot. Up to four Dispatcharr slots are supported. Each slot owns
 its server URL, verified account ID, optional Remember choice and saved API
 key; the key lives in a separate app-registry value, not the roster JSON.
-Dashboard passwords stay session-only. See
+Dashboard passwords stay session-only. As of 2026-10-01, newly created
+Dispatcharr slots default Remember to On; entering their first URL retains the
+choice, while changing an existing URL resets it. Existing slots retain their
+saved choice; M3U/Xtream connections remain session-only. See
 [credential policy](CONNECTION-CREDENTIAL-POLICY.md).
 
 The first launch with an older single-server registry entry presents it as

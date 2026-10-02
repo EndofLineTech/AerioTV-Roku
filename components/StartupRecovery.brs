@@ -1,8 +1,8 @@
 ' Startup-only local recovery. Never mutate the shared channel or audio mode.
-sub beginStartupWatch(content as object, recovering = false as boolean)
+sub beginStartupWatch(content as object, recovering = false as boolean, waitForSources = false as boolean)
     clock = CreateObject("roTimespan")
     clock.mark()
-    m.startupWatch = {content: content, channelUuid: m.playingChannel.uuid, clock: clock, recovering: recovering}
+    m.startupWatch = {content: content, channelUuid: m.playingChannel.uuid, clock: clock, recovering: recovering, waitForSources: waitForSources}
 end sub
 
 sub cancelStartupWatch()
@@ -24,7 +24,7 @@ end sub
 ' A replaced Video reader can publish its old finished event after the AAC
 ' replacement ContentNode has already been assigned. Ignore only that first
 ' immediate terminal event; if the new reader never buffers/plays, the normal
-' 25-second startup watchdog still fails/retries with a bounded budget.
+' startup watchdog still fails/retries with a bounded budget.
 function ignoreOutgoingAacFinish() as boolean
     if m.aacDecodeRetried <> true or m.activeAudioProfile = "" or m.streamReady then return false
     if m.page <> "player" or m.video.state <> "finished" then return false
@@ -38,9 +38,10 @@ end function
 
 function retryStartupPlayback() as boolean
     if not startupWatchIsCurrent() then return false
-    if m.startupRetryCount >= 1 or m.page = "setup" then return false
+    if m.startupRetryCount >= m.startupRetryLimit or m.page = "setup" then return false
     if m.video.state = "playing" or m.video.state = "paused" then return false
     if m.pendingChannel <> invalid or m.heldZap <> "" then return false
+    waitForSources = m.startupWatch.waitForSources = true
     replacement = m.video.content.clone(false)
     m.startupRetryCount++
     cancelStartupWatch()
@@ -48,14 +49,14 @@ function retryStartupPlayback() as boolean
     m.streamReady = false
     m.decoderSnapshot = {}
     ' Close this local attempt before replacing it. Clone retains exact URL,
-    ' MPEG-TS transport, authentication headers and selected output profile.
+    ' transport, authentication headers and selected output profile.
     m.video.control = "stop"
     m.video.content = replacement
-    beginStartupWatch(replacement, true)
+    beginStartupWatch(replacement, true, waitForSources)
     m.video.control = "play"
     m.banner.playbackState = "buffering"
-    showNotice("Channel startup stalled. Retrying once with the same audio setting...")
-    print "[startup-recovery] local retry 1/1; same playback URL and profile"
+    showNotice("Channel startup stalled. Retrying " + m.startupRetryCount.toStr() + "/" + m.startupRetryLimit.toStr() + " with the same audio setting...")
+    print "[startup-recovery] local retry " + m.startupRetryCount.toStr() + "/" + m.startupRetryLimit.toStr() + "; same playback URL and profile"
     return true
 end function
 
@@ -79,9 +80,12 @@ sub checkStartupPlayback()
         if m.video.state <> "finished" and m.video.state <> "stopped" then return
     end if
     if m.pendingChannel <> invalid or m.heldZap <> "" then return
-    ' Monotonic elapsed time prevents a late clock callback from an earlier tune
-    ' expiring a new attempt. Once-per-second clock gives a bounded ~25s deadline.
-    if m.startupWatch.clock.totalMilliseconds() < 25000 then return
+    ' Dispatcharr may still be trying later member streams after 25 seconds.
+    ' Keep its existing request alive for up to a minute before reopening it;
+    ' direct M3U/Xtream and midstream recovery retain the shorter deadline.
+    deadlineMs = 25000
+    if m.startupWatch.waitForSources = true then deadlineMs = 60000
+    if m.startupWatch.clock.totalMilliseconds() < deadlineMs then return
     if retryStartupPlayback() then return
-    failLivePlayback(-2, "Startup buffering timed out (25 seconds). The automatic retry budget for this tune has already been used.")
+    failLivePlayback(-2, "Startup buffering timed out while waiting for a playable stream. The automatic retry budget for this tune has already been used.")
 end sub

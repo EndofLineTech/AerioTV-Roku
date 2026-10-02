@@ -156,6 +156,6 @@ function guideRemoteHint() as string
     hint = "OK  " + remoteActionHint(guideRemoteAction("okShort")) + "    Hold Left  " + remoteActionHint(guideRemoteAction("leftLong")) + "    Replay  " + remoteActionHint(guideRemoteAction("replay"))
     if m.top.miniActive then hint += "    Play  " + remoteActionHint(guideRemoteAction("playPause"))
     hint += "    *  Options    Back  "
-    if m.top.miniActive then return hint + "Fullscreen"
-    return hint + "Connection"
+    if m.top.miniActive then return hint + "Stop playback"
+    return hint + "Top menu"
 end function

@@ -28,7 +28,7 @@ function normalizeDevicePreferences(raw as dynamic) as object
     if type(raw) = "roAssociativeArray" then result = copyJson(raw)
     ' Earlier Settings writes lowercased camel-case keys on ParseJson's
     ' case-sensitive map. Migrate the displayed choice to the canonical field.
-    for each field in ["archiveSkipSeconds", "audioMode", "videoScale", "themePreset", "appearanceMode", "panelStyle", "textSize", "subtextSize", "contrastMode", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints", "networkTimeoutSeconds", "refreshSeconds", "clockFormat", "audioGuide"]
+    for each field in ["archiveSkipSeconds", "audioMode", "liveStartupRetries", "videoScale", "themePreset", "appearanceMode", "panelStyle", "textSize", "subtextSize", "contrastMode", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints", "networkTimeoutSeconds", "refreshSeconds", "clockFormat", "audioGuide"]
         alias = lcase(field)
         exactAlias = CreateObject("roRegex", "^" + alias + "$", "")
         for each key in result.keys()
@@ -65,6 +65,7 @@ function normalizeDevicePreferences(raw as dynamic) as object
     if result.channelDirection <> "apple" and result.channelDirection <> "guide" then result.channelDirection = "apple"
     if result.videoScale <> "fit" and result.videoScale <> "fill" and result.videoScale <> "stretch" then result.videoScale = "fit"
     if result.audioMode <> "auto" and result.audioMode <> "direct" and result.audioMode <> "aac" then result.audioMode = "auto"
+    if result.liveStartupRetries <> 0 and result.liveStartupRetries <> 1 and result.liveStartupRetries <> 2 and result.liveStartupRetries <> 3 then result.liveStartupRetries = 1
     if result.clockFormat <> "12" and result.clockFormat <> "24" then result.clockFormat = "system"
     hasRemoteMap = type(result.remoteMap) = "roAssociativeArray"
     result.remoteMap = normalizeRemoteMap(result.remoteMap)

@@ -198,6 +198,7 @@ sub main()
     m.notice = {visible: false}
     m.noticeTimer = {control: "stop"}
     m.startupRetryCount = 0
+    m.startupRetryLimit = 1
     beginStartupWatch(m.video.content)
     onVideoState()
     assertEqual(m.startupRetryCount, 1, "actual Video error handler routes startup stall to bounded retry")
