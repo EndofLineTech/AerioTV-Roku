@@ -11,7 +11,7 @@ sub seedVisualProbe()
     m.failure = ""
     m.items = []
     for i = 1 to 5
-        m.items.push({id: i.toStr(), uuid: "visual-" + i.toStr(), key: "movie:visual-" + i.toStr(), kind: "movie", title: "Fictional movie " + i.toStr(), year: "2026", rating: "PG", logoId: "", tmdbPosterPath: "", description: "Visual-only fixture"})
+        m.items.push({id: "visual-" + i.toStr(), uuid: "visual-" + i.toStr(), key: "movie:visual-" + i.toStr(), kind: "movie", title: "Fictional movie " + i.toStr(), year: "2026", rating: "PG", logoId: "", tmdbPosterPath: "", description: "Visual-only fixture"})
     end for
     drawVod()
 end sub

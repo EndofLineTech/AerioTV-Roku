@@ -3,10 +3,15 @@ sub buildSettingsRail()
     m.railCells = []
     for i = 0 to m.railItems.count() - 1
         y = 235 + i * 94
-        ring = uiSurface(m.top, 96, y, 412, 82, 14, "0x00000000")
-        fill = uiSurface(m.top, 98, y + 2, 408, 78, 12, "0x00000000")
+        ' A single tinted mask avoids exposed joins in separately scaled caps.
+        fill = m.top.createChild("Poster")
+        fill.translation = [98, y + 2]
+        fill.width = 408
+        fill.height = 78
+        fill.uri = "pkg:/images/ui-settings-rail.png"
+        fill.loadDisplayMode = "scaleToFill"
         label = uiLabel(m.top, m.railItems[i].title, 122, y + 23, 364, 38, uiTypeSize("section"))
-        m.railCells.push({ring: ring, fill: fill, label: label})
+        m.railCells.push({fill: fill, label: label})
     end for
     m.railIndex = 0
     m.railSelected = 0
@@ -18,11 +23,8 @@ sub drawSettingsRail()
     for i = 0 to m.railCells.count() - 1
         cell = m.railCells[i]
         style = uiControlStyle("row", i = m.railSelected, m.focusRegion = "rail" and i = m.railIndex, true, false)
-        uiSetColor(cell.ring, style.ring)
-        uiSetColor(cell.fill, style.fill)
+        uiSetColor(cell.fill, style.fill, "blendColor")
         uiSetColor(cell.label, style.ink)
-        cell.ring.focusScale = style.scale
-        cell.fill.focusScale = style.scale
     end for
 end sub
 

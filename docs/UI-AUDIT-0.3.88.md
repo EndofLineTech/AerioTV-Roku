@@ -16,17 +16,18 @@ Probes use fictional, credential-free metadata and do not verify a provider.
 | Live player startup, Options, transport, audio and subtitle menus | PASS (menu visibility) | `gh-release-player-startup.jpg`, `gh-release-player-options.jpg`, `gh-release-player-transport.jpg`, `gh-release-player-audio-mode.jpg`, `gh-release-player-captions.jpg`, `gh-release-player-subtitle-tracks.jpg`; transport description shortened after these captures. |
 | Live video and audio continuity | SKIP (physical A/V) | A native MPEG-TS tune briefly reached `playing` then stopped; another tune failed. Developer screenshots cannot establish decoded picture or audible sound. HLS probe returning 410 did not prove playable HLS; Automatic remains MPEG-TS. |
 | VOD empty library, Options, More, Back | PASS (visual/navigation) | `gh-release-vod.jpg`, `gh-release-vod-options-fixed.jpg`, `gh-release-vod-more.jpg`. |
-| VOD populated poster row | PASS (fixture layout only) | `gh-fixture-vod.jpg` shows five fictional titles. A subsequent fallback-poster adjustment has not been recaptured; provider catalog, details and actual playback remain SKIP. |
+| VOD populated poster row and missing-artwork fallback | PASS (fixture layout only) | `gh-fixture-vod-fallback-valid.jpg` shows five fictional titles with local placeholder art. The first fixture had numeric IDs, which incorrectly chose a server image route and did not test the fallback. Provider catalog, details and actual playback remain SKIP. |
 | DVR real completed item and details | PASS (visual) | `gh-fixture-dvr-second.jpg` and earlier real-item captures; active/scheduled/rule provider data not available. |
-| DVR four sections and focused first-row clipping | PASS (fixture visual) | `gh-fixture-dvr-border-fixed.jpg` shows all section counts and the entire first focused border; subsequent section scroll and Back/dialog need recapture. |
-| Settings Live TV, Player, Remote (guide/player), Appearance, General, About, licenses, What's New and Connection | PASS (screen/menu entry) | `gh-release-ui-*.jpg` under private `out/`; Connection returned to setup without a carried-through OK after the fix. Updated What's New text and other last-pass labels still need a final ZIP retest. |
+| DVR four sections, focused cards, rule facts and Back | PASS (fixture visual/navigation) | `gh-fixture-dvr-focus-scheduled.jpg`, `gh-fixture-dvr-focus-recent.jpg`, `gh-fixture-dvr-focus-series.jpg`, `gh-fixture-dvr-series-dialog.jpg`, `gh-fixture-dvr-back-guide.jpg`. All four sections scroll with intact first-row border; rule removal was not selected. |
+| Settings Live TV, Player, Remote (guide/player), Appearance, General, About, licenses, What's New and Connection | PASS (screen/menu entry) | `gh-release-ui-*.jpg` under private `out/`; Connection returned to setup without a carried-through OK. On the later normal ZIP, `gh-release-final-settings-rail-mask.jpg` has no square joins, `gh-release-final-whats-new-retake.jpg` has current text, and `gh-release-final-transport-retake.jpg` labels Automatic as MPEG-TS. |
 | Connection edit/forget/reconnect and first-run setup | SKIP (destructive/unauthorized provider changes) | Setup and connection surfaces were viewed only. Saved account and server lineup were not intentionally changed. |
 | Provider-backed scheduled/active DVR, series rules, populated VOD, mapped EPG, catch-up and recording playback | SKIP (account data) | Synthetic fixtures establish layout only. No new shared-server recordings or mappings were created. |
-| Exact final ZIP, signed package identity and post-install guide return | SKIP (not built/installed yet) | A previous `.pkg` predates later fixes and cannot be used. |
+| Normal ZIP install and authorized guide return | PASS (native UI) | A later unsigned normal 0.3.88 ZIP installed successfully and `gh-release-final-normal-guide.jpg` shows the authorized 36-channel guide after Back; a new Settings-rail mask was added after the earlier draft branch commit. Rebuild from the final committed tree before signing. |
+| Signed package identity and final ZIP parity | SKIP (not packaged yet) | A previous `.pkg` predates later fixes and cannot be used. |
 
-Release gate: repeat focus, scroll, dialogs and Back on the final exact ZIP,
-especially DVR Scheduled/Recent/Series Rules, VOD poster fallback, What's New
-and the shortened player transport label; inspect the final capture for clipping.
+Release gate: finish the exact committed ZIP and signed-package parity check,
+then inspect focus/scroll/Back after final installation; signed package testing
+cannot be inferred from an unsigned normal ZIP or a disposable fixture.
 Restore the normal ZIP after every disposable probe. Record physical picture
 and sound independently if witnessed; otherwise retain SKIP. Do not close the
 UI-audit bead or publish on the strength of these intermediate screenshots.
