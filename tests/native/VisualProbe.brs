@@ -20,7 +20,27 @@ sub visualProbeTick()
         else if m.page <> "guide"
             return
         end if
-        if m.visualProbeScreen = "epg-details"
+        if m.visualProbeScreen = "guide-return-hour"
+            if m.guide = invalid then return
+            seeded = m.guide.callFunc("seedGuideReturnHour", true)
+            if type(seeded) <> "roAssociativeArray" or seeded.ready <> true then return
+            m.guide.active = false
+            m.guide.active = true
+            following = m.guide.callFunc("readGuideReturnHour")
+            seeded = m.guide.callFunc("seedGuideReturnHour", false)
+            if type(seeded) <> "roAssociativeArray" or seeded.ready <> true then return
+            m.guide.active = false
+            m.guide.active = true
+            historical = m.guide.callFunc("readGuideReturnHour")
+            m.guide.callFunc("resetGuideReturnHour")
+            if type(following) <> "roAssociativeArray" or type(historical) <> "roAssociativeArray" then return
+            if abs(following.offsetSeconds) > 3 or following.title <> "Current fictional programme" or historical.offsetSeconds > -3595 or historical.offsetSeconds < -3605 or historical.title <> "Prior fictional programme"
+                print "ERROR: guide-return-hour re-entry did not respect live/historical time"
+                m.visualProbeTimer.control = "stop"
+                return
+            end if
+            print "[guide-return-hour] PASS live offset="; following.offsetSeconds; " current fixture="; following.title; " historical offset="; historical.offsetSeconds; " prior fixture="; historical.title
+        else if m.visualProbeScreen = "epg-details"
             details = m.guide.findNode("programDetails")
             startAt = uiNow() - 600
             description = ""
