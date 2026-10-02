@@ -22,12 +22,13 @@ Probes use fictional, credential-free metadata and do not verify a provider.
 | Settings Live TV, Player, Remote (guide/player), Appearance, General, About, licenses, What's New and Connection | PASS (screen/menu entry) | `gh-release-ui-*.jpg` under private `out/`; Connection returned to setup without a carried-through OK. On the later normal ZIP, `gh-release-final-settings-rail-mask.jpg` has no square joins, `gh-release-final-whats-new-retake.jpg` has current text, and `gh-release-final-transport-retake.jpg` labels Automatic as MPEG-TS. |
 | Connection edit/forget/reconnect and first-run setup | SKIP (destructive/unauthorized provider changes) | Setup and connection surfaces were viewed only. Saved account and server lineup were not intentionally changed. |
 | Provider-backed scheduled/active DVR, series rules, populated VOD, mapped EPG, catch-up and recording playback | SKIP (account data) | Synthetic fixtures establish layout only. No new shared-server recordings or mappings were created. |
-| Normal ZIP install and authorized guide return | PASS (native UI) | A later unsigned normal 0.3.88 ZIP installed successfully and `gh-release-final-normal-guide.jpg` shows the authorized 36-channel guide after Back; a new Settings-rail mask was added after the earlier draft branch commit. Rebuild from the final committed tree before signing. |
+| Exact versioned ZIP install and authorized guide return | PASS (native UI) | `aeriotv-roku-v0.3.88.zip` (SHA-256 `62f35262f1c5cfe24c60201924382eb07af8fdc453e2799e0b0e5c9e6dd49b40`) was installed from committed app source; read-only ECP reported developer-slot `0.3.88`, and `gh-release-exact-asset-guide-settled.jpg` shows the authorized 36-channel guide. |
 | Signed package identity and final ZIP parity | SKIP (not packaged yet) | A previous `.pkg` predates later fixes and cannot be used. |
 
-Release gate: finish the exact committed ZIP and signed-package parity check,
-then inspect focus/scroll/Back after final installation; signed package testing
-cannot be inferred from an unsigned normal ZIP or a disposable fixture.
+Release gate: generate and inspect a signed package from the exact committed
+ZIP using the existing identity; confirm final asset parity and release scope.
+Signed package testing cannot be inferred from an unsigned ZIP or a disposable
+fixture.
 Restore the normal ZIP after every disposable probe. Record physical picture
 and sound independently if witnessed; otherwise retain SKIP. Do not close the
 UI-audit bead or publish on the strength of these intermediate screenshots.
