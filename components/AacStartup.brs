@@ -2,6 +2,7 @@
 function deferRequiredAacTune(channel as object, forceRetune as boolean, useAac as boolean, preserveBudget as boolean, tuneStartedAt = 0 as integer) as boolean
     if m.devicePreferences.audioMode <> "aac" and not useAac then return false
     if m.aacProfile <> invalid then return false
+    if m.devicePreferences.audioMode = "auto" and m.ac3Profile <> invalid then return false
     clock = CreateObject("roTimespan")
     clock.mark()
     m.pendingAacTune = {
@@ -58,7 +59,7 @@ end sub
 ' copy-video/AAC profile; Direct mode and direct providers stay untouched.
 function retryUnsupportedAacDecode(code as integer, detail as string) as boolean
     if not isUnsupportedAacStream(code, detail) then return false
-    if m.devicePreferences.audioMode <> "auto" or m.aacProfile = invalid then return false
+    if m.devicePreferences.audioMode <> "auto" or preferredAutoAudioProfile(m.aacProfile, m.ac3Profile) = invalid then return false
     if m.activeAudioProfile <> "" or m.aacDecodeRetried = true or m.streamReady then return false
     if m.page <> "player" or m.playingChannel = invalid or m.liveSession = invalid then return false
     if m.pendingChannel <> invalid or m.heldZap <> "" then return false
@@ -69,7 +70,6 @@ function retryUnsupportedAacDecode(code as integer, detail as string) as boolean
     channel = m.playingChannel
     tuneStartedAt = m.liveSession.openedAt
     startPlayback(channel, true, true, true, tuneStartedAt)
-    showNotice("Roku could not decode source AAC. Retrying this player with the existing AAC compatibility profile.")
-    print "[aac-recovery] local decoder fallback 1/1"
+    print "[audio-recovery] local compatible profile 1/1"
     return true
 end function

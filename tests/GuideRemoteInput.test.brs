@@ -60,7 +60,8 @@ sub main()
     check(m.selected = 19, "page down clamps")
     m.top.miniActive = false
     handleGuideMappedKey("play")
-    check(m.top.playerRequest = "", "no mini-player means no resume request")
+    check(m.top.playerRequest = "" and m.observed = "programDetails", "Play opens program details when no mini-player exists")
+    check(instr(1, guideRemoteHint(), "Play  Details") > 0, "direct details shortcut is visible in guide hints")
     for each key in ["back", "home", "options", "up", "down"]
         check(not handleGuideMappedKey(key), "fixed navigation is not remapped")
     end for
@@ -69,6 +70,23 @@ sub main()
     m.picker = {}
     repeatGuideHold()
     check(m.holdKey = "" and not m.navigator.active, "picker cancels delayed guide action")
+    setupGuide()
+    handleGuideMappedKey("fastforward")
+    check(m.selected = 16 and m.holdKey = "fastforward", "FF pages once and begins held paging")
+    m.holdClock = {totalMilliseconds: function() as integer
+        return 1000
+    end function}
+    repeatGuideHold()
+    check(m.selected = 19, "held FF continues paging to end")
+    check(handleGuideHeldKey("fastforward", false) and m.holdKey = "", "release stops held FF")
+    setupGuide()
+    handleGuideMappedKey("rewind")
+    check(m.selected = 4 and m.holdKey = "rewind", "REW pages once and begins held paging")
+    m.holdClock = {totalMilliseconds: function() as integer
+        return 1000
+    end function}
+    repeatGuideHold()
+    check(m.selected = 0, "held REW continues paging to beginning")
     setupGuide()
     map = setRemoteAction(defaultRemoteMap(), "guide", "okShort", "programDetails")
     map = setRemoteAction(map, "guide", "leftLong", "none")

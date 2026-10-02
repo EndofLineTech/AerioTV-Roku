@@ -37,6 +37,12 @@ sub main()
     profile = compatibleAacProfile([{id: 2, name: "AAC", is_active: true, command: "ffmpeg", parameters: "-i pipe:0 -c:v copy -c:a aac -f mpegts pipe:1"}])
     assertEqual(profile.id, "2", "discover existing copy-video AAC profile")
     assertEqual(compatibleAacProfile([{id: 2, is_active: false}]), invalid, "inactive profile not used")
+    ac3 = compatibleAc3Profile([{id: 9, name: "Roku AC3", is_active: true, command: "/usr/bin/ffmpeg", parameters: "-c:v copy -c:a ac3 -f mpegts"}])
+    assertEqual(ac3.id, "9", "discover existing copy-video AC3 profile")
+    assertEqual(preferredAutoAudioProfile(profile, ac3).id, "9", "automatic fallback prefers verified AC3 on Roku")
+    assertEqual(preferredAutoAudioProfile(profile, invalid).id, "2", "existing AAC fallback retained when AC3 unavailable")
+    assertEqual(compatibleAc3Profile([{id: 9, is_active: false, command: "ffmpeg", parameters: "-c:v copy -c:a ac3"}]), invalid, "inactive AC3 cannot be used")
+    assertEqual(compatibleAc3Profile([{id: 9, is_active: true, command: "ffmpeg", parameters: "-c:v libx264 -c:a ac3"}]), invalid, "do not transcode video as an audio workaround")
     print "ALL TESTS PASSED"
 end sub
 

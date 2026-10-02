@@ -91,6 +91,28 @@ function dvrLibraryRows(recordings as object, rules as object, query as string, 
     return result
 end function
 
+function dvrPosterSections(rows as object) as object
+    sections = []
+    for each row in rows
+        if row.heading <> invalid
+            sections.push({title: row.heading + "  (" + row.itemCount.toStr() + ")", items: []})
+        else if sections.count() > 0
+            sections[sections.count() - 1].items.push(row)
+        end if
+    end for
+    return sections
+end function
+
+function dvrPosterUrl(baseUrl as string, row as object, channelLogos as object) as string
+    logoId = textValue(row.posterLogoId)
+    if logoId = "" and channelLogos.doesExist(textValue(row.channelId)) then logoId = textValue(channelLogos[textValue(row.channelId)])
+    if CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(logoId)
+        base = normalizeBaseUrl(baseUrl)
+        if base <> "" then return base + "/api/channels/logos/" + logoId + "/cache/"
+    end if
+    return "pkg:/images/channel-icon-hd.png"
+end function
+
 function dvrSelectableIndex(rows as object, index as integer, direction as integer) as integer
     if index < 0 or index >= rows.count() then return -1
     if rows[index].heading = invalid then return index

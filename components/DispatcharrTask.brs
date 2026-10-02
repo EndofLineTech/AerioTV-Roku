@@ -54,6 +54,12 @@ sub loadChannels()
         return
     end if
 
+    ' hls-test returns 410 for an unknown opaque session; older servers have
+    ' no route and return 404. This GET cannot mint a session or tune a channel.
+    ' An inconclusive response keeps Automatic on the known-good TS route.
+    hlsProbe = httpTransferOnce(m.base + "/proxy/hls/aeriotv-roku-capability-probe/index.m3u8", invalid, "", 2500, 1024)
+    hlsAvailable = dispatcharrHlsAvailable(hlsProbe.status)
+
     ' 0.31 summary already applies visibility, permissions, profile union and
     ' effective overrides. Avoid duplicating different access rules on Roku.
     m.progressLabel = "Loading channels"
@@ -117,10 +123,16 @@ sub loadChannels()
         m.top.password = ""
         return
     end if
-    m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id), profileId: m.top.profileId, authModeUsed: m.requestMode, scope: scope, generation: generation}
+    m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id), profileId: m.top.profileId, authModeUsed: m.requestMode, hlsAvailable: hlsAvailable, scope: scope, generation: generation}
     m.key = ""
     m.top.apiKey = ""
 end sub
+
+function dispatcharrHlsAvailable(status as integer) as boolean
+    ' 410 means the branch recognized the route but has no such session.
+    ' 404, 403 and failures do not establish a usable HLS route.
+    return status = 410
+end function
 
 sub publishError(message as string, relogin = false as boolean)
     m.key = ""

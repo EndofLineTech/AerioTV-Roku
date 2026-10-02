@@ -159,6 +159,18 @@ function guideHoldStep(elapsedMs as integer) as integer
     return 1
 end function
 
+function guideOptionItems(items as object, advanced as boolean) as object
+    result = []
+    if advanced then result.push({title: "Back to common actions", action: "mainOptions"})
+    for each item in items
+        action = textValue(item.action)
+        common = action = "details" or action = "favorite" or action = "groups" or action = "search" or action = "programSearch" or action = "now" or action = "expandPlayer" or action = "stopPlayer" or action = "cancelPendingTune"
+        if common <> advanced then result.push(item)
+    end for
+    if not advanced then result.push({title: "More guide actions", action: "moreOptions"})
+    return result
+end function
+
 function organizedChannels(channels as object, group as string, favorites as object, recent as object, collections as object, settings as object, query as string) as object
     if query <> "" then group = "all"
     rows = playerBrowserChannels(channels, group, favorites, recent, collections)
@@ -232,6 +244,11 @@ function guideTimeClamp(epoch as integer, now as integer, settings as object) as
     if epoch < low then return low
     if epoch > high then return high
     return epoch
+end function
+
+function guideResumeAnchor(anchor as integer, followNow as boolean, now as integer, settings as object) as integer
+    if followNow then return now
+    return guideTimeClamp(anchor, now, settings)
 end function
 
 function channelNumberIndex(channels as object, number as string) as integer

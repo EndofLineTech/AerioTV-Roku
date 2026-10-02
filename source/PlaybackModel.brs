@@ -1,8 +1,17 @@
-function livePlaybackDescriptor(baseUrl as string, channel as dynamic) as dynamic
+function livePlaybackDescriptor(baseUrl as string, channel as dynamic, transport = "ts" as string) as dynamic
     base = normalizeBaseUrl(baseUrl)
     if base = "" or type(channel) <> "roAssociativeArray" then return invalid
     uuid = textValue(channel.uuid)
     if not CreateObject("roRegex", "^[A-Za-z0-9-]+$", "").isMatch(uuid) then return invalid
+    if transport = "hls"
+        ' hls-test mints a per-client capability and redirects this entry URL
+        ' to /proxy/hls/<token>/index.m3u8. Never construct a token URL here.
+        return {
+            url: base + "/proxy/ts/stream/" + uuid + "?output_format=hls"
+            streamFormat: "hls", live: true
+            title: textValue(channel.name), programId: uuid
+        }
+    end if
     ' Dispatcharr names its output mpegts; Roku's ContentNode enum is ts.
     ' mpegts is rejected as NONE, leaving reader selection to autodetection.
     return {
@@ -10,6 +19,11 @@ function livePlaybackDescriptor(baseUrl as string, channel as dynamic) as dynami
         streamFormat: "ts", live: true
         title: textValue(channel.name), programId: uuid
     }
+end function
+
+function dispatcharrLiveTransport(choice as string, hlsAvailable as dynamic) as string
+    if choice = "hls" or (choice = "auto" and hlsAvailable = true) then return "hls"
+    return "ts"
 end function
 
 function playerChannelDirection(key as string, scheme = "apple" as string) as integer

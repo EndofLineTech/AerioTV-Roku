@@ -59,7 +59,11 @@ sub main()
     m.primaryNavigation = {active: false}
     m.selected = 0
     onKeyEvent("up", true)
-    if not m.primaryNavigation.active then stop
+    if m.primaryNavigation.active or m.selected <> m.filtered.count() - 1 then stop
+    onKeyEvent("up", false)
+    onKeyEvent("down", true)
+    if m.selected <> 0 then stop
+    onKeyEvent("down", false)
     m.primaryNavigation.active = false
     m.navigator.active = false
     m.settings.groupLayout = "pills"

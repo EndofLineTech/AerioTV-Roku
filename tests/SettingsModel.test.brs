@@ -8,11 +8,13 @@ sub main()
     if settingsHubEntries("general", model).count() <> 8 then stop
     player = settingsHubEntries("player", model)
     if player[0].key <> "archiveSkipSeconds" or player[0].values[0] <> 60 or player[0].values[2] <> 300 then stop
-    if player[2].key <> "liveStartupRetries" or not settingsHubChangeAllowed(model, "device", "liveStartupRetries", 3) then stop
+    if player[2].key <> "liveTransport" or not settingsHubChangeAllowed(model, "device", "liveTransport", "hls") then stop
+    if player[3].key <> "liveStartupRetries" or not settingsHubChangeAllowed(model, "device", "liveStartupRetries", 3) then stop
     if not settingsHubChangeAllowed(model, "device", "liveStartupRetries", 0) then stop
     if settingsHubChangeAllowed(model, "device", "liveStartupRetries", 4) then stop
     if settingsValueText(0, "liveStartupRetries") <> "No automatic retries" then stop
     if settingsValueText(3, "liveStartupRetries") <> "3 retries" then stop
+    if settingsHubChangeAllowed(model, "device", "liveTransport", "unsupported") then stop
     if not settingsHubChangeAllowed(model, "device", "archiveSkipSeconds", 120) then stop
     if settingsHubChangeAllowed(model, "device", "archiveSkipSeconds", 15) then stop
     if settingsHubChangeAllowed(model, "device", "apiKey", "private") then stop
@@ -35,7 +37,7 @@ sub main()
     model.movies = "denied"
     if settingsHubChangeAllowed(model, "account", "vodEnabled", true) then stop
     model.catchup = "denied"
-    if settingsHubEntries("player", model).count() <> 3 then stop
+    if settingsHubEntries("player", model).count() <> 4 then stop
     if settingsHubChangeAllowed(model, "device", "archiveSkipSeconds", 120) then stop
     m.devicePreferences = normalizeDevicePreferences(invalid)
     m.preferenceStore = {device: m.devicePreferences}

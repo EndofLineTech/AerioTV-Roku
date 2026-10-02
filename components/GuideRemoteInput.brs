@@ -50,7 +50,9 @@ function handleGuideMappedKey(key as string) as boolean
     if key = "play" then slot = "playPause"
     if slot = "" then return false
     action = guideRemoteAction(slot)
+    if key = "play" and action = "resumePlayer" and not m.top.miniActive then action = "programDetails"
     if action = "navigate" then moveGuideTime(key) else executeGuideRemoteAction(action)
+    if (key = "fastforward" or key = "rewind") and (action = "pageUp" or action = "pageDown") then beginGuideHold(key)
     finishGuideMappedAction()
     if key = "right" or key = "OK" then announceGuidePosition()
     return true
@@ -136,13 +138,23 @@ sub repeatGuideHold()
         m.guideLeftReleasePending = true
         return
     end if
-    stepSize = guideHoldStep(m.holdClock.totalMilliseconds())
-    if m.holdKey = "up" then stepSize = -stepSize
-    m.selected += stepSize
-    if m.selected < 0 then m.selected = 0
-    if m.selected >= m.filtered.count() then m.selected = m.filtered.count() - 1
-    if m.holdKey = "up" or m.holdKey = "down" then uiAnnounce(m.filtered[m.selected].name + ", " + textValue(m.filtered[m.selected].number))
-    m.holdTimer.duration = 0.12
+    if m.holdKey = "rewind" or m.holdKey = "fastforward"
+        action = guideRemoteAction(m.holdKey)
+        if action <> "pageUp" and action <> "pageDown"
+            cancelGuideHold()
+            return
+        end if
+        executeGuideRemoteAction(action)
+        m.holdTimer.duration = 0.3
+    else
+        stepSize = guideHoldStep(m.holdClock.totalMilliseconds())
+        if m.holdKey = "up" then stepSize = -stepSize
+        m.selected += stepSize
+        if m.selected < 0 then m.selected = m.filtered.count() - 1
+        if m.selected >= m.filtered.count() then m.selected = 0
+        if m.holdKey = "up" or m.holdKey = "down" then uiAnnounce(m.filtered[m.selected].name + ", " + textValue(m.filtered[m.selected].number))
+        m.holdTimer.duration = 0.12
+    end if
     drawGuide()
     ' Defer network requests until the gesture settles, not on every repeat.
     m.loadDelay.control = "stop"
@@ -154,7 +166,11 @@ end sub
 
 function guideRemoteHint() as string
     hint = "OK  " + remoteActionHint(guideRemoteAction("okShort")) + "    Hold Left  " + remoteActionHint(guideRemoteAction("leftLong")) + "    Replay  " + remoteActionHint(guideRemoteAction("replay"))
-    if m.top.miniActive then hint += "    Play  " + remoteActionHint(guideRemoteAction("playPause"))
+    if m.top.miniActive
+        hint += "    Play  " + remoteActionHint(guideRemoteAction("playPause"))
+    else if guideRemoteAction("playPause") = "resumePlayer"
+        hint += "    Play  Details"
+    end if
     hint += "    *  Options    Back  "
     if m.top.miniActive then return hint + "Stop playback"
     return hint + "Top menu"

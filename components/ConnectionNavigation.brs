@@ -328,6 +328,7 @@ sub resetConnectionRuntime()
     m.channelFacts = {}
     m.accountIdentity = ""
     m.serverAccountId = ""
+    m.hlsAvailable = false
     m.accountPreferences = normalizeAccountPreferences(invalid)
     m.apiKey = ""
     m.guideUrl = ""

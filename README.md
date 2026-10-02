@@ -105,7 +105,7 @@ unimplemented. Rewind uses provider archives; it is not a guaranteed local buffe
 | Multiview | **Not implemented** | Up to 9 streams, device/resource dependent | Up to 9 streams, device/resource dependent |
 | Live rewind / completed-program catch-up | **Provider-backed** catch-up, Restart and up to 60 minutes of history since tuning on eligible channels | Implemented, subject to settings/provider support | Not verified in this comparison |
 | Cross-device preference/watch-progress sync | **Not implemented**; local Roku preferences only | iCloud | Optional Google Drive sync |
-| Playback compatibility | Native Roku MPEG-TS player; optional existing server AAC profile | Apple/native and mpv playback routes | Media3/ExoPlayer plus bundled FFmpeg audio decoders |
+| Playback compatibility | Native Roku MPEG-TS; automatic HLS on compatible Dispatcharr test servers; optional existing server AAC profile | Apple/native and mpv playback routes | Media3/ExoPlayer plus bundled FFmpeg audio decoders |
 | Distribution | **Developer Mode ZIP / testing prerelease** | App Store, TestFlight and upstream sideload releases | APK releases; upstream documents invite-only Google Play testing |
 
 "Available" in the upstream columns means documented or source-established,
@@ -856,7 +856,7 @@ horizontally or jump to a historical/future time.
 
 ## Live playback transport
 
-The live route is:
+The established live route is:
 
 ```text
 /proxy/ts/stream/<channel-uuid>?output_format=mpegts
@@ -867,15 +867,28 @@ output name `mpegts` is not a valid Roku ContentNode reader enum. That mismatch
 was corrected after a live MP4-reader failure. The tested Stick now uses the
 explicit TS reader. The incompatible continuous fMP4 route is not a fallback.
 
+Dispatcharr's [`hls-test` branch at ca288b9](https://github.com/Dispatcharr/Dispatcharr/tree/ca288b96f6e9fda60b403b13646eb951d170ed01)
+also accepts `/proxy/ts/stream/<channel-uuid>?output_format=hls`. It redirects
+to a per-client `/proxy/hls/<opaque-token>/index.m3u8`; relative segment paths
+stay on that server. On connection AerioTV checks the read-only response for
+an unknown HLS session (410 means the branch recognizes the route; 404 or an
+inconclusive response keeps MPEG-TS). **Automatic** prefers HLS when detected.
+**Settings → Player → Dispatcharr live transport** or **player options → Live
+transport** can force MPEG-TS or HLS for comparison; the player options choice
+retunes only this client. Stream Info displays the requested transport. Forced HLS
+on an older server can fail visibly; it does not silently claim HLS while
+playing TS. Native live HLS picture/audio on the new server still needs Roku
+verification.
+
 The full-hour native experiment did not produce a local seekable hour. Approved
 rewind instead opens owned Dispatcharr catch-up sessions at provider timestamps,
 with bounded requests and explicit Go Live. Compatibility remains provider/device
 dependent, even with the maintainer's completed physical acceptance.
 
 The old 0.1 `/proxy/hls/...` candidate was removed because that route is not wired
-into 0.31.0's proxy URLs. This build does not add a proxy, transcoder, recording
-service, HLS endpoint, or locally retained DVR buffer. A failed compatibility test is a
-decision point about existing server configuration/stream support.
+into 0.31.0's proxy URLs; the `hls-test` route above is a newer server capability.
+This build does not add a proxy, transcoder, recording service, HLS endpoint, or
+locally retained DVR buffer.
 
 ## Development layout
 

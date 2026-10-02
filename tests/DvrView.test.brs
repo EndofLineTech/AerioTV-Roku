@@ -33,15 +33,17 @@ sub main()
         return node.id = "list"
     end function}
     m.rows = [{section: "now", heading: "Recording Now"}, {id: "4", title: "Live"}, {section: "scheduled", heading: "Scheduled"}, {id: "5", title: "Tomorrow"}]
-    m.lastFocusedItem = 1
-    onDvrFocused(dvrListEvent(2))
-    assertEqual(m.list.jumpToItem, 3, "down skips header and focuses next recording")
-    m.lastFocusedItem = 3
-    onDvrFocused(dvrListEvent(2))
-    assertEqual(m.list.jumpToItem, 1, "up skips header and focuses previous recording")
+    m.focusRows = [m.rows[1], m.rows[3]]
+    m.focusSections = ["Recording Now (1)", "Scheduled (1)"]
+    m.shelfLabel = {text: ""}
+    onDvrFocused(dvrListEvent(1))
+    assertEqual(m.lastFocusedItem, 1, "sectioned PosterGrid focuses the second item, not a heading")
+    assertEqual(m.shelfLabel.text, "Scheduled (1)", "focused section name remains visible above grid")
+    onDvrFocused(dvrListEvent(0))
+    assertEqual(m.lastFocusedItem, 0, "sectioned PosterGrid focus returns to first recording")
     m.dialog = invalid
     onDvrSelected(dvrListEvent(2))
-    assertEqual(m.dialog, invalid, "header cannot open a recording action")
+    assertEqual(m.dialog, invalid, "out-of-range poster cannot open a recording action")
     print "ALL TESTS PASSED"
 end sub
 

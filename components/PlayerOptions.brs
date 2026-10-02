@@ -7,10 +7,13 @@ sub init()
     m.note = uiLabel(m.top, "", 510, 265, 900, 54, 22, "0x9EB5C9FF")
     m.note.wrap = true
     m.list = m.top.createChild("LabelList")
-    m.list.translation = [510, 340]
-    m.list.itemSize = [900, 64]
+    ' Match the guide picker: widen the focus pill within the modal and use
+    ' a transparent icon to inset labels without changing their spoken text.
+    m.list.translation = [484, 340]
+    m.list.itemSize = [952, 64]
     m.list.itemSpacing = [0, 0]
     m.list.numRows = 8
+    m.list.clippingRect = [0, 0, 952, 512]
     uiSetFont(m.list, 24, "font", false, 64)
     uiSetFont(m.list, 24, "focusedFont", false, 64)
     uiSetColor(m.list, "0xE8F3FAFF")
@@ -28,7 +31,10 @@ sub setMenu()
     m.note.text = menu.note
     content = CreateObject("roSGNode", "ContentNode")
     for each item in menu.items
-        content.createChild("ContentNode").title = item.title
+        child = content.createChild("ContentNode")
+        child.title = item.title
+        child.hdListItemIconURL = "pkg:/images/ui-list-inset.png"
+        child.hdListItemIconSelectedURL = "pkg:/images/ui-list-inset.png"
     end for
     m.list.content = content
     m.list.jumpToItem = 0

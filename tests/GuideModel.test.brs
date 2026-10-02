@@ -43,6 +43,16 @@ sub main()
     episodeProgram.subtitle = "A Frankenstein's Monster"
     assertEqual(guideProgramSecondary(episodeProgram, episodeSettings), "A Frankenstein's Monster", "episode preference hides code but retains subtitle")
     assertEqual(guideEpisodeTitle(episodeProgram, episodeSettings, ""), "Young Sheldon", "episode Off does not prefix title")
+    longDescription = ""
+    for i = 1 to 90
+        longDescription += "A detailed episode synopsis. "
+    end for
+    pages = guideDescriptionPages(longDescription)
+    assertEqual(pages.count() > 4, true, "long descriptions remain reachable in multiple pages")
+    for each page in pages
+        assertEqual(len(page) <= 300, true, "description page stays within visible label bounds")
+    end for
+    assertEqual(instr(1, pages[pages.count() - 1], "synopsis") > 0, true, "last page retains the ending")
 
     first = makeProgram("First", 100, 200)
     second = makeProgram("Second", 250, 350)
