@@ -37,15 +37,19 @@ the target, reported developer-slot `0.3.88`, and returned to the authorized
 is in [UI audit](UI-AUDIT-0.3.88.md). Synthetic UI data never establishes a
 real provider catalog or recording lifecycle.
 
-The connected account lacks guide mappings, populated VOD and live/scheduled
-DVR rows for provider-backed acceptance. A native MPEG-TS tune briefly reached
-`playing` and then stopped; physical picture, sound and the requested AC3
-output remain **unverified**. An unknown HLS token returning HTTP 410 did not
-establish playable HLS: Automatic remains MPEG-TS, and explicit HLS is only a
-controlled test option. The previously accepted intermittent growing-DVR
-near-end reader limitation is not fixed; the later unverified HLS-to-file
-recovery code is intentionally excluded. Roku Store certification tasks are
-tracked separately. No new shared-server recordings or mappings were made.
+The connected account initially lacked guide mappings. After the owner fixed
+the guide, an explicit Roku refresh displayed mapped programme titles, timing,
+subtitles, colours and real program details on the authorized lineup; revisited
+rows kept their logos and colours. Populated VOD and live/scheduled DVR rows
+remain unavailable for provider-backed acceptance. A native MPEG-TS tune
+briefly reached `playing` and then stopped; physical picture, sound and the
+requested AC3 output remain **unverified**. An unknown HLS token returning
+HTTP 410 did not establish playable HLS: Automatic remains MPEG-TS, and
+explicit HLS is only a controlled test option. The previously accepted
+intermittent growing-DVR near-end reader limitation is not fixed; the later
+unverified HLS-to-file recovery code is intentionally excluded. Roku Store
+certification tasks are tracked separately. No new shared-server recordings
+or mappings were made.
 
 ZIP SHA-256: `62f35262f1c5cfe24c60201924382eb07af8fdc453e2799e0b0e5c9e6dd49b40`
 

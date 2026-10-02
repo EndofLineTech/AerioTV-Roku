@@ -30,6 +30,9 @@ one-hour elapsed interval in both modes.
 
 This combination exercises the one-hour stale state on Roku and the actual
 playback-to-guide navigation, but **does not claim** a continuous real-provider
-hour, a mapped real programme, or physical picture and sound. The account has
-no usable guide mappings; those provider conditions require a separate
-environment and are not established by the fixture.
+hour, a mapped real programme *during that test*, or physical picture and sound.
+The account did not have usable guide mappings at the time of this comparison.
+The owner subsequently repaired them: an explicit guide refresh displayed
+real current/next programmes and detail artwork, including after a separate
+brief playback error returned to the guide. That later return is not a
+substitute for an uninterrupted one-hour provider stream.
