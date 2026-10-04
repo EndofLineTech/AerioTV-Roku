@@ -9,19 +9,28 @@ sub main()
     m.top.signalBeacon = sub(name as string)
         m.beacons.push(name)
     end sub
-    m.startupDialogOpen = true
+    m.startupDialogOpen = false
     m.startupBeaconSent = false
+    beginStartupDialog()
+    beginStartupDialog()
+    assertEqual(m.top.beacons.count(), 1, "pre-home setup starts a dialog interval")
+    assertEqual(m.top.beacons[0], "AppDialogInitiate", "dialog begins before Welcome or setup")
+    ' Welcome and a cancelled connection attempt leave the interval open.
+    assertEqual(m.startupBeaconSent, false, "Welcome does not complete launch before sign-in")
     signalStartupComplete()
     signalStartupComplete()
-    assertEqual(m.top.beacons.count(), 2, "startup beacons fire once")
-    assertEqual(m.top.beacons[0], "AppDialogComplete", "sign-in interval ends before ready guide")
-    assertEqual(m.top.beacons[1], "AppLaunchComplete", "rendered guide completes app launch")
+    assertEqual(m.top.beacons.count(), 3, "startup beacons fire once")
+    assertEqual(m.top.beacons[1], "AppDialogComplete", "sign-in interval ends before ready guide")
+    assertEqual(m.top.beacons[2], "AppLaunchComplete", "rendered guide completes app launch")
     m.top.beacons = []
     m.startupDialogOpen = false
     m.startupBeaconSent = false
+    beginStartupDialog()
+    assertEqual(m.top.beacons[0], "AppDialogInitiate", "first-run Welcome is pre-home onboarding")
     signalStartupComplete()
-    assertEqual(m.top.beacons.count(), 1, "first-run welcome is an operable landing screen")
-    assertEqual(m.top.beacons[0], "AppLaunchComplete", "welcome launch needs no login dialog interval")
+    assertEqual(m.top.beacons.count(), 3, "first-run setup closes its dialog on guide arrival")
+    assertEqual(m.top.beacons[1], "AppDialogComplete", "first-run dialog closes before launch")
+    assertEqual(m.top.beacons[2], "AppLaunchComplete", "first-run guide completes launch")
     m.page = "guide"
     m.heldZap = ""
     m.heldZapTimer = {control: "stop"}

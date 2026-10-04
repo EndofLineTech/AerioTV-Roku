@@ -189,8 +189,9 @@ sub init()
     m.page = "setup"
     m.pendingLaunch = invalid
     m.startupBeaconSent = false
-    m.startupDialogOpen = not connectionWelcomeNeeded(m.connectionStore)
-    if m.startupDialogOpen then m.top.signalBeacon("AppDialogInitiate")
+    m.startupDialogOpen = false
+    ' Welcome is onboarding, not the home page: setup still follows it.
+    beginStartupDialog()
     if connectionWelcomeNeeded(m.connectionStore)
         m.page = "welcome"
         drawWelcome()
@@ -198,8 +199,13 @@ sub init()
         drawSetup()
     end if
     m.top.setFocus(true)
-    if m.page = "welcome" then signalStartupComplete()
     if m.baseUrl <> "" and m.apiKey <> "" then connectServer(true)
+end sub
+
+sub beginStartupDialog()
+    if m.startupDialogOpen or m.startupBeaconSent then return
+    m.startupDialogOpen = true
+    m.top.signalBeacon("AppDialogInitiate")
 end sub
 
 sub signalStartupComplete()
