@@ -1,6 +1,7 @@
 sub init()
     m.canvas = m.top.findNode("canvas")
     initGuideLogos()
+    m.rows = []
     m.top.focusable = true
     m.primaryNavigation = m.top.findNode("primaryNavigation")
     m.primaryNavigation.observeField("selection", "onPrimarySelection")
@@ -63,6 +64,8 @@ sub configure()
     m.top.dvrPermission = "unknown"
     m.metadataElapsed = CreateObject("roTimespan")
     m.metadataElapsed.mark()
+    m.initialGridReported = false
+    m.initialProgramReported = false
     cancelMetadataLoads()
     suspendGuide()
     resetGuideLogos()
@@ -138,10 +141,11 @@ sub configure()
     agent.setCertificatesFile("common:/certs/ca-bundle.crt")
     agent.setHeaders(dispatcharrRequestHeaders(m.key, textValue(m.global.authHeaderMode), textValue(m.global.httpUserAgent)))
     m.canvas.setHttpAgent(agent)
+    prefetchInitialGuideLogos()
+    loadMappings()
     buildCanvas()
     m.ready = true
     updateMiniLayout()
-    loadMappings()
     if m.top.active then onActive()
 end sub
 
@@ -177,6 +181,7 @@ sub buildCanvas()
         logo.loadWidth = 116
         logo.loadHeight = 104
         logo.loadDisplayMode = "scaleToFit"
+        logo.observeField("loadStatus", "onGuideLogoStatus")
         name = uiLabel(root, "", 80, 34, 150, 56, 21)
         name.wrap = true
         name.maxLines = 2
@@ -468,6 +473,10 @@ end function
 
 sub drawGuide()
     if not m.ready then return
+    if not m.initialGridReported
+        print "[guide-paint] first-grid-ms="; m.metadataElapsed.totalMilliseconds()
+        m.initialGridReported = true
+    end if
     geometry = guidePresentationGeometry(m.settings.guideDensity, m.settings.showSubtitles)
     m.rowCount = geometry.rowCount
     gridX = 96
@@ -683,10 +692,13 @@ sub renderCells(row as object, cells as object, selected as boolean)
             tile.title.text = gapText()
             tile.time.text = ""
             if cell.program <> invalid
-                if not focused then uiSetColor(tile.fill, programTint(cell.program, m.settings))
                 program = cell.program
                 secondary = guideTileSecondary(program, m.settings, width)
                 tile.title.text = guideEpisodeTitle(program, m.settings, secondary)
+                if not m.initialProgramReported
+                    print "[guide-paint] first-program-ms="; m.metadataElapsed.totalMilliseconds()
+                    m.initialProgramReported = true
+                end if
                 if secondary <> ""
                     secondaryLayout = geometry.withSubtitle
                     if tile.subtitle = invalid

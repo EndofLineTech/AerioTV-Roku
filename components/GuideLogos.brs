@@ -10,6 +10,11 @@ sub initGuideLogos()
     m.guideLogoCleanupPaths = []
     m.guideLogoPrefix = ""
     m.guideLogoSequence = 0
+    m.guideLogoClock = invalid
+    m.guideLogoFirstReported = false
+    m.guideLogoBatchReported = false
+    m.guideLogoFirstRendered = false
+    m.guideLogoAllRendered = false
     m.guideLogoDelay = m.top.createChild("Timer")
     m.guideLogoDelay.duration = 0.15
     m.guideLogoDelay.observeField("fire", "requestGuideLogos")
@@ -36,6 +41,11 @@ sub resetGuideLogos()
     m.guideLogoBytes = 0
     m.guideLogoFailed = {}
     m.guideLogoPrefix = "tmp:/aerio-guide-" + CreateObject("roDeviceInfo").getRandomUUID()
+    m.guideLogoClock = invalid
+    m.guideLogoFirstReported = false
+    m.guideLogoBatchReported = false
+    m.guideLogoFirstRendered = false
+    m.guideLogoAllRendered = false
     cleanupGuideLogoFiles()
 end sub
 
@@ -61,6 +71,33 @@ sub scheduleGuideLogos()
     m.guideLogoDelay.control = "start"
 end sub
 
+' Begin the first visible batch as soon as the authorized lineup has been
+' normalized. Its Task runs while the Scene builds the grid and resolves EPG
+' mappings; later scrolling still uses the coalescing timer above.
+sub prefetchInitialGuideLogos()
+    if m.providerType <> "dispatcharr" or m.key = "" or not m.settings.showLogos then return
+    rows = guidePresentationGeometry(m.settings.guideDensity, m.settings.showSubtitles).rowCount
+    ids = guideInitialLogoIds(m.filtered, m.selected, rows)
+    if ids.count() = 0 then return
+    m.guideLogoClock = CreateObject("roTimespan")
+    m.guideLogoClock.mark()
+    print "[guide-logos] initial-prefetch="; ids.count()
+    startGuideLogoBatch(ids)
+end sub
+
+sub startGuideLogoBatch(ids as object)
+    if ids.count() = 0 or m.guideLogoTask <> invalid then return
+    m.guideLogoTask = CreateObject("roSGNode", "LogoCacheTask")
+    m.guideLogoTask.baseUrl = m.base
+    m.guideLogoTask.apiKey = m.key
+    m.guideLogoTask.ids = ids
+    m.guideLogoSequence++
+    m.guideLogoTask.prefix = m.guideLogoPrefix + "-" + m.guideLogoSequence.toStr()
+    m.guideLogoTask.observeField("asset", "onGuideLogoAsset")
+    m.guideLogoTask.observeField("result", "onGuideLogoBatch")
+    m.guideLogoTask.control = "RUN"
+end sub
+
 sub requestGuideLogos()
     if not m.top.active or m.guideLogoTask <> invalid then return
     ids = []
@@ -73,16 +110,7 @@ sub requestGuideLogos()
             seen[id] = true
         end if
     end for
-    if ids.count() = 0 then return
-    m.guideLogoTask = CreateObject("roSGNode", "LogoCacheTask")
-    m.guideLogoTask.baseUrl = m.base
-    m.guideLogoTask.apiKey = m.key
-    m.guideLogoTask.ids = ids
-    m.guideLogoSequence++
-    m.guideLogoTask.prefix = m.guideLogoPrefix + "-" + m.guideLogoSequence.toStr()
-    m.guideLogoTask.observeField("asset", "onGuideLogoAsset")
-    m.guideLogoTask.observeField("result", "onGuideLogoBatch")
-    m.guideLogoTask.control = "RUN"
+    startGuideLogoBatch(ids)
 end sub
 
 sub touchGuideLogo(id as string)
@@ -98,6 +126,10 @@ sub storeGuideLogo(asset as object)
     if m.guideLogoFiles.doesExist(asset.id) then return
     m.guideLogoFiles[asset.id] = asset
     m.guideLogoBytes += asset.bytes
+    if m.guideLogoClock <> invalid and not m.guideLogoFirstReported
+        print "[guide-logos] first-asset-ms="; m.guideLogoClock.totalMilliseconds()
+        m.guideLogoFirstReported = true
+    end if
     touchGuideLogo(asset.id)
     for each row in m.rows
         if row.root.visible and row.logoId = asset.id then row.logo.uri = asset.uri
@@ -127,6 +159,30 @@ sub storeGuideLogo(asset as object)
     cleanupGuideLogoFiles()
 end sub
 
+' A successful download is not proof that the Poster has decoded its image.
+' Report only aggregate first/all visible timings without channel IDs or URIs.
+sub onGuideLogoStatus()
+    if m.guideLogoClock = invalid or not m.ready or not m.top.active or not m.settings.showLogos then return
+    expected = 0
+    ready = 0
+    numeric = CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "")
+    for each row in m.rows
+        id = textValue(row.logoId)
+        if row.root.visible and numeric.isMatch(id)
+            expected++
+            if m.guideLogoFiles.doesExist(id) and row.logo.loadStatus = "ready" then ready++
+        end if
+    end for
+    if ready > 0 and not m.guideLogoFirstRendered
+        print "[guide-logos] first-poster-ready-ms="; m.guideLogoClock.totalMilliseconds()
+        m.guideLogoFirstRendered = true
+    end if
+    if expected > 0 and ready = expected and not m.guideLogoAllRendered
+        print "[guide-logos] visible-posters-ready="; ready; " elapsed_ms="; m.guideLogoClock.totalMilliseconds()
+        m.guideLogoAllRendered = true
+    end if
+end sub
+
 sub onGuideLogoAsset(event as object)
     if isCurrentTaskEvent(event, m.guideLogoTask) then storeGuideLogo(event.getData())
 end sub
@@ -134,6 +190,10 @@ end sub
 sub onGuideLogoBatch(event as object)
     if not isCurrentTaskEvent(event, m.guideLogoTask) then return
     result = event.getData()
+    if m.guideLogoClock <> invalid and not m.guideLogoBatchReported
+        print "[guide-logos] initial-batch-ready="; result.assets.count(); " failed="; result.failed.count(); " elapsed_ms="; m.guideLogoClock.totalMilliseconds()
+        m.guideLogoBatchReported = true
+    end if
     m.guideLogoTask.unobserveField("asset")
     m.guideLogoTask.unobserveField("result")
     m.guideLogoTask = invalid

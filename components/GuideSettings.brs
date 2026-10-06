@@ -32,7 +32,7 @@ end sub
 
 function applyHubGuideSetting(key as string, value as dynamic) as dynamic
     if not m.ready then return invalid
-    if key <> "historyDays" and key <> "futureDays" and key <> "channelSort" and key <> "groupLayout" and key <> "categoryColors" and key <> "guideDensity" and key <> "showLogos" and key <> "showNumbers" and key <> "showNames" and key <> "showSubtitles" then return invalid
+    if key <> "historyDays" and key <> "futureDays" and key <> "channelSort" and key <> "groupLayout" and key <> "guideDensity" and key <> "showLogos" and key <> "showNumbers" and key <> "showNames" and key <> "showSubtitles" then return invalid
     m.settings[lcase(key)] = value
     m.settings = normalizeGuideSettings(m.settings)
     m.anchor = guideTimeClamp(m.anchor, uiNow(), m.settings)
@@ -126,7 +126,6 @@ sub openGuideSetting(kind as string)
             {title: "All available (bounded to 30 days each way)", action: "allAvailable"}
             {title: "Startup group", action: "startup"}
             {title: "Badges", action: "badges"}
-            {title: "Category colors", action: "colors"}
             {title: "Optional TMDB artwork fallback", action: "tmdb"}
         ]
     else if kind = "manageGroups" or kind = "startup"
@@ -163,23 +162,12 @@ sub openGuideSetting(kind as string)
             if m.settings.badges[key] then value = "On"
             items.push({title: key + ": " + value, badge: key})
         end for
-    else if kind = "colors"
-        label = "Enable category colors"
-        if m.settings.categoryColors then label = "Disable category colors"
-        items = [{title: label, action: "toggleColors"}, {title: "Reset category palette and rules", action: "resetColors"}, {title: "Edit category matching rules", action: "categoryRules"}]
-        for each bucket in ["kids", "sports", "news", "movie", "documentary", "drama", "comedy", "reality", "educational", "scifi", "music"]
-            items.push({title: bucket, bucket: bucket})
-        end for
-    else if kind = "categoryRules"
-        for each bucket in ["kids", "sports", "news", "movie", "documentary", "drama", "comedy", "reality", "educational", "scifi", "music"]
-            items.push({title: bucket, bucket: bucket})
-        end for
     else if kind = "tmdb"
         label = "Enable optional TMDB fallback"
         if m.settings.tmdbFallback then label = "Disable optional TMDB fallback"
         items = [{title: label, action: "toggleTmdb"}, {title: "Test and save TMDB API key on this Roku", action: "tmdbKey"}, {title: "Forget TMDB API key", action: "forgetTmdb"}]
     end if
-    titles = {guideSettings: "Guide settings", manageGroups: "Manage groups", startup: "Startup group", collections: "Collections", favoriteOrder: "Favorite order", badges: "Program badges", colors: "Category colors", categoryRules: "Category matching rules", tmdb: "Optional TMDB artwork", reminders: "Program reminders"}
+    titles = {guideSettings: "Guide settings", manageGroups: "Manage groups", startup: "Startup group", collections: "Collections", favoriteOrder: "Favorite order", badges: "Program badges", tmdb: "Optional TMDB artwork", reminders: "Program reminders"}
     title = kind
     if titles.doesExist(kind) then title = titles[kind]
     openPicker(title, items, kind)
@@ -343,25 +331,6 @@ function handleGuideSetting(kind as string, item as object) as boolean
         savePreferences()
         drawGuide()
         openGuideSetting("badges")
-    else if kind = "colors"
-        if item.action = "toggleColors"
-            m.settings.categoryColors = not m.settings.categoryColors
-        else if item.action = "resetColors"
-            m.settings.palette = {}
-            m.settings.categoryRules = {}
-        else if item.action = "categoryRules"
-            openGuideSetting("categoryRules")
-            return true
-        else
-            m.editBucket = item.bucket
-            openPicker("Category tint", [{title: "Indigo", value: "3949AB"}, {title: "Purple", value: "5E35B1"}, {title: "Blue", value: "039BE5"}, {title: "Green", value: "43A047"}, {title: "Red", value: "C62828"}, {title: "Teal", value: "00897B"}], "colorValue")
-            return true
-        end if
-        savePreferences()
-        drawGuide()
-    else if kind = "categoryRules"
-        m.editBucket = item.bucket
-        openGuideKeyboard("categoryWords", "Matching category words, comma-separated (blank resets)", "")
     else if kind = "tmdb"
         if item.action = "tmdbKey"
             openGuideKeyboard("tmdbKey", "TMDB API key — test and save in this Roku's registry", "")
@@ -376,10 +345,6 @@ function handleGuideSetting(kind as string, item as object) as boolean
         m.detailCache = {}
         m.detailOrder = []
         savePreferences()
-    else if kind = "colorValue"
-        m.settings.palette[m.editBucket] = item.value
-        savePreferences()
-        drawGuide()
     else
         return false
     end if
@@ -446,14 +411,6 @@ sub onGuideKeyboard(event as object)
             else
                 m.message = "No matching channel number in the current list."
             end if
-        else if m.guideKeyboardKind = "categoryWords"
-            words = []
-            for each word in text.tokenize(",")
-                word = lcase(word.trim())
-                if word <> "" and words.count() < 12 then words.push(left(word, 50))
-            end for
-            if words.count() = 0 then m.settings.categoryRules.delete(m.editBucket) else m.settings.categoryRules[m.editBucket] = words
-            savePreferences()
         else if m.guideKeyboardKind = "tmdbKey" and text <> ""
             m.tmdbTask = CreateObject("roSGNode", "TmdbKeyTask")
             m.tmdbTask.token = text

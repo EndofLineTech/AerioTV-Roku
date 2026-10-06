@@ -58,7 +58,6 @@ function settingsHubEntries(page as string, model as object) as object
         {title: "Contrast", scope: "device", key: "contrastMode", values: ["standard", "high"]}
         {title: "Reset appearance", action: "resetAppearance"}
         {title: "Group navigation", scope: "guide", key: "groupLayout", values: ["modal", "pills", "sidebar"]}
-        {title: "Category colors", scope: "guide", key: "categoryColors", values: [true, false]}
         {title: "Show player logo", scope: "device", key: "infoLogo", values: [true, false]}
         {title: "Show player channel", scope: "device", key: "infoChannel", values: [true, false]}
         {title: "Show player title", scope: "device", key: "infoTitle", values: [true, false]}

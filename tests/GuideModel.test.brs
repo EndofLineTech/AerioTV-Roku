@@ -113,6 +113,18 @@ sub main()
     bindChannelGuide([channel], [])
     assertEqual(channel.epgKey, "", "unresolved assignment does not attach wrong guide")
 
+    ' Prefetch only the initially visible authorized rows, including a saved
+    ' selection scrolled beyond the first page; never fetch invalid/logo URLs.
+    logos = [{logoId: "1"}, {logoId: "2"}, {logoId: "2"}, {logoId: "https://private.invalid/logo"}, {logoId: "3"}]
+    ids = guideInitialLogoIds(logos, 0, 3)
+    assertEqual(ids.count(), 2, "initial batch deduplicates visible logos")
+    assertEqual(ids[0], "1", "first authorized row prefetches first")
+    ids = guideInitialLogoIds(logos, 4, 3)
+    assertEqual(ids.count(), 2, "saved selection prefetches its visible page")
+    assertEqual(ids[0], "2", "visible saved page starts at restored row")
+    assertEqual(ids[1], "3", "logo URLs are not requested as server IDs")
+    assertEqual(guideInitialLogoIds([], 0, 6).count(), 0, "empty lineup does not schedule artwork")
+
     ' Exercise the target lineup size, shared station mappings and bounded windows.
     large = {}
     for channelIndex = 0 to 1399

@@ -180,39 +180,23 @@ function programEpisodeText(program as object, settings as object) as string
     return result
 end function
 
-function programCategory(program as object, settings = invalid as dynamic) as string
-    text = ""
-    if type(program.categories) = "roArray"
-        for each category in program.categories
-            text += lcase(category) + " "
-        end for
-    end if
-    rules = [{bucket: "kids", words: ["kids", "children", "jeunesse"]}, {bucket: "sports", words: ["sport", "football", "soccer", "baseball"]}, {bucket: "news", words: ["news", "noticias"]}, {bucket: "movie", words: ["movie", "film"]}, {bucket: "documentary", words: ["documentary"]}, {bucket: "drama", words: ["drama"]}, {bucket: "comedy", words: ["comedy"]}, {bucket: "reality", words: ["reality"]}, {bucket: "educational", words: ["educational"]}, {bucket: "scifi", words: ["sci-fi", "science fiction", "fantasy"]}, {bucket: "music", words: ["music"]}]
-    for each rule in rules
-        if type(settings) = "roAssociativeArray"
-            if type(settings.categoryRules) = "roAssociativeArray"
-                custom = settings.categoryRules[rule.bucket]
-                if type(custom) = "roArray" then rule.words = programTextList(custom, 12)
-            end if
+function guideInitialLogoIds(channels as object, selected as integer, visibleRows as integer) as object
+    ids = []
+    if channels = invalid or visibleRows < 1 then return ids
+    if channels.count() = 0 then return ids
+    first = 0
+    if selected >= visibleRows then first = selected - visibleRows + 1
+    numeric = CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "")
+    seen = {}
+    for i = first to channels.count() - 1
+        if i >= first + visibleRows then exit for
+        id = textValue(channels[i].logoId)
+        if numeric.isMatch(id) and not seen.doesExist(id)
+            ids.push(id)
+            seen[id] = true
         end if
-        for each word in rule.words
-            if instr(1, text, word) > 0 then return rule.bucket
-        end for
     end for
-    return ""
-end function
-
-function programTint(program as object, settings as object) as string
-    if not settings.categoryColors then return "0x0D1E35FF"
-    bucket = programCategory(program, settings)
-    defaults = {kids: "039BE5", sports: "3949AB", news: "43A047", movie: "5E35B1", documentary: "6D4C41", drama: "C62828", comedy: "F9A825", reality: "EC407A", educational: "00897B", scifi: "00838F", music: "D81B60"}
-    if not defaults.doesExist(bucket) then return "0x0D1E35FF"
-    color = defaults[bucket]
-    if settings.palette.doesExist(bucket)
-        custom = textValue(settings.palette[bucket])
-        if CreateObject("roRegex", "^[0-9a-f]{6}$", "i").isMatch(custom) then color = custom
-    end if
-    return "0x" + color + "55"
+    return ids
 end function
 
 function guideClamp(value as integer, now as integer) as integer

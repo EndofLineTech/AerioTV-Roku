@@ -23,6 +23,11 @@ sub main()
     assertEqual(m.navigator.appliedLayout, "sidebar", "sidebar also applies without relaunch")
     m.ready = true
     m.channels = []
+    openGuideSetting("guideSettings")
+    for each option in m.pickedItems
+        if option.action = "colors" then stop
+    end for
+    assertEqual(applyHubGuideSetting("categoryColors", true), invalid, "old category-color setting is rejected")
     for each change in [{key: "guideDensity", value: "basic"}, {key: "showLogos", value: false}, {key: "showNumbers", value: false}, {key: "showNames", value: false}, {key: "showSubtitles", value: false}]
         if applyHubGuideSetting(change.key, change.value) = invalid then stop
         assertEqual(m.saved[lcase(change.key)], change.value, "new Live TV setting applies and saves")

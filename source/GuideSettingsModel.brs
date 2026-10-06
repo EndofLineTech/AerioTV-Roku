@@ -7,10 +7,15 @@ function normalizeGuideSettings(raw as dynamic) as object
             p[lcase(key)] = copyGuideValue(raw[key])
         end for
         ' Recover a previous dynamic camel-case selection over an older default.
-        for each key in ["groupSort", "channelSort", "groupLayout", "startupGroup", "collectionsPosition", "historyDays", "futureDays", "hiddenGroups", "groupOrder", "favoriteOrder", "categoryColors", "categoryRules", "tmdbFallback"]
+        for each key in ["groupSort", "channelSort", "groupLayout", "startupGroup", "collectionsPosition", "historyDays", "futureDays", "hiddenGroups", "groupOrder", "favoriteOrder", "tmdbFallback"]
             if raw.doesExist(key) then p[lcase(key)] = copyGuideValue(raw[key])
         end for
     end if
+    ' Drop retired category-color fields on read so old account preferences
+    ' cannot restore the feature or keep obsolete rules in the registry.
+    p.delete("categorycolors")
+    p.delete("categoryrules")
+    p.delete("palette")
     for each field in ["groupSort", "channelSort", "groupLayout", "startupGroup", "collectionsPosition"]
         p[field] = textValue(p[field])
     end for
@@ -30,10 +35,7 @@ function normalizeGuideSettings(raw as dynamic) as object
     for each key in ["new", "live", "premiere", "finale", "episode"]
         if type(p.badges[key]) <> "Boolean" and type(p.badges[key]) <> "roBoolean" then p.badges[key] = true
     end for
-    if type(p.categoryColors) <> "Boolean" and type(p.categoryColors) <> "roBoolean" then p.categoryColors = true
     if type(p.tmdbFallback) <> "Boolean" and type(p.tmdbFallback) <> "roBoolean" then p.tmdbFallback = false
-    if type(p.palette) <> "roAssociativeArray" then p.palette = {}
-    if type(p.categoryRules) <> "roAssociativeArray" then p.categoryRules = {}
     if p.guideDensity <> "preview" and p.guideDensity <> "basic" then p.guideDensity = "preview"
     if type(p.showLogos) <> "Boolean" and type(p.showLogos) <> "roBoolean" then p.showLogos = true
     if type(p.showNumbers) <> "Boolean" and type(p.showNumbers) <> "roBoolean" then p.showNumbers = true

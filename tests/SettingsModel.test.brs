@@ -32,6 +32,10 @@ sub main()
     if normalizeDevicePreferences(theme).themePreset <> "midnight" then stop
     if settingsHubValue({device: theme}, "device", "themePreset") <> "midnight" then stop
     if not settingsHubChangeAllowed(model, "device", "themePreset", "midnight") then stop
+    if settingsHubChangeAllowed(model, "guide", "categoryColors", true) then stop
+    for each entry in settingsHubEntries("appearance", model)
+        if entry.key = "categoryColors" then stop
+    end for
     oldDevice = ParseJson("{" + chr(34) + "themePreset" + chr(34) + ":" + chr(34) + "aerio" + chr(34) + "," + chr(34) + "themepreset" + chr(34) + ":" + chr(34) + "aerio" + chr(34) + "}")
     updatedDevice = setCanonicalPreference(oldDevice, "themePreset", "midnight")
     if normalizeDevicePreferences(updatedDevice).themePreset <> "midnight" then stop
