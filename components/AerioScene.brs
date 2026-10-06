@@ -1287,7 +1287,7 @@ sub stopPlayback()
     end if
 end sub
 
-sub minimizePlayback()
+sub minimizePlayback(fromRemote = false as boolean)
     cancelPlayerOkHold()
     cancelHeldZap()
     restorePicture()
@@ -1307,6 +1307,7 @@ sub minimizePlayback()
     m.guide.miniActive = true
     m.screen.visible = false
     m.guide.visible = true
+    if fromRemote then m.guide.callFunc("beginEpgLaunch")
     m.guide.active = true
     updateBufferingIndicator()
     print "[player] minimized without retune"
@@ -2403,7 +2404,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
             return m.transport.callFunc("handlePlayerKey", key, press)
         end if
         if key = "back"
-            if m.userInfoOpen then hideBanner() else minimizePlayback()
+            if m.userInfoOpen then hideBanner() else minimizePlayback(true)
             return true
         end if
         if key = "play"

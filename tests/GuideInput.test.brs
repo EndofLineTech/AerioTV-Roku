@@ -91,6 +91,24 @@ sub main()
     if m.top.exitRequested <> invalid then stop
     m.top.playerRequest = invalid
     if not onKeyEvent("play", true) or m.top.playerRequest <> "expandPlayer" then stop
+    m.top.beacons = []
+    m.top.signalBeacon = sub(name as string)
+        m.beacons.push(name)
+    end sub
+    m.ready = true
+    m.top.active = false
+    m.epgLaunchPending = false
+    m.epgLaunchRecorded = false
+    if not beginEpgLaunch() or beginEpgLaunch() then stop
+    if m.top.beacons.count() <> 1 or m.top.beacons[0] <> "EPGLaunchInitiate" then stop
+    completeEpgLaunch()
+    if m.top.beacons.count() <> 1 then stop
+    m.top.active = true
+    completeEpgLaunch()
+    completeEpgLaunch()
+    if m.top.beacons.count() <> 2 or m.top.beacons[1] <> "EPGLaunchComplete" then stop
+    m.top.active = false
+    if beginEpgLaunch() then stop
     print "ALL TESTS PASSED"
 end sub
 

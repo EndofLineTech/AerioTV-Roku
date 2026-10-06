@@ -362,6 +362,36 @@ sub main()
     saveVodChange(replacement, {watchlist: true})
     assertEqual(m.vod.savedState.count(), 40, "full shelf cannot evict older choice")
     assertEqual(m.noticeText.text.instr(0, "Saved titles are full") >= 0, true, "visible capacity notice")
+    m.guide = {active: false, visible: false, miniActive: false, epgRequests: 0, callFunc: function(name as string) as boolean
+        if name <> "beginEpgLaunch" then return false
+        m.epgRequests++
+        m.requestedBeforeActive = not m.active and m.visible
+        return true
+    end function}
+    m.playingChannel = {uuid: "a", name: "Live channel"}
+    m.video.state = "playing"
+    m.video.content = {programId: "a"}
+    m.videoViewport = {}
+    m.miniFrame = {visible: false}
+    m.miniCaption = {text: ""}
+    m.screen = {visible: false}
+    m.page = "player"
+    m.mini = false
+    m.userInfoOpen = false
+    m.playerOptions.active = false
+    m.browser.active = false
+    m.transport.active = false
+    m.banner.visible = false
+    minimizePlayback(true)
+    assertEqual(m.guide.epgRequests, 1, "remote return asks GuideView to start EPG measurement")
+    assertEqual(m.guide.requestedBeforeActive, true, "EPG initiate precedes guide activation")
+    assertEqual(m.guide.active, true, "guide activates after remote request")
+    assertEqual(m.video.content.programId, "a", "EPG return keeps the same live stream")
+    m.page = "player"
+    m.mini = false
+    m.guide.active = false
+    minimizePlayback()
+    assertEqual(m.guide.epgRequests, 1, "programmatic return does not invent an EPG keypress")
     print "ALL TESTS PASSED"
 end sub
 

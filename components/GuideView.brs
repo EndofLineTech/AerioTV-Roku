@@ -49,6 +49,8 @@ sub init()
     m.tmdbTask = invalid
     m.picker = invalid
     m.ready = false
+    m.epgLaunchPending = false
+    m.epgLaunchRecorded = false
     m.span = 8928 ' 1488 pixels at upstream's 600 pixels/hour.
     m.rowCount = 6
 end sub
@@ -202,10 +204,28 @@ sub onActive()
         drawGuide()
         scheduleLoad()
         m.top.setFocus(true)
+        completeEpgLaunch()
     else
         suspendGuide()
         if m.top.playbackChannel <> invalid then onPlaybackChannel()
     end if
+end sub
+
+' Measure only a real remote request to open the guide from the player.
+' Startup into the guide has no initiating keypress and is measured by the
+' app launch beacon instead.
+function beginEpgLaunch() as boolean
+    if not m.ready or m.top.active or m.epgLaunchPending or m.epgLaunchRecorded then return false
+    m.epgLaunchPending = true
+    m.top.signalBeacon("EPGLaunchInitiate")
+    return true
+end function
+
+sub completeEpgLaunch()
+    if not m.epgLaunchPending or not m.top.active or not m.ready then return
+    m.top.signalBeacon("EPGLaunchComplete")
+    m.epgLaunchPending = false
+    m.epgLaunchRecorded = true
 end sub
 
 sub suspendGuide()

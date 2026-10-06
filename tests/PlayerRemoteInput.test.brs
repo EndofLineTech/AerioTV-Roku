@@ -57,8 +57,8 @@ sub openLiveRewind()
     m.observed = "rewindHistory"
 end sub
 
-sub minimizePlayback()
-    m.observed = "minimizeToGuide"
+sub minimizePlayback(fromRemote = false as boolean)
+    if fromRemote then m.observed = "minimizeToGuide"
 end sub
 
 sub togglePause()

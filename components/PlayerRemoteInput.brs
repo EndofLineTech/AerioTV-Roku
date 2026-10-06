@@ -31,7 +31,7 @@ function executePlayerRemoteAction(action as string) as boolean
     else if action = "rewindHistory"
         openLiveRewind()
     else if action = "minimizeToGuide"
-        minimizePlayback()
+        minimizePlayback(true)
     else if action = "playPause"
         togglePause()
     else

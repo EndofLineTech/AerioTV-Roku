@@ -1,0 +1,14 @@
+# Requires a saved, authorized connection that opens the live guide.
+# Select must tune a current channel; Back then returns to the EPG.
+params:
+  rasp_version: 1
+  default_keypress_wait: 2
+  channel_name: AerioTV
+  channel_id: dev
+steps:
+  - launch: AerioTV
+  - pause: 5
+  - press: select
+  - pause: 10
+  - press: back
+  - pause: 5
