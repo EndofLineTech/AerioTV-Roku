@@ -11,12 +11,12 @@ sub main()
     end sub
     m.startupDialogOpen = false
     m.startupBeaconSent = false
+    beginStartupBeacons(false)
     beginStartupDialog()
     beginStartupDialog()
     assertEqual(m.top.beacons.count(), 1, "pre-home setup starts a dialog interval")
-    assertEqual(m.top.beacons[0], "AppDialogInitiate", "dialog begins before Welcome or setup")
-    ' Welcome and a cancelled connection attempt leave the interval open.
-    assertEqual(m.startupBeaconSent, false, "Welcome does not complete launch before sign-in")
+    assertEqual(m.top.beacons[0], "AppDialogInitiate", "saved-connection setup starts dialog once")
+    assertEqual(m.startupBeaconSent, false, "setup does not complete launch before sign-in")
     signalStartupComplete()
     signalStartupComplete()
     assertEqual(m.top.beacons.count(), 3, "startup beacons fire once")
@@ -25,12 +25,27 @@ sub main()
     m.top.beacons = []
     m.startupDialogOpen = false
     m.startupBeaconSent = false
-    beginStartupDialog()
-    assertEqual(m.top.beacons[0], "AppDialogInitiate", "first-run Welcome is pre-home onboarding")
+    beginStartupBeacons(true)
+    assertEqual(m.top.beacons.count(), 0, "first-run Welcome is the initial interactive screen")
+    m.page = "welcome"
+    m.pendingLaunch = {id: "unavailable-channel"}
     signalStartupComplete()
-    assertEqual(m.top.beacons.count(), 3, "first-run setup closes its dialog on guide arrival")
-    assertEqual(m.top.beacons[1], "AppDialogComplete", "first-run dialog closes before launch")
-    assertEqual(m.top.beacons[2], "AppLaunchComplete", "first-run guide completes launch")
+    assertEqual(m.top.beacons.count(), 1, "Welcome completes launch without waiting for credentials")
+    assertEqual(m.top.beacons[0], "AppLaunchComplete", "fully rendered Welcome satisfies unattended launch test")
+    assertEqual(m.pendingLaunch.id, "unavailable-channel", "pre-sign-in link remains pending on Welcome")
+    beginStartupDialog()
+    assertEqual(m.top.beacons.count(), 1, "no pre-home dialog interval after launch is complete")
+    m.guide = {callFunc: function(name as string, id as string) as dynamic
+        return invalid
+    end function}
+    m.noticeText = {text: ""}
+    m.notice = {visible: false}
+    m.noticeTimer = {control: "stop"}
+    m.page = "guide"
+    signalStartupComplete()
+    assertEqual(m.top.beacons.count(), 1, "later sign-in does not emit a second launch beacon")
+    assertEqual(m.pendingLaunch, invalid, "authorized guide consumes the pending link after sign-in")
+    assertEqual(m.notice.visible, true, "unavailable link falls back safely to the guide")
     m.page = "guide"
     m.heldZap = ""
     m.heldZapTimer = {control: "stop"}

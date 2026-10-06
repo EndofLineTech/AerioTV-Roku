@@ -47,13 +47,11 @@ sub onSettingsHubSelection(event as object)
     end if
     if item.action = "resetAppearance"
         before = copyJson(m.devicePreferences)
-        m.devicePreferences.themePreset = "aerio"
-        m.devicePreferences.appearanceMode = "dark"
-        m.devicePreferences.customAccent = ""
-        m.devicePreferences.panelStyle = "translucent"
-        m.devicePreferences.textSize = 100
-        m.devicePreferences.subtextSize = 100
-        m.devicePreferences.contrastMode = "standard"
+        defaults = {themePreset: "aerio", appearanceMode: "dark", customAccent: "", panelStyle: "translucent", textSize: 100, subtextSize: 100, contrastMode: "standard"}
+        for each field in defaults
+            m.devicePreferences = setCanonicalPreference(m.devicePreferences, field, defaults[field])
+        end for
+        m.devicePreferences = normalizeDevicePreferences(m.devicePreferences)
         if not persistPreferences()
             m.devicePreferences = before
             m.preferenceStore.device = before
@@ -66,8 +64,7 @@ sub onSettingsHubSelection(event as object)
     if not allowed then return
     if item.scope = "device"
         before = copyJson(m.devicePreferences)
-        m.devicePreferences[item.key] = item.value
-        m.devicePreferences = normalizeDevicePreferences(m.devicePreferences)
+        m.devicePreferences = normalizeDevicePreferences(setCanonicalPreference(m.devicePreferences, item.key, item.value))
         if not persistPreferences()
             m.devicePreferences = before
             m.preferenceStore.device = before
@@ -91,7 +88,7 @@ sub onSettingsHubSelection(event as object)
         end if
     else if item.scope = "account"
         before = copyJson(m.accountPreferences)
-        m.accountPreferences[item.key] = item.value
+        m.accountPreferences = setCanonicalPreference(m.accountPreferences, item.key, item.value)
         if not persistAccountPreferences()
             m.accountPreferences = before
             m.preferenceStore.accounts[preferenceScope(m.accountIdentity)] = before

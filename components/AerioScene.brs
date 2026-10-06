@@ -188,18 +188,23 @@ sub init()
     if m.connectionStore.readOnly = true then m.status = "Saved connections use an unsupported or unreadable format. This build will not overwrite them."
     m.page = "setup"
     m.pendingLaunch = invalid
-    m.startupBeaconSent = false
-    m.startupDialogOpen = false
-    ' Welcome is onboarding, not the home page: setup still follows it.
-    beginStartupDialog()
-    if connectionWelcomeNeeded(m.connectionStore)
+    welcome = connectionWelcomeNeeded(m.connectionStore)
+    beginStartupBeacons(welcome)
+    if welcome
         m.page = "welcome"
         drawWelcome()
     else
         drawSetup()
     end if
     m.top.setFocus(true)
+    if welcome then signalStartupComplete()
     if m.baseUrl <> "" and m.apiKey <> "" then connectServer(true)
+end sub
+
+sub beginStartupBeacons(welcome as boolean)
+    m.startupBeaconSent = false
+    m.startupDialogOpen = false
+    if not welcome then beginStartupDialog()
 end sub
 
 sub beginStartupDialog()
@@ -209,7 +214,12 @@ sub beginStartupDialog()
 end sub
 
 sub signalStartupComplete()
-    if m.startupBeaconSent then return
+    if m.startupBeaconSent
+        ' Welcome can complete launch before sign-in; resolve pending links
+        ' when the authorized guide arrives without firing the beacon twice.
+        handlePendingLaunch()
+        return
+    end if
     if m.startupDialogOpen
         m.top.signalBeacon("AppDialogComplete")
         m.startupDialogOpen = false
@@ -709,7 +719,7 @@ sub completeConnection(result as dynamic)
     m.capabilityClock.control = "start"
     m.reminderClock.control = "start"
     version = CreateObject("roAppInfo").getValue("major_version") + "." + CreateObject("roAppInfo").getValue("minor_version") + "." + CreateObject("roAppInfo").getValue("build_version")
-    if m.accountPreferences.whatsNewVersion <> version then showNotice("What's New in " + version + ". Open Settings > General > About, licenses and What's New.")
+    if m.accountPreferences.whatsNewVersion <> version then showNotice("What's New in " + version + ". Open Settings > About > What's New.")
     startConfiguredMiniPlayback(result.channels)
 end sub
 
