@@ -23,8 +23,9 @@ end sub
 
 sub openSeriesKeyboard(action as string)
     closeRecordDialog()
-    dialog = CreateObject("roSGNode", "KeyboardDialog")
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
     dialog.title = "Series title to match"
+    dialog.textEditBox.voiceEnabled = true
     dialog.text = m.seriesDraft.title
     if action = "seriesDescription"
         dialog.title = "Optional description phrase"

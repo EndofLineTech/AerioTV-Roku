@@ -23,21 +23,51 @@ installation; that is the repository, not the Roku application package.
 You do not need Node.js, npm, Git, or a compiler to install the release ZIP.
 This is a sideloaded testing preview, not a Roku Streaming Store release.
 
-### New since v0.3.82
+### New since v0.3.84
 
-- **Guide:** mapped current/next programmes, cached channel logos, wraparound
-  navigation, held FF/REW paging, direct full details, a shorter `*` menu and
-  guide time that follows the clock after playback. The restored provider EPG
-  was verified on the Roku with 36 channels.
-- **DVR and usability:** recordings use four artwork-backed poster sections;
-  VOD actions are grouped into shorter menus, and Settings focus is cleaner.
-- **Playback and connections:** bounded startup retries, clearer stop controls,
-  quieter successful AAC recovery, and newly created Dispatcharr connections
-  that default to remembering a verified API key. The Product Owner validated
-  the reported top-pill animation and AAC/AC3 behavior.
-- **Diagnostics:** an account-scoped, on-TV support code became available in
-  v0.3.84. The testing limits and exact verification scope are in the
-  [v0.3.88 release notes](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.88).
+- **Guide:** channel logos stay cached during revisits, rows wrap from the
+  beginning to the end, held FF/REW repeats page moves, and returning from
+  playback follows the current time without losing deliberate time travel.
+  Program details are directly accessible with paginated long descriptions;
+  `*` now puts common actions first and the remainder in More guide actions.
+- **Playback and connections:** bounded live startup retries/source failover,
+  clearer stop controls and quieter successful audio fallback. Newly created
+  Dispatcharr connections default to remembering a verified API key; existing
+  connection choices stay intact.
+- **DVR and presentation:** recordings appear in four poster sections with
+  artwork or a no-artwork fallback. VOD menus are shorter, Settings focus is
+  cleaner, and Settings → Connection returns to the expected setup action.
+- **Testing status:** the Product Owner accepted the top-pill animation and
+  AAC/AC3 report. The guide now shows real mapped EPG entries after a server
+  repair; live transport/A/V and provider-specific limits are detailed in the
+  [v0.3.88 release notes](docs/RELEASE-0.3.88.md).
+
+### Also included since v0.3.83
+
+- **TV-accessible diagnostics:** choose **Show support code** from Diagnostics
+  for a temporary, account-scoped code that can be photographed or dictated.
+  It includes bounded event types, error numbers and coarse timing, not log
+  messages, media titles, URLs or credentials. An offline decoder is included;
+  no phone app, network listener or additional service is required.
+- **Comskip clarity:** Dispatcharr 0.31 has no effective per-recording
+  schedule-time Comskip On/Off contract. The existing explicit Queue action
+  for completed recordings remains; this build does not expose a toggle that
+  would promise unsupported behavior.
+- **Connection repair:** unified-search VOD detail selection stays attached
+  when the GuideView is rebuilt after a connection change.
+
+### Also included since v0.3.82
+
+- **Unified TV search:** one query searches permitted Dispatcharr EPG airings,
+  Movies and TV Shows together. All/EPG/Movies/TV scopes, bounded pages and
+  focus-preserving result-to-guide/detail navigation are supported; direct
+  Xtream/M3U connections keep their existing narrower search paths.
+- **Guide polish:** the focused group pill's internal seam is fixed; bold
+  left/right arrows indicate offscreen groups, and S/E episode codes precede
+  subtitles instead of sharing the LIVE/NEW/time row.
+- **DVR controls:** recording Rewind/Forward glyphs are centered in their pills.
+  The speculative, unverified HLS completion recovery was deliberately
+  excluded from this testing ZIP.
 
 ### Also included since v0.3.81
 
@@ -52,8 +82,8 @@ This is a sideloaded testing preview, not a Roku Streaming Store release.
 - **Growing server recordings:** Aerio's live-TV-style control pills replace
   Roku's native “Rewind live TV” overlay for active HLS recordings. Rew/FF use
   bounded 30-second steps with an in-app seek preview; completed files retain
-  Roku's native transport. A near-end growing-HLS playlist-size error remains
-  under investigation; see the [release notes](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.88).
+  Roku's native transport. A single near-end HLS reader error remains a
+  PO-accepted known testing limitation; see the [release notes](docs/RELEASE-0.3.88.md).
 
 ### Also included since v0.3.80
 
@@ -75,9 +105,10 @@ This is a sideloaded testing preview, not a Roku Streaming Store release.
 - **Presentation:** source-informed pill navigation, poster-led VOD, rounded
   settings and player controls, appearance/text preferences, a first-run welcome
   screen, and model-tested guide density/visibility settings.
-- **Testing status:** this is a development prerelease. Current-build physical
-  picture/sound after DVR seeking is not confirmed. The target's missing custom
-  Audio Guide speech is an accepted platform limitation. Multiview is not
+- **Testing status:** this is a development prerelease. The owner confirmed
+  picture/sound after DVR Rewind and Forward on the published v0.3.82 build;
+  the separate near-end reader error was not reproduced. The target's missing
+  custom Audio Guide speech is an accepted platform limitation. Multiview is not
   implemented; Roku's `roMultiDecode` SDK access is pending.
 
 ### Included since v0.3.8
@@ -111,17 +142,19 @@ unimplemented. Rewind uses provider archives; it is not a guaranteed local buffe
 | Direct Xtream Codes connection | **Implemented for tested variants**; session-only credentials, bounded live/VOD/archive | Available | Available |
 | Direct M3U + XMLTV connection | **Implemented for supported URL feeds**; raw gzip and oversized feeds remain limited | Available | Available |
 | Live TV and EPG grid | **Available** — source subtitles in default six-row Preview, compact option | Available | Available |
+| Unified TV search | **Available for Dispatcharr** — interleaved, permission-scoped EPG/Movies/TV Shows; direct feeds retain scoped search | Available | Available |
+| TV-accessible diagnostic sharing | **On-device support code** for bounded current-account event facts; no external service or listener | In-app logs / QR | In-app logs / QR |
 | Favorites, group visibility and channel sorting | **Available** | Available | Available |
 | Mini-player while browsing the guide | **Available** — same playback session | Available | Available |
 | Audio/subtitle selection and sleep timer | **Available**, limited to tracks Roku exposes | Available | Available |
 | Video scaling | **Fit / Fill / Stretch**; source-aspect setting may be required | Available | Available |
 | Programme reminders | **Foreground alerts only**, while the app is open | Saved reminder state; background delivery not established on tvOS | Documented reminders; notification delivery depends on device |
 | Movies/series and Continue Watching | **Available** with bounded local curation and verified series Play/Resume/Next targets | Available with supported providers | Available with supported providers |
-| DVR scheduling and recording management | **Implemented against Dispatcharr server DVR**; final-build physical checks pending | Available; server-side DVR uses Dispatcharr | Available; server-side DVR uses Dispatcharr |
+| DVR scheduling and recording management | **Implemented against Dispatcharr server DVR**; owner confirmed one-pane layout and A/V after seeks on v0.3.82; rare HLS completion error accepted for testing | Available; server-side DVR uses Dispatcharr | Available; server-side DVR uses Dispatcharr |
 | Multiview | **Not implemented** | Up to 9 streams, device/resource dependent | Up to 9 streams, device/resource dependent |
 | Live rewind / completed-program catch-up | **Provider-backed** catch-up, Restart and up to 60 minutes of history since tuning on eligible channels | Implemented, subject to settings/provider support | Not verified in this comparison |
 | Cross-device preference/watch-progress sync | **Not implemented**; local Roku preferences only | iCloud | Optional Google Drive sync |
-| Playback compatibility | Native Roku MPEG-TS; explicit HLS on compatible test servers; optional existing server AAC profile | Apple/native and mpv playback routes | Media3/ExoPlayer plus bundled FFmpeg audio decoders |
+| Playback compatibility | Native Roku MPEG-TS; optional HLS on explicitly tested Dispatcharr servers; existing compatible audio profiles | Apple/native and mpv playback routes | Media3/ExoPlayer plus bundled FFmpeg audio decoders |
 | Distribution | **Developer Mode ZIP / testing prerelease** | App Store, TestFlight and upstream sideload releases | APK releases; upstream documents invite-only Google Play testing |
 
 "Available" in the upstream columns means documented or source-established,
@@ -886,15 +919,16 @@ explicit TS reader. The incompatible continuous fMP4 route is not a fallback.
 Dispatcharr's [`hls-test` branch at ca288b9](https://github.com/Dispatcharr/Dispatcharr/tree/ca288b96f6e9fda60b403b13646eb951d170ed01)
 also accepts `/proxy/ts/stream/<channel-uuid>?output_format=hls`. It redirects
 to a per-client `/proxy/hls/<opaque-token>/index.m3u8`; relative segment paths
-stay on that server. On connection AerioTV checks the read-only response for
-an unknown HLS session (410 means the branch recognizes the route; 404 or an
-inconclusive response keeps MPEG-TS). **Automatic** prefers HLS when detected.
+stay on that server. A read-only probe of an unknown HLS session returning 410
+only proves the route exists: on the test Roku, the actual HLS entry tune also
+returned HTTP 410. **Automatic uses MPEG-TS** until an end-to-end playable HLS
+capability is established; it does not infer playback support from that probe.
 **Settings → Player → Dispatcharr live transport** or **player options → Live
 transport** can force MPEG-TS or HLS for comparison; the player options choice
 retunes only this client. Stream Info displays the requested transport. Forced HLS
-on an older server can fail visibly; it does not silently claim HLS while
-playing TS. Native live HLS picture/audio on the new server still needs Roku
-verification.
+on an unsupported server can fail visibly; it does not silently claim HLS while
+playing TS. Native live HLS picture/audio on a confirmed server still needs
+Roku verification.
 
 The full-hour native experiment did not produce a local seekable hour. Approved
 rewind instead opens owned Dispatcharr catch-up sessions at provider timestamps,

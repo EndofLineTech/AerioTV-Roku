@@ -101,7 +101,7 @@ function remoteMapText(value as dynamic) as string
 end function
 
 function remoteActionText(action as string) as string
-    labels = {toggleInfo: "Show/hide player info", openOptions: "Open options", channelUp: "Channel up", channelDown: "Channel down", recentChannels: "Recently watched", channelList: "Channel list", lastChannel: "Previous channel", minimizeToGuide: "Return to TV Guide", rewindHistory: "Rewind history", playPause: "Play/Pause", activateSelection: "Play selected channel", programDetails: "Program details", navigate: "Move focus", jumpToNow: "Jump to Now", jumpToTop: "Jump to top channel", openGroups: "Open groups", pageUp: "Page channels up", pageDown: "Page channels down", resumePlayer: "Return to player", none: "Do nothing"}
+    labels = {toggleInfo: "Show/hide player info", openOptions: "Open options", channelUp: "Channel up", channelDown: "Channel down", recentChannels: "Recently watched", channelList: "Channel list", lastChannel: "Previous channel", minimizeToGuide: "Return to TV Guide", rewindHistory: "Rewind history", playPause: "Play/Pause", activateSelection: "Play selected channel", programDetails: "Program details", navigate: "Move focus", jumpToNow: "Jump to Now", jumpToTop: "Jump to top channel", openGroups: "Open groups", pageUp: "Page channels up", pageDown: "Page channels down", resumePlayer: "Fullscreen if playing / details otherwise", none: "Do nothing"}
     if labels.doesExist(action) then return labels[action]
     return action
 end function

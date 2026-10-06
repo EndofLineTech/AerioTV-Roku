@@ -12,6 +12,11 @@ using an isolated installation of `@resvg/resvg-js` (no runtime dependency).
 
 ## AerioTV launcher and splash images
 
+`LICENSE.txt` and `NOTICE.txt` are the exact packaged copies of the repository
+root `LICENSE.md` and `NOTICE.md`. The packaging gate checks that they stay
+identical. Roku Static Analysis flags these documents as extraneous when placed
+at the package root; the in-app Settings license page reads the copies here.
+
 `channel-icon-fhd.png` (540x405), `channel-icon-hd.png` (290x218), and
 `splash-{fhd,hd,sd}.png` (1920x1080, 1280x720, 720x480) adapt the pinned upstream
 Apple TV artwork without cropping or distorting its wordmark. Copyright (C) 2026

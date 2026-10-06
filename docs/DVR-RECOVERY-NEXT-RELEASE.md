@@ -51,3 +51,10 @@ bounded status recheck for the near-edge race, exercise the actual status Task
 and finite-reader replay on the Roku, and verify against a separately approved
 real-server fixture or explicitly obtain the PO's decision on the remaining
 real-server evidence gap. Keep accepted v0.3.82 release assets unchanged.
+
+For the later v0.3.88 integration candidate, the verified GitHub-issue changes
+were merged with the certification baseline but the HLS-to-file recovery branch
+from `2ce34cc` was explicitly removed from the app and active test suite. The
+historical investigation and optional standalone fixture remain as research,
+not as a promise that the recovery is present in the release ZIP. The v0.3.88
+candidate still requires final native audit and release authorization.

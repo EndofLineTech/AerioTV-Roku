@@ -5,7 +5,6 @@
     <field id="closed" type="boolean" alwaysNotify="true" />
     <field id="progress" type="assocarray" alwaysNotify="true" />
     <field id="diagnostic" type="assocarray" alwaysNotify="true" />
-    <field id="recordingHandoff" type="assocarray" alwaysNotify="true" />
     <field id="archiveSeek" type="integer" alwaysNotify="true" />
     <field id="goLiveRequested" type="boolean" alwaysNotify="true" />
     <field id="skipSeconds" type="integer" value="60" />

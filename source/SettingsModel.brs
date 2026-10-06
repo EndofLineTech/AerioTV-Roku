@@ -1,5 +1,13 @@
 function settingsHubEntries(page as string, model as object) as object
-    if page = "" then return [{title: "Live TV", page: "live"}, {title: "Player", page: "player"}, {title: "Remote control", page: "remote"}, {title: "Appearance", page: "appearance"}, {title: "General", page: "general"}, {title: "Connection", page: "connection"}]
+    if page = ""
+        entries = [{title: "Connection", page: "connection"}, {title: "Live TV", page: "live"}, {title: "Player", page: "player"}]
+        if model <> invalid
+            if model.movies = "allowed" or model.series = "allowed" then entries.push({title: "Movies & TV Shows", page: "movies"})
+            if model.dvr = "manage" then entries.push({title: "DVR", page: "dvr"})
+        end if
+        entries.append([{title: "Appearance", page: "appearance"}, {title: "General", page: "general"}, {title: "Remote control", page: "remote"}, {title: "About", page: "about"}])
+        return entries
+    end if
     if page = "live" then return [
         {title: "Guide history days", scope: "guide", key: "historyDays", values: [1, 3, 7, 14, 30]}
         {title: "Guide future days", scope: "guide", key: "futureDays", values: [1, 3, 7, 14, 30]}
@@ -26,6 +34,20 @@ function settingsHubEntries(page as string, model as object) as object
     ]
     if page = "remotePlayer" then return remoteSlotEntries("player")
     if page = "remoteGuide" then return remoteSlotEntries("guide")
+    if page = "movies"
+        if model.movies <> "allowed" and model.series <> "allowed" then return []
+        return [
+            {title: "VOD libraries for this account", scope: "account", key: "vodEnabled", values: [true, false]}
+            {title: "Optional TMDB VOD enrichment", scope: "account", key: "vodTmdbEnabled", values: [true, false]}
+        ]
+    end if
+    if page = "dvr"
+        if model.dvr <> "manage" then return []
+        return [
+            {title: "DVR start early (minutes)", scope: "account", key: "dvrPreRollMinutes", values: [0, 5, 10, 15, 30]}
+            {title: "DVR end late (minutes)", scope: "account", key: "dvrPostRollMinutes", values: [0, 5, 10, 15, 30]}
+        ]
+    end if
     if page = "appearance" then return [
         {title: "Color theme", scope: "device", key: "themePreset", values: ["aerio", "midnight", "sunset", "forest", "lavender", "monochrome", "light"]}
         {title: "Appearance mode", scope: "device", key: "appearanceMode", values: ["dark", "light"]}
@@ -50,16 +72,7 @@ function settingsHubEntries(page as string, model as object) as object
         entries.push({title: "Startup behavior", scope: "account", key: "startupBehavior", values: ["guide", "mini"]})
         entries.push({title: "Network request timeout", scope: "device", key: "networkTimeoutSeconds", values: [10, 20, 30]})
         entries.push({title: "Active session refresh", scope: "device", key: "refreshSeconds", values: [120, 300, 600]})
-        if model.movies = "allowed" or model.series = "allowed"
-            entries.push({title: "VOD libraries for this account", scope: "account", key: "vodEnabled", values: [true, false]})
-            entries.push({title: "Optional TMDB VOD enrichment", scope: "account", key: "vodTmdbEnabled", values: [true, false]})
-        end if
-        if model.dvr = "manage"
-            entries.push({title: "DVR start early (minutes)", scope: "account", key: "dvrPreRollMinutes", values: [0, 5, 10, 15, 30]})
-            entries.push({title: "DVR end late (minutes)", scope: "account", key: "dvrPostRollMinutes", values: [0, 5, 10, 15, 30]})
-        end if
         entries.push({title: "Audio Guide (screen reader)", scope: "device", key: "audioGuide", values: [true, false]})
-        entries.push({title: "About, licenses and What's New", action: "about"})
         return entries
     end if
     if page = "about" then return [
@@ -70,9 +83,10 @@ function settingsHubEntries(page as string, model as object) as object
     ]
     if page = "whatsNew" then return [
         {title: "Version " + model.version},
-        {title: "TV styling: pill navigation, rounded controls and a poster-led library."},
-        {title: "Settings now has a category rail and detail pane."},
-        {title: "Development visual refresh; see the GitHub releases page for published builds."},
+        {title: "Settings: browse categories in the left rail; press Right or OK to edit and Back to return."},
+        {title: "Movies & TV Shows and DVR preferences have their own categories when available."},
+        {title: "Connection, Appearance, General, Remote control and About remain available on this Roku."},
+        {title: "Launch and deep-link support remain in testing; see the GitHub release limits."},
         {title: "Mark this version read", action: "markWhatsNew"}
     ]
     if page = "connection" then return [{title: "Open connection settings (edit / forget / reconnect)", action: "connection"}]
@@ -116,7 +130,7 @@ function settingsHubChangeAllowed(model as object, scope as string, key as strin
         if GetInterface(value, "ifString") = invalid then return false
         return value = "" or CreateObject("roRegex", "^[0-9A-Fa-f]{6}$", "").isMatch(value)
     end if
-    for each page in ["live", "player", "appearance", "general"]
+    for each page in ["live", "player", "movies", "dvr", "appearance", "general"]
         for each entry in settingsHubEntries(page, model)
             if entry.scope = scope and entry.key = key
                 for each allowed in entry.values
@@ -135,7 +149,7 @@ function settingsValueText(value as dynamic, key = "" as string) as string
         return value.toStr() + " retries"
     end if
     if key = "liveTransport"
-        if value = "auto" then return "Automatic (prefer available HLS)"
+        if value = "auto" then return "Automatic (MPEG-TS)"
         if value = "hls" then return "HLS (test server)"
         return "MPEG-TS"
     end if

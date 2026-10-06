@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="AerioScene" extends="Scene">
+  <interface>
+    <field id="memoryPressure" type="string" alwaysNotify="true" onChange="onMemoryPressure" />
+    <field id="launchRequest" type="assocarray" alwaysNotify="true" onChange="onLaunchRequest" />
+  </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/LaunchModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RokuAuthModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
   <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/RemoteMapModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/NavigationModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ConnectionStoreModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ChannelProfileModel.brs" />

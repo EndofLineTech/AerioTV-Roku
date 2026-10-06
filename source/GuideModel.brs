@@ -304,6 +304,20 @@ sub guideCachePrune(cache as object, now as integer)
     cache.order = retained
 end sub
 
+' Keep the current on-air and selected guide windows under memory pressure.
+' Removing only unused windows preserves live now/next and the visible grid.
+sub guideCacheRetain(cache as object, windows as object)
+    retained = []
+    for each key in cache.order
+        keep = false
+        for each window in windows
+            if key = window.toStr() then keep = true
+        end for
+        if keep then retained.push(key) else cache.entries.delete(key)
+    end for
+    cache.order = retained
+end sub
+
 function guideCacheHas(cache as object, start as integer, now as integer) as boolean
     key = start.toStr()
     if not cache.entries.doesExist(key) then return false

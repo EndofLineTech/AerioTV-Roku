@@ -23,6 +23,17 @@ function defaultPreferenceStore() as object
     return {schema: 1, device: normalizeDevicePreferences(invalid), accounts: {}}
 end function
 
+' JSON-backed preferences may contain both camel-case and lower-case spellings.
+' Replacing only one spelling leaves the other to win during normalization.
+function setCanonicalPreference(raw as object, field as string, value as dynamic) as object
+    result = copyJson(raw)
+    for each key in result.keys()
+        if lcase(key) = lcase(field) then result.delete(key)
+    end for
+    result[field] = value
+    return result
+end function
+
 function normalizeDevicePreferences(raw as dynamic) as object
     result = {}
     if type(raw) = "roAssociativeArray" then result = copyJson(raw)

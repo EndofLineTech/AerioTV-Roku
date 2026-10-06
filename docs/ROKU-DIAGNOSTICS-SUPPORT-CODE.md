@@ -39,4 +39,5 @@ v0.3.83 ZIP was reinstalled afterward; ECP again reported `0.3.83`.
 No second account or 120% text-size run was performed on-device; account
 isolation and payload bounds are model-tested, not claimed as a native
 cross-account sign-off. Developer Mode captures remain private under ignored
-`out/`. This is post-v0.3.83 development work, not part of that release ZIP.
+`out/`. The feature first ships in the v0.3.84 testing ZIP; the published
+v0.3.83 ZIP remains unchanged.

@@ -31,7 +31,8 @@ end sub
 sub onActive()
     m.top.visible = m.top.active
     if not m.top.active then return
-    m.page = "live"
+    m.railItems = settingsHubEntries("", m.top.model)
+    m.page = m.railItems[0].page
     m.stack = []
     m.choice = invalid
     m.railSelected = 0
@@ -55,12 +56,14 @@ sub renderSettings()
         end if
     end if
     m.heading.text = "Settings"
-    titles = {live: "Live TV", player: "Player", remote: "Remote control", remotePlayer: "While watching", remoteGuide: "In the TV Guide", appearance: "Appearance", general: "General", connection: "Connection", about: "About", whatsNew: "What's New", licenses: "License notices"}
+    titles = {live: "Live TV", player: "Player", movies: "Movies & TV Shows", dvr: "DVR", remote: "Remote control", remotePlayer: "While watching", remoteGuide: "In the TV Guide", appearance: "Appearance", general: "General", connection: "Connection", about: "About", whatsNew: "What's New", licenses: "License notices"}
     if titles.doesExist(m.page) then m.heading.text = titles[m.page]
     m.note.text = "Changes are saved on this Roku. Back returns to the previous page without moving the guide."
     if m.page = "player" then m.note.text = "Archive skip uses whole minutes. Live startup retries apply on the next tune; each Dispatcharr attempt may wait up to 60 seconds."
     if m.page = "appearance" then m.note.text = "Appearance changes apply on this Roku without interrupting playback. Reset restores the default colors."
     if m.page = "general" then m.note.text = "Guide startup never plays automatically. Mini startup resumes only the last available channel after it starts."
+    if m.page = "movies" then m.note.text = "Library preferences apply only to this account. Optional artwork requires a configured TMDB key."
+    if m.page = "dvr" then m.note.text = "Recording padding applies to new schedules for this account."
     if m.page = "about" then m.note.text = "This is an independent Roku client. License and attribution text is included in the installed package."
     if m.page = "whatsNew" then m.note.text = "Release notes describe implemented Roku features. Marking read only dismisses this version's startup notice."
     if m.page = "licenses" then m.note.text = "License and attribution notices included with this Roku package. Back returns to About."
@@ -91,7 +94,7 @@ sub renderSettings()
         m.items = settingsHubEntries(m.page, model)
         if m.page = "licenses"
             m.items = []
-            for each path in ["pkg:/LICENSE.md", "pkg:/images/material-icons-LICENSE.txt"]
+            for each path in ["pkg:/images/LICENSE.txt", "pkg:/images/NOTICE.txt", "pkg:/images/material-icons-LICENSE.txt"]
                 for each line in CreateObject("roRegex", "\r?\n", "").split(ReadAsciiFile(path))
                     text = line.trim()
                     if text <> "" then m.items.push({title: left(text, 220)})
@@ -155,8 +158,9 @@ sub selectSetting(index as integer)
     else if item.action = "connection"
         m.top.selection = {account: m.top.model.account, action: "connection"}
     else if item.action = "customAccent"
-        m.accentDialog = CreateObject("roSGNode", "KeyboardDialog")
+        m.accentDialog = CreateObject("roSGNode", "StandardKeyboardDialog")
         m.accentDialog.title = "Accent: 6 hex digits (empty = preset)"
+        m.accentDialog.textEditBox.voiceEnabled = true
         m.accentDialog.text = textValue(m.top.model.device.customAccent)
         m.accentDialog.buttons = ["Save", "Cancel"]
         m.accentDialog.observeField("buttonSelected", "onAccentChoice")

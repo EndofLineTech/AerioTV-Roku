@@ -6,13 +6,13 @@ const root = new URL('../', import.meta.url);
 
 export function assertPackageEntries(entries) {
   if (!entries.includes('manifest')) throw new Error('Package must contain manifest at its root');
-  for (const required of ['LICENSE.md', 'NOTICE.md']) {
+  for (const required of ['images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt']) {
     if (!entries.includes(required)) throw new Error(`Package is missing ${required}`);
   }
   if (!entries.some(entry => entry.startsWith('source/'))) throw new Error('Package is missing source files');
   if (!entries.some(entry => entry.startsWith('components/'))) throw new Error('Package is missing component files');
 
-  const excluded = /(^|\/)(?:\.beads|node_modules|out|scripts|tests)(?:\/|$)|(^|\/)\.env[^/]*$|(^|\/)(?:package(?:-lock)?\.json|\.gitignore)$/;
+  const excluded = /(^|\/)(?:\.beads|node_modules|out|scripts|tests)(?:\/|$)|(^|\/)\.env[^/]*$|(^|\/)(?:package(?:-lock)?\.json|\.gitignore)$|^(?:LICENSE|NOTICE)\.md$/;
   const invalid = entries.find(entry => excluded.test(entry));
   if (invalid) throw new Error(`Package contains excluded development file: ${invalid}`);
 }

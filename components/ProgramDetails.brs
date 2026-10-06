@@ -98,10 +98,10 @@ sub render()
     end if
     m.actions = ["watch", "close"]
     labels = ["Watch channel LIVE", "Close"]
-    if p.startsAt > uiNow() or model.reminded
+    if p.startsAt > uiNow() or model.reminded = true
         m.actions = ["watch", "reminder", "close"]
         label = "Remind me (foreground, 5 minutes before)"
-        if model.reminded then label = "Cancel reminder"
+        if model.reminded = true then label = "Cancel reminder"
         labels = ["Watch channel LIVE", label, "Close"]
     end if
     if model.catchupAvailable = true

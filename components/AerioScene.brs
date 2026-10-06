@@ -14,7 +14,6 @@ sub init()
     m.mediaPlayer.observeField("closed", "onMediaClosed")
     m.mediaPlayer.observeField("progress", "onMediaProgress")
     m.mediaPlayer.observeField("diagnostic", "onMediaDiagnostic")
-    m.mediaPlayer.observeField("recordingHandoff", "onDvrHandoffRequested")
     m.mediaPlayer.observeField("archiveSeek", "onArchiveSeek")
     m.mediaPlayer.observeField("goLiveRequested", "onArchiveGoLive")
     m.mediaPlayer.observeField("skipPreference", "onArchiveSkipPreference")
@@ -96,6 +95,7 @@ sub init()
     m.pictureHintTimer.observeField("fire", "hidePictureHint")
     m.pictureWakeKey = ""
     m.connectionClock = m.top.findNode("connectionClock")
+    m.setupWakeClock = invalid
     m.connectionClock.observeField("fire", "onConnectionTick")
     m.profileClock = m.top.findNode("profileClock")
     m.profileClock.observeField("fire", "onProfileTick")
@@ -173,6 +173,10 @@ sub init()
     m.username = ""
     m.password = ""
     m.authMode = "key"
+    m.rokuAccount = CreateObject("roSGNode", "ChannelStore")
+    m.rokuAccount.observeField("userData", "onRokuUserData")
+    m.rokuRfiPending = ""
+    m.rokuRfiOffered = false
     m.setupIndex = 0
     m.busy = false
     m.task = invalid
@@ -183,21 +187,105 @@ sub init()
     m.status = "Dispatcharr 0.31  |  Live TV and guide"
     if m.connectionStore.readOnly = true then m.status = "Saved connections use an unsupported or unreadable format. This build will not overwrite them."
     m.page = "setup"
-    if connectionWelcomeNeeded(m.connectionStore)
+    m.pendingLaunch = invalid
+    welcome = connectionWelcomeNeeded(m.connectionStore)
+    beginStartupBeacons(welcome)
+    if welcome
         m.page = "welcome"
         drawWelcome()
     else
         drawSetup()
     end if
     m.top.setFocus(true)
-    if m.baseUrl <> "" and m.apiKey <> "" then connectServer()
+    if welcome then signalStartupComplete()
+    if m.baseUrl <> "" and m.apiKey <> "" then connectServer(true)
+end sub
+
+sub beginStartupBeacons(welcome as boolean)
+    m.startupBeaconSent = false
+    m.startupDialogOpen = false
+    if not welcome then beginStartupDialog()
+end sub
+
+sub beginStartupDialog()
+    if m.startupDialogOpen or m.startupBeaconSent then return
+    m.startupDialogOpen = true
+    m.top.signalBeacon("AppDialogInitiate")
+end sub
+
+sub signalStartupComplete()
+    if m.startupBeaconSent
+        ' Welcome can complete launch before sign-in; resolve pending links
+        ' when the authorized guide arrives without firing the beacon twice.
+        handlePendingLaunch()
+        return
+    end if
+    if m.startupDialogOpen
+        m.top.signalBeacon("AppDialogComplete")
+        m.startupDialogOpen = false
+    end if
+    m.top.signalBeacon("AppLaunchComplete")
+    m.startupBeaconSent = true
+    handlePendingLaunch()
+end sub
+
+sub onLaunchRequest()
+    m.pendingLaunch = normalizeLaunchRequest(m.top.launchRequest)
+    if m.pendingLaunch = invalid
+        if m.page = "guide" then showNotice("This link is not available. Browse your guide instead.")
+        return
+    end if
+    handlePendingLaunch()
+end sub
+
+sub handlePendingLaunch()
+    if m.pendingLaunch = invalid then return
+    if m.page <> "guide" and m.page <> "player" then return
+    request = m.pendingLaunch
+    m.pendingLaunch = invalid
+    channel = m.guide.callFunc("channelByUuid", request.id)
+    if channel = invalid
+        showNotice("This channel is not available to your current connection.")
+        return
+    end if
+    startPlayback(channel)
+end sub
+
+sub requestRokuEmail(nextAction as string)
+    if m.rokuRfiPending <> "" then return
+    m.rokuRfiPending = nextAction
+    m.rokuRfiOffered = true
+    info = CreateObject("roSGNode", "ContentNode")
+    info.addFields({context: "signin"})
+    m.rokuAccount.requestedUserDataInfo = info
+    m.rokuAccount.requestedUserData = "email"
+    m.rokuAccount.command = "getUserData"
+end sub
+
+sub onRokuUserData(event as object)
+    if m.rokuRfiPending = "" or not m.rokuAccount.isSameNode(event.getRoSGNode()) then return
+    nextAction = m.rokuRfiPending
+    m.rokuRfiPending = ""
+    data = event.getData()
+    if data <> invalid
+        email = rokuSharedEmail({email: data.email})
+        if email <> "" and m.username = "" and m.authMode = "password" then m.username = email
+    end if
+    ' Refusal is a valid choice: continue with the viewer-entered credentials.
+    if nextAction = "edit" then editSetupField()
+    if nextAction = "connect" then connectServer(true)
+end sub
+
+sub onMemoryPressure()
+    if m.guide <> invalid then m.guide.callFunc("trimTransientGuideMemory")
+    if m.browser <> invalid and not m.browser.active then m.browser.callFunc("invalidateLogos")
 end sub
 
 sub drawWelcome()
     m.screen.removeChildrenIndex(m.screen.getChildCount(), 0)
     uiLabel(m.screen, "Welcome to AerioTV", 160, 170, 1600, 96, 64)
     uiLabel(m.screen, "Your TV guide, movies and shows in one place.", 164, 310, 1550, 56, 34, "0x1AC4D8FF")
-    description = "Connect to your own Dispatcharr server, M3U playlist or Xtream provider. " + "Choose a connection on the next screen and enter its details with the Roku remote."
+    description = "Connect to your own compatible TV source. AerioTV does not provide channels or subscriptions. " + "Choose a connection on the next screen and enter its details with the Roku remote."
     message = uiLabel(m.screen, description, 164, 396, 1480, 160, 29, "0xE8F3FAFF")
     message.wrap = true
     uiRect(m.screen, 160, 675, 800, 92, "0xFFFFFFFF")
@@ -348,16 +436,28 @@ sub editSetupField()
         forgetConnection()
         return
     end if
+    if (field = "username" or field = "key") and not m.rokuRfiOffered
+        entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+        if entry <> invalid and entry.provider <> "m3u"
+            requestRokuEmail("edit")
+            return
+        end if
+    end if
     m.editingField = field
-    dialog = CreateObject("roSGNode", "KeyboardDialog")
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
     dialog.buttons = ["Save", "Cancel"]
     dialog.title = m.setupRows[m.setupIndex].title
+    dialog.textEditBox.voiceEnabled = true
     if field = "url" then dialog.text = m.baseUrl
     if field = "username" then dialog.text = m.username
     if field = "password" then dialog.text = m.password
     if field = "key" then dialog.text = m.apiKey
     if field = "epg" then dialog.text = m.guideUrl
-    if field = "password" or field = "key" then dialog.keyboard.textEditBox.secureMode = true
+    if field = "username" then dialog.keyboardDomain = "email"
+    if field = "password" or field = "key"
+        dialog.keyboardDomain = "password"
+        dialog.textEditBox.secureMode = true
+    end if
     dialog.observeField("buttonSelected", "onKeyboardButton")
     dialog.observeField("wasClosed", "onDialogClosed")
     m.top.dialog = dialog
@@ -398,7 +498,7 @@ sub onDialogClosed()
     if m.page = "player" then focusPlaybackInput()
 end sub
 
-sub connectServer()
+sub connectServer(skipRfi = false as boolean)
     if m.busy then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid
@@ -422,6 +522,10 @@ sub connectServer()
         if entry.provider = "m3u" then m.status = "Enter a valid M3U playlist URL before connecting."
         if entry.provider = "xtream" then m.status = "Enter a valid Xtream server URL, username and password."
         drawSetup()
+        return
+    end if
+    if not skipRfi and not m.rokuRfiOffered and entry.provider <> "m3u"
+        requestRokuEmail("connect")
         return
     end if
     m.busy = true
@@ -609,12 +713,13 @@ sub completeConnection(result as dynamic)
     m.screen.visible = false
     m.guide.visible = true
     m.guide.active = true
+    signalStartupComplete()
     print "[startup] authorized lineup ms="; m.connectionElapsed.totalMilliseconds(); " channels="; result.channels.count()
     refreshCapabilities()
     m.capabilityClock.control = "start"
     m.reminderClock.control = "start"
     version = CreateObject("roAppInfo").getValue("major_version") + "." + CreateObject("roAppInfo").getValue("minor_version") + "." + CreateObject("roAppInfo").getValue("build_version")
-    if m.accountPreferences.whatsNewVersion <> version then showNotice("What's New in " + version + ". Open Settings > General > About, licenses and What's New.")
+    if m.accountPreferences.whatsNewVersion <> version then showNotice("What's New in " + version + ". Open Settings > About > What's New.")
     startConfiguredMiniPlayback(result.channels)
 end sub
 
@@ -814,6 +919,11 @@ sub showConnection()
     end if
     m.screen.visible = true
     m.page = "setup"
+    ' The OK that selected Settings > Connection can reach the Scene after
+    ' the pane closes. It must not open the connection picker a second time.
+    m.setupWakeClock = CreateObject("roTimespan")
+    m.setupWakeClock.mark()
+    m.rokuRfiOffered = false
     m.status = "Edit connection settings, or select Connect to reload."
     drawSetup()
     m.top.setFocus(true)
@@ -1459,18 +1569,18 @@ sub openPlayerOptions(kind = "main" as string)
         end for
     else if kind = "audioMode"
         title = "Audio compatibility"
-        note = "Auto retries missing audio once using an existing copy-video/AAC server output profile. Retunes this client only."
+        note = "Automatic uses an existing AC3 profile, or AAC if none is available."
         items = []
-        for each choice in [{value: "auto", title: "Automatic AAC fallback"}, {value: "direct", title: "Direct source audio"}, {value: "aac", title: "Always use AAC compatibility"}]
+        for each choice in [{value: "auto", title: "Automatic compatible audio"}, {value: "direct", title: "Direct source audio"}, {value: "aac", title: "Always use AAC compatibility"}]
             label = choice.title
             if choice.value = m.devicePreferences.audioMode then label = "[Selected] " + label
             items.push({title: label, action: "audioMode", value: choice.value})
         end for
     else if kind = "liveTransport"
         title = "Dispatcharr live transport"
-        note = "Automatic prefers HLS when available. This choice retunes only your player."
+        note = "Automatic: MPEG-TS. HLS requires a compatible server."
         items = []
-        for each choice in [{value: "auto", title: "Automatic (prefer available HLS)"}, {value: "ts", title: "MPEG-TS"}, {value: "hls", title: "HLS (test server)"}]
+        for each choice in [{value: "auto", title: "Automatic (MPEG-TS)"}, {value: "ts", title: "MPEG-TS"}, {value: "hls", title: "HLS (test server)"}]
             label = choice.title
             if choice.value = m.devicePreferences.liveTransport then label = "[Selected] " + label
             items.push({title: label, action: "liveTransport", value: choice.value})
@@ -2314,6 +2424,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return handlePlayerMappedKey(key)
     end if
     if m.page <> "setup" then return false
+    if m.setupWakeClock <> invalid
+        if setupTransitionConsumesKey(m.setupWakeClock, key) then return true
+        if m.setupWakeClock.totalMilliseconds() >= 450 then m.setupWakeClock = invalid
+    end if
     if m.busy
         if key = "back"
             failConnection("Connection cancelled.")

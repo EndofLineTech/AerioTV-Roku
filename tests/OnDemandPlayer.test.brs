@@ -127,35 +127,7 @@ sub main()
         return "fastforward"
     end function})
     if m.video.seek <> 114 then stop ' buffering cannot accept another seek
-    m.session.position = 115
-    m.session.duration = 120
-    m.elapsed.totalSeconds = function()
-        return 12
-    end function
-    m.top.recordingHandoff = invalid
-    reportProgress()
-    if m.top.recordingHandoff = invalid or m.top.recordingHandoff.position <> 115 then stop
-    m.top.recordingHandoff = invalid
-    reportProgress()
-    if m.top.recordingHandoff <> invalid then stop ' one status check per near-edge stall
-    m.elapsed.totalSeconds = function()
-        return 2
-    end function
-    m.video.state = "playing"
-    m.video.position = 45
-    reportProgress()
-    m.top.recordingHandoff = invalid
-    m.video.state = "error"
-    m.video.errorCode = -3
-    m.video.errorStr = "reader pick stream error:bad:mpr playlist file is too large"
-    onMediaState()
-    if m.top.recordingHandoff = invalid then stop
-    if m.top.recordingHandoff.account <> "account" or m.top.recordingHandoff.identity <> "recording-session" then stop
-    if m.top.recordingHandoff.id <> "recording-id" or m.top.recordingHandoff.position <> 45 then stop
     m.top.request.growing = false
-    m.top.recordingHandoff = invalid
-    onMediaState()
-    if m.top.recordingHandoff <> invalid then stop ' finished-file errors never request an HLS handoff
     if handleArchiveKey("rewind", true) then stop ' completed recording retains native path
     print "ALL TESTS PASSED"
 end sub

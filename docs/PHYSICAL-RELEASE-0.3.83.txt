@@ -1,0 +1,37 @@
+AerioTV Roku v0.3.83 testing prerelease — physical checks
+==========================================================
+All cases start NOT RUN until a person observes the TV with the release ZIP.
+Developer screenshots omit decoded picture and do not establish audio.
+
+Installed version (Settings > General > About): __________
+Roku model / OS: __________   Date / tester: __________
+
+[          ] R01 Unified Dispatcharr search
+In Guide options, choose Search EPG / movies / TV together, then All. Search
+one title that matches a permitted program and a VOD title. Confirm EPG,
+Movie and TV Show types share the same list where available. Open a Movie and
+TV Show detail; Back returns to the same search row. Open an EPG airing; it
+jumps to the permitted channel and time. Check empty query/Back/edit and next
+page without broadening the account's permissions.
+
+[          ] R02 Guide group and episode polish
+At first, middle and last group windows confirm >, < > and < respectively.
+Focus All Channels: no dark line inside its right rounded cap. Confirm a
+program with valid S/E and subtitle shows both on the subtitle line, leaving
+LIVE/NEW/time readable. If you use compact density, episode remains visible
+before the title. Return original guide preferences afterward.
+
+[          ] R03 DVR visual regression (only with an authorized active item)
+If an already permitted recording is available, open controls and check that
+Rewind and Forward chevrons sit centered in their round buttons. Pause/Back
+and ordinary playback should still work. SKIP if there is no suitable item;
+do not create another server recording under an earlier fixture approval.
+
+[          ] R04 Account and state
+Check the saved account and a previously saved VOD browsing choice remain
+intact after a search-to-detail detour. Direct Xtream/M3U connections should
+indicate the shared Dispatcharr search is unavailable rather than scanning
+categories. No provider or existing recording should be altered.
+
+Failure ID / sanitized steps / observed behavior: __________________________
+SKIP reason (if applicable): _______________________________________________

@@ -1,6 +1,4 @@
 sub main()
-    if not dispatcharrHlsAvailable(410) then stop
-    if dispatcharrHlsAvailable(404) or dispatcharrHlsAvailable(403) or dispatcharrHlsAvailable(0) then stop
     for each status in [401, 403, 503]
         m.rejectedStatus = status
         m.calls = 0
@@ -68,11 +66,6 @@ function requestPages(path as string) as dynamic
     if m.passwordMode = true and instr(1, path, "/channels/groups/") > 0 then return []
     m.failure = "Profiles unavailable."
     return invalid
-end function
-
-function httpTransferOnce(url as string, body as dynamic, bearer as string, timeoutMs as integer, maxBytes as integer, method = "GET" as string) as object
-    if instr(1, url, "/proxy/hls/aeriotv-roku-capability-probe/index.m3u8") = 0 then stop
-    return {status: 404}
 end function
 
 function metadataCacheDigest(value as string) as string

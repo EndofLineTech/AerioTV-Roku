@@ -107,4 +107,5 @@ if __name__ == '__main__':
     print('Generated original navigation and transport glyphs.')
     (root / 'ui-focus-pill.png').write_bytes(pill_png())
     (root / 'ui-focus-row.png').write_bytes(pill_png(1204, 68, 14))
+    (root / 'ui-settings-rail.png').write_bytes(pill_png(408, 78, 12))
     (root / 'ui-list-inset.png').write_bytes(transparent_icon_png())

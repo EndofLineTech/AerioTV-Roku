@@ -56,7 +56,7 @@ end sub
 ' Roku may reject AAC while opening the decoder, before it ever reports
 ' playing. The after-playing silence check cannot see this error. Auto may
 ' replace only this client's first failed direct attempt with one existing
-' copy-video/AAC profile; Direct mode and direct providers stay untouched.
+' copy-video/AC3 (or AAC) profile; Direct mode and direct providers stay untouched.
 function retryUnsupportedAacDecode(code as integer, detail as string) as boolean
     if not isUnsupportedAacStream(code, detail) then return false
     if m.devicePreferences.audioMode <> "auto" or preferredAutoAudioProfile(m.aacProfile, m.ac3Profile) = invalid then return false

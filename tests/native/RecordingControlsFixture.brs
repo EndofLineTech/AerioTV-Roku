@@ -24,7 +24,7 @@ sub recordingControlsFixtureTick()
     m.controlsFixtureChannel = textValue(channel.id)
     if not CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(m.controlsFixtureChannel) then return
     now = uiNow()
-    m.controlsFixtureProgram = {id: "aerio-controls-" + now.toStr(), title: "AerioTV disposable controls check", startsAt: now + 30, endsAt: now + 210}
+    m.controlsFixtureProgram = {id: "aerio-controls-" + now.toStr(), title: "AerioTV disposable controls check", startsAt: now + 30, endsAt: now + 330}
     m.controlsFixtureStage = "schedule"
     recordingControlsFixtureTask("schedule", "")
 end sub

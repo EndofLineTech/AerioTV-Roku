@@ -18,3 +18,7 @@ function navigationFirst(items as object, selected as string) as integer
     end for
     return fallback
 end function
+
+function setupTransitionConsumesKey(clock as dynamic, key as string) as boolean
+    return clock <> invalid and key = "OK" and clock.totalMilliseconds() < 450
+end function
