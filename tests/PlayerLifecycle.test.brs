@@ -341,10 +341,19 @@ sub main()
     savedItem = vodNormalize({id: 301, uuid: "saved-item", name: "Saved"}, "movie")
     saveVodChange(savedItem, {watchlist: true})
     assertEqual(m.vod.savedState[0].watchlist, true, "scene saves explicit choice")
+    saveVodChange(savedItem, {favorite: true})
+    assertEqual(m.vod.savedState[0].favorite, true, "favorite persists independently of to watch")
+    m.mediaHistoryRecorded = false
+    saveVodChange(savedItem, {position: 80, duration: 900}, true)
+    assertEqual(m.vod.history.count(), 1, "playing progress records recent title")
+    assertEqual(m.mediaHistoryRecorded, true, "successful history write records session")
     replacement = vodNormalize({id: 302, uuid: "next-item", name: "Next"}, "movie")
     m.registry.failWrite = true
-    saveVodChange(replacement, {hidden: true})
+    m.mediaHistoryRecorded = false
+    saveVodChange(replacement, {hidden: true}, true)
     assertEqual(m.vod.savedState.count(), 1, "failed save restores shelf")
+    assertEqual(m.vod.history.count(), 1, "failed save restores playback history")
+    assertEqual(m.mediaHistoryRecorded, false, "failed save can retry recording")
     assertEqual(m.accountPreferences.vod.count(), 1, "failed save restores account state")
     assertEqual(m.preferenceStore.accounts[preferenceScope(m.accountIdentity)].vod.count(), 1, "failed save restores preference store")
     assertEqual(vodStateEntry(loadPreferenceStore(m.registry).accounts[preferenceScope(m.accountIdentity)].vod, savedItem).watchlist, true, "failed save preserves registry")
@@ -362,6 +371,40 @@ sub main()
     saveVodChange(replacement, {watchlist: true})
     assertEqual(m.vod.savedState.count(), 40, "full shelf cannot evict older choice")
     assertEqual(m.noticeText.text.instr(0, "Saved titles are full") >= 0, true, "visible capacity notice")
+    m.mediaHistoryRecorded = false
+    saveVodChange(replacement, {watched: true, position: 0, duration: 20}, true)
+    assertEqual(m.vod.savedState.count(), 40, "completion cannot evict curated choices")
+    assertEqual(m.vod.history[0].key, replacement.key, "completed play records history even when watched marker is full")
+    m.accountPreferences.vodRecent = []
+    m.vod.history = []
+    m.mediaPlayer = {isSameNode: function(node as object) as boolean
+        return true
+    end function}
+    m.mediaItem = savedItem
+    m.mediaIdentity = "vod-session"
+    m.mediaHistoryRecorded = false
+    m.lastVodWrite = 0
+    m.lastVodState = ""
+    onMediaProgress(vodProgressEvent({account: m.accountIdentity, identity: "vod-session", key: savedItem.key, mode: "vod", state: "buffering", position: 0, duration: 900, finished: false, closing: false}))
+    assertEqual(m.vod.history.count(), 0, "buffering cannot record recently watched")
+    onMediaProgress(vodProgressEvent({account: "other-account", identity: "vod-session", key: savedItem.key, mode: "vod", state: "playing", position: 10, duration: 900, finished: false, closing: false}))
+    assertEqual(m.vod.history.count(), 0, "another account cannot record recent title")
+    onMediaProgress(vodProgressEvent({account: m.accountIdentity, identity: "vod-session", key: savedItem.key, mode: "vod", state: "playing", position: 10, duration: 900, finished: false, closing: false}))
+    assertEqual(m.vod.history.count(), 1, "confirmed playing progress records recently watched")
+    assertEqual(m.mediaHistoryRecorded, true, "one recording per playback session")
+    m.vod.config = {accountScope: "account-one"}
+    m.vod.isSameNode = function(node as object) as boolean
+        return true
+    end function
+    m.baseUrl = "https://example.test"
+    m.serverAccountId = "1"
+    m.registry.failWrite = true
+    onVodStateChange(vodProgressEvent({scope: "account-one", clearHistory: true}))
+    assertEqual(m.vod.history.count(), 1, "failed clear restores history")
+    m.registry.failWrite = false
+    onVodStateChange(vodProgressEvent({scope: "account-one", removeHistoryKey: savedItem.key}))
+    assertEqual(m.vod.history.count(), 0, "history removal is separate from favorite and watchlist")
+    assertEqual(vodStateEntry(m.accountPreferences.vod, savedItem).favorite, true, "history removal retains curated choice")
     m.guide = {active: false, visible: false, miniActive: false, epgRequests: 0, callFunc: function(name as string) as boolean
         if name <> "beginEpgLaunch" then return false
         m.epgRequests++
@@ -428,6 +471,14 @@ sub main()
     assertEqual(m.video.content.url, "https://example.test/proxy/hls/opaque_1234567890abcdefghijklmnop/index.m3u8", "native Video reuses minted capability instead of opening another client")
     print "ALL TESTS PASSED"
 end sub
+
+function vodProgressEvent(value as object) as object
+    return {data: value, getRoSGNode: function() as object
+        return {}
+    end function, getData: function() as object
+        return m.data
+    end function}
+end function
 
 function lifecycleRetryContent(serial as integer) as object
     return {serial: serial, url: "https://example.test/live?output_profile=7", isSameNode: function(other as object) as boolean

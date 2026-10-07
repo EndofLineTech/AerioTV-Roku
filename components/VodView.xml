@@ -8,6 +8,7 @@
     <field id="exitRequested" type="boolean" alwaysNotify="true" />
     <field id="authRejected" type="boolean" alwaysNotify="true" />
     <field id="savedState" type="array" />
+    <field id="history" type="array" onChange="refreshVodHistory" />
     <field id="permissions" type="assocarray" onChange="updateLibraryTabs" />
     <field id="stateChange" type="assocarray" alwaysNotify="true" />
     <field id="bookmark" type="assocarray" alwaysNotify="true" />
@@ -31,6 +32,6 @@
   <script type="text/brightscript" uri="VodMetadata.brs" />
   <children>
     <TopNavigation id="primaryNavigation" translation="[96,20]" availableWidth="1728" selected="vod" />
-    <TopNavigation id="libraryNavigation" translation="[560,88]" allowUp="true" selected="movie" style="choice" />
+    <TopNavigation id="libraryNavigation" translation="[400,88]" availableWidth="1520" pillWidth="180" pillGap="8" labelFontSize="20" allowUp="true" selected="movie" style="choice" />
   </children>
 </component>

@@ -12,11 +12,13 @@ sub configureNavigation()
     m.top.removeChildrenIndex(m.top.getChildCount(), 0)
     m.cells = []
     start = 0
-    if m.top.availableWidth > 0 then start = uiCenteredStripX(m.items.count(), 200, 12, m.top.availableWidth)
+    width = m.top.pillWidth
+    gap = m.top.pillGap
+    if m.top.availableWidth > 0 then start = uiCenteredStripX(m.items.count(), width, gap, m.top.availableWidth)
     for i = 0 to m.items.count() - 1
-        x = start + i * 212
-        bg = uiSurface(m.top, x, 0, 200, 50, 25, "0x00000000")
-        fill = uiSurface(m.top, x + 3, 3, 194, 44, 22, "0x00000000")
+        x = start + i * (width + gap)
+        bg = uiSurface(m.top, x, 0, width, 50, 25, "0x00000000")
+        fill = uiSurface(m.top, x + 3, 3, width - 6, 44, 22, "0x00000000")
         ' Overlap the rounded caps with the center while scaling between pills.
         bg.cornerOverlap = 2
         fill.cornerOverlap = 2
@@ -25,15 +27,24 @@ sub configureNavigation()
         icon.height = 24
         iconName = m.items[i].id
         if iconName = "dvr" then iconName = "recent"
-        icon.uri = "pkg:/images/ui-icon-" + iconName + ".png"
-        label = uiLabel(m.top, m.items[i].label, 0, 0, 0, 50, uiTypeSize("button"))
-        content = uiPillContent(200, 50, label.localBoundingRect().width, 24)
+        favoriteIcon = invalid
+        if iconName = "favorite"
+            icon.visible = false
+            favoriteIcon = uiLabel(m.top, "★", 0, 0, 24, 50, m.top.labelFontSize)
+            favoriteIcon.horizAlign = "center"
+            favoriteIcon.vertAlign = "center"
+        else
+            icon.uri = "pkg:/images/ui-icon-" + iconName + ".png"
+        end if
+        label = uiLabel(m.top, m.items[i].label, 0, 0, 0, 50, m.top.labelFontSize)
+        content = uiPillContent(width, 50, label.localBoundingRect().width, 24)
         icon.translation = [x + content.iconX, content.iconY]
+        if favoriteIcon <> invalid then favoriteIcon.translation = [x + content.iconX, 0]
         label.translation = [x + content.textX, 0]
         label.width = content.textWidth
         label.horizAlign = "center"
         label.vertAlign = "center"
-        m.cells.push({bg: bg, fill: fill, label: label, icon: icon})
+        m.cells.push({bg: bg, fill: fill, label: label, icon: icon, favoriteIcon: favoriteIcon})
     end for
     m.index = navigationFirst(m.items, focused)
     drawNavigation()
@@ -66,6 +77,7 @@ sub drawNavigation()
         cell.fill.focusScale = style.scale
         uiSetColor(cell.label, style.ink)
         uiSetColor(cell.icon, style.ink, "blendColor")
+        if cell.favoriteIcon <> invalid then uiSetColor(cell.favoriteIcon, style.ink)
     end for
 end sub
 

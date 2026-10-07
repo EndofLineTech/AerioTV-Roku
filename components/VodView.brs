@@ -76,6 +76,7 @@ sub configureVod()
     m.discoveryPerson = ""
     m.items = []
     m.detail = invalid
+    m.expectedDetail = invalid
     for each tile in m.tiles
         tile.poster.uri = ""
         tile.title.text = ""
@@ -137,6 +138,10 @@ sub activateVod()
     end if
 end sub
 
+sub refreshVodHistory()
+    if m.top.active and m.top.config <> invalid and m.shelf = "recent" then loadVodPage()
+end sub
+
 sub cancelVod()
     cancelDescription()
     cancelTmdb()
@@ -187,9 +192,24 @@ sub loadVodPage(itemId = "" as string)
     end if
     m.failure = ""
     if itemId = ""
+        m.expectedDetail = invalid
+        m.targetDetailKind = ""
         m.items = []
     end if
     m.status.text = "Loading... Back cancels."
+    savedShelf = m.shelf = "continue" or m.shelf = "watchlist" or m.shelf = "favorite" or m.shelf = "recent" or m.shelf = "hidden"
+    if itemId = "" and savedShelf and textValue(m.top.config.providerType) <> "xtream"
+        m.task = CreateObject("roSGNode", "VodShelfTask")
+        m.task.baseUrl = m.top.config.baseUrl
+        m.task.apiKey = m.top.config.apiKey
+        m.task.accountId = m.top.config.accountId
+        m.task.savedState = m.top.savedState
+        m.task.history = m.top.history
+        m.task.shelf = m.shelf
+        m.task.observeField("result", "onVodLoaded")
+        m.task.control = "RUN"
+        return
+    end if
     if textValue(m.top.config.providerType) = "xtream"
         m.task = CreateObject("roSGNode", "XtreamVodTask")
         m.task.baseUrl = m.top.config.baseUrl
@@ -197,23 +217,20 @@ sub loadVodPage(itemId = "" as string)
         m.task.password = m.top.config.password
         m.task.accountScope = m.top.config.accountScope
         m.task.kind = m.kind
+        if itemId <> "" and m.targetDetailKind <> "" then m.task.kind = m.targetDetailKind
         m.task.pageNumber = m.pageNumber
         m.task.query = m.query
         m.task.category = m.category
         m.task.seriesId = m.seriesId
+        if itemId <> "" and m.expectedDetail <> invalid and m.task.kind = "episode" then m.task.seriesId = m.expectedDetail.seriesId
         m.task.itemId = itemId
         if m.shelf = "categories" then m.task.operation = "categories"
-        m.task.observeField("result", "onVodLoaded")
-        m.task.control = "RUN"
-        return
-    end if
-    if itemId = "" and (m.shelf = "continue" or m.shelf = "watchlist" or m.shelf = "hidden")
-        m.task = CreateObject("roSGNode", "VodShelfTask")
-        m.task.baseUrl = m.top.config.baseUrl
-        m.task.apiKey = m.top.config.apiKey
-        m.task.accountId = m.top.config.accountId
-        m.task.savedState = m.top.savedState
-        m.task.shelf = m.shelf
+        if itemId = "" and (m.shelf = "watchlist" or m.shelf = "favorite" or m.shelf = "recent")
+            m.task.operation = "shelf"
+            m.task.shelf = m.shelf
+            m.task.savedState = m.top.savedState
+            m.task.history = m.top.history
+        end if
         m.task.observeField("result", "onVodLoaded")
         m.task.control = "RUN"
         return
@@ -251,6 +268,7 @@ sub onVodLoaded(event as object)
     if not isCurrentTaskEvent(event, m.task) then return
     result = event.getData()
     shelfResult = m.task.subtype() = "VodShelfTask"
+    if m.task.subtype() = "XtreamVodTask" then shelfResult = m.task.operation = "shelf"
     targetResult = not shelfResult and m.task.operation = "seriesTarget"
     detail = false
     if not shelfResult then detail = m.task.itemId <> "" and m.task.operation <> "versions"
@@ -279,6 +297,7 @@ sub onVodLoaded(event as object)
         return
     end if
     if not result.ok
+        m.expectedDetail = invalid
         if m.targetDetailKind <> "" then m.pendingSeriesTarget = invalid
         m.pendingShelfNext = invalid
         m.targetDetailKind = ""
@@ -301,16 +320,31 @@ sub onVodLoaded(event as object)
         return
     end if
     if shelfResult
-        m.top.stateChange = {scope: m.top.config.accountScope, availability: result.patches}
+        if result.patches.count() > 0 then m.top.stateChange = {scope: m.top.config.accountScope, availability: result.patches}
         m.items = result.items
         m.total = m.items.count()
         m.hasNext = false
         if m.index >= m.items.count() then m.index = 0
-        if result.partial = true then m.failure = "Some completed series need explicit episode selection in TV Shows."
+        if result.partial = true
+            m.failure = "Some saved titles could not be checked. * > Refresh to retry."
+            if m.shelf = "continue" then m.failure = "Some completed series need explicit episode selection in TV Shows."
+        end if
         drawVod()
         return
     end if
     if detail
+        if m.expectedDetail <> invalid
+            sameItem = result.item <> invalid
+            if sameItem then sameItem = result.item.id = m.expectedDetail.id and result.item.key = m.expectedDetail.key and result.item.kind = m.expectedDetail.kind
+            if sameItem and m.expectedDetail.kind = "episode" then sameItem = result.item.seriesId = m.expectedDetail.seriesId
+            m.expectedDetail = invalid
+            if not sameItem
+                m.targetDetailKind = ""
+                m.failure = "Saved title identity changed. Refresh the library to retry."
+                drawVod()
+                return
+            end if
+        end if
         if m.pendingSeriesTarget <> invalid or m.pendingShelfNext <> invalid
             expected = m.pendingSeriesTarget
             if expected = invalid then expected = m.pendingShelfNext
@@ -353,7 +387,7 @@ sub onVodLoaded(event as object)
         if textValue(m.top.config.providerType) = "xtream"
             directMenu = {actions: [], buttons: []}
             for i = 0 to menu.actions.count() - 1
-                if menu.actions[i] <> "watchlist" and menu.actions[i] <> "hidden" and menu.actions[i] <> "watched"
+                if menu.actions[i] <> "hidden" and menu.actions[i] <> "watched"
                     directMenu.actions.push(menu.actions[i])
                     directMenu.buttons.push(menu.buttons[i])
                 end if
@@ -404,19 +438,27 @@ end sub
 
 sub drawVod()
     if m.kind = "movie" then m.libraryNavigation.selected = "movie" else m.libraryNavigation.selected = "series"
-    if m.shelf = "continue" or m.shelf = "watchlist" or m.shelf = "hidden" or m.shelf = "categories" then m.libraryNavigation.selected = m.shelf
+    if m.shelf = "continue" or m.shelf = "watchlist" or m.shelf = "favorite" or m.shelf = "recent" or m.shelf = "hidden" or m.shelf = "categories" then m.libraryNavigation.selected = m.shelf
     m.heading.text = "Movies"
     if m.kind = "series" then m.heading.text = "TV Shows"
     if m.kind = "episode" then m.heading.text = "Episodes"
     if m.shelf <> "catalog" then m.heading.text = "Library — " + m.shelf
     if m.shelf = "continue" then m.heading.text = "Continue Watching"
-    if m.shelf = "watchlist" then m.heading.text = "Watchlist"
+    if m.shelf = "watchlist" then m.heading.text = "To Watch"
+    if m.shelf = "favorite" then m.heading.text = "Favorites"
+    if m.shelf = "recent" then m.heading.text = "Recently Watched"
     if m.shelf = "hidden" then m.heading.text = "Hidden titles"
     if m.shelf = "categories" then m.heading.text = "Categories"
+    headingSize = 38
+    if m.shelf = "recent" or m.shelf = "continue" then headingSize = 28
+    uiSetFont(m.heading, headingSize, "font")
     if m.task = invalid and m.tmdbTask = invalid
         m.status.text = "Page " + m.pageNumber.toStr() + "  |  " + m.items.count().toStr() + " titles loaded"
         if m.total <> invalid then m.status.text += " of " + m.total.toStr()
         if m.items.count() = 0 then m.status.text = "No available titles match this account and search."
+        if m.items.count() = 0 and m.shelf = "recent" then m.status.text = "No recently played titles are available for this account."
+        if m.items.count() = 0 and m.shelf = "watchlist" then m.status.text = "Nothing in To Watch yet. Add a movie or TV show from its details."
+        if m.items.count() = 0 and m.shelf = "favorite" then m.status.text = "No favorites yet. Add a movie or TV show from its details."
         if m.items.count() = 0 and m.hasNext = true then m.status.text = "Nothing visible on this page. FF loads the next page."
         if m.query <> "" then m.status.text += "  |  Search: " + m.query
         if m.category <> "" and m.shelf = "catalog" then m.status.text += "  |  " + m.category
@@ -501,7 +543,7 @@ sub drawVod()
             tile.title.text = item.title
             tile.fact.text = item.year + "  " + item.rating
             if item.kind = "episode" then tile.fact.text = "S" + item.season + " E" + item.episode
-            if m.shelf = "continue" and item.kind = "episode" and textValue(item.seriesTitle) <> "" then tile.title.text = item.seriesTitle + " — " + item.title
+            if (m.shelf = "continue" or m.shelf = "recent") and item.kind = "episode" and textValue(item.seriesTitle) <> "" then tile.title.text = item.seriesTitle + " — " + item.title
             uri = vodArtworkUrl(m.top.config.baseUrl, item)
             if textValue(m.top.config.providerType) = "xtream" then uri = ""
             if not placement.visible or compact then uri = ""
@@ -599,7 +641,7 @@ sub onVodDetailAction(event as object)
         return
     end if
     entry = vodStateEntry(m.top.savedState, m.detail)
-    if action = "watchlist" or action = "hidden" or action = "watched"
+    if action = "watchlist" or action = "favorite" or action = "hidden" or action = "watched"
         patch = {}
         patch[action] = not entry[action]
         if action = "watched" then patch.position = 0
@@ -753,46 +795,40 @@ end sub
 sub openVodOptions(advanced = false as boolean)
     dialog = CreateObject("roSGNode", "Dialog")
     dialog.title = "Library options"
-    if textValue(m.top.config.providerType) = "xtream"
-        labels = []
-        m.optionCodes = []
-        if m.top.permissions.movies = "allowed" then labels.push("Movies") : m.optionCodes.push(1)
-        if m.top.permissions.series = "allowed" then labels.push("TV Shows") : m.optionCodes.push(2)
-        labels.append(["Categories", "Search this category", "Refresh", "Close"])
-        m.optionCodes.append([8, 0, 4, 10])
-        dialog.buttons = labels
-        dialog.observeField("buttonSelected", "onVodOption")
-        dialog.observeField("wasClosed", "onVodDialogClosed")
-        m.dialog = dialog
-        m.top.getScene().dialog = dialog
-        return
-    end if
     labels = ["Search"]
+    if textValue(m.top.config.providerType) = "xtream" then labels = ["Search this category"]
     m.optionCodes = [0]
     permissions = m.top.permissions
     if type(permissions) = "roAssociativeArray"
         if permissions.movies = "allowed" then labels.push("Movies") : m.optionCodes.push(1)
         if permissions.series = "allowed" then labels.push("TV Shows") : m.optionCodes.push(2)
     end if
-    for each choice in vodCatalogSortChoices(m.ordering, m.shelf, m.kind)
-        labels.push("Sort: " + choice.title)
-        if choice.value = "name" then m.optionCodes.push(14)
-        if choice.value = "-created_at" then m.optionCodes.push(15)
-        if choice.value = "-year" then m.optionCodes.push(16)
-    end for
-    labels.append(["Refresh", "Continue Watching", "Watchlist", "Hidden titles", "Categories", "Reset hidden list", "Close"])
-    m.optionCodes.append([4, 5, 6, 7, 8, 9, 10])
+    if textValue(m.top.config.providerType) <> "xtream"
+        for each choice in vodCatalogSortChoices(m.ordering, m.shelf, m.kind)
+            labels.push("Sort: " + choice.title)
+            if choice.value = "name" then m.optionCodes.push(14)
+            if choice.value = "-created_at" then m.optionCodes.push(15)
+            if choice.value = "-year" then m.optionCodes.push(16)
+        end for
+    end if
+    labels.append(["Refresh", "Recently Watched", "To Watch", "Favorites", "Categories", "Close"])
+    m.optionCodes.append([4, 20, 6, 21, 8, 10])
+    if textValue(m.top.config.providerType) <> "xtream"
+        labels.append(["Continue Watching", "Hidden titles", "Reset hidden list"])
+        m.optionCodes.append([5, 7, 9])
+    end if
     if type(permissions) = "roAssociativeArray"
-        if permissions.level >= 10
+        if permissions.level >= 10 and textValue(m.top.config.providerType) <> "xtream"
             labels.push("Filter by provider") : m.optionCodes.push(12)
             if m.items.count() > 0 and (m.kind = "movie" or m.kind = "episode") and m.shelf <> "versions" and m.shelf <> "categories" and m.shelf <> "providers"
                 labels.push("Choose source for selected title") : m.optionCodes.push(13)
             end if
         end if
     end if
-    if m.shelf = "continue" or m.shelf = "watchlist" or m.shelf = "hidden"
+    if m.shelf = "continue" or m.shelf = "watchlist" or m.shelf = "favorite" or m.shelf = "recent" or m.shelf = "hidden"
         labels.push("Remove selected saved entry") : m.optionCodes.push(11)
     end if
+    if m.shelf = "recent" then labels.push("Clear Recently Watched") : m.optionCodes.push(19)
     filtered = []
     codes = []
     if advanced
@@ -801,7 +837,7 @@ sub openVodOptions(advanced = false as boolean)
     end if
     for i = 0 to labels.count() - 1
         code = m.optionCodes[i]
-        common = code = 0 or code = 1 or code = 2 or code = 4 or code = 5 or code = 6 or code = 7 or code = 8
+        common = code = 0 or code = 1 or code = 2 or code = 4 or code = 5 or code = 6 or code = 7 or code = 8 or code = 20 or code = 21
         if common <> advanced and code <> 10
             filtered.push(labels[i])
             codes.push(code)
@@ -864,10 +900,12 @@ sub onVodOption(event as object)
         if choice = 14 then m.ordering = "name"
         if choice = 15 then m.ordering = "-created_at"
         if choice = 16 then m.ordering = "-year"
-    else if choice = 5 or choice = 6 or choice = 7
+    else if choice = 5 or choice = 6 or choice = 7 or choice = 20 or choice = 21
         if choice = 5 then m.shelf = "continue"
         if choice = 6 then m.shelf = "watchlist"
         if choice = 7 then m.shelf = "hidden"
+        if choice = 20 then m.shelf = "recent"
+        if choice = 21 then m.shelf = "favorite"
     else if choice = 8
         m.shelf = "categories"
         m.query = ""
@@ -876,7 +914,27 @@ sub onVodOption(event as object)
         m.top.stateChange = {scope: m.top.config.accountScope, clearHidden: true}
         m.shelf = "catalog"
     else if choice = 11
-        if m.items.count() > 0 then m.top.stateChange = {scope: m.top.config.accountScope, removeKey: m.items[m.index].key}
+        if m.items.count() > 0
+            item = m.items[m.index]
+            if m.shelf = "recent"
+                m.top.stateChange = {scope: m.top.config.accountScope, removeHistoryKey: item.key}
+                m.top.history = vodHistoryRemove(m.top.history, item.key)
+                return
+            else
+                patch = {}
+                if m.shelf = "favorite" then patch.favorite = false
+                if m.shelf = "watchlist" then patch.watchlist = false
+                if m.shelf = "hidden" then patch.hidden = false
+                if m.shelf = "continue" then patch.position = 0 : patch.watched = false
+                m.top.stateChange = {scope: m.top.config.accountScope, item: item, patch: patch}
+                updated = vodStateUpdate(m.top.savedState, item, patch)
+                if updated <> invalid then m.top.savedState = updated
+            end if
+        end if
+    else if choice = 19
+        m.top.stateChange = {scope: m.top.config.accountScope, clearHistory: true}
+        m.top.history = []
+        return
     else if choice = 12
         m.shelf = "providers"
         m.query = ""
@@ -1002,6 +1060,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
         else
             if m.shelf <> "catalog"
                 m.targetDetailKind = m.items[m.index].kind
+                if m.shelf = "continue" or m.shelf = "recent" or m.shelf = "watchlist" or m.shelf = "favorite" or m.shelf = "hidden"
+                    chosen = m.items[m.index]
+                    m.expectedDetail = {id: chosen.id, key: chosen.key, kind: chosen.kind, seriesId: textValue(chosen.seriesId)}
+                end if
                 m.pendingShelfNext = invalid
                 if m.items[m.index].nextUp = true then m.pendingShelfNext = {key: m.items[m.index].key, seriesId: m.items[m.index].seriesId}
             end if
@@ -1046,9 +1108,9 @@ sub updateLibraryTabs()
     end if
     primary = [{id: "live", label: "Live TV", enabled: true}, {id: "vod", label: "VOD", enabled: movies or series}]
     libraries = [{id: "movie", label: "Movies", enabled: movies}, {id: "series", label: "TV Shows", enabled: series}]
-    destinations = [{id: "continue", label: "Continue"}, {id: "watchlist", label: "Watchlist"}, {id: "hidden", label: "Hidden"}, {id: "categories", label: "Categories"}]
+    destinations = [{id: "continue", label: "Continue"}, {id: "recent", label: "Recent"}, {id: "watchlist", label: "To Watch"}, {id: "favorite", label: "Favorites"}, {id: "hidden", label: "Hidden"}, {id: "categories", label: "Categories"}]
     if m.top.config <> invalid
-        if textValue(m.top.config.providerType) = "xtream" then destinations = [{id: "categories", label: "Categories"}]
+        if textValue(m.top.config.providerType) = "xtream" then destinations = [{id: "recent", label: "Recent"}, {id: "watchlist", label: "To Watch"}, {id: "favorite", label: "Favorites"}, {id: "categories", label: "Categories"}]
     end if
     for each destination in destinations
         destination.enabled = movies or series
@@ -1068,7 +1130,7 @@ end sub
 
 sub onLibraryTabSelection(event as object)
     selected = event.getData()
-    if selected = "continue" or selected = "watchlist" or selected = "hidden" or selected = "categories"
+    if selected = "continue" or selected = "recent" or selected = "watchlist" or selected = "favorite" or selected = "hidden" or selected = "categories"
         saveLibraryBookmark()
         dismissVodDialog()
         m.shelf = selected

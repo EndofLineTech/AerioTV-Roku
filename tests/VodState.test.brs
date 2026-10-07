@@ -58,6 +58,13 @@ sub main()
     if vodShelfEntries(state, "continue", {movies: "allowed", series: "allowed", authorization: "changed"}).count() <> 0 then stop
     if vodShelfEntries(state, "continue", {movies: "allowed", series: "allowed", authorization: "current"}).count() <> 1 then stop
     if vodShelfEntries(state, "continue", {movies: "denied", series: "allowed", authorization: "current"}).count() <> 0 then stop
+    longScope = "https://example.test|xc-012345678901234567890123|connection-012345678901234567890123456789"
+    item.authorization = longScope
+    scopedState = vodStateUpdate([], item, {watchlist: true})
+    if vodShelfEntries(scopedState, "watchlist", {movies: "allowed", series: "allowed", authorization: longScope}).count() <> 0 then stop ' truncated legacy scope cannot authorize a saved item
+    item.authorization = "012345678901234567890123456789012345678901234567890123456789abcd"
+    scopedState = vodStateUpdate(scopedState, item, {watchlist: true})
+    if vodShelfEntries(scopedState, "watchlist", {movies: "allowed", series: "allowed", authorization: item.authorization}).count() <> 1 then stop
     item.streamFormat = "mkv"
     item.duration = 10
     if vodDetailMenu(item, state[0]).actions[0] <> "resume" then stop
@@ -67,7 +74,7 @@ sub main()
     if menu.actions[menu.actions.count() - 1] <> "back" then stop
     item.kind = "series"
     menu = vodDetailMenu(item, state[0])
-    if menu.actions[0] <> "episodes" or menu.buttons.count() <> 5 then stop
+    if menu.actions[0] <> "episodes" or menu.buttons.count() <> 6 then stop
     item = vodNormalize({id: 8, uuid: "source-test", name: "Source test"}, "movie")
     state = vodStateUpdate(state, item, {relationId: "42"})
     if vodStateEntry(state, item).relationId <> "42" then stop
@@ -78,5 +85,37 @@ sub main()
     if not updated[0].watchlist or updated[0].position <> 100 or updated[0].availability <> "missing" then stop
     if vodShelfEntries(updated, "continue", {authorization: "new", movies: "allowed", series: "allowed"}).count() <> 0 then stop
     if vodApplyAvailability([], [{key: item.key, availability: "available"}]).count() <> 0 then stop
+    movie = vodNormalize({id: 88, uuid: "fav-only", name: "A favorite"}, "movie")
+    favorites = vodStateUpdate([], movie, {favorite: true})
+    if favorites.count() <> 1 or not favorites[0].favorite or favorites[0].watchlist then stop
+    if vodShelfEntries(favorites, "favorite", {movies: "allowed", series: "allowed", authorization: "current"}).count() <> 0 then stop
+    movie.authorization = "current"
+    favorites = vodStateUpdate([], movie, {favorite: true, watchlist: true})
+    if vodShelfEntries(favorites, "favorite", {movies: "allowed", series: "allowed", authorization: "current"}).count() <> 1 then stop
+    favorites = vodStateUpdate(favorites, movie, {watchlist: false})
+    if favorites.count() <> 1 or not favorites[0].favorite or favorites[0].watchlist then stop
+    favorites = vodStateUpdate(favorites, movie, {favorite: false})
+    if favorites[0].favorite or favorites[0].watchlist then stop
+    if vodState([{id: 88, uuid: "fav-only", kind: "movie", title: "Legacy", watchlist: true}])[0].favorite then stop
+    pinnedFavorites = []
+    for i = 1 to 40
+        favoriteMovie = vodNormalize({id: i, uuid: "star-" + i.toStr(), name: "Starred"}, "movie")
+        pinnedFavorites = vodStateUpdate(pinnedFavorites, favoriteMovie, {favorite: true})
+    end for
+    if pinnedFavorites.count() <> 40 or vodStateUpdate(pinnedFavorites, movie, {favorite: true}) <> invalid then stop
+
+    history = []
+    for i = 1 to 22
+        played = vodNormalize({id: i, uuid: "played-" + i.toStr(), name: "Played"}, "movie")
+        history = vodHistoryRecord(history, played)
+    end for
+    if history.count() <> 20 or history[0].id <> "22" or history[19].id <> "3" then stop
+    history = vodHistoryRecord(history, vodNormalize({id: 5, uuid: "played-5", name: "Again"}, "movie"))
+    if history.count() <> 20 or history[0].title <> "Again" or history[0].id <> "5" then stop
+    history = vodHistoryRemove(history, history[0].key)
+    if history.count() <> 19 or history[0].id <> "22" then stop
+    episode = vodNormalize({id: 90, uuid: "xc-episode-90", name: "Episode", series: {id: 12}}, "episode")
+    history = vodHistoryRecord(history, episode)
+    if history[0].seriesId <> "12" or vodHistoryRecord(history, {id: "bad", kind: "movie"}).count() <> history.count() then stop
     print "ALL TESTS PASSED"
 end sub

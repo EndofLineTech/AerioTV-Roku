@@ -12,6 +12,9 @@
     <field id="query" type="string" />
     <field id="seriesId" type="string" />
     <field id="itemId" type="string" />
+    <field id="shelf" type="string" />
+    <field id="savedState" type="array" />
+    <field id="history" type="array" />
     <field id="cancelRequested" type="boolean" />
     <field id="result" type="assocarray" alwaysNotify="true" />
   </interface>
@@ -19,6 +22,9 @@
   <script type="text/brightscript" uri="pkg:/source/XtreamModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/XtreamVodModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/VodModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/VodState.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />

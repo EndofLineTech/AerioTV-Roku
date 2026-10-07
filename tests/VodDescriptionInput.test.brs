@@ -30,6 +30,15 @@ sub main()
     m.fromUnifiedSearch = false
     saveLibraryBookmark()
     if m.top.bookmark.query <> "blue" then stop ' normal library browsing still persists
+    m.primaryNavigation = {items: []}
+    m.libraryNavigation = {items: []}
+    m.top = {config: {providerType: "xtream"}, permissions: {movies: "allowed", series: "allowed"}}
+    updateLibraryTabs()
+    if m.libraryNavigation.items.count() <> 6 then stop
+    if m.libraryNavigation.items[2].id <> "recent" or m.libraryNavigation.items[3].id <> "watchlist" or m.libraryNavigation.items[4].id <> "favorite" then stop
+    m.top.config.providerType = "dispatcharr"
+    updateLibraryTabs()
+    if m.libraryNavigation.items.count() <> 8 or m.libraryNavigation.items[2].id <> "continue" then stop
     print "ALL TESTS PASSED"
 end sub
 

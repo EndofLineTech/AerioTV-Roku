@@ -27,7 +27,7 @@ for (const suite of suites) {
     'source/VideoGeometry.brs',
     'source/GuideSettingsModel.brs',
     'source/ReminderModel.brs',
-    ...(['TmdbTask', 'VodShelfTask', 'VodSeriesTask', 'XtreamTask', 'ConnectionAuthTask'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
+    ...(['TmdbTask', 'VodShelfTask', 'VodSeriesTask', 'XtreamTask', 'XtreamVodTask', 'ConnectionAuthTask'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
     'source/HttpPolicy.brs',
     ...(suite === 'DvrRecordingModel' ? ['source/DvrRecordingModel.brs'] : []),
     ...(suite === 'DvrRecordingModel' ? ['source/DvrSeriesModel.brs'] : []),

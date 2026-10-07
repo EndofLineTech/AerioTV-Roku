@@ -5,6 +5,7 @@
     <field id="apiKey" type="string" />
     <field id="accountId" type="string" />
     <field id="savedState" type="array" />
+    <field id="history" type="array" />
     <field id="shelf" type="string" />
     <field id="cancelRequested" type="boolean" />
     <field id="result" type="assocarray" alwaysNotify="true" />

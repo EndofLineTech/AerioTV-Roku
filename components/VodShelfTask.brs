@@ -20,6 +20,10 @@ sub loadShelf()
     if type(props) <> "roAssociativeArray" then props = {}
     auth = metadataCacheDigest(FormatJson({account: cap.accountId, level: cap.level, movies: cap.movies, series: cap.series, hideAdult: props.hide_adult_content}))
     state = vodState(m.top.savedState)
+    if m.top.shelf = "recent"
+        loadRecentShelf(state, cap, auth)
+        return
+    end if
     latestSeries = {}
     if m.top.shelf = "continue"
         for each entry in state
@@ -37,6 +41,7 @@ sub loadShelf()
         selected = false
         if m.top.shelf = "hidden" then selected = entry.hidden
         if m.top.shelf = "watchlist" then selected = entry.watchlist and not vodItemHidden(state, entry)
+        if m.top.shelf = "favorite" then selected = entry.favorite and (entry.kind = "movie" or entry.kind = "series") and not vodItemHidden(state, entry)
         if m.top.shelf = "continue" then selected = vodResumePosition(entry, entry.duration) > 0 and not vodItemHidden(state, entry)
         if selected
             allowed = cap.movies = "allowed"
@@ -133,6 +138,41 @@ sub loadShelf()
     publishShelf({ok: true, items: visible, total: visible.count(), next: "", patches: patches, authorization: auth, movies: cap.movies, series: cap.series, checked: checked, partial: partial})
 end sub
 
+sub loadRecentShelf(state as object, cap as object, auth as string)
+    items = []
+    partial = false
+    for each entry in vodHistory(m.top.history)
+        if m.top.cancelRequested then exit for
+        if m.clock.totalMilliseconds() >= 27000
+            partial = true
+            exit for
+        end if
+        allowed = cap.movies = "allowed"
+        if entry.kind = "episode" then allowed = cap.series = "allowed"
+        if allowed and not vodItemHidden(state, entry)
+            m.httpFailure = invalid
+            raw = requestJson(m.base + "/api/vod/" + vodKindPath(entry.kind) + "/" + entry.id + "/")
+            item = vodNormalize(raw, entry.kind)
+            if item <> invalid
+                if item.key = entry.key and item.id = entry.id and (entry.kind <> "episode" or item.seriesId = entry.seriesId)
+                    item.accountScope = m.base + "|" + cap.accountId
+                    item.authorization = auth
+                    items.push(item)
+                end if
+            else
+                status = 0
+                if type(m.httpFailure) = "roAssociativeArray" then status = m.httpFailure.status
+                if status = 401
+                    publishShelf({ok: false, message: "Account verification expired. Reconnect and retry."})
+                    return
+                end if
+                if status <> 404 and status <> 403 then partial = true
+            end if
+        end if
+    end for
+    publishShelf({ok: true, items: items, total: items.count(), next: "", patches: [], partial: partial})
+end sub
+
 function vodShelfNextForSeries(entry as object, state as object, auth as string, accountId as string) as dynamic
     if entry.authorization <> auth or entry.availability = "denied" or entry.availability = "missing" then return invalid
     anchor = vodNormalize(requestJson(m.base + "/api/vod/episodes/" + entry.id + "/"), "episode")
@@ -156,6 +196,7 @@ sub publishShelf(result as object)
     m.key = ""
     m.top.apiKey = ""
     m.top.savedState = invalid
+    m.top.history = invalid
     if m.top.cancelRequested then return
     m.top.result = result
 end sub

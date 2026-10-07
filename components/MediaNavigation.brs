@@ -31,6 +31,7 @@ sub openVodLibrary(kind as string)
     m.screen.visible = false
     m.page = "library"
     m.vod.savedState = vodState(m.accountPreferences.vod)
+    m.vod.history = vodHistory(m.accountPreferences.vodRecent)
     bookmark = invalid
     if type(m.accountPreferences.vodBrowse) = "roAssociativeArray" then bookmark = m.accountPreferences.vodBrowse[kind]
     connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
@@ -161,6 +162,7 @@ sub onVodPlay(event as object)
     m.mediaIdentity = identity
     m.lastVodWrite = 0
     m.lastVodState = ""
+    m.mediaHistoryRecorded = false
     m.vod.active = false
     m.page = "onDemand"
     providerType = "dispatcharr"
@@ -406,6 +408,7 @@ sub resetMediaNavigation()
     m.vod.active = false
     m.vod.config = invalid
     m.vod.savedState = []
+    m.vod.history = []
 end sub
 
 sub onMediaProgress(event as object)
@@ -426,7 +429,8 @@ sub onMediaProgress(event as object)
         finished = progress.finished or progress.position >= progress.duration * 0.95
         position = int(progress.position)
         if finished then position = 0
-        saveVodChange(m.mediaItem, {position: position, duration: int(progress.duration), watched: finished})
+        played = not m.mediaHistoryRecorded and (progress.state = "playing" and progress.position > 0 or progress.finished)
+        saveVodChange(m.mediaItem, {position: position, duration: int(progress.duration), watched: finished}, played)
         return
     end if
     if progress.mode = "catchup" and m.archiveSession <> invalid
@@ -554,6 +558,17 @@ sub onVodStateChange(event as object)
     scope = normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId
     if m.vod.config <> invalid then scope = textValue(m.vod.config.accountScope)
     if textValue(change.scope) <> scope then return
+    if change.clearHistory = true or textValue(change.removeHistoryKey) <> ""
+        before = m.accountPreferences.vodRecent
+        if change.clearHistory = true then m.accountPreferences.vodRecent = [] else m.accountPreferences.vodRecent = vodHistoryRemove(before, change.removeHistoryKey)
+        if not persistAccountPreferences()
+            m.accountPreferences.vodRecent = before
+            m.preferenceStore.accounts[preferenceScope(m.accountIdentity)] = m.accountPreferences
+            showNotice("Recently Watched could not be saved. Retry from Library options.")
+        end if
+        m.vod.history = vodHistory(m.accountPreferences.vodRecent)
+        return
+    end if
     if type(change.availability) = "roArray"
         before = m.accountPreferences.vod
         m.accountPreferences.vod = vodApplyAvailability(before, change.availability)
@@ -595,21 +610,39 @@ sub onVodStateChange(event as object)
     saveVodChange(change.item, change.patch)
 end sub
 
-sub saveVodChange(item as object, patch as object)
+sub saveVodChange(item as object, patch as object, played = false as boolean)
     before = m.accountPreferences.vod
+    beforeHistory = m.accountPreferences.vodRecent
     updated = vodStateUpdate(before, item, patch)
     if updated = invalid
-        showNotice("Saved titles are full (40). Remove a Watchlist, Hidden or Watched choice before adding another.")
+        notice = "Saved titles are full (40). Remove a To Watch, Favorite, Hidden or Watched choice before adding another."
+        if played
+            m.accountPreferences.vodRecent = vodHistoryRecord(beforeHistory, item)
+            if persistAccountPreferences()
+                m.mediaHistoryRecorded = true
+            else
+                m.accountPreferences.vodRecent = beforeHistory
+                m.preferenceStore.accounts[preferenceScope(m.accountIdentity)] = m.accountPreferences
+                notice += " Recently Watched could not be saved."
+            end if
+            m.vod.history = vodHistory(m.accountPreferences.vodRecent)
+        end if
+        showNotice(notice)
         m.vod.savedState = vodState(before)
         return
     end if
     m.accountPreferences.vod = updated
+    if played then m.accountPreferences.vodRecent = vodHistoryRecord(beforeHistory, item)
     if not persistAccountPreferences()
         m.accountPreferences.vod = before
+        m.accountPreferences.vodRecent = beforeHistory
         m.preferenceStore.accounts[preferenceScope(m.accountIdentity)] = m.accountPreferences
         showNotice("VOD state could not be saved. Existing preferences were retained.")
+    else if played
+        m.mediaHistoryRecorded = true
     end if
     m.vod.savedState = vodState(m.accountPreferences.vod)
+    m.vod.history = vodHistory(m.accountPreferences.vodRecent)
 end sub
 
 sub onMediaDiagnostic(event as object)

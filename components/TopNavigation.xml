@@ -3,6 +3,9 @@
   <interface>
     <function name="configureNavigation" />
     <field id="availableWidth" type="float" value="0" />
+    <field id="pillWidth" type="float" value="200" />
+    <field id="pillGap" type="float" value="12" />
+    <field id="labelFontSize" type="integer" value="24" />
     <field id="style" type="string" value="primary" />
     <field id="items" type="array" onChange="configureNavigation" />
     <field id="selected" type="string" onChange="drawNavigation" />

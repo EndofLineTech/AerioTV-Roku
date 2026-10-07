@@ -28,6 +28,20 @@ sub main()
     m.status = 404
     loadShelf()
     if m.top.result.items.count() <> 0 then stop
+    resetShelfTest()
+    m.top.shelf = "recent"
+    m.top.savedState = []
+    m.top.history = [{id: 1, uuid: "movie-uuid", kind: "movie", title: "Played"}]
+    m.raw.uuid = "different-identity"
+    loadShelf()
+    if m.top.result.items.count() <> 0 then stop
+    resetShelfTest()
+    m.top.shelf = "recent"
+    m.top.savedState = []
+    m.top.history = [{id: 1, uuid: "movie-uuid", kind: "movie", title: "Played"}]
+    m.status = 500
+    loadShelf()
+    if m.top.result.items.count() <> 0 or not m.top.result.partial then stop
 
     resetShelfTest()
     m.status = 500
@@ -85,6 +99,28 @@ sub main()
     loadShelf()
     if m.top.result.items.count() <> 1 or m.top.result.items[0].uuid <> "episode-2" then stop
     if m.top.result.items[0].nextUp <> true or m.top.result.items[0].savedPosition <> 100 then stop
+    resetShelfTest()
+    m.top.shelf = "favorite"
+    m.top.savedState[0].favorite = true
+    m.top.savedState[0].watchlist = false
+    loadShelf()
+    if not m.top.result.ok or m.top.result.items.count() <> 1 then stop
+
+    resetShelfTest()
+    m.top.shelf = "recent"
+    m.top.savedState = []
+    m.top.history = [{id: 1, uuid: "movie-uuid", kind: "movie", title: "Played"}]
+    loadShelf()
+    if not m.top.result.ok or m.top.result.items.count() <> 1 then stop
+    if m.top.result.items[0].title <> "Fresh title" then stop
+
+    resetShelfTest()
+    m.top.shelf = "recent"
+    m.top.savedState = []
+    m.top.history = [{id: 1, uuid: "movie-uuid", kind: "movie", title: "Played"}]
+    m.status = 404
+    loadShelf()
+    if m.top.result.items.count() <> 0 then stop
     print "ALL TESTS PASSED"
 end sub
 

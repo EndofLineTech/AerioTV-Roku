@@ -19,13 +19,14 @@ function vodState(raw as dynamic) as object
                     if mediaNumber(row.touch) then touch = int(row.touch)
                     if touch < 0 or touch > 999999999 then touch = 0
                     item.watchlist = row.watchlist = true
+                    item.favorite = row.favorite = true
                     item.hidden = row.hidden = true
                     item.watched = row.watched = true
                     relation = textValue(row.relationId)
                     if not CreateObject("roRegex", "^[0-9]+$", "").isMatch(relation) then relation = ""
                     availability = textValue(row.availability)
                     if availability <> "missing" and availability <> "denied" and availability <> "available" then availability = "unknown"
-                    entry = {id: item.id, uuid: item.uuid, key: item.key, kind: item.kind, title: left(item.title, 120), position: item.position, duration: item.duration, touch: touch, watchlist: item.watchlist, hidden: item.hidden, watched: item.watched, seriesId: left(textValue(row.seriesId), 20), seriesTitle: left(textValue(row.seriesTitle), 120), authorization: left(textValue(row.authorization), 64), relationId: relation, availability: availability}
+                    entry = {id: item.id, uuid: item.uuid, key: item.key, kind: item.kind, title: left(item.title, 120), position: item.position, duration: item.duration, touch: touch, watchlist: item.watchlist, favorite: item.favorite, hidden: item.hidden, watched: item.watched, seriesId: left(textValue(row.seriesId), 20), seriesTitle: left(textValue(row.seriesTitle), 120), authorization: left(textValue(row.authorization), 64), relationId: relation, availability: availability}
                     seen[item.key] = true
                     if vodStatePinned(entry)
                         if curated.count() < 40 then curated.push(entry)
@@ -44,7 +45,7 @@ function vodState(raw as dynamic) as object
 end function
 
 function vodStatePinned(entry as object) as boolean
-    return entry.watchlist or entry.hidden or entry.watched
+    return entry.watchlist or entry.favorite or entry.hidden or entry.watched
 end function
 
 function vodStateEntry(raw as dynamic, item as object) as object
@@ -55,7 +56,7 @@ function vodStateEntry(raw as dynamic, item as object) as object
             return entry
         end if
     end for
-    return {id: item.id, uuid: item.uuid, key: item.key, kind: item.kind, title: left(item.title, 120), position: 0, duration: 0, touch: 0, watchlist: false, hidden: false, watched: false, seriesId: textValue(item.seriesId), authorization: textValue(item.authorization)}
+    return {id: item.id, uuid: item.uuid, key: item.key, kind: item.kind, title: left(item.title, 120), position: 0, duration: 0, touch: 0, watchlist: false, favorite: false, hidden: false, watched: false, seriesId: textValue(item.seriesId), authorization: textValue(item.authorization)}
 end function
 
 function vodItemHidden(raw as dynamic, item as object) as boolean
@@ -76,6 +77,7 @@ function vodShelfEntries(raw as dynamic, shelf as string, permissions as object)
         if shelf = "hidden" then include = entry.hidden
         if not vodItemHidden(raw, entry)
             if shelf = "watchlist" then include = entry.watchlist
+            if shelf = "favorite" then include = entry.favorite and (entry.kind = "movie" or entry.kind = "series")
             if shelf = "continue" then include = vodResumePosition(entry, entry.duration) > 0
         end if
         if entry.authorization = "" or entry.authorization <> permissions.authorization then include = false
@@ -120,7 +122,7 @@ function vodStateUpdate(raw as dynamic, item as object, patch as object) as obje
     end for
     if newest >= 999999999 then newest = 0
     entry.touch = newest + 1
-    for each key in ["position", "duration", "watchlist", "hidden", "watched", "relationId"]
+    for each key in ["position", "duration", "watchlist", "favorite", "hidden", "watched", "relationId"]
         if patch.doesExist(key) then entry[key] = patch[key]
     end for
     if vodStatePinned(entry) and not wasPinned
@@ -136,6 +138,57 @@ function vodStateUpdate(raw as dynamic, item as object, patch as object) as obje
         if saved.key <> entry.key then result.push(saved)
     end for
     return vodState(result)
+end function
+
+' A playback history is separate from curated choices and resume state. Keep only
+' bounded identities; saved rows are never trusted as playable without rechecking.
+function vodHistory(raw as dynamic) as object
+    result = []
+    if type(raw) <> "roArray" then return result
+    seen = {}
+    for each row in raw
+        if type(row) = "roAssociativeArray"
+            kind = textValue(row.kind)
+            if kind = "movie" or kind = "episode"
+                item = vodNormalize({id: row.id, uuid: row.uuid, name: row.title}, kind)
+                if item <> invalid and not seen.doesExist(item.key)
+                    seriesId = textValue(row.seriesId)
+                    if not CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(seriesId) then seriesId = ""
+                    if kind = "movie" or seriesId <> ""
+                        result.push({id: item.id, uuid: item.uuid, key: item.key, kind: kind, title: left(textValue(row.title), 120), seriesId: seriesId, seriesTitle: left(textValue(row.seriesTitle), 120)})
+                        seen[item.key] = true
+                        if result.count() >= 20 then exit for
+                    end if
+                end if
+            end if
+        end if
+    end for
+    return result
+end function
+
+function vodHistoryRecord(raw as dynamic, item as object) as object
+    prior = vodHistory(raw)
+    if type(item) <> "roAssociativeArray" then return prior
+    kind = textValue(item.kind)
+    if kind <> "movie" and kind <> "episode" then return prior
+    seriesId = textValue(item.seriesId)
+    if kind = "episode" and not CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(seriesId) then return prior
+    selected = vodHistory([{id: item.id, uuid: item.uuid, kind: kind, title: item.title, seriesId: seriesId, seriesTitle: textValue(item.seriesTitle)}])
+    if selected.count() = 0 then return prior
+    result = selected
+    for each entry in prior
+        if entry.key <> selected[0].key then result.push(entry)
+        if result.count() >= 20 then exit for
+    end for
+    return result
+end function
+
+function vodHistoryRemove(raw as dynamic, key as string) as object
+    result = []
+    for each entry in vodHistory(raw)
+        if entry.key <> key then result.push(entry)
+    end for
+    return result
 end function
 
 function vodResumePosition(entry as object, duration as integer) as integer
@@ -161,8 +214,13 @@ function vodDetailMenu(item as object, entry as object) as object
         buttons.unshift("Resume")
     end if
     label = "Add to watchlist"
-    if entry.watchlist then label = "Remove from watchlist"
+    if entry.watchlist then label = "Remove from To Watch" else label = "Add to To Watch"
     buttons.push(label) : actions.push("watchlist")
+    if item.kind = "movie" or item.kind = "series"
+        label = "Add to Favorites"
+        if entry.favorite then label = "Remove from Favorites"
+        buttons.push(label) : actions.push("favorite")
+    end if
     label = "Hide title"
     if entry.hidden then label = "Unhide title"
     buttons.push(label) : actions.push("hidden")
