@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="HlsSessionTask" extends="Task">
+  <interface>
+    <field id="operation" type="string" />
+    <field id="baseUrl" type="string" />
+    <field id="entryUrl" type="string" />
+    <field id="apiKey" type="string" />
+    <field id="token" type="string" />
+    <field id="cancelRequested" type="boolean" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="HlsSessionTask.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
+</component>

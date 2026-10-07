@@ -105,6 +105,11 @@ sub init()
     m.heldZapTimer.observeField("fire", "repeatHeldZap")
     m.heldZap = ""
     m.playingChannel = invalid
+    m.hlsSession = invalid
+    m.hlsMintTask = invalid
+    m.hlsMintClock = invalid
+    m.hlsPendingMints = []
+    m.hlsStopTasks = []
     m.startupWatch = invalid
     m.startupRetryCount = 0
     m.startupRetryLimit = 1
@@ -999,7 +1004,9 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     if not preserveStartupBudget then m.aacDecodeRetried = false
     if not preserveStartupBudget then m.liveRetryCount = 0
     m.liveBufferWatch = invalid
+    cancelHlsMint()
     m.video.control = "stop"
+    closeOwnedHlsSession()
     m.streamReady = false
     m.decoderKeysReported = false
     m.decoderSnapshot = {}
@@ -1055,8 +1062,13 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     ' AerioVideo forwards keys to the Scene instead of native transport actions.
     print "[playback] tuning channel "; channel.number; " requested reader="; content.streamFormat
     focusPlaybackInput()
-    beginStartupWatch(content, false, connection <> invalid and connection.provider = "dispatcharr")
-    m.video.control = "play"
+    ownedHls = content.streamFormat = "hls" and connection <> invalid and connection.provider = "dispatcharr"
+    if ownedHls
+        beginOwnedHlsPlayback(content)
+    else
+        beginStartupWatch(content, false, connection <> invalid and connection.provider = "dispatcharr")
+        m.video.control = "play"
+    end if
     m.playerClock.control = "start"
     showChannelBanner(channel, playerInfoHint())
 end sub
@@ -1138,6 +1150,7 @@ sub onPlayerClock()
         end if
     end if
     checkStartupPlayback()
+    checkHlsMint()
     checkLivePlayback()
 end sub
 
@@ -1235,6 +1248,7 @@ sub hideBanner()
 end sub
 
 sub stopPlayback()
+    cancelHlsMint()
     if m.settingsHub <> invalid then m.settingsHub.active = false
     m.startMiniAfterPlayback = false
     if m.liveSession <> invalid then mediaEnd(m.liveSession)
@@ -1267,6 +1281,7 @@ sub stopPlayback()
     m.decoderSnapshot = {}
     m.page = "guide"
     m.video.control = "stop"
+    closeOwnedHlsSession()
     m.video.visible = false
     m.video.content = invalid
     m.bannerTimer.control = "stop"

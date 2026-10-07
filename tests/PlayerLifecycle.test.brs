@@ -392,6 +392,40 @@ sub main()
     m.guide.active = false
     minimizePlayback()
     assertEqual(m.guide.epgRequests, 1, "programmatic return does not invent an EPG keypress")
+    oldTask = {id: "old", cancelRequested: false, unobserveField: sub(field as string)
+        m.unobserved = true
+    end sub, isSameNode: function(other as object) as boolean
+        return m.id = other.id
+    end function}
+    m.hlsPendingMints = [{task: oldTask, content: m.video.content, baseUrl: "https://example.test", apiKey: "old-key"}]
+    m.hlsMintTask = oldTask
+    cancelHlsMint()
+    assertEqual(oldTask.cancelRequested, true, "retune marks pending mint for owner cleanup")
+    assertEqual(m.hlsMintTask, invalid, "cancelled mint cannot become current playback")
+    onHlsSessionOpened({node: oldTask, getRoSGNode: function() as object
+        return m.node
+    end function, getData: function() as object
+        return {ok: false, status: 200}
+    end function})
+    assertEqual(m.hlsPendingMints.count(), 0, "cancelled mint releases task reference after cleanup")
+    currentTask = {id: "current", cancelRequested: false, unobserveField: sub(field as string)
+    end sub, isSameNode: function(other as object) as boolean
+        return m.id = other.id
+    end function}
+    m.video.content = lifecycleRetryContent(10)
+    m.playingChannel = {uuid: "a"}
+    m.hlsMintTask = currentTask
+    m.hlsPendingMints = [{task: currentTask, content: m.video.content, baseUrl: "https://example.test", apiKey: "current-key"}]
+    onHlsSessionOpened({node: currentTask, getRoSGNode: function() as object
+        return m.node
+    end function, getData: function() as object
+        return {ok: true, status: 200, token: "opaque_1234567890abcdefghijklmnop", url: "https://example.test/proxy/hls/opaque_1234567890abcdefghijklmnop/index.m3u8"}
+    end function})
+    assertEqual(m.hlsMintTask, invalid, "successful mint is no longer pending")
+    assertEqual(m.hlsSession.baseUrl, "https://example.test", "owner account context retained for disconnect")
+    assertEqual(m.hlsSession.apiKey, "current-key", "owner key retained across later connection changes")
+    assertEqual(m.video.control, "play", "native player starts only after owned session is captured")
+    assertEqual(m.video.content.url, "https://example.test/proxy/hls/opaque_1234567890abcdefghijklmnop/index.m3u8", "native Video reuses minted capability instead of opening another client")
     print "ALL TESTS PASSED"
 end sub
 

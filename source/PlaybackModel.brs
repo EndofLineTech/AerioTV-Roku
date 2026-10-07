@@ -26,6 +26,29 @@ function dispatcharrLiveTransport(choice as string, hlsAvailable as dynamic) as 
     return "ts"
 end function
 
+' The entry GET follows a 302 on Roku, but GetResponseHeadersArray retains
+' the redirect headers on OS 15.3.4. Require both matching fields; never
+' manufacture a capability URL from an unverified token.
+function hlsSessionFromHeaders(baseUrl as string, headers as dynamic) as dynamic
+    if type(headers) <> "roArray" then return invalid
+    base = normalizeBaseUrl(baseUrl)
+    if base = "" then return invalid
+    token = ""
+    location = ""
+    for each row in headers
+        if type(row) = "roAssociativeArray"
+            for each name in row
+                if lcase(name) = "x-dispatcharr-session-token" then token = textValue(row[name])
+                if lcase(name) = "location" then location = textValue(row[name])
+            end for
+        end if
+    end for
+    if not CreateObject("roRegex", "^[A-Za-z0-9_-]{16,128}$", "").isMatch(token) then return invalid
+    path = "/proxy/hls/" + token + "/index.m3u8"
+    if location <> path and location <> base + path then return invalid
+    return {token: token, url: base + path}
+end function
+
 function playerChannelDirection(key as string, scheme = "apple" as string) as integer
     direction = 0
     if key = "up" then direction = 1

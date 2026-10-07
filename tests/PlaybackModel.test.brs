@@ -1,4 +1,13 @@
 sub main()
+    token = "opaque_1234567890abcdefghijklmnop"
+    path = "/proxy/hls/" + token + "/index.m3u8"
+    headers = [{"X-Dispatcharr-Session-Token": token}, {"Location": path}]
+    assertEqual(hlsSessionFromHeaders("https://tv.example.test", headers).url, "https://tv.example.test" + path, "HLS mint resolves same-server playlist")
+    assertEqual(hlsSessionFromHeaders("https://tv.example.test", headers).token, token, "HLS mint retains session owner token")
+    assertEqual(hlsSessionFromHeaders("https://tv.example.test", [{"Location": path}]), invalid, "missing token cannot own a session")
+    assertEqual(hlsSessionFromHeaders("https://tv.example.test", [{"X-Dispatcharr-Session-Token": token}, {"Location": "https://evil.example" + path}]), invalid, "never hand a capability to another host")
+    assertEqual(hlsSessionFromHeaders("https://tv.example.test", [{"X-Dispatcharr-Session-Token": token}, {"Location": "/proxy/hls/other/index.m3u8"}]), invalid, "redirect must bind the captured token")
+    assertEqual(hlsSessionFromHeaders("https://tv.example.test", [{"X-Dispatcharr-Session-Token": token}]), invalid, "missing redirect cannot be guessed")
     channel = {uuid: "abc-123", name: "Example TV"}
     content = livePlaybackDescriptor("http://tv.example.test:9191/base/", channel)
     assertEqual(content.url, "http://tv.example.test:9191/base/proxy/ts/stream/abc-123?output_format=mpegts", "use existing continuous TS output")

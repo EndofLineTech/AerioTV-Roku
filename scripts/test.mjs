@@ -61,7 +61,7 @@ for (const suite of suites) {
     ...(suite === 'GroupInput' ? ['components/GroupNavigator.brs'] : []),
     ...(['PlayerOkHold', 'PlayerLifecycle'].includes(suite) ? ['components/PlayerOptionsShortcut.brs'] : []),
     ...(['StartupRecovery', 'PlayerLifecycle'].includes(suite) ? ['components/StartupRecovery.brs'] : []),
-    ...(suite === 'PlayerLifecycle' ? ['components/LiveRecovery.brs', 'components/PlaybackFailure.brs'] : []),
+    ...(suite === 'PlayerLifecycle' ? ['components/HlsSessionLifecycle.brs', 'components/LiveRecovery.brs', 'components/PlaybackFailure.brs'] : []),
     ...(['PlayerLifecycle', 'DvrHandoff'].includes(suite) ? ['components/MediaNavigation.brs', 'components/DvrPlayback.brs'] : []),
     ...(suite === 'DvrNavigation' ? ['components/MediaNavigation.brs', 'components/DvrNavigation.brs', 'components/DvrSeriesNavigation.brs', 'components/DvrPlayback.brs'] : []),
     ...(suite === 'DvrView' ? ['components/DvrView.brs'] : []),

@@ -930,6 +930,18 @@ on an unsupported server can fail visibly; it does not silently claim HLS while
 playing TS. Native live HLS picture/audio on a confirmed server still needs
 Roku verification.
 
+For Dispatcharr live HLS, the Roku now acquires the authenticated per-client
+session before opening Video and plays the returned playlist without making a
+second entry request. On Stop, retune, sleep-timer expiry or terminal playback
+failure it stops Video and sends the owner's explicit
+`DELETE /api/proxy/hls/sessions/<token>/` (not the shared-channel Stop API).
+Cancelled entry requests clean up their own minted session. Local decoder
+retries reuse the same session and disconnect when that playback ends. The
+server's inactive-client reaper remains necessary for an abrupt Roku Home,
+power loss or unreachable server, where an in-flight DELETE cannot be guaranteed.
+This endpoint is provided by the `hls-test` branch; older servers can still use
+the verified MPEG-TS transport.
+
 The full-hour native experiment did not produce a local seekable hour. Approved
 rewind instead opens owned Dispatcharr catch-up sessions at provider timestamps,
 with bounded requests and explicit Go Live. Compatibility remains provider/device

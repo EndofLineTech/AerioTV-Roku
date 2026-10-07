@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="HlsDisconnectProbeTask" extends="Task">
+  <interface>
+    <field id="baseUrl" type="string" />
+    <field id="apiKey" type="string" />
+    <field id="channelUuid" type="string" />
+    <field id="result" type="string" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="HlsDisconnectProbeTask.brs" />
+</component>

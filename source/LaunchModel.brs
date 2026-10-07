@@ -13,7 +13,10 @@ function normalizeLaunchRequest(raw as dynamic) as dynamic
             mediaType = raw[key]
         end if
     end for
-    if mediaType <> "liveFeed" then return invalid
+    ' Roku documents livefeed, and App Behavior Analysis sends live. Both
+    ' address only a current account-authorized channel, never an arbitrary URL.
+    mediaType = lcase(mediaType)
+    if mediaType <> "livefeed" and mediaType <> "live" then return invalid
     if not CreateObject("roRegex", "^[A-Za-z0-9_-]{1,64}$", "").isMatch(id) then return invalid
     return {kind: "live", id: id}
 end function
