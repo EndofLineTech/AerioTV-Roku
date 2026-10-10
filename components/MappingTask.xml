@@ -17,5 +17,6 @@
   <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
   <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MetadataCacheStore.brs" />
+  <script type="text/brightscript" uri="MappingDetailFetch.brs" />
   <script type="text/brightscript" uri="MappingTask.brs" />
 </component>

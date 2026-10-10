@@ -2,6 +2,17 @@
 
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
+## Roku Beta Packages
+
+Always hand off a signed Beta/Store package as
+`out/release/aeriotv-roku-v<version>.pkg`, never Roku Packager's opaque
+`P<hash>.pkg` filename. After signing the exact verified versioned ZIP on the
+Roku with the existing AerioTV Dev ID, run
+`npm run beta:package -- /path/to/P<hash>.pkg`. This preserves the original
+export, creates the versioned copy, and updates its checksum files. Verify
+`out/release/SHA256SUMS-v<version>` before giving the versioned `.pkg` path to
+the owner. See `docs/NATIVE-DEVICE-WORKFLOW.md` for the full signing workflow.
+
 ## Quick Reference
 
 ```bash

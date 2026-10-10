@@ -15,6 +15,7 @@ sub initGuideLogos()
     m.guideLogoBatchReported = false
     m.guideLogoFirstRendered = false
     m.guideLogoAllRendered = false
+    m.guideLogoMissingReported = 0
     m.guideLogoDelay = m.top.createChild("Timer")
     m.guideLogoDelay.duration = 0.15
     m.guideLogoDelay.observeField("fire", "requestGuideLogos")
@@ -46,6 +47,7 @@ sub resetGuideLogos()
     m.guideLogoBatchReported = false
     m.guideLogoFirstRendered = false
     m.guideLogoAllRendered = false
+    m.guideLogoMissingReported = 0
     cleanupGuideLogoFiles()
 end sub
 
@@ -102,14 +104,21 @@ sub requestGuideLogos()
     if not m.top.active or m.guideLogoTask <> invalid then return
     ids = []
     seen = {}
+    missing = 0
     numeric = CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "")
     for each row in m.rows
         id = textValue(row.logoId)
         if row.root.visible and numeric.isMatch(id) and not m.guideLogoFiles.doesExist(id) and not m.guideLogoFailed.doesExist(id) and not seen.doesExist(id)
             ids.push(id)
             seen[id] = true
+        else if row.root.visible and not numeric.isMatch(id)
+            missing++
         end if
     end for
+    if missing > m.guideLogoMissingReported
+        m.top.metadataEvent = {ok: false, stage: "logos", source: "lineup", elapsedMs: 0, message: "Visible channels without usable logo IDs: " + missing.toStr()}
+        m.guideLogoMissingReported = missing
+    end if
     startGuideLogoBatch(ids)
 end sub
 
@@ -190,6 +199,7 @@ end sub
 sub onGuideLogoBatch(event as object)
     if not isCurrentTaskEvent(event, m.guideLogoTask) then return
     result = event.getData()
+    requested = m.guideLogoTask.ids.count()
     if m.guideLogoClock <> invalid and not m.guideLogoBatchReported
         print "[guide-logos] initial-batch-ready="; result.assets.count(); " failed="; result.failed.count(); " elapsed_ms="; m.guideLogoClock.totalMilliseconds()
         m.guideLogoBatchReported = true
@@ -203,5 +213,13 @@ sub onGuideLogoBatch(event as object)
     for each id in result.failed
         m.guideLogoFailed[id] = true
     end for
+    if result.failed.count() > 0
+        reasons = ""
+        for each reason in result.reasons
+            if reasons <> "" then reasons += ", "
+            reasons += reason
+        end for
+        m.top.metadataEvent = {ok: false, stage: "logos", source: "network", elapsedMs: 0, message: result.failed.count().toStr() + " of " + requested.toStr() + " logos failed: " + reasons}
+    end if
     scheduleGuideLogos()
 end sub

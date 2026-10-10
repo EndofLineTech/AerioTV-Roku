@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 
-const suites = ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel', 'XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'SceneUi', 'AerioSurface', 'RemoteHints', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'ConnectionStore', 'ConnectionNavigation', 'ConnectionAuthTask', 'CapabilityModel', 'ProgramSearchModel', 'GuideUnifiedSearch', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'PlayerRemoteInput', 'GuideRemoteInput', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'DvrRecordingModel', 'DvrPresentationModel', 'DvrNavigation', 'DvrView', 'GuideTaskCache', 'GuideMappingFallback', 'MappingTask', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'VodSeriesTarget', 'VodSeriesTask', 'CatchupModel', 'DiagnosticModel', 'OnDemandPlayer', 'RecordingSeekModel', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask', 'RemoteMapModel', 'SettingsRail', 'SettingsHubInput'];
+const suites = ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel', 'XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'SceneUi', 'AerioSurface', 'RemoteHints', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'ConnectionStore', 'ConnectionNavigation', 'ConnectionAuthTask', 'CapabilityModel', 'ProgramSearchModel', 'GuideUnifiedSearch', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'PlayerRemoteInput', 'GuideRemoteInput', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'DvrRecordingModel', 'DvrPresentationModel', 'DvrNavigation', 'DvrView', 'GuideTaskCache', 'GuideMappingFallback', 'MappingTask', 'MappingDetailModel', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'VodSeriesTarget', 'VodSeriesTask', 'CatchupModel', 'DiagnosticModel', 'OnDemandPlayer', 'RecordingSeekModel', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask', 'RemoteMapModel', 'SettingsRail', 'SettingsHubInput'];
 suites.unshift('LaunchModel');
 suites.unshift('RokuAuthModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
@@ -53,7 +53,7 @@ for (const suite of suites) {
     ...(suite === 'GuideMenu' ? ['components/GuideSettings.brs'] : []),
     ...(suite === 'GuideUnifiedSearch' ? ['components/GuideView.brs', 'components/GuideUnifiedSearch.brs'] : []),
     ...(suite === 'ProgramSearchView' ? ['components/ProgramSearchView.brs'] : []),
-    ...(suite === 'LogoCache' ? ['components/LogoCacheTask.brs'] : []),
+    ...(suite === 'LogoCache' ? ['components/LogoCacheTask.brs', 'components/GuideLogos.brs'] : []),
     ...(suite === 'VideoInput' ? ['components/AerioVideo.brs'] : []),
     ...(suite === 'GuideInput' ? ['components/GuideView.brs'] : []),
     ...(['GuideInput', 'GuideRemoteInput'].includes(suite) ? ['components/GuideRemoteInput.brs'] : []),
@@ -82,6 +82,7 @@ for (const suite of suites) {
     ...(suite === 'GuideTaskCache' ? ['components/GuideTask.brs'] : []),
     ...(suite === 'GuideMappingFallback' ? ['components/GuideCache.brs'] : []),
     ...(suite === 'MappingTask' ? ['components/MappingTask.brs'] : []),
+    ...(suite === 'MappingDetailModel' ? ['components/MappingDetailFetch.brs'] : []),
     `tests/${suite}.test.brs`,
   ], { encoding: 'utf8' });
   process.stdout.write(result.stdout ?? '');

@@ -23,6 +23,21 @@ contains a secret; review changed source and keep credentials in the environment
 `out/release/aeriotv-roku-v<version>.zip`, and writes `SHA256SUMS`. It does not
 publish a release.
 
+For a Beta/Store upload, install that exact ZIP on a Roku holding the app's
+existing signing key. In the device Packager, confirm the established Dev ID
+and the installed ZIP's MD5, then download the signed `P<hash>.pkg`. Finish the
+local package with:
+
+```sh
+npm run beta:package -- /path/to/P<hash>.pkg
+```
+
+This verifies the signed-file header and versioned ZIP, preserves Roku's
+original export, and creates `out/release/aeriotv-roku-v<version>.pkg` plus
+versioned and current `SHA256SUMS` files. Upload the **versioned `.pkg`**, not
+the opaque Roku filename or developer ZIP. A different signed package under an
+already-used version is rejected; advance the version for a new candidate.
+
 ## Release identification and rollback
 
 The npm version, manifest version, archive filename, and checksum must all refer

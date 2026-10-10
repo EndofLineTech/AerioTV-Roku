@@ -11,10 +11,41 @@ sub main()
     check(m.requests = 0 and m.top.result.source = "cache", "warm mapping avoids unpaged endpoint")
     resetTask()
     m.response = invalid
-    m.httpFailure = {category: "response-too-large", sizeBucket: "at-least-8-mib"}
+    m.httpFailure = {category: "memory-pressure", sizeBucket: "at-least-8-mib"}
     loadMappings()
     check(not m.top.result.ok and m.writes = 0, "failure never caches empty successful mapping")
-    check(m.top.result.category = "response-too-large" and m.top.result.sizeBucket = "at-least-8-mib", "mapping preserves safe transfer diagnostics")
+    check(m.top.result.category = "memory-pressure" and m.top.result.sizeBucket = "at-least-8-mib", "mapping preserves safe transfer diagnostics")
+    resetTask()
+    m.response = invalid
+    m.httpFailure = {category: "response-too-large", sizeBucket: "at-least-16-mb"}
+    m.detailResponse = {"10": "Station"}
+    loadMappings()
+    check(m.top.result.ok and m.top.result.source = "details", "oversized list uses bounded detail lookup")
+    check(m.detailRequests = 1 and m.detailAllowed.count() = 1 and m.detailAllowed.doesExist("10"), "lookup uses only authorized assignments")
+    check(m.writes = 1 and m.written["10"] = "Station", "detail mappings are cached for warm load")
+    resetTask()
+    m.top.channels = []
+    m.detailResponse = {}
+    for i = 1 to 91
+        id = i.toStr()
+        m.top.channels.push({epgId: id})
+        m.detailResponse[id] = "station-" + id
+    end for
+    m.response = invalid
+    m.httpFailure = {category: "response-too-large", sizeBucket: "at-least-16-mb"}
+    loadMappings()
+    check(m.top.result.ok and m.top.result.links.count() = 91 and m.detailAllowed.count() = 91, "91-channel lineup needs only its 91 assigned mapping IDs")
+    resetTask()
+    m.response = invalid
+    m.httpFailure = {category: "response-too-large", sizeBucket: "at-least-16-mb"}
+    m.detailResponse = invalid
+    loadMappings()
+    check(not m.top.result.ok and m.writes = 0 and m.top.result.message = "Detail lookup timed out.", "failed detail lookup cannot cache partial links")
+    resetTask()
+    m.response = invalid
+    m.httpFailure = {category: "timeout", sizeBucket: ""}
+    loadMappings()
+    check(not m.top.result.ok and m.detailRequests = 0, "unrelated errors do not trigger detail storm")
     resetTask()
     m.top.cancelRequested = true
     loadMappings()
@@ -35,6 +66,8 @@ sub resetTask()
     m.failure = "Unavailable"
     m.httpFailure = invalid
     m.response = [{id: 10, tvg_id: "Station"}, {id: 11, tvg_id: "Not-authorized"}]
+    m.detailResponse = {}
+    m.detailRequests = 0
 end sub
 
 function metadataCacheRead(scope, kind, key, generation, now, authorized)
@@ -52,6 +85,16 @@ function requestPages(path)
     m.requests++
     m.lastUrl = m.base + path
     return m.response
+end function
+
+function requestMappedDetails(allowed)
+    m.detailRequests++
+    m.detailAllowed = allowed
+    if m.detailResponse = invalid
+        m.httpFailure = {category: "timeout", sizeBucket: ""}
+        m.failure = "Detail lookup timed out."
+    end if
+    return m.detailResponse
 end function
 
 sub check(value, label)

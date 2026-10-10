@@ -31,6 +31,14 @@ sub loadMappings()
         ' Dispatcharr 0.31 ignores pagination here. Retain the legacy query and
         ' next-link support, but the HTTP response ceiling still bounds the list.
         if allowed.count() > 0 then rows = requestPages("/api/epg/epgdata/?page=1&page_size=500")
+        if rows = invalid and type(m.httpFailure) = "roAssociativeArray"
+            if m.httpFailure.category = "response-too-large" and not m.top.cancelRequested
+                ' Dispatcharr 0.31 ignores list pagination. Resolve only IDs from
+                ' the authorized lineup rather than increasing the memory ceiling.
+                links = requestMappedDetails(allowed)
+                source = "details"
+            end if
+        end if
         if rows <> invalid
             links = {}
             for each row in rows
@@ -40,8 +48,8 @@ sub loadMappings()
                 end if
             end for
             rows = invalid
-            metadataCacheWrite(m.top.scope, "mapping", "epg-links", m.top.generation, now, links)
         end if
+        if links <> invalid then metadataCacheWrite(m.top.scope, "mapping", "epg-links", m.top.generation, now, links)
     end if
     m.key = ""
     m.top.apiKey = ""

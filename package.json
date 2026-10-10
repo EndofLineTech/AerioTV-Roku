@@ -1,6 +1,6 @@
 {
   "name": "aeriotv-roku",
-  "version": "0.3.96",
+  "version": "0.3.97",
   "private": true,
   "description": "Native Roku port of AerioTV — Dispatcharr-first development build",
   "license": "GPL-3.0-or-later",
@@ -8,10 +8,11 @@
     "check": "bsc --project bsconfig.json --copy-to-staging false --create-package false",
     "build": "bsc --project bsconfig.json",
     "test": "node scripts/test.mjs",
-    "test:package": "node --test scripts/verify-package.test.mjs",
+    "test:package": "node --test scripts/verify-package.test.mjs scripts/prepare-signed-package.test.mjs",
     "test:tools": "python3 -m unittest scripts/roku_device_info_test.py scripts/measure_roku_resources_test.py scripts/decode_roku_support_code_test.py",
     "verify": "npm test && npm run test:package && npm run test:tools && npm run check && npm run build && node scripts/verify-package.mjs",
-    "release:prepare": "npm run verify && node scripts/prepare-release.mjs"
+    "release:prepare": "npm run verify && node scripts/prepare-release.mjs",
+    "beta:package": "node scripts/prepare-signed-package.mjs"
   },
   "devDependencies": {
     "brighterscript": "0.73.5",

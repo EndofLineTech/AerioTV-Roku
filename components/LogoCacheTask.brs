@@ -15,6 +15,7 @@ sub downloadLogos()
     created = []
     assets = []
     failed = []
+    reasons = {}
     while (pending.count() > 0 or active.count() > 0) and clock.totalMilliseconds() < 20000 and not m.top.cancelled
         while active.count() < 2 and pending.count() > 0
             id = pending.shift()
@@ -30,6 +31,7 @@ sub downloadLogos()
                 active[transfer.getIdentity().toStr()] = {id: id, path: path, transfer: transfer}
             else
                 failed.push(id)
+                reasons["network"] = true
             end if
         end while
         event = wait(25, port)
@@ -64,6 +66,7 @@ sub downloadLogos()
                 end if
                 if not valid
                     failed.push(job.id)
+                    reasons[logoFailureReason(event.getResponseCode(), size)] = true
                     fs.delete(job.path)
                 end if
                 active.delete(key)
@@ -79,6 +82,7 @@ sub downloadLogos()
                     job.transfer.asyncCancel()
                     fs.delete(job.path)
                     failed.push(job.id)
+                    reasons["image over 2 MiB"] = true
                     active.delete(key)
                 end if
             end if
@@ -89,16 +93,28 @@ sub downloadLogos()
         job.transfer.asyncCancel()
         fs.delete(job.path)
         failed.push(job.id)
+        reasons["timeout"] = true
     end for
     failed.append(pending)
+    if pending.count() > 0 then reasons["timeout"] = true
     if m.top.cancelled
         for each path in created
             fs.delete(path)
         end for
     end if
     m.top.apiKey = ""
-    m.top.result = {assets: assets, failed: failed}
+    m.top.result = {assets: assets, failed: failed, reasons: reasons.keys()}
 end sub
+
+function logoFailureReason(status as integer, size as integer) as string
+    if status <> 200
+        if status > 0 then return "HTTP " + status.toStr()
+        return "network"
+    end if
+    if size > 2097152 then return "image over 2 MiB"
+    if size = 0 then return "empty image"
+    return "unreadable image"
+end function
 
 function logoExtension(bytes as object) as string
     if bytes.count() >= 3
