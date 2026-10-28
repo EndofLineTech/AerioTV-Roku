@@ -77,8 +77,22 @@ sub updateHistory()
     if not m.ready then return
     m.recent = m.top.recentIds
     if m.groups[m.groupIndex].id = "recent"
+        oldIndex = m.selected
+        oldUuid = ""
+        if m.filtered.count() > 0 then oldUuid = m.filtered[m.selected].uuid
         filterLineup()
-        if m.top.active then drawGuide()
+        retained = false
+        for each channel in m.filtered
+            if channel.uuid = oldUuid then retained = true
+        end for
+        if not retained and m.filtered.count() > 0
+            m.selected = oldIndex
+            if m.selected >= m.filtered.count() then m.selected = m.filtered.count() - 1
+        end if
+        if m.top.active
+            drawGuide()
+            scheduleLoad()
+        end if
     end if
 end sub
 

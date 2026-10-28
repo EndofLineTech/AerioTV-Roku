@@ -279,6 +279,19 @@ function recordWatched(preferences as object, uuid as string) as object
     return result
 end function
 
+function changeRecentHistory(preferences as object, action as string, uuid as string) as object
+    result = normalizeAccountPreferences(preferences)
+    if action <> "remove" and action <> "clear" then return result
+    recent = []
+    for each id in result.recent
+        if action = "remove" and id <> uuid then recent.push(id)
+    end for
+    result.recent = recent
+    if action = "clear" or result.lastWatched = uuid then result.lastWatched = ""
+    if action = "clear" or result.previous = uuid then result.previous = ""
+    return result
+end function
+
 function reconcileWatchHistory(preferences as object, channels as object) as object
     result = normalizeAccountPreferences(preferences)
     allowed = {}

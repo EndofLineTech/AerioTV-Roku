@@ -2,6 +2,9 @@ import { spawnSync } from 'node:child_process';
 
 const suites = ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel', 'XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'SceneUi', 'AerioSurface', 'RemoteHints', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'ConnectionStore', 'ConnectionNavigation', 'ConnectionAuthTask', 'CapabilityModel', 'ProgramSearchModel', 'GuideUnifiedSearch', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'PlayerRemoteInput', 'GuideRemoteInput', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'DvrRecordingModel', 'DvrPresentationModel', 'DvrNavigation', 'DvrView', 'GuideTaskCache', 'GuideMappingFallback', 'MappingTask', 'MappingDetailModel', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'VodSeriesTarget', 'VodSeriesTask', 'CatchupModel', 'DiagnosticModel', 'OnDemandPlayer', 'RecordingSeekModel', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask', 'RemoteMapModel', 'SettingsRail', 'SettingsHubInput'];
 suites.unshift('LaunchModel');
+suites.unshift('PhoneSetupModel');
+suites.unshift('RecentHistory');
+suites.unshift('GuideHistory', 'BrowserHistory');
 suites.unshift('RokuAuthModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
 for (const suite of suites) {
@@ -9,6 +12,9 @@ for (const suite of suites) {
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
     ...(suite === 'LaunchModel' ? ['source/LaunchModel.brs'] : []),
+    ...(suite === 'PhoneSetupModel' ? ['source/PhoneSetupModel.brs'] : []),
+    ...(suite === 'GuideHistory' ? ['components/GuideView.brs', 'components/GuideSettings.brs'] : []),
+    ...(suite === 'BrowserHistory' ? ['components/ChannelBrowser.brs'] : []),
     ...(suite === 'RokuAuthModel' ? ['source/RokuAuthModel.brs'] : []),
     ...(suite === 'XmltvModel' ? ['source/XmltvModel.brs'] : []),
     ...(['M3uModel', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/M3uModel.brs'] : []),
@@ -20,6 +26,7 @@ for (const suite of suites) {
     ...(suite === 'AerioSurface' ? ['components/AerioSurface.brs'] : []),
     'source/NowNextModel.brs',
     'source/RemoteMapModel.brs', 'source/PreferenceModel.brs',
+    'components/RecentHistoryNavigation.brs',
     ...(suite === 'ConnectionAuthTask' ? ['source/ChannelProfileModel.brs'] : []),
     ...(['ConnectionStore', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/ConnectionStoreModel.brs'] : []),
     'source/CapabilityModel.brs',

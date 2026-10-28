@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<component name="PhoneSetupProbe" extends="Scene">
+    <children>
+        <Label text="Phone setup compatibility probe" translation="[80,60]" width="1760" height="70" />
+        <Label id="results" translation="[80,150]" width="1760" height="800" wrap="true" />
+    </children>
+</component>

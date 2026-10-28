@@ -31,7 +31,9 @@
     <function name="playerBrowserData" />
     <function name="browserNowTitles" />
     <function name="channelByUuid" />
-    <field id="recentIds" type="array" onChange="updateHistory" />
+    <field id="recentIds" type="array" alwaysNotify="true" onChange="updateHistory" />
+    <field id="historyAccount" type="string" />
+    <field id="historyRequest" type="assocarray" alwaysNotify="true" />
     <function name="applyRefreshedLineup" />
     <function name="refreshPresentation" />
     <function name="applyHubGuideSetting" />

@@ -10,6 +10,8 @@
     <field id="infoRequest" type="array" alwaysNotify="true" />
     <field id="channelSelected" type="assocarray" alwaysNotify="true" />
     <field id="closed" type="boolean" alwaysNotify="true" />
+    <field id="recentIds" type="array" alwaysNotify="true" onChange="updateRecentHistory" />
+    <field id="historyRequest" type="assocarray" alwaysNotify="true" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />

@@ -71,6 +71,7 @@ sub init()
     m.browser.observeField("channelSelected", "onBrowserSelected")
     m.browser.observeField("closed", "onBrowserClosed")
     m.browser.observeField("infoRequest", "onBrowserInfoRequest")
+    m.browser.observeField("historyRequest", "onRecentHistoryRequested")
     m.miniFrame = m.top.findNode("miniFrame")
     m.miniCaption = m.top.findNode("miniCaption")
     captionFont = m.miniCaption.font
@@ -140,6 +141,7 @@ sub init()
     m.guide.observeField("recordRequest", "onRecordRequested")
     m.guide.observeField("metadataEvent", "onMetadataDiagnostic")
     m.guide.observeField("preferences", "onPreferences")
+    m.guide.observeField("historyRequest", "onRecentHistoryRequested")
     m.guide.observeField("playbackInfo", "onPlaybackInfo")
     m.guide.observeField("playerRequest", "onGuidePlayerRequest")
     m.guide.observeField("searchVodSelection", "onUnifiedSearchVodSelection")
@@ -836,6 +838,7 @@ end sub
 
 function persistAccountPreferences() as boolean
     if m.accountIdentity = "" then return false
+    m.guide.historyAccount = m.accountIdentity
     m.preferenceStore.accounts[preferenceScope(m.accountIdentity)] = m.accountPreferences
     return persistPreferences()
 end function
@@ -905,6 +908,7 @@ sub onAacFailureClosed(event as object)
 end sub
 
 sub showConnection()
+    closeRecentHistoryDialog()
     cancelDiagnosticShare()
     resetMediaNavigation()
     cancelRecordFlow()
@@ -1453,6 +1457,7 @@ sub openChannelBrowser(mode = "channels" as string)
     model = m.guide.callFunc("playerBrowserData")
     model.mode = mode
     model.recent = m.accountPreferences.recent
+    model.historyAccount = m.accountIdentity
     model.baseUrl = m.baseUrl
     model.apiKey = m.apiKey
     m.browser.playingUuid = m.playingChannel.uuid

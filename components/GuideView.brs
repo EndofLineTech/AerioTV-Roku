@@ -1007,6 +1007,7 @@ sub openOptions(advanced = false as boolean)
     if m.providerType <> "m3u" and m.providerType <> "xtream" then items.push({title: label, action: "toggleVod"})
     if m.top.pendingTune then items.unshift({title: "Cancel pending channel tune", action: "cancelPendingTune"})
     title = "Guide options"
+    if m.groups[m.groupIndex].id = "recent" then items.unshift({title: "Manage Recently Watched", action: "recentHistory"})
     if advanced then title = "More guide actions"
     openPicker(title, guideOptionItems(items, advanced), "options")
 end sub
@@ -1053,6 +1054,11 @@ sub onPickerSelected(event as object)
             return
         else if action = "details"
             showDetails()
+            return
+        else if action = "recentHistory"
+            uuid = ""
+            if m.filtered.count() > 0 then uuid = m.filtered[m.selected].uuid
+            m.top.historyRequest = {account: m.top.historyAccount, uuid: uuid}
             return
         else if action = "favorite"
             if m.filtered.count() > 0

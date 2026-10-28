@@ -47,6 +47,7 @@
   <script type="text/brightscript" uri="DvrPlayback.brs" />
   <script type="text/brightscript" uri="DvrSeriesNavigation.brs" />
   <script type="text/brightscript" uri="ConnectionNavigation.brs" />
+  <script type="text/brightscript" uri="RecentHistoryNavigation.brs" />
   <children>
     <Group id="screen" />
     <GuideView id="guide" visible="false" />

@@ -30,6 +30,7 @@ sub configure()
     m.groups = data.groups
     m.favorites = data.favorites
     m.recent = data.recent
+    m.historyAccount = data.historyAccount
     m.collections = data.collections
     m.settings = normalizeGuideSettings(data.settings)
     sameConnection = m.base = data.baseUrl and m.key = data.apiKey
@@ -181,7 +182,7 @@ sub draw()
     end for
     m.hint.text = "OK  Watch    Left  Groups    Back  Close"
     if m.groupsOpen then m.hint.text = "Up/Down  Browse    Right  Channels    Back  Close groups"
-    if m.mode = "recent" then m.hint.text = "OK  Watch    Back  Close"
+    if m.mode = "recent" then m.hint.text = "OK  Watch    *  Manage history    Back  Close"
     updateTitles()
     requestInfo()
     m.resetFailed = false
@@ -370,6 +371,12 @@ end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if not press or not m.top.active then return false
+    if key = "options" and m.mode = "recent"
+        uuid = ""
+        if m.filtered.count() > 0 then uuid = m.filtered[m.selected].uuid
+        m.top.historyRequest = {account: m.historyAccount, uuid: uuid}
+        return true
+    end if
     if key = "back" or key = "options"
         if m.groupsOpen
             m.groupsOpen = false
@@ -415,4 +422,24 @@ end function
 
 sub handleOptionsShortcut()
     onKeyEvent("options", true)
+end sub
+
+sub updateRecentHistory()
+    if not m.ready then return
+    selectedUuid = ""
+    oldIndex = m.selected
+    if m.filtered.count() > 0 then selectedUuid = m.filtered[m.selected].uuid
+    m.recent = m.top.recentIds
+    group = m.groups[m.groupIndex].id
+    if m.mode = "recent" then group = "recent"
+    m.filtered = organizedChannels(m.channels, group, m.favorites, m.recent, m.collections, m.settings, "")
+    m.selected = 0
+    if m.filtered.count() > 0
+        m.selected = oldIndex
+        if m.selected >= m.filtered.count() then m.selected = m.filtered.count() - 1
+        for i = 0 to m.filtered.count() - 1
+            if m.filtered[i].uuid = selectedUuid then m.selected = i
+        end for
+    end if
+    if m.top.active then draw()
 end sub

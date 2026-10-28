@@ -167,6 +167,7 @@ function guideOptionItems(items as object, advanced as boolean) as object
     for each item in items
         action = textValue(item.action)
         common = action = "details" or action = "favorite" or action = "groups" or action = "search" or action = "programSearch" or action = "now" or action = "expandPlayer" or action = "stopPlayer" or action = "cancelPendingTune"
+        if action = "recentHistory" then common = true
         if common <> advanced then result.push(item)
     end for
     if not advanced then result.push({title: "More guide actions", action: "moreOptions"})
