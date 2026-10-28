@@ -3,6 +3,11 @@
 Research and implementation slice, 2026-10-28. Bead: `AerioTV-Roku-e3e.2`.
 This is not an enabled sign-in feature or a successful phone-to-Roku transfer.
 
+**Correction after release-note research and native retesting:** Roku OS 15.2
+added `setTag`/`getTag`. With those APIs, AES-256-GCM passes our nonempty-payload
+authentication tests on OS 15.3.4. The earlier no-tag-interface tests below
+were incomplete API usage, not evidence that Roku lacks GCM support.
+
 ## Contract and platform evidence
 
 The [pinned upstream contract][contract] requires X25519, HKDF-SHA256 and
@@ -18,8 +23,8 @@ marked planned in this revision.
 | HTTP listener | [roStreamSocket][tcp] documents bind/listen/accept | Real LAN HTTP lifecycle, bounded input and cancellation |
 | DNS-SD | [roDataGramSocket][udp] provides UDP; this alone is not an mDNS responder | Multicast discovery/advertisement and mobile interop |
 | HKDF-SHA256 | [roHMAC][hmac] supplies the underlying HMAC | Native RFC-vector execution, then protocol-specific derivation |
-| AES-256-GCM | [roEVPCipher][cipher] lists **aes-gcm-128** since OS 15.2; AES-256 ECB/CBC also exist | 256-bit authenticated GCM is not established |
-| Authentication tag | [ifEVPCipher][cipher-interface] documents Setup/Process/Update/Final, no tag setter/verifier | Never accept plaintext without verifying the AEAD tag |
+| AES-256-GCM | Native `aes-256-gcm` with explicit tag handling passes three nonempty host vectors | Empty payload fails; production adapter and phone interop remain |
+| Authentication tag | [OS 15.2 release notes][release-notes] announce `setTag`/`getTag`, omitted from the interface reference | Native tag generation and modified-input rejection verified below |
 | X25519 | No suitable documented primitive established by this investigation | Supported implementation and RFC 7748/interoperability vectors |
 | Random key/code | [GetRandomUUID][device] documents UUID v4, not a cryptographic random-byte contract | Establish an appropriate entropy source; do not substitute `Rnd()` |
 | QR | No implementation added | Offline encoding and real phone scan |
@@ -140,6 +145,39 @@ success. The runner deliberately exits 2 for this result. AerioTV 0.3.100 was
 restored after the run. Resolving the tag interface (or implementing and validating
 a compatible adapter) remains the next crypto work under `AerioTV-Roku-e3e.2`.
 
+### Explicit tag API: supported for nonempty payloads
+
+The [Roku OS 15.2 release notes][release-notes] explicitly announce `setTag` and
+`getTag` for AES-GCM. The component/interface reference pages omit their
+signatures. GitHub code search returned no examples combining `roEVPCipher`
+with `setTag`; the authoritative lead was the release note, not search absence.
+
+Native calls verified on this Roku:
+
+```brightscript
+cipher.setup(false, "aes-256-gcm", keyHex, nonceHex, 0)
+cipher.setTag(tagBytes) ' roByteArray, separate from ciphertext
+plain = cipher.update(ciphertextBytes)
+tail = cipher.final() ' Must succeed before accepting any plaintext
+```
+
+For encryption, `cipher.getTag()` returns an `roByteArray` separately after
+processing. Its 16 bytes matched the host oracle for all three nonempty vectors.
+
+The new `settag-stream` path accepted **3/3 nonempty valid payloads** (1, 16,
+37 bytes). It rejected all 15 full-length-tag negative fixtures at finalization;
+the test adapter rejected the eight absent/truncated-tag fixtures before calling
+crypto, enforcing the wire contract. The empty valid payload still returned an
+invalid final result, so the full matrix retains exit 2 and reports the narrower
+`nonemptyCompatible` result separately. An empty plaintext is not a valid setup
+JSON payload, but this API edge case remains recorded rather than hidden.
+
+**Conclusion:** the earlier failure resulted from not supplying the tag via
+`setTag`; it was not proof of a Roku GCM limitation. AES-256-GCM support is now
+demonstrated for the tested nonempty payloads. Production adapter integration,
+X25519, cryptographic entropy and end-to-end phone interoperability remain work.
+
+[release-notes]: https://developer.roku.com/dev/docs/release-notes#roku-os-152
 [contract]: https://github.com/jonzey231/AerioTV/blob/fe7ad4c1968a193efb7a55d68b2b3bd32d03b17a/docs/DeviceSetupHandoff.md
 [tcp]: https://developer.roku.com/dev/docs/rostreamsocket
 [udp]: https://developer.roku.com/dev/docs/rodatagramsocket

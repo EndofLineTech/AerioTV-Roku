@@ -54,7 +54,7 @@ try {
     await finished;
   } finally { clearTimeout(timer); }
   const report = { rows, paths: {} };
-  for (const mode of ['process', 'stream']) {
+  for (const mode of ['process', 'stream', 'settag-stream']) {
     const results = rows.filter(row => row.mode === mode);
     if (results.length !== expected.length || new Set(results.map(row => row.id)).size !== expected.length) throw Error('Incomplete or duplicate native matrix');
     for (const fixture of expected) {
@@ -66,14 +66,16 @@ try {
     const invalid = results.filter(row => !row.valid);
     report.paths[mode] = {
       validAccepted: valid.filter(row => row.accepted).length, validTotal: valid.length,
-      invalidFinalRejected: invalid.filter(row => !row.finalvalid).length, invalidTotal: invalid.length,
+      invalidNativeFinalRejected: invalid.filter(row => !row.finalvalid && !row.taglengthrejected).length,
+      invalidTagLengthRejected: invalid.filter(row => row.taglengthrejected).length, invalidTotal: invalid.length,
       compatible: valid.every(row => row.accepted && row.finalvalid) && invalid.every(row => !row.finalvalid),
+      nonemptyCompatible: valid.filter(row => row.id !== 'length-0').every(row => row.accepted && row.finalvalid) && invalid.every(row => !row.finalvalid),
     };
   }
   const encryption = rows.filter(row => row.mode === 'encrypt');
   if (encryption.length !== 4) throw Error('Incomplete encryption controls');
-  if (encryption.some(row => typeof row.ciphertextmatches !== 'boolean' || typeof row.taggedmatches !== 'boolean')) throw Error('Missing encryption verdict fields');
-  report.encryption = { ciphertextMatches: encryption.filter(row => row.ciphertextmatches).length, taggedMatches: encryption.filter(row => row.taggedmatches).length, total: encryption.length };
+  if (encryption.some(row => typeof row.ciphertextmatches !== 'boolean' || typeof row.taggedmatches !== 'boolean' || typeof row.tagmatches !== 'boolean')) throw Error('Missing encryption verdict fields');
+  report.encryption = { ciphertextMatches: encryption.filter(row => row.ciphertextmatches).length, taggedMatches: encryption.filter(row => row.taggedmatches).length, explicitTagMatches: encryption.filter(row => row.tagmatches).length, total: encryption.length };
   writeFileSync('out/phone-setup-native-results.json', JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify({ paths: report.paths, encryption: report.encryption }, null, 2));
   if (!Object.values(report.paths).some(path => path.compatible)) process.exitCode = 2;

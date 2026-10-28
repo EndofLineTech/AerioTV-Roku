@@ -30,7 +30,8 @@ sub Main()
     lines.push("Loopback ephemeral TCP bind/listen: " + phoneProbeResult(phoneProbeSocket(port)))
     fixture = {v: 1, phonePk: "//////////////////////////////////////////8=", nonce: "AAAAAAAAAAAAAAAA", ciphertext: "AAAAAAAAAAAAAAAAAAAAAA=="}
     lines.push("Envelope shape only: " + phoneProbeResult(validatePhoneSetupEnvelope(formatJson(fixture), false).ok))
-    lines.push("NOT PROVEN: X25519, secure random bytes, AES-256-GCM tag verification, DNS-SD/QR, phone interop.")
+    lines.push("GCM explicit setTag/getTag results are in [setup-matrix]; legacy calls above omit tag APIs.")
+    lines.push("NOT PROVEN: X25519, secure random bytes, DNS-SD/QR, phone interop.")
     lines.push("No setup listener remains open. Home exits; reinstall the normal app afterward.")
     text = ""
     for each line in lines
