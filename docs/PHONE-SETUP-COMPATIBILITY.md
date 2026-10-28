@@ -71,8 +71,29 @@ python3 scripts/run-native-probe.py out/phone-setup-probe.zip \
 This replaces Roku's single development slot. Restore the owner's exact normal
 app ZIP afterward. The probe prints only synthetic result labels and model/OS,
 not keys, LAN addresses or user data. It neither proves full TCP request handling
-nor phone interoperability. The native run is pending: `ROKU_HOST` and
-`ROKU_DEV_PASSWORD` were unavailable in the implementation session.
+nor phone interoperability.
+
+### Native results — 2026-10-28
+
+Ran on Streaming Stick 4K (ECP model 3820RW2; `GetModel()` 3820X2), OS 15.3.4.
+HMAC RFC 4231, HKDF RFC 5869, AES-256 block, loopback bind/listen and envelope
+shape checks passed. `aes-256-gcm` Setup returned 0; `aes-gcm-128` and
+`aes-gcm-256` returned -1 on this device.
+
+The zero-key/nonce AES-256-GCM fixture was independently checked with Node
+crypto. Native encryption returned 16 bytes rather than ciphertext plus the
+16-byte tag. Native Process decryption returned invalid for ciphertext alone,
+ciphertext plus the correct tag, and ciphertext plus a modified tag. Thus this
+tested API path does **not** establish usable authenticated GCM decryption;
+rejection of a modified tag alone is insufficient when the valid case fails.
+X25519, secure entropy, DNS-SD/QR and Android interoperability remain unproven.
+
+Python networking failed locally while Node console capture and curl digest
+installation worked. Drain buffered console output and restart through Home
+before capturing a run: the console can replay a prior probe's completion.
+The normal 0.3.100 candidate was restored and ECP confirmed AerioTV active.
+Restored ZIP SHA256:
+`eb09f4b9705262d11efba05a7b27281ff6272f2b22ff0f003805d9e20224a610`.
 
 [contract]: https://github.com/jonzey231/AerioTV/blob/fe7ad4c1968a193efb7a55d68b2b3bd32d03b17a/docs/DeviceSetupHandoff.md
 [tcp]: https://developer.roku.com/dev/docs/rostreamsocket

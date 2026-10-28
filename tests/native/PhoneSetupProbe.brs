@@ -22,6 +22,10 @@ sub Main()
         end if
         lines.push(format + " Setup status: " + status.toStr() + " (NOT tag verification)")
     end for
+    lines.push("AES-256-GCM synthetic encrypt: " + phoneProbeGcm(true, "00000000000000000000000000000000"))
+    lines.push("AES-256-GCM cipher only: " + phoneProbeGcm(false, "cea7403d4d606b6e074ec5d3baf39d18"))
+    lines.push("AES-256-GCM cipher + valid tag: " + phoneProbeGcm(false, "cea7403d4d606b6e074ec5d3baf39d18d0d1c8a799996bf0265b98b5d48ab919"))
+    lines.push("AES-256-GCM cipher + changed tag: " + phoneProbeGcm(false, "cea7403d4d606b6e074ec5d3baf39d18d0d1c8a799996bf0265b98b5d48ab918"))
     lines.push("Loopback ephemeral TCP bind/listen: " + phoneProbeResult(phoneProbeSocket(port)))
     fixture = {v: 1, phonePk: "//////////////////////////////////////////8=", nonce: "AAAAAAAAAAAAAAAA", ciphertext: "AAAAAAAAAAAAAAAAAAAAAA=="}
     lines.push("Envelope shape only: " + phoneProbeResult(validatePhoneSetupEnvelope(formatJson(fixture), false).ok))
@@ -105,4 +109,17 @@ function phoneProbeSocket(port as object) as boolean
     result = bound and listening and socket.isListening()
     socket.close()
     return result
+end function
+
+function phoneProbeGcm(encrypt as boolean, hex as string) as string
+    cipher = CreateObject("roEVPCipher")
+    if cipher = invalid then return "unavailable"
+    if cipher.setup(encrypt, "aes-256-gcm", string(64, "0"), string(24, "0"), 0) <> 0 then return "setup failed"
+    result = cipher.process(phoneProbeBytes(hex))
+    if result = invalid then return "invalid (no authenticated result)"
+    if type(result) <> "roByteArray" then return "unexpected result type"
+    actual = lcase(result.toHexString())
+    matched = actual = "00000000000000000000000000000000"
+    if encrypt then matched = actual = "cea7403d4d606b6e074ec5d3baf39d18d0d1c8a799996bf0265b98b5d48ab919"
+    return "bytes=" + result.count().toStr() + " expected authenticated output=" + phoneProbeResult(matched)
 end function

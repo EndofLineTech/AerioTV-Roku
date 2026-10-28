@@ -4,6 +4,7 @@ import hashlib
 import hmac
 from pathlib import Path
 import re
+import subprocess
 import tempfile
 import unittest
 import zipfile
@@ -17,6 +18,16 @@ SPEC.loader.exec_module(PROBE)
 
 
 class PhoneSetupProbeTest(unittest.TestCase):
+    def test_native_gcm_fixture_matches_host_aes256gcm(self):
+        result = subprocess.run([
+            "node", "-e",
+            "const c=require('node:crypto').createCipheriv('aes-256-gcm',Buffer.alloc(32),Buffer.alloc(12));"
+            "const out=Buffer.concat([c.update(Buffer.alloc(16)),c.final(),c.getAuthTag()]);"
+            "process.stdout.write(out.toString('hex'));",
+        ], check=True, capture_output=True, text=True)
+        source = (PROBE.ROOT / "tests/native/PhoneSetupProbe.brs").read_text()
+        self.assertIn('"' + result.stdout + '"', source)
+
     def test_native_hmac_and_hkdf_vectors_against_host_crypto(self):
         source = (PROBE.ROOT / "tests/native/PhoneSetupProbe.brs").read_text()
         mac_key = re.search(r'key = phoneProbeBytes\("([0-9a-f]+)"\)', source)[1]

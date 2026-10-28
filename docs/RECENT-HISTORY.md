@@ -24,6 +24,8 @@ Automated model/controller tests cover order, recall, current-playback state,
 account changes, stale callbacks, cancellation, storage-failure behavior and
 updates to both views. Native validation remains required for physical **\***
 routing, dialog focus, empty-list navigation, storage across a real relaunch and
-picture/audio continuity. No developer-device credentials were configured in
-the implementation session. Cross-device deletion behavior belongs to the sync
+picture/audio continuity. On 2026-10-28 device access became available and the
+normal 0.3.100 candidate containing these controls was installed after the crypto
+probe; ECP confirmed AerioTV active. This is installation evidence, not completion
+of the history acceptance checks. Cross-device deletion behavior belongs to the sync
 engine's merge integration; sync is not enabled by this change.
