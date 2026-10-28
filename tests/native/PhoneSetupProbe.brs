@@ -6,6 +6,7 @@ sub Main()
     screen.setMessagePort(port)
     scene = screen.createScene("PhoneSetupProbe")
     screen.show()
+    phoneProbeMatrix()
     device = CreateObject("roDeviceInfo")
     os = device.getOSVersion()
     lines = ["Model " + device.getModel() + " / OS " + os.major + "." + os.minor + "." + os.revision]

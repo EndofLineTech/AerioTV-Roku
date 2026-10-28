@@ -5,6 +5,7 @@ import hmac
 from pathlib import Path
 import re
 import subprocess
+import json
 import tempfile
 import unittest
 import zipfile
@@ -18,6 +19,18 @@ SPEC.loader.exec_module(PROBE)
 
 
 class PhoneSetupProbeTest(unittest.TestCase):
+    def test_matrix_covers_valid_and_invalid_contract_cases(self):
+        output = subprocess.run(["node", str(PROBE.ROOT / "scripts/phone-setup-vectors.mjs")],
+                                check=True, capture_output=True, text=True)
+        rows = json.loads(output.stdout)
+        self.assertEqual(len(rows), 27)
+        self.assertEqual(len({row["id"] for row in rows}), 27)
+        self.assertEqual([len(row["plain"]) // 2 for row in rows if row["valid"]], [0, 1, 16, 37])
+        for length in [0, 1, 16, 37]:
+            for kind in ["changed-key", "changed-nonce", "changed-tag", "missing-tag", "truncated-tag"]:
+                row = next(r for r in rows if r["id"] == f"length-{length}-{kind}")
+                self.assertFalse(row["valid"])
+
     def test_native_gcm_fixture_matches_host_aes256gcm(self):
         result = subprocess.run([
             "node", "-e",
@@ -52,6 +65,7 @@ class PhoneSetupProbeTest(unittest.TestCase):
                 self.assertEqual(set(package.namelist()), {
                     "manifest", "source/Main.brs", "source/PhoneSetupModel.brs",
                     "components/PhoneSetupProbe.xml",
+                    "source/PhoneSetupMatrix.brs", "fixtures.json",
                 })
                 self.assertIn(b"title=Aerio Setup Compatibility Probe", package.read("manifest"))
                 self.assertNotIn(b"AerioScene", package.read("source/Main.brs"))

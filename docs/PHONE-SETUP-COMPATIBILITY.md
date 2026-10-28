@@ -95,6 +95,51 @@ The normal 0.3.100 candidate was restored and ECP confirmed AerioTV active.
 Restored ZIP SHA256:
 `eb09f4b9705262d11efba05a7b27281ff6272f2b22ff0f003805d9e20224a610`.
 
+### Reproducible authenticated-decryption matrix
+
+`scripts/phone-setup-vectors.mjs` generates 27 fixtures with Node crypto and
+checks their expected acceptance using authenticated host decryption. Four
+positive fixtures use nonzero keys/nonces and plaintext lengths 0, 1, 16 and 37.
+The 23 negative fixtures change keys, nonces, ciphertext or tags, or omit/truncate
+tags. The host explicitly requires 16-byte tags, as the upstream contract does.
+
+`tests/native/PhoneSetupMatrix.brs` runs each fixture through two candidate paths:
+`Process(ciphertext || tag)` and `Update(ciphertext)`, `Update(tag)`, `Final()`.
+Only a successful final result with exact plaintext counts as positive acceptance.
+Early Update output never counts as authenticated. These tests cover the two
+specified input arrangements, not hypothetical undocumented tag-control methods.
+
+```sh
+python3 -m unittest scripts/phone_setup_probe_test.py
+python3 scripts/build-phone-setup-probe.py
+# Supply device credentials in the environment. Pass the normal app to restore.
+node scripts/validate-phone-setup-native.mjs out/native-parity-normal.zip
+```
+
+The runner discards buffered console data before launching a fresh probe, checks
+fixture completeness and verdict types, writes synthetic per-case evidence to
+`out/phone-setup-native-results.json`, and restores the normal ZIP in `finally`.
+Exit 0 means at least one tested path passed the whole contract; exit 2 means
+the complete matrix ran but neither path passed; errors indicate a failed run.
+
+Actual target results (2026-10-28, same OS/device as above):
+
+| Check | Process | Update/Final |
+| --- | --- | --- |
+| Valid authenticated plaintext accepted | **0/4** | **0/4** |
+| Invalid fixtures rejected at finalization | 23/23 | 23/23 |
+| Whole contract | **FAIL** | **FAIL** |
+
+Encryption controls matched host ciphertext for all three nonempty plaintexts,
+but none returned the appended tag; empty plaintext returned invalid. Streaming
+decryption produced the correct pre-final plaintext for the three nonempty valid
+fixtures **and their changed-tag counterparts**, then Final returned invalid.
+Thus the raw cipher operation works for these vectors, but these tested paths
+cannot complete authenticated decryption. Rejecting all inputs is not an AEAD
+success. The runner deliberately exits 2 for this result. AerioTV 0.3.100 was
+restored after the run. Resolving the tag interface (or implementing and validating
+a compatible adapter) remains the next crypto work under `AerioTV-Roku-e3e.2`.
+
 [contract]: https://github.com/jonzey231/AerioTV/blob/fe7ad4c1968a193efb7a55d68b2b3bd32d03b17a/docs/DeviceSetupHandoff.md
 [tcp]: https://developer.roku.com/dev/docs/rostreamsocket
 [udp]: https://developer.roku.com/dev/docs/rodatagramsocket

@@ -1,6 +1,7 @@
 """Build a synthetic-only, standalone Roku setup primitive probe (never install)."""
 from pathlib import Path
 import zipfile
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -16,6 +17,9 @@ def build(output):
         package.write(ROOT / "tests/native/PhoneSetupProbe.brs", "source/Main.brs")
         package.write(ROOT / "tests/native/PhoneSetupProbe.xml", "components/PhoneSetupProbe.xml")
         package.write(ROOT / "source/PhoneSetupModel.brs", "source/PhoneSetupModel.brs")
+        package.write(ROOT / "tests/native/PhoneSetupMatrix.brs", "source/PhoneSetupMatrix.brs")
+        vectors = subprocess.run(["node", str(ROOT / "scripts/phone-setup-vectors.mjs")], check=True, capture_output=True, text=True).stdout
+        package.writestr("fixtures.json", vectors)
     return output
 
 
