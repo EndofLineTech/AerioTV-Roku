@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="PhoneSetupTask" extends="Task">
+  <interface>
+    <field id="cancelRequested" type="boolean" value="false" />
+    <field id="info" type="assocarray" alwaysNotify="true" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupTransport.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupLink.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupQr.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupX25519.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupCrypto.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupEntropy.brs" />
+  <script type="text/brightscript" uri="PhoneSetupTask.brs" />
+</component>

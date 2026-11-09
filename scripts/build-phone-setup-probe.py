@@ -19,7 +19,7 @@ def build(output, x25519=False, handoff=False):
         package.write(ROOT / "tests/native" / main, "source/Main.brs")
         package.write(ROOT / "tests/native/PhoneSetupProbe.xml", "components/PhoneSetupProbe.xml")
         if x25519 or handoff:
-            package.write(ROOT / "tests/native/SetupX25519.brs", "source/SetupX25519.brs")
+            package.write(ROOT / "source/PhoneSetupX25519.brs", "source/SetupX25519.brs")
             if handoff:
                 package.write(ROOT / "source/PhoneSetupModel.brs", "source/PhoneSetupModel.brs")
             generator = "setup-handoff-vectors.mjs" if handoff else "setup-x25519-vectors.mjs"

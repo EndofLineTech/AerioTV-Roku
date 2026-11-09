@@ -24,7 +24,7 @@ try {
   writeFileSync(fixture, `function setupX25519TestVectors() as object\nreturn parseJson(${JSON.stringify(JSON.stringify(x25519Vectors())).replaceAll('\\"', '""')})\nend function\n`);
   let output = '';
   const stdout = new Writable({ write(chunk, _encoding, done) { output += chunk; done(); } });
-  await brs.execute(['tests/native/SetupX25519.brs', fixture, 'tests/SetupX25519.test.brs'], {
+  await brs.execute(['source/PhoneSetupX25519.brs', fixture, 'tests/SetupX25519.test.brs'], {
     root: 'tests/unit-root', stdout, stderr: process.stderr,
   });
   process.stdout.write(output);

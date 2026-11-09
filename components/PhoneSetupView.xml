@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="PhoneSetupView" extends="Group">
+  <interface>
+    <field id="active" type="boolean" value="false" onChange="onSetupActive" />
+    <field id="payload" type="assocarray" alwaysNotify="true" />
+    <field id="closed" type="boolean" alwaysNotify="true" />
+    <field id="phase" type="string" onChange="drawPhoneSetup" />
+    <field id="warning" type="string" />
+    <field id="sessionInfo" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="PhoneSetupView.brs" />
+  <children>
+    <Rectangle width="1920" height="1080" color="0x0A1628FF" />
+    <Group id="content" />
+    <Timer id="watch" duration="1" repeat="true" />
+  </children>
+</component>

@@ -3,6 +3,77 @@
 Research and implementation slice, 2026-10-28. Bead: `AerioTV-Roku-e3e.2`.
 This is not an enabled sign-in feature or a successful phone-to-Roku transfer.
 
+## Serialized receiver and QR screen — 2026-11-09
+
+Bead `AerioTV-Roku-e3e.2.6` adds an entropy-gated receiver Task and reusable
+screen, not a completed onboarding/apply flow. The normal app still has no
+setup entry and **cannot open a setup listener**: `PhoneSetupEntropy.brs`
+returns `invalid` until a shipping CSPRNG is approved. No weak fallback,
+fixture flag, real credential transfer, release, or DNS-SD announcement is enabled.
+
+The isolated receiver package contains conspicuous synthetic-key warnings,
+public RFC fixture materials, and no provider Tasks or registry operations.
+It replaces the entire entropy file at build time; production packaging includes
+only the fail-closed file. Never send real account details to a fixture package.
+
+Implemented boundaries:
+
+- `PhoneSetupTask` serializes bounded HTTP/1.1 receipt, authenticated decryption,
+  session transitions and complete JSON replies. Header allocation stops at
+  32 KiB, body allocation at 262144 bytes, and incomplete/15-second-idle clients
+  close without applying. Cancellation is cooperative during scalar multiplication.
+- `PhoneSetupCrypto.brs` rejects all-zero shared secrets and validates strict
+  UTF-8 only after GCM authentication. Plaintext is not published until the full
+  200 has been sent. A failed success reply ends the session without applying.
+- Three wrong-code replies rotate keys/code on the same port without extending
+  expiry. A response-time watchdog fails closed at ten seconds.
+- `PhoneSetupView` displays code, fingerprint and a fully offline QR; Back
+  cancels, New Code starts a new Task/session, and expiry/error states allow retry.
+  QR uses fixed version 20, ECC H, legal mask 0 and an intact four-module quiet
+  zone. Friendly name truncation uses both code-point and UTF-8 byte limits.
+- `PhoneSetupX25519.brs` is now in production source for shared use by the gated
+  Task and probes. This is **not** constant-time/security-review approval, nor
+  permission to enable sessions without a suitable entropy source.
+
+Native synthetic LAN acceptance on the same Streaming Stick/OS passed the
+on-screen QR screenshot scan, all six positive payload shapes, null optionals,
+unpadded base64url, fragmented exact-262144-byte bodies, malformed heads/envelopes/
+plaintext, all-zero secrets, tampering, replay refusal, and three-failure rotation
+with stale-key rejection. The slowest full measured reply was **7710 ms**.
+These are synthetic HTTP tests, not iPhone/Android sender acceptance or successful
+provider verification. Normal 0.3.100 was restored afterward.
+
+Reproduce with developer access in the environment, never in source:
+
+```sh
+npm test
+python3 scripts/build-setup-receiver-probe.py
+node scripts/test-setup-receiver-native.mjs out/native-parity-normal.zip
+# Also wait for the real ten-minute deadline (no accelerated fixture clock):
+node scripts/test-setup-receiver-native.mjs out/native-parity-normal.zip --expiry
+# Separate probe with the shipping entropy file, expected to refuse setup:
+python3 scripts/build-setup-receiver-probe.py --production-entropy
+node scripts/test-setup-receiver-native.mjs out/native-parity-normal.zip --production-entropy
+```
+
+The runner restores the explicitly supplied normal ZIP in `finally`. It does
+not sign a release, contact a provider or print QR links. Synthetic results and
+the screenshot are under ignored `out/`. Do not run another installer while it
+owns the device. Local tests compare QR matrices against checked-in output from
+`qrcode@1.5.4`, verify probe-file isolation and exercise transport/name/code models.
+
+Playlist application remains `AerioTV-Roku-e3e.5.1`: verification without changing
+the saved/current connection, duplicate Cancel/Add Anyway/Replace, atomic slot
+commit, query-bearing M3U session handling, incoming settings application and
+explicit household-profile/sync omission messages. Preparatory metadata fields
+and authorized multi-Channel-Profile union helpers are present; retaining an
+option in metadata is **not** applying it. Guide Days and catch-up offset are
+not yet wired to runtime behavior. Household profile import and sync remain
+separate work, and sync must never be enabled just because a payload requests it.
+
+The sections below describe earlier implementation slices; statements that a
+listener/QR/crypto adapter is still future work are superseded by this section.
+
 ## Native X25519 and offline handoff proof — 2026-11-09
 
 Bead `AerioTV-Roku-e3e.2.4`. Owner-authorized temporary probe installs ran on
@@ -20,9 +91,9 @@ X25519 coverage includes both RFC Alice/Bob public keys, both shared-secret
 directions, the RFC section 5.2 scalar/u vector, high-bit masking, noncanonical
 `p+9`, three deterministic Node/OpenSSL-oracle inputs, and low-order 0/1/p
 (which produce zero; a receiver must reject that shared secret).
-`tests/native/SetupX25519.brs` is an experimental RFC Montgomery ladder with
-17 radix-2^15 limbs and exact Double accumulators. It is deliberately outside
-the production source/package. No constant-time or production-security approval
+The RFC Montgomery ladder (now `source/PhoneSetupX25519.brs`) uses
+17 radix-2^15 limbs and exact Double accumulators. It was probe-only in this slice;
+the gated receiver above now shares it. No constant-time or production-security approval
 is claimed for the interpreted arithmetic, including carry correction branches.
 
 The six handoff cases use the supplied plaintext shapes (full Dispatcharr,

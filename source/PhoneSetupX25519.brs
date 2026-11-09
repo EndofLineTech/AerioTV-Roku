@@ -1,10 +1,10 @@
-' Experimental RFC 7748 section 5 Montgomery ladder. Probe/test package ONLY.
+' RFC 7748 section 5 Montgomery ladder. Receiver remains entropy-gated.
 ' Field limbs are base 2^15 (17 limbs); 2^255 = 19 modulo p.
 ' Double accumulators are exact: the largest convolution sum is below 2^40,
 ' well inside IEEE-754's 53-bit integer precision. Never use Float arithmetic.
 ' This is NOT a CSPRNG, production crypto approval, or a constant-time guarantee
 ' for the Roku interpreter. Inputs/outputs are 32-byte numeric arrays.
-function setupX25519(secret as object, peer as object) as object
+function setupX25519(secret as object, peer as object, cancelled = invalid as dynamic) as object
     scalar = []
     for each value in secret
         scalar.push(value)
@@ -22,6 +22,9 @@ function setupX25519(secret as object, peer as object) as object
     swap = 0
     powers = [1, 2, 4, 8, 16, 32, 64, 128]
     for bit = 254 to 0 step -1
+        if bit mod 16 = 0 and cancelled <> invalid
+            if cancelled() then return invalid
+        end if
         digit = int(scalar[int(bit / 8)] / powers[bit mod 8]) mod 2
         setupX25519Swap(x2, x3, (swap + digit) mod 2)
         setupX25519Swap(z2, z3, (swap + digit) mod 2)
@@ -47,6 +50,9 @@ function setupX25519(secret as object, peer as object) as object
     inverse = setupX25519Field(1)
     ' p-2 = 2^255-21: every bit set except bit 4 and bit 2.
     for bit = 254 to 0 step -1
+        if bit mod 16 = 0 and cancelled <> invalid
+            if cancelled() then return invalid
+        end if
         inverse = setupX25519Mul(inverse, inverse)
         if bit <> 4 and bit <> 2 then inverse = setupX25519Mul(inverse, z2)
     end for

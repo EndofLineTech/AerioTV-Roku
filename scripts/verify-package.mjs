@@ -15,6 +15,8 @@ export function assertPackageEntries(entries) {
   const excluded = /(^|\/)(?:\.beads|node_modules|out|scripts|tests)(?:\/|$)|(^|\/)\.env[^/]*$|(^|\/)(?:package(?:-lock)?\.json|\.gitignore)$|^(?:LICENSE|NOTICE)\.md$/;
   const invalid = entries.find(entry => excluded.test(entry));
   if (invalid) throw new Error(`Package contains excluded development file: ${invalid}`);
+  const probe = entries.find(entry => /(^|\/)(?:fixture-materials\.json|SetupReceiverProbe[^/]*|SetupReceiverFixtureEntropy\.brs)$/i.test(entry));
+  if (probe) throw new Error(`Package contains synthetic setup probe: ${probe}`);
 }
 
 function packageEntries(archive) {

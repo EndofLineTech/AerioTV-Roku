@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="SetupReceiverProbe" extends="Scene">
+  <interface>
+    <field id="reset" type="string" alwaysNotify="true" onChange="resetReceiver" />
+  </interface>
+  <script type="text/brightscript" uri="SetupReceiverProbeScene.brs" />
+  <children>
+    <PhoneSetupView id="receiver" warning="SYNTHETIC TEST KEYS — DO NOT SEND REAL ACCOUNTS OR PASSWORDS" />
+  </children>
+</component>

@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 const suites = ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel', 'XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'SceneUi', 'AerioSurface', 'RemoteHints', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'ConnectionStore', 'ConnectionNavigation', 'ConnectionAuthTask', 'CapabilityModel', 'ProgramSearchModel', 'GuideUnifiedSearch', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'PlayerRemoteInput', 'GuideRemoteInput', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'DvrRecordingModel', 'DvrPresentationModel', 'DvrNavigation', 'DvrView', 'GuideTaskCache', 'GuideMappingFallback', 'MappingTask', 'MappingDetailModel', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'VodSeriesTarget', 'VodSeriesTask', 'CatchupModel', 'DiagnosticModel', 'OnDemandPlayer', 'RecordingSeekModel', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask', 'RemoteMapModel', 'SettingsRail', 'SettingsHubInput'];
 suites.unshift('LaunchModel');
 suites.unshift('PhoneSetupModel');
+suites.unshift('PhoneSetupTransport');
 suites.unshift('RecentHistory');
 suites.unshift('GuideHistory', 'BrowserHistory');
 suites.unshift('RokuAuthModel');
@@ -13,6 +14,7 @@ for (const suite of suites) {
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
     ...(suite === 'LaunchModel' ? ['source/LaunchModel.brs'] : []),
     ...(suite === 'PhoneSetupModel' ? ['source/PhoneSetupModel.brs'] : []),
+    ...(suite === 'PhoneSetupTransport' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupTransport.brs', 'source/PhoneSetupLink.brs'] : []),
     ...(suite === 'GuideHistory' ? ['components/GuideView.brs', 'components/GuideSettings.brs'] : []),
     ...(suite === 'BrowserHistory' ? ['components/ChannelBrowser.brs'] : []),
     ...(suite === 'RokuAuthModel' ? ['source/RokuAuthModel.brs'] : []),
@@ -130,6 +132,8 @@ if (profileTaskSuite.status !== 0 || !profileTaskSuite.stdout.includes('ALL TEST
 // Synthetic crypto arithmetic and fake installer/console regression tests only.
 // These commands never connect to a Roku or install a development package.
 for (const args of [
+  ['scripts/test-setup-qr.mjs'],
+  ['--test', 'scripts/setup-receiver-isolation.test.mjs'],
   ['scripts/test-setup-x25519.mjs'],
   ['--test', 'scripts/validate-phone-setup-native.test.mjs'],
 ]) {
