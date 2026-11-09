@@ -1,4 +1,9 @@
 sub main()
+    globalIdentity = {httpUserAgent: "Old-Connection", httpReferer: "https://old.example.test"}
+    isolated = taskRequestIdentity({userAgent: "", referer: ""}, globalIdentity)
+    if isolated.userAgent <> dispatcharrUserAgent("") or isolated.referer <> "" then stop
+    inherited = taskRequestIdentity(invalid, globalIdentity)
+    if inherited.userAgent <> "Old-Connection" or inherited.referer <> "https://old.example.test" then stop
     if httpFailure(401, {}, 1000).category <> "authentication" then stop
     if httpFailure(403, {}, 1000).category <> "permission" then stop
     if not httpAccountRejected(httpFailure(401, {}, 1000)) then stop

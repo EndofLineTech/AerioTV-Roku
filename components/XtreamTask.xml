@@ -6,6 +6,7 @@
     <field id="username" type="string" />
     <field id="password" type="string" />
     <field id="connectionId" type="string" />
+    <field id="requestIdentity" type="assocarray" />
     <field id="result" type="assocarray" alwaysNotify="true" />
     <field id="progress" type="string" alwaysNotify="true" />
   </interface>

@@ -14,6 +14,7 @@ sub main()
     assertEqual(m3uParsePlaylist("#EXTM3U" + chr(10) + "#EXTINF:-1,A" + chr(10) + "https://other.test/live.ts").channels.count(), 1, "external stream URL allowed without Dispatcharr credentials")
     assertEqual(m3uParsePlaylist("#EXTM3U" + chr(10) + "#EXTINF:-1,A" + chr(10) + "file:///etc/passwd").ok, false, "unsupported stream scheme rejected")
     assertEqual(m3uParsePlaylist("#EXTM3U" + chr(10) + string(2100000, "X")).ok, false, "oversized playlist rejected")
+    assertEqual(m3uStreamUrl("https://example.test?token=fixture&kind=m3u"), "https://example.test?token=fixture&kind=m3u", "query on root URL retained byte-for-byte")
     print "ALL TESTS PASSED"
 end sub
 

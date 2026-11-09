@@ -88,3 +88,15 @@ function httpResponseSizeBucket(responseBytes as dynamic, maxBytes as dynamic) a
     if maxBytes = 16000000 then return "at-least-16-mb"
     return "at-least-" + int(maxBytes / 1048576).toStr() + "-mib"
 end function
+function taskRequestIdentity(override as dynamic, globalFields as dynamic) as object
+    agent = ""
+    referer = ""
+    if type(override) = "roAssociativeArray"
+        agent = textValue(override.userAgent)
+        referer = textValue(override.referer)
+    else if type(globalFields) = "roAssociativeArray" or type(globalFields) = "roSGNode"
+        agent = textValue(globalFields.httpUserAgent)
+        referer = textValue(globalFields.httpReferer)
+    end if
+    return {userAgent: dispatcharrUserAgent(agent), referer: referer}
+end function

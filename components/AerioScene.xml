@@ -47,6 +47,11 @@
   <script type="text/brightscript" uri="DvrPlayback.brs" />
   <script type="text/brightscript" uri="DvrSeriesNavigation.brs" />
   <script type="text/brightscript" uri="ConnectionNavigation.brs" />
+  <script type="text/brightscript" uri="PhoneSetupNavigation.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupApplyModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupStore.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
   <script type="text/brightscript" uri="RecentHistoryNavigation.brs" />
   <children>
     <Group id="screen" />
@@ -80,6 +85,8 @@
     </Group>
     <Timer id="pictureHintTimer" duration="6" repeat="false" />
     <SettingsHub id="settingsHub" visible="false" />
+    <PhoneSetupView id="phoneSetup" visible="false" />
+    <Timer id="phoneSetupClock" duration="1" repeat="true" />
     <Timer id="bannerTimer" duration="8" repeat="false" />
     <Timer id="playerClock" duration="1" repeat="true" />
     <Timer id="audioCheck" duration="5" repeat="false" />

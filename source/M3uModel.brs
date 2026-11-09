@@ -21,7 +21,7 @@ function m3uStreamUrl(url as string) as string
     url = url.trim()
     if len(url) > 2048 or url = "" then return ""
     if CreateObject("roRegex", "[\x00-\x20]", "").isMatch(url) then return ""
-    if not CreateObject("roRegex", "^https?://[^/?#@]+(/[^#]*)?$", "i").isMatch(url) then return ""
+    if not CreateObject("roRegex", "^https?://[^/?#@]+([/?][^#]*)?$", "i").isMatch(url) then return ""
     return url
 end function
 

@@ -3,7 +3,7 @@ sub init()
 end sub
 
 sub loadM3u()
-    url = normalizeBaseUrl(m.top.url)
+    url = m3uStreamUrl(m.top.url)
     if url = "" or m.top.connectionId = ""
         m.top.result = {ok: false, message: "Enter a valid M3U URL."}
         return
@@ -16,8 +16,9 @@ sub loadM3u()
     transfer.setMessagePort(port)
     transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
     transfer.setUrl(url)
-    transfer.addHeader("User-Agent", dispatcharrUserAgent(textValue(m.global.httpUserAgent)))
-    if textValue(m.global.httpReferer) <> "" then transfer.addHeader("Referer", m.global.httpReferer)
+    identity = taskRequestIdentity(m.top.requestIdentity, m.global)
+    transfer.addHeader("User-Agent", identity.userAgent)
+    if identity.referer <> "" then transfer.addHeader("Referer", identity.referer)
     if not transfer.asyncGetToFile(path)
         m.top.result = {ok: false, message: "Could not start M3U download."}
         return

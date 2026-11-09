@@ -4,6 +4,12 @@ function defaultConnectionStore() as object
     return {schema: 1, selected: "", entries: []}
 end function
 
+function connectionHasProfileSelection(entry as object) as boolean
+    if textValue(entry.profileId) <> "" then return true
+    if type(entry.channelProfileIds) = "roArray" then return entry.channelProfileIds.count() > 0
+    return false
+end function
+
 ' Only a genuinely empty first-run roster gets onboarding. A newer/corrupt
 ' roster must reach setup's recovery message rather than look like a new install.
 function connectionWelcomeNeeded(store as object) as boolean
@@ -30,6 +36,8 @@ function normalizeConnectionEntry(raw as dynamic) as dynamic
     url = textValue(raw.url)
     if len(url) > 256 then return invalid
     if url <> "" and normalizeBaseUrl(url) = "" then return invalid
+    storedUrl = normalizeBaseUrl(url)
+    if raw.provider = "m3u" then storedUrl = url
     epgUrl = textValue(raw.epgUrl)
     if len(epgUrl) > 256 then return invalid
     if epgUrl <> "" and normalizeBaseUrl(epgUrl) = "" then return invalid
@@ -75,7 +83,7 @@ function normalizeConnectionEntry(raw as dynamic) as dynamic
     sourceDigest = textValue(raw.sourceDigest)
     if sourceDigest <> "" and not CreateObject("roRegex", "^[0-9a-f]{64}$", "").isMatch(sourceDigest) then return invalid
     return {
-        id: id, name: name, provider: raw.provider, url: normalizeBaseUrl(url)
+        id: id, name: name, provider: raw.provider, url: storedUrl
         epgUrl: normalizeBaseUrl(epgUrl)
         localUrl: normalizeBaseUrl(localUrl), userAgent: agent, referer: referer, authMode: mode
         accountId: accountId, profileId: profileId, remember: raw.remember = true and raw.provider = "dispatcharr"
@@ -228,6 +236,7 @@ function connectionStoreRemove(store as object, id as string) as dynamic
 end function
 
 function connectionPreferenceIdentity(entry as object, accountId as string) as string
+    if entry.provider = "m3u" and entry.sessionUrl = true and textValue(entry.sourceDigest) <> "" and accountId <> "" then return "m3u|" + entry.sourceDigest + "|" + accountId + "|" + entry.id
     if normalizeBaseUrl(entry.url) = "" or accountId = "" then return ""
     return entry.url + "|" + accountId + "|" + entry.id
 end function

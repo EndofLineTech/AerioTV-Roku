@@ -363,13 +363,15 @@ sub requireConnectionRelogin(message as string)
 end sub
 
 sub completeDirectConnection(result as object, entry as object, xcUsername = "" as string, xcPassword = "" as string)
+    sessionUrl = m.baseUrl
     if result.channels.count() = 0
         m.status = "This connection contains no supported live channels."
         drawSetup()
         return
     end if
-    resetConnectionRuntime()
+    if m.phoneCommittedId <> entry.id then resetConnectionRuntime()
     applySelectedConnection()
+    if entry.sessionUrl = true then m.baseUrl = sessionUrl
     m.startMiniAfterPlayback = false
     m.xcUsername = xcUsername
     m.xcPassword = xcPassword
@@ -377,6 +379,8 @@ sub completeDirectConnection(result as object, entry as object, xcUsername = "" 
     if entry.provider = "xtream" then m.guideUrl = result.guideUrl
     m.accountIdentity = connectionPreferenceIdentity(entry, result.accountId)
     m.accountPreferences = reconcileWatchHistory(accountPreferences(m.preferenceStore, m.accountIdentity), result.channels)
+    m.accountPreferences = takePhoneSetupPreferences(m.accountPreferences, entry)
+    m.phoneCommittedId = ""
     persistAccountPreferences()
     m.capabilities.movies = "denied"
     m.capabilities.series = "denied"
@@ -434,6 +438,7 @@ end sub
 
 sub openConnectionManager()
     choices = [{title: "Add Dispatcharr connection", action: "add"}, {title: "Add direct M3U and XMLTV connection", action: "addM3u"}, {title: "Add Xtream Codes connection (session-only)", action: "addXtream"}]
+    choices.push({title: "Set up from another device", action: "phoneSetup"})
     if m.selectedConnectionId <> ""
         choices.push({title: "Rename selected connection", action: "rename"})
         choices.push({title: "Request identity and header settings", action: "advanced"})
@@ -591,6 +596,8 @@ sub onConnectionChoice(event as object)
         addSavedConnection("m3u")
     else if choice.action = "addXtream"
         addSavedConnection("xtream")
+    else if choice.action = "phoneSetup"
+        openPhoneSetup()
     else if choice.action = "profile"
         selectPermittedProfile(choice)
     else if choice.action = "rename"

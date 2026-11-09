@@ -3,6 +3,83 @@
 Research and implementation slice, 2026-10-28. Bead: `AerioTV-Roku-e3e.2`.
 This is not an enabled sign-in feature or a successful phone-to-Roku transfer.
 
+## Verified playlist apply controller — 2026-11-09
+
+`AerioTV-Roku-e3e.5.1` now includes Welcome and Manage Connections entries,
+provider verification, retry/cancellation, duplicate confirmation and transactional
+saving. **Normal sessions remain disabled by the shipping entropy provider**:
+opening the screen reports secure setup unavailable and does not open a listener.
+Manual setup remains available. No weak randomness or probe bypass is enabled.
+
+After receipt has written its entire 200 response, the controller verifies the
+candidate with the existing Dispatcharr/Xtream/M3U Tasks. It does not change the
+selected slot, runtime credential, request globals or saved connection during
+verification. Explicit per-Task request identity prevents the old connection's
+User-Agent/Referer from leaking into candidate requests. Failed/empty verification,
+Back and stale Task results cannot commit a slot.
+
+Only an explicit confirmation saves. Duplicates offer **Cancel / Add Anyway /
+Replace**, initially focused on Replace. Replace retains the chosen matching
+slot ID/order, including at four-slot capacity. Multiple matches require choosing
+which slot Replace would retain. Add Anyway cannot overwrite an unrelated slot.
+
+Saving keeps the existing schema/key layout (`connectionsV1` plus `connKey_<id>`).
+Roku's [ifRegistrySection documentation](https://developer.roku.com/dev/docs/ifregistrysection)
+explicitly guarantees that writes between `Flush()` calls are transactional and
+atomic. The verified key and roster therefore use **one Flush**, not a new
+credential-reference format or a separate key-first commit. Write/flush failures
+restore both cached values and flush the old pair; an unsuccessful rollback is
+reported as a recovery condition and setup retry is disabled until restart.
+The normal completion path does not rewrite an already committed import key.
+
+Query-bearing M3U URLs (including queries at the host root) are passed intact to
+the downloader and kept only in session memory. Saved metadata contains an empty
+URL, a session-only flag and a source digest; preference identity remains scoped
+without storing the token. Confirmation explains that the URL must be sent again
+after restart. Xtream credentials likewise remain session-only. Dispatcharr API
+keys are saved separately, never in the roster; API-key-only credentials require
+no username. A default/single-profile credential fallback is supported without
+importing household roles, profiles or PINs.
+
+VOD enablement and supported Guide Days (1, 3, 7, 14) are applied once after commit,
+then persisted through normal account preferences. Later reconnects do not undo
+the viewer's own setting changes. Other Guide Days, nonzero catch-up offsets,
+local URL failover and provider-inapplicable options are explicitly disclosed
+before Save, not silently claimed as applied. These runtime gaps are tracked as
+`AerioTV-Roku-e3e.5.2`. Token-bearing/unsupported XMLTV URLs are rejected with an
+explanation rather than persisted. Household profiles/PINs are not imported and
+Sync is never enabled from the payload. Multi-Channel-Profile selection is also
+retained during lineup refresh and no longer prunes history outside the selected
+view.
+
+### Isolated native controller acceptance
+
+Nine native scenarios pass: verification rejection/retry/cancel, cancellation
+during verification, duplicate Cancel, Replace at capacity with stable slot ID,
+Add Anyway with space, Add Anyway refusal at capacity, query-M3U session metadata,
+Xtream session credentials and API-key-only default-profile fallback with omission
+disclosure. The production controller/dialog/storage code runs with **an in-memory
+registry, fake provider Tasks and a stubbed normal-Scene handoff**. No real account
+is contacted and the application registry is not opened. This proves controller
+behavior, not a real provider/phone transfer or Guide playback acceptance.
+
+```sh
+python3 scripts/build-setup-apply-probe.py
+node scripts/test-setup-apply-native.mjs out/native-parity-normal.zip
+```
+
+The runner uses the already required curl client for read-only console capture,
+ECP and installation; this also works on hosts where direct Node/Python LAN sockets
+are unavailable. It does not change Roku settings or host permissions. Each run
+restores the supplied normal ZIP in `finally`; the verified 0.3.100 restore was
+used here. Results are in ignored `out/setup-apply-native-results.json`.
+Package guards reject apply-probe scripts/fixtures, and isolation tests verify
+that the probe cannot create a URL transfer or application registry section.
+
+The older sections below are historical slices. Their statements that no setup
+entry or apply controller exists are superseded by this section; the CSPRNG,
+remaining runtime settings and real-provider/phone acceptance gates still apply.
+
 ## Serialized receiver and QR screen — 2026-11-09
 
 Bead `AerioTV-Roku-e3e.2.6` adds an entropy-gated receiver Task and reusable

@@ -6,6 +6,8 @@ suites.unshift('PhoneSetupModel');
 suites.unshift('PhoneSetupTransport');
 suites.unshift('PhoneSetupApplyModel');
 suites.unshift('PhoneSetupCancellation');
+suites.unshift('PhoneSetupStore');
+suites.unshift('PhoneSetupNavigation');
 suites.unshift('RecentHistory');
 suites.unshift('GuideHistory', 'BrowserHistory');
 suites.unshift('RokuAuthModel');
@@ -18,13 +20,15 @@ for (const suite of suites) {
     ...(suite === 'PhoneSetupModel' ? ['source/PhoneSetupModel.brs'] : []),
     ...(suite === 'PhoneSetupApplyModel' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupApplyModel.brs'] : []),
     ...(suite === 'PhoneSetupCancellation' ? ['components/PhoneSetupTask.brs'] : []),
+    ...(suite === 'PhoneSetupStore' ? ['source/PhoneSetupStore.brs'] : []),
+    ...(suite === 'PhoneSetupNavigation' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupApplyModel.brs', 'components/PhoneSetupNavigation.brs'] : []),
     ...(suite === 'PhoneSetupTransport' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupTransport.brs', 'source/PhoneSetupLink.brs'] : []),
     ...(suite === 'GuideHistory' ? ['components/GuideView.brs', 'components/GuideSettings.brs'] : []),
     ...(suite === 'BrowserHistory' ? ['components/ChannelBrowser.brs'] : []),
     ...(suite === 'RokuAuthModel' ? ['source/RokuAuthModel.brs'] : []),
     ...(suite === 'XmltvModel' ? ['source/XmltvModel.brs'] : []),
-    ...(['M3uModel', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/M3uModel.brs'] : []),
-    ...(['XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/XtreamModel.brs'] : []),
+    ...(['PhoneSetupApplyModel', 'M3uModel', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/M3uModel.brs'] : []),
+    ...(['PhoneSetupApplyModel', 'XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/XtreamModel.brs'] : []),
     ...(['XtreamArchiveModel', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/XtreamArchiveModel.brs'] : []),
     ...(['XtreamVodModel', 'XtreamVodTask', 'XtreamTask', 'PlayerLifecycle'].includes(suite) ? ['source/XtreamVodModel.brs'] : []),
     'source/PlaybackModel.brs',
@@ -34,7 +38,7 @@ for (const suite of suites) {
     'source/RemoteMapModel.brs', 'source/PreferenceModel.brs',
     'components/RecentHistoryNavigation.brs',
     ...(suite === 'ConnectionAuthTask' ? ['source/ChannelProfileModel.brs'] : []),
-    ...(['PhoneSetupApplyModel', 'ConnectionStore', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/ConnectionStoreModel.brs'] : []),
+    ...(['PhoneSetupStore', 'PhoneSetupApplyModel', 'ConnectionStore', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/ConnectionStoreModel.brs'] : []),
     'source/CapabilityModel.brs',
     'source/ProgramSearchModel.brs',
     'source/VideoGeometry.brs',
@@ -58,6 +62,7 @@ for (const suite of suites) {
     ...(suite === 'TmdbTask' ? ['components/TmdbTask.brs'] : []),
     ...(suite === 'VodShelfTask' ? ['components/VodShelfTask.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/AerioScene.brs'] : []),
+    ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/PhoneSetupNavigation.brs'] : []),
     ...(suite === 'ConnectionNavigation' ? ['components/ConnectionNavigation.brs'] : []),
     ...(suite === 'ConnectionAuthTask' ? ['components/DispatcharrTask.brs'] : []),
     ...(suite === 'XtreamTask' ? ['components/XtreamTask.brs'] : []),

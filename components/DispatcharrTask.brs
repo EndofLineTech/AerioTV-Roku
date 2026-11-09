@@ -11,7 +11,9 @@ sub loadChannels()
     m.base = normalizeBaseUrl(m.top.baseUrl)
     m.key = m.top.apiKey
     m.requestMode = dispatcharrHeaderMode(textValue(m.top.authMode))
+    m.requestUserAgent = invalid
     if m.top.userAgent <> "" then m.requestUserAgent = m.top.userAgent
+    if type(m.top.requestIdentity) = "roAssociativeArray" then m.requestUserAgent = taskRequestIdentity(m.top.requestIdentity, invalid).userAgent
     m.failure = ""
     if m.base = ""
         publishError("Enter a valid server URL.")

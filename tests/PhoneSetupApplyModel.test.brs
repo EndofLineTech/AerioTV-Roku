@@ -38,6 +38,13 @@ sub main()
     check(phoneSetupDuplicateIds(store, candidate).count() = 1, "session-only M3U can match by digest without persisting tokens")
     candidate.sourceDigest = string(64, "b")
     check(phoneSetupDuplicateIds(store, candidate).count() = 0, "empty metadata URLs do not merge distinct query feeds")
+    store.entries = [{id: "exact", provider: "m3u", url: "https://example.test/feed", sourceDigest: string(64, "a"), sessionUrl: false}]
+    candidate = {provider: "m3u", url: "https://example.test/feed/", sourceDigest: string(64, "b"), sessionUrl: false}
+    check(phoneSetupDuplicateIds(store, candidate).count() = 0, "different feed digests are not overridden by a lossy URL comparison")
+    store.entries[0].sourceDigest = ""
+    check(phoneSetupDuplicateIds(store, candidate).count() = 0, "legacy URL fallback preserves path trailing slash")
+    candidate.url = "HTTPS://EXAMPLE.TEST:443/feed"
+    check(phoneSetupDuplicateIds(store, candidate).count() = 1, "legacy URL fallback still canonicalizes scheme/host/default port")
 
     store = defaultConnectionStore()
     for i = 1 to 4
@@ -60,6 +67,24 @@ sub main()
     check(added.entries.count() = 4 and added.selected = "incoming", "explicit Add Anyway uses a fresh slot when available")
     store.readOnly = true
     check(phoneSetupStageVerifiedConnection(store, candidate, "replace", "slot2") = invalid, "read-only registry recovery cannot be overwritten")
+    payload = {playlist: {type: "m3u", name: "Query feed", url: "https://example.test?token=fixture", guideDays: 7, catchupOffsetMinutes: 0, vodEnabled: false, channelProfileIds: []}, profiles: []}
+    prepared = phoneSetupPrepareImport(payload, "received", string(64, "a"))
+    check(prepared.ok and prepared.entry.sessionUrl, "query feed prepared as session-only")
+    check(prepared.entry.url = "" and instr(1, formatJson(prepared.entry), "token=") = 0, "query token absent from roster")
+    check(prepared.url = payload.playlist.url, "exact query retained only in volatile request")
+    check(not phoneSetupVerifiedImport(prepared, {ok: false}).ok, "provider rejection cannot become a candidate")
+    check(not phoneSetupVerifiedImport(prepared, {ok: true, channels: []}).ok, "empty lineup cannot consume a slot")
+    verified = phoneSetupVerifiedImport(prepared, {ok: true, channels: [{id: "one"}], accountId: "feed"})
+    check(verified.ok and verified.entry.id = "received", "verified candidate retains its provisional slot identity")
+    check(connectionPreferenceIdentity(verified.entry, "feed") <> "", "session-only feed has a non-secret preference identity")
+    check(phoneSetupFeedIdentity("HTTPS://EXAMPLE.TEST:443?token=CaseSensitive") = "https://example.test/?token=CaseSensitive", "feed digest input normalizes origin but preserves query bytes")
+    payload.playlist.guideDays = 2
+    payload.playlist.catchupOffsetMinutes = 60
+    limited = phoneSetupPrepareImport(payload, "received", string(64, "a"))
+    check(limited.ok and limited.entry.guideDays = 2 and limited.entry.catchupOffsetMinutes = 60, "unsupported runtime options retained without coercion")
+    check(limited.notes.count() >= 3, "session URL and unsupported options disclosed before saving")
+    prefs = phoneSetupImportedPreferences({guide: {futureDays: 14}, vodEnabled: true}, limited.entry)
+    check(prefs.guide.futureDays = 14 and not prefs.vodEnabled, "unsupported guide range never silently replaces existing setting")
     print "ALL TESTS PASSED"
 end sub
 

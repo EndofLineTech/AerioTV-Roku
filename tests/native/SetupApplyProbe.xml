@@ -1,0 +1,20 @@
+<component name="SetupApplyProbe" extends="Scene">
+  <interface><field id="fixtureCase" type="string" alwaysNotify="true" onChange="startFixtureCase" /></interface>
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/ConnectionStoreModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/M3uModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/XtreamModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupApplyModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupStore.brs" />
+  <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
+  <script type="text/brightscript" uri="PhoneSetupNavigation.brs" />
+  <script type="text/brightscript" uri="SetupApplyProbe.brs" />
+  <children>
+    <PhoneSetupView id="phoneSetup" visible="false" warning="SYNTHETIC APPLY TEST — MEMORY REGISTRY AND FAKE PROVIDERS ONLY" />
+    <Timer id="phoneSetupClock" duration="0.25" repeat="true" />
+    <Timer id="fixtureWatch" duration="0.25" repeat="true" control="start" />
+  </children>
+</component>

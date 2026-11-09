@@ -10,9 +10,11 @@ sub publishXtreamFailure(message as string, relogin = false as boolean)
 end sub
 
 sub loadXtream()
+    m.requestUserAgent = invalid
     m.base = normalizeBaseUrl(m.top.baseUrl)
     m.key = ""
     username = m.top.username
+    if type(m.top.requestIdentity) = "roAssociativeArray" then m.requestUserAgent = taskRequestIdentity(m.top.requestIdentity, invalid).userAgent
     password = m.top.password
     if m.base = "" or m.top.connectionId = "" or not xtreamCredentialsValid(username, password)
         publishXtreamFailure("Enter the server URL and session-only Xtream credentials.")

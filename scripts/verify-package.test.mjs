@@ -54,7 +54,8 @@ test('rejects renamed receiver probes and synthetic entropy exports in a shippin
   const normal = ['manifest', 'source/Main.brs', 'components/AerioScene.xml',
     'images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt'];
   for (const fixture of ['fixture-materials.json', 'components/SetupReceiverProbe.xml',
-    'components/SetupReceiverProbeScene.brs', 'source/SetupReceiverFixtureEntropy.brs']) {
+    'components/SetupReceiverProbeScene.brs', 'source/SetupReceiverFixtureEntropy.brs',
+    'apply-cases.json', 'components/SetupApplyProbe.xml', 'components/SetupApplyFixtureTask.brs']) {
     assert.throws(() => assertPackageEntries([...normal, fixture]), /synthetic setup probe/);
   }
 });

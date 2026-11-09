@@ -3,6 +3,18 @@ sub init()
     m.top.focusable = true
     m.top.backgroundColor = "0x0A1628FF"
     m.top.backgroundUri = ""
+    m.phoneSetup = m.top.findNode("phoneSetup")
+    m.phoneClock = m.top.findNode("phoneSetupClock")
+    m.phoneClock.observeField("fire", "onPhoneVerificationTick")
+    m.phoneSetup.observeField("payload", "onPhoneSetupPayload")
+    m.phoneSetup.observeField("closed", "onPhoneSetupClosed")
+    m.phoneSetup.observeField("retryRequested", "onPhoneSetupRetry")
+    m.phoneVerifyTask = invalid
+    m.phoneDialog = invalid
+    m.phonePending = invalid
+    m.phoneOptions = invalid
+    m.phoneCommittedId = ""
+    m.phoneRecoveryRequired = false
     m.vod = m.top.findNode("vodLibrary")
     m.vod.observeField("playRequested", "onVodPlay")
     m.vod.observeField("stateChange", "onVodStateChange")
@@ -292,14 +304,22 @@ sub drawWelcome()
     m.screen.removeChildrenIndex(m.screen.getChildCount(), 0)
     uiLabel(m.screen, "Welcome to AerioTV", 160, 170, 1600, 96, 64)
     uiLabel(m.screen, "Your TV guide, movies and shows in one place.", 164, 310, 1550, 56, 34, "0x1AC4D8FF")
-    description = "Connect to your own compatible TV source. AerioTV does not provide channels or subscriptions. " + "Choose a connection on the next screen and enter its details with the Roku remote."
+    description = "AerioTV does not provide channels or subscriptions. Choose manual setup with the Roku remote, or receive a saved playlist from another AerioTV device. Secure phone setup must be supported by this build."
     message = uiLabel(m.screen, description, 164, 396, 1480, 160, 29, "0xE8F3FAFF")
     message.wrap = true
-    uiRect(m.screen, 160, 675, 800, 92, "0xFFFFFFFF")
-    uiRect(m.screen, 164, 679, 792, 84, "0x1AC4D8FF")
-    action = uiLabel(m.screen, "CONTINUE TO SETUP", 180, 699, 760, 48, 31, "0x0A1628FF")
-    action.horizAlign = "center"
-    uiLabel(m.screen, "Press OK or Back to continue. Saved connections open directly next time.", 164, 799, 1550, 52, 24, "0x9EB5C9FF")
+    labels = ["MANUAL SETUP", "SET UP FROM PHONE"]
+    for i = 0 to 1
+        color = "0x17344AFF"
+        textColor = "0xE8F3FAFF"
+        if m.setupIndex = i
+            color = "0x1AC4D8FF"
+            textColor = "0x0A1629FF"
+        end if
+        uiRect(m.screen, 160 + i * 800, 675, 760, 92, color)
+        action = uiLabel(m.screen, labels[i], 180 + i * 800, 699, 720, 48, 31, textColor)
+        action.horizAlign = "center"
+    end for
+    uiLabel(m.screen, "Left/Right to choose. OK to continue. Back opens manual setup.", 164, 799, 1550, 52, 24, "0x9EB5C9FF")
 end sub
 
 sub drawSetup()
@@ -361,6 +381,9 @@ sub drawSetup()
         profileText = "Server-authorized default"
         if selectedConnection <> invalid
             if selectedConnection.profileId <> "" then profileText = "Profile #" + selectedConnection.profileId
+            if type(selectedConnection.channelProfileIds) = "roArray"
+                if selectedConnection.channelProfileIds.count() > 0 then profileText = "Profiles " + profileSelectionIdentity(selectedConnection.channelProfileIds, "")
+            end if
         end if
         if m.selectedProfileName <> "" then profileText = m.selectedProfileName
         m.setupRows.push({field: "profile", title: "Channel profile", value: profileText})
@@ -524,7 +547,9 @@ sub connectServer(skipRfi = false as boolean)
     if m.authMode = "password" then validCredential = m.username <> "" and m.password <> ""
     if entry.provider = "m3u" then validCredential = true
     if entry.provider = "xtream" then validCredential = m.username <> "" and m.password <> ""
-    if normalizeBaseUrl(m.baseUrl) = "" or not validCredential
+    validUrl = normalizeBaseUrl(m.baseUrl) <> ""
+    if entry.provider = "m3u" then validUrl = m3uStreamUrl(m.baseUrl) <> ""
+    if not validUrl or not validCredential
         m.status = "Enter a valid server URL and credentials for the selected sign-in method."
         if entry.provider = "m3u" then m.status = "Enter a valid M3U playlist URL before connecting."
         if entry.provider = "xtream" then m.status = "Enter a valid Xtream server URL, username and password."
@@ -634,8 +659,10 @@ end sub
 
 sub completeConnection(result as dynamic)
     m.connectionClock.control = "stop"
-    m.task.unobserveField("result")
-    m.task.unobserveField("progress")
+    if m.task <> invalid
+        m.task.unobserveField("result")
+        m.task.unobserveField("progress")
+    end if
     m.task = invalid
     m.busy = false
     if type(result) <> "roAssociativeArray"
@@ -703,10 +730,15 @@ sub completeConnection(result as dynamic)
     end if
     prefs = accountPreferences(m.preferenceStore, m.accountIdentity, m.registry.read("accountIdentity"), legacy)
     m.accountPreferences = prefs
-    if connection.profileId = "" then m.accountPreferences = reconcileWatchHistory(prefs, result.channels)
+    if not connectionHasProfileSelection(connection) then m.accountPreferences = reconcileWatchHistory(prefs, result.channels)
+    m.accountPreferences = takePhoneSetupPreferences(m.accountPreferences, connection)
     prefs = m.accountPreferences
     if persistAccountPreferences() then m.registry.delete("preferences")
-    if not rememberConnectedAccount(result.accountId) then result.warning = "Could not save this connection. Check Roku app storage and reconnect before exiting."
+    if m.phoneCommittedId = connection.id
+        m.phoneCommittedId = ""
+    else
+        if not rememberConnectedAccount(result.accountId) then result.warning = "Could not save this connection. Check Roku app storage and reconnect before exiting."
+    end if
     m.guide.config = {
         channels: result.channels, groups: result.groups, warning: result.warning
         baseUrl: m.baseUrl, apiKey: m.apiKey, accountId: m.serverAccountId, preferences: prefs
@@ -2281,6 +2313,7 @@ sub refreshChannelLineup()
     selected = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if selected <> invalid
         m.refreshTask.profileId = selected.profileId
+        m.refreshTask.channelProfileIds = selected.channelProfileIds
         m.refreshTask.authMode = selected.authMode
     end if
     m.refreshTask.observeField("result", "onLineupRefresh")
@@ -2308,7 +2341,7 @@ sub onLineupRefresh(event as object)
     cancelPlaybackFailure()
     selected = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if selected = invalid then return
-    if selected.profileId = "" then m.accountPreferences = reconcileWatchHistory(m.accountPreferences, result.channels)
+    if not connectionHasProfileSelection(selected) then m.accountPreferences = reconcileWatchHistory(m.accountPreferences, result.channels)
     removedPlaying = false
     if m.playingChannel <> invalid
         current = invalid
@@ -2387,8 +2420,18 @@ function onKeyEvent(key as string, press as boolean) as boolean
         if m.top.dialog.wasClosed = invalid then return false
         if not m.top.dialog.wasClosed then return false
     end if
+    if m.page = "phoneSetup" then return true
     if m.page = "welcome"
+        if press and (key = "left" or key = "right" or key = "up" or key = "down")
+            m.setupIndex = 1 - m.setupIndex
+            drawWelcome()
+            return true
+        end if
         if press and (key = "OK" or key = "back")
+            if key = "OK" and m.setupIndex = 1
+                openPhoneSetup()
+                return true
+            end if
             m.page = "setup"
             m.setupIndex = 0
             drawSetup()

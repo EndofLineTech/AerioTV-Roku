@@ -25,6 +25,7 @@ sub onSetupActive()
     stopSetupTask()
     m.top.payload = invalid
     m.top.phase = ""
+    m.top.retryAvailable = false
     if not m.top.active
         m.content.removeChildrenIndex(m.content.getChildCount(), 0)
         return
@@ -78,8 +79,10 @@ sub drawPhoneSetup()
     kind = m.info.kind
     m.actions = ["New Code", "Cancel"]
     if m.top.phase <> ""
-        uiLabel(m.content, m.top.phase, 160, 350, 1580, 100, 40, "0x1AC4D8FF")
+        phaseLabel = uiLabel(m.content, m.top.phase, 160, 330, 1580, 320, 40, "0x1AC4D8FF")
+        phaseLabel.wrap = true
         m.actions = ["Cancel"]
+        if m.top.retryAvailable then m.actions = ["Try Again", "Cancel"]
     else if kind = "ready"
         uiLabel(m.content, m.info.name, 160, 245, 930, 70, 34, "0x9EB5C9FF")
         uiLabel(m.content, m.info.code, 150, 337, 970, 155, 112)
@@ -161,7 +164,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
             m.top.active = false
             m.top.closed = true
         else
-            onSetupActive()
+            if m.top.phase <> "" then m.top.retryRequested = true else onSetupActive()
         end if
         return true
     end if

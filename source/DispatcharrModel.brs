@@ -33,7 +33,7 @@ function normalizeBaseUrl(value as string) as string
 end function
 
 function urlOrigin(value as string) as string
-    pattern = CreateObject("roRegex", "^(https?://[^/]+)", "i")
+    pattern = CreateObject("roRegex", "^(https?://[^/?#]+)", "i")
     match = pattern.match(value)
     if match.count() < 2 then return ""
     return match[1]

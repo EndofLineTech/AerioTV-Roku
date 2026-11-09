@@ -5,6 +5,8 @@
     <field id="payload" type="assocarray" alwaysNotify="true" />
     <field id="closed" type="boolean" alwaysNotify="true" />
     <field id="phase" type="string" onChange="drawPhoneSetup" />
+    <field id="retryAvailable" type="boolean" onChange="drawPhoneSetup" />
+    <field id="retryRequested" type="boolean" alwaysNotify="true" />
     <field id="warning" type="string" />
     <field id="sessionInfo" type="assocarray" alwaysNotify="true" />
   </interface>
