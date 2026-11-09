@@ -63,7 +63,7 @@ try {
     for (const line of lines) {
       if (/ERROR:|error &h|Syntax Error|BrightScript Micro Debugger/i.test(line)) {
         runtimeError = true;
-        if (!runtimeReason) runtimeReason = line.trim().replace(/["'][^"']*["']/g, '"..."').slice(0, 200);
+        if (!runtimeReason) runtimeReason = 'compiler/runtime diagnostic';
       }
       if (runtimeError && !runtimeLocation) runtimeLocation = /pkg:\/[A-Za-z0-9_/.]+\(\d+\)/.exec(line)?.[0] ?? '';
       const prefix = '[setup-apply] ';
