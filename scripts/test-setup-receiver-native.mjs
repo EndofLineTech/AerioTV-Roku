@@ -14,6 +14,7 @@ const password = process.env.ROKU_DEV_PASSWORD;
 const restore = process.argv[2];
 const productionEntropy = process.argv.includes('--production-entropy');
 const expiryOnly = process.argv.includes('--expiry-only');
+const lifecycleOnly = process.argv.includes('--lifecycle-only');
 if (!host || !password || !restore || !existsSync(restore)) throw Error('Supply developer environment and verified normal ZIP');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 function curl(args, auth = false) {
@@ -180,6 +181,7 @@ try {
   port = ready.port;
   await checkQr();
   if (!expiryOnly) {
+  if (!lifecycleOnly) {
   await check('wrong-path-precedes-origin', { path: '/Setup', headers: { ORIGIN: '' } }, 404, 'bad_request');
   await check('empty-origin', { headers: { origin: '' } }, 403, 'forbidden');
   await check('missing-length', { omitLength: true }, 400, 'bad_request');
@@ -230,14 +232,16 @@ try {
   assert.equal(rotated.fingerprint, 'YY3R', 'rotation installs the new key');
   await check('stale-key-after-rotation', { body: valid }, 403, 'wrong_code');
   await check('rotated-key-success', { body: sealFixture(basicPayload, { code: '483920', publicHex: rotatedPublic }) }, 200);
+  }
+  const lifecycleBody = sealFixture();
   await reset();
   await incompleteRequest('idle-partial-head', 'POST /setup HTTP/1.1\r\nContent-Len');
   await incompleteRequest('idle-partial-body', 'POST /setup HTTP/1.1\r\nContent-Length: 100\r\n\r\n{');
   // A valid request after both idle disconnects proves they did not consume it.
-  await check('valid-after-idle-disconnects', { body: valid }, 200);
+  await check('valid-after-idle-disconnects', { body: lifecycleBody }, 200);
   await reset();
   const cancelStart = events.length;
-  const cancelledResponse = request({ body: valid });
+  const cancelledResponse = request({ body: lifecycleBody });
   await delay(700); // Native ladder is still running; cancellation is cooperative.
   ecp('keypress/Back');
   await waitEvent('cancelled', cancelStart);
@@ -245,7 +249,7 @@ try {
   assert.equal(cancelled.status, null, 'cancelled crypto never returns success');
   await delay(500);
   assert.ok(!events.slice(cancelStart).some(row => row.kind === 'payload'), 'cancel never publishes payload');
-  assert.equal((await request({ body: valid })).status, null, 'cancel closes listener');
+  assert.equal((await request({ body: lifecycleBody })).status, null, 'cancel closes listener');
   results.push({ id: 'cancel-during-crypto', passed: true });
   console.log('Cancellation during crypto closed the listener without applying');
   }
@@ -266,7 +270,8 @@ try {
   }
   }
   const evidence = productionEntropy ? 'out/setup-receiver-production-entropy-results.json'
-    : expiryOnly ? 'out/setup-receiver-expiry-results.json' : 'out/setup-receiver-native-results.json';
+    : expiryOnly ? 'out/setup-receiver-expiry-results.json'
+    : lifecycleOnly ? 'out/setup-receiver-lifecycle-results.json' : 'out/setup-receiver-native-results.json';
   writeFileSync(evidence, JSON.stringify({ passed: true, results }, null, 2) + '\n');
 } finally {
   consoleSocket?.destroy();

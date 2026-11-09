@@ -3,13 +3,32 @@ sub init()
 end sub
 
 function phoneSetupCancelled() as boolean
-    return m.top.cancelRequested = true
+    ' Never synchronously read an SG field inside the listener/crypto loops.
+    ' A public screensaver may pause the render thread serving those reads.
+    for i = 0 to 31
+        event = m.setupPort.getMessage()
+        if event = invalid then exit for
+        phoneSetupObserveEvent(event)
+    end for
+    return m.cancelled = true
 end function
+
+sub phoneSetupObserveEvent(event as dynamic)
+    if type(event) = "roSGNodeEvent"
+        if lcase(event.getField()) = "cancelrequested" and event.getData() = true then m.cancelled = true
+    end if
+end sub
+
+sub phoneSetupWait(milliseconds as integer)
+    phoneSetupObserveEvent(wait(milliseconds, m.setupPort))
+end sub
 
 sub phoneSetupListen()
     m.setupClock = CreateObject("roTimespan")
     m.setupClock.mark()
     m.setupPort = CreateObject("roMessagePort")
+    m.top.observeField("cancelRequested", m.setupPort)
+    m.cancelled = m.top.cancelRequested = true
     m.setupListener = invalid
     m.setupClient = invalid
     m.material = invalid
@@ -119,7 +138,7 @@ sub phoneSetupListen()
                 end if
             end if
         end if
-        event = wait(20, m.setupPort)
+        phoneSetupWait(20)
     end while
     if m.setupClient <> invalid then m.setupClient.close()
     listener.close()
@@ -159,7 +178,7 @@ function phoneSetupHandle(client as object) as dynamic
                 return invalid
             end if
         end if
-        if not reader.ready and reader.response = invalid then event = wait(20, m.setupPort)
+        if not reader.ready and reader.response = invalid then phoneSetupWait(20)
     end while
     if reader.response <> invalid
         phoneSetupWrite(client, reader.response.status, reader.response.error)
@@ -221,7 +240,7 @@ function phoneSetupWrite(client as object, status as integer, reason as dynamic)
             if count > 0 then sent += count
             if count <= 0 and not client.eOK() then return false
         end if
-        if sent < bytes.count() then event = wait(10, m.setupPort)
+        if sent < bytes.count() then phoneSetupWait(10)
     end while
     m.replyClock = invalid
     return sent = bytes.count()

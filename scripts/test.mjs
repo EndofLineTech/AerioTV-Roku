@@ -5,6 +5,7 @@ suites.unshift('LaunchModel');
 suites.unshift('PhoneSetupModel');
 suites.unshift('PhoneSetupTransport');
 suites.unshift('PhoneSetupApplyModel');
+suites.unshift('PhoneSetupCancellation');
 suites.unshift('RecentHistory');
 suites.unshift('GuideHistory', 'BrowserHistory');
 suites.unshift('RokuAuthModel');
@@ -16,6 +17,7 @@ for (const suite of suites) {
     ...(suite === 'LaunchModel' ? ['source/LaunchModel.brs'] : []),
     ...(suite === 'PhoneSetupModel' ? ['source/PhoneSetupModel.brs'] : []),
     ...(suite === 'PhoneSetupApplyModel' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupApplyModel.brs'] : []),
+    ...(suite === 'PhoneSetupCancellation' ? ['components/PhoneSetupTask.brs'] : []),
     ...(suite === 'PhoneSetupTransport' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupTransport.brs', 'source/PhoneSetupLink.brs'] : []),
     ...(suite === 'GuideHistory' ? ['components/GuideView.brs', 'components/GuideSettings.brs'] : []),
     ...(suite === 'BrowserHistory' ? ['components/ChannelBrowser.brs'] : []),
