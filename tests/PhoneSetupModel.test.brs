@@ -118,6 +118,11 @@ sub testSetupPayload()
     result.payload.playlist.channelProfileIds.push(5)
     check(raw.playlist.channelProfileIds.count() = 3, "normalized lists do not alias raw payload")
     check(result.payload.sync.enabled, "sync request preserved, not applied")
+    decoded = validatePhoneSetupPayload(parseJson(formatJson(raw)))
+    check(decoded.ok, "decoded JSON profile fields retain wire casing")
+    check(decoded.payload.playlist.credential.apiKey = "synthetic-api-key-sam-0002", "decoded apiKey retained")
+    check(decoded.payload.profiles[0].displayName = "Sam", "decoded displayName retained")
+    check(decoded.payload.playlist.channelProfileIds.count() = 3, "decoded channelProfileIds retained")
     raw.profiles[0].pinType = "numbers"
     raw.profiles[0].pinHash = "bad0b4f7cae08eb7c1b5acc763a8ed25242e2c9173e81f3f624b1fa5303cf6ce"
     raw.profiles[0].pinSalt = "000102030405060708090a0b0c0d0e0f"

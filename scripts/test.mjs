@@ -126,3 +126,16 @@ if (profileTaskSuite.status !== 0 || !profileTaskSuite.stdout.includes('ALL TEST
   process.stderr.write('Failed suite: ProfileTask\n');
   process.exit(1);
 }
+
+// Synthetic crypto arithmetic and fake installer/console regression tests only.
+// These commands never connect to a Roku or install a development package.
+for (const args of [
+  ['scripts/test-setup-x25519.mjs'],
+  ['--test', 'scripts/validate-phone-setup-native.test.mjs'],
+]) {
+  const result = spawnSync(process.execPath, args, { encoding: 'utf8', timeout: 600000 });
+  process.stdout.write(result.stdout ?? '');
+  process.stderr.write(result.stderr ?? '');
+  if (result.error) throw result.error;
+  if (result.status !== 0) process.exit(1);
+}

@@ -3,6 +3,108 @@
 Research and implementation slice, 2026-10-28. Bead: `AerioTV-Roku-e3e.2`.
 This is not an enabled sign-in feature or a successful phone-to-Roku transfer.
 
+## Native X25519 and offline handoff proof — 2026-11-09
+
+Bead `AerioTV-Roku-e3e.2.4`. Owner-authorized temporary probe installs ran on
+Streaming Stick 4K 3820RW2 (`GetModel()` 3820X2), OS 15.3.4, 1080p. Each run
+restored the previously verified normal 0.3.100 ZIP (SHA256
+`eb09f4b9705262d11efba05a7b27281ff6272f2b22ff0f003805d9e20224a610`).
+
+| Native check | Result | Slowest measured case |
+| --- | --- | --- |
+| RFC 7748 / independent-host X25519 matrix | **13/13 pass** | **7123 ms** |
+| Offline X25519 → HKDF-SHA256 → authenticated AES-256-GCM → payload validation | **6/6 pass** | **7115 ms** |
+| Existing explicit-tag GCM matrix | **3/3 nonempty positives**; 15 native tag failures and 8 adapter tag-length rejections | Empty-plaintext edge still fails; expected runner exit 2 |
+
+X25519 coverage includes both RFC Alice/Bob public keys, both shared-secret
+directions, the RFC section 5.2 scalar/u vector, high-bit masking, noncanonical
+`p+9`, three deterministic Node/OpenSSL-oracle inputs, and low-order 0/1/p
+(which produce zero; a receiver must reject that shared secret).
+`tests/native/SetupX25519.brs` is an experimental RFC Montgomery ladder with
+17 radix-2^15 limbs and exact Double accumulators. It is deliberately outside
+the production source/package. No constant-time or production-security approval
+is claimed for the interpreted arithmetic, including carry correction branches.
+
+The six handoff cases use the supplied plaintext shapes (full Dispatcharr,
+user-only, API-key-only without username, Xtream, and both M3U forms), sealed by
+`scripts/setup-handoff-vectors.mjs` with Node crypto and fixed synthetic inputs.
+The minimal M3U envelope is asserted **byte-for-byte** against the supplied
+envelope; the two HKDF PRKs/keys are also pinned to Appendix C. The other envelopes
+are independently re-sealed from the supplied shapes, not a wholesale import or
+execution of Appendix C. The native probe verifies PRK, key, exact authenticated
+plaintext and retained option/profile/credential fields without printing them.
+
+These timings include crypto and payload validation, **not an HTTP reply**.
+They establish feasibility on this device, not the slowest supported model or
+the 256 KiB transport case. Roughly 2.9 seconds remain in the ten-second budget;
+serialized socket handling, contention, cancellation and actual sender acceptance
+still require measurement. Key generation is another scalar multiplication and
+belongs before showing/rotating the code, never before writing the third 403.
+
+### Native-only defects found and corrected
+
+The first arithmetic candidate passed the host interpreter but failed real RFC
+inputs on Roku. Native `34359738367.0# \ 32768.0#` returns 65535 after narrowing
+operands, and `Int(34359738367.0# / 32768.0#)` returns 1048576 after Float
+rounding (the floor is 1048575). Carry division now uses a quotient below 2^24
+and corrects a possible rounded-up result using exact Double comparison. The
+test-only host adapter in `scripts/test-setup-x25519.mjs` models the measured
+Float narrowing because brs 0.39 otherwise rejects Int(Double) entirely. It
+does not modify dependencies or replace native proof.
+
+The initial offline handoff run decrypted correctly but rejected every
+Dispatcharr profile. Roku lowercases enumerated literal-AA schema keys, while
+ParseJson preserves case-sensitive wire keys. Schema fields now use explicit
+string pairs, retaining `apiKey`, `displayName`, `channelProfileIds`, etc. Host
+regressions and the repeated six-case native matrix verify the fix.
+
+The old capture lifecycle lost the installer auto-launch and timed out on its
+immediate relaunch. The runner now connects/drains the console **before** installing
+the probe, observes that fresh auto-launch, and restores in `finally`. Local fake
+installer/console tests cover success, wrong results and incomplete results;
+all three native modes were exercised afterward.
+
+### Reproduce safely
+
+Supply developer access through `ROKU_HOST` / `ROKU_DEV_PASSWORD` in the
+environment; never put it in fixtures or evidence. Commands below replace the
+single development slot and restore the explicitly supplied normal-app ZIP:
+
+```sh
+node scripts/test-setup-x25519.mjs
+python3 -m unittest scripts/phone_setup_probe_test.py
+node --test scripts/validate-phone-setup-native.test.mjs
+python3 scripts/build-phone-setup-probe.py --x25519
+node scripts/validate-phone-setup-native.mjs --x25519 out/native-parity-normal.zip
+python3 scripts/build-phone-setup-probe.py --handoff
+node scripts/validate-phone-setup-native.mjs --handoff out/native-parity-normal.zip
+```
+
+Synthetic native rows and typed completeness/timing verdicts are saved to
+`out/setup-x25519-native-results.json` and `out/setup-handoff-native-results.json`.
+No real account/provider is contacted; no registry data is read or changed.
+
+### Randomness: a new official lead, not yet a BrightScript solution
+
+Roku's October 29 TypeScript SDK documentation now explicitly documents
+[`getRandomBytes`](https://developer.roku.com/dev/docs/rsg-sdk-getrandombytes)
+as backed by OpenSSL RAND_bytes / HW-backed `/dev/urandom`, via the runtime's
+global crypto host. This is a documented CSPRNG **for that runtime**, not evidence
+that the existing BrightScript channel can call it on OS 15.3.4. Establishing a
+supported bridge/minimum OS is the next investigation; migrating runtimes is
+not assumed. The current [RSG 2.0 overview](https://developer.roku.com/dev/docs/rsg-sdk-standing-docs-getting-started-overview)
+documents incremental BrightScript/TypeScript field interoperability, but also
+says SDK apps are **sideload-only during beta**, not publishable to the Streaming
+Store, with general availability targeted for Fall 2027. Thus this is not yet
+an established Beta/Store shipping solution even if a probe bridge works.
+The [ifRSA](https://developer.roku.com/dev/docs/ifrsa) reference
+provides signing/verification, not key generation. `GetRandomUUID` still has no
+CSPRNG guarantee in its BrightScript reference. No UUID/timing fallback was
+silently adopted. Secure receiver key/code generation remains a release gate.
+
+No live listener, QR screen, HTTP negative/sequence suite, household-profile
+import, sync, or real iPhone/Android transfer is delivered by these probes.
+
 ## November interoperability update — 2026-11-09
 
 The owner supplied the **2026-11-08 Roku interoperability handoff**, based on
@@ -38,7 +140,7 @@ not Appendix C's six positives, 43 negatives, and five sequences.
 
 ### Remaining delivery boundaries
 
-`AerioTV-Roku-e3e.2` still owns RFC 7748 X25519 and native timing (reply within
+`AerioTV-Roku-e3e.2` still owns production X25519 integration/security review and full reply timing (reply within
 10 seconds of the last body byte; escalate scalar multiplication above roughly
 8 seconds), protocol HKDF/GCM adapter, all-zero-secret rejection and strict
 UTF-8 validation **before** ParseJson. Never use unauthenticated Update output.

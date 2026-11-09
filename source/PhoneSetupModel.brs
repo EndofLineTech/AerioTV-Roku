@@ -60,11 +60,11 @@ end function
 function validatePhoneSetupPayload(raw as dynamic) as object
     failure = phoneSetupFailure(400, "bad_request")
     if type(raw) <> "roAssociativeArray" then return failure
-    playlist = phoneSetupFields(raw.playlist, {
-        type: "string", name: "string", url: "string", xmltvUrl: "string"
-        localUrl: "string", userAgent: "string", guideDays: "int"
-        catchupOffsetMinutes: "int", vodEnabled: "bool", channelProfileIds: "array"
-    }, {guideDays: 7, catchupOffsetMinutes: 0, vodEnabled: true, channelProfileIds: []})
+    playlist = phoneSetupFields(raw.playlist, [
+        ["type", "string"], ["name", "string"], ["url", "string"], ["xmltvUrl", "string"]
+        ["localUrl", "string"], ["userAgent", "string"], ["guideDays", "int"]
+        ["catchupOffsetMinutes", "int"], ["vodEnabled", "bool"], ["channelProfileIds", "array"]
+    ], {guideDays: 7, catchupOffsetMinutes: 0, vodEnabled: true, channelProfileIds: []})
     if playlist = invalid then return failure
     for each field in ["type", "name", "url"]
         if playlist[field] = invalid then return failure
@@ -94,7 +94,7 @@ function validatePhoneSetupPayload(raw as dynamic) as object
     end if
     payload = {playlist: playlist, profiles: profiles}
     if raw.sync <> invalid
-        sync = phoneSetupFields(raw.sync, {provider: "string", enabled: "bool"}, {})
+        sync = phoneSetupFields(raw.sync, [["provider", "string"], ["enabled", "bool"]], {})
         if sync = invalid then return failure
         if sync.provider = invalid or sync.enabled = invalid then return failure
         payload.sync = sync
@@ -103,14 +103,14 @@ function validatePhoneSetupPayload(raw as dynamic) as object
 end function
 
 function phoneSetupCredential(raw as dynamic) as dynamic
-    return phoneSetupFields(raw, {apiKey: "string", username: "string", password: "string"}, {})
+    return phoneSetupFields(raw, [["apiKey", "string"], ["username", "string"], ["password", "string"]], {})
 end function
 
 function phoneSetupProfile(raw as dynamic) as dynamic
-    profile = phoneSetupFields(raw, {
-        username: "string", displayName: "string", role: "string", order: "int"
-        isDefault: "bool", pinType: "string", pinHash: "string", pinSalt: "string"
-    }, {role: "", order: -1, isDefault: false, pinType: "none", pinHash: "", pinSalt: ""})
+    profile = phoneSetupFields(raw, [
+        ["username", "string"], ["displayName", "string"], ["role", "string"], ["order", "int"]
+        ["isDefault", "bool"], ["pinType", "string"], ["pinHash", "string"], ["pinSalt", "string"]
+    ], {role: "", order: -1, isDefault: false, pinType: "none", pinHash: "", pinSalt: ""})
     if profile = invalid then return invalid
     if profile.username = invalid or profile.displayName = invalid then return invalid
     if profile.role <> "" and profile.role <> "admin" and profile.role <> "user" and profile.role <> "child" then return invalid
@@ -123,7 +123,7 @@ function phoneSetupProfile(raw as dynamic) as dynamic
         profile.pinSalt = ""
     end if
     if raw.avatar <> invalid
-        avatar = phoneSetupFields(raw.avatar, {icon: "string", color: "string"}, {})
+        avatar = phoneSetupFields(raw.avatar, [["icon", "string"], ["color", "string"]], {})
         if avatar = invalid then return invalid
         profile.avatar = avatar
     end if
@@ -135,15 +135,18 @@ function phoneSetupProfile(raw as dynamic) as dynamic
     return profile
 end function
 
+' Wire names must be string values, not literal-AA schema keys: native Roku
+' lowercases enumerated literal keys, but ParseJson preserves mixed-case keys.
 ' Copy only known fields; null means absent, never coerce strings or booleans.
 function phoneSetupFields(raw as dynamic, schema as object, defaults as object) as dynamic
     if type(raw) <> "roAssociativeArray" then return invalid
     result = {}
     result.append(defaults)
-    for each field in schema
+    for each spec in schema
+        field = spec[0]
         value = raw[field]
         if value <> invalid
-            if not phoneSetupTypeMatches(value, schema[field]) then return invalid
+            if not phoneSetupTypeMatches(value, spec[1]) then return invalid
             result[field] = value
         end if
     end for

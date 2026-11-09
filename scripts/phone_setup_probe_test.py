@@ -19,6 +19,40 @@ SPEC.loader.exec_module(PROBE)
 
 
 class PhoneSetupProbeTest(unittest.TestCase):
+    def test_handoff_probe_uses_six_positive_shapes_without_production_state(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "handoff-probe.zip"
+            PROBE.build(path, handoff=True)
+            with zipfile.ZipFile(path) as package:
+                self.assertEqual(set(package.namelist()), {
+                    "manifest", "source/Main.brs", "components/PhoneSetupProbe.xml",
+                    "source/SetupX25519.brs", "source/PhoneSetupModel.brs", "handoff-fixtures.json",
+                })
+                rows = json.loads(package.read("handoff-fixtures.json"))
+                self.assertEqual(len(rows), 6)
+                self.assertEqual(len({row["id"] for row in rows}), 6)
+                api_only = next(row for row in rows if row["id"] == "dispatcharr-user-only-apikey-483920")
+                self.assertNotIn("username", json.loads(api_only["plaintext"])["playlist"]["credential"])
+                self.assertNotIn(b"roRegistry", package.read("source/Main.brs"))
+                self.assertNotIn(b"roStreamSocket", package.read("source/Main.brs"))
+                self.assertIsNone(package.testzip())
+
+    def test_x25519_probe_is_isolated_and_matches_host_oracle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "x25519-probe.zip"
+            PROBE.build(path, x25519=True)
+            with zipfile.ZipFile(path) as package:
+                self.assertEqual(set(package.namelist()), {
+                    "manifest", "source/Main.brs", "components/PhoneSetupProbe.xml",
+                    "source/SetupX25519.brs", "x25519-fixtures.json",
+                })
+                rows = json.loads(package.read("x25519-fixtures.json"))
+                self.assertEqual(len(rows), 13)
+                self.assertEqual(len({row["id"] for row in rows}), 13)
+                self.assertNotIn(b"roRegistry", package.read("source/Main.brs"))
+                self.assertNotIn(b"roStreamSocket", package.read("source/Main.brs"))
+                self.assertIsNone(package.testzip())
+
     def test_matrix_covers_valid_and_invalid_contract_cases(self):
         output = subprocess.run(["node", str(PROBE.ROOT / "scripts/phone-setup-vectors.mjs")],
                                 check=True, capture_output=True, text=True)
