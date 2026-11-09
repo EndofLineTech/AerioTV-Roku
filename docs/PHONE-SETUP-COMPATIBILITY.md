@@ -39,9 +39,18 @@ Native synthetic LAN acceptance on the same Streaming Stick/OS passed the
 on-screen QR screenshot scan, all six positive payload shapes, null optionals,
 unpadded base64url, fragmented exact-262144-byte bodies, malformed heads/envelopes/
 plaintext, all-zero secrets, tampering, replay refusal, and three-failure rotation
-with stale-key rejection. The slowest full measured reply was **7710 ms**.
+with stale-key rejection. Extended lifecycle checks also passed both 15-second
+idle disconnects, a valid request afterward, and Back cancellation during
+cryptography with no success reply/payload and a closed listener. The slowest
+full measured reply across these runs was **7733 ms**.
 These are synthetic HTTP tests, not iPhone/Android sender acceptance or successful
 provider verification. Normal 0.3.100 was restored afterward.
+
+`npm run verify` passed both on the owner's working tree and on an isolated
+archive of committed source. The latter intentionally retains baseline 0.3.97;
+the owner's uncommitted version/cache work remains untouched at 0.3.100. These
+checks do not create or sign a release. The existing moderate development-only
+dependency advisory remains tracked as `AerioTV-Roku-tcn`.
 
 Reproduce with developer access in the environment, never in source:
 
@@ -51,6 +60,10 @@ python3 scripts/build-setup-receiver-probe.py
 node scripts/test-setup-receiver-native.mjs out/native-parity-normal.zip
 # Also wait for the real ten-minute deadline (no accelerated fixture clock):
 node scripts/test-setup-receiver-native.mjs out/native-parity-normal.zip --expiry
+# Or run only the deadline check:
+node scripts/test-setup-receiver-native.mjs out/native-parity-normal.zip --expiry-only
+# Shorter lifecycle suite plus the real deadline (used after cancellation changes):
+node scripts/test-setup-receiver-native.mjs out/native-parity-normal.zip --lifecycle-only --expiry
 # Separate probe with the shipping entropy file, expected to refuse setup:
 python3 scripts/build-setup-receiver-probe.py --production-entropy
 node scripts/test-setup-receiver-native.mjs out/native-parity-normal.zip --production-entropy
@@ -70,6 +83,41 @@ and authorized multi-Channel-Profile union helpers are present; retaining an
 option in metadata is **not** applying it. Guide Days and catch-up offset are
 not yet wired to runtime behavior. Household profile import and sync remain
 separate work, and sync must never be enabled just because a payload requests it.
+
+`PhoneSetupApplyModel.brs` also prepares deterministic credential selection and
+duplicate identity matching: playlist credential first, then an unambiguous
+default/single profile; API-key-only credentials need no username; passwords are
+not trimmed. Duplicate matching uses provider plus normalized server and verified
+account ID (exact username only as a fallback), or a caller-supplied M3U source
+digest. It never writes storage, trusts profile roles, automatically chooses a
+replacement slot or applies a payload. A separate pure staging helper accepts
+an explicit choice only after provider verification: Cancel changes nothing; Add Anyway respects
+four-slot capacity; Replace must target a matched duplicate and retains its slot
+ID/order. The UI choice and verification/atomic credential-commit controller are
+still required.
+
+Two initial idle deadline runs timed out waiting for the render-thread expiry
+notification / Task terminal signal. Those are not passing expiry results.
+Cancellation now uses observed message-port events instead of synchronously
+reading `cancelRequested` from SceneGraph inside the socket/crypto loops; those
+reads can depend on a render thread paused by a public screensaver. Isolated probe builds now
+emit a non-secret terminal-state diagnostic directly from the Task **after**
+socket/key cleanup, so the runner can distinguish listener expiry from a public
+screensaver pausing SceneGraph callbacks. It then wakes the screensaver with a
+single navigation key and checks the expired UI. No screensaver setting or
+production diagnostic flag is changed.
+
+After switching cancellation to message-port events, the native lifecycle rerun
+**passed the real ten-minute deadline**, with Task-side cleanup, a closed listener,
+and the expired UI after wake. Idle disconnects, successful receipt afterward and
+cancellation during crypto passed again with that implementation. A separate
+native build containing the **shipping entropy file** also refused setup without
+advertising a session. Both runners restored the verified normal 0.3.100 ZIP.
+This establishes the tested lifecycle boundaries, not CSPRNG availability or
+real-phone/provider interoperability. Evidence is in
+`out/setup-receiver-lifecycle-results.json` and
+`out/setup-receiver-production-entropy-results.json`; the earlier full synthetic
+matrix is retained as `out/setup-receiver-full-results.json`.
 
 The sections below describe earlier implementation slices; statements that a
 listener/QR/crypto adapter is still future work are superseded by this section.
