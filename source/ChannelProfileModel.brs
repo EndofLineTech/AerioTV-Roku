@@ -27,6 +27,43 @@ function profileRestrictedLineup(channels as object, profiles as dynamic, select
     return {ok: true, channels: filtered}
 end function
 
+function profileUnionLineup(channels as object, profiles as dynamic, selectedIds as object) as object
+    if selectedIds.count() = 0 then return {ok: true, channels: channels}
+    allowed = {}
+    for each id in selectedIds
+        selected = profileRestrictedLineup(channels, profiles, textValue(id))
+        if not selected.ok then return selected
+        for each channel in selected.channels
+            allowed[textValue(channel.id)] = true
+        end for
+    end for
+    result = []
+    for each channel in channels
+        if allowed.doesExist(textValue(channel.id)) then result.push(channel)
+    end for
+    return {ok: true, channels: result}
+end function
+
+function profileSelectionIdentity(selectedIds as object, legacyId as string) as string
+    ids = []
+    seen = {}
+    for each id in selectedIds
+        value = textValue(id)
+        if not seen.doesExist(value)
+            ids.push(value)
+            seen[value] = true
+        end if
+    end for
+    if ids.count() = 0 and legacyId <> "" then ids.push(legacyId)
+    ids.sort()
+    result = ""
+    for each id in ids
+        if result <> "" then result += ","
+        result += id
+    end for
+    return result
+end function
+
 function profileChoiceList(profiles as dynamic, selectedId as string) as object
     result = [{title: "Server-authorized default", id: ""}]
     if selectedId = "" then result[0].title = "[Selected] " + result[0].title

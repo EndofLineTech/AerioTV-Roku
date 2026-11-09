@@ -571,6 +571,7 @@ sub connectServer(skipRfi = false as boolean)
     m.task.apiKey = m.apiKey
     m.task.authMode = entry.authMode
     m.task.profileId = entry.profileId
+    m.task.channelProfileIds = entry.channelProfileIds
     if m.authMode = "password"
         m.task.username = m.username
         m.task.password = m.password

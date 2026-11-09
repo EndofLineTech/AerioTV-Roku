@@ -31,11 +31,24 @@ sub main()
     if m.top.result.ok <> true or m.top.result.apiKey <> "verified-key" then stop
     if m.top.password <> "" or m.top.apiKey <> "" then stop
     if m.calls <> 4 then stop ' token, verified user, channel summary and groups
+    m.passwordMode = false
+    m.unionMode = true
+    m.calls = 0
+    m.top = {baseUrl: "https://example.test", apiKey: "test-only", authMode: "x-api-key", username: "", password: "", cancelRequested: false, profileId: "", channelProfileIds: [3, 5], userAgent: "Synthetic-Agent"}
+    loadChannels()
+    if m.top.result.ok <> true or m.top.result.channels.count() <> 2 then stop
+    if m.top.result.accountUsername <> "viewer" or m.requestUserAgent <> "Synthetic-Agent" then stop
+    if m.calls <> 4 then stop ' user, summary, profile union and groups
+    m.calls = 0
+    m.top = {baseUrl: "https://example.test", apiKey: "test-only", authMode: "x-api-key", username: "", password: "", cancelRequested: false, profileId: "", channelProfileIds: [3, 9], userAgent: "Synthetic-Agent"}
+    loadChannels()
+    if m.top.result.ok <> false or m.top.apiKey <> "" then stop
     print "ALL TESTS PASSED"
 end sub
 
 function requestJson(url as string, body = invalid as dynamic, bearer = "" as string, method = "GET" as string) as dynamic
     m.calls++
+    if m.unionMode = true then return {id: 7, username: "viewer"}
     if m.passwordMode = true
         if instr(1, url, "/api/accounts/token/") > 0
             if body.username <> "viewer" or body.password <> "test-password" then stop
@@ -62,6 +75,11 @@ end function
 
 function requestPages(path as string) as dynamic
     m.calls++
+    if m.unionMode = true
+        if instr(1, path, "/channels/summary/") > 0 then return [{id: 10, uuid: "ten", name: "First", channel_number: "1"}, {id: 11, uuid: "eleven", name: "Second", channel_number: "2"}, {id: 12, uuid: "twelve", name: "Hidden", channel_number: "3"}]
+        if instr(1, path, "/channels/profiles/") > 0 then return [{id: 3, channels: [10]}, {id: 5, channels: [11, 99]}]
+        if instr(1, path, "/channels/groups/") > 0 then return []
+    end if
     if instr(1, path, "/channels/summary/") > 0 then return [{id: 10, uuid: "ten", name: "Authorized", channel_number: "1"}]
     if m.passwordMode = true and instr(1, path, "/channels/groups/") > 0 then return []
     m.failure = "Profiles unavailable."

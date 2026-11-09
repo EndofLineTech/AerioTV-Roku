@@ -106,6 +106,12 @@ sub main()
     assertEqual(xc.entries[0].provider, "xtream", "direct Xtream slot selected")
     assertEqual(xc.entries[0].remember, false, "provider credential never persisted through Remember")
     assertEqual(instr(1, FormatJson(xc), "password"), 0, "Xtream roster has no provider password")
+    imported = normalizeConnectionEntry({id: "received", name: "Received", provider: "dispatcharr", url: "https://example.test", channelProfileIds: [2, 3], guideDays: 0, catchupOffsetMinutes: -60, vodEnabled: false, accountUsername: "Viewer"})
+    assertEqual(imported.channelProfileIds.count(), 2, "all received channel profiles retained")
+    assertEqual(imported.id, "received", "profile IDs never replace stable connection slot ID")
+    assertEqual(imported.guideDays, 0, "all available guide choice retained")
+    assertEqual(imported.catchupOffsetMinutes, -60, "negative catchup offset retained")
+    assertEqual(imported.vodEnabled, false, "incoming VOD switch retained")
     print "ALL TESTS PASSED"
 end sub
 

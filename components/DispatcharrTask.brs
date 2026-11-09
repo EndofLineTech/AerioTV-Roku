@@ -11,6 +11,7 @@ sub loadChannels()
     m.base = normalizeBaseUrl(m.top.baseUrl)
     m.key = m.top.apiKey
     m.requestMode = dispatcharrHeaderMode(textValue(m.top.authMode))
+    if m.top.userAgent <> "" then m.requestUserAgent = m.top.userAgent
     m.failure = ""
     if m.base = ""
         publishError("Enter a valid server URL.")
@@ -67,10 +68,13 @@ sub loadChannels()
         publishError("Could not load channels. " + m.failure)
         return
     end if
-    if m.top.profileId <> ""
+    selectedIds = m.top.channelProfileIds
+    if type(selectedIds) <> "roArray" then selectedIds = []
+    if selectedIds.count() = 0 and m.top.profileId <> "" then selectedIds.push(m.top.profileId)
+    if selectedIds.count() > 0
         m.progressLabel = "Checking permitted channel profile"
         profiles = requestPages("/api/channels/profiles/?page=1&page_size=200")
-        narrowed = profileRestrictedLineup(rows, profiles, m.top.profileId)
+        narrowed = profileUnionLineup(rows, profiles, selectedIds)
         profiles = invalid
         if not narrowed.ok
             publishError(narrowed.message)
@@ -78,7 +82,8 @@ sub loadChannels()
         end if
         rows = narrowed.channels
     end if
-    scope = metadataCacheDigest(m.base + "|" + textValue(user.id) + "|profile:" + m.top.profileId)
+    selection = profileSelectionIdentity(selectedIds, "")
+    scope = metadataCacheDigest(m.base + "|" + textValue(user.id) + "|profile:" + selection)
     generation = metadataCacheDigest(FormatJson(rows))
     cached = metadataCacheRead(scope, "channels", "summary", generation, CreateObject("roDateTime").asSeconds(), true)
     channels = []
@@ -122,7 +127,7 @@ sub loadChannels()
         m.top.password = ""
         return
     end if
-    m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id), profileId: m.top.profileId, authModeUsed: m.requestMode, hlsAvailable: hlsAvailable, scope: scope, generation: generation}
+    m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id), accountUsername: textValue(user.username), profileId: m.top.profileId, authModeUsed: m.requestMode, hlsAvailable: hlsAvailable, scope: scope, generation: generation}
     m.key = ""
     m.top.apiKey = ""
 end sub

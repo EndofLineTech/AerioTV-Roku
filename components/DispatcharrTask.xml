@@ -7,6 +7,8 @@
     <field id="apiKey" type="string" />
     <field id="authMode" type="string" />
     <field id="profileId" type="string" />
+    <field id="channelProfileIds" type="array" />
+    <field id="userAgent" type="string" />
     <field id="username" type="string" />
     <field id="password" type="string" />
     <field id="result" type="assocarray" alwaysNotify="true" />

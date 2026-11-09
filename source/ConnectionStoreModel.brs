@@ -52,11 +52,35 @@ function normalizeConnectionEntry(raw as dynamic) as dynamic
     if not CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(accountId) then accountId = ""
     profileId = textValue(raw.profileId)
     if not CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(profileId) then profileId = ""
+    ids = []
+    if raw.channelProfileIds <> invalid
+        if type(raw.channelProfileIds) <> "roArray" then return invalid
+        for each profileValue in raw.channelProfileIds
+            value = textValue(profileValue)
+            if not CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(value) then return invalid
+            ids.push(value)
+        end for
+    end if
+    days = 7
+    if raw.guideDays <> invalid
+        if GetInterface(raw.guideDays, "ifInt") = invalid then return invalid
+        if raw.guideDays < 0 or raw.guideDays > 14 then return invalid
+        days = raw.guideDays
+    end if
+    offset = 0
+    if raw.catchupOffsetMinutes <> invalid
+        if GetInterface(raw.catchupOffsetMinutes, "ifInt") = invalid then return invalid
+        offset = raw.catchupOffsetMinutes
+    end if
+    sourceDigest = textValue(raw.sourceDigest)
+    if sourceDigest <> "" and not CreateObject("roRegex", "^[0-9a-f]{64}$", "").isMatch(sourceDigest) then return invalid
     return {
         id: id, name: name, provider: raw.provider, url: normalizeBaseUrl(url)
         epgUrl: normalizeBaseUrl(epgUrl)
         localUrl: normalizeBaseUrl(localUrl), userAgent: agent, referer: referer, authMode: mode
         accountId: accountId, profileId: profileId, remember: raw.remember = true and raw.provider = "dispatcharr"
+        channelProfileIds: ids, guideDays: days, catchupOffsetMinutes: offset, vodEnabled: raw.vodEnabled <> false
+        accountUsername: textValue(raw.accountUsername), sourceDigest: sourceDigest, sessionUrl: raw.sessionUrl = true and raw.provider = "m3u"
     }
 end function
 
@@ -145,15 +169,20 @@ function connectionStoreUpdate(store as object, id as string, patch as object) a
     result = copyJson(store)
     for each entry in result.entries
         if entry.id = id
-            for each key in ["url", "epgUrl", "localUrl", "userAgent", "referer", "authMode", "accountId", "profileId", "remember"]
+            for each key in ["url", "epgUrl", "localUrl", "userAgent", "referer", "authMode", "accountId", "profileId", "remember", "channelProfileIds", "guideDays", "catchupOffsetMinutes", "vodEnabled", "accountUsername", "sourceDigest", "sessionUrl"]
                 if patch.doesExist(key) then entry[key] = patch[key]
             end for
+            if patch.doesExist("profileId") and not patch.doesExist("channelProfileIds") then entry.channelProfileIds = []
             if entry.url <> previous.url
                 ' No key can belong to an empty first-run URL. Keep the new
                 ' connection's Remember choice; changing a real server clears it.
                 if previous.url <> "" then entry.remember = false
                 entry.accountId = ""
                 entry.profileId = ""
+                entry.channelProfileIds = []
+                entry.accountUsername = ""
+                entry.sourceDigest = ""
+                entry.sessionUrl = false
                 entry.localUrl = ""
                 entry.referer = ""
                 if not patch.doesExist("epgUrl") then entry.epgUrl = ""

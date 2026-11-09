@@ -30,6 +30,7 @@ sub applySelectedConnection()
     m.apiKey = ""
     if entry <> invalid
         m.baseUrl = entry.url
+        if entry.sessionUrl = true then m.baseUrl = ""
         m.guideUrl = entry.epgUrl
         m.remember = entry.remember
         m.apiKey = storedConnectionKey(m.registry, entry)

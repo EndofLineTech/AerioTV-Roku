@@ -14,6 +14,16 @@ sub main()
     assertEqual(profileChoiceList(profiles, "3")[1].title, "[Selected] Family", "named permitted choices normalized")
     assertEqual(profileChoiceList(profiles, "3")[1].id, "3", "first profile ID travels with its label")
     assertEqual(profileChoiceList(profiles, "3")[2].id, "4", "second profile ID travels with its label")
+    profiles.push({id: 5, name: "Other", channels: [11, 99]})
+    union = profileUnionLineup(channels, profiles, [3, 5])
+    assertEqual(union.ok, true, "multiple incoming channel profiles")
+    assertEqual(union.channels.count(), 3, "profile membership union, never adds unauthorized IDs")
+    assertEqual(union.channels[1].uuid, "eleven", "original channel order retained")
+    assertEqual(profileUnionLineup(channels, profiles, [3, 7]).ok, false, "one missing profile fails whole request closed")
+    assertEqual(profileUnionLineup(channels, profiles, [4]).channels.count(), 0, "empty profile union never grants default channels")
+    assertEqual(profileUnionLineup(channels, profiles, [3, 3]).channels.count(), 2, "repeated profile does not duplicate channels")
+    assertEqual(profileSelectionIdentity([5, 3, 5], ""), "3,5", "cache identity ignores order and repeated IDs")
+    assertEqual(profileSelectionIdentity([], "3"), "3", "legacy cache scope remains stable")
     print "ALL TESTS PASSED"
 end sub
 
