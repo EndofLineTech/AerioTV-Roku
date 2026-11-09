@@ -28,7 +28,7 @@ sub Main()
     lines.push("AES-256-GCM cipher + valid tag: " + phoneProbeGcm(false, "cea7403d4d606b6e074ec5d3baf39d18d0d1c8a799996bf0265b98b5d48ab919"))
     lines.push("AES-256-GCM cipher + changed tag: " + phoneProbeGcm(false, "cea7403d4d606b6e074ec5d3baf39d18d0d1c8a799996bf0265b98b5d48ab918"))
     lines.push("Loopback ephemeral TCP bind/listen: " + phoneProbeResult(phoneProbeSocket(port)))
-    fixture = {v: 1, phonePk: "//////////////////////////////////////////8=", nonce: "AAAAAAAAAAAAAAAA", ciphertext: "AAAAAAAAAAAAAAAAAAAAAA=="}
+    fixture = {v: 1, phonePk: "//////////////////////////////////////////8=", nonce: "AAAAAAAAAAAAAAAA", ciphertext: "AAAAAAAAAAAAAAAAAAAAAAA="}
     lines.push("Envelope shape only: " + phoneProbeResult(validatePhoneSetupEnvelope(formatJson(fixture), false).ok))
     lines.push("GCM explicit setTag/getTag results are in [setup-matrix]; legacy calls above omit tag APIs.")
     lines.push("NOT PROVEN: X25519, secure random bytes, DNS-SD/QR, phone interop.")

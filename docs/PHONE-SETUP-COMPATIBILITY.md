@@ -3,6 +3,83 @@
 Research and implementation slice, 2026-10-28. Bead: `AerioTV-Roku-e3e.2`.
 This is not an enabled sign-in feature or a successful phone-to-Roku transfer.
 
+## November interoperability update — 2026-11-09
+
+The owner supplied the **2026-11-08 Roku interoperability handoff**, based on
+Apple main 1.8.45 and Android main 0.5.14, with Appendix A wire-v1, Appendix B
+Dispatcharr Sync v3, and Appendix C synthetic vectors. This supersedes the old
+sender-status assumptions below: **both Apple and Android senders ship**; neither
+needs a Roku-specific wire change. Receipt is LAN-only, not a Dispatcharr API.
+
+Bead `AerioTV-Roku-e3e.2.3` aligns the pure foundation with that handoff:
+
+- Envelope ciphertext must be **longer than 16 bytes**. The future decryptor
+  splits off exactly the last 16 bytes and attempts authentication; a missing or
+  truncated tag on a longer field is `wrong_code`, not a guessed format error.
+- `validatePhoneSetupRequestHead` validates a complete head, strips the query
+  only for route comparison, refuses any case-insensitive Origin (even empty),
+  checks session unavailability before size, rejects missing/duplicate/invalid
+  Content-Length and any Transfer-Encoding, and checks oversized decimal lengths
+  without integer overflow. Unknown normal client headers are tolerated.
+- `validatePhoneSetupPayload` validates an already decrypted, UTF-8-decoded JSON
+  object. All three source families, required playlist strings, strict known-field
+  types, defaults/null-as-absent, Guide Days 0–14, multiple Channel Profile IDs,
+  API-key credentials **without username**, profiles, PIN metadata and sync requests
+  are represented. Unknown keys are ignored. It does not enable sync, trust a
+  supplied admin role as server authorization, write credentials, or add profiles.
+- `rotatePhoneSetupSession` resets attempts under a new generation but retains
+  the original ten-minute deadline. Cancellation during rotation cannot revive it.
+  The owner must write the third 403 before generating/replacing keys; New Code
+  uses a fresh session rather than this rotation helper.
+
+Tests exercise these pure boundaries, **not the complete supplied sealed-vector
+suite**. The historical 27-case GCM matrix below is a separate primitive test,
+not Appendix C's six positives, 43 negatives, and five sequences.
+
+### Remaining delivery boundaries
+
+`AerioTV-Roku-e3e.2` still owns RFC 7748 X25519 and native timing (reply within
+10 seconds of the last body byte; escalate scalar multiplication above roughly
+8 seconds), protocol HKDF/GCM adapter, all-zero-secret rejection and strict
+UTF-8 validation **before** ParseJson. Never use unauthenticated Update output.
+Secure random generation remains unresolved: do not use `Rnd()` or silently
+approve UUID/timing mixing. The proposed interim source requires agreement with
+upstream. Code draws must reject values >= 4294000000, preserve leading zeros,
+and use fresh keys/code on rotation. Session secrets stay in memory.
+
+The HTTP helper is **not a listener**. A serialized `roStreamSocket` Task must
+cap incoming header/body bytes while reading, receive exactly Content-Length
+across fragmented reads, close incomplete/15-second-idle requests without reply,
+write the entire JSON reply with Content-Length and Connection: close, then close.
+Only authenticated, UTF-8-valid, validated payloads may consume a code. Write 200
+before applying. No transport or setup screen is enabled by this foundation.
+
+`AerioTV-Roku-e3e.5` owns QR/apply integration: QR-only can interoperate before
+DNS-SD, but is not yet delivered. Use error correction H, unpadded base64url pk,
+ASCII-unreserved percent encoding and one friendly name cut to 60 code points /
+63 UTF-8 bytes. Add the exact screen copy, Back cancellation and expiry UX from
+the supplied handoff. Duplicate handling must compare normalized server/account,
+offer Cancel / Add Anyway / Replace (focused), verify before replacing the matched
+slot in place, and handle all four slots occupied without overwriting another.
+Incoming multi-profile selection must not be silently narrowed to today's single
+Channel Profile slot field. Playlist-only delivery must disclose omitted profiles
+on the TV; full profile import remains `AerioTV-Roku-e3e.4`.
+
+DNS-SD remains part of `e3e.2`: stable probed instance name, `kind=tv`, SRV/TXT/A
+additional records, in-place key updates, TTL/cache-flush rules and goodbyes. Never
+use the separate companion `_aeriotv._tcp` service for setup.
+
+Dispatcharr Sync remains `AerioTV-Roku-e3e.3` / its delivery successors, not a
+prerequisite to playlist receipt. Appendix B identifies the API as
+`/api/accounts/users/me/app-data/<username-derived-key>/`, with
+`<user>.aeriotv` and the one-time legacy migration. A future implementation must
+round-trip unknown categories, refuse writes of higher schemas, and obtain opt-in;
+`sync.enabled` alone **never** turns it on. The older cross-device scope note's
+unknown-API statement is historical, not current contract evidence.
+
+No device installation, minimum-OS change, entropy exception, release package,
+or joint iPhone/Android acceptance is claimed by this update.
+
 **Correction after release-note research and native retesting:** Roku OS 15.2
 added `setTag`/`getTag`. With those APIs, AES-256-GCM passes our nonempty-payload
 authentication tests on OS 15.3.4. The earlier no-tag-interface tests below
@@ -15,8 +92,8 @@ AES-256-GCM (12-byte nonce, 16-byte tag, no AAD), plus secure random code/key
 generation. The receiver advertises `_aeriotv-setup._tcp`, displays an offline
 QR and fingerprint, and accepts one encrypted payload during a ten-minute
 session. Three failed decryptions rotate the code **and** key. The companion
-remote service is separate. Android has a sender; Apple sender/receiver are
-marked planned in this revision.
+remote service is separate. Apple sender/receiver were marked planned in this
+old pinned revision; the November handoff above supersedes that status.
 
 | Primitive | Official Roku evidence | Remaining proof |
 | --- | --- | --- |
