@@ -4,6 +4,7 @@ const suites = ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel', 'Xtr
 suites.unshift('LaunchModel');
 suites.unshift('PhoneSetupModel');
 suites.unshift('PhoneSetupTransport');
+suites.unshift('PhoneSetupApplyModel');
 suites.unshift('RecentHistory');
 suites.unshift('GuideHistory', 'BrowserHistory');
 suites.unshift('RokuAuthModel');
@@ -14,6 +15,7 @@ for (const suite of suites) {
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
     ...(suite === 'LaunchModel' ? ['source/LaunchModel.brs'] : []),
     ...(suite === 'PhoneSetupModel' ? ['source/PhoneSetupModel.brs'] : []),
+    ...(suite === 'PhoneSetupApplyModel' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupApplyModel.brs'] : []),
     ...(suite === 'PhoneSetupTransport' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupTransport.brs', 'source/PhoneSetupLink.brs'] : []),
     ...(suite === 'GuideHistory' ? ['components/GuideView.brs', 'components/GuideSettings.brs'] : []),
     ...(suite === 'BrowserHistory' ? ['components/ChannelBrowser.brs'] : []),
@@ -30,7 +32,7 @@ for (const suite of suites) {
     'source/RemoteMapModel.brs', 'source/PreferenceModel.brs',
     'components/RecentHistoryNavigation.brs',
     ...(suite === 'ConnectionAuthTask' ? ['source/ChannelProfileModel.brs'] : []),
-    ...(['ConnectionStore', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/ConnectionStoreModel.brs'] : []),
+    ...(['PhoneSetupApplyModel', 'ConnectionStore', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/ConnectionStoreModel.brs'] : []),
     'source/CapabilityModel.brs',
     'source/ProgramSearchModel.brs',
     'source/VideoGeometry.brs',
