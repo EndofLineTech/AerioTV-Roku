@@ -109,9 +109,13 @@ sub drawPhoneSetup()
     if m.index >= m.actions.count() then m.index = 0
     for i = 0 to m.actions.count() - 1
         color = "0x17344AFF"
-        if i = m.index then color = "0x1AC4D8FF"
+        textColor = "0xE8F3FAFF"
+        if i = m.index
+            color = "0x1AC4D8FF"
+            textColor = "0x0A1629FF"
+        end if
         uiRect(m.content, 160 + i * 500, 870, 460, 82, color)
-        label = uiLabel(m.content, m.actions[i], 180 + i * 500, 890, 420, 45, 29)
+        label = uiLabel(m.content, m.actions[i], 180 + i * 500, 890, 420, 45, 29, textColor)
         label.horizAlign = "center"
     end for
     if m.top.warning <> "" then uiLabel(m.content, m.top.warning, 160, 985, 1610, 58, 22, "0xFFB080FF")
