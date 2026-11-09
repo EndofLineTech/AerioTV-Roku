@@ -16,6 +16,7 @@ with tempfile.TemporaryDirectory() as directory:
         assert 'fixture-materials.json' in package.namelist()
         assert b'ISOLATED PROBE ONLY' in package.read('source/PhoneSetupEntropy.brs')
         assert b'SYNTHETIC TEST KEYS' in package.read('components/SetupReceiverProbe.xml')
+        assert b'kind: "task_" + m.exitInfo.kind' in package.read('components/PhoneSetupTask.brs')
         assert 'components/DispatcharrTask.brs' not in package.namelist()
     with zipfile.ZipFile(production) as package:
         assert 'fixture-materials.json' not in package.namelist()
@@ -23,6 +24,7 @@ with tempfile.TemporaryDirectory() as directory:
     entropy = (root / 'source/PhoneSetupEntropy.brs').read_text()
     assert 'function phoneSetupRandomBytes(count as integer) as dynamic\\n    return invalid\\nend function' in entropy
     assert 'fixture-materials' not in entropy
+    assert '"task_"' not in (root / 'components/PhoneSetupTask.brs').read_text()
     config = (root / 'bsconfig.json').read_text()
     assert 'tests/native' not in config
 print('isolated')

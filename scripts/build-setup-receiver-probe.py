@@ -23,7 +23,18 @@ def build(output, production_entropy=False):
         package.write(ROOT / entropy, "source/PhoneSetupEntropy.brs")
         for name in ["PhoneSetupTask", "PhoneSetupView"]:
             for extension in ["xml", "brs"]:
-                package.write(ROOT / f"components/{name}.{extension}", f"components/{name}.{extension}")
+                path = ROOT / f"components/{name}.{extension}"
+                if name == 'PhoneSetupTask' and extension == 'brs':
+                    # A public screensaver can pause SceneGraph render callbacks.
+                    # Report closure from the Task itself, after sockets/keys are
+                    # released. This diagnostic exists only in isolated probes.
+                    source = path.read_text()
+                    marker = '    m.top.info = m.exitInfo\n'
+                    assert source.count(marker) == 1
+                    source = source.replace(marker, '    print "[setup-receiver] "; formatJson({kind: "task_" + m.exitInfo.kind})\n' + marker)
+                    package.writestr(f"components/{name}.{extension}", source)
+                else:
+                    package.write(path, f"components/{name}.{extension}")
         package.write(ROOT / "tests/native/SetupReceiverProbe.xml", "components/SetupReceiverProbe.xml")
         package.write(ROOT / "tests/native/SetupReceiverProbeScene.brs", "components/SetupReceiverProbeScene.brs")
         if not production_entropy:

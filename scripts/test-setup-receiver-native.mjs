@@ -13,6 +13,7 @@ const host = process.env.ROKU_HOST;
 const password = process.env.ROKU_DEV_PASSWORD;
 const restore = process.argv[2];
 const productionEntropy = process.argv.includes('--production-entropy');
+const expiryOnly = process.argv.includes('--expiry-only');
 if (!host || !password || !restore || !existsSync(restore)) throw Error('Supply developer environment and verified normal ZIP');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 function curl(args, auth = false) {
@@ -178,6 +179,7 @@ try {
   assert.equal(ready.fingerprint, 'YFH7');
   port = ready.port;
   await checkQr();
+  if (!expiryOnly) {
   await check('wrong-path-precedes-origin', { path: '/Setup', headers: { ORIGIN: '' } }, 404, 'bad_request');
   await check('empty-origin', { headers: { origin: '' } }, 403, 'forbidden');
   await check('missing-length', { omitLength: true }, 400, 'bad_request');
@@ -246,19 +248,25 @@ try {
   assert.equal((await request({ body: valid })).status, null, 'cancel closes listener');
   results.push({ id: 'cancel-during-crypto', passed: true });
   console.log('Cancellation during crypto closed the listener without applying');
-  if (process.argv.includes('--expiry')) {
-    await reset();
+  }
+  if (process.argv.includes('--expiry') || expiryOnly) {
+    if (!expiryOnly) await reset();
     const expiryStart = events.length;
     const started = performance.now();
-    await waitEvent('expired', expiryStart, 615000);
+    await waitEvent('task_expired', expiryStart, 615000);
     assert.ok(performance.now() - started >= 590000, 'real ten-minute lifetime, not an accelerated fixture');
-    assert.equal((await request({ body: valid })).status, null, 'expiry closes listener');
+    assert.equal((await request({ body: sealFixture() })).status, null, 'expiry closes listener even if the render thread is paused');
+    // Wake a public screensaver, if one is active, without accepting/retrying.
+    // No screensaver settings are changed and no synthetic keepalive is sent.
+    ecp('keypress/Right');
+    await waitEvent('expired', expiryStart);
     assert.ok(!events.slice(expiryStart).some(row => row.kind === 'payload'));
     results.push({ id: 'ten-minute-expiry', passed: true });
     console.log('Ten-minute session expired and closed the listener');
   }
   }
-  const evidence = productionEntropy ? 'out/setup-receiver-production-entropy-results.json' : 'out/setup-receiver-native-results.json';
+  const evidence = productionEntropy ? 'out/setup-receiver-production-entropy-results.json'
+    : expiryOnly ? 'out/setup-receiver-expiry-results.json' : 'out/setup-receiver-native-results.json';
   writeFileSync(evidence, JSON.stringify({ passed: true, results }, null, 2) + '\n');
 } finally {
   consoleSocket?.destroy();
