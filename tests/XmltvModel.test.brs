@@ -1,5 +1,8 @@
 sub main()
     assertEqual(chr(233), "é", "BrightScript emits Unicode code points")
+    exactUtc = xmltvEpoch("20231114221500 +0000")
+    assertEqual(GetInterface(exactUtc, "ifInt") <> invalid, true, "XMLTV epochs must remain integer; Float rounds native Unix timestamps")
+    assertEqual(exactUtc, 1700000100, "UTC XMLTV timestamps retain exact seconds")
     start = guideEpoch("2026-09-23T18:00:00Z")
     assertEqual(xmltvEpoch("20260923133000 -0500"), guideEpoch("2026-09-23T18:30:00Z"), "XMLTV negative timezone offset")
     assertEqual(xmltvEpoch("20260923204500 +0230"), guideEpoch("2026-09-23T18:15:00Z"), "XMLTV positive timezone offset")

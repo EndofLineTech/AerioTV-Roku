@@ -4,8 +4,10 @@ function xmltvEpoch(value as string) as dynamic
     value = value.trim()
     parts = CreateObject("roRegex", "^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2}) ([+-])(\d{2})(\d{2})$", "").match(value)
     if parts.count() <> 10 then return invalid
-    offsetHours = val(parts[8])
-    offsetMinutes = val(parts[9])
+    ' Val returns Float on Roku. Even subtracting 0.0 promotes a Unix epoch
+    ' to Float and rounds modern timestamps by up to 64 seconds. Stay Int32.
+    offsetHours = parts[8].toInt()
+    offsetMinutes = parts[9].toInt()
     if offsetHours > 23 or offsetMinutes > 59 then return invalid
     iso = parts[1] + "-" + parts[2] + "-" + parts[3] + "T" + parts[4] + ":" + parts[5] + ":" + parts[6]
     date = CreateObject("roDateTime")
