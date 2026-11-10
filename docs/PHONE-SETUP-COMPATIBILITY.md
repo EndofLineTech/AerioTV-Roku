@@ -3,6 +3,28 @@
 Research and implementation slice, 2026-10-28. Bead: `AerioTV-Roku-e3e.2`.
 This is not an enabled sign-in feature or a successful phone-to-Roku transfer.
 
+## Full-app pairing test candidate — 2026-11-09
+
+`AerioTV-Roku-e3e.5.5` adds an explicitly opted-in **full application** sideload
+candidate, separate from the standalone probe. See
+[PAIRING-TEST-BUILD.md](PAIRING-TEST-BUILD.md) for build/install, phone-test,
+Save/Replace and rollback instructions. The real entry/controller/provider Tasks,
+registry transaction and Guide handoff are unchanged. Only the entropy function,
+visible warning and test manifest/marker differ from the normal ZIP.
+
+The 0.3.100 candidate passes a native no-save smoke on the existing OS15.3.4 Roku:
+normal UI entry and live QR, fresh encrypted receipt, real M3U verification
+failure against a closed loopback port, retry without another transfer, and
+Cancel back to setup. The normal app was restored. No owner connection was
+imported/saved/replaced by this smoke; actual phone/Save/Guide/relaunch acceptance
+is not claimed. `out/pairing-app-native-results.json` records the verdicts.
+
+The default shipping entropy source still refuses setup. Test candidates are
+visibly branded, use `out/pairing-tests/` and are rejected by package verification,
+release preparation and signed Beta/Store package naming. This makes the real
+application path testable without treating the device-key experiment as a
+qualified production CSPRNG or publishing an unapproved Store build.
+
 ## Fresh-device-key receiver experiment — 2026-11-09
 
 `AerioTV-Roku-e3e.2.7` tests a device-key-conditioned entropy candidate on the

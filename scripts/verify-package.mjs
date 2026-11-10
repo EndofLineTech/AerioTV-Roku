@@ -15,8 +15,20 @@ export function assertPackageEntries(entries) {
   const excluded = /(^|\/)(?:\.beads|node_modules|out|scripts|tests)(?:\/|$)|(^|\/)\.env[^/]*$|(^|\/)(?:package(?:-lock)?\.json|\.gitignore)$|^(?:LICENSE|NOTICE)\.md$/;
   const invalid = entries.find(entry => excluded.test(entry));
   if (invalid) throw new Error(`Package contains excluded development file: ${invalid}`);
+  if (entries.includes('pairing-test-build.json')) throw new Error('Package is a pairing test build, not a shipping package');
   const probe = entries.find(entry => /(^|\/)(?:fixture-materials\.json|apply-cases\.json|SetupReceiverProbe[^/]*|SetupReceiverFixtureEntropy\.brs|SetupApply(?:Probe|Fixture)[^/]*)$/i.test(entry));
   if (probe) throw new Error(`Package contains synthetic setup probe: ${probe}`);
+}
+
+export function assertShippingManifest(manifest) {
+  if (/^\s*aeriotv_pairing_test\s*=/mi.test(manifest) || /^\s*title\s*=.*pairing test/im.test(manifest)) {
+    throw new Error('Pairing test builds cannot be used as Beta/Store packages');
+  }
+}
+
+export function assertShippingArchive(archive) {
+  assertPackageEntries(packageEntries(archive));
+  assertShippingManifest(packageFile(archive, 'manifest'));
 }
 
 function packageEntries(archive) {
@@ -44,7 +56,9 @@ export function verifyPackage() {
   execFileSync('unzip', ['-tqq', archive], { stdio: 'inherit' });
   const entries = packageEntries(archive);
   assertPackageEntries(entries);
-  const manifestVersion = versionFromManifest(packageFile(archive, 'manifest'));
+  const manifest = packageFile(archive, 'manifest');
+  assertShippingManifest(manifest);
+  const manifestVersion = versionFromManifest(manifest);
   if (manifestVersion !== packageVersion) {
     throw new Error(`Version mismatch: package ${packageVersion}, ZIP manifest ${manifestVersion}`);
   }

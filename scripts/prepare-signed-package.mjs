@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { constants, copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertShippingManifest } from './verify-package.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -46,6 +47,7 @@ export function prepareSignedPackage(sourcePath, directory = root) {
   const zipBytes = readFileSync(zipPath);
   if (zipBytes.length < 100 || zipBytes.readUInt32LE(0) !== 0x04034b50) throw new Error('Verified release ZIP is missing');
   const zipManifest = execFileSync('unzip', ['-p', zipPath, 'manifest'], { encoding: 'utf8' });
+  assertShippingManifest(zipManifest);
   if (manifestVersion(zipManifest) !== version) throw new Error('Release ZIP version differs');
   const pkgBytes = readFileSync(resolve(directory, sourcePath));
   const header = Buffer.from('Roku Channel PakV 2.0');

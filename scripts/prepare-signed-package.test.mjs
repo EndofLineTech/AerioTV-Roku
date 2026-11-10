@@ -60,3 +60,10 @@ test('rejects a versioned ZIP built for a different app version', t => {
   writeFileSync(join(root, 'manifest'), 'title=AerioTV\nmajor_version=0\nminor_version=3\nbuild_version=98\n');
   assert.throws(() => prepareSignedPackage(original, root), /versions differ/);
 });
+
+test('refuses to name a pairing test ZIP as a signed Beta/Store package', t => {
+  const { root, release, original, zipName } = fixture(t);
+  writeFileSync(join(root, 'manifest'), 'title=AerioTV Pairing Test\nmajor_version=0\nminor_version=3\nbuild_version=97\naeriotv_pairing_test=1\n');
+  execFileSync('zip', ['-q', join(release, zipName), 'manifest'], { cwd: root });
+  assert.throws(() => prepareSignedPackage(original, root), /pairing test/i);
+});

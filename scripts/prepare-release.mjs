@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { assertShippingArchive } from './verify-package.mjs';
 
 const root = new URL('../', import.meta.url);
 const version = JSON.parse(readFileSync(new URL('package.json', root), 'utf8')).version;
@@ -16,6 +17,7 @@ if (version !== rokuVersion) throw new Error(`Version mismatch: npm ${version}, 
 const source = new URL('out/aeriotv-roku.zip', root);
 const bytes = readFileSync(source);
 if (bytes.length < 100 || bytes.readUInt32LE(0) !== 0x04034b50) throw new Error('Build ZIP is missing or invalid');
+assertShippingArchive(fileURLToPath(source));
 const directory = new URL('out/release/', root);
 mkdirSync(directory, { recursive: true });
 const filename = `aeriotv-roku-v${version}.zip`;

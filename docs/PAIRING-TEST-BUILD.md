@@ -1,0 +1,103 @@
+# Full-application pairing test build
+
+This is the real AerioTV application with the normal Welcome/Manage entry,
+receiver, provider verification, confirmation, credential/connection transaction
+and Guide handoff. It is **not** the standalone probe, a fake provider scene or a
+memory-registry harness.
+
+The only application overrides are the device-key-conditioned test entropy
+provider, a visible pairing-screen warning and the test title/manifest marker.
+`source/Main.brs`, `AerioScene`, the receiver Task, verification Tasks and
+`PhoneSetupStore` remain byte-identical to the normal base ZIP.
+
+**This is a controlled developer test, not an approved production/Store release.**
+The source works in native tests, but its minimum cryptographic entropy has not
+been established. The default shipping provider remains fail-closed. Use a
+disposable/test provider account for initial phone testing. Do not infer security
+approval, profile/PIN import, Sync enablement or unsupported guide settings from
+a successful receipt.
+
+## Build
+
+```sh
+npm run verify
+python3 scripts/build-pairing-test.py --enable-device-key-test
+```
+
+Artifacts are separate from `out/release/`:
+
+```text
+out/pairing-tests/aeriotv-roku-v<version>-pairing-test.zip
+out/pairing-tests/SHA256SUMS-pairing-test-v<version>
+```
+
+Verify the checksum from inside `out/pairing-tests/` before installing. The builder
+records the normal base ZIP's SHA256 inside `pairing-test-build.json`; it does not
+overwrite that base ZIP or modify production source. It refuses probe inputs,
+already-enabled inputs, old bases missing the uppercase-key fix and release output
+directories. It requires explicit opt-in on every invocation.
+
+The normal package verifier, release preparer and signed-package naming tool
+reject the marked candidate. Do not rename it to a Beta/Store ZIP or submit it to
+Roku Packager as a release candidate. No signing-key regeneration is required.
+
+## Owner phone test
+
+1. Install the exact checksum-verified test ZIP using the Roku Developer Mode
+   installer on the target Roku. This replaces the development-slot app; it is
+   not a Store installation. Keep the verified normal ZIP for rollback.
+2. On a new installation choose **Set up from phone**. With saved connections,
+   open **Connection > Manage saved connections > Set up from another device**.
+   From the Guide, **Settings > Connection > Open connection settings** reaches
+   the same Connection screen.
+3. Confirm the **PAIRING TEST BUILD** warning. Wait for the QR and six-digit code.
+   Keep the phone and Roku on the same network.
+4. In AerioTV on the phone, open **Settings > Playlists > your test playlist >
+   Set up another device** and scan the Roku's QR. This phase is QR-only; discovery
+   by TV/code is not implemented.
+5. Wait for Roku provider verification. Read the omission/session-only warnings.
+   A received HTTP 200 means receipt, **not** saved credentials or verified access.
+6. For a new account choose **Save** only when intending to change the Roku's
+   actual saved connections. Duplicates offer **Cancel / Add Anyway / Replace**,
+   with Replace focused. Replace retains the existing slot identity. Four slots
+   is the maximum. Never choose Forget merely to make an automated test pass.
+7. Confirm the authorized lineup and Guide. Then relaunch to test the documented
+   persistence policy: Dispatcharr's verified API key can be remembered; Xtream
+   credentials and token-bearing M3U URLs remain session-only.
+8. Restore the verified normal ZIP when finished. Restoring code does **not** undo
+   a connection deliberately saved/replaced during the test. Cancel before Save
+   if the existing roster must remain unchanged.
+
+Do not attach QR/code screenshots, keys, credentials, URLs with tokens or raw
+console dumps to test reports. Record only provider type, step, outcome, timing,
+whether Save was chosen, and any non-sensitive error text.
+
+## Automated no-save smoke
+
+Supply `ROKU_HOST` and `ROKU_DEV_PASSWORD` through the environment, then run:
+
+```sh
+node scripts/test-pairing-app-native.mjs \
+  out/pairing-tests/aeriotv-roku-v<version>-pairing-test.zip \
+  out/native-parity-normal.zip
+```
+
+This macOS/Swift runner uses the actual full-app ZIP and remote-control UI. It
+reads the live QR, checks that New Code replaces it with a different key, then
+sends a fresh X25519/HKDF/AES-GCM envelope containing a synthetic
+M3U URL on a closed Roku loopback port, checks real provider-verification failure,
+retries without resending, and cancels back to normal setup. It never selects
+Save, Add Anyway, Replace or Forget. It does not claim that the full Guide/save
+path or a real phone sender passed. Native startup can perform the app's usual
+reads/refreshes for an existing selected connection.
+
+The runner requires the previously verified normal 0.3.100 restore ZIP SHA256
+`eb09f4b9705262d11efba05a7b27281ff6272f2b22ff0f003805d9e20224a610` and restores
+it in `finally`. UI recognition emits only allowlisted state booleans/counts;
+screenshots are deleted immediately and QR links/codes never logged. Results are
+in `out/pairing-app-native-results.json`.
+
+On the tested OS15.3.4 Roku, the full-app entry/QR, encrypted receipt into real
+verification, retry and cancellation all pass for the 0.3.100 candidate. Real
+iPhone/Android receipt, explicit Save/Replace, playback and relaunch are separate
+owner acceptance steps—not inferred from this automated smoke.

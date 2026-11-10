@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync, readdirSync } from 'node:fs';
-import { assertPackageEntries } from './verify-package.mjs';
+import { assertPackageEntries, assertShippingManifest } from './verify-package.mjs';
 
 test('store manifest declares supported RSG level and an unbranded title', () => {
   const manifest = readFileSync(new URL('../manifest', import.meta.url), 'utf8');
@@ -29,6 +29,15 @@ test('accepts a normal Roku package layout', () => {
     'images/NOTICE.txt',
     'images/material-icons-LICENSE.txt',
   ]));
+});
+
+test('rejects full-app pairing test artifacts as shipping packages', () => {
+  const normal = ['manifest', 'source/Main.brs', 'components/AerioScene.xml',
+    'images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt'];
+  assert.throws(() => assertPackageEntries([...normal, 'pairing-test-build.json']), /pairing test/i);
+  assert.throws(() => assertShippingManifest('title=AerioTV\naeriotv_pairing_test=1\n'), /pairing test/i);
+  assert.throws(() => assertShippingManifest('title=AerioTV Pairing Test\n'), /pairing test/i);
+  assert.doesNotThrow(() => assertShippingManifest('title=AerioTV\n'));
 });
 
 test('the packaged notices remain identical to the repository originals', () => {

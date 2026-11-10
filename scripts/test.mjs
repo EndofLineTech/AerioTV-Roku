@@ -152,3 +152,9 @@ for (const args of [
   if (result.error) throw result.error;
   if (result.status !== 0) process.exit(1);
 }
+
+const pairingBuild = spawnSync('python3', ['-m', 'unittest', 'scripts/pairing_test_build_test.py'], { encoding: 'utf8' });
+process.stdout.write(pairingBuild.stdout ?? '');
+process.stderr.write(pairingBuild.stderr ?? '');
+if (pairingBuild.error) throw pairingBuild.error;
+if (pairingBuild.status !== 0) process.exit(1);
