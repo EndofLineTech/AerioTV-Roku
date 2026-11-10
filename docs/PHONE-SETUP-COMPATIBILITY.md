@@ -330,6 +330,44 @@ No real account/provider is contacted; no registry data is read or changed.
 
 ### Randomness: a new official lead, not yet a BrightScript solution
 
+#### Secure-random recheck — 2026-11-09
+
+The live-pairing gate remains justified, with a now-explicit minimum-OS finding:
+
+| Candidate | Evidence checked | Decision |
+| --- | --- | --- |
+| TypeScript `getRandomBytes()` | Official API promises OpenSSL `RAND_bytes`; [SDK source](https://gitlab.com/rokudev/rsg-sdk/-/blob/main/packages/runtime/src/crypto.ts) calls `roku.crypto.getRandomBytes()` and throws if the host is absent | Suitable primitive in that runtime, not a BrightScript implementation |
+| Small TypeScript anchor-node bridge | [Getting started](https://developer.roku.com/dev/docs/rsg-sdk-standing-docs-getting-started-first-app) documents BrightScript field interoperability **and requires OS 16.0+**; overview still prohibits Store publication during beta | Possible future isolated sideload experiment, not an approved shipping solution |
+| BrightScript `GetRandomUUID()` | [ifDeviceInfo](https://developer.roku.com/dev/docs/ifdeviceinfo#getrandomuuid-as-string) promises UUID v4/uniqueness, not CSPRNG unpredictability or failure handling | Do not use for pairing private keys or codes without vendor assurance |
+| `roRSA` / newer OS APIs | [ifRSA](https://developer.roku.com/dev/docs/ifrsa) exposes loading keys, signing and verification, not key generation; [release notes through OS 16.0](https://developer.roku.com/dev/docs/release-notes) do not announce a BrightScript random-byte API | No supported source established by this review |
+
+A fresh, read-only ECP device query returned model **3820RW2**, OS **15.3.4**,
+build **2402**. The documented SDK prerequisite therefore excludes the available
+test device. No firmware upgrade, SDK installation, runtime migration or live
+pairing enablement was performed. This is a documentation/source audit and device
+version check, not an on-device TypeScript CSPRNG test. Existing native
+production-entropy fail-closed evidence remains the applicable runtime evidence.
+
+**Security finding (CWE-338):** enabling an unproven PRNG for pairing would risk
+credential confidentiality. Conditional severity **High (8/10, qualitative)**;
+current residual risk **Low (1/10)** because the shipping provider returns
+`invalid` before a session is advertised. A LAN attacker able to predict a
+receiver private key could test six-digit code guesses offline against a captured
+transfer's authentication tag; the code cannot replace private-key entropy. Hashing
+UUIDs/timestamps does not establish missing unpredictability, and random-looking
+samples/statistical tests cannot prove a CSPRNG. Upstream agreement alone also
+cannot establish that an undocumented generator is cryptographically secure.
+
+The concrete next unblock is **Roku confirmation of a Store-supported local
+CSPRNG callable from BrightScript**, including minimum OS/device coverage and
+failure semantics. Ask whether `GetRandomUUID()` is CSPRNG-backed on every
+supported model/OS and suitable for secret-key generation, or request an explicit
+random-byte API. If confirmed, implement exact-length/failure checks and fresh
+independent key/code draws, then exercise native rotation, cancellation, code
+rejection sampling and real-phone interoperability. Otherwise an OS-16-only
+TypeScript bridge needs a separate approved experimental scope and still cannot
+establish Store eligibility during the SDK beta. Manual setup remains available.
+
 Roku's October 29 TypeScript SDK documentation now explicitly documents
 [`getRandomBytes`](https://developer.roku.com/dev/docs/rsg-sdk-getrandombytes)
 as backed by OpenSSL RAND_bytes / HW-backed `/dev/urandom`, via the runtime's
