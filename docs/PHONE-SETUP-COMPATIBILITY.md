@@ -3,6 +3,61 @@
 Research and implementation slice, 2026-10-28. Bead: `AerioTV-Roku-e3e.2`.
 This is not an enabled sign-in feature or a successful phone-to-Roku transfer.
 
+## Fresh-device-key receiver experiment — 2026-11-09
+
+`AerioTV-Roku-e3e.2.7` tests a device-key-conditioned entropy candidate on the
+existing OS 15.3.4 device, rather than waiting for documentation or upgrading the
+runtime. The isolated build replaces only the entropy provider: encrypt a
+domain-separated constant using `roDeviceCrypto` with the `device` scope, verify
+the local decrypt round trip, hash the ciphertext, and return the requested bytes.
+The ciphertext is treated as secret; neither it, its digest, private keys, codes
+nor QR links are logged or persisted. There is no UUID/timing/Rnd/server fallback,
+application-registry access or provider contact. Production entropy remains
+unchanged. This is a **functional experiment, not a demonstrated CSPRNG guarantee
+or an approved shipping source**.
+
+Native measurements establish the following behavior:
+
+- Device, channel and model encryption scopes passed **96/96** synthetic
+  encrypt/decrypt checks at input sizes 1, 16, 32 and 64 bytes. Each group of eight
+  repeated identical inputs produced eight different outputs. All **48/48**
+  one-byte-tampered ciphertexts were rejected. Output length was input length +32.
+- Another **256/256** device-scope encryptions succeeded without a repeated result
+  in **1132 ms**. These observations establish availability and nondeterminism,
+  not a particular cipher, key strength or entropy estimate.
+- The receiver used **nine distinct, newly generated public keys**, read from its
+  actual on-screen QR with fingerprint matching. The host generated fresh phone
+  X25519 keys/nonces and sealed all six handoff payload shapes for those sessions.
+  All six transfers succeeded in **6847–7197 ms** and refused replay after success.
+  Vector IDs referring to fixed codes are only payload-shape names here: the
+  active TV keys and codes were generated, not taken from those fixtures.
+- Origin, malformed-envelope and invalid-UTF8 requests were rejected without
+  publishing a payload. Three wrong-code attempts rotated the key on the same
+  port; the old key was rejected and the new key accepted. Back during X25519
+  closed the listener without publishing a payload. A real **ten-minute** expiry
+  run (not accelerated and without keepalives) also closed the listener while
+  allowing the normal screensaver behavior.
+
+The fresh-key test found a real bug (`AerioTV-Roku-e3e.2.8`): native
+`roByteArray.ToHexString()` emits uppercase private-key hex, while the X25519
+decoder assumed lowercase. The QR public key was correct, but deriving the shared
+secret from the stored hex produced `403 wrong_code` for a valid transfer. Existing
+fixture entropy bypassed `phoneSetupNewMaterial()` and hid this path. Normalizing
+the decoder fixes it; host uppercase/mixed-case checks and native-vector
+byte-array round trips cover the regression: **13/13 native vectors** pass through
+that encoding path, max **7111 ms**, within the 8-second primitive budget. Full
+verification passes on both the owner's working tree (0.3.100) and a clean
+committed-source snapshot (0.3.97). No private-key value was logged to diagnose it.
+
+Evidence is local in `out/entropy-capability-native-results.json` and
+`out/devicecrypto-receiver-transfer-results.json`, with expiry evidence in
+`out/devicecrypto-receiver-expiry-results.json`. The runnable experiment is kept
+on branch `spike/device-key-pairing` under `tests/spikes/device-key-pairing/`, not
+merged into shipping source. Diagnostic screenshots are
+deleted immediately after decoding. Each completed device run restored the
+verified normal app ZIP. Real iPhone/Android sender acceptance and approved
+shipping randomness are not claimed by this experiment.
+
 ## Real provider/Guide HTTP execution — 2026-11-09
 
 Only **enabling real cryptographic pairing** is blocked on secure randomness.
