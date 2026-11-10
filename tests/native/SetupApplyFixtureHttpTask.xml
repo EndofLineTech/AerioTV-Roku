@@ -1,0 +1,7 @@
+<component name="SetupApplyFixtureHttpTask" extends="Task">
+  <interface>
+    <field id="baseUrl" type="string" alwaysNotify="true" />
+    <field id="cancelRequested" type="boolean" />
+  </interface>
+  <script type="text/brightscript" uri="SetupApplyFixtureHttpTask.brs" />
+</component>

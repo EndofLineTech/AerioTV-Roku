@@ -3,6 +3,54 @@
 Research and implementation slice, 2026-10-28. Bead: `AerioTV-Roku-e3e.2`.
 This is not an enabled sign-in feature or a successful phone-to-Roku transfer.
 
+## Real provider/Guide HTTP execution — 2026-11-09
+
+Only **enabling real cryptographic pairing** is blocked on secure randomness.
+Building and testing the remaining code does not depend on that gate. Guide and
+catch-up option work (`AerioTV-Roku-e3e.5.2`) is unfinished implementation, not an
+entropy blocker.
+
+`AerioTV-Roku-e3e.5.3` adds a second native probe mode using the **unchanged
+production DispatcharrTask, XtreamTask, M3uTask and GuideTask**, including the real
+HTTP transport, downloads, JSON parsing and XMLTV file parser. Their synthetic
+dependency is a server bound to **127.0.0.1 only on the Roku itself**. The registry
+remains in memory; cache access is redirected to a private `tmp:` fixture
+namespace so the normal app's cache cannot be touched. There is no external
+provider/account contact and no shipping entropy bypass.
+
+The HTTP suite passes ten controller scenarios plus transport/guide checks:
+request rejection/retry/cancel, cancellation during actual I/O, all duplicate and
+capacity choices, query-bearing M3U, Xtream, API-key-only default-profile fallback,
+and dashboard-password exchange for a saved API key. HTTP headers prove candidate
+User-Agent/Referer/auth isolation; the server observes the exact M3U query. Real
+Dispatcharr profile requests select the requested two-profile union, excluding the
+third channel. Six real GuideTask windows load (four JSON, two XMLTV), retaining
+the exact programme interval while excluding an unselected guide key.
+
+This test found a pre-existing **native XMLTV timestamp bug** (`e3e.5.4`):
+`1700000100` became `1700000128`, a 28-second shift. `Val()` returned Float for
+timezone components, promoting the Unix epoch even for a zero offset. Integer
+`ToInt()` parsing fixes it. Native UTC, +02:30 and -05:30 checks now retain exact
+integer seconds, as do actual downloaded M3U/Xtream guide programmes. Host tests
+alone did not expose the native Float rounding.
+
+```sh
+python3 scripts/build-setup-apply-probe.py --real-http
+node scripts/test-setup-apply-native.mjs out/native-parity-normal.zip --real-http
+```
+
+The runner restores the normal app in `finally`. Evidence, request-family counts
+and guide-window sources are in `out/setup-apply-http-native-results.json`; no
+URLs, headers or credentials are logged. Builder tests verify byte-identical
+production Task implementations, loopback binding, cache isolation and the
+absence of application-registry access. The original fake-provider probe still
+passes as a separate, faster controller regression mode.
+
+This is genuine provider-Task/GuideTask integration against a synthetic HTTP
+dependency, **not** acceptance against a deployed Dispatcharr service, a full
+GuideView/video playback test, or a transfer from a real phone. Those distinctions
+do not prevent further implementation or testing.
+
 ## Verified playlist apply controller — 2026-11-09
 
 `AerioTV-Roku-e3e.5.1` now includes Welcome and Manage Connections entries,

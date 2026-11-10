@@ -1,5 +1,5 @@
 <component name="SetupApplyProbe" extends="Scene">
-  <interface><field id="fixtureCase" type="string" alwaysNotify="true" onChange="startFixtureCase" /></interface>
+  <interface><field id="fixtureCase" type="string" alwaysNotify="true" onChange="startFixtureCase" /><field id="httpFixture" type="boolean" value="false" /></interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ConnectionStoreModel.brs" />

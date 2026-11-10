@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 const host = process.env.ROKU_HOST;
 const password = process.env.ROKU_DEV_PASSWORD;
 const restore = process.argv[2];
+const realHttp = process.argv.includes('--real-http');
 if (!host || !password || !restore || !existsSync(restore)) throw Error('Supply developer environment and verified restore ZIP');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 function curl(args, auth = false) {
@@ -28,7 +29,10 @@ let consoleProcess, consoleConnected = false, closing = false, armed = false, pe
 async function wait(kind, after = 0) {
   const started = Date.now();
   while (Date.now() - started < 20000) {
-    if (runtimeError) throw Error(`Native apply probe compiler/runtime assertion failed ${runtimeLocation} ${runtimeReason}`);
+    if (runtimeError) {
+      await delay(150); // Allow the following debugger location frame to arrive.
+      throw Error(`Native apply probe compiler/runtime assertion failed ${runtimeLocation} ${runtimeReason}`);
+    }
     const row = events.slice(after).find(event => event.kind === kind);
     if (row) return row;
     await delay(25);
@@ -42,6 +46,11 @@ async function begin(name) {
   return after;
 }
 function passed(id) { results.push({ id, passed: true }); console.log(`${id}: passed`); }
+async function guide(after, source) {
+  if (!realHttp) return;
+  const row = await wait('guide_loaded', after);
+  assert.equal(row.source, source, 'production GuideTask loaded the HTTP fixture');
+}
 try {
   ecp('keypress/Home');
   await delay(1000);
@@ -63,13 +72,17 @@ try {
     for (const line of lines) {
       if (/ERROR:|error &h|Syntax Error|BrightScript Micro Debugger/i.test(line)) {
         runtimeError = true;
-        if (!runtimeReason) runtimeReason = 'compiler/runtime diagnostic';
+        if (!runtimeReason) runtimeReason = /ERROR:\s*(ro[A-Za-z0-9_]+(?:[.][A-Za-z0-9_]+)?|ParseJSON|ReadAsciiFile|WriteAsciiFile)/i.exec(line)?.[1] ?? 'compiler/runtime diagnostic';
       }
       if (runtimeError && !runtimeLocation) runtimeLocation = /pkg:\/[A-Za-z0-9_/.]+\(\d+\)/.exec(line)?.[0] ?? '';
       const prefix = '[setup-apply] ';
       const index = line.indexOf(prefix);
       if (index >= 0) {
-        try { events.push(JSON.parse(line.slice(index + prefix.length).trim())); }
+        try {
+          const row = JSON.parse(line.slice(index + prefix.length).trim());
+          events.push(row);
+          if (row.kind === 'guide_epoch_mismatch') console.log('Synthetic guide epoch mismatch:', JSON.stringify(row));
+        }
         catch { runtimeError = true; }
       }
     }
@@ -82,8 +95,8 @@ try {
   if (!consoleConnected) throw Error('Console connection unavailable before installation');
   await delay(1000);
   armed = true;
-  if (install('out/setup-apply-probe.zip')) ecp('launch/dev');
-  await wait('ready');
+  if (install(realHttp ? 'out/setup-apply-http-probe.zip' : 'out/setup-apply-probe.zip')) ecp('launch/dev');
+  assert.equal((await wait('ready')).transport, realHttp ? 'loopback-http' : 'fake-providers');
   let after = await begin('reject');
   assert.equal((await wait('rejected', after)).unchanged, true);
   after = events.length;
@@ -111,6 +124,7 @@ try {
   ecp('keypress/Select');
   let committed = await wait('committed', after);
   assert.equal(committed.count, 4); assert.equal(committed.replacement, true);
+  await guide(after, 'network');
   passed('replace-retains-slot-at-capacity');
 
   after = await begin('duplicate-add');
@@ -118,6 +132,7 @@ try {
   ecp('keypress/Up'); ecp('keypress/Select');
   committed = await wait('committed', after);
   assert.equal(committed.count, 2); assert.equal(committed.replacement, false);
+  await guide(after, 'network');
   passed('add-anyway-uses-distinct-slot');
 
   after = await begin('duplicate-full-add');
@@ -128,15 +143,32 @@ try {
   assert.equal((await wait('cancelled', after)).unchanged, true);
   passed('add-anyway-refused-at-capacity');
 
-  for (const name of ['m3u-query', 'xtream', 'default-profile']) {
+  for (const name of ['m3u-query', 'xtream', 'default-profile', 'dispatcharr-password']) {
     after = await begin(name);
     const confirmation = await wait('confirmation', after);
     if (name === 'default-profile' || name === 'm3u-query') assert.equal(confirmation.omissions, true);
     ecp('keypress/Select');
     assert.equal((await wait('committed', after)).count, 1);
-    passed(name === 'default-profile' ? 'api-key-only-default-profile-and-omission-disclosure' : `${name}-session-credentials-and-clean-metadata`);
+    await guide(after, name === 'm3u-query' || name === 'xtream' ? 'xmltv' : 'network');
+    passed(name === 'default-profile' ? 'api-key-only-default-profile-and-omission-disclosure' : name === 'dispatcharr-password' ? 'dashboard-password-exchanges-for-saved-api-key' : `${name}-session-credentials-and-clean-metadata`);
   }
-  writeFileSync('out/setup-apply-native-results.json', JSON.stringify({ passed: true, results }, null, 2) + '\n');
+  if (realHttp) {
+    assert.ok(events.some(row => row.kind === 'xmltv_epochs_verified'), 'native UTC and positive/negative timezone arithmetic retains exact integer seconds');
+    assert.ok(events.some(row => row.kind === 'profile_union_verified'), 'real Dispatcharr Task applied the requested profile union');
+    for (const family of ['dispatcharr', 'dispatcharr-login', 'dispatcharr-profiles', 'm3u', 'xtream', 'guide-json', 'guide-xmltv']) {
+      assert.ok(events.some(row => row.kind === 'http_request' && row.family === family), `actual HTTP requests exercised ${family}`);
+    }
+    passed('real-provider-tasks-and-guide-http-json-xmltv');
+  }
+  const evidence = { passed: true, transport: realHttp ? 'loopback-http' : 'fake-providers', results };
+  if (realHttp) {
+    evidence.guideWindows = events.filter(row => row.kind === 'guide_loaded').map(({ case: name, source }) => ({ case: name, source }));
+    evidence.httpRequests = {};
+    for (const row of events.filter(row => row.kind === 'http_request')) evidence.httpRequests[row.family] = (evidence.httpRequests[row.family] ?? 0) + 1;
+    evidence.exactNativeXmltvEpochs = true;
+    evidence.profileUnionVerified = true;
+  }
+  writeFileSync(realHttp ? 'out/setup-apply-http-native-results.json' : 'out/setup-apply-native-results.json', JSON.stringify(evidence, null, 2) + '\n');
 } finally {
   closing = true;
   consoleProcess?.kill('SIGTERM');

@@ -58,3 +58,33 @@ print('isolated')
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /isolated/);
 });
+
+test('HTTP apply probe keeps real Tasks intact and isolates fixture listener/cache', () => {
+  const result = spawnSync('python3', ['-c', `
+import importlib.util, pathlib, tempfile, zipfile
+root = pathlib.Path.cwd()
+spec = importlib.util.spec_from_file_location('apply_probe', root / 'scripts/build-setup-apply-probe.py')
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+with tempfile.TemporaryDirectory() as directory:
+    path = module.build(pathlib.Path(directory) / 'http.zip', real_http=True)
+    with zipfile.ZipFile(path) as package:
+        for name in ['DispatcharrTask', 'M3uTask', 'XtreamTask', 'GuideTask']:
+            for extension in ['brs', 'xml']:
+                relative = 'components/' + name + '.' + extension
+                assert package.read(relative) == (root / relative).read_bytes()
+        assert 'components/SetupApplyFixtureTask.brs' not in package.namelist()
+        server = package.read('components/SetupApplyFixtureHttpTask.brs')
+        assert b'setAddress("127.0.0.1:0")' in server
+        cache = package.read('source/MetadataCacheStore.brs')
+        assert b'cachefs:/aeriotv-metadata-v1' not in cache
+        assert b'tmp:/setup-apply-http-cache' in cache
+        assert package.read('source/PhoneSetupEntropy.brs') == (root / 'source/PhoneSetupEntropy.brs').read_bytes()
+        for name in package.namelist():
+            if name.endswith('.brs'):
+                assert b'createobject("roregistrysection"' not in package.read(name).lower()
+print('isolated')
+`], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /isolated/);
+});
