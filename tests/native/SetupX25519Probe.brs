@@ -12,7 +12,11 @@ sub Main()
     for each row in rows
         timer = CreateObject("roTimespan")
         timer.mark()
-        actual = setupX25519(setupX25519HexBytes(row.secret), setupX25519HexBytes(row.peer))
+        ' Exercise the exact native private-key encoding used by NewMaterial,
+        ' not only lowercase fixture strings. Native ToHexString is uppercase.
+        nativeSecret = CreateObject("roByteArray")
+        nativeSecret.fromHexString(row.secret)
+        actual = setupX25519(setupX25519HexBytes(nativeSecret.toHexString()), setupX25519HexBytes(row.peer))
         elapsed = timer.totalMilliseconds()
         passed = setupX25519Hex(actual) = row.expected
         allPassed = allPassed and passed

@@ -185,8 +185,11 @@ function setupX25519Pack(value as object) as object
     return result
 end function
 
-' Synthetic probe/test convenience only, not an external-input decoder.
+' Internal key-encoding helper, not an external-input validator.
 function setupX25519HexBytes(value as string) as object
+    ' Roku's roByteArray.ToHexString returns uppercase. Fixture strings and
+    ' the host interpreter use lowercase; both must decode to the same scalar.
+    value = lcase(value)
     result = []
     alphabet = "0123456789abcdef"
     for i = 1 to len(value) step 2
