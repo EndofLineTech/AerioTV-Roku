@@ -137,5 +137,16 @@ reachable receiver, refresh and lifecycle removal.
 
 Discovery test candidate:
 `out/pairing-tests/discovery/aeriotv-roku-v0.3.100-pairing-test.zip`, SHA256
-`9b9f336b3110ec6922bf9a7a51ca1626e70d22550ac22d76eea0146400a4f294`.
+`28343bb7dbedd91c7c0ed353a8915cd1485a79f67b599ae193fcf2e78b149601`.
 It retains the same developer-only entropy warning and release/signing guards.
+
+This exact candidate passes the final eleven-check no-save/handoff smoke and a
+real ten-minute discovery expiry run (eleven refreshes, two successful goodbyes
+and socket stops across New Code and expiry). It was left installed with a fresh
+discoverable session for the owner. One earlier expiry-removal timeout was not
+reproduced after adding lifecycle diagnostics; its cause is **not claimed fixed**
+and remains tracked in `AerioTV-Roku-e3e.2.9.1`.
+
+The UI harness now checks the actual setup QR instead of OCR of the random key
+fingerprint. Run its offline synthetic-image regressions on macOS with
+`swift scripts/test-pairing-ui.swift`. No screenshots or QR payloads are logged.

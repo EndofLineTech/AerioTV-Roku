@@ -23,6 +23,13 @@ direct-IP diagnostic; the independent DNS-SD + curl checks do not establish
 phone Network.framework interoperability. Real iPhone discovery/transfer remains
 owner acceptance, not a claimed result. No owner connections were saved/replaced.
 
+The final instrumented 0.3.100 candidate also passes passive real ten-minute
+expiry: eleven refreshes, two successful TTL-zero sends/socket stops across New
+Code and expiry, service removal and closed HTTP. The final eleven-check
+no-save smoke leaves a fresh discoverable session installed for owner testing.
+An earlier expiry-removal timeout remains an unreproduced issue in
+`AerioTV-Roku-e3e.2.9.1`; the diagnostic-only changes do not establish its cause.
+
 See [PAIRING-TEST-BUILD.md](PAIRING-TEST-BUILD.md) for the exact candidate/checksum,
 commands, evidence paths, remaining test boundaries and phone instructions.
 Production entropy is still fail-closed; only the visibly branded developer
