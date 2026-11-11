@@ -66,6 +66,7 @@ sub phoneSetupMdnsAnnounce(ttl as integer)
     records = m.mdns.records
     packet = phoneSetupDnsMessage(0, true, [], [records[0]], [], [records[1], records[2], records[3]], ttl, false)
     sent = phoneSetupMdnsSend(packet, m.mdns.group)
+    if ttl = 0 and sent then print "[setup-discovery] goodbye-sent"
 end sub
 
 sub phoneSetupMdnsStop()
@@ -76,6 +77,7 @@ sub phoneSetupMdnsStop()
         m.mdns.socket.close()
     end if
     m.mdns = invalid
+    print "[setup-discovery] stopped"
 end sub
 
 sub phoneSetupMdnsPoll()
@@ -157,6 +159,7 @@ sub phoneSetupMdnsPoll()
             end if
         else
             phoneSetupMdnsAnnounce(120)
+            print "[setup-discovery] refreshed"
             state.repeatAnnouncement = false
             state.nextAt = nowMs + 60000
         end if

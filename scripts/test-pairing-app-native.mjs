@@ -174,7 +174,7 @@ try {
     const lines = pending.split('\n'); pending = lines.pop();
     if (lines.some(line => /ERROR:|error &h|Syntax Error|BrightScript Micro Debugger/i.test(line))) runtimeError = true;
     for (const line of lines) {
-      const stage = /\[setup-discovery\] (socket-ready|unavailable-bind|unavailable-multicast|packet-received|announced|send-failed)/.exec(line)?.[1];
+      const stage = /\[setup-discovery\] (socket-ready|unavailable-bind|unavailable-multicast|packet-received|announced|send-failed|goodbye-sent|stopped|refreshed)/.exec(line)?.[1];
       if (stage) discoveryTransport[stage] = (discoveryTransport[stage] ?? 0) + 1;
     }
   });
@@ -218,7 +218,12 @@ try {
     pass('bonjour-new-session-replaces-key-and-port');
     if (expiryOnly) {
       const started = performance.now(), after = discoveryEvents.length;
-      await waitDiscovery(row => row.event === 'removed' && row.service === advert.service, after, 615000);
+      try {
+        await waitDiscovery(row => row.event === 'removed' && row.service === advert.service, after, 615000);
+      } catch (error) {
+        console.log(JSON.stringify({ diagnostic: 'expiry-timeout', httpStatus: request(session, '{}').status, ui: snapshot() }));
+        throw error;
+      }
       assert.ok(performance.now() - started >= 590000, 'Real ten-minute session, not accelerated');
       assert.ok(request(session, '{}').status === null, 'Expiry closes HTTP listener');
       pass('bonjour-goodbye-on-real-ten-minute-expiry');
