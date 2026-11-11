@@ -26,6 +26,8 @@ def build(input_path, output_directory=None, *, enable_device_key_test=False):
             raise ValueError("Invalid or duplicate package entries")
         if sum(info.file_size for info in package.infolist()) > 128 * 1024 * 1024:
             raise ValueError("Oversized base package")
+        if 'ui-audit-build.json' in names:
+            raise ValueError("Base contains a synthetic UI probe")
         if MARKER in names:
             raise ValueError("Input is already a pairing test build, not a shipping base")
         for name in names:

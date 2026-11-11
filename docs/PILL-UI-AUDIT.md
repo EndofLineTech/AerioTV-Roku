@@ -54,10 +54,17 @@ scrolling was separately checked and visually inspected.
 
 ### Explicit limitations
 
+Follow-up: the populated library/Settings audit is documented in
+[`UI-LIBRARY-AUDIT.md`](UI-LIBRARY-AUDIT.md), including rendered findings assigned
+to `AerioTV-Roku-mrr.2` and `.3`. The scope below describes the original 39-case
+pass, not that expanded audit.
+
 - **Native voice keyboard is not pill-compliant.** Its keys and left-aligned
   Done/Cancel remain Roku-owned styling. Retaining it preserves standard voice
   and text entry; replacing/restyling its framework needs separate investigation.
   The screenshot runner crops out Roku's own mobile-keyboard QR banner.
+  The owner subsequently accepted native system styling; `AerioTV-Roku-1rm`
+  is closed and custom keyboard styling is not required.
 - The gallery covers shared library navigation/action renderers, not every
   populated VOD/DVR library view or every provider-specific dialog message.
 - Content cards, guide cells, informational text and text-entry fields are not

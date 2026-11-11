@@ -11,6 +11,8 @@ suites.unshift('PhoneSetupStore');
 suites.unshift('PhoneSetupNavigation');
 suites.unshift('PhoneSetupAutoAdd');
 suites.unshift('PillListItem');
+suites.unshift('UiAuditLibraryData');
+suites.unshift('UiAuditFixtureTask');
 suites.unshift('RecentHistory');
 suites.unshift('GuideHistory', 'BrowserHistory');
 suites.unshift('RokuAuthModel');
@@ -21,6 +23,8 @@ for (const suite of suites) {
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
     ...(suite === 'LaunchModel' ? ['source/LaunchModel.brs'] : []),
     ...(suite === 'PillListItem' ? ['components/AerioPillListItem.brs'] : []),
+    ...(suite === 'UiAuditLibraryData' ? ['tests/native/UiAuditLibraryData.brs'] : []),
+    ...(suite === 'UiAuditFixtureTask' ? ['tests/native/UiAuditLibraryData.brs', 'tests/native/UiAuditFixtureTask.brs'] : []),
     ...(suite === 'PhoneSetupModel' ? ['source/PhoneSetupModel.brs'] : []),
     ...(suite === 'PhoneSetupApplyModel' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupApplyModel.brs'] : []),
     ...(suite === 'PhoneSetupCancellation' ? ['components/PhoneSetupTask.brs'] : []),
@@ -159,7 +163,7 @@ for (const args of [
   if (result.status !== 0) process.exit(1);
 }
 
-const pairingBuild = spawnSync('python3', ['-m', 'unittest', 'scripts/pairing_test_build_test.py'], { encoding: 'utf8' });
+const pairingBuild = spawnSync('python3', ['-m', 'unittest', 'scripts/pairing_test_build_test.py', 'scripts/ui_library_audit_test.py'], { encoding: 'utf8' });
 process.stdout.write(pairingBuild.stdout ?? '');
 process.stderr.write(pairingBuild.stderr ?? '');
 if (pairingBuild.error) throw pairingBuild.error;

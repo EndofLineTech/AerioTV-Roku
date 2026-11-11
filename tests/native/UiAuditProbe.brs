@@ -3,6 +3,7 @@
 sub initUiAudit()
     m.devicePreferences = normalizeDevicePreferences({})
     m.global.addFields({appearance: m.devicePreferences, clockFormat: "24", audioGuide: false})
+    m.global.addFields({uiAuditLibraryCase: ""})
     m.accountPreferences = normalizeAccountPreferences({})
     m.screen = m.top.findNode("screen")
     m.guide = m.top.findNode("guide")
@@ -25,9 +26,12 @@ sub showUiAudit()
         m.auditDialog = invalid
     end if
     if m.auditExtra <> invalid
+        if m.auditExtra.hasField("active") then m.auditExtra.active = false
         m.top.removeChild(m.auditExtra)
         m.auditExtra = invalid
     end if
+    closeRecordDialog()
+    if m.top.dialog <> invalid then m.top.dialog.close = true
     m.guide.active = false
     m.settingsHub.active = false
     m.transport.active = false
@@ -41,7 +45,26 @@ sub showUiAudit()
     if left(name, 6) = "large-" then m.devicePreferences.textSize = 120
     if left(name, 6) = "light-" then m.devicePreferences.appearanceMode = "light"
     m.global.appearance = m.devicePreferences
-    if name = "welcome"
+    scenario = name
+    if left(name, 6) = "large-" or left(name, 6) = "light-" then scenario = mid(name, 7)
+    m.global.uiAuditLibraryCase = scenario
+    if left(scenario, 8) = "library-" or left(scenario, 4) = "dvr-"
+        kind = "VodView"
+        if left(scenario, 4) = "dvr-" then kind = "DvrView"
+        m.auditExtra = m.top.createChild(kind)
+        m.auditExtra.observeField("playRequested", "uiAuditForbiddenPlay")
+        hook = "seedUiAuditVod"
+        if kind = "DvrView" then hook = "seedUiAuditDvr"
+        m.auditExtra.callFunc(hook, scenario)
+    else if scenario = "series-options"
+        m.page = "fixture"
+        m.accountIdentity = "ui-audit"
+        m.capabilities = {dvr: "manage"}
+        m.recordTask = invalid
+        m.recordIntent = {account: "ui-audit", scope: "ui-audit", channelId: "1", tvgId: "synthetic-channel"}
+        m.seriesDraft = {title: "A long synthetic series title for checking rule configuration", tvgId: "synthetic-channel", channelId: "1", mode: "new", titleMode: "exact", description: "A synthetic description phrase", untaggedIsNew: false}
+        showSeriesOptions()
+    else if name = "welcome"
         m.screen.visible = true
         m.setupIndex = 0
         drawWelcome()
@@ -83,6 +106,7 @@ sub showUiAudit()
         end for
         if target = "whatsnew" then m.settingsHub.callFunc("seedUiAuditSettings", "whatsNew")
         if target = "licenses" then m.settingsHub.callFunc("seedUiAuditSettings", "licenses")
+        if target = "choice" or target = "remote-player" or target = "remote-guide" or target = "reset" then m.settingsHub.callFunc("seedUiAuditSettings", target)
     else if name = "guide-picker" or name = "guide-picker-scroll"
         m.guide.visible = true
         items = []
@@ -181,7 +205,20 @@ sub uiAuditCheck()
         list = uiAuditFocusedList(m.top)
         if list <> invalid then focused = list.itemFocused
     end if
-    print "[ui-audit] "; formatJson({check: true, screen: m.top.auditScreen, focused: focused})
+    state = {check: true, screen: m.top.auditScreen, focused: focused}
+    if m.auditExtra <> invalid
+        if m.auditExtra.subtype() = "VodView" or m.auditExtra.subtype() = "DvrView" then state.library = m.auditExtra.callFunc("uiAuditLibraryState")
+    end if
+    if m.top.dialog <> invalid
+        state.sceneDialog = m.top.dialog.subtype()
+        state.buttons = m.top.dialog.buttons
+        if state.sceneDialog = "AerioDialog" then state.focused = m.top.dialog.buttonFocused
+    end if
+    print "[ui-audit] "; formatJson(state)
+end sub
+
+sub uiAuditForbiddenPlay()
+    print "[ui-audit] "; formatJson({forbidden: true, action: "playRequested"})
 end sub
 
 function uiAuditFocusedList(node as object) as dynamic

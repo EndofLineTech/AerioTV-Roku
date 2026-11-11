@@ -24,9 +24,10 @@ test('gallery replaces startup and disconnects real account navigation', () => {
 test('shipping package guard rejects every gallery hook', () => {
   const base = ['manifest', 'source/Main.brs', 'components/AerioScene.xml', 'images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt'];
   assert.doesNotThrow(() => assertPackageEntries(base));
-  for (const name of ['UiAuditMain.brs', 'UiAuditPhone.brs', 'UiAuditSettings.brs', 'SetupReceiverProbeUiAudit.brs']) {
+  for (const name of ['UiAuditMain.brs', 'UiAuditPhone.brs', 'UiAuditSettings.brs', 'UiAuditVod.brs', 'UiAuditDvr.brs', 'UiAuditFixtureTask.brs', 'UiAuditLibraryData.brs', 'SetupReceiverProbeUiAudit.brs']) {
     assert.throws(() => assertPackageEntries([...base, `components/${name}`]), /probe/);
   }
+  assert.throws(() => assertPackageEntries([...base, 'ui-audit-build.json']), /probe/);
 });
 
 test('all application action lists/dialogs use shared pill renderers', () => {

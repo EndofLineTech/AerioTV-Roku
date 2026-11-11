@@ -4,16 +4,25 @@ import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { libraryAuditScreens, exerciseLibraryCase } from './ui-library-audit-cases.mjs';
 
-const [probe, restore, ...requested] = process.argv.slice(2);
+const [probe, restore, ...args] = process.argv.slice(2);
+const libraries = args.includes('--libraries');
+const requested = args.filter(arg => arg !== '--libraries');
 const screens = requested.length ? requested : ['welcome', 'setup-dispatcharr', 'setup-xtream', 'setup-m3u', 'phone-ready', 'phone-expired', 'phone-failed', 'guide-picker', 'player-options', 'program-details', 'vod-details', 'navigation', 'group-pills', 'group-sidebar', 'player-controls', 'recording-controls', 'tips', 'settings-connection', 'settings-live', 'settings-player', 'settings-movies', 'settings-dvr', 'settings-appearance', 'settings-general', 'settings-remote', 'settings-about', 'settings-whatsnew', 'settings-licenses', 'dialog-duplicate', 'dialog-delete', 'dialog-diagnostics', 'keyboard', 'large-phone', 'large-options', 'large-settings', 'light-dialog', 'light-settings', 'light-tips'];
 const host = process.env.ROKU_HOST, password = process.env.ROKU_DEV_PASSWORD;
-if (!requested.length) screens.push('guide-picker-scroll');
+if (libraries && !requested.length) screens.splice(0, screens.length, ...libraryAuditScreens);
+if (!libraries && !requested.length) screens.push('guide-picker-scroll');
 const hash = path => createHash('sha256').update(readFileSync(path)).digest('hex');
 assert.ok(host && password && probe && restore, 'Supply developer environment, isolated gallery and verified restore ZIP');
-assert.equal(hash(restore), '40bd99329ff0c33fb4be807690970ba7d2ddd3b4add64bee0f9f7b079739794c', 'Owner-ready auto-guide rollback required');
+const restoreSha256 = hash(restore);
+assert.ok(['40bd99329ff0c33fb4be807690970ba7d2ddd3b4add64bee0f9f7b079739794c', '91f8b8b1f3c2f45e625588e198b8f0a66af963ea285d49e1a27483461afb8734'].includes(restoreSha256), 'Pinned owner-ready rollback required');
+const metadata = spawnSync('unzip', ['-p', probe, 'ui-audit-build.json'], { encoding: 'utf8' });
+assert.equal(metadata.status, 0, 'Isolated gallery marker required');
+assert.equal(JSON.parse(metadata.stdout).syntheticTasksOnly, true, 'Synthetic Task barrier required');
 assert.ok(screens.every(name => /^[a-z0-9-]+$/.test(name)), 'Only named synthetic gallery cases');
-mkdirSync('out/ui-audit', { recursive: true });
+const output = libraries ? 'out/ui-audit/libraries' : 'out/ui-audit';
+mkdirSync(output, { recursive: true });
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 function curl(args, auth = false) {
   const result = spawnSync('curl', ['--noproxy', '*', '--max-time', '40', '-sS', ...args], { encoding: 'utf8', input: auth ? `user = ${JSON.stringify(`rokudev:${password}`)}\n` : undefined });
@@ -27,7 +36,40 @@ function install(path) {
   if (/Identical/.test(response)) ecp('launch/dev');
 }
 let consoleProcess, connected = false, closing = false, armed = false, pending = '', runtimeError = false;
-const events = [], captures = [];
+const events = [], captures = [], checks = [], findings = [];
+let completed = false;
+async function key(name, count = 1) {
+  for (let i = 0; i < count; i++) { ecp(`keypress/${name}`); await delay(130); }
+  await delay(350);
+}
+async function check(screen) {
+  const after = events.length;
+  ecp('input?uiAuditCheck=library');
+  const start = performance.now();
+  while (!runtimeError && !events.slice(after).some(row => row.check) && performance.now() - start < 5000) await delay(25);
+  assert.ok(!runtimeError, 'No native runtime/forbidden operation');
+  const state = events.slice(after).find(row => row.check);
+  assert.ok(state, 'Native state response');
+  if (state.library?.loading && !screen.includes('loading')) {
+    assert.ok(performance.now() - caseStarted < 15000, 'Synthetic read completed');
+    await delay(100);
+    return check(screen);
+  }
+  checks.push(state);
+  return state;
+}
+let caseStarted = 0;
+function capture(screen, step = '') {
+  curl(['--digest', '--config', '-', '--fail', '-F', 'mysubmit=Screenshot', `http://${host}/plugin_inspect`], true);
+  const file = `${output}/${screen}${step ? `--${step}` : ''}.jpg`;
+  curl(['--digest', '--config', '-', '--fail', '-o', file, `http://${host}/pkgs/dev.jpg`], true);
+  if (screen === 'keyboard') {
+    const crop = spawnSync('sips', ['--cropToHeightWidth', '820', '1920', '--cropOffset', '240', '0', file], { encoding: 'utf8' });
+    assert.equal(crop.status, 0, 'Remove system keyboard QR banner');
+  }
+  captures.push({ screen, step, file });
+  console.log(`${screen}${step ? ` / ${step}` : ''}: captured on Roku`);
+}
 try {
   ecp('keypress/Home');
   consoleProcess = spawn('curl', ['--noproxy', '*', '--no-buffer', '--verbose', '--connect-timeout', '5', `telnet://${host}:8085`], { stdio: ['pipe', 'pipe', 'pipe'] });
@@ -51,7 +93,13 @@ try {
       if (runtimeError && location) console.log(`Native location: ${location}`);
       const marker = '[ui-audit] ';
       const at = line.indexOf(marker);
-      if (at >= 0) { try { events.push(JSON.parse(line.slice(at + marker.length))); } catch { runtimeError = true; } }
+      if (at >= 0) {
+        try {
+          const event = JSON.parse(line.slice(at + marker.length));
+          events.push(event);
+          if (event.forbidden) { runtimeError = true; console.log('Gallery blocked unexpected action:', JSON.stringify(event)); }
+        } catch { runtimeError = true; }
+      }
     }
   });
   const start = performance.now();
@@ -63,12 +111,26 @@ try {
   while (!runtimeError && !events.some(row => row.ready && row.screen === 'welcome') && performance.now() - boot < 20000) await delay(50);
   assert.ok(!runtimeError && events.some(row => row.ready && row.screen === 'welcome'), 'Gallery initialized before input');
   for (const screen of screens) {
+    caseStarted = performance.now();
     const after = events.length;
     ecp(`input?uiAuditScreen=${screen}`);
     const started = performance.now();
     while (!runtimeError && !events.slice(after).some(row => row.ready && row.screen === screen) && performance.now() - started < 15000) await delay(50);
     await delay(250);
     assert.ok(!runtimeError && events.slice(after).some(row => row.ready && row.screen === screen), `Gallery ready: ${screen}`);
+    if (libraries) {
+      await check(screen);
+      capture(screen);
+      try {
+        await exerciseLibraryCase(screen, { key, check: () => check(screen), capture: step => capture(screen, step) });
+      } catch (error) {
+        if (runtimeError) throw error;
+        findings.push({ screen, message: error.message });
+        capture(screen, 'navigation-finding');
+        console.log(`${screen}: navigation expectation needs review: ${error.message}`);
+      }
+      continue;
+    }
     if (['guide-picker', 'guide-picker-scroll', 'player-options', 'vod-details', 'dialog-duplicate'].includes(screen)) {
       // Exercise real native focus navigation without selecting any action.
       const dialog = screen === 'dialog-duplicate';
@@ -85,21 +147,12 @@ try {
       if (screen !== 'guide-picker-scroll') ecp(`keypress/${dialog ? 'Down' : 'Up'}`);
       await delay(200);
     }
-    curl(['--digest', '--config', '-', '--fail', '-F', 'mysubmit=Screenshot', `http://${host}/plugin_inspect`], true);
-    const file = `out/ui-audit/${screen}.jpg`;
-    curl(['--digest', '--config', '-', '--fail', '-o', file, `http://${host}/pkgs/dev.jpg`], true);
-    if (screen === 'keyboard') {
-      // Roku may display its own mobile-keyboard QR banner. Retain only the
-      // keyboard/action region, never that system-generated link.
-      const crop = spawnSync('sips', ['--cropToHeightWidth', '820', '1920', '--cropOffset', '240', '0', file], { encoding: 'utf8' });
-      assert.equal(crop.status, 0, 'Remove system keyboard QR banner');
-    }
-    captures.push({ screen, file });
-    console.log(`${screen}: captured on Roku`);
+    capture(screen);
   }
-  writeFileSync('out/ui-audit/captures.json', JSON.stringify({ rendered: true, visualReviewPending: true, probeSha256: hash(probe), savedConnectionsChanged: false, captures }, null, 2) + '\n');
+  completed = true;
 } finally {
   closing = true; consoleProcess?.kill('SIGTERM');
+  writeFileSync(`${output}/captures.json`, JSON.stringify({ completed, rendered: captures.length > 0, visualReviewPending: true, runtimeError, probeSha256: hash(probe), restoreSha256, savedConnectionsChanged: false, captures, checks, findings }, null, 2) + '\n');
   install(restore);
-  console.log('Verified auto-guide developer build restored');
+  console.log('Pinned owner-ready developer build restored');
 }
