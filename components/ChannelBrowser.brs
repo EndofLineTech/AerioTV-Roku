@@ -23,6 +23,7 @@ sub configure()
     if data = invalid then return
     m.ready = false
     m.channels = data.channels
+    m.logoUrls = channelLogoRemoteUrls(m.channels)
     m.logoClock = CreateObject("roTimespan")
     m.logoClock.mark()
     m.logoReported = false
@@ -33,7 +34,8 @@ sub configure()
     m.historyAccount = data.historyAccount
     m.collections = data.collections
     m.settings = normalizeGuideSettings(data.settings)
-    sameConnection = m.base = data.baseUrl and m.key = data.apiKey
+    sameConnection = m.base = data.baseUrl and m.key = data.apiKey and m.logoAccount = data.historyAccount
+    m.logoAccount = data.historyAccount
     m.base = data.baseUrl
     m.key = data.apiKey
     m.mode = data.mode
@@ -157,18 +159,18 @@ sub draw()
         row.logoId = ""
         if row.root.visible
             channel = m.filtered[m.start + i]
-            row.logoId = channel.logoId
+            row.logoId = channelLogoCacheId(channel)
             row.uuid = channel.uuid
             row.name.text = channel.name
             row.now.text = ""
             row.watching.text = ""
             if channel.uuid = m.top.playingUuid then row.watching.text = "WATCHING"
             uri = ""
-            if m.logoFiles.doesExist(channel.logoId)
-                uri = m.logoFiles[channel.logoId].uri
-                touchLogo(channel.logoId)
-            else if m.logoFallback.doesExist(channel.logoId)
-                uri = m.base + "/api/channels/logos/" + channel.logoId + "/cache/"
+            if m.logoFiles.doesExist(row.logoId)
+                uri = m.logoFiles[row.logoId].uri
+                touchLogo(row.logoId)
+            else if m.logoFallback.doesExist(row.logoId) and not m.logoUrls.doesExist(row.logoId)
+                uri = m.base + "/api/channels/logos/" + row.logoId + "/cache/"
             end if
             if m.resetFailed and row.logo.loadStatus = "failed" then row.logo.uri = ""
             if row.logo.uri <> uri then row.logo.uri = uri
@@ -242,6 +244,30 @@ sub invalidateLogos()
     if m.top.active then draw()
 end sub
 
+sub releaseConnection()
+    m.top.active = false
+    clearLogoCache()
+    m.ready = false
+    m.channels = []
+    m.filtered = []
+    m.logoUrls = {}
+    m.logoAccount = ""
+    m.base = ""
+    m.key = ""
+    m.top.model = invalid
+    m.top.infoRequest = []
+    m.top.channelSelected = invalid
+    m.top.nowTitles = {}
+    agent = CreateObject("roHttpAgent")
+    agent.setCertificatesFile("common:/certs/ca-bundle.crt")
+    m.canvas.setHttpAgent(agent)
+    if m.rows <> invalid
+        for each row in m.rows
+            row.logo.uri = ""
+        end for
+    end if
+end sub
+
 sub touchLogo(id as string)
     order = []
     for each old in m.logoOrder
@@ -268,6 +294,7 @@ sub requestLogos()
     m.logoTask.baseUrl = m.base
     m.logoTask.apiKey = m.key
     m.logoTask.ids = ids
+    m.logoTask.urls = channelLogoBatchUrls(ids, m.logoUrls)
     m.logoBatchSequence++
     m.logoTask.prefix = m.logoPrefix + "-" + m.logoBatchSequence.toStr()
     m.logoTask.observeField("asset", "onLogoAsset")

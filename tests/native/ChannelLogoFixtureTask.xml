@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ChannelLogoFixtureTask" extends="Task">
+  <interface>
+    <field id="baseUrl" type="string" alwaysNotify="true" />
+    <field id="cancelRequested" type="boolean" />
+    <field id="counts" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="ChannelLogoFixtureTask.brs" />
+</component>

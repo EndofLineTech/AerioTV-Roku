@@ -144,7 +144,7 @@ if (profileTaskSuite.status !== 0 || !profileTaskSuite.stdout.includes('ALL TEST
 // These commands never connect to a Roku or install a development package.
 for (const args of [
   ['scripts/test-setup-qr.mjs'],
-  ['--test', 'scripts/setup-receiver-isolation.test.mjs'],
+  ['--test', 'scripts/setup-receiver-isolation.test.mjs', 'scripts/channel-logo-isolation.test.mjs'],
   ['scripts/test-setup-x25519.mjs'],
   ['--test', 'scripts/validate-phone-setup-native.test.mjs'],
 ]) {

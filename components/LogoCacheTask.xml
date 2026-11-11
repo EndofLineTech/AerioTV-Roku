@@ -5,6 +5,7 @@
     <field id="apiKey" type="string" />
     <field id="prefix" type="string" />
     <field id="ids" type="array" />
+    <field id="urls" type="assocarray" />
     <field id="cancelled" type="boolean" />
     <field id="asset" type="assocarray" alwaysNotify="true" />
     <field id="result" type="assocarray" alwaysNotify="true" />

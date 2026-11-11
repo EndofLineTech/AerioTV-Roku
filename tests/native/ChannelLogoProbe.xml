@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ChannelLogoProbe" extends="Scene">
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/XtreamModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideSettingsModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
+  <script type="text/brightscript" uri="ChannelLogoProbe.brs" />
+  <children>
+    <GuideView id="guide" visible="true" />
+    <ChannelBrowser id="browser" />
+    <PlayerInfo id="banner" visible="false" />
+    <Timer id="poll" duration="0.1" repeat="true" />
+  </children>
+</component>

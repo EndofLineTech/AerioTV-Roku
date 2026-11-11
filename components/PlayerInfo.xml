@@ -14,6 +14,7 @@
   <script type="text/brightscript" uri="pkg:/source/NowNextModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
   <script type="text/brightscript" uri="PlayerInfo.brs" />
   <children>
     <Group id="canvas" />

@@ -112,6 +112,10 @@ owner acceptance steps—not inferred from this automated smoke.
 
 ## Bonjour discovery checks — 2026-11-11
 
+For the later Xtream channel-logo fix and its updated test ZIP, see
+[XTREAM-CHANNEL-LOGOS.md](XTREAM-CHANNEL-LOGOS.md). The discovery-only artifact
+below remains preserved as the earlier verified rollback build.
+
 The receiver advertises `_aeriotv-setup._tcp.local.` (not the companion service
 `_aeriotv._tcp`). Public TXT contains only `v=1`, `name`, a standard padded-base64
 32-byte `pk`, and `kind=tv`. The code is never advertised. The Task owns bounded

@@ -186,12 +186,11 @@ function guideInitialLogoIds(channels as object, selected as integer, visibleRow
     if channels.count() = 0 then return ids
     first = 0
     if selected >= visibleRows then first = selected - visibleRows + 1
-    numeric = CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "")
     seen = {}
     for i = first to channels.count() - 1
         if i >= first + visibleRows then exit for
-        id = textValue(channels[i].logoId)
-        if numeric.isMatch(id) and not seen.doesExist(id)
+        id = channelLogoCacheId(channels[i])
+        if id <> "" and not seen.doesExist(id)
             ids.push(id)
             seen[id] = true
         end if

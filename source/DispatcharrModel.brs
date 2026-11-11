@@ -7,6 +7,63 @@ function textValue(value as dynamic) as string
     return ""
 end function
 
+' Remote channel artwork is volatile and distinct from authenticated proxy IDs.
+' Never insert provider credentials or accept local-file/credentialed URLs.
+function channelLogoUrl(value as dynamic) as string
+    if type(value) <> "String" and type(value) <> "roString" then return ""
+    value = value.trim()
+    if len(value) > 4096 then return ""
+    if not CreateObject("roRegex", "^https?://[^/?#@\s\\]+([/?][^#\s\\]*)?$", "i").isMatch(value) then return ""
+    if CreateObject("roRegex", "[\x00-\x20\x7f]", "").isMatch(value) then return ""
+    return value
+end function
+
+function channelLogoCacheKeyValid(id as string) as boolean
+    return CreateObject("roRegex", "^([1-9][0-9]{0,9}|remote-[A-Za-z0-9-]{1,96})$", "").isMatch(id)
+end function
+
+function channelLogoCacheId(channel as object) as string
+    id = textValue(channel.logoId)
+    if CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(id) then return id
+    if channelLogoUrl(channel.logoUrl) = "" then return ""
+    uuid = textValue(channel.uuid)
+    if not CreateObject("roRegex", "^[A-Za-z0-9-]{1,96}$", "").isMatch(uuid) then return ""
+    return "remote-" + uuid
+end function
+
+function channelLogoRemoteUrls(channels as object) as object
+    urls = {}
+    for each channel in channels
+        id = channelLogoCacheId(channel)
+        if left(id, 7) = "remote-" then urls[id] = channelLogoUrl(channel.logoUrl)
+    end for
+    return urls
+end function
+
+function channelLogoBatchUrls(ids as object, urls as object) as object
+    result = {}
+    for each id in ids
+        if urls.doesExist(id) then result[id] = urls[id]
+    end for
+    return result
+end function
+
+function channelLogoRequest(id as string, urls as dynamic, base as string, key as string, mode as string, userAgent as string) as dynamic
+    if not channelLogoCacheKeyValid(id) then return invalid
+    if left(id, 7) = "remote-"
+        if type(urls) <> "roAssociativeArray" then return invalid
+        url = channelLogoUrl(urls[id])
+        if url = "" then return invalid
+        ' Includes redirects: this transfer has no provider auth/Referer/agent.
+        headers = dispatcharrRequestHeaders("", "x-api-key", "")
+        headers["Referer"] = "" ' Suppress Roku's automatic redirect referrer.
+        return {url: url, headers: headers}
+    end if
+    base = normalizeBaseUrl(base)
+    if base = "" then return invalid
+    return {url: base + "/api/channels/logos/" + id + "/cache/", headers: dispatcharrRequestHeaders(key, mode, userAgent)}
+end function
+
 ' Provider names sometimes include the channel number as a separate heading.
 ' Only accept an exact delimited prefix, not names such as 24Kitchen or 2400.
 function channelHeading(number as string, name as string) as string

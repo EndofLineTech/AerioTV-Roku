@@ -110,6 +110,8 @@ sub applyRefreshedLineup(data as object)
         m.reminders = data.preferences.reminders
     end if
     m.channels = data.channels
+    if m.providerType = "xtream" then resetGuideLogos()
+    m.guideLogoUrls = channelLogoRemoteUrls(m.channels)
     m.serverGroups = data.groups
     m.connectionWarning = data.warning
     m.allowedKeys = guideDictionary()

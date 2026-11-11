@@ -2,6 +2,7 @@
 ' per-connection tmp:/ logo cache so revisiting a row does not refetch its URI.
 sub initGuideLogos()
     m.guideLogoFiles = {}
+    m.guideLogoUrls = {}
     m.guideLogoOrder = []
     m.guideLogoBytes = 0
     m.guideLogoFailed = {}
@@ -38,6 +39,7 @@ sub resetGuideLogos()
         m.guideLogoCleanupPaths.push(m.guideLogoFiles[id].uri)
     end for
     m.guideLogoFiles = {}
+    m.guideLogoUrls = {}
     m.guideLogoOrder = []
     m.guideLogoBytes = 0
     m.guideLogoFailed = {}
@@ -68,7 +70,9 @@ sub onGuideLogoCleanup(event as object)
 end sub
 
 sub scheduleGuideLogos()
-    if not m.top.active or m.key = "" or m.providerType <> "dispatcharr" then return
+    if not m.top.active or not m.settings.showLogos then return
+    if m.providerType = "dispatcharr" and m.key = "" then return
+    if m.providerType <> "dispatcharr" and m.guideLogoUrls.count() = 0 then return
     m.guideLogoDelay.control = "stop"
     m.guideLogoDelay.control = "start"
 end sub
@@ -77,7 +81,9 @@ end sub
 ' normalized. Its Task runs while the Scene builds the grid and resolves EPG
 ' mappings; later scrolling still uses the coalescing timer above.
 sub prefetchInitialGuideLogos()
-    if m.providerType <> "dispatcharr" or m.key = "" or not m.settings.showLogos then return
+    if not m.settings.showLogos then return
+    if m.providerType = "dispatcharr" and m.key = "" then return
+    if m.providerType <> "dispatcharr" and m.guideLogoUrls.count() = 0 then return
     rows = guidePresentationGeometry(m.settings.guideDensity, m.settings.showSubtitles).rowCount
     ids = guideInitialLogoIds(m.filtered, m.selected, rows)
     if ids.count() = 0 then return
@@ -93,6 +99,7 @@ sub startGuideLogoBatch(ids as object)
     m.guideLogoTask.baseUrl = m.base
     m.guideLogoTask.apiKey = m.key
     m.guideLogoTask.ids = ids
+    m.guideLogoTask.urls = channelLogoBatchUrls(ids, m.guideLogoUrls)
     m.guideLogoSequence++
     m.guideLogoTask.prefix = m.guideLogoPrefix + "-" + m.guideLogoSequence.toStr()
     m.guideLogoTask.observeField("asset", "onGuideLogoAsset")
@@ -105,13 +112,12 @@ sub requestGuideLogos()
     ids = []
     seen = {}
     missing = 0
-    numeric = CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "")
     for each row in m.rows
         id = textValue(row.logoId)
-        if row.root.visible and numeric.isMatch(id) and not m.guideLogoFiles.doesExist(id) and not m.guideLogoFailed.doesExist(id) and not seen.doesExist(id)
+        if row.root.visible and channelLogoCacheKeyValid(id) and not m.guideLogoFiles.doesExist(id) and not m.guideLogoFailed.doesExist(id) and not seen.doesExist(id)
             ids.push(id)
             seen[id] = true
-        else if row.root.visible and not numeric.isMatch(id)
+        else if row.root.visible and not channelLogoCacheKeyValid(id)
             missing++
         end if
     end for
@@ -174,10 +180,9 @@ sub onGuideLogoStatus()
     if m.guideLogoClock = invalid or not m.ready or not m.top.active or not m.settings.showLogos then return
     expected = 0
     ready = 0
-    numeric = CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "")
     for each row in m.rows
         id = textValue(row.logoId)
-        if row.root.visible and numeric.isMatch(id)
+        if row.root.visible and channelLogoCacheKeyValid(id)
             expected++
             if m.guideLogoFiles.doesExist(id) and row.logo.loadStatus = "ready" then ready++
         end if

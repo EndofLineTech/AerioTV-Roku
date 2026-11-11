@@ -319,7 +319,7 @@ sub resetConnectionRuntime()
     m.guide.observeField("devicePreference", "onDevicePreference")
     m.guide.visible = false
     m.top.insertChild(m.guide, 1)
-    m.browser.callFunc("invalidateLogos")
+    m.browser.callFunc("releaseConnection")
     m.banner.session = invalid
     m.banner.channel = invalid
     m.banner.info = invalid

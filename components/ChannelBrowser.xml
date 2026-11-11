@@ -2,6 +2,7 @@
 <component name="ChannelBrowser" extends="Group">
   <interface>
     <function name="invalidateLogos" />
+    <function name="releaseConnection" />
     <function name="handleOptionsShortcut" />
     <field id="model" type="assocarray" onChange="configure" />
     <field id="active" type="boolean" value="false" onChange="onActive" />

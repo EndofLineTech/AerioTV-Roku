@@ -7,9 +7,10 @@ sub downloadLogos()
     port = CreateObject("roMessagePort")
     clock = CreateObject("roTimespan")
     clock.mark()
+    urls = m.top.urls
     pending = []
     for each id in m.top.ids
-        if CreateObject("roRegex", "^[0-9]+$", "").isMatch(id) then pending.push(id)
+        if channelLogoCacheKeyValid(id) then pending.push(id)
     end for
     active = {}
     created = []
@@ -19,19 +20,24 @@ sub downloadLogos()
     while (pending.count() > 0 or active.count() > 0) and clock.totalMilliseconds() < 20000 and not m.top.cancelled
         while active.count() < 2 and pending.count() > 0
             id = pending.shift()
-            path = m.top.prefix + "-" + id + ".part"
-            created.push(path)
-            transfer = CreateObject("roUrlTransfer")
-            transfer.setMessagePort(port)
-            transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
-            transfer.setUrl(m.top.baseUrl + "/api/channels/logos/" + id + "/cache/")
-            headers = dispatcharrRequestHeaders(m.top.apiKey, textValue(m.global.authHeaderMode), textValue(m.global.httpUserAgent))
-            transfer.setHeaders(headers)
-            if transfer.asyncGetToFile(path)
-                active[transfer.getIdentity().toStr()] = {id: id, path: path, transfer: transfer}
-            else
+            plan = channelLogoRequest(id, urls, m.top.baseUrl, m.top.apiKey, textValue(m.global.authHeaderMode), textValue(m.global.httpUserAgent))
+            if plan = invalid
                 failed.push(id)
-                reasons["network"] = true
+                reasons["invalid image source"] = true
+            else
+                path = m.top.prefix + "-" + id + ".part"
+                created.push(path)
+                transfer = CreateObject("roUrlTransfer")
+                transfer.setMessagePort(port)
+                transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
+                transfer.setUrl(plan.url)
+                transfer.setHeaders(plan.headers)
+                if transfer.asyncGetToFile(path)
+                    active[transfer.getIdentity().toStr()] = {id: id, path: path, transfer: transfer}
+                else
+                    failed.push(id)
+                    reasons["network"] = true
+                end if
             end if
         end while
         event = wait(25, port)
@@ -103,6 +109,7 @@ sub downloadLogos()
         end for
     end if
     m.top.apiKey = ""
+    m.top.urls = invalid
     m.top.result = {assets: assets, failed: failed, reasons: reasons.keys()}
 end sub
 

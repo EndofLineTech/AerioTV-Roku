@@ -2,6 +2,11 @@ sub init()
     m.ready = false
     m.base = ""
     m.logo = m.top.findNode("logo")
+    m.playerLogoTask = invalid
+    m.playerLogoUri = ""
+    m.playerLogoSource = ""
+    m.playerLogoPrefix = ""
+    m.playerLogoKey = ""
     canvas = m.top.findNode("canvas")
     m.background = uiSurface(canvas, 96, 694, 1728, 318, 20, "0x0A1628EF")
     m.channelName = uiLabel(canvas, "", 246, 705, 1150, 38, 26, "0x1AC4D8FF")
@@ -29,6 +34,7 @@ sub init()
 end sub
 
 sub configureSession()
+    clearPlayerLogo()
     m.base = ""
     m.logo.uri = ""
     agent = CreateObject("roHttpAgent")
@@ -40,6 +46,80 @@ sub configureSession()
     end if
     m.top.setHttpAgent(agent)
     renderInfo()
+end sub
+
+sub clearPlayerLogo()
+    paths = []
+    if m.playerLogoTask <> invalid
+        m.playerLogoTask.unobserveField("asset")
+        m.playerLogoTask.unobserveField("result")
+        m.playerLogoTask.cancelled = true
+        for each ext in [".part", ".jpg", ".png", ".webp"]
+            paths.push(m.playerLogoPrefix + "-" + m.playerLogoKey + ext)
+        end for
+        m.playerLogoTask = invalid
+    end if
+    if textValue(m.playerLogoUri) <> "" then paths.push(m.playerLogoUri)
+    m.playerLogoUri = ""
+    m.playerLogoSource = ""
+    m.playerLogoKey = ""
+    if paths.count() > 0
+        m.playerLogoCleanup = CreateObject("roSGNode", "LogoCleanupTask")
+        m.playerLogoCleanup.paths = paths
+        m.playerLogoCleanup.control = "RUN"
+    end if
+end sub
+
+sub setPlayerLogo(channel as object)
+    url = channelLogoUrl(channel.logoUrl)
+    if url = ""
+        clearPlayerLogo()
+        uri = ""
+        id = textValue(channel.logoId)
+        if id <> "" and m.base <> "" then uri = m.base + "/api/channels/logos/" + id + "/cache/"
+        if m.logo.uri <> uri then m.logo.uri = uri
+        return
+    end if
+    if m.playerLogoSource = url then return
+    clearPlayerLogo()
+    m.logo.uri = ""
+    id = channelLogoCacheId(channel)
+    if id = "" then return
+    m.playerLogoSource = url
+    m.playerLogoKey = id
+    m.playerLogoPrefix = "tmp:/aerio-banner-logo-" + CreateObject("roDeviceInfo").getRandomUUID()
+    urls = {}
+    urls[id] = url
+    m.playerLogoTask = CreateObject("roSGNode", "LogoCacheTask")
+    m.playerLogoTask.ids = [id]
+    m.playerLogoTask.urls = urls
+    m.playerLogoTask.prefix = m.playerLogoPrefix
+    m.playerLogoTask.observeField("asset", "onPlayerLogoAsset")
+    m.playerLogoTask.observeField("result", "onPlayerLogoBatch")
+    m.playerLogoTask.control = "RUN"
+end sub
+
+sub onPlayerLogoAsset(event as object)
+    if not isCurrentTaskEvent(event, m.playerLogoTask) then return
+    asset = event.getData()
+    if asset.id <> m.playerLogoKey then return
+    m.playerLogoUri = asset.uri
+    m.logo.uri = asset.uri
+end sub
+
+sub onPlayerLogoBatch(event as object)
+    if not isCurrentTaskEvent(event, m.playerLogoTask) then return
+    result = event.getData()
+    for each asset in result.assets
+        if asset.id = m.playerLogoKey
+            m.playerLogoUri = asset.uri
+            m.logo.uri = asset.uri
+        end if
+    end for
+    m.playerLogoTask.unobserveField("asset")
+    m.playerLogoTask.unobserveField("result")
+    m.playerLogoTask = invalid
+    if result.failed.count() > 0 then print "[player-logo] download-failed"
 end sub
 
 sub renderInfo()
@@ -63,9 +143,7 @@ sub renderInfo()
         end if
     end if
     m.channelName.text = channelHeading(channel.number, channel.name)
-    uri = ""
-    if channel.logoId <> "" and m.base <> "" then uri = m.base + "/api/channels/logos/" + channel.logoId + "/cache/"
-    if m.logo.uri <> uri then m.logo.uri = uri
+    setPlayerLogo(channel)
     m.clock.text = uiTime(now)
     m.state.text = "LIVE"
     if delayed then m.state.text = "DELAYED"

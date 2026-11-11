@@ -76,6 +76,7 @@ sub configure()
     if config = invalid then return
     m.top.vodEnabled = config.preferences.vodEnabled <> false
     m.channels = config.channels
+    m.guideLogoUrls = channelLogoRemoteUrls(m.channels)
     m.cacheScope = textValue(config.scope)
     m.cacheGeneration = textValue(config.generation)
     m.lineupGeneration = m.cacheGeneration
@@ -530,7 +531,7 @@ sub drawGuide()
             end if
             channel = m.filtered[index]
             row.uuid = channel.uuid
-            row.logoId = textValue(channel.logoId)
+            row.logoId = channelLogoCacheId(channel)
             row.number.text = channel.number
             row.catchup.visible = catchupChannelDays(m.top.catchupPermission, m.top.channelFacts, channel.id) > 0
             row.number.width = 170
@@ -549,8 +550,6 @@ sub drawGuide()
             if m.guideLogoFiles.doesExist(row.logoId)
                 uri = m.guideLogoFiles[row.logoId].uri
                 touchGuideLogo(row.logoId)
-            else if m.providerType <> "dispatcharr" and row.logoId <> ""
-                uri = m.base + "/api/channels/logos/" + row.logoId + "/cache/"
             end if
             if row.logo.uri <> uri then row.logo.uri = uri
             row.logo.visible = m.settings.showLogos
