@@ -4,8 +4,9 @@
 sub main()
     parent = {
         createChild: function(kind as string) as object
+            if kind = "AerioSurface" then return {kind: kind}
             if kind <> "Label" then stop
-            return {font: {uri: "test:device-default-face", size: 24}}
+            return {kind: kind, font: {uri: "test:device-default-face", size: 24}}
         end function
     }
     for each size in [20, 25, 34, 64]
@@ -13,6 +14,15 @@ sub main()
         assertEqual(label.font.uri, "test:device-default-face", "retain a resolved font face")
         assertEqual(label.font.size, size, "apply requested text size")
         assertEqual(label.text, "Server URL", "retain label text")
+    end for
+    for each height in [40, 58, 64, 82, 90, 92]
+        button = uiButton(parent, "Cancel", 160, 300, 460, height, 25, "0x263549FF")
+        assertEqual(button.bg.radius, height / 2, "button has full pill end caps")
+        assertEqual(button.label.horizAlign, "center", "button text horizontally centered")
+        assertEqual(button.label.vertAlign, "center", "button text vertically centered")
+        assertEqual(button.label.translation[1], 300, "text uses entire button height, not a hand-positioned line")
+        assertEqual(button.label.height, height, "label and button share vertical bounds")
+        assertEqual(button.label.translation[0] + button.label.width / 2, 390, "symmetric horizontal label bounds")
     end for
     assertEqual(formatClock(0, 5, "12"), "12:05 AM", "midnight")
     assertEqual(formatClock(12, 0, "12"), "12:00 PM", "noon")

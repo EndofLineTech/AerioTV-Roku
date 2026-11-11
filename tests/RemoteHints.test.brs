@@ -17,7 +17,9 @@ sub main()
         if pill.kind <> "AerioSurface" or keyLabel.text <> keys[i] or helpLabel.text <> help[i] then stop
         if helpLabel.translation[0] <= pill.width then stop ' help is OUTSIDE the pill
         if keyLabel.horizAlign <> "center" or keyLabel.vertAlign <> "center" or helpLabel.vertAlign <> "center" then stop
-        if keyLabel.translation[0] * 2 + keyLabel.width <> pill.width then stop
+        if keyLabel.translation[0] <> 0 or keyLabel.width <> pill.width then stop ' full pill label box, not measured ink inset
+        if keyLabel.translation[1] <> 0 or keyLabel.height <> pill.height then stop
+        if pill.radius <> pill.height / 2 then stop
     end for
     m.top.text = "Loading guide..."
     renderHints()

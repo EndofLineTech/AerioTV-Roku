@@ -190,7 +190,7 @@ sub showPhoneSetupConfirmation()
         commitPhoneSetup("add")
         return
     end if
-    dialog = CreateObject("roSGNode", "Dialog")
+    dialog = CreateObject("roSGNode", "AerioDialog")
     m.phoneDialogMode = "confirm"
     if matches.count() > 1 and m.phoneMatchedId = ""
         dialog.title = "Choose the matching connection"

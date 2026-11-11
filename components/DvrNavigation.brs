@@ -45,7 +45,7 @@ end sub
 
 sub openRecordPicker(title as string, message as string, choices as object)
     closeRecordDialog()
-    dialog = CreateObject("roSGNode", "Dialog")
+    dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = title
     dialog.message = message
     labels = []

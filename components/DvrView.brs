@@ -10,7 +10,8 @@ sub init()
     m.status = m.top.findNode("status")
     m.refreshTimer = m.top.findNode("refreshTimer")
     m.refreshTimer.observeField("fire", "refreshRecordings")
-    m.hint = uiLabel(m.top, "OK  Facts / play    *  Search / sort    Replay  Refresh    Back  Guide", 96, 997, 1728, 36, 21, "0x9EB5C9FF")
+    m.hint = uiRemoteHints(m.top, 96, 997, 1728, 36, 21)
+    m.hint.text = "OK  Facts / play    *  Search / sort    Replay  Refresh    Back  Guide"
     m.loaded = []
     m.loadedRules = []
     m.rows = []
@@ -262,7 +263,7 @@ sub onDvrSelected(event as object)
         openDvrRuleDetails(row)
         return
     end if
-    dialog = CreateObject("roSGNode", "Dialog")
+    dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = left(row.title, 120)
     channelName = "Channel " + row.channelId
     if m.channelsById.doesExist(row.channelId) then channelName = m.channelsById[row.channelId]
@@ -323,7 +324,7 @@ end sub
 sub openDvrRuleDetails(row as object)
     config = m.top.config
     if type(config) <> "roAssociativeArray" then return
-    dialog = CreateObject("roSGNode", "Dialog")
+    dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = left(row.title, 120)
     dialog.message = "Series mode: " + row.mode + chr(10) + "Title matching: " + row.titleMode + chr(10) + "EPG channel: " + row.tvgId + chr(10) + "Description: " + left(row.description, 180)
     m.dialogActions = ["close"]
@@ -364,7 +365,7 @@ sub onDvrDetailAction(event as object)
         row = m.targetRow
         dismissDvrDialog()
         m.pending = {action: "series-delete", rule: row, title: row.title, scope: config.scope, accountId: config.accountId}
-        dialog = CreateObject("roSGNode", "Dialog")
+        dialog = CreateObject("roSGNode", "AerioDialog")
         dialog.title = "Remove series rule and future schedules?"
         dialog.message = left(row.title, 90) + chr(10) + "EPG channel: " + left(row.tvgId, 60) + chr(10) + "The server may remove future schedules made by this rule. Completed recordings stay intact."
         dialog.buttons = ["Keep series rule", "Remove rule and future schedules"]
@@ -378,7 +379,7 @@ sub onDvrDetailAction(event as object)
     row = m.targetRow
     dismissDvrDialog()
     m.pending = {action: action, recordingId: row.id, title: row.title, scope: config.scope, accountId: config.accountId}
-    dialog = CreateObject("roSGNode", "Dialog")
+    dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = "Confirm server recording action"
     effect = "Stop recording early and keep its partial content?"
     if action = "cancel" then effect = "Cancel this future schedule?"

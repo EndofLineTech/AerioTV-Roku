@@ -21,7 +21,7 @@ def build(output, production_entropy=False):
             package.write(ROOT / f"source/{name}.brs", f"source/{name}.brs")
         entropy = "source/PhoneSetupEntropy.brs" if production_entropy else "tests/native/SetupReceiverFixtureEntropy.brs"
         package.write(ROOT / entropy, "source/PhoneSetupEntropy.brs")
-        for name in ["PhoneSetupTask", "PhoneSetupView"]:
+        for name in ["PhoneSetupTask", "PhoneSetupView", "AerioSurface", "AerioDialog"]:
             for extension in ["xml", "brs"]:
                 path = ROOT / f"components/{name}.{extension}"
                 if name == 'PhoneSetupTask' and extension == 'brs':
@@ -35,6 +35,8 @@ def build(output, production_entropy=False):
                     package.writestr(f"components/{name}.{extension}", source)
                 else:
                     package.write(path, f"components/{name}.{extension}")
+        for name in ['ui-corner-tl.png', 'ui-corner-tr.png', 'ui-corner-bl.png', 'ui-corner-br.png', 'ui-list-inset.png']:
+            package.write(ROOT / 'images' / name, 'images/' + name)
         package.write(ROOT / "tests/native/SetupReceiverProbe.xml", "components/SetupReceiverProbe.xml")
         package.write(ROOT / "tests/native/SetupReceiverProbeScene.brs", "components/SetupReceiverProbeScene.brs")
         if not production_entropy:

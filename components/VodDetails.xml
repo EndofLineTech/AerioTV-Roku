@@ -24,7 +24,7 @@
     <Poster id="poster" translation="[120,210]" width="300" height="450" loadWidth="300" loadHeight="450" loadDisplayMode="scaleToFit" />
     <Label id="message" translation="[460,210]" width="760" height="600" wrap="true" maxLines="20" font="font:SmallSystemFont" />
     <Group translation="[1270,210]" clippingRect="[-40,-12,600,620]">
-      <LabelList id="actions" itemSize="[520,62]" numRows="8" itemSpacing="[0,4]" vertFocusAnimationStyle="floatingFocus" color="0xE8F3FAFF" focusedColor="0x0A1628FF" focusBitmapBlendColor="0x1AC4D8FF" />
+      <AerioPillList id="actions" itemSize="[520,62]" numRows="8" itemSpacing="[0,4]" vertFocusAnimationStyle="floatingFocus" color="0xE8F3FAFF" focusedColor="0x0A1628FF" focusBitmapBlendColor="0x1AC4D8FF" />
     </Group>
     <Poster id="tmdbLogo" uri="pkg:/images/tmdb-logo.png" translation="[120,850]" width="250" height="45" loadDisplayMode="scaleToFit" visible="false" />
     <Label id="attribution" translation="[460,855]" width="1300" height="80" wrap="true" color="0x9EB5C9FF" font="font:SmallestSystemFont" />

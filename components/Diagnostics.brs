@@ -10,7 +10,7 @@ sub showDiagnostics()
     m.diagnosticLog = diagnosticEvents(m.diagnosticLog, uiNow(), m.apiKey, textValue(m.accountIdentity))
     if m.diagnosticOffset = invalid then m.diagnosticOffset = 0
     if m.diagnosticOffset >= m.diagnosticLog.count() then m.diagnosticOffset = 0
-    dialog = CreateObject("roSGNode", "Dialog")
+    dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = "Diagnostics — this app session (last hour)"
     message = "No current events. Older events expire; logs are not retained across app exit."
     if m.diagnosticLog.count() > 0
@@ -78,7 +78,7 @@ sub showDiagnosticSupportCode()
         m.diagnosticPrivacyCover.color = "0x0A1628FF"
     end if
     m.diagnosticPrivacyCover.visible = true
-    dialog = CreateObject("roSGNode", "Dialog")
+    dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = "Support code — shown for 90 seconds"
     dialog.message = code + chr(10) + chr(10) + "Photograph or dictate this code to support. It has event types, error numbers and coarse timing only — no account, program, URL or message text. Back clears this screen; a saved photo remains readable."
     dialog.buttons = ["Close code"]

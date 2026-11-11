@@ -273,6 +273,25 @@ function uiSurface(parent as object, x as float, y as float, w as float, h as fl
     return node
 end function
 
+' Use the whole control height for native vertical alignment. Manual baseline
+' offsets drift with the resolved Roku font and accessibility text scaling.
+function uiButtonLabel(parent as object, text as string, x as float, y as float, w as float, h as float, size as integer, color = "0xE8F3FAFF" as string, padding = 16 as float) as object
+    if padding > w / 4 then padding = w / 4
+    label = uiLabel(parent, text, x + padding, y, w - 2 * padding, h, size, color)
+    label.horizAlign = "center"
+    label.vertAlign = "center"
+    label.maxLines = 1
+    label.wrap = false
+    return label
+end function
+
+function uiButton(parent as object, text as string, x as float, y as float, w as float, h as float, size as integer, fill as string, ink = "0xE8F3FAFF" as string) as object
+    surface = uiSurface(parent, x, y, w, h, h / 2, fill)
+    surface.cornerOverlap = 2
+    label = uiButtonLabel(parent, text, x, y, w, h, size, ink)
+    return {bg: surface, label: label}
+end function
+
 ' Center the entire icon + measured label run, not the label's leftover column.
 function uiPillContent(w as float, h as float, textWidth as float, iconWidth = 0 as float) as object
     gap = 0

@@ -315,11 +315,10 @@ sub drawWelcome()
             color = "0x1AC4D8FF"
             textColor = "0x0A1629FF"
         end if
-        uiRect(m.screen, 160 + i * 800, 675, 760, 92, color)
-        action = uiLabel(m.screen, labels[i], 180 + i * 800, 699, 720, 48, 31, textColor)
-        action.horizAlign = "center"
+        uiButton(m.screen, labels[i], 160 + i * 800, 675, 760, 92, 31, color, textColor)
     end for
-    uiLabel(m.screen, "Left/Right to choose. OK to continue. Back opens manual setup.", 164, 799, 1550, 52, 24, "0x9EB5C9FF")
+    hints = uiRemoteHints(m.screen, 164, 799, 1550, 52, 24)
+    hints.text = "Left/Right  Choose     OK  Continue     Back  Manual setup"
 end sub
 
 sub drawSetup()
@@ -407,10 +406,16 @@ sub drawSetup()
             border = "0x1AC4D8FF"
             fill = "0x10344AFF"
         end if
-        uiRect(m.screen, 160, y, 1600, 68, border)
-        uiRect(m.screen, 162, y + 2, 1596, 64, fill)
-        uiLabel(m.screen, row.title, 186, y + 18, 380, 40, 25, "0x1AC4D8FF")
-        uiLabel(m.screen, row.value, 570, y + 18, 1155, 40, 25)
+        if row.field = "connection" or row.field = "method" or row.field = "remember" or row.field = "profile"
+            uiSurface(m.screen, 160, y, 1600, 68, 34, border)
+            uiSurface(m.screen, 162, y + 2, 1596, 64, 32, fill)
+            uiButtonLabel(m.screen, row.title + ": " + row.value, 160, y, 1600, 68, 25)
+        else
+            uiRect(m.screen, 160, y, 1600, 68, border)
+            uiRect(m.screen, 162, y + 2, 1596, 64, fill)
+            uiLabel(m.screen, row.title, 186, y + 18, 380, 40, 25, "0x1AC4D8FF")
+            uiLabel(m.screen, row.value, 570, y + 18, 1155, 40, 25)
+        end if
     end for
     actionY = 310 + (m.setupRows.count() - 2) * spacing + 22
     uiRect(m.screen, 160, actionY - 12, 1600, 1, "0x17344AFF")
@@ -422,20 +427,18 @@ sub drawSetup()
         connectBorder = "0xFFFFFFFF"
         connectFill = "0x1AC4D8FF"
     end if
-    uiRect(m.screen, 160, actionY, 990, 90, connectBorder)
-    uiRect(m.screen, 164, actionY + 4, 982, 82, connectFill)
-    buttonLabel = uiLabel(m.screen, connect, 172, actionY + 24, 966, 46, 30, "0x0A1628FF")
-    buttonLabel.horizAlign = "center"
+    uiSurface(m.screen, 160, actionY, 990, 90, 45, connectBorder)
+    uiSurface(m.screen, 164, actionY + 4, 982, 82, 41, connectFill)
+    uiButtonLabel(m.screen, connect, 160, actionY, 990, 90, 30, "0x0A1628FF")
     forgetBorder = "0xAA7381FF"
     forgetFill = "0x291E30FF"
     if focusedForget
         forgetBorder = "0xFFFFFFFF"
         forgetFill = "0x704151FF"
     end if
-    uiRect(m.screen, 1182, actionY, 578, 90, forgetBorder)
-    uiRect(m.screen, 1186, actionY + 4, 570, 82, forgetFill)
-    buttonLabel = uiLabel(m.screen, "FORGET CONNECTION", 1194, actionY + 26, 554, 42, 25, "0xFFE3E8FF")
-    buttonLabel.horizAlign = "center"
+    uiSurface(m.screen, 1182, actionY, 578, 90, 45, forgetBorder)
+    uiSurface(m.screen, 1186, actionY + 4, 570, 82, 41, forgetFill)
+    uiButtonLabel(m.screen, "FORGET CONNECTION", 1182, actionY, 578, 90, 25, "0xFFE3E8FF")
     hint = "Connect opens your guide. Forget removes saved credentials and preferences."
     if m.busy then hint = "Connecting to your server. Press Back to cancel."
     uiLabel(m.screen, hint, 164, actionY + 106, 1590, 42, 23, "0x9EB5C9FF")
@@ -898,7 +901,7 @@ sub showAacUnavailable(request as object, message as string)
     if request.account <> m.accountIdentity then return
     cancelAacFailure()
     m.aacFailureRequest = request
-    dialog = CreateObject("roSGNode", "Dialog")
+    dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = "AAC compatibility unavailable"
     dialog.message = sanitizePlaybackDiagnostic(message, m.apiKey) + chr(10) + "No direct stream was started for this request. Choose another audio mode for this Roku, or Cancel to keep Always AAC."
     dialog.buttons = ["Use Automatic", "Use Direct", "Cancel"]

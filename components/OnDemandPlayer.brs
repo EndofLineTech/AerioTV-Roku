@@ -670,7 +670,7 @@ sub openArchiveActions()
     if m.session.mode <> "catchup" or m.seekingArchive then return
     cancelArchiveScrub()
     closeArchiveActions()
-    dialog = CreateObject("roSGNode", "Dialog")
+    dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = "Archive controls"
     dialog.message = "Go Live returns to the current broadcast of this channel."
     dialog.buttons = ["Go Live", "Keep watching archive", "Skip interval: " + catchupElapsedText(archiveSkipSeconds())]
@@ -707,7 +707,7 @@ sub onArchiveAction(event as object)
     else if selection = 0
         m.top.goLiveRequested = true
     else if selection = 2
-        dialog = CreateObject("roSGNode", "Dialog")
+        dialog = CreateObject("roSGNode", "AerioDialog")
         dialog.title = "Archive skip interval"
         dialog.message = "Used for tap skips and held seek preview. Provider windows use whole minutes."
         dialog.buttons = ["1 minute", "2 minutes", "5 minutes"]

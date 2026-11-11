@@ -8,7 +8,9 @@ sub main()
     m.railItems = settingsHubEntries("", {})
     m.railCells = []
     for each item in m.railItems
-        m.railCells.push({fill: {}, icon: {}, label: {}})
+        m.railCells.push({fill: {translation: [98, 213 + m.railCells.count() * 78]}, icon: {}, label: {localBoundingRect: function() as object
+            return {width: len(m.text) * 14}
+        end function}})
     end for
     m.railSelected = 0
     m.railIndex = 0

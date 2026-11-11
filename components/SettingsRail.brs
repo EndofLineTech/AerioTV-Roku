@@ -5,18 +5,12 @@ sub buildSettingsRail()
     ' and visibility on render rather than growing the SceneGraph each visit.
     for i = 0 to 8
         y = 211 + i * 78
-        ' A single tinted mask avoids exposed joins in separately scaled caps.
-        fill = m.top.createChild("Poster")
-        fill.translation = [98, y + 2]
-        fill.width = 408
-        fill.height = 70
-        fill.uri = "pkg:/images/ui-settings-rail.png"
-        fill.loadDisplayMode = "scaleToFill"
+        fill = uiSurface(m.top, 98, y + 2, 408, 70, 35, "0x00000000")
         icon = m.top.createChild("Poster")
-        icon.translation = [122, y + 23]
+        icon.translation = [122, y + 25]
         icon.width = 24
         icon.height = 24
-        label = uiLabel(m.top, "", 164, y + 18, 322, 38, uiTypeSize("section"))
+        label = uiButtonLabel(m.top, "", 98, y + 2, 408, 70, uiTypeSize("section"))
         m.railCells.push({fill: fill, icon: icon, label: label})
     end for
     m.railIndex = 0
@@ -44,8 +38,13 @@ sub drawSettingsRail()
             icons = {connection: "channels", live: "live", player: "play", movies: "vod", dvr: "recent", appearance: "categories", general: "settings", remote: "options", about: "settings"}
             cell.icon.uri = "pkg:/images/ui-icon-" + icons[item.page] + ".png"
             cell.label.text = item.title
+            cell.label.width = 0
+            content = uiPillContent(408, 70, cell.label.localBoundingRect().width, 24)
+            cell.icon.translation = [98 + content.iconX, cell.fill.translation[1] + content.iconY]
+            cell.label.translation = [98 + content.textX, cell.fill.translation[1]]
+            cell.label.width = content.textWidth
             style = uiControlStyle("row", i = m.railSelected, m.focusRegion = "rail" and i = m.railIndex, true, false)
-            uiSetColor(cell.fill, style.fill, "blendColor")
+            uiSetColor(cell.fill, style.fill)
             uiSetColor(cell.icon, style.ink, "blendColor")
             uiSetColor(cell.label, style.ink)
         end if

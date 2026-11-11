@@ -26,14 +26,12 @@ sub init()
     m.description.wrap = true
     m.description.maxLines = 8
     m.descriptionPage = 0
-    m.pageHint = uiLabel(m.top, "", 460, 641, 1320, 34, 21, "0x1AC4D8FF")
+    m.pageHint = uiRemoteHints(m.top, 460, 641, 1320, 34, 21)
     m.credits = uiLabel(m.top, "", 460, 660, 1320, 62, 22, "0x9EB5C9FF")
     m.credits.wrap = true
     m.buttons = []
     for i = 0 to 3
-        bg = uiSurface(m.top, 460, 730 + i * 64, 1320, 58, 14, "0x263549FF")
-        label = uiLabel(m.top, "", 480, 742 + i * 64, 1280, 36, 25)
-        m.buttons.push({bg: bg, label: label})
+        m.buttons.push(uiButton(m.top, "", 460, 730 + i * 64, 1320, 58, 25, "0x263549FF"))
     end for
     m.attribution = uiLabel(m.top, "", 96, 1005, 1728, 38, 20, "0x9EB5C9FF")
 end sub

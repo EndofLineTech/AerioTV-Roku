@@ -32,7 +32,7 @@ def build(input_path, output_directory=None, *, enable_device_key_test=False):
             parts = name.split("/")
             if ".." in parts or "\\" in name or not (name == "manifest" or parts[0] in ["source", "components", "images"]):
                 raise ValueError("Base contains development or probe files")
-            if re.search(r"(^|/)(SetupReceiver|SetupApply(?:Probe|Fixture)|.*FixtureEntropy|fixture-materials|apply-cases)", name, re.I):
+            if re.search(r"(^|/)(UiAudit|SetupReceiver|SetupApply(?:Probe|Fixture)|.*FixtureEntropy|fixture-materials|apply-cases)", name, re.I):
                 raise ValueError("Base contains development or probe files")
         required = ["source/Main.brs", "components/AerioScene.xml", "components/AerioScene.brs",
                     "source/PhoneSetupEntropy.brs", "source/PhoneSetupX25519.brs", "source/PhoneSetupStore.brs",

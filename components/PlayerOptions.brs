@@ -6,14 +6,13 @@ sub init()
     m.title = uiLabel(m.top, "Player options", 510, 197, 900, 60, 36)
     m.note = uiLabel(m.top, "", 510, 265, 900, 54, 22, "0x9EB5C9FF")
     m.note.wrap = true
-    m.list = m.top.createChild("LabelList")
-    ' Match the guide picker: widen the focus pill within the modal and use
-    ' a transparent icon to inset labels without changing their spoken text.
+    m.list = m.top.createChild("AerioPillList")
+    ' Shared action rows retain native scrolling, with centered pill content.
     m.list.translation = [484, 340]
     m.list.itemSize = [952, 64]
-    m.list.itemSpacing = [0, 0]
+    m.list.itemSpacing = [0, 4]
     m.list.numRows = 8
-    m.list.clippingRect = [0, 0, 952, 512]
+    m.list.clippingRect = [0, 0, 952, 540]
     uiSetFont(m.list, 24, "font", false, 64)
     uiSetFont(m.list, 24, "focusedFont", false, 64)
     uiSetColor(m.list, "0xE8F3FAFF")
@@ -33,8 +32,6 @@ sub setMenu()
     for each item in menu.items
         child = content.createChild("ContentNode")
         child.title = item.title
-        child.hdListItemIconURL = "pkg:/images/ui-list-inset.png"
-        child.hdListItemIconSelectedURL = "pkg:/images/ui-list-inset.png"
     end for
     m.list.content = content
     m.list.jumpToItem = 0

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="AerioPillList" extends="MarkupList">
+  <interface>
+    <field id="font" type="node" onChange="stylePillItems" />
+    <field id="focusedFont" type="node" onChange="stylePillItems" />
+    <field id="color" type="color" value="0xE8F3FAFF" onChange="stylePillItems" />
+    <field id="focusedColor" type="color" value="0x0A1629FF" onChange="stylePillItems" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="AerioPillList.brs" />
+</component>

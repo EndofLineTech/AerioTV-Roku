@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="AerioPillListItem" extends="Group">
+  <interface>
+    <field id="itemContent" type="node" onChange="setPillContent" />
+    <field id="focusPercent" type="float" onChange="drawPillItem" />
+    <field id="width" type="float" onChange="drawPillItem" />
+    <field id="height" type="float" onChange="drawPillItem" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="AerioPillListItem.brs" />
+  <children>
+    <AerioSurface id="fill" />
+    <Label id="label" horizAlign="center" vertAlign="center" maxLines="1" wrap="false" />
+  </children>
+</component>

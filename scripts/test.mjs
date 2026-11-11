@@ -10,6 +10,7 @@ suites.unshift('PhoneSetupCancellation');
 suites.unshift('PhoneSetupStore');
 suites.unshift('PhoneSetupNavigation');
 suites.unshift('PhoneSetupAutoAdd');
+suites.unshift('PillListItem');
 suites.unshift('RecentHistory');
 suites.unshift('GuideHistory', 'BrowserHistory');
 suites.unshift('RokuAuthModel');
@@ -19,6 +20,7 @@ for (const suite of suites) {
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
     ...(suite === 'LaunchModel' ? ['source/LaunchModel.brs'] : []),
+    ...(suite === 'PillListItem' ? ['components/AerioPillListItem.brs'] : []),
     ...(suite === 'PhoneSetupModel' ? ['source/PhoneSetupModel.brs'] : []),
     ...(suite === 'PhoneSetupApplyModel' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupApplyModel.brs'] : []),
     ...(suite === 'PhoneSetupCancellation' ? ['components/PhoneSetupTask.brs'] : []),
@@ -146,7 +148,7 @@ if (profileTaskSuite.status !== 0 || !profileTaskSuite.stdout.includes('ALL TEST
 // These commands never connect to a Roku or install a development package.
 for (const args of [
   ['scripts/test-setup-qr.mjs'],
-  ['--test', 'scripts/setup-receiver-isolation.test.mjs', 'scripts/channel-logo-isolation.test.mjs'],
+  ['--test', 'scripts/setup-receiver-isolation.test.mjs', 'scripts/channel-logo-isolation.test.mjs', 'scripts/ui-audit-isolation.test.mjs'],
   ['scripts/test-setup-x25519.mjs'],
   ['--test', 'scripts/validate-phone-setup-native.test.mjs'],
 ]) {

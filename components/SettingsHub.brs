@@ -112,7 +112,10 @@ sub renderSettings()
         end if
         if item.action = "remoteSlot" then label += ": " + remoteActionText(resolveRemoteAction(model.device.remoteMap, item.context, item.slot))
         if item.key <> invalid then label += ": " + settingsValueText(settingsHubValue(model, item.scope, item.key), item.key)
-        content.createChild("ContentNode").title = "   " + label
+        child = content.createChild("ContentNode")
+        child.title = label
+        action = m.choice <> invalid or item.page <> invalid or item.action <> invalid or item.values <> invalid
+        child.addFields({pillAction: action})
     end for
     m.list.content = content
     if focused >= 0 and focused < m.items.count() then m.list.jumpToItem = focused

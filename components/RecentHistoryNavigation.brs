@@ -26,7 +26,7 @@ sub onRecentHistoryRequested(event as object)
         buttons.push("Clear all live Recently Watched")
         actions.push("clear")
     end if
-    dialog = CreateObject("roSGNode", "Dialog")
+    dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = "Manage Recently Watched"
     dialog.message = "Changes affect this account's live channel history and previous-channel recall. Playback and favorites are kept. Watching a channel again adds it back."
     if actions.count() = 1 then dialog.message = "There are no recently watched live channels in this account."

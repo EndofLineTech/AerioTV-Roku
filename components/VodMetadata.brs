@@ -120,7 +120,7 @@ sub openFullSynopsis()
     pages = int((len(text) + 899) / 900)
     if m.synopsisPage >= pages then m.synopsisPage = pages - 1
     if m.synopsisPage < 0 then m.synopsisPage = 0
-    dialog = CreateObject("roSGNode", "Dialog")
+    dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = m.detail.title + " — synopsis " + (m.synopsisPage + 1).toStr() + "/" + pages.toStr()
     dialog.message = mid(text, m.synopsisPage * 900 + 1, 900)
     buttons = []

@@ -626,7 +626,7 @@ sub onVodDetailAction(event as object)
         return
     end if
     if action = "links"
-        dialog = CreateObject("roSGNode", "Dialog")
+        dialog = CreateObject("roSGNode", "AerioDialog")
         dialog.title = "Open on another device"
         message = "External links; these do not play inside AerioTV."
         for each link in vodExternalLinks(m.detail)
@@ -793,7 +793,7 @@ sub onDescriptionLoaded(event as object)
 end sub
 
 sub openVodOptions(advanced = false as boolean)
-    dialog = CreateObject("roSGNode", "Dialog")
+    dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = "Library options"
     labels = ["Search"]
     if textValue(m.top.config.providerType) = "xtream" then labels = ["Search this category"]

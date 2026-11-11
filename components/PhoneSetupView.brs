@@ -117,9 +117,7 @@ sub drawPhoneSetup()
             color = "0x1AC4D8FF"
             textColor = "0x0A1629FF"
         end if
-        uiRect(m.content, 160 + i * 500, 870, 460, 82, color)
-        label = uiLabel(m.content, m.actions[i], 180 + i * 500, 890, 420, 45, 29, textColor)
-        label.horizAlign = "center"
+        uiButton(m.content, m.actions[i], 160 + i * 500, 870, 460, 82, 29, color, textColor)
     end for
     if m.top.warning <> "" then uiLabel(m.content, m.top.warning, 160, 985, 1610, 58, 22, "0xFFB080FF")
 end sub
