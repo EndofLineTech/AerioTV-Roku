@@ -1,0 +1,14 @@
+[
+  {"name":"Guide All Channels selected (text only)","file":"out/ui-reaudit/synthetic/guide-populated.jpg","ink":"dark","pill":[358,101,229,34],"crop":[380,103,185,29]},
+  {"name":"Guide Favorites unfocused (text only)","file":"out/ui-reaudit/synthetic/guide-populated.jpg","ink":"light","pill":[603,101,229,34],"crop":[625,103,185,29]},
+  {"name":"Guide Live TV selected (icon and text together)","file":"out/ui-reaudit/synthetic/guide-populated.jpg","ink":"dark","pill":[545,23,194,44],"crop":[570,27,145,35]},
+  {"name":"Guide Live TV selected (text only)","file":"out/ui-reaudit/synthetic/guide-populated.jpg","ink":"dark","pill":[545,23,194,44],"crop":[614,27,100,35]},
+  {"name":"Live options first action focused","file":"out/ui-reaudit/synthetic/live-main.jpg","ink":"dark","pill":[484,340,952,64],"crop":[600,345,720,54]},
+  {"name":"Live options Audio track unfocused","file":"out/ui-reaudit/synthetic/live-main.jpg","ink":"light","pill":[484,476,952,64],"crop":[600,481,720,54]},
+  {"name":"Live info OK hint","file":"out/ui-reaudit/synthetic/live-banner-playing.jpg","ink":"light","pill":[128,978,54,30],"crop":[138,980,34,24]},
+  {"name":"Confirmation Replace focused","file":"out/ui-reaudit/synthetic/dialog-duplicate.jpg","ink":"dark","pill":[475,692,900,64],"crop":[600,697,650,54]},
+  {"name":"Confirmation Cancel unfocused","file":"out/ui-reaudit/synthetic/dialog-duplicate.jpg","ink":"light","pill":[475,548,900,64],"crop":[600,553,650,54]},
+  {"name":"Program details Record on server focused","file":"out/ui-reaudit/synthetic/program-details.jpg","ink":"dark","pill":[460,730,1320,58],"crop":[600,735,1000,48]},
+  {"name":"Settings Color theme selected","file":"out/ui-reaudit/synthetic/settings-appearance.jpg","ink":"light","pill":[584,294,1204,68],"crop":[800,299,700,58]},
+  {"name":"Settings Appearance rail (icon and text together)","file":"out/ui-reaudit/synthetic/settings-appearance.jpg","ink":"light","pill":[98,603,408,70],"crop":[130,608,340,60]}
+]

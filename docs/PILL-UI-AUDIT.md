@@ -2,6 +2,12 @@
 
 Work item: `AerioTV-Roku-iut`. Rendered inspection: November 11, 2026.
 
+**Acceptance correction:** the owner's subsequent guide report was reproduced
+in the [repeat UI audit](UI-REAUDIT.md). The implementation below centers label
+boxes, but that did **not** establish optical text centering on Roku. Guide,
+pop-up and live-overlay alignment defects remain open under `iut`; this original
+gallery report is not whole-application visual acceptance.
+
 ## Implementation
 
 `uiButton` and `uiButtonLabel` use full-height, horizontally/vertically centered

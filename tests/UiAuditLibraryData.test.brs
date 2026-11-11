@@ -1,4 +1,12 @@
 sub main()
+    channels = uiAuditChannels()
+    check(channels.count() = 24 and uiAuditGroups().count() = 7, "populated guide fixture")
+    programs = uiAuditPrograms(channels[0], 1800300)
+    check(programs.count() = 13, "bounded past/current/future programme data")
+    check(programs[4].startsAt <= 1800300 and programs[4].endsAt > 1800300, "current programme covers fixture clock")
+    for each channel in channels
+        check(channel.logoId = "" and channel.logoUrl = "", "guide/browser/banner never fetch artwork")
+    end for
     first = uiAuditVodResult("movie", "page", 1, "", "library-movies")
     second = uiAuditVodResult("movie", "page", 2, "", "library-movies")
     last = uiAuditVodResult("movie", "page", 3, "", "library-movies")

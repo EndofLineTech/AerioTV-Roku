@@ -5,14 +5,22 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { libraryAuditScreens, exerciseLibraryCase } from './ui-library-audit-cases.mjs';
+import { sharedAuditScreens, guideLiveAuditScreens, exerciseFullCase } from './ui-full-audit-cases.mjs';
 
 const [probe, restore, ...args] = process.argv.slice(2);
 const libraries = args.includes('--libraries');
-const requested = args.filter(arg => arg !== '--libraries');
+const full = args.includes('--full');
+assert.ok(!(full && libraries), 'Choose --full or --libraries, not both');
+const supplement = args.includes('--supplement');
+const runName = args.find(arg => arg.startsWith('--run='))?.slice(6);
+assert.ok(!runName || (full && /^[a-z][a-z0-9-]*$/.test(runName)), '--run requires --full and a simple lowercase name');
+const requested = args.filter(arg => !['--libraries', '--full', '--supplement'].includes(arg) && !arg.startsWith('--run='));
+assert.ok(!supplement || full, '--supplement requires --full');
 const screens = requested.length ? requested : ['welcome', 'setup-dispatcharr', 'setup-xtream', 'setup-m3u', 'phone-ready', 'phone-expired', 'phone-failed', 'guide-picker', 'player-options', 'program-details', 'vod-details', 'navigation', 'group-pills', 'group-sidebar', 'player-controls', 'recording-controls', 'tips', 'settings-connection', 'settings-live', 'settings-player', 'settings-movies', 'settings-dvr', 'settings-appearance', 'settings-general', 'settings-remote', 'settings-about', 'settings-whatsnew', 'settings-licenses', 'dialog-duplicate', 'dialog-delete', 'dialog-diagnostics', 'keyboard', 'large-phone', 'large-options', 'large-settings', 'light-dialog', 'light-settings', 'light-tips'];
 const host = process.env.ROKU_HOST, password = process.env.ROKU_DEV_PASSWORD;
 if (libraries && !requested.length) screens.splice(0, screens.length, ...libraryAuditScreens);
 if (!libraries && !requested.length) screens.push('guide-picker-scroll');
+if (full && !requested.length) screens.splice(0, screens.length, ...new Set([...sharedAuditScreens, ...libraryAuditScreens, ...guideLiveAuditScreens]));
 const hash = path => createHash('sha256').update(readFileSync(path)).digest('hex');
 assert.ok(host && password && probe && restore, 'Supply developer environment, isolated gallery and verified restore ZIP');
 const restoreSha256 = hash(restore);
@@ -21,7 +29,11 @@ const metadata = spawnSync('unzip', ['-p', probe, 'ui-audit-build.json'], { enco
 assert.equal(metadata.status, 0, 'Isolated gallery marker required');
 assert.equal(JSON.parse(metadata.stdout).syntheticTasksOnly, true, 'Synthetic Task barrier required');
 assert.ok(screens.every(name => /^[a-z0-9-]+$/.test(name)), 'Only named synthetic gallery cases');
-const output = libraries ? 'out/ui-audit/libraries' : 'out/ui-audit';
+if (full) {
+  const supported = new Set([...sharedAuditScreens, ...libraryAuditScreens, ...guideLiveAuditScreens]);
+  assert.ok(screens.every(name => supported.has(name)), 'Every full-audit case must have a defined fixture');
+}
+const output = full ? `out/ui-reaudit/${runName ?? (supplement ? 'supplement' : 'synthetic')}` : libraries ? 'out/ui-audit/libraries' : 'out/ui-audit';
 mkdirSync(output, { recursive: true });
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 function curl(args, auth = false) {
@@ -118,11 +130,12 @@ try {
     while (!runtimeError && !events.slice(after).some(row => row.ready && row.screen === screen) && performance.now() - started < 15000) await delay(50);
     await delay(250);
     assert.ok(!runtimeError && events.slice(after).some(row => row.ready && row.screen === screen), `Gallery ready: ${screen}`);
-    if (libraries) {
+    if (libraries || full) {
       await check(screen);
       capture(screen);
       try {
-        await exerciseLibraryCase(screen, { key, check: () => check(screen), capture: step => capture(screen, step) });
+        const exercise = libraryAuditScreens.includes(screen) ? exerciseLibraryCase : exerciseFullCase;
+        await exercise(screen, { key, check: () => check(screen), capture: step => capture(screen, step) });
       } catch (error) {
         if (runtimeError) throw error;
         findings.push({ screen, message: error.message });

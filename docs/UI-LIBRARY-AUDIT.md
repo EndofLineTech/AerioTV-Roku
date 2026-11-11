@@ -4,6 +4,11 @@ Work item: `AerioTV-Roku-d85`, under `AerioTV-Roku-mrr`.
 Date: November 11, 2026. This is fixture/audit delivery, **not** completion of
 the VOD/DVR fixes or multi-user profiles.
 
+Follow-up: [`UI-REAUDIT.md`](UI-REAUDIT.md) repeats the libraries alongside the
+populated guide, live-TV overlays and other pop-ups after the owner reported
+remaining guide text misalignment. Native alignment fields do not establish
+optically centered glyphs; the shared-pill task `iut` remains open.
+
 ## What was exercised
 
 The isolated gallery now runs the production `VodView`, `DvrView`, navigation,

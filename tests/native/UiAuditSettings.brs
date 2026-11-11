@@ -3,8 +3,10 @@ sub seedUiAuditSettings(page as string)
     if route = "choice" or route = "reset" then page = "appearance"
     if route = "remote-player" or route = "remote-guide" then page = "remote"
     m.page = page
+    railPage = page
+    if page = "whatsNew" or page = "licenses" then railPage = "about"
     for i = 0 to m.railItems.count() - 1
-        if m.railItems[i].page = page
+        if m.railItems[i].page = railPage
             m.railSelected = i
             m.railIndex = i
         end if

@@ -1,6 +1,8 @@
 ' Replaces ONLY the probe's application init. No registry, account, network
 ' client, receiver, video playback or persistence observer is created here.
 sub initUiAudit()
+    m.top.backgroundColor = "0x0A1628FF"
+    m.top.backgroundUri = ""
     m.devicePreferences = normalizeDevicePreferences({})
     m.global.addFields({appearance: m.devicePreferences, clockFormat: "24", audioGuide: false})
     m.global.addFields({uiAuditLibraryCase: ""})
@@ -11,6 +13,15 @@ sub initUiAudit()
     m.phoneSetup = m.top.findNode("phoneSetup")
     m.transport = m.top.findNode("transport")
     m.playerOptions = m.top.findNode("playerOptions")
+    m.browser = m.top.findNode("channelBrowser")
+    m.banner = m.top.findNode("playerBanner")
+    m.channelTuneTimer = m.top.findNode("channelTuneTimer")
+    m.heldZapTimer = m.top.findNode("heldZapTimer")
+    m.bannerTimer = m.top.findNode("bannerTimer")
+    m.playerOkTimer = m.top.findNode("playerOkTimer")
+    m.playerOptions.observeField("selection", "uiAuditPlayerSelection")
+    m.playerOptions.observeField("backRequested", "uiAuditPlayerBack")
+    m.browser.observeField("historyRequest", "uiAuditHistory")
     m.auditExtra = invalid
     m.auditDialog = invalid
     m.auditTimer = m.top.createChild("Timer")
@@ -31,11 +42,16 @@ sub showUiAudit()
         m.auditExtra = invalid
     end if
     closeRecordDialog()
+    closeConnectionDialog()
+    closeRecentHistoryDialog()
+    cancelPlaybackFailure()
+    cancelAacFailure()
     if m.top.dialog <> invalid then m.top.dialog.close = true
     m.guide.active = false
     m.settingsHub.active = false
     m.transport.active = false
     m.playerOptions.active = false
+    m.browser.active = false
     for each child in m.top.getChildren(-1, 0)
         if child.hasField("visible") then child.visible = false
     end for
@@ -48,7 +64,68 @@ sub showUiAudit()
     scenario = name
     if left(name, 6) = "large-" or left(name, 6) = "light-" then scenario = mid(name, 7)
     m.global.uiAuditLibraryCase = scenario
-    if left(scenario, 8) = "library-" or left(scenario, 4) = "dvr-"
+    if left(scenario, 6) = "popup-"
+        m.page = "fixture"
+        m.accountIdentity = "ui-audit"
+        m.apiKey = ""
+        if scenario = "popup-live-failure" or scenario = "popup-live-retry"
+            if scenario = "popup-live-retry" then m.playbackRetry = {account: "ui-audit", channel: uiAuditChannels()[0]}
+            showPlaybackFailure(-5, "Synthetic buffering timeout; no media request.")
+            m.playbackFailureDialog.unobserveField("buttonSelected")
+        else if scenario = "popup-aac-failure"
+            showAacUnavailable({account: "ui-audit"}, "Synthetic compatibility profile unavailable.")
+            m.aacFailureDialog.unobserveField("buttonSelected")
+        else if scenario = "popup-diagnostics"
+            m.diagnosticLog = []
+            recordDiagnostic("playback", -5, "Synthetic event for layout inspection.")
+            showDiagnostics()
+            m.diagnosticDialog.unobserveField("buttonSelected")
+        else if scenario = "popup-recent-history"
+            seedUiAuditLive("live-recent")
+            m.accountPreferences.recent = ["audit-1", "audit-2"]
+            m.browser.callFunc("handleOptionsShortcut")
+        end if
+    else if scenario = "search-populated"
+        m.auditExtra = m.top.createChild("ProgramSearchView")
+        channels = uiAuditChannels()
+        programs = uiAuditPrograms(channels[0], uiNow())
+        rows = []
+        for i = 0 to 5
+            rows.push({channel: channels[i], program: programs[i]})
+        end for
+        m.auditExtra.model = {query: "Synthetic", searchField: "Title", items: rows, loading: false, hasNext: true, page: 1, message: "Synthetic results; no search request."}
+        m.auditExtra.active = true
+    else if left(scenario, 11) = "connection-"
+        m.page = "fixture"
+        m.busy = false
+        m.connectionStore = defaultConnectionStore()
+        for i = 1 to 4
+            m.connectionStore.entries.push(normalizeConnectionEntry({id: "audit-" + i.toStr(), name: "Synthetic connection " + i.toStr(), provider: "dispatcharr", url: "https://example.invalid", remember: false}))
+        end for
+        m.selectedConnectionId = "audit-1"
+        if scenario = "connection-picker" then openConnectionPicker()
+        if scenario = "connection-manager" then openConnectionManager()
+        if scenario = "connection-advanced" then openConnectionAdvanced()
+        if scenario = "connection-auth" then openConnectionAuthModes()
+        if scenario = "connection-forget" then openRemoveConnectionConfirmation()
+        if m.connectionDialog <> invalid then m.connectionDialog.unobserveField("buttonSelected")
+    else if left(scenario, 7) = "record-"
+        m.page = "fixture"
+        m.accountIdentity = "ui-audit"
+        m.capabilities = {dvr: "manage"}
+        channels = uiAuditChannels()
+        programs = uiAuditPrograms(channels[0], uiNow())
+        openRecordFlow(channels[0], programs[4], "ui-audit")
+        if scenario = "record-confirm" then openRecordPicker("Confirm server recording", recordingConfirmationText(m.recordIntent, m.recordPadding), [{title: "Cancel", action: "cancel"}, {title: "Record once on server", action: "confirm"}])
+        m.recordDialog.unobserveField("buttonSelected")
+    else if left(scenario, 6) = "guide-" and scenario <> "guide-picker" and scenario <> "guide-picker-scroll"
+        m.guide.callFunc("seedUiAuditGuide", scenario)
+        m.guide.observeField("watchChannel", "uiAuditForbiddenPlay")
+        m.guide.observeField("archiveRequest", "uiAuditForbiddenPlay")
+        m.guide.observeField("recordRequest", "uiAuditForbiddenPlay")
+    else if left(scenario, 5) = "live-"
+        seedUiAuditLive(scenario)
+    else if left(scenario, 8) = "library-" or left(scenario, 4) = "dvr-"
         kind = "VodView"
         if left(scenario, 4) = "dvr-" then kind = "DvrView"
         m.auditExtra = m.top.createChild(kind)
@@ -206,6 +283,9 @@ sub uiAuditCheck()
         if list <> invalid then focused = list.itemFocused
     end if
     state = {check: true, screen: m.top.auditScreen, focused: focused}
+    if m.guide.active then state.guide = m.guide.callFunc("uiAuditGuideState")
+    if m.playerOptions.active then state.player = {kind: m.optionKind, focused: m.playerOptions.focusedIndex, menu: m.playerOptions.menu}
+    state.browser = m.browser.active
     if m.auditExtra <> invalid
         if m.auditExtra.subtype() = "VodView" or m.auditExtra.subtype() = "DvrView" then state.library = m.auditExtra.callFunc("uiAuditLibraryState")
     end if
@@ -215,6 +295,73 @@ sub uiAuditCheck()
         if state.sceneDialog = "AerioDialog" then state.focused = m.top.dialog.buttonFocused
     end if
     print "[ui-audit] "; formatJson(state)
+end sub
+
+sub seedUiAuditLive(scenario as string)
+    channels = uiAuditChannels()
+    now = uiNow()
+    ' A record supplies native snapshot inputs, never an actual media node.
+    m.video = {globalCaptionMode: "Off", state: "playing", content: invalid, audioTrack: "1", subtitleTrack: ""
+        availableAudioTracks: [{track: "1", language: "eng", name: "English stereo"}, {track: "2", language: "spa", name: "Spanish stereo"}]
+        availableSubtitleTracks: [{trackName: "1", language: "eng", description: "English captions"}, {trackName: "2", language: "spa", description: "Spanish captions"}]}
+    m.page = "fixture"
+    m.mini = false
+    m.serverAccountId = "fixture"
+    m.capabilities = {dvr: "manage", catchup: "denied", switchStreams: "denied"}
+    m.channelFacts = {}
+    m.playingChannel = channels[0]
+    m.sleepDeadline = 0
+    m.serverStreamInfo = serverStreamDetails(invalid)
+    m.serverStreamMessage = "Synthetic snapshot; no stream or server request."
+    m.streamReady = false
+    m.optionReturnAction = ""
+    m.optionKind = ""
+    m.apiKey = ""
+    if left(scenario, 12) = "live-banner-"
+        m.banner.playhead = invalid
+        m.banner.visible = true
+        m.banner.preferences = m.devicePreferences
+        m.banner.session = {baseUrl: "", apiKey: ""}
+        m.banner.channel = channels[0]
+        m.banner.info = {channelUuid: channels[0].uuid, programs: uiAuditPrograms(channels[0], now), status: "ready"}
+        m.banner.playbackState = mid(scenario, 13)
+        m.banner.hint = "OK  Info    Hold OK  Options    Down  Controls    Back  Guide"
+        m.banner.now = now
+        if scenario = "live-banner-paused" then m.banner.playhead = {known: true, delayed: true, epoch: now - 120, delay: 120, estimated: false}
+    else if scenario = "live-browser" or scenario = "live-recent"
+        mode = "channels"
+        if scenario = "live-recent" then mode = "recent"
+        m.browser.model = {channels: channels, groups: [{id: "all", name: "All channels"}, {id: "group:news", name: "News"}], favorites: {}, recent: ["audit-1", "audit-2"], historyAccount: "ui-audit", collections: [], settings: m.accountPreferences.guide, baseUrl: "", apiKey: "", mode: mode, group: "all"}
+        m.browser.playingUuid = channels[0].uuid
+        m.browser.active = true
+        m.browser.observeField("channelSelected", "uiAuditForbiddenPlay")
+    else
+        kind = mid(scenario, 6)
+        if kind = "audiomode" then kind = "audioMode"
+        if kind = "livetransport" then kind = "liveTransport"
+        if kind = "streaminfo" then kind = "streamInfo"
+        openPlayerOptions(kind)
+    end if
+end sub
+
+sub uiAuditPlayerSelection(event as object)
+    ' Only display submenu choices. No production media/settings handler attached.
+    routes = {audioMenu: "audio", subtitleMenu: "subtitle", captionsMenu: "captions", scaleMenu: "scale", sleepMenu: "sleep", audioModeMenu: "audioMode", liveTransportMenu: "liveTransport", clockMenu: "clock", directionMenu: "direction", streamInfo: "streamInfo", aspectMenu: "aspect"}
+    item = event.getData()
+    if routes.doesExist(item.action)
+        openPlayerOptions(routes[item.action])
+    else
+        print "[ui-audit] "; formatJson({forbidden: true, action: item.action})
+    end if
+end sub
+
+sub uiAuditPlayerBack()
+    if m.optionKind <> "main" and left(m.global.uiAuditLibraryCase, 5) = "live-" then openPlayerOptions("main")
+end sub
+
+sub uiAuditHistory(event as object)
+    onRecentHistoryRequested(event)
+    if m.historyDialog <> invalid then m.historyDialog.unobserveField("buttonSelected")
 end sub
 
 sub uiAuditForbiddenPlay()

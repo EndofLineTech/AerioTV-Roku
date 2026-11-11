@@ -22,12 +22,14 @@ def isolate_entry(name, data):
     elif name == "components/AerioScene.xml":
         data = data.replace(b'</interface>', b'<field id="auditScreen" type="string" alwaysNotify="true" onChange="showUiAudit" /><field id="auditCheck" type="string" alwaysNotify="true" onChange="uiAuditCheck" /></interface>', 1)
         data = data.replace(b'<children>', b'<script type="text/brightscript" uri="SetupReceiverProbeUiAudit.brs" /><children>', 1)
+        data = data.replace(b'<children>', b'<script type="text/brightscript" uri="UiAuditGuideData.brs" /><children>', 1)
     elif name == "components/PhoneSetupView.xml":
         data = data.replace(b'onChange="onSetupActive"', b'onChange="auditPhoneActive"')
         data = data.replace(b'</interface>', b'<function name="seedUiAuditPhone" /></interface>', 1)
         data = data.replace(b'<children>', b'<script type="text/brightscript" uri="UiAuditPhone.brs" /><children>', 1)
     elif name == "components/GuideView.xml":
-        data = data.replace(b'</interface>', b'<function name="openPicker" /></interface>', 1)
+        data = data.replace(b'</interface>', b'<function name="openPicker" /><function name="seedUiAuditGuide" /><function name="uiAuditGuideState" /></interface>', 1)
+        data = data.replace(b'<children>', b'<script type="text/brightscript" uri="UiAuditGuideData.brs" /><script type="text/brightscript" uri="UiAuditGuide.brs" /><children>', 1)
     elif name == "components/SettingsHub.xml":
         data = data.replace(b'</interface>', b'<function name="seedUiAuditSettings" /></interface>', 1)
         data = data.replace(b'<children>', b'<script type="text/brightscript" uri="UiAuditSettings.brs" /><children>', 1)
@@ -62,7 +64,7 @@ def build(input_path, output):
         for name in source.namelist():
             target.writestr(name, isolate_entry(name, source.read(name)))
         target.write(ROOT / "tests/native/UiAuditProbe.brs", "components/SetupReceiverProbeUiAudit.brs")
-        for name in ['UiAuditPhone', 'UiAuditSettings', 'UiAuditLibraryData', 'UiAuditFixtureTask', 'UiAuditVod', 'UiAuditDvr']:
+        for name in ['UiAuditPhone', 'UiAuditSettings', 'UiAuditLibraryData', 'UiAuditFixtureTask', 'UiAuditVod', 'UiAuditDvr', 'UiAuditGuide', 'UiAuditGuideData']:
             target.write(ROOT / ('tests/native/' + name + '.brs'), 'components/' + name + '.brs')
         target.writestr('ui-audit-build.json', json.dumps({'kind': 'isolated-ui-audit', 'syntheticTasksOnly': True, 'baseSha256': hashlib.sha256(Path(input_path).read_bytes()).hexdigest()}))
     return Path(output)

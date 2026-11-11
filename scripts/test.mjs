@@ -23,7 +23,7 @@ for (const suite of suites) {
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
     ...(suite === 'LaunchModel' ? ['source/LaunchModel.brs'] : []),
     ...(suite === 'PillListItem' ? ['components/AerioPillListItem.brs'] : []),
-    ...(suite === 'UiAuditLibraryData' ? ['tests/native/UiAuditLibraryData.brs'] : []),
+    ...(suite === 'UiAuditLibraryData' ? ['tests/native/UiAuditLibraryData.brs', 'tests/native/UiAuditGuideData.brs'] : []),
     ...(suite === 'UiAuditFixtureTask' ? ['tests/native/UiAuditLibraryData.brs', 'tests/native/UiAuditFixtureTask.brs'] : []),
     ...(suite === 'PhoneSetupModel' ? ['source/PhoneSetupModel.brs'] : []),
     ...(suite === 'PhoneSetupApplyModel' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupApplyModel.brs'] : []),

@@ -36,20 +36,27 @@ class LibraryAuditPackageTest(unittest.TestCase):
                         if node.get("extends") == "Task":
                             scripts = [n.get("uri") for n in ET.fromstring(probe.read(name)).findall("script")]
                             self.assertEqual(scripts, ["UiAuditLibraryData.brs", "UiAuditFixtureTask.brs"], name)
-                for name in ["VodView.brs", "DvrView.brs", "VodMetadata.brs", "DvrNavigation.brs", "DvrSeriesNavigation.brs"]:
+                for name in ["VodView.brs", "DvrView.brs", "VodMetadata.brs", "DvrNavigation.brs", "DvrSeriesNavigation.brs", "GuideView.brs", "GuideSettings.brs", "GuideRemoteInput.brs", "PlayerOptions.brs", "PlayerInfo.brs", "ChannelBrowser.brs"]:
                     self.assertEqual(probe.read("components/" + name), original.read("components/" + name))
                 scene = probe.read("components/AerioScene.brs").decode()
                 self.assertIn("initUiAudit()", scene)
                 self.assertNotIn('CreateObject("roRegistrySection"', scene.split("end sub", 1)[0])
 
     def test_fixture_code_cannot_open_network_registry_or_media(self):
-        for name in ["UiAuditLibraryData.brs", "UiAuditFixtureTask.brs", "UiAuditVod.brs", "UiAuditDvr.brs"]:
+        for name in ["UiAuditLibraryData.brs", "UiAuditFixtureTask.brs", "UiAuditVod.brs", "UiAuditDvr.brs", "UiAuditGuide.brs", "UiAuditGuideData.brs"]:
             text = (ROOT / "tests/native" / name).read_text()
             for forbidden in ['"roRegistry', '"roUrlTransfer', '"roStreamSocket', '"roDatagramSocket', '"Video"', '"Audio"']:
                 self.assertNotIn(forbidden, text, name)
         task = (ROOT / "tests/native/UiAuditFixtureTask.brs").read_text()
         self.assertIn('forbidden: true', task)
         self.assertIn('action <> "list" and action <> "series-list"', task)
+
+    def test_populated_guide_seed_keeps_real_renderers_and_disconnects_io(self):
+        seed = (ROOT / "tests/native/UiAuditGuide.brs").read_text()
+        self.assertIn('m.top.config =', seed)
+        self.assertIn('guideCachePut(', seed)
+        self.assertIn('m.loadDelay.unobserveField("fire")', seed)
+        self.assertNotIn('sub drawGuide', seed)
 
 
 if __name__ == "__main__":
