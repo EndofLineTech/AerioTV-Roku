@@ -145,12 +145,16 @@ try {
 
   for (const name of ['m3u-query', 'xtream', 'default-profile', 'dispatcharr-password']) {
     after = await begin(name);
-    const confirmation = await wait('confirmation', after);
-    if (name === 'default-profile' || name === 'm3u-query') assert.equal(confirmation.omissions, true);
-    ecp('keypress/Select');
-    assert.equal((await wait('committed', after)).count, 1);
+    const added = await wait('committed', after); // No remote Select for new accounts.
+    assert.equal(added.count, 1);
+    assert.equal(added.confirmations, 0);
+    await wait('handoff_notice', after);
+    if (name === 'default-profile' || name === 'm3u-query' || name === 'xtream') {
+      assert.ok(events.slice(after).some(row => row.kind === 'import_notice' && row.omissions), 'Nonblocking session/omission disclosure retained');
+    }
+    assert.ok(!events.slice(after).some(row => row.kind === 'confirmation'), 'No redundant Save confirmation');
     await guide(after, name === 'm3u-query' || name === 'xtream' ? 'xmltv' : 'network');
-    passed(name === 'default-profile' ? 'api-key-only-default-profile-and-omission-disclosure' : name === 'dispatcharr-password' ? 'dashboard-password-exchanges-for-saved-api-key' : `${name}-session-credentials-and-clean-metadata`);
+    passed(name === 'default-profile' ? 'auto-add-default-profile-with-nonblocking-disclosure' : name === 'dispatcharr-password' ? 'auto-add-password-exchanges-for-saved-api-key' : `auto-add-${name}-session-credentials-and-clean-metadata`);
   }
   if (realHttp) {
     assert.ok(events.some(row => row.kind === 'xmltv_epochs_verified'), 'native UTC and positive/negative timezone arithmetic retains exact integer seconds');

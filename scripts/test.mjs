@@ -9,6 +9,7 @@ suites.unshift('PhoneSetupApplyModel');
 suites.unshift('PhoneSetupCancellation');
 suites.unshift('PhoneSetupStore');
 suites.unshift('PhoneSetupNavigation');
+suites.unshift('PhoneSetupAutoAdd');
 suites.unshift('RecentHistory');
 suites.unshift('GuideHistory', 'BrowserHistory');
 suites.unshift('RokuAuthModel');
@@ -23,7 +24,8 @@ for (const suite of suites) {
     ...(suite === 'PhoneSetupCancellation' ? ['components/PhoneSetupTask.brs'] : []),
     ...(suite === 'PhoneSetupMdns' ? ['source/PhoneSetupMdns.brs'] : []),
     ...(suite === 'PhoneSetupStore' ? ['source/PhoneSetupStore.brs'] : []),
-    ...(suite === 'PhoneSetupNavigation' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupApplyModel.brs', 'components/PhoneSetupNavigation.brs'] : []),
+    ...(['PhoneSetupNavigation', 'PhoneSetupAutoAdd'].includes(suite) ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupApplyModel.brs', 'components/PhoneSetupNavigation.brs'] : []),
+    ...(suite === 'PhoneSetupAutoAdd' ? ['source/PhoneSetupStore.brs'] : []),
     ...(suite === 'PhoneSetupTransport' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupTransport.brs', 'source/PhoneSetupLink.brs'] : []),
     ...(suite === 'GuideHistory' ? ['components/GuideView.brs', 'components/GuideSettings.brs'] : []),
     ...(suite === 'BrowserHistory' ? ['components/ChannelBrowser.brs'] : []),
@@ -40,7 +42,7 @@ for (const suite of suites) {
     'source/RemoteMapModel.brs', 'source/PreferenceModel.brs',
     'components/RecentHistoryNavigation.brs',
     ...(suite === 'ConnectionAuthTask' ? ['source/ChannelProfileModel.brs'] : []),
-    ...(['PhoneSetupStore', 'PhoneSetupApplyModel', 'ConnectionStore', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/ConnectionStoreModel.brs'] : []),
+    ...(['PhoneSetupStore', 'PhoneSetupApplyModel', 'PhoneSetupAutoAdd', 'ConnectionStore', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/ConnectionStoreModel.brs'] : []),
     'source/CapabilityModel.brs',
     'source/ProgramSearchModel.brs',
     'source/VideoGeometry.brs',

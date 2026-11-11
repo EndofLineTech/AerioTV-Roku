@@ -178,9 +178,20 @@ end sub
 sub showPhoneSetupConfirmation()
     closePhoneSetupDialog()
     matches = phoneSetupDuplicateIds(m.connectionStore, m.phonePending.entry)
+    m.phoneMatches = matches
+    if matches.count() = 0
+        if m.connectionStore.entries.count() >= 4
+            failPhoneSetup("All four connection slots are occupied. Cancel and forget a slot before importing another playlist.")
+            m.phoneSetup.retryAvailable = false
+            return
+        end if
+        ' Sending from the phone authorizes addition, not replacement. Keep the
+        ' verification, stale-store and atomic-commit gates; no second Save step.
+        commitPhoneSetup("add")
+        return
+    end if
     dialog = CreateObject("roSGNode", "Dialog")
     m.phoneDialogMode = "confirm"
-    m.phoneMatches = matches
     if matches.count() > 1 and m.phoneMatchedId = ""
         dialog.title = "Choose the matching connection"
         dialog.message = "More than one saved slot matches this verified account. Choose which slot Replace would retain."
@@ -200,18 +211,8 @@ sub showPhoneSetupConfirmation()
             message += note + " "
         end for
         dialog.message = message
-        if matches.count() > 0
-            dialog.title = "This playlist is already saved"
-            dialog.buttons = ["Cancel", "Add Anyway", "Replace"]
-        else
-            if m.connectionStore.entries.count() >= 4
-                failPhoneSetup("All four connection slots are occupied. Cancel and forget a slot before importing another playlist.")
-                m.phoneSetup.retryAvailable = false
-                return
-            end if
-            dialog.title = "Save verified playlist?"
-            dialog.buttons = ["Save", "Cancel"]
-        end if
+        dialog.title = "This playlist is already saved"
+        dialog.buttons = ["Cancel", "Add Anyway", "Replace"]
     end if
     dialog.observeField("buttonSelected", "onPhoneSetupChoice")
     dialog.observeField("wasClosed", "onPhoneSetupDialogClosed")
@@ -297,7 +298,20 @@ sub commitPhoneSetup(choice as string)
     m.connectionElapsed = m.phoneElapsed
     if entry.provider = "m3u" then result.scope = metadataCacheDigest("m3u|" + pending.url + "|" + entry.id)
     if entry.provider = "xtream" then result.scope = metadataCacheDigest("xc|" + pending.url + "|" + m.username + "|" + entry.id)
+    notices = phoneSetupImportNotices(pending)
+    summary = "Playlist added."
+    if notices.count() > 0
+        summary = "Playlist added. Setup notes: Settings > Diagnostics."
+        if entry.provider = "xtream" or entry.sessionUrl = true then summary = "Playlist added (session-only). Setup notes: Settings > Diagnostics."
+        warning = textValue(result.warning)
+        if warning <> "" then warning += " "
+        result.warning = warning + summary
+    end if
     completeConnection(result)
+    for each note in notices
+        recordDiagnostic("connect", 0, note)
+    end for
+    showNotice(summary) ' Nonblocking; the guide is already active.
 end sub
 
 function takePhoneSetupPreferences(preferences as object, entry as object) as object

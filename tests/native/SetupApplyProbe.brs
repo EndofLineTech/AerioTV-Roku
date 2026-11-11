@@ -42,6 +42,7 @@ sub startFixtureCase()
     m.page = "setup"
     m.busy = false
     m.runtimeResets = 0
+    m.confirmations = 0
     m.apiKey = "old-runtime-key"
     m.baseUrl = "https://old.example.test"
     m.global.httpUserAgent = "Old-Connection"
@@ -89,6 +90,7 @@ sub fixtureWatch()
         if m.reportedDialog.isSameNode(m.phoneDialog) then return
     end if
     m.reportedDialog = m.phoneDialog
+    m.confirmations++
     if m.registry.writes <> 0 or m.runtimeResets <> 0 then stop
     print "[setup-apply] "; formatJson({kind: "confirmation", case: m.case, focus: m.phoneDialog.buttonFocused, unchanged: formatJson(m.connectionStore) = m.before, omissions: m.phonePending.notes.count() > 0})
 end sub
@@ -165,6 +167,10 @@ sub completeConnection(result as object)
         if prefs.vodEnabled <> false or prefs.guide.futureDays <> 3 then stop
     end if
     if m.runtimeResets <> 1 then stop
+    if instr(1, m.case, "duplicate") = 0 and m.confirmations <> 0 then stop
+    if m.case = "xtream" or m.case = "m3u-query" or m.case = "default-profile"
+        if instr(1, textValue(result.warning), "Diagnostics") = 0 then stop
+    end if
     if m.httpMode and m.case = "default-profile"
         if result.channels.count() <> 2 then stop
         for each channel in result.channels
@@ -172,7 +178,7 @@ sub completeConnection(result as object)
         end for
         print "[setup-apply] "; formatJson({kind: "profile_union_verified"})
     end if
-    print "[setup-apply] "; formatJson({kind: "committed", case: m.case, count: m.connectionStore.entries.count(), replacement: entry.id = "saved"})
+    print "[setup-apply] "; formatJson({kind: "committed", case: m.case, count: m.connectionStore.entries.count(), replacement: entry.id = "saved", confirmations: m.confirmations})
     if m.httpMode then loadFixtureHttpGuide(result, entry)
 end sub
 
@@ -218,8 +224,18 @@ sub onFixtureHttpGuide(event as object)
 end sub
 
 sub showNotice(message as string)
+    if m.registry.writes > 0
+        print "[setup-apply] "; formatJson({kind: "handoff_notice", case: m.case, nonblocking: true})
+        return
+    end if
     if m.registry.writes <> 0 or m.runtimeResets <> 0 then stop
     print "[setup-apply] "; formatJson({kind: "capacity_refused", unchanged: formatJson(m.connectionStore) = m.before})
+end sub
+
+sub recordDiagnostic(stage as string, code as integer, message as string)
+    if stage <> "connect" then stop
+    omission = instr(1, message, "not be imported") > 0 or instr(1, message, "not be enabled") > 0 or instr(1, message, "session-only") > 0
+    print "[setup-apply] "; formatJson({kind: "import_notice", case: m.case, omissions: omission})
 end sub
 
 sub drawSetup()

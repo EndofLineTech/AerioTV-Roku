@@ -3,6 +3,19 @@
 Research and implementation slice, 2026-10-28. Bead: `AerioTV-Roku-e3e.2`.
 This is not an enabled sign-in feature or a successful phone-to-Roku transfer.
 
+## New-account direct guide handoff — 2026-11-11
+
+Owner confirmed Xtream channel logos working, then requested removal of the
+redundant addition confirmation. `AerioTV-Roku-ufu` now commits a verified,
+nonduplicate new account and invokes normal guide handoff without another Save
+button. Duplicate choices, capacity, stale-roster and atomic persistence guards
+remain. Session-only/omission notices are nonblocking, with full per-note
+Diagnostics; unsupported values are not silently applied and Sync stays off.
+Unit tests and the memory-registry real-HTTP native controller suite pass,
+including four automatic-add cases with no remote Select. Real owner acceptance
+of this revised flow is separate. [PAIRING-TEST-BUILD.md](PAIRING-TEST-BUILD.md)
+records the new candidate/checksum and the changed consent/cancellation policy.
+
 ## Active-session Bonjour discovery — 2026-11-11
 
 `AerioTV-Roku-e3e.2.9` implements the native Task-owned IPv4 mDNS responder for

@@ -17,6 +17,11 @@ disposable/test provider account for initial phone testing. Do not infer securit
 approval, profile/PIN import, Sync enablement or unsupported guide settings from
 a successful receipt.
 
+New-account transfers now **save automatically after successful provider
+verification and open the guide**. Sending from the phone authorizes addition;
+there is no second Save confirmation. Duplicate accounts still require an explicit
+Cancel / Add Anyway / Replace choice. See the auto-guide candidate below.
+
 ## Build
 
 ```sh
@@ -58,17 +63,20 @@ Roku Packager as a release candidate. No signing-key regeneration is required.
    session is active. **New Code** replaces the key/code; reopen the phone's
    device list if it still shows the previous session.
 5. Wait for Roku provider verification. Read the omission/session-only warnings.
-   A received HTTP 200 means receipt, **not** saved credentials or verified access.
-6. For a new account choose **Save** only when intending to change the Roku's
-   actual saved connections. Duplicates offer **Cancel / Add Anyway / Replace**,
+    A received HTTP 200 means receipt, **not** saved credentials or verified access.
+6. A verified new account is added automatically and opens the guide. **Send only
+   when intending to change the Roku's saved connections.** Session-only and
+   unsupported-setting notices are nonblocking; details are in **Settings >
+   Diagnostics**. Duplicates offer **Cancel / Add Anyway / Replace**,
    with Replace focused. Replace retains the existing slot identity. Four slots
    is the maximum. Never choose Forget merely to make an automated test pass.
 7. Confirm the authorized lineup and Guide. Then relaunch to test the documented
    persistence policy: Dispatcharr's verified API key can be remembered; Xtream
    credentials and token-bearing M3U URLs remain session-only.
 8. Restore the verified normal ZIP when finished. Restoring code does **not** undo
-   a connection deliberately saved/replaced during the test. Cancel before Save
-   if the existing roster must remain unchanged.
+   a connection added/replaced during the test. Do not send a valid new account
+   if the existing roster must remain unchanged: verification can complete and
+   commit before a remote Cancel is processed.
 
 Do not attach QR/code screenshots, keys, credentials, URLs with tokens or raw
 console dumps to test reports. Record only provider type, step, outcome, timing,
@@ -92,6 +100,10 @@ retries without resending, and cancels back to normal setup. It never selects
 Save, Add Anyway, Replace or Forget. It does not claim that the full Guide/save
 path or a real phone sender passed. Native startup can perform the app's usual
 reads/refreshes for an existing selected connection.
+
+The synthetic URL deliberately fails verification. This is essential now that a
+successful new-account verification commits automatically; not pressing Save is
+no longer sufficient to make an arbitrary valid-payload test non-mutating.
 
 The runner requires the previously verified normal 0.3.100 restore ZIP SHA256
 `eb09f4b9705262d11efba05a7b27281ff6272f2b22ff0f003805d9e20224a610` and restores
@@ -154,3 +166,27 @@ and remains tracked in `AerioTV-Roku-e3e.2.9.1`.
 The UI harness now checks the actual setup QR instead of OCR of the random key
 fingerprint. Run its offline synthetic-image regressions on macOS with
 `swift scripts/test-pairing-ui.swift`. No screenshots or QR payloads are logged.
+
+## Automatic guide handoff candidate — 2026-11-11
+
+`AerioTV-Roku-ufu`: new accounts skip the redundant confirmation, while verified
+identity matching, four-slot capacity, concurrent-roster checks and the single
+atomic credential/roster Flush remain mandatory. Duplicates retain explicit
+choices and Replace focus. Omission/session-only text moves to a nonblocking
+guide notice/footer plus individual Diagnostics records; Sync is not enabled.
+
+Unit tests prove automatic commit/handoff with no dialog, stale-roster refusal,
+write rollback and full-roster refusal. The isolated real-HTTP native controller
+suite passes eleven checks, including four automatic new-account cases **without
+remote Select**, nonblocking disclosures, duplicate choices, cancellation and
+capacity refusal. It uses a memory registry and a stubbed application navigation
+handoff, followed by real GuideTask JSON/XMLTV loads—not owner-account saves or
+proof of the full production GuideView after a real phone transfer. Evidence:
+`out/setup-apply-http-native-results.json`.
+
+Updated full-app developer candidate:
+`out/pairing-tests/auto-guide/aeriotv-roku-v0.3.100-pairing-test.zip`, SHA256
+`40bd99329ff0c33fb4be807690970ba7d2ddd3b4add64bee0f9f7b079739794c`.
+Only the phone import controller/model and base-checksum marker differ from the
+owner-confirmed Xtream-logo build. The logo fix, discovery and explicit developer
+entropy warning remain; no signed Beta/Store/security approval is implied.

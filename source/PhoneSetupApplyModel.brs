@@ -105,6 +105,18 @@ function phoneSetupImportedPreferences(preferences as object, entry as object) a
     return result
 end function
 
+' Fixed, non-sensitive disclosure text; never include a URL/account/credential.
+' New imports show these in Diagnostics without another confirmation step.
+function phoneSetupImportNotices(prepared as object) as object
+    result = []
+    if prepared.entry.provider = "dispatcharr" then result.push("The verified API key is saved on this Roku.")
+    if prepared.entry.provider = "xtream" then result.push("Xtream credentials are session-only; send them again after restarting.")
+    for each note in prepared.notes
+        result.push(note)
+    end for
+    return result
+end function
+
 ' Stage a verified candidate only; registry/credential persistence is a separate
 ' transaction owned by the future apply controller. No input object is changed.
 function phoneSetupStageVerifiedConnection(store as object, candidate as object, choice as string, matchedId as string) as dynamic
