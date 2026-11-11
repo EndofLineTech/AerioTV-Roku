@@ -10,6 +10,9 @@ function phoneSetupCancelled() as boolean
         if event = invalid then exit for
         phoneSetupObserveEvent(event)
     end for
+    if m.mdns <> invalid
+        if m.cancelled then phoneSetupMdnsStop() else phoneSetupMdnsPoll()
+    end if
     return m.cancelled = true
 end function
 
@@ -21,6 +24,7 @@ end sub
 
 sub phoneSetupWait(milliseconds as integer)
     phoneSetupObserveEvent(wait(milliseconds, m.setupPort))
+    if m.mdns <> invalid then phoneSetupMdnsPoll()
 end sub
 
 sub phoneSetupListen()
@@ -32,6 +36,8 @@ sub phoneSetupListen()
     m.setupListener = invalid
     m.setupClient = invalid
     m.material = invalid
+    m.mdns = invalid
+    m.session = invalid
     m.generation = 0
     m.exitInfo = {kind: "closed"}
     device = CreateObject("roDeviceInfo")
@@ -89,6 +95,7 @@ sub phoneSetupListen()
     listener.notifyReadable(true)
     m.setupListener = listener
     m.listenerPort = listener.getAddress().getPort()
+    m.mdns = phoneSetupMdnsOpen()
     phoneSetupPublishReady()
     m.session = newPhoneSetupSession("0", m.setupClock.totalSeconds())
     while not phoneSetupCancelled()
@@ -112,6 +119,7 @@ sub phoneSetupListen()
                         ' Handle wrote the entire 200 before this field is set.
                         listener.close()
                         m.setupListener = invalid
+                        phoneSetupMdnsStop()
                         m.material = invalid
                         m.top.info = {kind: "accepted"}
                         m.top.result = reply.payload
@@ -141,6 +149,7 @@ sub phoneSetupListen()
         phoneSetupWait(20)
     end while
     if m.setupClient <> invalid then m.setupClient.close()
+    phoneSetupMdnsStop()
     listener.close()
     m.setupListener = invalid
     m.setupClient = invalid
@@ -150,6 +159,7 @@ sub phoneSetupListen()
 end sub
 
 sub phoneSetupPublishReady()
+    phoneSetupMdnsRefresh()
     public = phoneSetupHexBytes(m.material.publicHex)
     link = phoneSetupLink(m.setupIp, m.listenerPort, m.material.code, public.toBase64String(), m.setupNameBytes)
     rows = phoneSetupQr(link)

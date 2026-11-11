@@ -8,6 +8,8 @@
   <script type="text/brightscript" uri="pkg:/source/PhoneSetupModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/PhoneSetupTransport.brs" />
   <script type="text/brightscript" uri="pkg:/source/PhoneSetupLink.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupMdns.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupMdnsSocket.brs" />
   <script type="text/brightscript" uri="pkg:/source/PhoneSetupQr.brs" />
   <script type="text/brightscript" uri="pkg:/source/PhoneSetupX25519.brs" />
   <script type="text/brightscript" uri="pkg:/source/PhoneSetupCrypto.brs" />

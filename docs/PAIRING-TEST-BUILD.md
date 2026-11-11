@@ -53,8 +53,10 @@ Roku Packager as a release candidate. No signing-key regeneration is required.
 3. Confirm the **PAIRING TEST BUILD** warning. Wait for the QR and six-digit code.
    Keep the phone and Roku on the same network.
 4. In AerioTV on the phone, open **Settings > Playlists > your test playlist >
-   Set up another device** and scan the Roku's QR. This phase is QR-only; discovery
-   by TV/code is not implemented.
+   Set up another device**. Select the discovered Roku and enter its six-digit
+   code, or scan the Roku's QR. Discovery is advertised only while that setup
+   session is active. **New Code** replaces the key/code; reopen the phone's
+   device list if it still shows the previous session.
 5. Wait for Roku provider verification. Read the omission/session-only warnings.
    A received HTTP 200 means receipt, **not** saved credentials or verified access.
 6. For a new account choose **Save** only when intending to change the Roku's
@@ -97,7 +99,43 @@ it in `finally`. UI recognition emits only allowlisted state booleans/counts;
 screenshots are deleted immediately and QR links/codes never logged. Results are
 in `out/pairing-app-native-results.json`.
 
+Only when intentionally handing the test app to the owner, use
+`--discovery --leave-installed`. After all no-save checks pass, this opens a
+fresh discoverable pairing session, verifies the active test app, and leaves it
+installed. Failures still restore the verified normal ZIP. Do not combine this
+handoff option with `--expiry-only`.
+
 On the tested OS15.3.4 Roku, the full-app entry/QR, encrypted receipt into real
 verification, retry and cancellation all pass for the 0.3.100 candidate. Real
 iPhone/Android receipt, explicit Save/Replace, playback and relaunch are separate
 owner acceptance steps—not inferred from this automated smoke.
+
+## Bonjour discovery checks — 2026-11-11
+
+The receiver advertises `_aeriotv-setup._tcp.local.` (not the companion service
+`_aeriotv._tcp`). Public TXT contains only `v=1`, `name`, a standard padded-base64
+32-byte `pk`, and `kind=tv`. The code is never advertised. The Task owns bounded
+DNS parsing, multicast responses, name probing/conflict suffixes, SRV/TXT/A cache
+flush, key refresh, and TTL-zero goodbyes on cancellation, receipt and expiry.
+Nothing is advertised when the default shipping entropy gate refuses setup.
+
+To run the additional no-save checks, append `--discovery` to the smoke command.
+Append both `--discovery --expiry-only` for a separate real ten-minute expiry run.
+These use macOS `NWBrowser` with the actual iOS TXT filters, then Apple's
+`DNSServiceResolve`/`DNSServiceGetAddrInfo` and curl HTTP contact at the **discovered**
+IPv4 endpoint. New Code, three-wrong-code TXT replacement, receipt and cancel
+removal are exercised through the real app. Evidence files are
+`out/pairing-discovery-native-results.json` and
+`out/pairing-discovery-expiry-native-results.json`.
+
+The helper also attempts the iOS `NWConnection` handshake, but that path has not
+reached ready on this Mac (direct-IP Network.framework connections also fail).
+Do not treat the independent Bonjour + curl checks as proof that the iPhone's
+own Network.framework path passed. Actual iPhone discovery/transfer is an owner
+acceptance step; the Mac test establishes valid advert contents, IPv4 resolution,
+reachable receiver, refresh and lifecycle removal.
+
+Discovery test candidate:
+`out/pairing-tests/discovery/aeriotv-roku-v0.3.100-pairing-test.zip`, SHA256
+`9b9f336b3110ec6922bf9a7a51ca1626e70d22550ac22d76eea0146400a4f294`.
+It retains the same developer-only entropy warning and release/signing guards.

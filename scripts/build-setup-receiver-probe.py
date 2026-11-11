@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def build(output, production_entropy=False):
     sources = ["SceneUi", "PhoneSetupModel", "PhoneSetupTransport", "PhoneSetupLink",
-               "PhoneSetupQr", "PhoneSetupX25519", "PhoneSetupCrypto"]
+               "PhoneSetupQr", "PhoneSetupX25519", "PhoneSetupCrypto", "PhoneSetupMdns", "PhoneSetupMdnsSocket"]
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as package:

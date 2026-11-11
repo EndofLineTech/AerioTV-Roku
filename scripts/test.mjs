@@ -4,6 +4,7 @@ const suites = ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel', 'Xtr
 suites.unshift('LaunchModel');
 suites.unshift('PhoneSetupModel');
 suites.unshift('PhoneSetupTransport');
+suites.unshift('PhoneSetupMdns');
 suites.unshift('PhoneSetupApplyModel');
 suites.unshift('PhoneSetupCancellation');
 suites.unshift('PhoneSetupStore');
@@ -20,6 +21,7 @@ for (const suite of suites) {
     ...(suite === 'PhoneSetupModel' ? ['source/PhoneSetupModel.brs'] : []),
     ...(suite === 'PhoneSetupApplyModel' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupApplyModel.brs'] : []),
     ...(suite === 'PhoneSetupCancellation' ? ['components/PhoneSetupTask.brs'] : []),
+    ...(suite === 'PhoneSetupMdns' ? ['source/PhoneSetupMdns.brs'] : []),
     ...(suite === 'PhoneSetupStore' ? ['source/PhoneSetupStore.brs'] : []),
     ...(suite === 'PhoneSetupNavigation' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupApplyModel.brs', 'components/PhoneSetupNavigation.brs'] : []),
     ...(suite === 'PhoneSetupTransport' ? ['source/PhoneSetupModel.brs', 'source/PhoneSetupTransport.brs', 'source/PhoneSetupLink.brs'] : []),

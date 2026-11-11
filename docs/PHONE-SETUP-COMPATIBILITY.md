@@ -3,6 +3,32 @@
 Research and implementation slice, 2026-10-28. Bead: `AerioTV-Roku-e3e.2`.
 This is not an enabled sign-in feature or a successful phone-to-Roku transfer.
 
+## Active-session Bonjour discovery — 2026-11-11
+
+`AerioTV-Roku-e3e.2.9` implements the native Task-owned IPv4 mDNS responder for
+`_aeriotv-setup._tcp.local.`. The iOS source was checked in
+`jonzey231/AerioTV/Shared/Setup/SetupSender.swift` and `SetupReceiver.swift`:
+`NWBrowser(.bonjourWithTXTRecord)` requires `v=1` and a decoded 32-byte `pk`, then
+opens an IPv4 `NWConnection`. Roku advertises exactly `v`, `name`, padded-base64
+`pk`, `kind=tv`, with PTR/SRV/TXT/A and no code material. It probes names, handles
+conflicts, bounded compressed queries, known-answer suppression and QU/legacy
+responses; unique records use cache-flush and lifecycle removal uses TTL zero.
+
+The full-app developer candidate passes native Mac `NWBrowser` TXT validation,
+Apple DNS-SD service/address resolution and curl HTTP contact at the discovered
+Roku endpoint. New Code changes key/port under the same service instance; three
+wrong codes update the key on the same port. Receipt and Back remove the advert
+and close HTTP. The Mac `NWConnection` path has not reached ready, including a
+direct-IP diagnostic; the independent DNS-SD + curl checks do not establish
+phone Network.framework interoperability. Real iPhone discovery/transfer remains
+owner acceptance, not a claimed result. No owner connections were saved/replaced.
+
+See [PAIRING-TEST-BUILD.md](PAIRING-TEST-BUILD.md) for the exact candidate/checksum,
+commands, evidence paths, remaining test boundaries and phone instructions.
+Production entropy is still fail-closed; only the visibly branded developer
+candidate enables the experimental device-key-conditioned source. Historical
+QR-only and unproven DNS-SD notes below describe earlier milestones.
+
 ## Full-app pairing test candidate — 2026-11-09
 
 `AerioTV-Roku-e3e.5.5` adds an explicitly opted-in **full application** sideload
