@@ -4,9 +4,12 @@ Work item: `AerioTV-Roku-iut`. Owner-requested repeat inspection, November 11,
 2026. This report supersedes any implication in the earlier pill audit that
 native alignment properties alone establish visually centered text.
 
-**Outcome:** the owner was right. Guide, shared pop-up/live-overlay text and
+**Before-fix outcome:** the owner was right. Guide, shared pop-up/live-overlay text and
 some navigation/action surfaces still need correction. This is not a visual
-approval and `iut` remains in progress.
+approval; `iut` remained in progress at that point. The confirmed defects have
+since been fixed and verified in the final 146-case/409-capture run documented
+in [UI-AUDIT-FIXES.md](UI-AUDIT-FIXES.md). This report preserves the original
+findings; authenticated/video-backed integration acceptance is `AerioTV-Roku-dgt`.
 
 ## Completed repeat runs
 

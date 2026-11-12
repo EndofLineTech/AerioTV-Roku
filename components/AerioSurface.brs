@@ -33,12 +33,20 @@ sub layoutSurface()
         m.pill.height = m.top.height
         m.pill.blendColor = m.top.color
         m.pill.uri = "pkg:/images/ui-pill-h" + int(m.top.height).toStr() + ".9.png"
+    else
+        m.pill.width = 1
+        m.pill.height = 1
     end if
     if pill then boxes = uiPillSurfaceBoxes(m.top.width, m.top.height)
     m.shape.scaleRotateCenter = [m.top.width / 2, m.top.height / 2]
     for i = 0 to m.parts.count() - 1
         part = m.parts[i]
         part.visible = false
+        ' Native Button layout includes invisible descendants' bounds. A Poster
+        ' width/height of zero means its natural texture size, not zero bounds.
+        part.translation = [0, 0]
+        part.width = 1
+        part.height = 1
         if not bitmap and (not pill or i < 2)
             bounds = boxes[i]
             if pill and i = 1 then bounds = boxes[3]
@@ -52,6 +60,9 @@ sub layoutSurface()
     for i = 0 to m.caps.count() - 1
         cap = m.caps[i]
         cap.visible = pill and not bitmap
+        cap.translation = [0, 0]
+        cap.width = 1
+        cap.height = 1
         if pill and not bitmap
             bounds = boxes[i + 1]
             cap.translation = [bounds.x, bounds.y]

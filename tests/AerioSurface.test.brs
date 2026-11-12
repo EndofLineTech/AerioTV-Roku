@@ -29,6 +29,8 @@ sub main()
     layoutSurface()
     if not m.pill.visible or m.pill.uri <> "pkg:/images/ui-pill-h94.9.png" then stop
     if m.pill.width <> 280 or m.pill.height <> 94 then stop
+    if m.caps[0].width <> 1 or m.caps[0].height <> 1 then stop ' hidden Poster must not contribute its intrinsic 128x256 bounds to native Button layout
+    if m.parts[3].width <> 1 or m.parts[3].height <> 1 then stop
     m.top.radius = 12
     layoutSurface()
     if m.pill.visible or not m.parts[3].visible then stop

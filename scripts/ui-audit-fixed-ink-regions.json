@@ -1,12 +1,12 @@
 [
-  {"name":"Guide All Channels selected text","file":"out/ui-reaudit/fixes/guide-populated.jpg","ink":"dark","pill":[355.5,101,229,34],"crop":[380,103,185,31]},
-  {"name":"Guide Favorites unfocused text","file":"out/ui-reaudit/fixes/guide-populated.jpg","ink":"light","pill":[600.5,101,229,34],"crop":[625,103,185,31]},
-  {"name":"Guide Live TV selected text only","file":"out/ui-reaudit/fixes/guide-populated.jpg","ink":"dark","pill":[545,23,194,44],"crop":[590,27,112,38]},
-  {"name":"Live options first action focused","file":"out/ui-reaudit/fixes/live-main.jpg","ink":"dark","pill":[484,340,952,64],"crop":[600,345,720,56]},
-  {"name":"Live options Audio track unfocused","file":"out/ui-reaudit/fixes/live-main.jpg","ink":"light","pill":[484,476,952,64],"crop":[600,481,720,56]},
-  {"name":"Live info OK hint","file":"out/ui-reaudit/fixes/live-banner-playing.jpg","ink":"light","pill":[128,978,54,30],"crop":[138,980,34,27]},
-  {"name":"Confirmation Replace focused","file":"out/ui-reaudit/fixes/dialog-duplicate.jpg","ink":"dark","pill":[475,692,900,64],"crop":[600,697,650,56]},
-  {"name":"Confirmation Cancel unfocused","file":"out/ui-reaudit/fixes/dialog-duplicate.jpg","ink":"light","pill":[475,548,900,64],"crop":[600,553,650,56]},
-  {"name":"Program details Record on server focused","file":"out/ui-reaudit/fixes/program-details.jpg","ink":"dark","pill":[460,730,1320,58],"crop":[600,735,1000,50]},
-  {"name":"Settings Color theme selected","file":"out/ui-reaudit/fixes/settings-appearance.jpg","ink":"light","pill":[584,294,1204,68],"crop":[800,299,700,60]}
+  {"name":"Guide All Channels selected text","file":"out/ui-reaudit/verified-fixes/guide-populated.jpg","ink":"dark","pill":[355.5,101,229,34],"crop":[380,103,185,31]},
+  {"name":"Guide Favorites unfocused text","file":"out/ui-reaudit/verified-fixes/guide-populated.jpg","ink":"light","pill":[600.5,101,229,34],"crop":[625,103,185,31]},
+  {"name":"Guide Live TV selected text only","file":"out/ui-reaudit/verified-fixes/guide-populated.jpg","ink":"dark","pill":[545,23,194,44],"crop":[590,27,112,38]},
+  {"name":"Live options first action focused","file":"out/ui-reaudit/verified-fixes/live-main.jpg","ink":"dark","pill":[484,340,952,64],"crop":[600,345,720,56]},
+  {"name":"Live options Audio track unfocused","file":"out/ui-reaudit/verified-fixes/live-main.jpg","ink":"light","pill":[484,476,952,64],"crop":[600,481,720,56]},
+  {"name":"Live info OK hint","file":"out/ui-reaudit/verified-fixes/live-banner-playing.jpg","ink":"light","pill":[128,978,54,30],"crop":[138,980,34,27]},
+  {"name":"Confirmation Replace focused","file":"out/ui-reaudit/verified-fixes/dialog-duplicate.jpg","ink":"dark","pill":[475,692,900,64],"crop":[600,697,650,56]},
+  {"name":"Confirmation Cancel unfocused","file":"out/ui-reaudit/verified-fixes/dialog-duplicate.jpg","ink":"light","pill":[475,548,900,64],"crop":[600,553,650,56]},
+  {"name":"Program details Record on server focused","file":"out/ui-reaudit/verified-fixes/program-details.jpg","ink":"dark","pill":[460,730,1320,58],"crop":[600,735,1000,50]},
+  {"name":"Settings Color theme selected","file":"out/ui-reaudit/verified-fixes/settings-appearance.jpg","ink":"light","pill":[584,294,1204,68],"crop":[800,299,700,60]}
 ]
