@@ -39,7 +39,7 @@ sub seedUiAuditGuide(scenario as string)
 end sub
 
 function uiAuditGuideState() as object
-    state = {selected: m.selected, rowStart: m.rowStart, count: m.filtered.count(), primary: m.primaryNavigation.active, groups: m.navigator.active, details: m.details.active, picker: "", titles: [], focused: -1}
+    state = {selected: m.selected, rowStart: m.rowStart, count: m.filtered.count(), primary: m.primaryNavigation.active, groups: m.navigator.active, details: m.details.active, picker: "", titles: [], focused: -1, subtitle: m.subtitle.text, subtitleVisible: m.subtitle.visible, descriptionY: m.description.translation[1]}
     if m.picker <> invalid
         state.picker = m.pickerKind
         state.focused = m.pickerList.itemFocused

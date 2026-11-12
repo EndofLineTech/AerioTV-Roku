@@ -69,7 +69,7 @@ sub configure()
 end sub
 
 sub buildBrowserCanvas()
-    m.backdrop = uiRect(m.canvas, 0, 0, 890, 1080, "0x071426B0")
+    m.backdrop = uiRect(m.canvas, 0, 0, 890, 1080, "0x0A1628F0")
     m.title = uiLabel(m.canvas, "", 60, 70, 740, 58, 36)
     m.summary = uiLabel(m.canvas, "", 60, 133, 740, 36, 23, "0x1AC4D8FF")
     m.empty = uiLabel(m.canvas, "No channels in this list", 80, 270, 730, 70, 28)
@@ -78,14 +78,16 @@ sub buildBrowserCanvas()
     for i = 0 to 7
         group = m.canvas.createChild("Group")
         group.translation = [40, 202 + i * 84]
-        bg = uiRect(group, 0, 0, 295, 78, "0x0D1E3540")
-        title = uiLabel(group, "", 14, 16, 267, 58, 23)
+        button = uiButton(group, "", 0, 0, 295, 78, 23, "0x0D1E35F0")
+        bg = button.bg
+        title = button.label
         title.wrap = true
+        title.maxLines = 2
         m.groupRows.push({root: group, bg: bg, title: title})
         row = m.canvas.createChild("Group")
         row.translation = [60, 202 + i * 90]
         border = uiRect(row, 0, 0, 760, 84, "0x17344A20")
-        fill = uiRect(row, 2, 2, 756, 80, "0x0D1E3530")
+        fill = uiRect(row, 2, 2, 756, 80, "0x0D1E35F0")
         logo = row.createChild("Poster")
         logo.translation = [10, 14]
         logo.width = 76
@@ -147,7 +149,7 @@ sub draw()
         group.root.visible = m.groupsOpen and groupStart + i < m.groups.count()
         if group.root.visible
             group.title.text = m.groups[groupStart + i].name
-            uiSetColor(group.bg, "0x0D1E3540")
+            uiSetColor(group.bg, "0x0D1E35F0")
             if groupStart + i = m.groupIndex then uiSetColor(group.bg, "0x10344AFF")
             uiSetColor(group.title, "0xE8F3FAFF")
             if groupStart + i = m.groupIndex and m.focus = "groups" then uiSetColor(group.title, "0x1AC4D8FF")
@@ -175,7 +177,7 @@ sub draw()
             if m.resetFailed and row.logo.loadStatus = "failed" then row.logo.uri = ""
             if row.logo.uri <> uri then row.logo.uri = uri
             uiSetColor(row.border, "0x17344A20")
-            uiSetColor(row.fill, "0x0D1E3530")
+            uiSetColor(row.fill, "0x0D1E35F0")
             if m.focus = "channels" and m.start + i = m.selected
                 uiSetColor(row.border, "0x1AC4D8FF")
                 uiSetColor(row.fill, "0x10344AFF")

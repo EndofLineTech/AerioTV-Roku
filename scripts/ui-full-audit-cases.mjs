@@ -34,6 +34,12 @@ export async function exerciseFullCase(screen, { key, check, capture }) {
     await key('Down'); await capture('group-focus');
     if (base !== 'guide-sidebar') {
       await key('Right', 5); await capture('group-overflow');
+      const empty = await check();
+      if (empty.guide.count === 0) {
+        assert.equal(empty.guide.subtitle, '', 'Empty group clears prior programme subtitle');
+        assert.equal(empty.guide.subtitlevisible, false);
+        assert.equal(empty.guide.descriptiony, 205, 'Empty group restores normal summary layout');
+      }
       await key('Left', 5); // Restore populated All Channels before testing scroll.
     }
     await key('Back'); await key('Down', 7);

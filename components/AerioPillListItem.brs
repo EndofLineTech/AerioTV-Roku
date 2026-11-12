@@ -22,6 +22,7 @@ sub drawPillItem()
     height = style.height
     action = true
     if m.content.hasField("pillAction") then action = m.content.pillAction
+    if not action then uiReleaseCenteredLabel(m.label)
     m.fill.width = width
     m.fill.height = height
     m.fill.radius = height / 2
@@ -46,4 +47,5 @@ sub drawPillItem()
             uiSetColor(m.label, "0x1AC4D8FF")
         end if
     end if
+    if action then uiCenterLabel(m.label, 24, 0, width - 48, height)
 end sub

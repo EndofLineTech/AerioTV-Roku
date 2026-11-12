@@ -6,7 +6,8 @@ import Foundation
 
 struct Region: Decodable {
     let name: String, file: String, ink: String
-    let pill: [Int], crop: [Int]
+    let pill: [Double]
+    let crop: [Int]
 }
 guard CommandLine.arguments.count == 2 else { fatalError("Supply regions JSON") }
 let regions = try JSONDecoder().decode([Region].self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))

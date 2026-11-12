@@ -578,6 +578,7 @@ sub drawGuide()
     end for
     if m.mappingState = "loading" then m.footer.text = "Loading guide mappings... Channels are ready to watch."
     if m.mappingWarning <> "" then m.footer.text = m.mappingWarning
+    clearGuideProgramSummary()
     if m.filtered.count() = 0
         m.title.text = "No matching channels"
         m.description.text = "Use * to choose another group or clear your search."
@@ -587,12 +588,6 @@ sub drawGuide()
     retention = catchupRetentionLabel(catchupChannelDays(m.top.catchupPermission, m.top.channelFacts, channel.id))
     cell = selectedCell()
     m.title.text = channel.name
-    m.subtitle.text = ""
-    m.subtitle.visible = false
-    m.description.translation = [96, 205]
-    m.description.height = 57
-    m.description.wrap = true
-    m.description.maxLines = 2
     m.description.text = gapText() + "  |  OK to watch live."
     if retention <> "" then m.description.text = retention + " (provider advertised)  |  " + m.description.text
     if cell <> invalid
@@ -860,6 +855,15 @@ sub updateMiniLayout()
         m.description.width = 1180
         m.heading.width = 330
     end if
+end sub
+
+sub clearGuideProgramSummary()
+    m.subtitle.text = ""
+    m.subtitle.visible = false
+    m.description.translation = [96, 205]
+    m.description.height = 57
+    m.description.wrap = true
+    m.description.maxLines = 2
 end sub
 
 sub showDetails()

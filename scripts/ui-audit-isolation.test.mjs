@@ -6,6 +6,19 @@ import { sharedAuditScreens, guideLiveAuditScreens, exerciseFullCase } from './u
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
+test('all confirmed control and contrast regressions use the shared production fixes', () => {
+  const guide = read('components/GuideView.brs');
+  const empty = guide.indexOf('m.title.text = "No matching channels"');
+  assert.ok(guide.lastIndexOf('clearGuideProgramSummary()', empty) > guide.indexOf('sub drawGuide()'));
+  assert.match(read('components/AerioScene.brs'), /uiSetColor\(m.top, "0x0A1628FF", "backgroundColor"\)/);
+  assert.match(read('components/ChannelBrowser.brs'), /uiButton\(group,/);
+  assert.match(read('components/ProgramSearchView.brs'), /uiCenterLabel\(row.title/);
+  assert.match(read('components/ProgramSearchView.brs'), /uiRemoteHints\(/);
+  assert.match(read('components/DvrView.brs'), /uiSetColor\(m.list, "0xE8F3FAFF", "caption1Color"\)/);
+  assert.match(read('components/DvrView.brs'), /captionBackgroundBitmapUri = "pkg:\/images\/ui-list-inset.png"/);
+  assert.match(read('components/VodView.brs'), /tile.border.radius = 58/);
+});
+
 test('live-options audit reaches every menu row without selecting an action', async () => {
   let focused = 0, visible = true;
   const observations = [0];

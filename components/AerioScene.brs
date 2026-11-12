@@ -1,7 +1,7 @@
 sub init()
     m.global.addFields({metadataSession: CreateObject("roDeviceInfo").getRandomUUID(), cacheEpoch: CreateObject("roDeviceInfo").getRandomUUID(), networkTimeoutMs: 20000, appearance: {}, audioGuide: false, authHeaderMode: "x-api-key", httpUserAgent: dispatcharrUserAgent(""), httpReferer: ""})
     m.top.focusable = true
-    m.top.backgroundColor = "0x0A1628FF"
+    uiSetColor(m.top, "0x0A1628FF", "backgroundColor")
     m.top.backgroundUri = ""
     m.phoneSetup = m.top.findNode("phoneSetup")
     m.phoneClock = m.top.findNode("phoneSetupClock")

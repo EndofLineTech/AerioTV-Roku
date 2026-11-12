@@ -111,8 +111,11 @@ center, not a guessed font baseline. `scripts/ui-audit-ink-bounds.swift` takes
 explicit regions and emits ink bounds and center offsets.
 
 - Guide group labels `All Channels` and `Favorites` sit about 2.5 pixels high
-  and 2.5–3 pixels left at default size. Both focused/selected and unfocused
-  states must be optically reviewed after fixes.
+  at default size. **Measurement correction during the fix:** the original
+  horizontal region counted the 3px fill inset twice. Correct fill x positions
+  are 355.5 and 600.5; actual horizontal offsets are approximately -0.5 and 0px,
+  not -3px. Do not apply a spurious horizontal shift to these labels. The
+  primary-tab text-only horizontal displacement below is a separate real issue.
 - Primary `Live TV` **text alone** is about 16.5 pixels right of the pill center;
   the combined icon/text run is approximately centered. This is the current
   `uiPillContent` composition policy, not proof that the requested text-centered

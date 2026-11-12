@@ -51,8 +51,7 @@ sub applyPresentation(model as dynamic)
         bg.cornerOverlap = 2
         fill.cornerOverlap = 2
         label = uiLabel(m.canvas, "", x + 12, y, width - 24, height, 23)
-        label.vertAlign = "center"
-        label.horizAlign = "center"
+        uiCenterLabel(label, x + 12, y, width - 24, height)
         m.rows.push({bg: bg, fill: fill, label: label})
     end for
     if m.layout = "sidebar" then uiLabel(m.canvas, "Groups", 96, 270, 280, 32, 22, "0x1AC4D8FF")

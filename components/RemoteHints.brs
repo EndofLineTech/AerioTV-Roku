@@ -29,9 +29,7 @@ sub renderHints()
                     exit for
                 end if
                 surface.width = keyWidth + 28
-                keyLabel.width = surface.width
-                keyLabel.horizAlign = "center"
-                keyLabel.vertAlign = "center"
+                uiCenterLabel(keyLabel, 0, 0, surface.width, m.top.height)
                 helpX = keyWidth + 38
             end if
             label = uiLabel(group, text, helpX, 0, 0, m.top.height, size, "0xBDD0E0FF")
@@ -41,8 +39,10 @@ sub renderHints()
                 m.top.removeChild(group)
                 exit for
             end if
+            ' Description text stays left aligned, but shares the key's optical baseline.
             label.width = width
             label.vertAlign = "center"
+            label.translation = [helpX, uiControlInkOffset(text, label.font.size)]
             x += helpX + width + 24
         end if
     end for

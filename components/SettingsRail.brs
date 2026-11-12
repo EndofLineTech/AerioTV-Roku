@@ -41,8 +41,7 @@ sub drawSettingsRail()
             cell.label.width = 0
             content = uiPillContent(408, 70, cell.label.localBoundingRect().width, 24)
             cell.icon.translation = [98 + content.iconX, cell.fill.translation[1] + content.iconY]
-            cell.label.translation = [98 + content.textX, cell.fill.translation[1]]
-            cell.label.width = content.textWidth
+            uiCenterLabel(cell.label, 98 + content.textX, cell.fill.translation[1], content.textWidth, 70)
             style = uiControlStyle("row", i = m.railSelected, m.focusRegion = "rail" and i = m.railIndex, true, false)
             uiSetColor(cell.fill, style.fill)
             uiSetColor(cell.icon, style.ink, "blendColor")

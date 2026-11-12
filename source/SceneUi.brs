@@ -117,7 +117,7 @@ function uiColorForPalette(color as string, palette as object, isText as boolean
     if rgb = "263549" or rgb = "294357" then role = "elevated"
     if rgb = "1AC4D8" then role = "accent"
     if rgb = "E8F3FA" then role = "text"
-    if rgb = "9EB5C9" or rgb = "BDD0E0" then role = "secondary"
+    if rgb = "9EB5C9" or rgb = "BDD0E0" or rgb = "B6DCE7" then role = "secondary"
     if rgb = "627384" then role = "disabled"
     if rgb = "365163" or rgb = "10344A" then role = "focusWash"
     if rgb = "17344A" then role = "border"
@@ -282,8 +282,54 @@ function uiButtonLabel(parent as object, text as string, x as float, y as float,
     label.vertAlign = "center"
     label.maxLines = 1
     label.wrap = false
+    uiCenterLabel(label, x + padding, y, w - 2 * padding, h)
     return label
 end function
+
+' Roku's system-font line box centers ascender-only ink above its visual center.
+' Descenders fill that lower space. These native-measured corrections scale with
+' the resolved font; they are not a single baseline offset for every string.
+function uiControlInkOffset(text as string, size as integer) as float
+    if instr(1, text, "g") > 0 or instr(1, text, "j") > 0 or instr(1, text, "p") > 0 or instr(1, text, "q") > 0 or instr(1, text, "y") > 0 then return 0.0
+    return int(size / 5.0 + 0.5) / 2.0
+end function
+
+sub uiCenterLabel(label as object, x as float, y as float, w as float, h as float)
+    bounds = {x: x, y: y, w: w, h: h}
+    if type(label) <> "roAssociativeArray"
+        if not label.hasField("uiControlBounds")
+            label.addField("uiControlBounds", "assocarray", false)
+            label.observeField("text", "uiRefreshCenteredLabel")
+            label.observeField("font", "uiRefreshCenteredLabel")
+        end if
+    end if
+    label.uiControlBounds = bounds
+    uiPositionCenteredLabel(label)
+end sub
+
+sub uiRefreshCenteredLabel(event as object)
+    uiPositionCenteredLabel(event.getRoSGNode())
+end sub
+
+sub uiPositionCenteredLabel(label as object)
+    bounds = label.uiControlBounds
+    if type(bounds) <> "roAssociativeArray" then return
+    offset = uiControlInkOffset(label.text, label.font.size)
+    label.translation = [bounds.x, bounds.y + offset]
+    label.width = bounds.w
+    label.height = bounds.h
+    label.horizAlign = "center"
+    label.vertAlign = "center"
+end sub
+
+sub uiReleaseCenteredLabel(label as object)
+    if type(label) = "roAssociativeArray"
+        label.uiControlBounds = invalid
+    else if label.hasField("uiControlBounds")
+        label.uiControlBounds = invalid
+    end if
+    label.vertAlign = "top"
+end sub
 
 function uiButton(parent as object, text as string, x as float, y as float, w as float, h as float, size as integer, fill as string, ink = "0xE8F3FAFF" as string) as object
     surface = uiSurface(parent, x, y, w, h, h / 2, fill)
@@ -292,16 +338,18 @@ function uiButton(parent as object, text as string, x as float, y as float, w as
     return {bg: surface, label: label}
 end function
 
-' Center the entire icon + measured label run, not the label's leftover column.
+' Keep text centered in the control, with symmetric gutters for a leading icon.
 function uiPillContent(w as float, h as float, textWidth as float, iconWidth = 0 as float) as object
-    gap = 0
-    if iconWidth > 0 then gap = 8
-    maxText = w - 24 - iconWidth - gap
-    if maxText < 0 then maxText = 0
-    if textWidth > maxText then textWidth = maxText
-    if textWidth < 0 then textWidth = 0
-    start = (w - iconWidth - gap - textWidth) / 2
-    return {iconX: start, iconY: (h - iconWidth) / 2, textX: start + iconWidth + gap, textWidth: textWidth}
+    inset = 12
+    if iconWidth > 0 then inset += iconWidth + 8
+    available = w - 2 * inset
+    if available < 0 then available = 0
+    return {iconX: 12, iconY: (h - iconWidth) / 2, textX: inset, textWidth: available}
+end function
+
+function uiPillSurfaceBoxes(w as float, h as float) as object
+    r = h / 2
+    return [{x: r, y: 0, w: w - h, h: h}, {x: 0, y: 0, w: r, h: h}, {x: w - r, y: 0, w: r, h: h}, {x: r - 1, y: 1, w: w - h + 2, h: h - 2}]
 end function
 
 function uiCenteredStripX(count as integer, itemWidth as float, gap as float, availableWidth as float) as float

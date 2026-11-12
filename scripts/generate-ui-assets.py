@@ -87,6 +87,46 @@ def pill_png(width=900, height=64, radius=None):
     return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(bytes(rows), 9)) + chunk(b'IEND', b'')
 
 
+def cap_png(right=False, radius=128):
+    """Full-height semicircle; never split/stretched into corner quadrants."""
+    rows = bytearray()
+    for y in range(radius * 2):
+        rows.append(0)
+        for x in range(radius):
+            hits = 0
+            for sy in range(4):
+                for sx in range(4):
+                    px = x + (sx + .5) / 4
+                    if right:
+                        px = radius - px
+                    py = y + (sy + .5) / 4
+                    hits += (px - radius) ** 2 + (py - radius) ** 2 <= radius ** 2
+            rows.extend((255, 255, 255, round(255 * hits / 16)))
+    return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', radius, radius * 2, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(bytes(rows), 9)) + chunk(b'IEND', b'')
+
+
+def pill_patch_png(height):
+    """One textured pill; stretch only the center, never the circular caps."""
+    width = height + 2
+    radius = height / 2
+    rows = bytearray()
+    for y in range(height + 2):
+        rows.append(0)
+        for x in range(width + 2):
+            if x == 0 or y == 0 or x == width + 1 or y == height + 1:
+                stretch = (y == 0 and x == int(radius) + 1) or (x == 0 and y == int(radius) + 1)
+                rows.extend((0, 0, 0, 255 if stretch else 0))
+            else:
+                hits = 0
+                for sy in range(4):
+                    for sx in range(4):
+                        px, py = x - 1 + (sx + .5) / 4, y - 1 + (sy + .5) / 4
+                        cx = max(radius, min(width - radius, px))
+                        hits += (px - cx) ** 2 + (py - radius) ** 2 <= radius ** 2
+                rows.extend((255, 255, 255, round(255 * hits / 16)))
+    return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', width + 2, height + 2, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(bytes(rows), 9)) + chunk(b'IEND', b'')
+
+
 def transparent_icon_png(size=28):
     # LabelList places item text after its icon. A transparent fixed-width icon
     # creates real text padding without adding spaces to spoken ContentNode text.
@@ -98,6 +138,10 @@ def transparent_icon_png(size=28):
 
 if __name__ == '__main__':
     root = pathlib.Path(__file__).resolve().parent.parent / 'images'
+    for height in range(20, 129, 2):
+        (root / f'ui-pill-h{height}.9.png').write_bytes(pill_patch_png(height))
+    for side in ['left', 'right']:
+        (root / f'ui-cap-{side}.png').write_bytes(cap_png(side == 'right'))
     for name, right, bottom in [('tl', False, False), ('tr', True, False), ('bl', False, True), ('br', True, True)]:
         (root / f'ui-corner-{name}.png').write_bytes(corner_png(64, right, bottom))
         (root / f'ui-cutout-{name}.png').write_bytes(corner_png(64, right, bottom, cutout=True))

@@ -38,12 +38,15 @@ sub configureNavigation()
         end if
         label = uiLabel(m.top, m.items[i].label, 0, 0, 0, 50, m.top.labelFontSize)
         content = uiPillContent(width, 50, label.localBoundingRect().width, 24)
+        if width < 200
+            ' Compact library tabs keep full, centered names at large text sizes.
+            icon.visible = false
+            if favoriteIcon <> invalid then favoriteIcon.visible = false
+            content = uiPillContent(width, 50, 0, 0)
+        end if
         icon.translation = [x + content.iconX, content.iconY]
         if favoriteIcon <> invalid then favoriteIcon.translation = [x + content.iconX, 0]
-        label.translation = [x + content.textX, 0]
-        label.width = content.textWidth
-        label.horizAlign = "center"
-        label.vertAlign = "center"
+        uiCenterLabel(label, x + content.textX, 0, content.textWidth, 50)
         m.cells.push({bg: bg, fill: fill, label: label, icon: icon, favoriteIcon: favoriteIcon})
     end for
     m.index = navigationFirst(m.items, focused)

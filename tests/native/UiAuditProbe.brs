@@ -1,7 +1,7 @@
 ' Replaces ONLY the probe's application init. No registry, account, network
 ' client, receiver, video playback or persistence observer is created here.
 sub initUiAudit()
-    m.top.backgroundColor = "0x0A1628FF"
+    uiSetColor(m.top, "0x0A1628FF", "backgroundColor")
     m.top.backgroundUri = ""
     m.devicePreferences = normalizeDevicePreferences({})
     m.global.addFields({appearance: m.devicePreferences, clockFormat: "24", audioGuide: false})

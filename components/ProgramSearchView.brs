@@ -9,14 +9,12 @@ sub init()
     for i = 0 to 5
         root = m.top.createChild("Group")
         root.translation = [96, 320 + i * 104]
-        background = uiRect(root, 0, 0, 1728, 98, "0x0D1E35FF")
+        background = uiSurface(root, 0, 0, 1728, 98, 0, "0x0D1E35FF")
         title = uiLabel(root, "", 22, 12, 1684, 38, 27)
         subtitle = uiLabel(root, "", 22, 55, 1684, 32, 22, "0x9EB5C9FF")
         m.rows.push({root: root, background: background, title: title, subtitle: subtitle})
     end for
-    m.footer = uiLabel(m.top, "", 96, 980, 1728, 58, 22, "0x9EB5C9FF")
-    m.footer.wrap = false
-    m.footer.maxLines = 1
+    m.footer = uiRemoteHints(m.top, 96, 980, 1728, 40, 22)
     m.entries = []
     m.index = 0
     m.clock = m.top.createChild("Timer")
@@ -62,6 +60,24 @@ sub render()
         row.root.visible = at < m.entries.count()
         if row.root.visible
             entry = m.entries[at]
+            action = entry.program = invalid and entry.vod = invalid
+            row.background.radius = 0
+            row.subtitle.visible = not action
+            if action
+                row.background.radius = 49
+                row.background.cornerOverlap = 0
+                row.title.wrap = true
+                row.title.maxLines = 2
+                uiCenterLabel(row.title, 24, 0, 1680, 98)
+            else
+                uiReleaseCenteredLabel(row.title)
+                row.title.translation = [22, 12]
+                row.title.width = 1684
+                row.title.height = 38
+                row.title.horizAlign = "left"
+                row.title.wrap = false
+                row.title.maxLines = 1
+            end if
             uiSetColor(row.background, "0x0D1E35FF")
             uiSetColor(row.title, "0xE8F3FAFF")
             uiSetColor(row.subtitle, "0x9EB5C9FF")
@@ -91,9 +107,9 @@ sub render()
     selected = m.entries[m.index]
     if selected.program <> invalid then m.detail.text = selected.program.description
     if selected.vod <> invalid then m.detail.text = selected.vod.description
-    m.footer.text = "Page " + model.page.toStr() + "  |  OK Open  |  * Edit  |  Back Close"
-    if model.hasNext or model.page > 1 then m.footer.text += "  |  FF / Rew Pages"
-    if model.truncated = true then m.footer.text += "  |  EPG capped; narrow the search"
+    m.footer.text = "Page " + model.page.toStr() + "    OK  Open    *  Edit    Back  Close"
+    if model.hasNext or model.page > 1 then m.footer.text += "    FF / Rew  Pages"
+    if model.truncated = true then m.footer.text += "    EPG capped; narrow the search"
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean

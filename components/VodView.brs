@@ -32,7 +32,7 @@ sub init()
     m.libraryNavigation.observeField("selection", "onLibraryTabSelection")
     m.libraryNavigation.observeField("exitRequested", "onLibraryTabExit")
     updateLibraryTabs()
-    m.heading = uiLabel(m.top, "Movies", 96, 91, 440, 55, 38)
+    m.heading = uiLabel(m.top, "Movies", 96, 91, 280, 55, 32)
     m.status = uiLabel(m.top, "", 96, 154, 1728, 40, 24, "0x9EB5C9FF")
     for i = 0 to 19
         root = m.top.createChild("Group")
@@ -449,8 +449,10 @@ sub drawVod()
     if m.shelf = "recent" then m.heading.text = "Recently Watched"
     if m.shelf = "hidden" then m.heading.text = "Hidden titles"
     if m.shelf = "categories" then m.heading.text = "Categories"
-    headingSize = 38
-    if m.shelf = "recent" or m.shelf = "continue" then headingSize = 28
+    if m.shelf = "providers" then m.heading.text = "Providers"
+    if m.shelf = "versions" then m.heading.text = "Sources"
+    headingSize = 32
+    if m.shelf = "recent" or m.shelf = "continue" then headingSize = 24
     uiSetFont(m.heading, headingSize, "font")
     if m.task = invalid and m.tmdbTask = invalid
         m.status.text = "Page " + m.pageNumber.toStr() + "  |  " + m.items.count().toStr() + " titles loaded"
@@ -495,16 +497,19 @@ sub drawVod()
                 tile.border.translation = [0, 0]
                 tile.border.width = 336
                 tile.border.height = 116
-                tile.border.radius = 24
+                tile.border.radius = 58
                 borderColor = style.fill
                 uiSetColor(tile.border, borderColor)
-                tile.title.translation = [16, 18]
-                tile.title.width = 304
+                tile.title.wrap = true
+                tile.title.maxLines = 3
+                uiCenterLabel(tile.title, 24, 0, 288, 116)
                 uiSetColor(tile.title, style.ink)
                 uiSetColor(tile.fact, style.ink)
                 tile.fact.translation = [16, 78]
                 tile.fact.width = 304
             else
+                uiReleaseCenteredLabel(tile.title)
+                tile.title.maxLines = 2
                 tile.border.translation = [68, 0]
                 tile.border.width = 200
                 tile.border.height = 296
@@ -551,6 +556,10 @@ sub drawVod()
             if item.unavailable = true
                 tile.fact.text = "Unavailable — * to remove"
                 uri = ""
+            end if
+            if compact
+                if tile.fact.text.trim() <> "" then tile.title.text += chr(10) + tile.fact.text.trim()
+                tile.fact.visible = false
             end if
             if placement.visible and not compact and uri = "" and tmdbImagePath(item.tmdbPosterPath) <> "" then uri = "https://image.tmdb.org/t/p/w185" + item.tmdbPosterPath
             if placement.visible and not compact and uri = "" and item.unavailable <> true then uri = "pkg:/images/channel-icon-hd.png"

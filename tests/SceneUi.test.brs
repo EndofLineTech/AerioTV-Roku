@@ -2,6 +2,10 @@
 ' stand-in to check the real helper preserves its face while applying sizing.
 ' This is a font-binding regression test, not an on-device rendering test.
 sub main()
+    assertEqual(uiControlInkOffset("Cancel", 24), 2.5, "native ascender-only control ink needs optical baseline correction")
+    assertEqual(uiControlInkOffset("Record current program", 24), 0, "descenders already occupy the lower line box")
+    assertEqual(uiControlInkOffset("OK", 19), 2, "hint correction scales with font")
+    assertEqual(uiControlInkOffset("Cancel", 29), 3, "large control correction follows resolved font")
     parent = {
         createChild: function(kind as string) as object
             if kind = "AerioSurface" then return {kind: kind}
@@ -20,7 +24,7 @@ sub main()
         assertEqual(button.bg.radius, height / 2, "button has full pill end caps")
         assertEqual(button.label.horizAlign, "center", "button text horizontally centered")
         assertEqual(button.label.vertAlign, "center", "button text vertically centered")
-        assertEqual(button.label.translation[1], 300, "text uses entire button height, not a hand-positioned line")
+        assertEqual(button.label.translation[1], 302.5, "full-height label has native optical ink correction")
         assertEqual(button.label.height, height, "label and button share vertical bounds")
         assertEqual(button.label.translation[0] + button.label.width / 2, 390, "symmetric horizontal label bounds")
     end for
@@ -54,6 +58,9 @@ sub main()
     if uiScaledFontSize(24, 24, false, {textSize: 120}) > 21 then stop
     if normalizeDevicePreferences({textSize: 999, subtextSize: -1}).textSize <> 100 then stop
     high = uiResolvedPalette({contrastMode: "high", appearanceMode: "light"})
+    light = uiResolvedPalette({appearanceMode: "light"})
+    assertEqual(uiColorForPalette("0xB6DCE7FF", light, true), light.secondary, "guide subtitle follows secondary theme ink")
+    if uiContrastRatio(light.secondary, light.background) < 4.5 then stop
     assertEqual(high.secondary, high.text, "high contrast raises secondary ink")
     assertEqual(uiControlStyle("primary", false, true).fill, "0xFFFFFFFF", "primary focus is white")
     assertEqual(uiControlStyle("primary", true, false).fill, "0x1AC4D8FF", "unfocused selection is accent")
@@ -61,12 +68,12 @@ sub main()
     assertEqual(uiControlStyle("choice", false, true).ring, "0x1AC4D8FF", "unselected pill focus ring")
     assertEqual(uiControlStyle("primary", true, true, false).scale, 1.0, "disabled never grows")
     content = uiPillContent(200, 50, 80, 24)
-    assertEqual(content.iconX, 44, "combined icon/text run is centered")
+    assertEqual(content.iconX, 12, "icon stays in leading gutter")
     assertEqual(content.iconY, 13, "icon is vertically centered")
-    assertEqual(content.textX + content.textWidth, 156, "matching left/right margins")
+    assertEqual(content.textX + content.textWidth / 2, 100, "text itself stays centered in the pill")
     content = uiPillContent(200, 50, 500, 24)
     assertEqual(content.iconX, 12, "long text retains left padding")
-    assertEqual(content.textX + content.textWidth, 188, "long text retains right padding")
+    assertEqual(content.textX + content.textWidth, 156, "symmetric icon gutters prevent label/icon collisions")
     assertEqual(uiCenteredStripX(5, 235, 10, 1920), 352.5, "five groups centered on screen")
     assertEqual(uiCenteredStripX(3, 200, 12, 1728) + 96, 648, "three primary tabs centered in safe area")
     assertEqual(uiCenteredStripX(2, 200, 12, 1728) + 96, 754, "two primary tabs centered")
@@ -92,6 +99,26 @@ sub main()
     assertEqual(boxes[6].x, 213, "bottom-right cap overlaps center by two pixels")
     assertEqual(boxes[4].x + boxes[4].w, 235, "overlap preserves pill outer edge")
     assertEqual(boxes[3].w, 22, "top-left cap covers the left join")
+    caps = uiPillSurfaceBoxes(280, 94)
+    assertEqual(caps.count(), 4, "pill uses unsplit full-height caps and inset seam coverage")
+    assertEqual(caps[1].w, 47, "cap preserves circular aspect, never widened for overlap")
+    assertEqual(caps[1].h, 94, "no top/bottom quadrant join")
+    assertEqual(caps[3].x, 46, "inset center overlaps cap without stretching it")
+    assertEqual(caps[3].w, 188, "both straight cap joins are covered")
+    assertEqual(caps[3].y, 1, "overlap does not protrude at top/bottom curve")
+    scene = {backgroundColor: "0x0A1628FF", uiPaint: {backgroundColor: {color: "0x0A1628FF", isText: false}}, subtype: function() as string
+        return "Scene"
+    end function, hasField: function(field as string) as boolean
+        return m.doesExist(field)
+    end function, getChildren: function(count as integer, start as integer) as object
+        return []
+    end function}
+    m.global = {appearance: {appearanceMode: "light"}}
+    uiApplyAppearanceTree(scene)
+    assertEqual(scene.backgroundColor, light.background, "tracked Scene background repaints in place to light")
+    m.global.appearance = {appearanceMode: "dark"}
+    uiApplyAppearanceTree(scene)
+    assertEqual(scene.backgroundColor, "0x0A1628FF", "tracked Scene background restores dark")
     print "ALL TESTS PASSED"
 end sub
 

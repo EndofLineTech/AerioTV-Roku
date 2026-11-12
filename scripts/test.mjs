@@ -11,6 +11,7 @@ suites.unshift('PhoneSetupStore');
 suites.unshift('PhoneSetupNavigation');
 suites.unshift('PhoneSetupAutoAdd');
 suites.unshift('PillListItem');
+suites.unshift('GuideEmptyState');
 suites.unshift('UiAuditLibraryData');
 suites.unshift('UiAuditFixtureTask');
 suites.unshift('RecentHistory');
@@ -23,6 +24,7 @@ for (const suite of suites) {
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
     ...(suite === 'LaunchModel' ? ['source/LaunchModel.brs'] : []),
     ...(suite === 'PillListItem' ? ['components/AerioPillListItem.brs'] : []),
+    ...(suite === 'GuideEmptyState' ? ['components/GuideView.brs'] : []),
     ...(suite === 'UiAuditLibraryData' ? ['tests/native/UiAuditLibraryData.brs', 'tests/native/UiAuditGuideData.brs'] : []),
     ...(suite === 'UiAuditFixtureTask' ? ['tests/native/UiAuditLibraryData.brs', 'tests/native/UiAuditFixtureTask.brs'] : []),
     ...(suite === 'PhoneSetupModel' ? ['source/PhoneSetupModel.brs'] : []),
@@ -163,7 +165,7 @@ for (const args of [
   if (result.status !== 0) process.exit(1);
 }
 
-const pairingBuild = spawnSync('python3', ['-m', 'unittest', 'scripts/pairing_test_build_test.py', 'scripts/ui_library_audit_test.py'], { encoding: 'utf8' });
+const pairingBuild = spawnSync('python3', ['-m', 'unittest', 'scripts/pairing_test_build_test.py', 'scripts/ui_library_audit_test.py', 'scripts/ui_assets_test.py'], { encoding: 'utf8' });
 process.stdout.write(pairingBuild.stdout ?? '');
 process.stderr.write(pairingBuild.stderr ?? '');
 if (pairingBuild.error) throw pairingBuild.error;
