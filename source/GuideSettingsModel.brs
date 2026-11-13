@@ -52,7 +52,7 @@ function guidePresentationGeometry(density as string, showSubtitles = true as bo
 end function
 
 function copyGuideValue(value as dynamic) as dynamic
-    if type(value) = "roAssociativeArray" or type(value) = "roArray" then return copyJson(value)
+    if type(value) = "roAssociativeArray" or type(value) = "roArray" then return copyPreferenceValue(value)
     return value
 end function
 

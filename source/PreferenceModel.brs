@@ -19,6 +19,30 @@ function copyJson(value as dynamic) as dynamic
     return ParseJson(FormatJson(value))
 end function
 
+' Settings-only structural copy: formatting native floating wrappers loses
+' precision before a strict writer can preserve them. Keep literal key casing
+' and independent mutable containers without changing the general JSON copier.
+function copyPreferenceValue(value as dynamic, depth = 0 as integer) as dynamic
+    ' Values deeper than the strict writer's budget remain untouched; the writer
+    ' refuses them rather than persisting a truncated extension. Bound cycles too.
+    if depth > 32 then return value
+    kind = type(value)
+    if kind = "roAssociativeArray"
+        result = ParseJson("{}")
+        for each key in value
+            result[key] = copyPreferenceValue(value[key], depth + 1)
+        end for
+        return result
+    else if kind = "roArray"
+        result = []
+        for each item in value
+            result.push(copyPreferenceValue(item, depth + 1))
+        end for
+        return result
+    end if
+    return value
+end function
+
 function defaultPreferenceStore() as object
     return {schema: 1, device: normalizeDevicePreferences(invalid), accounts: {}}
 end function
@@ -26,7 +50,7 @@ end function
 ' JSON-backed preferences may contain both camel-case and lower-case spellings.
 ' Replacing only one spelling leaves the other to win during normalization.
 function setCanonicalPreference(raw as object, field as string, value as dynamic) as object
-    result = copyJson(raw)
+    result = copyPreferenceValue(raw)
     for each key in result.keys()
         if lcase(key) = lcase(field) then result.delete(key)
     end for
@@ -36,7 +60,7 @@ end function
 
 function normalizeDevicePreferences(raw as dynamic) as object
     result = {}
-    if type(raw) = "roAssociativeArray" then result = copyJson(raw)
+    if type(raw) = "roAssociativeArray" then result = copyPreferenceValue(raw)
     ' Earlier Settings writes lowercased camel-case keys on ParseJson's
     ' case-sensitive map. Migrate the displayed choice to the canonical field.
     for each field in ["archiveSkipSeconds", "audioMode", "liveTransport", "liveStartupRetries", "videoScale", "themePreset", "appearanceMode", "panelStyle", "textSize", "subtextSize", "contrastMode", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints", "networkTimeoutSeconds", "refreshSeconds", "clockFormat", "audioGuide"]
@@ -146,7 +170,7 @@ end function
 
 function normalizeAccountPreferences(raw as dynamic) as object
     result = {}
-    if type(raw) = "roAssociativeArray" then result = copyJson(raw)
+    if type(raw) = "roAssociativeArray" then result = copyPreferenceValue(raw)
     for each field in ["startupBehavior", "vodEnabled", "vodTmdbEnabled", "dvrPreRollMinutes", "dvrPostRollMinutes"]
         alias = lcase(field)
         exactAlias = CreateObject("roRegex", "^" + alias + "$", "")
@@ -197,7 +221,7 @@ function normalizePreferenceStore(raw as dynamic) as object
     if type(raw.schema) <> "Integer" and type(raw.schema) <> "roInt" then return defaultPreferenceStore()
     if raw.schema > 1 then return {schema: raw.schema, device: normalizeDevicePreferences(invalid), accounts: {}}
     if raw.schema <> 1 then return defaultPreferenceStore()
-    result = copyJson(raw)
+    result = copyPreferenceValue(raw)
     result.device = normalizeDevicePreferences(result.device)
     if type(result.accounts) <> "roAssociativeArray" then result.accounts = {}
     for each key in result.accounts
@@ -240,22 +264,40 @@ function accountPreferences(store as object, identity as string, legacyIdentity 
 end function
 
 function mergeAccountPreferences(current as object, patch as object) as object
-    result = copyJson(current)
+    result = copyPreferenceValue(current)
     for each key in patch
         result[key] = patch[key]
     end for
     return normalizeAccountPreferences(result)
 end function
 
-function loadPreferenceStore(registry as object) as object
+function loadPreferenceStore(registry as object, preservePrecision = false as boolean) as object
     raw = registry.read("settingsV1")
     if raw = "" then return defaultPreferenceStore()
+    if preservePrecision
+        if m.profilePreferenceDecoder <> invalid
+            decoded = m.profilePreferenceDecoder(raw)
+        else
+            decoded = ParseJson(raw, "d")
+        end if
+        refused = {schema: 0, readOnly: true, device: normalizeDevicePreferences(invalid), accounts: {}}
+        if type(decoded) <> "roAssociativeArray" then return refused
+        kind = type(decoded.schema)
+        if kind <> "Integer" and kind <> "roInt" and kind <> "roInteger" then return refused
+        if decoded.schema <> 1 or type(decoded.device) <> "roAssociativeArray" or type(decoded.accounts) <> "roAssociativeArray" then return refused
+        for each key in decoded.accounts
+            if type(decoded.accounts[key]) <> "roAssociativeArray" then return refused
+        end for
+        return normalizePreferenceStore(decoded)
+    end if
     return normalizePreferenceStore(ParseJson(raw))
 end function
 
 function savePreferenceStore(registry as object, store as object, maxBytes = 24000 as integer) as boolean
     if store.schema <> 1 then return false
-    json = FormatJson(store)
+    encoded = strictJsonEncode(store)
+    if not encoded.ok then return false
+    json = encoded.text
     if preferenceByteBudget(json) > maxBytes then return false
     previous = registry.read("settingsV1")
     if not registry.write("settingsV1", json) then return false

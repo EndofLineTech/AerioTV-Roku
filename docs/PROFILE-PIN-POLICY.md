@@ -305,3 +305,24 @@ pad, cancellation before credential entry, four real credential outcomes and
 Back while a delayed `/me/` is pending. The shared native suite passes 616
 assertions, including unchanged caller containers after failed commits. Each
 native run checksum-restores the exact preceding developer app.
+
+For `AerioTV-Roku-rqq`, application startup and profile-roster reload explicitly
+request precision parsing of `settingsV1`; malformed/newer roots or malformed
+foreign accounts remain read-only instead of becoming empty writable defaults.
+Preference normalization and canonical replacement now use a bounded structural
+copy that preserves numeric values, literal key casing and independently owned
+mutable containers. The general-purpose `copyJson` remains unchanged. Guide
+nested values and profile-settings extensions use the same settings-only copy.
+The copy does not truncate overly deep extensions: the strict writer refuses
+them at its existing depth limit. Profile-switch storage also reads at precision
+and strictly serializes the complete root rather than shortening inactive data.
+Native regressions cold-load the stored root, normalize/change the active
+account, commit, and switch to B; root, own/nested and foreign binary64 extensions
+must survive each stage. Startup still applies legacy migration, lineup history
+reconciliation and phone-import changes in their original order.
+The legacy/device settings writer uses strict serialization too: switching to
+an unprofiled provider must not shorten saved Dispatcharr profile extensions.
+Its existing size/write/Flush failure and rollback behavior is retained.
+These paths pass 623 shared native assertions. Cleanup/removal-specific writers
+remain separately tracked as `AerioTV-Roku-5r1`; this is not a claim that every
+unreleased profile/sync mutation path has been qualified for numeric fidelity.

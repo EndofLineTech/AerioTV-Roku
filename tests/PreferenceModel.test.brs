@@ -1,4 +1,21 @@
 sub main()
+    extension = {FutureCase: {values: [1,2]}, OtherCase: 3}
+    copied = copyPreferenceValue(extension)
+    copied.FutureCase["values"].push(4)
+    assertEqual(extension.FutureCase["values"].count(), 2, "preference clone owns nested mutable containers")
+    assertEqual(copied.OtherCase, 3, "preference clone preserves unknown extensions")
+    ' Host parser lacks Roku precision flags; production/native uses ParseJson(d).
+    m.profilePreferenceDecoder = function(raw as string) as dynamic
+        return ParseJson(raw)
+    end function
+    registry = {value: "not-json", read: function(key as string) as string
+        return m.value
+    end function}
+    assertEqual(loadPreferenceStore(registry, true).readOnly, true, "strict cold load refuses malformed saved data without turning it into an empty writable root")
+    registry.value = FormatJson({schema: 2, device: {}, accounts: {}})
+    assertEqual(loadPreferenceStore(registry, true).readOnly, true, "strict cold load refuses a newer schema")
+    registry.value = FormatJson({schema: 1, device: {}, accounts: {foreign: "unreadable-preserve-me"}})
+    assertEqual(loadPreferenceStore(registry, true).readOnly, true, "strict cold load cannot replace a malformed foreign account with normalized defaults")
     positions = normalizeDvrPositions({"12": 420, "13": -1, "14/15": 60, "16": 999999})
     if positions.count() <> 1 or positions["12"] <> 420 then stop
     store = defaultPreferenceStore()

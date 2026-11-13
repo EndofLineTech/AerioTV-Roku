@@ -23,7 +23,7 @@ def build(output, real_http=False):
                     continue
                 package.writestr(name, original.read(name))
             package.write(ROOT / 'tests/native/SetupApplyProbeMain.brs', 'source/Main.brs')
-            for name in ['DispatcharrModel', 'PreferenceModel', 'ConnectionStoreModel', 'MetadataCacheModel', 'M3uModel', 'XtreamModel', 'PhoneSetupApplyModel', 'PhoneSetupStore', 'TaskSupport', 'UserProfileModel', 'UserProfilePin', 'UserProfileAvatar', 'UserProfileStore', 'UserProfileLifecycle']:
+            for name in ['DispatcharrModel', 'PreferenceModel', 'StrictJson', 'ConnectionStoreModel', 'MetadataCacheModel', 'M3uModel', 'XtreamModel', 'PhoneSetupApplyModel', 'PhoneSetupStore', 'TaskSupport', 'UserProfileModel', 'UserProfilePin', 'UserProfileAvatar', 'UserProfileStore', 'UserProfileLifecycle']:
                 package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
             package.write(ROOT / 'components/PhoneSetupNavigation.brs', 'components/PhoneSetupNavigation.brs')
             package.write(ROOT / 'components/UserProfileNavigation.brs', 'components/UserProfileNavigation.brs')

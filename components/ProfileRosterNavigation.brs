@@ -72,7 +72,7 @@ sub finishAuthenticatedRosterRead(read as object)
         if saved.applied
             m.userProfileStore = saved.store
             m.profileRosterSuggestions = saved.suggestions
-            m.preferenceStore = loadPreferenceStore(m.registry)
+            m.preferenceStore = loadPreferenceStore(m.registry, true)
         end if
     end if
     m.profileRosterGrant = {slot: context.connection.id, profile: m.userProfileStore.active, key: context.verified.apiKey, scope: context.scope}

@@ -136,7 +136,7 @@ end function
 
 function userProfileMergeSettings(raw as dynamic, normalized as object) as object
     result = ParseJson("{}")
-    if type(raw) = "roAssociativeArray" then result = copyJson(raw)
+    if type(raw) = "roAssociativeArray" then result = copyPreferenceValue(raw)
     for each field in userProfileSettingsFields()
         result = setCanonicalPreference(result, field, normalized[field])
     end for
@@ -162,7 +162,7 @@ function userProfilePrepareSettings(preferences as object, legacyDevice as objec
     normalized = normalizeUserProfileSettings(raw)
     stored = userProfileMergeSettings(raw, normalized)
     nextPreferences = setCanonicalPreference(preferences, "profileSettings", stored)
-    effective = copyJson(legacyDevice)
+    effective = copyPreferenceValue(legacyDevice)
     for each field in userProfileSettingsFields()
         effective = setCanonicalPreference(effective, field, normalized[field])
     end for
@@ -180,7 +180,7 @@ function userProfileSettingsCommitPlan(store as object, identity as string, pref
     current = prepared.preferences.profileSettings
     nextPreferences = setCanonicalPreference(prepared.preferences, "profileSettings", userProfileMergeSettings(current, settings))
     baseline = normalizeUserProfileSettings(userProfileNormalizedFields(store.device, userProfileSettingsFields()))
-    persistedDevice = copyJson(effectiveDevice)
+    persistedDevice = copyPreferenceValue(effectiveDevice)
     for each field in userProfileSettingsFields()
         persistedDevice = setCanonicalPreference(persistedDevice, field, baseline[field])
     end for

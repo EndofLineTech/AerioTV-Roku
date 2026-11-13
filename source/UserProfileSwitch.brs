@@ -98,7 +98,8 @@ function commitUserProfileSwitch(registry as object, connection as object, previ
     if not prepared.ok then return denied
     preferences = defaultPreferenceStore()
     if registry.exists("settingsV1")
-        preferences = ParseJson(registry.read("settingsV1"))
+        preferences = loadPreferenceStore(registry, true)
+        if preferences.readOnly = true then return denied
         if type(preferences) <> "roAssociativeArray" then return denied
         if not userProfileInteger(preferences.schema) then return denied
         if preferences.schema <> 1 or type(preferences.device) <> "roAssociativeArray" or type(preferences.accounts) <> "roAssociativeArray" then return denied
@@ -115,8 +116,10 @@ function commitUserProfileSwitch(registry as object, connection as object, previ
     if not settings.ok then return denied
     nextSettings = userProfileSettingsCommitPlan(preferences, planned.scope.preferenceIdentity, settings.preferences, settings.device)
     if not nextSettings.ok then return denied
-    settingsText = FormatJson(nextSettings.store)
-    if settingsText = "" or preferenceByteBudget(settingsText) > 24000 then return denied
+    encoded = strictJsonEncode(nextSettings.store)
+    if not encoded.ok then return denied
+    settingsText = encoded.text
+    if preferenceByteBudget(settingsText) > 24000 then return denied
     prepared.changes["settingsV1"] = settingsText
     if planned.target.isDefault and connection.remember = true then prepared.changes[connectionRegistryKey(connection.id)] = verified.apiKey
     saved = userProfileRegistryTransaction(registry, prepared.changes)

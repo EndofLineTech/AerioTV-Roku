@@ -125,6 +125,7 @@ def build(output, base_url, registry=False, model_store=False):
             package.writestr('source/UserProfileManagementPolicyProbeChecks.brs', management_checks)
             switch_checks = (ROOT / 'tests/UserProfileSwitch.test.brs').read_text().split('sub check(', 1)[0]
             switch_checks = switch_checks.replace('sub main()', 'sub runUserProfileSwitchChecks()').replace('check(', 'profileAssert(')
+            switch_checks = switch_checks.replace('m.profilePreferenceDecoder = function(raw as string) as dynamic\n        return ParseJson(raw)\n    end function', 'm.profilePreferenceDecoder = invalid')
             package.writestr('source/UserProfileSwitchProbeChecks.brs', switch_checks)
             own_login_checks = (ROOT / 'tests/UserProfileOwnSignIn.test.brs').read_text().split('sub check(', 1)[0]
             own_login_checks = own_login_checks.replace('sub main()', 'sub runUserProfileOwnSignInChecks()').replace('check(', 'profileAssert(')
@@ -146,6 +147,35 @@ def build(output, base_url, registry=False, model_store=False):
     actorSaved = commitUserProfilePreferences(registry, precisionSettings, actorPreferences, normalizeDevicePreferences(precisionSettings.device), actorScope, actorScope)
     afterActor = ParseJson(registry.read("settingsV1"), "d")
     profileAssert(actorSaved.ok and afterActor["futureDouble"] = ParseJson("1.2345678901234567", "d") and afterActor.accounts[preferenceScope(connectionPreferenceIdentity(entry, "88"))]["futureDouble"] = ParseJson("1.2345678901234567", "d"), "subsequent outgoing preference write preserves migrated foreign-profile binary64 settings")
+    actorKey = preferenceScope(actorScope.preferenceIdentity)
+    afterActor.accounts[actorKey]["futureDouble"] = ParseJson("1.2345678901234567", "d")
+    afterActor.accounts[actorKey]["profileSettings"]["FutureCase"] = {nested: [ParseJson("1.2345678901234567", "d"), ParseJson("3.0", "d")]}
+    restartSeed = strictJsonEncode(afterActor)
+    registry.write("settingsV1", restartSeed.text)
+    cold = loadPreferenceStore(registry, true)
+    coldPreferences = accountPreferences(cold, actorScope.preferenceIdentity)
+    coldPreferences = recordWatched(coldPreferences, "new-current-channel")
+    coldSaved = commitUserProfilePreferences(registry, cold, coldPreferences, normalizeDevicePreferences(cold.device), actorScope, actorScope)
+    afterCold = ParseJson(registry.read("settingsV1"), "d")
+    profileAssert(coldSaved.ok and afterCold["futureDouble"] = ParseJson("1.2345678901234567", "d") and afterCold.accounts[actorKey]["futureDouble"] = ParseJson("1.2345678901234567", "d") and afterCold.accounts[actorKey]["profileSettings"]["FutureCase"].nested[0] = ParseJson("1.2345678901234567", "d") and afterCold.accounts[preferenceScope(connectionPreferenceIdentity(entry, "88"))]["futureDouble"] = ParseJson("1.2345678901234567", "d"), "cold load and active-account normalization retain root own nested and foreign binary64 extensions")
+    registry.write("settingsV1", restartSeed.text)
+    switchVerified = {ok: true, apiKey: "synthetic-switch-key", verifiedUser: {id: 88, username: "Bob", user_level: 1}, accountId: "88", accountUsername: "Bob", channels: [], groups: [], profileId: "", channelProfileIds: [], generation: "strict-switch"}
+    switchPin = {slot: "slot-a", id: b.id, pinType: b.pinType, pinHash: b.pinHash, pinSalt: b.pinSalt}
+    switched = commitUserProfileSwitch(registry, entry, loadUserProfileStore(registry, "slot-a"), b.id, switchVerified, switchPin, invalid, "", nonce, nonce, actorScope, actorScope)
+    afterSwitch = ParseJson(registry.read("settingsV1"), "d")
+    profileAssert(switched.ok and afterSwitch["futureDouble"] = ParseJson("1.2345678901234567", "d") and afterSwitch.accounts[actorKey]["profileSettings"]["FutureCase"].nested[0] = ParseJson("1.2345678901234567", "d") and afterSwitch.accounts[preferenceScope(connectionPreferenceIdentity(entry, "88"))]["futureDouble"] = ParseJson("1.2345678901234567", "d"), "profile switch retains precision-parsed own and outgoing settings extensions")
+    distinctCase = ParseJson("{" + chr(34) + "FutureCase" + chr(34) + ":1," + chr(34) + "futurecase" + chr(34) + ":2}", "d")
+    distinctCopy = copyPreferenceValue(distinctCase)
+    profileAssert(distinctCopy.count() = 2 and distinctCopy["FutureCase"] = 1 and distinctCopy["futurecase"] = 2, "settings structural copy preserves distinct case-sensitive extension keys")
+    registry.write("settingsV1", restartSeed.text)
+    legacySaved = savePreferenceStore(registry, loadPreferenceStore(registry, true))
+    afterLegacy = ParseJson(registry.read("settingsV1"), "d")
+    profileAssert(legacySaved and afterLegacy["futureDouble"] = ParseJson("1.2345678901234567", "d") and afterLegacy.accounts[actorKey]["futureDouble"] = ParseJson("1.2345678901234567", "d"), "legacy device-settings writer also preserves foreign profile precision")
+    for each unreadable in ["not-json", FormatJson({schema: 2, device: {}, accounts: {}}), FormatJson({schema: 1, device: {}, accounts: {foreign: "preserve-unreadable"}})]
+        registry.write("settingsV1", unreadable)
+        readonlySettings = loadPreferenceStore(registry, true)
+        profileAssert(readonlySettings.readOnly = true and registry.read("settingsV1") = unreadable, "strict settings cold load retains malformed or newer data without a writable empty fallback")
+    end for
     print "ALL TESTS PASSED"''')
             package.writestr('source/UserProfileOwnSignInProbeChecks.brs', own_login_checks)
             child_checks = (ROOT / 'tests/UserProfileChildAccess.test.brs').read_text().split('sub check(', 1)[0]
@@ -159,6 +189,7 @@ def build(output, base_url, registry=False, model_store=False):
             for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval', 'UserProfileScope', 'UserProfileScopeStore', 'UserProfilePreferenceNavigation']:
                 source = (ROOT / f'tests/{name}.test.brs').read_text().split('sub check(', 1)[0]
                 source = source.replace('sub main()', f'sub run{name}Checks()').replace('check(', 'profileAssert(')
+                source = source.replace('m.profilePreferenceDecoder = function(raw as string) as dynamic\n        return ParseJson(raw)\n    end function', 'm.profilePreferenceDecoder = invalid')
                 package.writestr(f'source/{name}ProbeChecks.brs', source)
         else:
             package.writestr('source/DispatcharrSyncKeyProbeChecks.brs', 'sub runDispatcharrSyncKeyChecks()\nend sub\n')

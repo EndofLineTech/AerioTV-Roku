@@ -187,7 +187,7 @@ sub init()
     m.guide.observeField("searchVodSelection", "onUnifiedSearchVodSelection")
     m.guide.observeField("devicePreference", "onDevicePreference")
     m.registry = CreateObject("roRegistrySection", "AerioTV")
-    m.preferenceStore = loadPreferenceStore(m.registry)
+    m.preferenceStore = loadPreferenceStore(m.registry, true)
     m.devicePreferences = m.preferenceStore.device
     m.global.addFields({clockFormat: "24", clockPreference: m.devicePreferences.clockFormat})
     applyClockFormat()
