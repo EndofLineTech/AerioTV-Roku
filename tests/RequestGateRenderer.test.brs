@@ -13,6 +13,10 @@ sub main()
     check(not requestGateRenderAllowed("https://EXAMPLE.TEST:443/art", ""), "park blocks renderer regardless of path")
     check(not requestGateAccessAllowed("https://example.test/api/", ""), "cache authorization cannot bypass host park")
     check(requestGateRenderAllowed("https://other.test/art", ""), "renderer does not park another host")
+    m.global.profilegateclosed = true
+    check(not requestGateRenderAllowed("https://other.test/art", ""), "launch protection blocks remote artwork on otherwise admitted hosts")
+    check(not requestGateRenderContextAllowed("other.test:443", ""), "already-tracked remote readers are fenced when a PIN gate opens")
+    check(requestGateRenderAllowed("pkg:/images/a.png", ""), "protection does not block its own packaged UI")
     print "ALL TESTS PASSED"
 end sub
 

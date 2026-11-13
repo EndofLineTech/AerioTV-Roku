@@ -7,7 +7,15 @@ function selectedUserProfileGate() as object
     if entry = invalid then return {allowed: m.connectionStore.readOnly <> true, reason: ""}
     if entry.provider <> "dispatcharr" then return {allowed: true, reason: ""}
     m.userProfileStore = loadUserProfileStore(m.registry, entry.id)
-    return userProfileStartupGate(m.userProfileStore)
+    gate = userProfileStartupGate(m.userProfileStore)
+    if gate.reason = "pin"
+        for each profile in m.userProfileStore.profiles
+            if profile.id = m.userProfileStore.active
+                if userProfilePinGrantMatches(m.profileUnlockGrant, entry.id, profile) then return {allowed: true, reason: ""}
+            end if
+        end for
+    end if
+    return gate
 end function
 
 function userProfileGateMessage(gate as object) as string

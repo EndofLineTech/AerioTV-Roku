@@ -15,6 +15,14 @@ function currentUserSessionId() as string
     return value
 end function
 
+function userProfileGateClosed() as boolean
+    if m.global = invalid then return false
+    if type(m.global) = "roSGNode"
+        if not m.global.hasField("profilegateclosed") then return false
+    end if
+    return m.global.profilegateclosed = true
+end function
+
 sub tagTaskForCurrentUser(task as object)
     session = currentUserSessionId()
     if session = "" then return
@@ -27,6 +35,7 @@ sub tagTaskForCurrentUser(task as object)
 end sub
 
 function taskUserSessionCurrent(task as object) as boolean
+    if userProfileGateClosed() then return false
     if type(task) = "roAssociativeArray"
         if not task.doesExist("aeriosession") then return true
     else
@@ -55,6 +64,7 @@ function userViewSession(value as dynamic) as string
 end function
 
 function userEventCurrent(value as dynamic) as boolean
+    if userProfileGateClosed() then return false
     if type(value) <> "roAssociativeArray" then return false
     count = 0
     captured = invalid

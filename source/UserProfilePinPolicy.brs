@@ -69,6 +69,21 @@ function userProfilePinAttemptStored(registry as object, slotId as string, holde
     denied = {verified: false, validInput: false, locked: false, remaining: 0, recoveryRequired: true}
     key = userProfilePinBackoffKey(slotId, holder)
     if key = "" then return denied
+    profileStore = invalid
+    profileIndex = -1
+    if record.id <> invalid
+        if record.id <> holder then return denied
+        profileStore = loadUserProfileStore(registry, slotId)
+        if profileStore.readOnly = true then return denied
+        for i = 0 to profileStore.profiles.count() - 1
+            candidate = profileStore.profiles[i]
+            if candidate.id = holder
+                if candidate.pinType <> record.pinType or candidate.pinHash <> record.pinHash or candidate.pinSalt <> record.pinSalt then return denied
+                profileIndex = i
+            end if
+        end for
+        if profileIndex < 0 then return denied
+    end if
     state = userProfilePinBackoffDefault()
     if registry.exists(key)
         parsed = ParseJson(registry.read(key))
@@ -81,6 +96,12 @@ function userProfilePinAttemptStored(registry as object, slotId as string, holde
     if not checked.validInput then return checked
     changes = {}
     changes[key] = FormatJson(checked.state)
+    if checked.verified and profileStore <> invalid
+        profileStore.profiles[profileIndex] = setCanonicalPreference(profileStore.profiles[profileIndex], "pinLength", entries.count())
+        profileText = FormatJson(profileStore)
+        if userProfileUtf8ByteCount(profileText) > 8192 then return denied
+        changes[userProfileStoreKey(slotId)] = profileText
+    end if
     saved = userProfileRegistryTransaction(registry, changes)
     if not saved.ok
         checked.verified = false

@@ -1,4 +1,5 @@
 sub openDvrLibrary()
+    if userProfileGateClosed() then return
     if m.page <> "guide" then return
     if m.capabilities.dvr <> "view" and m.capabilities.dvr <> "manage" then return
     if m.serverAccountId = "" or m.guide.config = invalid then return
@@ -22,6 +23,7 @@ sub closeDvrLibrary()
 end sub
 
 sub openVodLibrary(kind as string)
+    if userProfileGateClosed() then return
     if m.accountPreferences.vodEnabled = false then return
     if kind = "movie" and m.capabilities.movies <> "allowed" then return
     if kind = "series" and m.capabilities.series <> "allowed" then return

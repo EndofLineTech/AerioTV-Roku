@@ -16,6 +16,18 @@ sub main()
     secondDefault = storeFixtureProfile(2)
     secondDefault.userId = profile.userId
     check(formatJson(userProfileEnsureDefault(staged, secondDefault)) = formatJson(staged), "repeated migration preserves original stable ID and default metadata")
+    promoted = copyJson(profile)
+    promoted = setCanonicalPreference(promoted, "userLevel", 10)
+    promoted = setCanonicalPreference(promoted, "role", "admin")
+    refreshed = userProfileEnsureDefault(staged, promoted)
+    check(refreshed.profiles[0].role = "admin" and refreshed.profiles[0].userLevel = 10 and refreshed.profiles[0].updatedAt = 0 and refreshed.profiles[0].id = profile.id, "live server promotion refreshes authority without roster edit or re-ID")
+    demoted = userProfileEnsureDefault(refreshed, profile)
+    check(demoted.profiles[0].role = "user" and demoted.profiles[0].userLevel = 1, "live demotion cannot retain stale server-admin authority")
+    for each badLength in [-1, 3, 7, "4", true]
+        malformed = copyJson(staged)
+        malformed.profiles[0] = setCanonicalPreference(malformed.profiles[0], "pinLength", badLength)
+        check(normalizeUserProfileStore(malformed, "slot-a").readOnly, "invalid local PIN length is not silently accepted")
+    end for
     for each raw in [invalid, [], {}, {schema: 2}, {schema: "1"}, {schema: true}, {schema: 1, playlistId: 7}, {schema: 1, playlistId: "slot-a", profiles: []}]
         check(normalizeUserProfileStore(raw, "slot-a").readOnly, "malformed/present stores never become empty migration input")
     end for

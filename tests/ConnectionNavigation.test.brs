@@ -2,6 +2,9 @@ sub main()
     m.registry = {
         values: {serverUrl: "https://example.test", accountIdentity: "https://example.test|7", apiKey: "old-key", rememberApiKey: "true"}
         failKeyWrite: false
+        exists: function(key as string) as boolean
+            return m.values.doesExist(key)
+        end function
         read: function(key as string) as string
             value = m.values[key]
             if value = invalid then return ""

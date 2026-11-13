@@ -27,6 +27,7 @@ suites.unshift('UserProfileForget');
 suites.unshift('UserProfileNavigation');
 suites.unshift('UserProfileRemoval');
 suites.unshift('RequestGateModel');
+suites.unshift('RequestGateTask');
 suites.unshift('RequestGateRenderer');
 suites.unshift('UserProfileScope');
 suites.unshift('UserProfileScopeStore');
@@ -39,6 +40,10 @@ suites.unshift('DispatcharrSyncEnvelope');
 suites.unshift('DispatcharrSyncMerge');
 suites.unshift('DispatcharrSyncPullStore');
 suites.unshift('UserProfilePinPolicy');
+suites.unshift('ProfilePinNavigation');
+suites.unshift('ProfileRosterNavigation');
+suites.unshift('UserProfileRuntime');
+suites.unshift('UserProfileCredential');
 suites.unshift('UserProfileStore');
 suites.unshift('StartupBeaconModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
@@ -85,6 +90,7 @@ for (const suite of suites) {
     'source/HttpPolicy.brs',
     'source/RequestGateModel.brs', 'source/RequestGateClient.brs', 'source/RequestGateRenderer.brs',
     ...(suite === 'ConnectionNavigation' ? ['components/RequestGateNavigation.brs'] : []),
+    ...(suite === 'RequestGateTask' ? ['components/RequestGateTask.brs'] : []),
     ...(suite === 'UserProfileScope' ? ['source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(['UserProfileScopeStore', 'UserProfilePreferenceNavigation'].includes(suite) ? ['source/UserProfileScope.brs', 'source/UserProfileScopeStore.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'UserProfilePreferenceNavigation' ? ['components/UserProfilePreferenceNavigation.brs'] : []),
@@ -95,7 +101,12 @@ for (const suite of suites) {
     ...(suite === 'DispatcharrSyncRoster' ? ['source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs'] : []),
     ...(['DispatcharrSyncMerge', 'DispatcharrSyncPullStore'].includes(suite) ? ['source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/DispatcharrSyncMerge.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'DispatcharrSyncPullStore' ? ['source/DispatcharrSyncPullStore.brs', 'source/UserProfileScope.brs'] : []),
-    ...(suite === 'UserProfilePinPolicy' ? ['source/UserProfilePinPolicy.brs', 'source/UserProfilePin.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(suite === 'UserProfilePinPolicy' ? ['source/UserProfilePinPolicy.brs', 'source/UserProfilePin.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(suite === 'ProfilePinNavigation' ? ['source/UserProfilePin.brs', 'components/ProfilePinNavigation.brs'] : []),
+    ...(suite === 'ProfileRosterNavigation' ? ['source/UserProfileScope.brs', 'components/ProfileRosterNavigation.brs'] : []),
+    ...(suite === 'UserProfileRuntime' ? ['source/UserProfileRuntime.brs'] : []),
+    ...(['UserProfileCredential', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/UserProfileCredential.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs'] : []),
+    ...(suite === 'UserProfileCredential' ? ['source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'HttpTransport' ? ['source/HttpTransport.brs'] : []),
     ...(suite === 'StrictJson' ? ['source/StrictJson.brs'] : []),
     ...(suite === 'UserProfilePin' ? ['source/UserProfilePin.brs'] : []),
@@ -120,6 +131,7 @@ for (const suite of suites) {
     ...(suite === 'TmdbTask' ? ['components/TmdbTask.brs'] : []),
     ...(suite === 'VodShelfTask' ? ['components/VodShelfTask.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/AerioScene.brs'] : []),
+    ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileRosterNavigation.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/PhoneSetupNavigation.brs'] : []),
     ...(suite === 'ConnectionNavigation' ? ['components/ConnectionNavigation.brs'] : []),
     ...(suite === 'ConnectionAuthTask' ? ['components/DispatcharrTask.brs'] : []),

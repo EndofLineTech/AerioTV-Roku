@@ -3,6 +3,15 @@ function userProfilePinCreationAllowed() as boolean
     return false
 end function
 
+function userProfilePinGrantMatches(grant as dynamic, slotId as string, profile as object) as boolean
+    if type(grant) <> "roAssociativeArray" then return false
+    if not userProfilePinRecordValid(profile) then return false
+    for each field in ["slot", "id", "pinType", "pinHash", "pinSalt"]
+        if type(grant[field]) <> "String" and type(grant[field]) <> "roString" then return false
+    end for
+    return grant.slot = slotId and grant.id = profile.id and grant.pinType = profile.pinType and grant.pinHash = profile.pinHash and grant.pinSalt = profile.pinSalt
+end function
+
 function userProfilePinNormalize(pinType as string, entries as dynamic) as dynamic
     if type(entries) <> "roArray" then return invalid
     if entries.count() < 4 or entries.count() > 6 then return invalid

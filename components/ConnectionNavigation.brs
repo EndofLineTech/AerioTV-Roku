@@ -2,6 +2,11 @@
 ' in connectionsV1; a saved API key has its own registry entry per slot.
 function storedConnectionKey(registry as object, entry as object) as string
     if entry.remember <> true then return ""
+    if entry.provider = "dispatcharr"
+        store = loadUserProfileStore(registry, entry.id)
+        resolved = userProfileCredential(registry, entry, store, {})
+        return resolved.key
+    end if
     key = registry.read(connectionRegistryKey(entry.id))
     if key = "" and entry.id = "legacy" then key = registry.read("apiKey")
     return key
@@ -571,6 +576,7 @@ sub onConnectionAgentSaved(event as object)
 end sub
 
 sub openConnectionDialog(title as string, message as string, choices as object)
+    if userProfileGateClosed() then return
     closeConnectionDialog()
     dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = title

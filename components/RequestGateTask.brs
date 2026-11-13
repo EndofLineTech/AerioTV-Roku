@@ -23,6 +23,10 @@ sub runRequestGate()
 end sub
 
 sub processRequestGateTicket(ticket as object)
+    ' SceneGraph may re-notify a node field when the referenced ticket's result
+    ' changes. Each immutable wire has exactly one answer: replying again can
+    ' feed the same node back through request forever and starve later callers.
+    if type(ticket.result) = "roAssociativeArray" then return
     now = CreateObject("roDateTime").asSeconds()
     for each id in m.gateLeases.keys()
         if m.gateLeases[id].issued + 300 < now then m.gateLeases.delete(id)

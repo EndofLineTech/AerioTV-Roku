@@ -20,9 +20,19 @@ sub Main(args as dynamic)
         deviceInfo.EnableLowGeneralMemoryEvent(true)
     end if
     screen.show()
+    ' Component interface fields are not observable until the render thread has
+    ' initialized the Scene. Registering before show() returns false on device.
+    scene.observeField("exitRequested", port)
     while true
         event = wait(0, port)
-        if type(event) = "roSGScreenEvent"
+        if type(event) = "roSGNodeEvent"
+            if lcase(event.getField()) = "exitrequested"
+                if event.getData() = true
+                    screen.close()
+                    return
+                end if
+            end if
+        else if type(event) = "roSGScreenEvent"
             if event.isScreenClosed() then return
         else if type(event) = "roAppMemoryNotificationEvent"
             info = event.getInfo()

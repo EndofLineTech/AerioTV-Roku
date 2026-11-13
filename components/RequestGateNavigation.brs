@@ -35,6 +35,7 @@ sub onRequestGatePrompt(event as object)
 end sub
 
 sub onRequestGateTick()
+    if userProfileGateClosed() then return
     if m.requestGateBinding = invalid or m.requestGate = invalid then return
     binding = m.requestGateBinding
     if binding.slot <> m.selectedConnectionId or binding.base <> m.baseUrl or (m.apiKey <> "" and m.apiKey <> binding.key)

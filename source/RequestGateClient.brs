@@ -29,6 +29,7 @@ function requestGateTaskSessionCurrent() as boolean
         if not m.top.hasField("aeriosession") then return true
     end if
     if m.global = invalid then return false
+    if requestGateProfileClosed() then return false
     if type(m.global) = "roSGNode"
         if not m.global.hasField("activeusersession") then return false
     end if
@@ -37,6 +38,17 @@ function requestGateTaskSessionCurrent() as boolean
     if type(captured) <> "String" and type(captured) <> "roString" then return false
     if type(current) <> "String" and type(current) <> "roString" then return false
     return captured <> "" and captured = current
+end function
+
+function requestGateProfileClosed() as boolean
+    if m.global = invalid then return false
+    if type(m.global) = "roSGNode"
+        if m.global.hasField("profilegateclosed")
+            return m.global.profilegateclosed = true
+        end if
+        return false
+    end if
+    return m.global.profilegateclosed = true
 end function
 
 function requestGateCredentialHash(key as string) as string

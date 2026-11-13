@@ -1,5 +1,19 @@
 sub init()
-    m.global.addFields({activeusersession: ""})
+    m.global.addFields({activeusersession: "", profilegateclosed: false})
+    m.profileGateCover = m.top.findNode("profileGateCover")
+    m.profileGateClock = m.top.findNode("profileGateClock")
+    m.profileGateClock.observeField("fire", "onProfilePinTick")
+    m.profilePinDialog = invalid
+    m.profilePinContext = invalid
+    m.profileUnlockGrant = invalid
+    m.top.focusable = true
+    if not userProfileRuntimeSupported(CreateObject("roDeviceInfo").getOSVersion())
+        m.profileGateCover.visible = true
+        m.global.profilegateclosed = true
+        m.top.findNode("profileGateMessage").text = "AerioTV requires Roku OS 14.6 or later. Update your Roku software to continue. Back exits AerioTV."
+        m.top.setFocus(true)
+        return
+    end if
     m.requestGate = CreateObject("roSGNode", "RequestGateTask")
     m.global.addFields({requestGate: m.requestGate, requestGateRequired: true})
     if m.requestGate <> invalid
@@ -15,7 +29,6 @@ sub init()
     m.requestGateClock.observeField("fire", "onRequestGateTick")
     m.requestGateClock.control = "start"
     m.global.addFields({metadataSession: CreateObject("roDeviceInfo").getRandomUUID(), cacheEpoch: CreateObject("roDeviceInfo").getRandomUUID(), networkTimeoutMs: 20000, appearance: {}, audioGuide: false, authHeaderMode: "x-api-key", httpUserAgent: dispatcharrUserAgent(""), httpReferer: ""})
-    m.top.focusable = true
     uiSetColor(m.top, "0x0A1628FF", "backgroundColor")
     m.top.backgroundUri = ""
     m.phoneSetup = m.top.findNode("phoneSetup")
@@ -228,6 +241,25 @@ sub init()
     m.pendingLaunch = invalid
     welcome = connectionWelcomeNeeded(m.connectionStore)
     beginStartupBeacons(welcome)
+    m.top.setFocus(true)
+    if not welcome
+        launchGate = selectedUserProfileGate()
+        if launchGate.reason = "pin"
+            for each profile in m.userProfileStore.profiles
+                if profile.id = m.userProfileStore.active
+                    if beginProfilePinGate(profile, "connect") then return
+                end if
+            end for
+            m.global.profilegateclosed = true
+            m.top.findNode("profileGateMessage").text = "This profile's PIN requires approved access on this Roku. Back exits AerioTV."
+            return
+        else if launchGate.reason = "child"
+            m.global.profilegateclosed = true
+            m.top.findNode("profileGateMessage").text = "Could not reach your Dispatcharr server. Protected profile access is required. Back exits AerioTV."
+            return
+        end if
+    end if
+    m.profileGateCover.visible = false
     if welcome
         m.page = "welcome"
         drawWelcome()
@@ -255,6 +287,7 @@ sub onLaunchRequest()
 end sub
 
 sub handlePendingLaunch()
+    if userProfileGateClosed() then return
     if m.pendingLaunch = invalid then return
     if m.page <> "guide" and m.page <> "player" then return
     request = m.pendingLaunch
@@ -279,6 +312,7 @@ sub requestRokuEmail(nextAction as string)
 end sub
 
 sub onRokuUserData(event as object)
+    if userProfileGateClosed() then return
     if m.rokuRfiPending = "" or not m.rokuAccount.isSameNode(event.getRoSGNode()) then return
     nextAction = m.rokuRfiPending
     m.rokuRfiPending = ""
@@ -494,6 +528,7 @@ sub editSetupField()
 end sub
 
 sub onKeyboardButton(event as object)
+    if userProfileGateClosed() then return
     dialog = event.getRoSGNode()
     if event.getData() = 0
         if m.editingField = "url"
@@ -529,6 +564,7 @@ sub onDialogClosed()
 end sub
 
 sub connectServer(skipRfi = false as boolean)
+    if userProfileGateClosed() then return
     if m.busy then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid
@@ -538,6 +574,13 @@ sub connectServer(skipRfi = false as boolean)
     end if
     profileGate = selectedUserProfileGate()
     if not profileGate.allowed
+        if profileGate.reason = "pin"
+            for each profile in m.userProfileStore.profiles
+                if profile.id = m.userProfileStore.active
+                    if beginProfilePinGate(profile, "connect") then return
+                end if
+            end for
+        end if
         m.status = userProfileGateMessage(profileGate)
         m.password = ""
         drawSetup()
@@ -567,9 +610,13 @@ sub connectServer(skipRfi = false as boolean)
         requestRokuEmail("connect")
         return
     end if
-    m.activeUserScope = invalid
+    rosterReady = false
+    if entry.provider = "dispatcharr" then rosterReady = consumeProfileRosterGrant(entry)
+    if not rosterReady
+        m.activeUserScope = invalid
+        m.global.activeusersession = ""
+    end if
     m.scopedPreferencesRequired = entry.provider = "dispatcharr"
-    m.global.activeusersession = ""
     m.busy = true
     m.guide.callFunc("cancelMetadataLoads")
     m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
@@ -603,7 +650,14 @@ sub connectServer(skipRfi = false as boolean)
         return
     end if
     m.task = CreateObject("roSGNode", "DispatcharrTask")
+    m.task.verifyOnly = not rosterReady
     tagTaskForCurrentUser(m.task)
+    if rosterReady
+        m.task.expectedUserId = m.activeUserScope.accountId
+        for each profile in m.userProfileStore.profiles
+            if profile.id = m.userProfileStore.active then m.task.expectedUsername = profile.username
+        end for
+    end if
     m.task.cacheEpoch = m.global.cacheEpoch
     m.task.baseUrl = m.baseUrl
     m.task.apiKey = m.apiKey
@@ -671,6 +725,7 @@ sub failConnection(message as string)
 end sub
 
 sub completeConnection(result as dynamic)
+    if userProfileGateClosed() then return
     m.connectionClock.control = "stop"
     if m.task <> invalid
         m.task.unobserveField("result")
@@ -686,6 +741,7 @@ sub completeConnection(result as dynamic)
     end if
     if not result.ok
         m.password = ""
+        if result.identityChanged = true then m.apiKey = ""
         recordDiagnostic("connect", -1, result.message)
         if result.relogin = true
             requireConnectionRelogin(result.message)
@@ -711,6 +767,10 @@ sub completeConnection(result as dynamic)
         end if
     end if
     m.password = ""
+    if result.phase = "verified"
+        beginAuthenticatedRosterRead(result)
+        return
+    end if
     if not ensureConnectedUserProfile(result)
         m.apiKey = ""
         drawSetup()
@@ -823,6 +883,7 @@ sub cancelCapabilityRefresh()
 end sub
 
 sub refreshCapabilities()
+    if userProfileGateClosed() then return
     if m.page = "setup" or m.apiKey = "" or m.serverAccountId = "" then return
     if m.capabilityTask <> invalid then return
     m.aacDiscoveryState = "pending"
@@ -973,6 +1034,7 @@ sub onAacFailureClosed(event as object)
 end sub
 
 sub showConnection()
+    if userProfileGateClosed() then return
     closeRecentHistoryDialog()
     cancelDiagnosticShare()
     resetMediaNavigation()
@@ -1014,6 +1076,7 @@ sub onWatchChannel(event as object)
 end sub
 
 sub startPlayback(channel as object, forceRetune = false as boolean, useAac = false as boolean, preserveStartupBudget = false as boolean, tuneStartedAt = 0 as integer)
+    if userProfileGateClosed() then return
     if m.settingsHub <> invalid
         if m.settingsHub.active then closeSettingsHub()
     end if
@@ -2442,6 +2505,10 @@ sub closeMessage(event as object)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    if userProfileGateClosed()
+        if press and key = "back" then m.top.exitRequested = true
+        return true
+    end if
     if key = "home" then return false
     if m.page = "archiveLoading" and key = "back" and press
         cancelArchiveLoad()

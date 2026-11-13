@@ -49,6 +49,16 @@ sub main()
     assertEqual(instr(1, FormatJson(userEventData(payload)), "session-a-2"), 0, "transient envelope context never enters persisted account data")
     m.global.activeusersession = ""
     assertEqual(userEventCurrent({favoriteIds: ["legacy"]}), true, "unscoped direct-provider fixtures retain their legacy contract")
+    m.global.profilegateclosed = true
+    assertEqual(userEventCurrent({favoriteIds: ["legacy"]}), false, "launch protection rejects even unscoped direct handler events")
+    m.global.activeusersession = "session-a-3"
+    tagTaskForCurrentUser(task)
+    assertEqual(isCurrentTaskEvent(event, task), false, "protected screen refuses current user background completion")
+    m.top = task
+    assertEqual(requestGateTaskSessionCurrent(), false, "protected screen refuses tagged Task network admission")
+    m.global.profilegateclosed = false
+    assertEqual(isCurrentTaskEvent(event, task), true, "verified closure restores own-session completion admission")
+    assertEqual(requestGateTaskSessionCurrent(), true, "verified closure restores tagged network admission")
     print "ALL TESTS PASSED"
 end sub
 

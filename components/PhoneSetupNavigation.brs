@@ -1,6 +1,7 @@
 ' The receiver has already written 200. Verification and user confirmation occur
 ' here without touching the selected connection or its stored credential.
 sub openPhoneSetup()
+    if userProfileGateClosed() then return
     if m.busy or (m.page <> "setup" and m.page <> "welcome") then return
     if m.phoneRecoveryRequired = true
         showNotice("Restart AerioTV to reload saved connections before trying setup again.")
@@ -28,6 +29,7 @@ sub openPhoneSetup()
 end sub
 
 sub onPhoneSetupPayload(event as object)
+    if userProfileGateClosed() then return
     if not m.phoneSetup.isSameNode(event.getRoSGNode()) then return
     payload = event.getData()
     m.phoneSetup.payload = invalid

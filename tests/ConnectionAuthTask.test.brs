@@ -44,6 +44,21 @@ sub main()
     m.top = {baseUrl: "https://example.test", apiKey: "test-only", authMode: "x-api-key", username: "", password: "", cancelRequested: false, profileId: "", channelProfileIds: [3, 9], userAgent: "Synthetic-Agent"}
     loadChannels()
     if m.top.result.ok <> false or m.top.apiKey <> "" then stop
+    m.calls = 0
+    m.top = {baseUrl: "https://example.test", apiKey: "test-only", authMode: "x-api-key", username: "", password: "", cancelRequested: false, verifyOnly: true}
+    loadChannels()
+    if m.calls <> 1 or not m.top.result.ok or m.top.result.phase <> "verified" then stop
+    if m.top.result.verifiedUser.id <> 7 or m.top.result.apiKey <> "test-only" then stop
+    if m.top.apiKey <> "" or m.top.result.channels <> invalid then stop
+    m.calls = 0
+    m.top = {baseUrl: "https://example.test", apiKey: "test-only", authMode: "x-api-key", username: "", password: "", cancelRequested: false, expectedUserId: "8", expectedUsername: "viewer"}
+    loadChannels()
+    if m.calls <> 1 or m.top.result.ok or not m.top.result.identityChanged then stop
+    if m.top.apiKey <> "" then stop
+    m.calls = 0
+    m.top = {baseUrl: "https://example.test", apiKey: "test-only", authMode: "x-api-key", username: "", password: "", cancelRequested: false, expectedUserId: "7", expectedUsername: "another"}
+    loadChannels()
+    if m.calls <> 1 or m.top.result.ok or not m.top.result.identityChanged then stop
     print "ALL TESTS PASSED"
 end sub
 

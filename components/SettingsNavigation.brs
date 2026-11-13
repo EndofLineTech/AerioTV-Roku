@@ -6,6 +6,7 @@ sub refreshSettingsHub()
 end sub
 
 sub openSettingsHub()
+    if userProfileGateClosed() then return
     if m.page <> "guide" then return
     m.guide.active = false
     m.page = "settings"
@@ -22,6 +23,7 @@ sub closeSettingsHub()
 end sub
 
 sub onSettingsHubSelection(event as object)
+    if userProfileGateClosed() then return
     if not m.settingsHub.isSameNode(event.getRoSGNode()) or m.page <> "settings" then return
     item = event.getData()
     if not userEventCurrent(item) then return

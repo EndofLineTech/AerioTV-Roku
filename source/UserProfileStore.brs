@@ -103,7 +103,7 @@ function userProfileBoolean(value as dynamic) as boolean
 end function
 
 function normalizeUserProfileRecord(raw as dynamic, slotId as string) as dynamic
-    fields = ["id", "playlistId", "userId", "username", "displayName", "isDefault", "role", "userLevel", "isStaff", "isSuperuser", "order", "createdAt", "updatedAt", "avatar", "pinType", "pinHash", "pinSalt", "addOrigin", "addressHeld", "displayNameClaimed", "avatarClaimed"]
+    fields = ["id", "playlistId", "userId", "username", "displayName", "isDefault", "role", "userLevel", "isStaff", "isSuperuser", "order", "createdAt", "updatedAt", "avatar", "pinType", "pinHash", "pinSalt", "pinLength", "addOrigin", "addressHeld", "displayNameClaimed", "avatarClaimed"]
     raw = userProfileCanonicalFields(raw, fields)
     if raw = invalid then return invalid
     id = userProfileLocalId(raw.id)
@@ -151,6 +151,14 @@ function normalizeUserProfileRecord(raw as dynamic, slotId as string) as dynamic
     end if
     if held and raw.isDefault then return invalid
     result["addressHeld"] = held
+    pinLength = 0
+    if raw.doesExist("pinLength")
+        if not userProfileInteger(raw["pinLength"]) then return invalid
+        pinLength = raw["pinLength"]
+        if pinLength <> 0 and (pinLength < 4 or pinLength > 6) then return invalid
+        if raw.pinType = "none" and pinLength <> 0 then return invalid
+    end if
+    result["pinLength"] = pinLength
     for each field in ["displayNameClaimed", "avatarClaimed"]
         claimed = false
         if raw.doesExist(field)
@@ -174,6 +182,8 @@ end function
 ' Repeated migration does not re-ID, stamp, clear a PIN, change role or replace
 ' metadata. Default identity replacement is a different, gated lifecycle action.
 function userProfileEnsureDefault(store as object, verified as object) as dynamic
+    verified = normalizeUserProfileRecord(verified, store.playlistId)
+    if verified = invalid then return invalid
     if store.readOnly = true or store.playlistId <> verified.playlistId then return invalid
     if verified.isDefault <> true then return invalid
     if store.profiles.count() = 0
@@ -189,6 +199,12 @@ function userProfileEnsureDefault(store as object, verified as object) as dynami
     for each profile in cleaned.profiles
         if profile.isDefault
             if profile.userId <> verified.userId or lcase(profile.username) <> lcase(verified.username) then return invalid
+            ' Server authority is live, not a once-only migration fact. Preserve
+            ' local identity/PIN/stamps, but never retain revoked admin rights.
+            for each field in ["userLevel", "isStaff", "isSuperuser"]
+                profile[field] = verified[field]
+            end for
+            profile["role"] = userProfileResolveRole(verified.userLevel, profile.role)
         end if
     end for
     return cleaned

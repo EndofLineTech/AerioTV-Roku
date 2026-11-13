@@ -112,3 +112,14 @@ request/App Data/media matrix, including actual native playback and the
 Decoder admission is recovered; the underlying firmware/resource cause is not
 established, so `a4n` retains the diagnosis history rather than claiming an app
 code fix or permanent cure.
+
+## Completed wire re-notifications
+
+Normal-app early-roster/PIN integration exposed repeated notifications of the
+same completed `RequestGateTicket` Node. Re-answering it could feed the result
+back through the node mailbox indefinitely and starve the post-PIN connection.
+The broker now answers each immutable wire exactly once: a present result means
+the wire is already complete and is ignored. Lease acquisition and observation
+still use distinct fresh wires. A failing-then-passing host regression covers
+duplicate acquire/observe delivery; the normal-app imported-PIN fixture now
+continues to the authorized guide after a full lockout interval.

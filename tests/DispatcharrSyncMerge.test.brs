@@ -21,6 +21,11 @@ sub main()
     store.profiles[0].pinSalt = string(32, "d")
     malformedPin = dispatcharrSyncRosterDecode({rows: [[7, "alice", "", "numbers", "bad", "bad", "user", 200]]})
     check(dispatcharrSyncRosterMerge(store, malformedPin, true, 300).store.profiles[0].pinHash = string(64, "c"), "malformed newer PIN never removes existing protection")
+    store.profiles[0].pinLength = 4
+    unchangedPin = dispatcharrSyncRosterDecode({rows: [[7, "alice", "", "numbers", string(64, "c"), string(32, "d"), "user", 200]]})
+    check(dispatcharrSyncRosterMerge(store, unchangedPin, true, 300).store.profiles[0].pinLength = 4, "unchanged imported PIN preserves locally learned length")
+    changedPin = dispatcharrSyncRosterDecode({rows: [[7, "alice", "", "numbers", string(64, "a"), string(32, "b"), "user", 200]]})
+    check(dispatcharrSyncRosterMerge(store, changedPin, true, 300).store.profiles[0].pinLength = 0, "changed imported PIN resets length to unknown")
     store = syncMergeFixture()
     store.profiles[0].displayName = "Claimed"
     store.profiles[0].displayNameClaimed = true

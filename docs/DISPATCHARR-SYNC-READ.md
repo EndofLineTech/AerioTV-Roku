@@ -113,8 +113,15 @@ previous values; rollback failure requires recovery. Other slots and default
 key/data are preserved. Native checks include actual private-registry cleanup,
 fake-registry faults and stale A/B/A refusals.
 
-Still required before import activation: controller scheduling and safe active
-retirement, opt-in suggestion UI, PIN/Child enforcement and same-slot acceptance.
+Early own-user scheduling now runs after authentication-only `/me/` and before
+channel loading/cache/settings activation. Imported numeric PINs are gated before
+that continuation. Unsupported Directions/Child protection stays covered, never
+falling into unrestricted setup. Active retirement, opt-in suggestion UI, full
+PIN/Child enforcement and same-slot acceptance remain unfinished.
+The lineup continuation re-verifies the captured user ID and username before
+channel/cache access; a changed `/me/` cannot fetch another user's lineup first
+and only fail later at activation. Live verified default authority refreshes
+promotion/demotion flags without replacing its stable ID, PIN or roster stamp.
 The read-before-write/60-second roster-add preservation rules still belong to
 the later sync writer; no App Data writer is introduced. This does not close
 `mrr.15` or `e3e.3`.

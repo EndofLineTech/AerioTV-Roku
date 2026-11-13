@@ -83,6 +83,19 @@ sub main()
     registry.values[corruptKey] = "not-json"
     checked = userProfilePinAttemptStored(registry, "slot-a", holder, record, ["1", "2", "3", "4"], 230)
     check(not checked.verified and checked.recoveryRequired, "corrupt stored backoff never silently resets")
+    registry.delete(corruptKey)
+    profile = userProfileFromVerified("slot-a", holder, {id: 7, username: "alice", user_level: 1}, 1)
+    for each field in ["pinType", "pinHash", "pinSalt"]
+        profile = setCanonicalPreference(profile, field, record[field])
+    end for
+    store = defaultUserProfileStore("slot-a")
+    store.active = holder
+    store.profiles = [profile]
+    registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
+    checked = userProfilePinAttemptStored(registry, "slot-a", holder, profile, ["1", "2", "3", "4"], 300)
+    check(checked.verified and loadUserProfileStore(registry, "slot-a").profiles[0].pinLength = 4, "correct entry persists known dot count with backoff reset in the same transaction")
+    changed = setCanonicalPreference(profile, "pinSalt", string(32, "e"))
+    check(not userProfilePinAttemptStored(registry, "slot-a", holder, changed, ["1", "2", "3", "4"], 301).verified, "stale dialog PIN material cannot verify against a changed live holder")
     print "ALL TESTS PASSED"
 end sub
 

@@ -57,6 +57,28 @@ sub loadChannels()
         return
     end if
 
+    expectedId = textValue(m.top.expectedUserId)
+    expectedName = textValue(m.top.expectedUsername)
+    if (expectedId <> "" and expectedId <> textValue(user.id)) or (expectedName <> "" and lcase(expectedName) <> lcase(textValue(user.username)))
+        m.key = ""
+        m.top.apiKey = ""
+        m.top.password = ""
+        if m.top.cancelRequested <> true then m.top.result = {ok: false, identityChanged: true, message: "The verified account no longer matches this profile. Sign in as this profile before continuing."}
+        return
+    end if
+    if m.top.verifyOnly = true
+        if m.top.cancelRequested = true
+            m.key = ""
+            m.top.apiKey = ""
+            return
+        end if
+        verifiedUser = {id: user.id, username: user.username, user_level: user.user_level, is_staff: user.is_staff, is_superuser: user.is_superuser}
+        m.top.result = {ok: true, phase: "verified", apiKey: m.key, accountId: textValue(user.id), accountUsername: textValue(user.username), verifiedUser: verifiedUser, authModeUsed: m.requestMode}
+        m.key = ""
+        m.top.apiKey = ""
+        return
+    end if
+
     ' An unknown HLS token returning 410 only proves the route exists. The
     ' actual entry tune can also return 410 on this server. Keep Automatic on
     ' known-working TS; explicit HLS remains available for controlled tests.

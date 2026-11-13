@@ -109,6 +109,7 @@ function dispatcharrSyncMergeProfile(profile as object, row as object, now as in
         if row.avatarPresent then result = setCanonicalPreference(result, "avatar", row.avatar)
         if row.order >= 0 then result = setCanonicalPreference(result, "order", row.order)
         if row.pinAction <> "keep"
+            if row.pinType <> profile.pinType or row.pinHash <> profile.pinHash or row.pinSalt <> profile.pinSalt then result = setCanonicalPreference(result, "pinLength", 0)
             result = setCanonicalPreference(result, "pinType", row.pinType)
             result = setCanonicalPreference(result, "pinHash", row.pinHash)
             result = setCanonicalPreference(result, "pinSalt", row.pinSalt)

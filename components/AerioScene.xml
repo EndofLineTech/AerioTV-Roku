@@ -3,6 +3,7 @@
   <interface>
     <field id="memoryPressure" type="string" alwaysNotify="true" onChange="onMemoryPressure" />
     <field id="launchRequest" type="assocarray" alwaysNotify="true" onChange="onLaunchRequest" />
+    <field id="exitRequested" type="boolean" alwaysNotify="true" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/LaunchModel.brs" />
@@ -23,6 +24,15 @@
   <script type="text/brightscript" uri="pkg:/source/UserProfileModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileAvatar.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfilePin.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfilePinPolicy.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileRuntime.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileCredential.brs" />
+  <script type="text/brightscript" uri="ProfilePinNavigation.brs" />
+  <script type="text/brightscript" uri="ProfileRosterNavigation.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncKey.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncRoster.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncMerge.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncPullStore.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileStore.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileLifecycle.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileCleanup.brs" />
@@ -120,5 +130,10 @@
     </Group>
     <Timer id="noticeTimer" duration="8" repeat="false" />
     <Timer id="playerOkTimer" duration="1" repeat="false" />
+    <Timer id="profileGateClock" duration="1" repeat="true" />
+    <Group id="profileGateCover" visible="true">
+      <Rectangle width="1920" height="1080" color="0x0A1628FF" />
+      <Label id="profileGateMessage" translation="[160,440]" width="1600" height="200" wrap="true" text="Protected profile" font="font:LargeSystemFont" />
+    </Group>
   </children>
 </component>
