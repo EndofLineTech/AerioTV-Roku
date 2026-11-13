@@ -156,6 +156,17 @@ Report: `out/profile-storage-final-native.json`. Counts above four are capacity
 probes only, not allowed local rosters. Compression and populated-profile-budget
 limitations from the original qualification still apply.
 
+The address-trust metadata extension was remeasured on the authorized Roku with
+the same four-slot/full-24KB fixtures, now including recorded default identity,
+frozen snapshot and held non-default tags. The supported 1/2/4-profile candidates
+all saved; four profiles per slot left 12,501 registry bytes. Each disposable
+section was verified empty/deleted and the exact prior app was restored. Report:
+`out/profile-address-capacity-native.json`. The probe now fails if any supported
+candidate cannot save. Exploratory 6/8 candidates also saved, but **the local cap
+remains four including default**. These representative 54-character synthetic
+keys/names are not a promise that every maximum-sized profile/setting fits;
+compression, byte ceilings and atomic write/Flush refusal still govern success.
+
 Scoped state, shared request safety, read-only roster and PIN/Child controllers
 must land before public switching. Actual active-session retirement, verified
 role refresh/default replacement and management UI remain the corresponding

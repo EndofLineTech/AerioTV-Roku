@@ -37,8 +37,13 @@ def registry_fixtures():
                     'favoriteIds': [str(n) for n in range(20)], 'recent': [],
                     'startupBehavior': 'guide', 'guide': {'showLogos': True},
                 }
+            identity = {'userId': rows[0]['userId'], 'username': rows[0]['username']}
+            for row in rows[1:]:
+                row['defaultIdentityTag'] = dict(identity)
+                row['addressHeld'] = True
             values[f'userProfilesV1_{slot_id}'] = json.dumps({'schema': 1, 'playlistId': slot_id,
-                'profiles': rows, 'active': rows[0]['id'], 'askAtLaunch': False, 'removed': [], 'pendingRoster': False})
+                'profiles': rows, 'active': rows[0]['id'], 'askAtLaunch': False, 'removed': [], 'pendingRoster': False,
+                'knownDefault': identity, 'addressChangeSnapshot': dict(identity)})
             slots.append({'id': slot_id, 'name': 'Synthetic slot', 'provider': 'dispatcharr',
                           'url': 'https://example.test', 'remember': True})
         values['connectionsV1'] = json.dumps({'schema': 1, 'selected': slots[0]['id'], 'entries': slots})

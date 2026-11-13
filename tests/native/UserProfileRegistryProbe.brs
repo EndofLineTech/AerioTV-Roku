@@ -22,6 +22,7 @@ sub profileProbeRegistry()
             end for
         end if
         print "[profile-probe] registry profiles-per-slot="; fixture.profilesPerSlot; " four-slots=true full-preferences=24000 saved="; verified; " available="; available
+        if fixture.profilesPerSlot <= 4 then profileAssert(verified, "registry-supported-profile-cap-with-address-trust-metadata")
         ' Delete only this newly allocated probe section, even on write failure.
         section = invalid
         removed = registry.delete(sectionName)

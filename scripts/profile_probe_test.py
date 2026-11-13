@@ -315,6 +315,14 @@ class ProfileProbeTest(unittest.TestCase):
                     keys = [v for k, v in values.items() if k.startswith(('connKey_', 'profKey_'))]
                     self.assertEqual(len(keys), 4 * case['profilesPerSlot'])
                     self.assertTrue(all(len(key) == 54 for key in keys))
+                    for name, raw in values.items():
+                        if not name.startswith('userProfilesV1_'):
+                            continue
+                        roster = json.loads(raw)
+                        identity = {'userId': roster['profiles'][0]['userId'], 'username': roster['profiles'][0]['username']}
+                        self.assertEqual(roster['knownDefault'], identity)
+                        self.assertEqual(roster['addressChangeSnapshot'], identity)
+                        self.assertTrue(all(row['addressHeld'] and row['defaultIdentityTag'] == identity for row in roster['profiles'][1:]))
                 probe = package.read('source/UserProfileRegistryProbe.brs').decode()
                 self.assertNotIn('getSectionList', probe)
                 self.assertIn('registry.delete(sectionName)', probe)
