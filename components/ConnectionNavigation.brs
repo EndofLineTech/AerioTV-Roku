@@ -180,7 +180,7 @@ sub updateConnectionGuideUrl(url as string)
     m.status = "XMLTV URL updated. Reconnect to load this connection's guide."
 end sub
 
-function rememberConnectedAccount(accountId as string) as boolean
+function rememberConnectedAccount(accountId as string, accountUsername = invalid as dynamic) as boolean
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid then return false
     keyName = connectionRegistryKey(entry.id)
@@ -197,7 +197,16 @@ function rememberConnectedAccount(accountId as string) as boolean
     else if not deleteStoredConnectionKey(entry)
         return false
     end if
-    updated = connectionStoreUpdate(m.connectionStore, entry.id, {accountId: accountId, remember: m.remember})
+    ' Only verified /me metadata belongs here, never the editable login field.
+    ' Old same-account callers may omit the name; account replacement cannot
+    ' inherit the previous user's name if its caller does not provide one.
+    username = ""
+    if accountUsername = invalid
+        if entry.accountId = accountId then username = textValue(entry.accountUsername)
+    else
+        username = textValue(accountUsername)
+    end if
+    updated = connectionStoreUpdate(m.connectionStore, entry.id, {accountId: accountId, accountUsername: username, remember: m.remember})
     if updated = invalid or not saveConnectionStore(m.registry, updated)
         if m.remember then deleteStoredConnectionKey(entry)
         return false
