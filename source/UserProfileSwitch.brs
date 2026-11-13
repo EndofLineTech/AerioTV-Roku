@@ -92,8 +92,16 @@ function commitUserProfileSwitch(registry as object, connection as object, previ
     if not admin.ok then return {ok: false, recoveryRequired: true, reason: "pin-recovery"}
     planned = userProfileSwitchPlan(connection, previous, targetId, verified, targetPinGrant, admin.record, managementGrant, capturedNonce, activeNonce, managementNonce)
     if not planned.ok then return {ok: false, recoveryRequired: false, reason: planned.reason}
+    oldPreferenceIdentity = userProfilePreferenceIdentity(connection, planned.target)
+    planned.target = setCanonicalPreference(planned.target, "preferenceAnchor", planned.scope.preferenceIdentity)
+    for i = 0 to planned.store.profiles.count() - 1
+        if planned.store.profiles[i].id = planned.target.id then planned.store.profiles[i] = planned.target
+    end for
     if planned.target.isDefault
-        recorded = userProfileRecordDefaultIdentity(planned.store, planned.store.doesExist("addressChangeSnapshot"))
+        changingAddress = planned.store.doesExist("addressChangeSnapshot")
+        checked = userProfileDefaultAddressCheck(connection, planned.store, verified)
+        if not checked.ok then return denied
+        recorded = userProfileRecordDefaultIdentity(checked.store, changingAddress)
         if not recorded.ok then return denied
         planned.store = recorded.store
     end if
@@ -103,12 +111,15 @@ function commitUserProfileSwitch(registry as object, connection as object, previ
     if not prepared.ok then return denied
     preferences = defaultPreferenceStore()
     if registry.exists("settingsV1")
-        preferences = loadPreferenceStore(registry, true)
+        preferences = loadStrictPreferenceStore(registry)
         if preferences.readOnly = true then return denied
         if type(preferences) <> "roAssociativeArray" then return denied
         if not userProfileInteger(preferences.schema) then return denied
         if preferences.schema <> 1 or type(preferences.device) <> "roAssociativeArray" or type(preferences.accounts) <> "roAssociativeArray" then return denied
     end if
+    moved = userProfilePreferenceMovePlan(preferences, oldPreferenceIdentity, planned.scope.preferenceIdentity)
+    if not moved.ok then return denied
+    preferences = moved.store
     accountKey = preferenceScope(planned.scope.preferenceIdentity)
     incoming = invalid
     if preferences.accounts.doesExist(accountKey)

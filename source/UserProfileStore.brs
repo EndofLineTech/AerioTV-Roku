@@ -1,5 +1,10 @@
 ' Internal storage foundation only. Callers must not connect/expose switching
 ' until the slot's store has loaded successfully and all authorization gates pass.
+function userProfilePreferenceIdentity(connection as object, profile as object) as string
+    if profile.doesExist("preferenceAnchor") then return profile["preferenceAnchor"]
+    return connectionPreferenceIdentity(connection, profile.userId.toStr())
+end function
+
 function userProfileStoreKey(slotId as string) as string
     if connectionRegistryKey(slotId) = "" then return ""
     return "userProfilesV1_" + slotId
@@ -131,7 +136,7 @@ function normalizeUserProfileAddressIdentity(raw as dynamic) as dynamic
 end function
 
 function normalizeUserProfileRecord(raw as dynamic, slotId as string) as dynamic
-    fields = ["id", "playlistId", "userId", "username", "displayName", "isDefault", "role", "userLevel", "isStaff", "isSuperuser", "order", "createdAt", "updatedAt", "avatar", "pinType", "pinHash", "pinSalt", "pinLength", "addOrigin", "addressHeld", "displayNameClaimed", "avatarClaimed", "defaultIdentityTag"]
+    fields = ["id", "playlistId", "userId", "username", "displayName", "isDefault", "role", "userLevel", "isStaff", "isSuperuser", "order", "createdAt", "updatedAt", "avatar", "pinType", "pinHash", "pinSalt", "pinLength", "addOrigin", "addressHeld", "displayNameClaimed", "avatarClaimed", "defaultIdentityTag", "preferenceAnchor"]
     raw = userProfileCanonicalFields(raw, fields)
     if raw = invalid then return invalid
     id = userProfileLocalId(raw.id)
@@ -179,6 +184,16 @@ function normalizeUserProfileRecord(raw as dynamic, slotId as string) as dynamic
     end if
     if held and raw.isDefault then return invalid
     result["addressHeld"] = held
+    if raw.doesExist("preferenceAnchor")
+        anchor = raw["preferenceAnchor"]
+        if type(anchor) <> "String" and type(anchor) <> "roString" then return invalid
+        suffix = "|" + userId.toStr() + "|" + slotId
+        if len(anchor) > 2048 or len(anchor) <= len(suffix) then return invalid
+        if right(anchor, len(suffix)) <> suffix then return invalid
+        origin = left(anchor, len(anchor) - len(suffix))
+        if normalizeBaseUrl(origin) = "" or normalizeBaseUrl(origin) <> origin then return invalid
+        result["preferenceAnchor"] = anchor
+    end if
     if raw.doesExist("defaultIdentityTag")
         if raw.isDefault then return invalid
         tag = raw["defaultIdentityTag"]

@@ -9,6 +9,30 @@ import subprocess
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_address_handler_probe_is_private_and_cannot_ship(self):
+        spec = importlib.util.spec_from_file_location('address_probe', Path(__file__).with_name('test-profile-address-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        with tempfile.TemporaryDirectory() as tmp:
+            normal = Path(tmp) / 'normal.zip'
+            output = Path(tmp) / 'probe.zip'
+            with zipfile.ZipFile(normal, 'w') as package:
+                package.writestr('manifest', 'title=AerioTV\n')
+                package.writestr('components/AerioScene.brs', 'sub init()\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub')
+                package.writestr('source/MetadataCacheStore.brs', 'return "cachefs:/aeriotv-metadata-v1"')
+            probe.build(output, normal, 'SyntheticAddressSection', 'http://127.0.0.1:1234', 'http://127.0.0.1:5678')
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('"AerioTV"', source)
+                self.assertIn('updateConnectionUrl("http://127.0.0.1:5678")', source)
+                self.assertIn('m.registry.flushes = 1', source)
+                self.assertIn('if m.managementProbeClock = invalid', source)
+                self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
+                self.assertIn('profile-address-probe.json', package.namelist())
+        root = Path(__file__).resolve().parent.parent
+        script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; for (const entry of ['profile-address-probe.json','source/ProfileAddressFixture.brs']) assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt',entry]), /probe/);"
+        subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True)
+
     def test_own_signin_application_probe_is_private_and_cannot_ship(self):
         root = Path(__file__).resolve().parent.parent
         spec = importlib.util.spec_from_file_location('own_signin_probe', Path(__file__).with_name('test-profile-own-signin-native.py'))
@@ -330,6 +354,7 @@ class ProfileProbeTest(unittest.TestCase):
                         identity = {'userId': roster['profiles'][0]['userId'], 'username': roster['profiles'][0]['username']}
                         self.assertEqual(roster['knownDefault'], identity)
                         self.assertEqual(roster['addressChangeSnapshot'], identity)
+                        self.assertTrue(all(row['preferenceAnchor'] == f'https://old.example.test|{row["userId"]}|{roster["playlistId"]}' for row in roster['profiles']))
                         self.assertTrue(all(row['addressHeld'] and row['defaultIdentityTag'] == identity for row in roster['profiles'][1:]))
                 probe = package.read('source/UserProfileRegistryProbe.brs').decode()
                 self.assertNotIn('getSectionList', probe)

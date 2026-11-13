@@ -33,7 +33,7 @@ function commitDispatcharrRosterPull(registry as object, connection as object, p
         if not userProfileInteger(preferences.schema) then return denied
         if preferences.schema <> 1 or type(preferences.accounts) <> "roAssociativeArray" or type(preferences.device) <> "roAssociativeArray" then return denied
         for each profile in plan.removed
-            identity = connectionPreferenceIdentity(connection, profile.userId.toStr())
+            identity = userProfilePreferenceIdentity(connection, profile)
             if identity = "" then return denied
             preferences.accounts.delete(preferenceScope(identity))
         end for

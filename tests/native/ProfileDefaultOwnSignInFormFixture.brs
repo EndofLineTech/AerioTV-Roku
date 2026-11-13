@@ -92,6 +92,7 @@ sub onManagementProbeTick()
         actual = loadUserProfileStore(m.registry, "slot-a")
         cancelled = m.profileOwnSignInContext = invalid and m.profileOwnSignInDialog = invalid and m.profileOwnSignInTask = invalid and m.guide.active and m.top.exitRequested <> true
         ownSaved = m.registry.read("connKey_slot-a") = "synthetic-new-own-key" and not m.registry.exists(userProfileKeyName("slot-a", m.ownProbeTarget))
+        print "[own-signin] key-diagnostic "; FormatJson({slot_correct: m.registry.read("connKey_slot-a") = "synthetic-new-own-key", late_saved: m.registry.read("connKey_slot-a") = "synthetic-must-not-save", slot_old: m.registry.read("connKey_slot-a") = "synthetic-a", slot_outgoing: m.registry.read("connKey_slot-a") = "synthetic-b", default_own_key_absent: not m.registry.exists(userProfileKeyName("slot-a", m.ownProbeTarget))})
         outgoingPreserved = m.registry.read(userProfileKeyName("slot-a", actual.active)) = "synthetic-b"
         activePreserved = actual.active = actual.profiles[1].id and m.activeUserScope.accountId = "8" and currentUserSessionId() = m.ownProbeSession and m.apiKey = "synthetic-b"
         trustPreserved = actual["knownDefault"]["userId"] = 7 and actual.profiles[1]["defaultIdentityTag"]["userId"] = 7

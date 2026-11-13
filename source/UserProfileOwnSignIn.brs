@@ -38,13 +38,14 @@ function userProfileOwnSignInPlan(connection as object, previous as object, targ
             if profile.userId = identity.userId or lcase(profile.username) = lcase(identity.username) then return {ok: false, reason: "duplicate-user"}
         end if
     end for
-    oldIdentity = connectionPreferenceIdentity(connection, target.userId.toStr())
+    oldIdentity = userProfilePreferenceIdentity(connection, target)
     oldRole = target.role
     changed = target.userId <> identity.userId
     for each field in ["userId", "userLevel", "isStaff", "isSuperuser"]
         target = setCanonicalPreference(target, field, identity[field])
     end for
     target = setCanonicalPreference(target, "role", userProfileResolveRole(identity.userLevel, oldRole))
+    if target.doesExist("preferenceAnchor") then target = setCanonicalPreference(target, "preferenceAnchor", connectionPreferenceIdentity(connection, identity.userId.toStr()))
     if changed or target.role <> oldRole
         if now <= target.updatedAt then return {ok: false, reason: "clock-not-ready"}
         target = setCanonicalPreference(target, "updatedAt", now)
@@ -72,7 +73,10 @@ function commitUserProfileOwnSignIn(registry as object, connection as object, pr
         return denied
     end if
     if planned.target.isDefault
-        recorded = userProfileRecordDefaultIdentity(planned.store, planned.store.doesExist("addressChangeSnapshot"))
+        changingAddress = planned.store.doesExist("addressChangeSnapshot")
+        checked = userProfileDefaultAddressCheck(connection, planned.store, verified)
+        if not checked.ok then return denied
+        recorded = userProfileRecordDefaultIdentity(checked.store, changingAddress)
         if not recorded.ok then return denied
         planned.store = recorded.store
     end if

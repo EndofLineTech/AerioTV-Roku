@@ -70,6 +70,16 @@ sub main()
     saved = commitUserProfileOwnSignIn(registry, sessionEntry, store, b.id, result, 100, nonce, nonce)
     check(saved.ok and not registry.exists("connKey_slot-a") and not registry.exists(userProfileKeyName("slot-a", b.id)), "Remember-off recovery commits identity/data without persisting the recovered key")
     defaultStore = copyJson(store)
+    anchored = copyJson(store)
+    anchored.profiles[1] = setCanonicalPreference(anchored.profiles[1], "preferenceAnchor", "https://old.test|8|slot-a")
+    registry = ownSignInRegistry(entry, anchored)
+    prefs = ParseJson(registry.read("settingsV1"))
+    oldScope = preferenceScope(connectionPreferenceIdentity(entry, "8"))
+    prefs.accounts[preferenceScope("https://old.test|8|slot-a")] = prefs.accounts[oldScope]
+    prefs.accounts.delete(oldScope)
+    registry.values["settingsV1"] = FormatJson(prefs)
+    saved = commitUserProfileOwnSignIn(registry, entry, anchored, b.id, result, 100, nonce, nonce)
+    check(saved.ok and saved.oldIdentity = "https://old.test|8|slot-a" and saved.target["preferenceAnchor"] = connectionPreferenceIdentity(entry, "88") and saved.preferenceStore.accounts[preferenceScope(connectionPreferenceIdentity(entry, "88"))].favoriteIds[0] = "bob-only", "own recovery moves its original-address data and anchor together even when both address and server ID changed")
     defaultStore.active = b.id
     defaultStore = setCanonicalPreference(defaultStore, "knownDefault", {userId: 7, username: "alice"})
     defaultResult = {ok: true, apiKey: "synthetic-recovered-default-key", verifiedUser: {id: 7, username: "ALICE", user_level: 1}}

@@ -79,12 +79,14 @@ end function
     m.registry.flush()''', 1)
                 target = '    m.guide.config = {\n'
                 assert source.count(target) == 1
-                source = source.replace(target, '''    m.managementProbeClock = m.top.createChild("Timer")
+                source = source.replace(target, '''    if m.managementProbeClock = invalid
+    m.managementProbeClock = m.top.createChild("Timer")
     m.managementProbeClock.duration = 1
     m.managementProbeClock.repeat = true
     m.managementProbeClock.observeField("fire", "onManagementProbeTick")
     m.managementProbePhase = 0
     m.managementProbeClock.control = "start"
+    end if
 ''' + target, 1)
                 source += '''
 function managementProbeEvent(node as object, index as integer) as object

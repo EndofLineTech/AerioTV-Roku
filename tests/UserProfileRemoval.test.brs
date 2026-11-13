@@ -32,6 +32,15 @@ sub main()
     before = FormatJson(m.registry.values)
     result = removeUserProfile(m.registry, m.connection, m.store, m.other.id, 200, "normal")
     check(not result.ok and m.registry.flushes = 0 and FormatJson(m.registry.values) = before, "regressed deletion clock cannot mutate metadata, key or settings storage")
+    resetRemovalFixture()
+    m.store.profiles[1] = setCanonicalPreference(m.store.profiles[1], "preferenceAnchor", "https://old.test|2|slot-a")
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.store)
+    prefs = ParseJson(m.registry.read("settingsV1"))
+    prefs.accounts[preferenceScope("https://old.test|2|slot-a")] = prefs.accounts[preferenceScope("https://example.test|2|slot-a")]
+    prefs.accounts.delete(preferenceScope("https://example.test|2|slot-a"))
+    m.registry.values["settingsV1"] = FormatJson(prefs)
+    result = removeUserProfile(m.registry, m.connection, m.store, m.other.id, 200, "normal")
+    check(result.ok and not result.preferences.accounts.doesExist(preferenceScope("https://old.test|2|slot-a")) and result.preferences.accounts.count() = 2, "removal cleans its own anchored old-address data without touching other holders")
     print "ALL TESTS PASSED"
 end sub
 

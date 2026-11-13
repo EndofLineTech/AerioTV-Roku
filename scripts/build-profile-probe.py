@@ -27,6 +27,7 @@ def registry_fixtures():
                        'isStaff': False, 'isSuperuser': False, 'addOrigin': 'plain', 'addressHeld': False,
                        'avatar': {'icon': 'star', 'color': 'teal'},
                        'pinType': 'numbers', 'pinHash': 'a' * 64, 'pinSalt': 'b' * 32}
+                row['preferenceAnchor'] = f'https://old.example.test|{row["userId"]}|{slot_id}'
                 rows.append(row)
                 # Deterministic public test data, with key-like compression
                 # characteristics. These bytes are never used for networking.
@@ -145,14 +146,18 @@ def build(output, base_url, registry=False, model_store=False):
             own_login_checks = (ROOT / 'tests/UserProfileOwnSignIn.test.brs').read_text().split('sub check(', 1)[0]
             own_login_checks = own_login_checks.replace('sub main()', 'sub runUserProfileOwnSignInChecks()').replace('check(', 'profileAssert(')
             own_login_checks = own_login_checks.replace('m.profileOwnSignInSettingsDecoder = function(raw as string) as dynamic\n        return ParseJson(raw)\n    end function', 'm.profileOwnSignInSettingsDecoder = invalid')
-            own_login_checks = own_login_checks.replace('    print "ALL TESTS PASSED"', '''    registry = ownSignInRegistry(entry, store)
+            own_login_checks = own_login_checks.replace('    print "ALL TESTS PASSED"', '''    precisionStore = copyJson(store)
+    precisionStore.profiles[1] = setCanonicalPreference(precisionStore.profiles[1], "preferenceAnchor", "https://old.test|8|slot-a")
+    registry = ownSignInRegistry(entry, precisionStore)
     rawSettings = registry.read("settingsV1")
     rawSettings = left(rawSettings, len(rawSettings) - 1) + "," + chr(34) + "futureDouble" + chr(34) + ":1.2345678901234567," + chr(34) + "futureIntegralDouble" + chr(34) + ":3.0}"
     precisionSeed = ParseJson(rawSettings, "d")
     precisionSeed.accounts[preferenceScope(connectionPreferenceIdentity(entry, "8"))]["futureDouble"] = ParseJson("1.2345678901234567", "d")
+    precisionSeed.accounts[preferenceScope("https://old.test|8|slot-a")] = precisionSeed.accounts[preferenceScope(connectionPreferenceIdentity(entry, "8"))]
+    precisionSeed.accounts.delete(preferenceScope(connectionPreferenceIdentity(entry, "8")))
     precisionSeedText = strictJsonEncode(precisionSeed)
     registry.write("settingsV1", precisionSeedText.text)
-    saved = commitUserProfileOwnSignIn(registry, entry, store, b.id, result, 100, nonce, nonce)
+    saved = commitUserProfileOwnSignIn(registry, entry, precisionStore, b.id, result, 100, nonce, nonce)
     precisionSettings = ParseJson(registry.read("settingsV1"), "d")
     profileAssert(saved.ok and precisionSettings["futureDouble"] = ParseJson("1.2345678901234567", "d"), "own user-ID migration round-trips unknown binary64 settings without shortening")
     numericKind = type(precisionSettings["futureIntegralDouble"])

@@ -82,19 +82,44 @@ function ensureConnectedUserProfile(result as object, id = "" as string, now = 0
         m.status = "This sign-in belongs to a different saved default profile. Existing profile protection was retained; use a separate connection or Forget this Roku's copy."
         return false
     end if
+    oldIdentity = connectionPreferenceIdentity(entry, verified.userId.toStr())
+    newIdentity = oldIdentity
+    for i = 0 to candidate.profiles.count() - 1
+        if candidate.profiles[i].isDefault
+            oldIdentity = userProfilePreferenceIdentity(entry, candidate.profiles[i])
+            candidate.profiles[i] = setCanonicalPreference(candidate.profiles[i], "preferenceAnchor", newIdentity)
+        end if
+    end for
+    moved = {ok: true, moved: false}
+    if oldIdentity <> newIdentity and m.registry.exists("settingsV1")
+        moved = userProfilePreferenceMovePlan(loadStrictPreferenceStore(m.registry), oldIdentity, newIdentity)
+        if not moved.ok then return false
+    end if
     ' Record only from this default-owned /me/, never cleared slot metadata.
     ' A persisted change snapshot also freezes recording until its URL-bound
     ' verification/settlement lifecycle can explicitly complete the change.
-    recorded = userProfileRecordDefaultIdentity(candidate, candidate.doesExist("addressChangeSnapshot"))
+    changingAddress = candidate.doesExist("addressChangeSnapshot")
+    checked = userProfileDefaultAddressCheck(entry, candidate, result)
+    if not checked.ok then return false
+    recorded = userProfileRecordDefaultIdentity(checked.store, changingAddress)
     if not recorded.ok then return false
     candidate = recorded.store
-    if FormatJson(candidate) = FormatJson(m.userProfileStore) then return true
-    saved = commitUserProfileStore(m.registry, m.userProfileStore, candidate, {}, entry.remember)
+    if FormatJson(candidate) = FormatJson(m.userProfileStore) and not moved.moved then return true
+    prepared = userProfileStoreChanges(m.registry, m.userProfileStore, candidate, {}, entry.remember)
+    if not prepared.ok then return false
+    if moved.moved
+        encoded = strictJsonEncode(moved.store)
+        if not encoded.ok then return false
+        if preferenceByteBudget(encoded.text) > 24000 then return false
+        prepared.changes["settingsV1"] = encoded.text
+    end if
+    saved = userProfileRegistryTransaction(m.registry, prepared.changes)
     if not saved.ok
         m.userProfileRecoveryRequired = saved.recoveryRequired
         m.status = "Could not save profiles. Existing profile protection was retained; restart before retrying if storage needs recovery."
         return false
     end if
     m.userProfileStore = candidate
+    if moved.moved then m.preferenceStore = moved.store
     return true
 end function

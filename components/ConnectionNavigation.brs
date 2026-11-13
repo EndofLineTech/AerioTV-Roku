@@ -269,6 +269,8 @@ end sub
 
 sub updateConnectionUrl(base as string)
     if not userProfileConnectionSetupAllowed() then return
+    if m.busy = true or m.profileSwitchContext <> invalid then return
+    if base.trim() = "" then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid
         candidate = connectionStoreAdd(m.connectionStore, CreateObject("roDeviceInfo").getRandomUUID(), "Main")
@@ -280,9 +282,21 @@ sub updateConnectionUrl(base as string)
         m.selectedConnectionId = candidate.selected
         entry = connectionStoreEntry(candidate, candidate.selected)
     end if
+    if entry.provider = "dispatcharr"
+        base = normalizeBaseUrl(base)
+        if base = "" then return
+    end if
     if entry.url = base
         m.baseUrl = base
         return
+    end if
+    if entry.provider = "dispatcharr"
+        profiles = loadUserProfileStore(m.registry, entry.id)
+        if profiles.readOnly = true then return
+        if profiles.profiles.count() > 0
+            changeProfiledConnectionUrl(entry, profiles, base)
+            return
+        end if
     end if
     ' Delete the old key FIRST. A failed metadata write can require re-login,
     ' but must never send that key to a different server after relaunch.
@@ -308,6 +322,56 @@ sub updateConnectionUrl(base as string)
     end if
     m.status = "Server URL updated; old credentials were removed. Sign in to verify the new server."
     if entry.provider = "m3u" then m.status = "M3U URL updated. Connect to load this playlist."
+end sub
+
+' Existing profiled connections must never expose a new URL between separate
+' credential and hold Flushes. Runtime adoption follows only a committed plan.
+sub changeProfiledConnectionUrl(entry as object, profiles as object, base as string)
+    owner = invalid
+    for each profile in profiles.profiles
+        if profile.id = profiles.active then owner = profile
+        if profile.isDefault
+            ' Protected/default-Child routing is not permission to expose the
+            ' general setup screen. Keep the old connection until that UI exists.
+            if profile.role = "child" or profile.pinType <> "none" and not userProfilePinGrantMatches(m.profileUnlockGrant, entry.id, profile)
+                m.status = "Unlock the default profile before changing this connection's server address."
+                return
+            end if
+        end if
+    end for
+    if owner = invalid then return
+    scope = m.activeUserScope
+    if scope = invalid
+        gate = selectedUserProfileGate()
+        if not gate.allowed then return
+        nonce = CreateObject("roDeviceInfo").getRandomUUID()
+        scope = userProfileSessionScope(entry, owner.id, owner.userId.toStr(), "local-address-edit", nonce)
+    else
+        if currentUserSessionId() <> scope.sessionId then return
+    end if
+    saved = commitUserProfileAddressChange(m.registry, m.connectionStore, profiles, base, scope, scope)
+    if not saved.ok
+        m.status = "Could not save the server address safely. The previous connection was retained."
+        if saved.recoveryRequired = true
+            m.userProfileRecoveryRequired = true
+            m.global.profilegateclosed = true
+            m.profileGateCover.visible = true
+            m.guide.active = false
+        end if
+        return
+    end if
+    if type(m.profileSessionKeys) = "roAssociativeArray"
+        for each profile in profiles.profiles
+            m.profileSessionKeys.delete(preferenceScope(entry.url + "|" + entry.id + "|" + profile.id))
+            m.profileSessionKeys.delete(preferenceScope(base + "|" + entry.id + "|" + profile.id))
+        end for
+    end if
+    resetConnectionRuntime()
+    m.connectionStore = saved.connections
+    m.selectedConnectionId = saved.connections.selected
+    m.userProfileStore = saved.store
+    applySelectedConnection()
+    m.status = "Server URL updated; old credentials were removed. Sign in to verify the new server."
 end sub
 
 sub resetConnectionRuntime()

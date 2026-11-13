@@ -1,4 +1,7 @@
 sub main()
+    m.profilePreferenceDecoder = function(raw as string) as dynamic
+        return ParseJson(raw)
+    end function
     resetProfileNavigation()
     check(selectedUserProfileGate().allowed, "absent roster permits verified legacy migration")
     check(userProfileConnectionSetupAllowed(), "absent roster retains first-time setup")
@@ -15,6 +18,21 @@ sub main()
     check(m.userProfileStore.profiles[0].username = "Alice" and m.userProfileStore.profiles[0].updatedAt = 0, "migration uses verified identity and stays unstamped")
     known = loadUserProfileStore(m.registry, "slot-a")
     check(known.doesExist("knownDefault") and known["knownDefault"]["userId"] = 7 and known["knownDefault"]["username"] = "Alice", "successful default verification records its own identity in the migration Flush")
+    anchored = copyJson(known)
+    anchored.profiles[0] = setCanonicalPreference(anchored.profiles[0], "preferenceAnchor", "https://old.test|7|slot-a")
+    m.registry.write(userProfileStoreKey("slot-a"), FormatJson(anchored))
+    preferences = {schema: 1, device: {}, accounts: {}}
+    preferences.accounts[preferenceScope("https://old.test|7|slot-a")] = {favoriteIds: ["default-only"], futureField: {value: 9}}
+    preferences.accounts["foreign"] = {favoriteIds: ["foreign-only"]}
+    m.registry.write("settingsV1", FormatJson(preferences))
+    beforeMigration = FormatJson(m.registry.values)
+    m.registry.failFlush = true
+    check(not ensureConnectedUserProfile(profileResult(), "", 100) and FormatJson(m.registry.values) = beforeMigration, "failed default data migration restores its old anchor, old blob and exact settings bytes")
+    before = m.registry.flushes
+    check(ensureConnectedUserProfile(profileResult(), "", 100), "verified same default migrates its anchored data to the current address")
+    migrated = ParseJson(m.registry.read("settingsV1"))
+    newKey = preferenceScope(connectionPreferenceIdentity(m.connectionStore.entries[0], "7"))
+    check(m.registry.flushes = before + 1 and not migrated.accounts.doesExist(preferenceScope("https://old.test|7|slot-a")) and migrated.accounts[newKey].favoriteIds[0] = "default-only" and migrated.accounts.foreign.favoriteIds[0] = "foreign-only", "default anchor migration moves only its own blob in the same metadata Flush")
     check(userProfileConnectionSetupAllowed(), "Standard can configure its selected connection")
     m.profileOwnSignInContext = {nonce: "pending-own-sign-in"}
     check(not userProfileConnectionSetupAllowed(), "general setup cannot replace a pending own-profile credential form")

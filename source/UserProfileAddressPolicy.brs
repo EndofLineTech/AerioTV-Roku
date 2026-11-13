@@ -1,6 +1,32 @@
 ' Pure address-change policy. Only callers holding a successful default /me/
 ' may record its verified local profile. No requests, keys, URL writes or runtime
 ' adoption occur here; the controller must commit the hold plan before traffic.
+function userProfileDefaultAddressCheck(connection as object, previous as object, verified as dynamic) as object
+    store = normalizeUserProfileStore(previous, connection.id)
+    if store.readOnly = true or connection.provider <> "dispatcharr" then return {ok: false}
+    unchanged = {ok: true, store: store}
+    if not store.doesExist("addressChangeSnapshot") then return unchanged
+    if type(verified) <> "roAssociativeArray" then return unchanged
+    if verified.ok <> true or type(verified.verifiedBaseUrl) <> "String" and type(verified.verifiedBaseUrl) <> "roString" then return unchanged
+    if normalizeBaseUrl(verified.verifiedBaseUrl) <> connection.url then return unchanged
+    if type(verified.verifiedUser) <> "roAssociativeArray" then return unchanged
+    identity = normalizeUserProfileAddressIdentity({userId: verified.verifiedUser.id, username: verified.verifiedUser.username})
+    ownDefault = false
+    for each profile in store.profiles
+        if profile.isDefault
+            ownDefault = userProfileAddressIdentityMatches(identity, {userId: profile.userId, username: profile.username})
+        end if
+    end for
+    if not ownDefault or not userProfileAddressIdentityMatches(identity, store["addressChangeSnapshot"]) then return unchanged
+    checked = userProfileAddressCheckPlan(store, verified.verifiedUser)
+    if not checked.ok then return checked
+    for each profile in checked.store.profiles
+        if profile.addressHeld then return checked
+    end for
+    checked.store.delete("addressChangeSnapshot")
+    return checked
+end function
+
 function userProfileAddressOrigin(url as string) as string
     url = normalizeBaseUrl(url)
     if url = "" then return ""
@@ -132,6 +158,14 @@ function userProfileAddressChangePlan(connection as object, previous as object, 
     end for
     origin = userProfileAddressOrigin(nextUrl)
     if origin = "" then return denied
+    for i = 0 to store.profiles.count() - 1
+        profile = store.profiles[i]
+        if not profile.doesExist("preferenceAnchor")
+            anchor = connectionPreferenceIdentity(connection, profile.userId.toStr())
+            if anchor = "" then return denied
+            store.profiles[i] = setCanonicalPreference(profile, "preferenceAnchor", anchor)
+        end if
+    end for
     if origin = userProfileAddressOrigin(connection.url) then return {ok: true, changed: false, store: store}
     snapshot = invalid
     if store.doesExist("knownDefault") then snapshot = store["knownDefault"]
@@ -153,6 +187,7 @@ function userProfileAddressChangePlan(connection as object, previous as object, 
     store.active = defaultProfile.id
     return {ok: true, changed: true, store: store, snapshot: snapshot, childDefault: defaultProfile.role = "child"}
 end function
+
 
 ' Only a successful default-owned /me/ at the changed address is eligible.
 ' Wrong/missing identity retains every hold. This does not auto-select anyone.

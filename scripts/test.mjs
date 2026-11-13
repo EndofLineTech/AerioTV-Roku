@@ -138,7 +138,7 @@ for (const suite of suites) {
     ...(suite === 'ProfileManagementNavigation' ? ['components/ProfileManagementNavigation.brs'] : []),
     ...(suite === 'HttpTransport' ? ['source/HttpTransport.brs'] : []),
     ...(suite === 'StrictJson' ? ['source/StrictJson.brs'] : []),
-    ...(['PreferenceModel', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/StrictJson.brs'] : []),
+    ...(['PreferenceModel', 'PlayerLifecycle', 'ConnectionNavigation', 'UserProfileNavigation', 'ProfileSetupFence', 'PhoneSetupNavigation', 'PhoneSetupAutoAdd'].includes(suite) ? ['source/StrictJson.brs'] : []),
     ...(suite === 'UserProfilePin' ? ['source/UserProfilePin.brs'] : []),
     ...(['UserProfileModel', 'UserProfileStore', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval'].includes(suite) ? ['source/UserProfileModel.brs'] : []),
     ...(suite === 'UserProfileAvatar' ? ['source/UserProfileAvatar.brs'] : []),

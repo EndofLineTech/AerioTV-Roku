@@ -68,11 +68,18 @@ sub main()
     check(not userProfileSwitchAcceptPinStore(store, learned, b.id, pin), "PIN wait cannot authorize an unrelated roster change or stale switch snapshot")
     returning = copyJson(store)
     returning.active = b.id
+    returning.profiles[0] = setCanonicalPreference(returning.profiles[0], "preferenceAnchor", "https://old.test|7|slot-a")
     registry = switchRegistryFixture(connection, returning)
+    prefs = ParseJson(registry.read("settingsV1"))
+    currentKey = preferenceScope(connectionPreferenceIdentity(connection, "7"))
+    prefs.accounts[preferenceScope("https://old.test|7|slot-a")] = prefs.accounts[currentKey]
+    prefs.accounts.delete(currentKey)
+    registry.write("settingsV1", FormatJson(prefs))
     outgoingB = userProfileSessionScope(connection, b.id, 8, "outgoing-b", session)
     defaultVerified = {ok: true, apiKey: "default-key", verifiedUser: {id: 7, username: "ALICE", user_level: 1}, accountId: "7", accountUsername: "alice", channels: [], groups: [], generation: "return-default"}
     committed = commitUserProfileSwitch(registry, connection, returning, a.id, defaultVerified, invalid, invalid, "", nextAttempt, nextAttempt, outgoingB, outgoingB)
     check(committed.ok and committed.store.doesExist("knownDefault") and committed.store["knownDefault"]["userId"] = 7, "returning to a verified default records its own identity in the atomic switch commit")
+    check(committed.ok and committed.preferences.favoriteIds[0] = "outgoing-only" and not committed.preferenceStore.accounts.doesExist(preferenceScope("https://old.test|7|slot-a")), "default return reads its migrated original-address preferences instead of another user's blob or empty defaults")
     print "ALL TESTS PASSED"
 end sub
 

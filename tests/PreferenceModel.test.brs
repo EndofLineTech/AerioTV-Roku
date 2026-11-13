@@ -1,4 +1,15 @@
 sub main()
+    scopes = {schema: 1, device: {}, accounts: {}}
+    scopes.accounts[preferenceScope("old")] = {favoriteIds: ["old-own"]}
+    scopes.accounts[preferenceScope("new")] = {favoriteIds: ["new-own"]}
+    snapshot = FormatJson(scopes)
+    move = userProfilePreferenceMovePlan(scopes, "old", "new")
+    assertEqual(move.ok, false, "scope migration cannot overwrite conflicting destination data")
+    assertEqual(FormatJson(scopes), snapshot, "refused migration does not mutate either saved scope")
+    scopes.accounts.delete(preferenceScope("new"))
+    move = userProfilePreferenceMovePlan(scopes, "old", "new")
+    assertEqual(move.ok and move.moved and move.store.accounts[preferenceScope("new")].favoriteIds[0] = "old-own", true, "verified holder migration preserves its complete own data")
+    assertEqual(scopes.accounts.doesExist(preferenceScope("old")), true, "successful migration plan owns its containers before atomic commit")
     extension = {FutureCase: {values: [1,2]}, OtherCase: 3}
     copied = copyPreferenceValue(extension)
     copied.FutureCase["values"].push(4)

@@ -19,6 +19,30 @@ function copyJson(value as dynamic) as dynamic
     return ParseJson(FormatJson(value))
 end function
 
+' Move only one verified holder's blob. Never choose a winner over conflicting
+' destination data, normalize foreign accounts, or mutate the caller's root.
+function userProfilePreferenceMovePlan(store as object, oldIdentity as string, newIdentity as string) as object
+    denied = {ok: false, reason: "scope-conflict", moved: false}
+    if oldIdentity = "" or newIdentity = "" then return denied
+    if store.readOnly = true or store.schema <> 1 or type(store.accounts) <> "roAssociativeArray" then return denied
+    if oldIdentity = newIdentity then return {ok: true, moved: false, store: store}
+    oldKey = preferenceScope(oldIdentity)
+    newKey = preferenceScope(newIdentity)
+    if not store.accounts.doesExist(oldKey) then return {ok: true, moved: false, store: store}
+    own = store.accounts[oldKey]
+    if type(own) <> "roAssociativeArray" then return denied
+    if store.accounts.doesExist(newKey)
+        existing = strictJsonEncode(store.accounts[newKey])
+        incoming = strictJsonEncode(own)
+        if not existing.ok or not incoming.ok then return denied
+        if existing.text <> incoming.text then return denied
+    end if
+    result = copyPreferenceValue(store)
+    result.accounts[newKey] = result.accounts[oldKey]
+    result.accounts.delete(oldKey)
+    return {ok: true, moved: true, store: result}
+end function
+
 ' Settings-only structural copy: formatting native floating wrappers loses
 ' precision before a strict writer can preserve them. Keep literal key casing
 ' and independent mutable containers without changing the general JSON copier.

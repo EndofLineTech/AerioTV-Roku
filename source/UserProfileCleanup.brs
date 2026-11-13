@@ -80,7 +80,7 @@ function removeUserProfile(registry as object, connection as object, store as ob
         if type(preferences) <> "roAssociativeArray" then return denied
         if not userProfileInteger(preferences.schema) then return denied
         if preferences.schema <> 1 or type(preferences.accounts) <> "roAssociativeArray" then return denied
-        identity = connectionPreferenceIdentity(connection, plan.removedProfile.userId.toStr())
+        identity = userProfilePreferenceIdentity(connection, plan.removedProfile)
         if identity = "" then return denied
         preferences.accounts.delete(preferenceScope(identity))
         encoded = strictJsonEncode(preferences)

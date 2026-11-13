@@ -167,6 +167,13 @@ remains four including default**. These representative 54-character synthetic
 keys/names are not a promise that every maximum-sized profile/setting fits;
 compression, byte ceilings and atomic write/Flush refusal still govern success.
 
+With the original-address `preferenceAnchor` added to every fixture profile,
+the supported candidates saved again; four slots × four profiles plus the full
+24KB settings value left 12,400 registry bytes. The combined policy/capacity
+matrix passed 748 assertions in `out/profile-anchor-address-native.json` with
+every private section deleted and exact prior-app restoration. The cap and
+representative-fixture limitations above are unchanged.
+
 Scoped state, shared request safety, read-only roster and PIN/Child controllers
 must land before public switching. Actual active-session retirement, verified
 role refresh/default replacement and management UI remain the corresponding

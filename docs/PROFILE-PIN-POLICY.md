@@ -429,3 +429,39 @@ verification or cleared slot fields. Any held profile keeps the record frozen;
 a persisted address-change snapshot also freezes it until the still-pending
 URL-bound verification/settlement controller can explicitly finish that change.
 Thus even a one-profile change cannot rewrite its own comparison baseline.
+
+## Address handler and data migration integration
+
+Profiles retain a typed, local-only `preferenceAnchor` when an address edit is
+staged. It names only that slot and holder's original preference identity; a
+second edit preserves the original anchor instead of stranding the blob at an
+unverified intermediate URL. Malformed, cross-slot and cross-user anchors fence
+the roster. The anchor is never shared in App Data.
+
+Default reconnect and authenticated switch move only the verified holder's blob
+to its current identity in the metadata/settings transaction. Own credential
+recovery also handles a simultaneous URL and user-ID change. Destination
+conflicts refuse before writes; failed Flush restores the old anchor/blob.
+Foreign blobs and unknown extensions are not normalized during migration.
+Removal and pulled tombstones clean the anchored scope; whole-slot Forget still
+cleans every URL belonging to that slot.
+
+`DispatcharrTask` attaches its captured `verifiedBaseUrl` to successful `/me/`
+results. Only a matching current URL and the default's own typed ID/name may
+lift snapshot-matching tags. Unknown or foreign tags remain held. A completely
+settled same-server check clears the snapshot without recording a new comparison
+baseline from that same request.
+
+The real manual handler now uses one URL/hold/key transaction for profiled
+Dispatcharr connections, retires old URL-bound memory keys and runtime after
+success, and preserves the live old session after a failed Flush. It sends no
+old key to the new URL. Default-Child routing and a protected default without
+its own matching PIN grant remain fenced before the edit; those UI paths and
+matched setup-payload updates still need integration.
+
+`scripts/test-profile-address-native.py` qualifies the actual handler against
+two private HTTP origins, including forced Flush rollback, one successful
+Flush, session/key retirement, default data migration, B's retained blob,
+URL-bound hold lifting, and no autoplay. The fixture fixes its timer to initialize
+only once across reconnects; it never touches the owner registry/cache, cleans
+its section and checksum-restores the exact owner app.
