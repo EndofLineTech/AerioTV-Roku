@@ -46,3 +46,41 @@ passes with exact prior-app restoration (`out/request-gate-native.json`).
 None of this is a claim
 of measured production-server limits, sender interoperability, completed roster
 import, sync writes or public profile switching.
+
+## Roster decoder (internal)
+
+`DispatcharrSyncRoster.brs` decodes a profiles-category **data object** without
+modifying local state or the original wire value. It validates every row before
+applying the 25-row wire cap (separate from the local four-profile cap). Required
+user IDs must be literal signed 32-bit integers and usernames strings; any bad
+required row rejects the category. Retained duplicate IDs select the newest row,
+with first-insertion order and first-row tie behavior.
+
+Sparse rows retain explicit missing-avatar/order/role semantics. Noninteger
+stamps become zero; malformed numeric/direction PIN material yields a `keep`
+marker rather than clearing an existing PIN. Unknown PIN types decode as none.
+Valid v2 hashes/salts normalize to lowercase. A later merge must still enforce
+newer-row/role-authority and any legacy-v1 preservation rules before acting on
+these markers. Tombstones drop malformed entries individually, deduplicate by
+lowercase username/newest stamp and retain only valid optional integer IDs.
+Unknown row tails and the untouched original data remain available for future
+strict re-emission; they never pass through `copyJson`.
+
+The pure application gate denies both application and suggestions for Child or
+unknown roles, Profiles-Off, malformed local authority and **any** address-held
+slot profile, including keyless profiles. It does not clear pending changes or
+holds. This is not yet a production handler enforcement claim: no roster pull
+is applied or offered in the public UI.
+
+The shared host/native decoder suite covers malformed trailing rows, sparse
+metadata, malformed PIN preservation, tombstones, deduplication and gates.
+Native fixture 16.4 also decodes the actual peer-shaped roster and verifies its
+numeric and direction PINs using real SHA-256, and rejects floating user IDs
+while treating floating stamps/order as absent. Reports are private under
+`out/dispatcharr-sync-roster-native.json`; prior-app restoration is verified.
+
+Still required before import activation: full envelope/category timestamp
+validation, transactional newer-row/name/avatar/stripped-row merging, tombstone
+cleanup/active-user retirement, pause resumption/undo marks, opt-in suggestions,
+PIN/Child controller enforcement and same-slot acceptance. This decoder does
+not close `mrr.15` or `e3e.3`.

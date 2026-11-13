@@ -83,6 +83,7 @@ def build(output, base_url, registry=False, model_store=False):
         package.write(ROOT / 'tests/native/UserProfileProbe.brs', 'source/Main.brs')
         package.write(ROOT / 'tests/native/UserProfileRegistryProbe.brs', 'source/UserProfileRegistryProbe.brs')
         package.write(ROOT / 'source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncKey.brs')
+        package.write(ROOT / 'source/DispatcharrSyncRoster.brs', 'source/DispatcharrSyncRoster.brs')
         package.write(ROOT / 'tests/native/PhoneSetupProbe.xml', 'components/PhoneSetupProbe.xml')
         for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'RequestGateClient', 'RequestGateModel', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileCleanup', 'UserProfileScope', 'UserProfileScopeStore', 'PreferenceModel', 'ConnectionStoreModel', 'RemoteMapModel', 'GuideSettingsModel', 'ReminderModel']:
             package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
@@ -90,6 +91,9 @@ def build(output, base_url, registry=False, model_store=False):
             sync_checks = (ROOT / 'tests/DispatcharrSyncKey.test.brs').read_text().split('sub check(', 1)[0]
             sync_checks = sync_checks.replace('sub main()', 'sub runDispatcharrSyncKeyChecks()').replace('check(', 'profileAssert(')
             package.writestr('source/DispatcharrSyncKeyProbeChecks.brs', sync_checks)
+            roster_checks = (ROOT / 'tests/DispatcharrSyncRoster.test.brs').read_text().split('sub check(', 1)[0]
+            roster_checks = roster_checks.replace('sub main()', 'sub runDispatcharrSyncRosterChecks()').replace('check(', 'profileAssert(')
+            package.writestr('source/DispatcharrSyncRosterProbeChecks.brs', roster_checks)
             package.write(ROOT / 'components/UserProfileNavigation.brs', 'source/UserProfileNavigation.brs')
             package.write(ROOT / 'components/UserProfilePreferenceNavigation.brs', 'source/UserProfilePreferenceNavigation.brs')
             for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval', 'UserProfileScope', 'UserProfileScopeStore', 'UserProfilePreferenceNavigation']:
@@ -98,6 +102,7 @@ def build(output, base_url, registry=False, model_store=False):
                 package.writestr(f'source/{name}ProbeChecks.brs', source)
         else:
             package.writestr('source/DispatcharrSyncKeyProbeChecks.brs', 'sub runDispatcharrSyncKeyChecks()\nend sub\n')
+            package.writestr('source/DispatcharrSyncRosterProbeChecks.brs', 'sub runDispatcharrSyncRosterChecks()\nend sub\n')
             package.writestr('source/UserProfileModelProbeChecks.brs', 'sub runUserProfileModelChecks()\nend sub\nsub testProfileNativeNames()\nend sub\n')
             package.writestr('source/UserProfileStoreProbeChecks.brs', 'sub runUserProfileStoreChecks()\nend sub\nsub testProfileNativeStoreNames()\nend sub\n')
             package.writestr('source/UserProfileAvatarProbeChecks.brs', 'sub runUserProfileAvatarChecks()\nend sub\nsub testProfileNativeAvatar()\nend sub\n')

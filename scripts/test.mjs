@@ -34,6 +34,7 @@ suites.unshift('UserProfilePreferenceNavigation');
 suites.unshift('UserViewGuards');
 suites.unshift('DispatcharrSyncKey');
 suites.unshift('DispatcharrSyncReadTask');
+suites.unshift('DispatcharrSyncRoster');
 suites.unshift('UserProfileStore');
 suites.unshift('StartupBeaconModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
@@ -86,6 +87,7 @@ for (const suite of suites) {
     ...(suite === 'UserViewGuards' ? ['components/MediaNavigation.brs'] : []),
     ...(suite === 'DispatcharrSyncKey' ? ['source/DispatcharrSyncKey.brs'] : []),
     ...(suite === 'DispatcharrSyncReadTask' ? ['source/DispatcharrSyncKey.brs', 'components/DispatcharrSyncReadTask.brs'] : []),
+    ...(suite === 'DispatcharrSyncRoster' ? ['source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs'] : []),
     ...(suite === 'HttpTransport' ? ['source/HttpTransport.brs'] : []),
     ...(suite === 'StrictJson' ? ['source/StrictJson.brs'] : []),
     ...(suite === 'UserProfilePin' ? ['source/UserProfilePin.brs'] : []),
