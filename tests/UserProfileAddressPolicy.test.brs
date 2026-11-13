@@ -79,6 +79,17 @@ sub main()
     childDefault.profiles[0] = setCanonicalPreference(childDefault.profiles[0], "role", "child")
     childLanding = userProfileAddressChangePlan(entry, childDefault, "https://new.test")
     check(childLanding.ok and childLanding.childDefault and childLanding.store.active = a.id, "an adult's address edit explicitly identifies a Child-default landing instead of authorizing general setup")
+    baseNamed = setCanonicalPreference(entry, "accountUsername", "BaseLogin")
+    expected = userProfileKnownDefaultExpectation(baseNamed, recorded.store)
+    check(expected.ok and expected.userId = 7 and expected.username = "Alice" and expected.profileId = a.id, "default own sign-in prefers recorded ID and username over slot metadata or active non-default identity")
+    check(userProfileDefaultOwnIdentityMatches(baseNamed, recorded.store, {id: 7, username: "ALICE"}), "recorded default matching is case-insensitive on username and exact on user ID")
+    check(not userProfileDefaultOwnIdentityMatches(baseNamed, recorded.store, {id: 88, username: "Alice"}), "a recreated default username cannot bypass an authoritative recorded ID")
+    expected = userProfileKnownDefaultExpectation(baseNamed, store)
+    check(expected.ok and expected.userId = invalid and expected.username = "BaseLogin", "without a recorded identity the slot's default-written username wins over a stale profile name")
+    check(userProfileDefaultOwnIdentityMatches(baseNamed, store, {id: 88, username: "BASELOGIN"}), "a username-only legacy expectation does not invent an authoritative user ID")
+    expected = userProfileKnownDefaultExpectation(entry, store)
+    check(expected.ok and expected.userId = invalid and expected.username = "Alice", "only absent recorded and slot names fall back to the default record, never active Bob")
+    check(not userProfileDefaultOwnIdentityMatches(entry, store, {id: "7", username: "Alice"}), "malformed noninteger live default IDs cannot match a fallback expectation")
     print "ALL TESTS PASSED"
 end sub
 

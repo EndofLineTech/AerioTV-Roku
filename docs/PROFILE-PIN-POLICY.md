@@ -372,3 +372,19 @@ roundtrips of a long-integer default identity, keyless hold and explicit unknown
 tag. The actual protected own-sign-in form also preserves the recorded identity
 and tag while recovering a recreated user ID, and still passes delayed Back
 cancellation with exact owner-app restoration.
+
+## Inactive default recovery storage
+
+The storage planner now accepts an inactive full-access default only when its
+existing ID/name and known-default expectation both match. Recorded ID/name
+takes precedence over the slot's default-written username, then the default
+record's username; username-only fallbacks do not invent an authoritative ID.
+Active-default recovery, default identity replacement, held recovery and Child
+default routing remain refused. The native form still refuses default targets.
+
+Successful recovery updates the slot key, never a non-default key. Remember-off
+deletes the slot key; legacy recovery clears the old `apiKey` fallback in the
+same transaction. Same-ID recovery leaves settings bytes and active selection
+unchanged, retains trust metadata and preserves the outgoing remembered key.
+Failed Flush restores the prior values. This does not activate a default or
+complete its Task/form/runtime lifecycle.

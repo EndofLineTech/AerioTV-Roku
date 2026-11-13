@@ -16,8 +16,11 @@ function userProfileOwnSignInPlan(connection as object, previous as object, targ
         end if
     end for
     if target = invalid then return denied
-    ' Do not improvise the frozen known-default identity or address tag rules.
-    if target.isDefault then return {ok: false, reason: "default-recovery-not-ready"}
+    ' Default recovery is storage-only and limited to the existing inactive
+    ' full-access holder. Identity replacement/runtime adoption remain fenced.
+    if target.isDefault
+        if store.active = targetId or not userProfileFullAccess(target.role) then return {ok: false, reason: "default-recovery-not-ready"}
+    end if
     if target.addressHeld then return {ok: false, reason: "address-recovery-not-ready"}
     if type(verified) <> "roAssociativeArray" then return denied
     if verified.ok <> true then return denied
@@ -25,6 +28,10 @@ function userProfileOwnSignInPlan(connection as object, previous as object, targ
     if verified.apiKey = "" or len(verified.apiKey) > 512 then return {ok: false, reason: "api-access-required"}
     identity = userProfileFromVerified(connection.id, targetId, verified.verifiedUser, now)
     if identity = invalid then return denied
+    if target.isDefault
+        if identity.userId <> target.userId or lcase(identity.username) <> lcase(target.username) then return {ok: false, reason: "default-recovery-not-ready"}
+        if not userProfileDefaultOwnIdentityMatches(connection, store, verified.verifiedUser) then return denied
+    end if
     if lcase(identity.username) <> lcase(target.username) then return denied
     for each profile in store.profiles
         if profile.id <> targetId
@@ -65,9 +72,15 @@ function commitUserProfileOwnSignIn(registry as object, connection as object, pr
         return denied
     end if
     keys = {}
-    keys[targetId] = verified.apiKey
+    if not planned.target.isDefault then keys[targetId] = verified.apiKey
     prepared = userProfileStoreChanges(registry, previous, planned.store, keys, connection.remember)
     if not prepared.ok then return denied
+    if planned.target.isDefault
+        key = ""
+        if connection.remember then key = verified.apiKey
+        prepared.changes[connectionRegistryKey(connection.id)] = key
+        if connection.id = "legacy" then prepared.changes["apiKey"] = ""
+    end if
     moved = false
     settings = invalid
     if planned.oldIdentity <> planned.newIdentity and registry.exists("settingsV1")

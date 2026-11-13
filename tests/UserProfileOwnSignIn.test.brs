@@ -69,6 +69,42 @@ sub main()
     registry.delete("connKey_slot-a")
     saved = commitUserProfileOwnSignIn(registry, sessionEntry, store, b.id, result, 100, nonce, nonce)
     check(saved.ok and not registry.exists("connKey_slot-a") and not registry.exists(userProfileKeyName("slot-a", b.id)), "Remember-off recovery commits identity/data without persisting the recovered key")
+    defaultStore = copyJson(store)
+    defaultStore.active = b.id
+    defaultStore = setCanonicalPreference(defaultStore, "knownDefault", {userId: 7, username: "alice"})
+    defaultResult = {ok: true, apiKey: "synthetic-recovered-default-key", verifiedUser: {id: 7, username: "ALICE", user_level: 1}}
+    defaultPlan = userProfileOwnSignInPlan(entry, defaultStore, a.id, defaultResult, 100)
+    check(defaultPlan.ok and defaultPlan.target.isDefault and defaultPlan.store.active = b.id, "an inactive full-access default can recover only its existing known holder without activating it")
+    registry = ownSignInRegistry(entry, defaultStore)
+    beforeSettings = registry.read("settingsV1")
+    saved = commitUserProfileOwnSignIn(registry, entry, defaultStore, a.id, defaultResult, 100, nonce, nonce)
+    check(saved.ok and registry.flushes = 1 and registry.read("connKey_slot-a") = "synthetic-recovered-default-key" and registry.read(userProfileKeyName("slot-a", b.id)) = "old-bob-key", "default recovery writes only its slot key and metadata in one transaction, never the outgoing own key")
+    check(registry.read("settingsV1") = beforeSettings and loadUserProfileStore(registry, "slot-a").active = b.id, "same-identity default recovery cannot rewrite user blobs or change the active profile")
+    check(not registry.exists(userProfileKeyName("slot-a", a.id)) and loadUserProfileStore(registry, "slot-a")["knownDefault"]["userId"] = 7, "default recovery retains frozen trust metadata and cannot create a non-default key for the default")
+    registry = ownSignInRegistry(entry, defaultStore)
+    beforeDefault = FormatJson(registry.values)
+    registry.failOnce = true
+    saved = commitUserProfileOwnSignIn(registry, entry, defaultStore, a.id, defaultResult, 100, nonce, nonce)
+    check(not saved.ok and FormatJson(registry.values) = beforeDefault, "failed default recovery restores its old key and exact trust metadata")
+    check(not userProfileOwnSignInPlan(entry, store, a.id, defaultResult, 100).ok, "active-default recovery stays fenced until its lifecycle adoption is integrated")
+    registry = ownSignInRegistry(sessionEntry, defaultStore)
+    saved = commitUserProfileOwnSignIn(registry, sessionEntry, defaultStore, a.id, defaultResult, 100, nonce, nonce)
+    check(saved.ok and not registry.exists("connKey_slot-a") and not registry.exists(userProfileKeyName("slot-a", a.id)), "Remember-off default recovery never stores its key in either slot or non-default namespaces")
+    trustedDefault = setCanonicalPreference(defaultStore, "knownDefault", {userId: 70, username: "OtherAlice"})
+    check(not userProfileOwnSignInPlan(entry, trustedDefault, a.id, defaultResult, 100).ok, "matching the old default row cannot override a different authoritative known-default record")
+    childDefault = copyJson(defaultStore)
+    childDefault.profiles[0] = setCanonicalPreference(childDefault.profiles[0], "role", "child")
+    check(not userProfileOwnSignInPlan(entry, childDefault, a.id, defaultResult, 100).ok, "inactive Child default recovery remains fenced until Child routing is ready")
+    legacyEntry = setCanonicalPreference(entry, "id", "legacy")
+    legacyStore = copyJson(defaultStore)
+    legacyStore.playlistId = "legacy"
+    for i = 0 to legacyStore.profiles.count() - 1
+        legacyStore.profiles[i] = setCanonicalPreference(legacyStore.profiles[i], "playlistId", "legacy")
+    end for
+    registry = ownSignInRegistry(legacyEntry, legacyStore)
+    registry.values["apiKey"] = "legacy-fallback-key"
+    saved = commitUserProfileOwnSignIn(registry, legacyEntry, legacyStore, a.id, defaultResult, 100, nonce, nonce)
+    check(saved.ok and registry.read("connKey_legacy") = defaultResult.apiKey and not registry.exists("apiKey"), "legacy default recovery clears the old fallback in the same atomic transaction")
     print "ALL TESTS PASSED"
 end sub
 

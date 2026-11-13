@@ -53,6 +53,46 @@ function userProfileAddressIdentityMatches(first as dynamic, second as dynamic) 
     return first["userId"] = second["userId"] and lcase(first["username"]) = lcase(second["username"])
 end function
 
+' The slot's own form has a stricter known-user order than a non-default form.
+' A missing recorded identity means a username-only legacy expectation: do not
+' invent an authoritative ID from cleared connection metadata or an active user.
+function userProfileKnownDefaultExpectation(connection as object, previous as object) as object
+    denied = {ok: false}
+    if connection.provider <> "dispatcharr" or connection.id <> previous.playlistId then return denied
+    store = normalizeUserProfileStore(previous, connection.id)
+    if store.readOnly = true then return denied
+    defaultProfile = invalid
+    for each profile in store.profiles
+        if profile.isDefault then defaultProfile = profile
+    end for
+    if defaultProfile = invalid then return denied
+    if store.doesExist("knownDefault")
+        identity = store["knownDefault"]
+        return {ok: true, userId: identity["userId"], username: identity["username"], profileId: defaultProfile.id, source: "recorded"}
+    end if
+    username = connection.accountUsername
+    if username = invalid then username = ""
+    if type(username) <> "String" and type(username) <> "roString" then return denied
+    source = "slot-username"
+    if username.trim() = ""
+        username = defaultProfile.username
+        source = "default-username"
+    end if
+    if userProfileUtf8ByteCount(username) > 256 then return denied
+    if CreateObject("roRegex", "[\x00-\x1F\x7F]", "").isMatch(username) then return denied
+    return {ok: true, userId: invalid, username: username, profileId: defaultProfile.id, source: source}
+end function
+
+function userProfileDefaultOwnIdentityMatches(connection as object, previous as object, verified as dynamic) as boolean
+    expected = userProfileKnownDefaultExpectation(connection, previous)
+    if not expected.ok or type(verified) <> "roAssociativeArray" then return false
+    actual = normalizeUserProfileAddressIdentity({userId: verified.id, username: verified.username})
+    if actual = invalid then return false
+    if lcase(actual["username"]) <> lcase(expected.username) then return false
+    if expected.userId <> invalid then return actual["userId"] = expected.userId
+    return true
+end function
+
 function userProfileRecordDefaultIdentity(previous as object, changeInProgress as boolean) as object
     denied = {ok: false}
     store = normalizeUserProfileStore(previous, previous.playlistId)
