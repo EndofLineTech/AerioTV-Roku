@@ -9,6 +9,10 @@ sub main()
     end if
     check(staged.profiles.count() = 1 and staged.active = profile.id, "first verified default becomes active")
     check(staged.profiles[0].updatedAt = 0, "migration does not stamp a roster edit")
+    avatarCandidate = copyJson(staged)
+    avatarCandidate.profiles[0].avatar = {icon: "future", color: "future"}
+    avatarStore = normalizeUserProfileStore(avatarCandidate, "slot-a")
+    check(avatarStore.readOnly <> true and avatarStore.profiles[0].avatar.count() = 0, "unknown avatar values normalize without erasing protection")
     secondDefault = storeFixtureProfile(2)
     secondDefault.userId = profile.userId
     check(formatJson(userProfileEnsureDefault(staged, secondDefault)) = formatJson(staged), "repeated migration preserves original stable ID and default metadata")
@@ -82,13 +86,13 @@ sub main()
     keys[other.id] = "other-key"
     registry.failure = "flush"
     check(not commitUserProfileStore(registry, staged, candidate, keys, true).ok, "key and roster failed flush rolls back")
-    check(registry.read(userProfileKeyName(other.id)) = "" and loadUserProfileStore(registry, "slot-a").profiles.count() = 1, "no mixed credential/metadata after rollback")
+    check(registry.read(userProfileKeyName("slot-a", other.id)) = "" and loadUserProfileStore(registry, "slot-a").profiles.count() = 1, "no mixed credential/metadata after rollback")
     registry.flushes = 0
     check(commitUserProfileStore(registry, staged, candidate, keys, true).ok and registry.flushes = 1, "profile key and roster share one successful flush")
-    check(registry.durable[userProfileKeyName(other.id)] = "other-key", "nondefault key persists separately")
+    check(registry.durable[userProfileKeyName("slot-a", other.id)] = "other-key", "nondefault key persists separately")
     registry.flushes = 0
     check(commitUserProfileStore(registry, candidate, candidate, {}, false).ok, "Remember off persists metadata but deletes nondefault keys")
-    check(registry.flushes = 1 and registry.read(userProfileKeyName(other.id)) = "" and registry.read("connKey_slot-a") = "default-key", "transaction owns nondefault keys only; slot lifecycle owns default Remember")
+    check(registry.flushes = 1 and registry.read(userProfileKeyName("slot-a", other.id)) = "" and registry.read("connKey_slot-a") = "default-key", "transaction owns nondefault keys only; slot lifecycle owns default Remember")
     registry.flushes = 0
     check(not commitUserProfileStore(registry, staged, candidate, {}, true).ok and registry.flushes = 0, "stale metadata cannot overwrite later changes")
     keys = {}

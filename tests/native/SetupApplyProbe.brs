@@ -65,6 +65,7 @@ sub startFixtureCase()
     m.registry = fixtureRegistry()
     m.registry.write("connectionsV1", m.before)
     if store.entries.count() > 0 then m.registry.write("connKey_saved", "old-stored-key")
+    if instr(1, m.case, "profile-recovery") > 0 then m.registry.write("userProfilesV1_saved", "[]")
     m.registry.writes = 0
     cases = parseJson(ReadAsciiFile("pkg:/apply-cases.json"))
     if m.httpMode
@@ -80,6 +81,16 @@ sub startFixtureCase()
     valid = validatePhoneSetupPayload(cases[m.case])
     if not valid.ok then stop
     openPhoneSetup()
+    if m.case = "duplicate-profile-recovery"
+        if m.page <> "setup" or m.phoneVerifyTask <> invalid or m.registry.writes <> 0 then stop
+        print "[setup-apply] "; formatJson({kind: "profile_recovery_refused", case: m.case, unchanged: true})
+        print "[setup-apply] "; formatJson({kind: "verifying", case: m.case})
+        return
+    end if
+    if m.case = "duplicate-profile-recovery-direct"
+        m.page = "phoneSetup"
+        m.phoneSetup.active = true
+    end if
     acceptPhoneSetupPayload(valid.payload)
     print "[setup-apply] "; formatJson({kind: "verifying", case: m.case})
 end sub
@@ -107,6 +118,9 @@ end sub
 
 function fixtureRegistry() as object
     return {values: {}, writes: 0
+        exists: function(key as string) as boolean
+            return m.values.doesExist(key)
+        end function
         read: function(key as string) as string
             if not m.values.doesExist(key) then return ""
             return m.values[key]

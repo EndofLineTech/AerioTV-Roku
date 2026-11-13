@@ -21,6 +21,11 @@ suites.unshift('HttpTransport');
 suites.unshift('StrictJson');
 suites.unshift('UserProfilePin');
 suites.unshift('UserProfileModel');
+suites.unshift('UserProfileAvatar');
+suites.unshift('UserProfileLifecycle');
+suites.unshift('UserProfileForget');
+suites.unshift('UserProfileNavigation');
+suites.unshift('UserProfileRemoval');
 suites.unshift('UserProfileStore');
 suites.unshift('StartupBeaconModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
@@ -68,8 +73,11 @@ for (const suite of suites) {
     ...(suite === 'HttpTransport' ? ['source/HttpTransport.brs'] : []),
     ...(suite === 'StrictJson' ? ['source/StrictJson.brs'] : []),
     ...(suite === 'UserProfilePin' ? ['source/UserProfilePin.brs'] : []),
-    ...(['UserProfileModel', 'UserProfileStore'].includes(suite) ? ['source/UserProfileModel.brs'] : []),
-    ...(suite === 'UserProfileStore' ? ['source/UserProfileStore.brs', 'source/UserProfilePin.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(['UserProfileModel', 'UserProfileStore', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval'].includes(suite) ? ['source/UserProfileModel.brs'] : []),
+    ...(suite === 'UserProfileAvatar' ? ['source/UserProfileAvatar.brs'] : []),
+    ...(['UserProfileStore', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval'].includes(suite) ? ['source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(['UserProfileForget', 'UserProfileRemoval'].includes(suite) ? ['source/UserProfileCleanup.brs'] : []),
+    ...(suite === 'UserProfileNavigation' ? ['components/UserProfileNavigation.brs'] : []),
     ...(suite === 'DvrRecordingModel' ? ['source/DvrRecordingModel.brs'] : []),
     ...(suite === 'DvrRecordingModel' ? ['source/DvrSeriesModel.brs'] : []),
     ...(['DvrPresentationModel', 'DvrNavigation', 'DvrHandoff', 'DvrView'].includes(suite) ? ['source/DvrPresentationModel.brs'] : []),

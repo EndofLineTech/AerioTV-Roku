@@ -129,7 +129,8 @@ sub loadChannels()
         m.top.password = ""
         return
     end if
-    m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id), accountUsername: textValue(user.username), profileId: m.top.profileId, authModeUsed: m.requestMode, hlsAvailable: hlsAvailable, scope: scope, generation: generation}
+    verifiedUser = {id: user.id, username: user.username, user_level: user.user_level, is_staff: user.is_staff, is_superuser: user.is_superuser}
+    m.top.result = {ok: true, channels: channels, groups: serverGroupOrder(groups), warning: warning, apiKey: m.key, accountId: textValue(user.id), accountUsername: textValue(user.username), verifiedUser: verifiedUser, profileId: m.top.profileId, authModeUsed: m.requestMode, hlsAvailable: hlsAvailable, scope: scope, generation: generation}
     m.key = ""
     m.top.apiKey = ""
 end sub

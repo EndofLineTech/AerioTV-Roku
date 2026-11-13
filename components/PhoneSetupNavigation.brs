@@ -10,6 +10,11 @@ sub openPhoneSetup()
         showNotice("Saved connections need recovery; setup will not overwrite them.")
         return
     end if
+    profileGate = selectedUserProfileGate()
+    if not profileGate.allowed
+        showNotice(userProfileGateMessage(profileGate))
+        return
+    end if
     m.phoneOriginPage = m.page
     cancelProfileTask()
     cancelCapabilityRefresh()
@@ -61,6 +66,12 @@ end sub
 sub startPhoneVerification()
     stopPhoneVerification()
     if m.phonePending = invalid or m.page <> "phoneSetup" then return
+    profileGate = selectedUserProfileGate()
+    if not profileGate.allowed
+        m.phonePending = invalid
+        failPhoneSetup(userProfileGateMessage(profileGate))
+        return
+    end if
     entry = m.phonePending.entry
     credential = m.phonePending.credential
     if entry.provider = "m3u"

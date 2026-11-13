@@ -23,19 +23,22 @@ def registry_fixtures():
                 row = {'id': ident, 'playlistId': slot_id, 'userId': slot * 100 + index + 1,
                        'username': f'fixture-{slot}-{index}', 'displayName': f'Synthetic profile {index}',
                        'isDefault': index == 0, 'role': 'user', 'userLevel': 1,
-                       'order': index, 'updatedAt': 1794416400, 'avatar': {'icon': 'star', 'color': 'teal'},
+                       'order': index, 'createdAt': 1794416000, 'updatedAt': 1794416400,
+                       'isStaff': False, 'isSuperuser': False, 'addOrigin': 'plain', 'addressHeld': False,
+                       'avatar': {'icon': 'star', 'color': 'teal'},
                        'pinType': 'numbers', 'pinHash': 'a' * 64, 'pinSalt': 'b' * 32}
                 rows.append(row)
                 # Deterministic public test data, with key-like compression
                 # characteristics. These bytes are never used for networking.
                 key = base64.b64encode(hashlib.sha512(ident.encode()).digest()).decode()[:54]
-                key_name = f'connKey_{slot_id}' if index == 0 else f'profKey_{ident}'
+                key_name = f'connKey_{slot_id}' if index == 0 else f'profKey_{slot_id}_{ident}'
                 values[key_name] = key
                 accounts[f'account_fixture_{slot}_{index}'] = {
                     'favoriteIds': [str(n) for n in range(20)], 'recent': [],
                     'startupBehavior': 'guide', 'guide': {'showLogos': True},
                 }
-            values[f'userProfilesV1_{slot_id}'] = json.dumps({'schema': 1, 'profiles': rows, 'active': rows[0]['id']})
+            values[f'userProfilesV1_{slot_id}'] = json.dumps({'schema': 1, 'playlistId': slot_id,
+                'profiles': rows, 'active': rows[0]['id'], 'askAtLaunch': False, 'removed': [], 'pendingRoster': False})
             slots.append({'id': slot_id, 'name': 'Synthetic slot', 'provider': 'dispatcharr',
                           'url': 'https://example.test', 'remember': True})
         values['connectionsV1'] = json.dumps({'schema': 1, 'selected': slots[0]['id'], 'entries': slots})
@@ -80,16 +83,22 @@ def build(output, base_url, registry=False, model_store=False):
         package.write(ROOT / 'tests/native/UserProfileProbe.brs', 'source/Main.brs')
         package.write(ROOT / 'tests/native/UserProfileRegistryProbe.brs', 'source/UserProfileRegistryProbe.brs')
         package.write(ROOT / 'tests/native/PhoneSetupProbe.xml', 'components/PhoneSetupProbe.xml')
-        for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'PreferenceModel', 'ConnectionStoreModel']:
+        for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileCleanup', 'PreferenceModel', 'ConnectionStoreModel', 'RemoteMapModel', 'GuideSettingsModel', 'ReminderModel']:
             package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
         if model_store:
-            for name in ['UserProfileModel', 'UserProfileStore']:
+            package.write(ROOT / 'components/UserProfileNavigation.brs', 'source/UserProfileNavigation.brs')
+            for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval']:
                 source = (ROOT / f'tests/{name}.test.brs').read_text().split('sub check(', 1)[0]
                 source = source.replace('sub main()', f'sub run{name}Checks()').replace('check(', 'profileAssert(')
                 package.writestr(f'source/{name}ProbeChecks.brs', source)
         else:
             package.writestr('source/UserProfileModelProbeChecks.brs', 'sub runUserProfileModelChecks()\nend sub\nsub testProfileNativeNames()\nend sub\n')
             package.writestr('source/UserProfileStoreProbeChecks.brs', 'sub runUserProfileStoreChecks()\nend sub\nsub testProfileNativeStoreNames()\nend sub\n')
+            package.writestr('source/UserProfileAvatarProbeChecks.brs', 'sub runUserProfileAvatarChecks()\nend sub\nsub testProfileNativeAvatar()\nend sub\n')
+            package.writestr('source/UserProfileLifecycleProbeChecks.brs', 'sub runUserProfileLifecycleChecks()\nend sub\n')
+            package.writestr('source/UserProfileForgetProbeChecks.brs', 'sub runUserProfileForgetChecks()\nend sub\n')
+            package.writestr('source/UserProfileNavigationProbeChecks.brs', 'sub runUserProfileNavigationChecks()\nend sub\n')
+            package.writestr('source/UserProfileRemovalProbeChecks.brs', 'sub runUserProfileRemovalChecks()\nend sub\n')
         package.writestr('profile-probe-config.json', json.dumps({'baseUrl': base_url, 'registry': registry, 'modelStore': model_store}))
         package.writestr('profile-wire-fixture.json', json.dumps(fixture, ensure_ascii=False))
         package.writestr('profile-registry-fixtures.json', json.dumps(registry_fixtures()))

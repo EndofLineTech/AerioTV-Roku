@@ -9,6 +9,40 @@ import subprocess
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_recovery_application_probe_replaces_the_only_application_registry_hook(self):
+        path = Path(__file__).with_name('test-profile-recovery-native.py')
+        spec = importlib.util.spec_from_file_location('recovery_probe', path)
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        with tempfile.TemporaryDirectory() as tmp:
+            normal = Path(tmp) / 'normal.zip'
+            with zipfile.ZipFile(normal, 'w') as package:
+                package.writestr('manifest', 'title=AerioTV\n')
+                package.writestr('components/AerioScene.brs', 'm.registry = CreateObject("roRegistrySection", "AerioTV")\nm.status = userProfileGateMessage(profileGate)\n')
+            output = Path(tmp) / 'probe.zip'
+            probe.build(output, normal, 'SyntheticSection', 'http://127.0.0.1:1234')
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('"AerioTV"', source)
+                self.assertIn('"SyntheticSection"', source)
+                self.assertIn('synthetic-never-send-key', source)
+                self.assertIn('profile-recovery-probe.json', package.namelist())
+
+    def test_connection_and_channel_profile_tasks_are_after_saved_profile_gate(self):
+        root = Path(__file__).resolve().parent.parent
+        scene = (root / 'components/AerioScene.brs').read_text()
+        connect = scene.split('sub connectServer(', 1)[1].split('end sub', 1)[0]
+        self.assertLess(connect.index('selectedUserProfileGate()'), connect.index('cancelProfileTask()'))
+        self.assertLess(connect.index('selectedUserProfileGate()'), connect.index('"DispatcharrTask"'))
+        complete = scene.split('sub completeConnection(', 1)[1].split('end sub', 1)[0]
+        self.assertLess(complete.index('ensureConnectedUserProfile(result)'), complete.index('m.apiKey = result.apiKey'))
+        navigation = (root / 'components/ConnectionNavigation.brs').read_text()
+        permitted = navigation.split('sub openPermittedProfiles()', 1)[1].split('end sub', 1)[0]
+        self.assertLess(permitted.index('selectedUserProfileGate()'), permitted.index('"ProfileTask"'))
+        phone = (root / 'components/PhoneSetupNavigation.brs').read_text()
+        verification = phone.split('sub startPhoneVerification()', 1)[1].split('end sub', 1)[0]
+        self.assertLess(verification.index('selectedUserProfileGate()'), verification.index('CreateObject('))
+
     def test_optional_model_store_checks_use_shared_tests_and_private_section(self):
         path = Path(__file__).with_name('build-profile-probe.py')
         spec = importlib.util.spec_from_file_location('profile_builder', path)
@@ -17,7 +51,7 @@ class ProfileProbeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             output = builder.build(Path(tmp) / 'probe.zip', 'http://127.0.0.1:1234', model_store=True)
             with zipfile.ZipFile(output) as package:
-                for name in ['UserProfileModel', 'UserProfileStore']:
+                for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval']:
                     source = package.read(f'source/{name}ProbeChecks.brs').decode()
                     self.assertIn(f'sub run{name}Checks()', source)
                     self.assertIn('profileAssert(', source)
@@ -32,7 +66,7 @@ class ProfileProbeTest(unittest.TestCase):
             import {assertPackageEntries} from './scripts/verify-package.mjs';
             const base = ['manifest', 'source/Main.brs', 'components/AerioScene.xml',
               'images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt'];
-            for (const name of ['profile-probe-config.json', 'profile-wire-fixture.json', 'profile-registry-fixtures.json', 'components/UserProfileProbe.brs', 'source/UserProfileRegistryProbe.brs', 'components/UserProfileDialogProbe.brs', 'source/UserProfileModelProbeChecks.brs', 'source/UserProfileStoreProbeChecks.brs']) {
+            for (const name of ['profile-probe-config.json', 'profile-wire-fixture.json', 'profile-registry-fixtures.json', 'profile-recovery-probe.json', 'components/UserProfileProbe.brs', 'source/UserProfileRegistryProbe.brs', 'components/UserProfileDialogProbe.brs', 'source/UserProfileModelProbeChecks.brs', 'source/UserProfileStoreProbeChecks.brs']) {
               assert.throws(() => assertPackageEntries([...base, name]), /probe/);
             }
         '''], cwd=Path(__file__).resolve().parent.parent, capture_output=True, text=True)

@@ -11,8 +11,10 @@ sub testProfileIdentity()
     for each bad in ["", "../escape", "short", id + "x", " " + id]
         check(userProfileLocalId(bad) = "", "unsafe/malformed profile ID refused before registry use")
     end for
-    check(userProfileKeyName(id) = "profKey_" + lcase(id), "non-default key names canonicalize")
-    check(userProfileKeyName("../escape") = "", "invalid ID never forms a key name")
+    check(userProfileKeyName("slot-a", id) = "profKey_slot-a_" + lcase(id), "non-default key names canonicalize inside the slot")
+    check(userProfileKeyName("slot-a", "../escape") = "", "invalid ID never forms a key name")
+    check(userProfileKeyName("../escape", id) = "", "invalid slot never forms a key name")
+    check(userProfileKeyName("slot-a", id) <> userProfileKeyName("slot-b", id), "identical profile IDs in different slots cannot share credentials")
     check(userProfileUserId("2147483648") = 2147483648&, "verified string ID does not overflow 32 bits")
     check(userProfileUserId(7) = 7, "integer server ID accepted")
     for each bad in ["0", "-1", "01", "1.0", "1e2", " 7", "9007199254740992", 7.0, true, invalid]

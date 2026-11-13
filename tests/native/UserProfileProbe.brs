@@ -62,6 +62,12 @@ sub Main()
         testProfileNativeNames()
         runUserProfileStoreChecks()
         testProfileNativeStoreNames()
+        runUserProfileAvatarChecks()
+        testProfileNativeAvatar()
+        runUserProfileLifecycleChecks()
+        runUserProfileForgetChecks()
+        runUserProfileNavigationChecks()
+        runUserProfileRemovalChecks()
         profileProbeStoreRegistry()
     end if
     print "[profile-probe] complete failed="; m.profileFailures

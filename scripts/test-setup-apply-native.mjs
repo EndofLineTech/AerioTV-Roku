@@ -168,6 +168,13 @@ try {
     assert.ok(!events.slice(after).some(row => row.kind === 'http_request'), 'protection refusal authenticates no provider identity');
     passed(`${name}-refused-before-authentication`);
   }
+  for (const name of ['duplicate-profile-recovery', 'duplicate-profile-recovery-direct']) {
+    after = await begin(name);
+    const row = await wait(name.endsWith('-direct') ? 'rejected' : 'profile_recovery_refused', after);
+    assert.equal(row.unchanged, true);
+    assert.ok(!events.slice(after).some(row => row.kind === 'http_request'), 'unreadable saved profile store blocks setup authentication');
+    passed(`${name}-zero-provider-requests`);
+  }
   if (realHttp) {
     assert.ok(events.some(row => row.kind === 'xmltv_epochs_verified'), 'native UTC and positive/negative timezone arithmetic retains exact integer seconds');
     assert.ok(events.some(row => row.kind === 'profile_union_verified'), 'real Dispatcharr Task applied the requested profile union');

@@ -6,10 +6,16 @@ function userProfileLocalId(value as dynamic) as string
     return lcase(value)
 end function
 
-function userProfileKeyName(id as dynamic) as string
+function userProfileKeyPrefix(slotId as string) as string
+    if not CreateObject("roRegex", "^[A-Za-z0-9-]{1,40}$", "").isMatch(slotId) then return ""
+    return "profKey_" + slotId + "_"
+end function
+
+function userProfileKeyName(slotId as string, id as dynamic) as string
     normalized = userProfileLocalId(id)
-    if normalized = "" then return ""
-    return "profKey_" + normalized
+    prefix = userProfileKeyPrefix(slotId)
+    if normalized = "" or prefix = "" then return ""
+    return prefix + normalized
 end function
 
 ' Restrict IDs to exact JSON integers portable across native and peer readers.

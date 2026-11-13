@@ -6,7 +6,7 @@ function userProfileStoreKey(slotId as string) as string
 end function
 
 function defaultUserProfileStore(slotId as string) as object
-    return {schema: 1, playlistId: slotId, active: "", askAtLaunch: false, profiles: []}
+    return {schema: 1, playlistId: slotId, active: "", askAtLaunch: false, profiles: [], removed: [], pendingRoster: false}
 end function
 
 function userProfileStoreRecovery(slotId as string) as object
@@ -21,7 +21,7 @@ end function
 function normalizeUserProfileStore(raw as dynamic, slotId as string) as object
     failure = userProfileStoreRecovery(slotId)
     if userProfileStoreKey(slotId) = "" then return failure
-    raw = userProfileCanonicalFields(raw, ["schema", "playlistId", "active", "askAtLaunch", "profiles"])
+    raw = userProfileCanonicalFields(raw, ["schema", "playlistId", "active", "askAtLaunch", "profiles", "removed", "pendingRoster"])
     if raw = invalid then return failure
     if not userProfileInteger(raw.schema) then return failure
     if raw.schema <> 1 then return failure
@@ -50,6 +50,15 @@ function normalizeUserProfileStore(raw as dynamic, slotId as string) as object
     if defaults <> 1 or not ids.doesExist(active) then return failure
     result.active = active
     result.askAtLaunch = raw.askAtLaunch
+    if raw.doesExist("removed")
+        removed = userProfileNormalizeTombstones(raw.removed)
+        if removed = invalid then return failure
+        result.removed = removed
+    end if
+    if raw.doesExist("pendingRoster")
+        if not userProfileBoolean(raw.pendingRoster) then return failure
+        result.pendingRoster = raw.pendingRoster
+    end if
     return result
 end function
 
@@ -88,7 +97,7 @@ function userProfileBoolean(value as dynamic) as boolean
 end function
 
 function normalizeUserProfileRecord(raw as dynamic, slotId as string) as dynamic
-    fields = ["id", "playlistId", "userId", "username", "displayName", "isDefault", "role", "userLevel", "isStaff", "isSuperuser", "order", "createdAt", "updatedAt", "avatar", "pinType", "pinHash", "pinSalt"]
+    fields = ["id", "playlistId", "userId", "username", "displayName", "isDefault", "role", "userLevel", "isStaff", "isSuperuser", "order", "createdAt", "updatedAt", "avatar", "pinType", "pinHash", "pinSalt", "addOrigin", "addressHeld"]
     raw = userProfileCanonicalFields(raw, fields)
     if raw = invalid then return invalid
     id = userProfileLocalId(raw.id)
@@ -118,13 +127,24 @@ function normalizeUserProfileRecord(raw as dynamic, slotId as string) as dynamic
     else if not userProfilePinRecordValid(raw)
         return invalid
     end if
-    if not userProfileFields(raw.avatar, ["icon", "color"]) then return invalid
-    for each key in raw.avatar
-        if type(raw.avatar[key]) <> "String" and type(raw.avatar[key]) <> "roString" then return invalid
-    end for
+    raw["avatar"] = userProfileNormalizeAvatar(raw.avatar)
     result = copyJson(raw)
     result.id = id
     result["userId"] = userId
+    origin = "plain"
+    if raw.doesExist("addOrigin")
+        if type(raw.addOrigin) <> "String" and type(raw.addOrigin) <> "roString" then return invalid
+        origin = raw.addOrigin
+        if origin <> "plain" and origin <> "roster" and origin <> "paused" then return invalid
+    end if
+    result["addOrigin"] = origin
+    held = false
+    if raw.doesExist("addressHeld")
+        if not userProfileBoolean(raw.addressHeld) then return invalid
+        held = raw.addressHeld
+    end if
+    if held and raw.isDefault then return invalid
+    result["addressHeld"] = held
     return result
 end function
 
@@ -164,6 +184,14 @@ end function
 ' runtime state changes here. Default key/Remember and scope cleanup belong to
 ' the slot lifecycle transaction, not this deliberately narrower primitive.
 function commitUserProfileStore(registry as object, previous as object, staged as object, keys as object, remember as boolean) as object
+    prepared = userProfileStoreChanges(registry, previous, staged, keys, remember)
+    if not prepared.ok then return {ok: false, recoveryRequired: false}
+    return userProfileRegistryTransaction(registry, prepared.changes)
+end function
+
+' Validated transaction preparation, also used when scoped preference cleanup
+' must be committed in the very same Flush as a profile/key removal.
+function userProfileStoreChanges(registry as object, previous as object, staged as object, keys as object, remember as boolean) as object
     failure = {ok: false, recoveryRequired: false}
     if previous.readOnly = true or staged.readOnly = true then return failure
     slotId = previous.playlistId
@@ -199,17 +227,24 @@ function commitUserProfileStore(registry as object, previous as object, staged a
         value = keys[id]
         if type(value) <> "String" and type(value) <> "roString" then return failure
         if len(value) > 512 then return failure
-        changes[userProfileKeyName(id)] = value
+        changes[userProfileKeyName(slotId, id)] = value
     end for
     for each profile in previous.profiles
-        if not profile.isDefault and (not owned.doesExist(profile.id) or not remember) then changes[userProfileKeyName(profile.id)] = ""
+        if not profile.isDefault and (not owned.doesExist(profile.id) or not remember) then changes[userProfileKeyName(slotId, profile.id)] = ""
     end for
     if not remember
         for each id in owned
-            changes[userProfileKeyName(id)] = ""
+            changes[userProfileKeyName(slotId, id)] = ""
         end for
     end if
     changes[key] = text
+    return {ok: true, changes: changes}
+end function
+
+' Internal atomic commit primitive. Callers build an explicit owned-key map;
+' this function never enumerates storage or chooses what should be deleted.
+function userProfileRegistryTransaction(registry as object, changes as object) as object
+    failure = {ok: false, recoveryRequired: false}
     snapshots = {}
     present = {}
     for each name in changes

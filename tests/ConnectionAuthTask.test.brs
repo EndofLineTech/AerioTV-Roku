@@ -38,6 +38,7 @@ sub main()
     loadChannels()
     if m.top.result.ok <> true or m.top.result.channels.count() <> 2 then stop
     if m.top.result.accountUsername <> "viewer" or m.requestUserAgent <> "Synthetic-Agent" then stop
+    if m.top.result.verifiedUser.id <> 7 or m.top.result.verifiedUser.user_level <> 1 then stop
     if m.calls <> 4 then stop ' user, summary, profile union and groups
     m.calls = 0
     m.top = {baseUrl: "https://example.test", apiKey: "test-only", authMode: "x-api-key", username: "", password: "", cancelRequested: false, profileId: "", channelProfileIds: [3, 9], userAgent: "Synthetic-Agent"}
@@ -48,14 +49,14 @@ end sub
 
 function requestJson(url as string, body = invalid as dynamic, bearer = "" as string, method = "GET" as string) as dynamic
     m.calls++
-    if m.unionMode = true then return {id: 7, username: "viewer"}
+    if m.unionMode = true then return {id: 7, username: "viewer", user_level: 1}
     if m.passwordMode = true
         if instr(1, url, "/api/accounts/token/") > 0
             if body.username <> "viewer" or body.password <> "test-password" then stop
             return {access: "session-token"}
         end if
         if bearer <> "session-token" then stop
-        return {id: 7, api_key: "verified-key"}
+        return {id: 7, username: "viewer", user_level: 1, api_key: "verified-key"}
     end if
     if m.compatibilityMode = true
         if m.calls = 1

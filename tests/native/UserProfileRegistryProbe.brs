@@ -73,10 +73,29 @@ sub profileProbeStoreRegistry()
             keys = {}
             keys[other.id] = "synthetic-other-key"
             saved = commitUserProfileStore(section, loaded, candidate, keys, true)
-            profileAssert(saved.ok and section.read(userProfileKeyName(other.id)) = "synthetic-other-key", "native-registry-own-key-with-roster")
+            profileAssert(saved.ok and section.read(userProfileKeyName(slot, other.id)) = "synthetic-other-key", "native-registry-own-key-with-roster")
             saved = commitUserProfileStore(section, candidate, candidate, {}, false)
-            profileAssert(saved.ok and not section.exists(userProfileKeyName(other.id)), "native-registry-remember-off-deletes-own-key")
+            profileAssert(saved.ok and not section.exists(userProfileKeyName(slot, other.id)), "native-registry-remember-off-deletes-own-key")
             profileAssert(section.read("connKey_slot-a") = "synthetic-default-key", "native-registry-default-key-untouched")
+            connections = connectionStoreAdd(defaultConnectionStore(), slot, "Synthetic")
+            connections = connectionStoreUpdate(connections, slot, {url: "https://example.test", accountId: "2147483648"})
+            preferences = defaultPreferenceStore()
+            preferences.accounts[preferenceScope("https://example.test|2147483648|slot-a")] = {favoriteIds: ["synthetic"]}
+            preferences.accounts[preferenceScope("https://example.test|9|slot-a")] = {favoriteIds: ["synthetic-other"]}
+            seeded = section.write("connectionsV1", FormatJson(connections))
+            seeded = section.write("settingsV1", FormatJson(preferences)) and seeded
+            seeded = section.write(userProfileKeyName("slot-b", other.id), "synthetic-other-slot-key") and seeded
+            seeded = section.flush() and seeded
+            if seeded
+                removal = removeUserProfile(section, connectionStoreEntry(connections, slot), candidate, other.id, 200, "normal")
+                profileAssert(removal.ok, "native-registry-profile-removal")
+                if removal.ok then profileAssert(removal.preferences.accounts.count() = 1, "native-registry-only-target-scope-removed")
+                forgotten = forgetUserProfileConnection(section, connections, slot)
+                profileAssert(forgotten.ok and not section.exists(userProfileStoreKey(slot)) and not section.exists("connKey_slot-a"), "native-registry-atomic-slot-forget")
+                profileAssert(section.read(userProfileKeyName("slot-b", other.id)) = "synthetic-other-slot-key", "native-registry-forget-preserves-other-slot-key")
+            else
+                profileAssert(false, "native-registry-forget-fixture-ready")
+            end if
         end if
     end if
     section = invalid

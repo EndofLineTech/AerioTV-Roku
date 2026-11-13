@@ -15,6 +15,13 @@
   <script type="text/brightscript" uri="pkg:/source/NavigationModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ConnectionStoreModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileAvatar.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfilePin.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileStore.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileLifecycle.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileCleanup.brs" />
+  <script type="text/brightscript" uri="UserProfileNavigation.brs" />
   <script type="text/brightscript" uri="pkg:/source/ChannelProfileModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/M3uModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/XtreamModel.brs" />

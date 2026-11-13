@@ -77,6 +77,11 @@ end sub
 sub openPermittedProfiles()
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid or entry.provider <> "dispatcharr" then return
+    gate = selectedUserProfileGate()
+    if not gate.allowed
+        showNotice(userProfileGateMessage(gate))
+        return
+    end if
     if m.baseUrl = "" or m.apiKey = ""
         showNotice("Connect with an API key first, then return to setup to choose a permitted channel profile.")
         return
@@ -713,33 +718,16 @@ end sub
 sub removeSelectedConnection()
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid then return
-    updated = connectionStoreRemove(m.connectionStore, entry.id)
-    if updated = invalid then return
-    oldIdentity = connectionPreferenceIdentity(entry, entry.accountId)
-    prior = copyJson(m.preferenceStore)
-    if oldIdentity <> "" then m.preferenceStore.accounts.delete(preferenceScope(oldIdentity))
-    if entry.id = "legacy"
-        legacyId = entry.url + "|" + entry.accountId
-        if entry.accountId <> "" then m.preferenceStore.accounts.delete(preferenceScope(legacyId))
-    end if
-    if not persistPreferences()
-        m.preferenceStore = prior
+    removed = forgetUserProfileConnection(m.registry, m.connectionStore, entry.id)
+    if not removed.ok
+        m.userProfileRecoveryRequired = removed.recoveryRequired
+        showNotice("Could not atomically remove this connection. Existing data was retained; restart before retrying if storage needs recovery.")
         return
     end if
-    if not deleteStoredConnectionKey(entry)
-        showNotice("Could not confirm saved-key removal. Retry Forget before exiting.")
-        return
-    end if
-    if not saveConnectionStore(m.registry, updated)
-        showNotice("Saved key was removed, but the roster could not be updated. Retry Forget before exiting.")
-        return
-    end if
-    if entry.id = "legacy"
-        for each key in ["serverUrl", "apiKey", "accountIdentity", "preferences"]
-            m.registry.delete(key)
-        end for
-        m.registry.flush()
-    end if
+    updated = removed.connections
+    m.preferenceStore = removed.preferences
+    m.userProfileStore = invalid
+    m.userProfileRecoveryRequired = false
     m.metadataForgetTask = m.guide.callFunc("forgetStoredMetadata")
     resetConnectionRuntime()
     m.connectionStore = updated

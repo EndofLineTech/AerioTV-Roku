@@ -171,6 +171,8 @@ sub init()
     m.noticeTimer = m.top.findNode("noticeTimer")
     m.noticeTimer.observeField("fire", "hideNotice")
     m.connectionStore = loadConnectionStore(m.registry)
+    m.userProfileStore = invalid
+    m.userProfileRecoveryRequired = false
     m.selectedConnectionId = m.connectionStore.selected
     selectedConnection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     m.baseUrl = ""
@@ -517,6 +519,13 @@ sub connectServer(skipRfi = false as boolean)
         drawSetup()
         return
     end if
+    profileGate = selectedUserProfileGate()
+    if not profileGate.allowed
+        m.status = userProfileGateMessage(profileGate)
+        m.password = ""
+        drawSetup()
+        return
+    end if
     cancelProfileTask()
     resetMediaNavigation()
     cancelPlaybackFailure()
@@ -679,6 +688,11 @@ sub completeConnection(result as dynamic)
         end if
     end if
     m.password = ""
+    if not ensureConnectedUserProfile(result)
+        m.apiKey = ""
+        drawSetup()
+        return
+    end if
     m.apiKey = result.apiKey
     m.serverAccountId = result.accountId
     m.hlsAvailable = result.hlsAvailable = true
