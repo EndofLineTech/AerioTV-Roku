@@ -113,8 +113,8 @@ function phoneSetupProfile(raw as dynamic) as dynamic
     ], {role: "", order: -1, isDefault: false, pinType: "none", pinHash: "", pinSalt: ""})
     if profile = invalid then return invalid
     if profile.username = invalid or profile.displayName = invalid then return invalid
-    if profile.role <> "" and profile.role <> "admin" and profile.role <> "user" and profile.role <> "child" then return invalid
-    if profile.pinType <> "none" and profile.pinType <> "numbers" and profile.pinType <> "directions" then return invalid
+    if profile.role <> "" and profile.role <> "admin" and profile.role <> "user" and profile.role <> "child" then profile.role = ""
+    if profile.pinType <> "none" and profile.pinType <> "numbers" and profile.pinType <> "directions" then profile.pinType = "none"
     hashValid = CreateObject("roRegex", "^[0-9a-fA-F]{64}$", "").isMatch(profile.pinHash)
     saltValid = CreateObject("roRegex", "^[0-9a-fA-F]{32}$", "").isMatch(profile.pinSalt)
     if not hashValid or not saltValid then profile.pinType = "none"

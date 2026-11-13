@@ -311,6 +311,7 @@ sub commitPhoneSetup(choice as string)
     for each note in notices
         recordDiagnostic("connect", 0, note)
     end for
+    if pending.multipleProfiles = true then summary = "Multiple profiles aren't currently supported on Roku. Stay tuned."
     showNotice(summary) ' Nonblocking; the guide is already active.
 end sub
 

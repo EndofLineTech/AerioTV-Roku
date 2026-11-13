@@ -37,7 +37,7 @@ def build(output, real_http=False):
             if not real_http:
                 package.write(ROOT / 'tests/native/SetupApplyFixtureTask.brs', 'components/SetupApplyFixtureTask.brs')
             cases = {}
-            for case in ['reject', 'cancel', 'duplicate-cancel', 'duplicate-replace-full', 'duplicate-add', 'duplicate-full-add', 'm3u-query', 'xtream', 'default-profile', 'dispatcharr-password']:
+            for case in ['reject', 'cancel', 'duplicate-cancel', 'duplicate-replace-full', 'duplicate-add', 'duplicate-full-add', 'm3u-query', 'xtream', 'default-profile', 'dispatcharr-password', 'multiple-profiles', 'protected-default-pin', 'protected-default-child']:
                 playlist = {'type': 'dispatcharr', 'name': 'Received', 'url': 'HTTPS://EXAMPLE.TEST:443', 'userAgent': 'Fixture-Agent', 'credential': {'apiKey': 'fixture-api-key'}}
                 if case == 'm3u-query':
                     playlist = {'type': 'm3u', 'name': 'Query', 'url': 'https://example.test/?token=session-token', 'userAgent': 'Fixture-Agent', 'guideDays': 3, 'vodEnabled': False}
@@ -50,9 +50,22 @@ def build(output, real_http=False):
                     playlist['credential'] = {'username': 'Viewer', 'password': 'fixture-password'}
                 if case == 'default-profile':
                     del playlist['credential']
-                    cases[case]['profiles'] = [{'username': 'Viewer', 'displayName': 'Viewer', 'isDefault': True, 'credential': {'apiKey': 'fixture-api-key'}, 'pinType': 'numbers', 'pinHash': 'ab' * 32, 'pinSalt': 'cd' * 16}]
+                    cases[case]['profiles'] = [{'username': 'Viewer', 'displayName': 'Viewer', 'isDefault': True, 'credential': {'apiKey': 'fixture-api-key'}}]
                     if real_http:
                         playlist['channelProfileIds'] = [3, 5]
+                if case == 'multiple-profiles':
+                    cases[case]['profiles'] = [
+                        {'username': 'Viewer', 'displayName': 'Viewer', 'isDefault': True},
+                        {'username': 'Ignored', 'displayName': 'Ignored', 'role': 'future-role', 'pinType': 'future-pin', 'credential': {'apiKey': 'must-never-authenticate'}},
+                        {'username': 'Child', 'displayName': 'Child', 'role': 'child', 'pinType': 'numbers', 'pinHash': 'ab' * 32, 'pinSalt': 'cd' * 16},
+                    ]
+                if case.startswith('protected-default'):
+                    entry = {'username': 'Viewer', 'displayName': 'Viewer', 'isDefault': False}
+                    if case.endswith('pin'):
+                        entry.update(pinType='numbers', pinHash='ab' * 32, pinSalt='cd' * 16)
+                    else:
+                        entry['role'] = 'child'
+                    cases[case]['profiles'] = [entry]
             package.writestr('apply-cases.json', json.dumps(cases))
             common = {'cancelRequested': 'boolean', 'requestIdentity': 'assocarray', 'result': 'assocarray', 'progress': 'string',
                       'url': 'string', 'baseUrl': 'string', 'connectionId': 'string', 'apiKey': 'string',

@@ -85,7 +85,44 @@ sub main()
     check(limited.notes.count() >= 3, "session URL and unsupported options disclosed before saving")
     prefs = phoneSetupImportedPreferences({guide: {futureDays: 14}, vodEnabled: true}, limited.entry)
     check(prefs.guide.futureDays = 14 and not prefs.vodEnabled, "unsupported guide range never silently replaces existing setting")
+    testInterimProfiles()
     print "ALL TESTS PASSED"
+end sub
+
+sub testInterimProfiles()
+    notice = "Multiple profiles aren't currently supported on Roku. Stay tuned."
+    playlist = {type: "dispatcharr", name: "Home", url: "https://example.test", credential: {apiKey: "default-only"}, guideDays: 7, catchupOffsetMinutes: 0, vodEnabled: true, channelProfileIds: []}
+    payload = {playlist: playlist, profiles: [
+        {username: "alice", displayName: "Alice", isDefault: true, role: "admin", pinType: "none"}
+        {username: "sam", displayName: "Sam", isDefault: false, credential: {apiKey: "must-not-authenticate"}, role: "user", pinType: "numbers", pinHash: string(64, "a"), pinSalt: string(32, "b")}
+        {username: "kim", displayName: "Kim", isDefault: false, role: "child", pinType: "none"}
+    ]}
+    prepared = phoneSetupPrepareImport(payload, "received", "")
+    check(prepared.ok and prepared.multipleProfiles, "three-profile payload imports only unrestricted default")
+    check(prepared.credential.apiKey = "default-only" and prepared.notes[0] = notice, "exact omission notice and playlist credential")
+    serialized = lcase(formatJson(prepared))
+    check(instr(1, serialized, "pinhash") = 0 and instr(1, serialized, "pinsalt") = 0 and instr(1, serialized, "must-not-authenticate") = 0, "ignored profiles and secrets never survive preparation")
+    payload.profiles = [payload.profiles[0]]
+    payload.profiles[0].isDefault = false
+    prepared = phoneSetupPrepareImport(payload, "received", "")
+    check(prepared.ok and not prepared.multipleProfiles and prepared.notes.count() = 0, "one entry is default regardless of flag and gets no multiple notice")
+    for each field in ["role", "pinType"]
+        payload.profiles[0][field] = "child"
+        if field = "pinType"
+            payload.profiles[0].role = "user"
+            payload.profiles[0].pinType = "numbers"
+            payload.profiles[0].pinHash = string(64, "a")
+            payload.profiles[0].pinSalt = string(32, "b")
+        end if
+        refused = phoneSetupPrepareImport(payload, "received", "")
+        check(not refused.ok and refused.credential = invalid and refused.entry = invalid, "protected single default refused before verification/persistence")
+    end for
+    payload.profiles.push({username: "adult", displayName: "Adult", isDefault: true, role: "user", pinType: "none"})
+    check(phoneSetupPrepareImport(payload, "received", "").ok, "protected non-default is ignored, not mistaken for selected default")
+    payload.profiles[1].role = "child"
+    check(not phoneSetupPrepareImport(payload, "received", "").ok, "explicit protected default in multi-profile payload refused")
+    payload.playlist.type = "m3u"
+    check(phoneSetupPrepareImport(payload, "received", "").ok, "M3U ignores unsupported profile protection")
 end sub
 
 sub check(condition as boolean, message as string)

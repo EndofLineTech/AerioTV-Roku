@@ -143,18 +143,30 @@ try {
   assert.equal((await wait('cancelled', after)).unchanged, true);
   passed('add-anyway-refused-at-capacity');
 
-  for (const name of ['m3u-query', 'xtream', 'default-profile', 'dispatcharr-password']) {
+  for (const name of ['m3u-query', 'xtream', 'default-profile', 'dispatcharr-password', 'multiple-profiles']) {
     after = await begin(name);
     const added = await wait('committed', after); // No remote Select for new accounts.
     assert.equal(added.count, 1);
     assert.equal(added.confirmations, 0);
-    await wait('handoff_notice', after);
-    if (name === 'default-profile' || name === 'm3u-query' || name === 'xtream') {
+    const notice = await wait('handoff_notice', after);
+    assert.equal(notice.multipleprofiles, name === 'multiple-profiles', 'exact multiple-profile notice only when non-default entries were ignored');
+    if (name === 'multiple-profiles') {
+      const captured = spawnSync('python3', ['scripts/capture-roku-screenshot.py', '--developer-mode', '--output', 'out/profile-interim-multiple-notice.jpg'], { encoding: 'utf8', timeout: 45000 });
+      assert.equal(captured.status, 0, 'native omission notice screenshot captured for inspection');
+    }
+    if (name === 'multiple-profiles' || name === 'm3u-query' || name === 'xtream') {
       assert.ok(events.slice(after).some(row => row.kind === 'import_notice' && row.omissions), 'Nonblocking session/omission disclosure retained');
     }
     assert.ok(!events.slice(after).some(row => row.kind === 'confirmation'), 'No redundant Save confirmation');
     await guide(after, name === 'm3u-query' || name === 'xtream' ? 'xmltv' : 'network');
-    passed(name === 'default-profile' ? 'auto-add-default-profile-with-nonblocking-disclosure' : name === 'dispatcharr-password' ? 'auto-add-password-exchanges-for-saved-api-key' : `auto-add-${name}-session-credentials-and-clean-metadata`);
+    passed(name === 'default-profile' ? 'auto-add-unprotected-default-without-multiple-notice' : name === 'dispatcharr-password' ? 'auto-add-password-exchanges-for-saved-api-key' : `auto-add-${name}-session-credentials-and-clean-metadata`);
+  }
+  for (const name of ['protected-default-pin', 'protected-default-child']) {
+    after = await begin(name);
+    assert.equal((await wait('protected_default_refused', after)).beforeauthentication, true);
+    assert.equal((await wait('rejected', after)).unchanged, true);
+    assert.ok(!events.slice(after).some(row => row.kind === 'http_request'), 'protection refusal authenticates no provider identity');
+    passed(`${name}-refused-before-authentication`);
   }
   if (realHttp) {
     assert.ok(events.some(row => row.kind === 'xmltv_epochs_verified'), 'native UTC and positive/negative timezone arithmetic retains exact integer seconds');

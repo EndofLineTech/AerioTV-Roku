@@ -26,6 +26,26 @@ end function
 function phoneSetupPrepareImport(payload as object, id as string, digest as string) as object
     failure = {ok: false, message: "These playlist settings cannot be imported. Use manual setup or edit the sending playlist."}
     playlist = payload.playlist
+    multipleProfiles = false
+    if playlist.type = "dispatcharr"
+        defaultCount = 0
+        profiles = payload.profiles
+        for each profile in profiles
+            isDefault = profile.isDefault = true or profiles.count() = 1
+            if isDefault
+                defaultCount++
+                ' Interim builds cannot enforce imported roles/PINs. Refuse
+                ' before a provider Task or registry candidate can be created.
+                pinType = textValue(profile.pinType)
+                if profile.role = "child" or pinType = "numbers" or pinType = "directions"
+                    return {ok: false, message: "This profile needs Child or PIN protection that Roku does not support yet. Saved connections were not changed."}
+                end if
+            else
+                multipleProfiles = true
+            end if
+        end for
+        if defaultCount > 1 then return {ok: false, message: "Choose one default profile on the sending device, then send setup again."}
+    end if
     credential = phoneSetupEffectiveCredential(payload)
     if playlist.type = "m3u" then credential = {apiKey: "", username: "", password: ""}
     if credential = invalid then return {ok: false, message: "Choose one default credential on the sending device, then send setup again."}
@@ -57,7 +77,7 @@ function phoneSetupPrepareImport(payload as object, id as string, digest as stri
         sourceDigest: digest, sessionUrl: sessionUrl, remember: playlist.type = "dispatcharr"})
     if entry = invalid then return failure
     notes = []
-    if payload.profiles.count() > 0 then notes.push("Household profiles and PINs will not be imported.")
+    if multipleProfiles then notes.push("Multiple profiles aren't currently supported on Roku. Stay tuned.")
     if payload.sync <> invalid then notes.push("Dispatcharr Sync will not be enabled.")
     if sessionUrl then notes.push("The token-bearing or long playlist URL is session-only; send it again after restarting the app.")
     if entry.localUrl <> "" then notes.push("Local URL retained; automatic LAN failover is not applied by this build.")
@@ -65,7 +85,7 @@ function phoneSetupPrepareImport(payload as object, id as string, digest as stri
     if offset <> 0 then notes.push("Catch-up offset retained but not applied by this build.")
     if entry.provider <> "dispatcharr" and entry.channelProfileIds.count() > 0 then notes.push("Channel Profile IDs are retained but only applied to Dispatcharr sources.")
     if entry.provider = "xtream" and epg <> "" then notes.push("Xtream uses its account guide; the supplied XMLTV override is not applied.")
-    return {ok: true, entry: entry, url: url, credential: credential, notes: notes}
+    return {ok: true, entry: entry, url: url, credential: credential, notes: notes, multipleProfiles: multipleProfiles}
 end function
 
 function phoneSetupVerifiedImport(prepared as object, result as dynamic) as object

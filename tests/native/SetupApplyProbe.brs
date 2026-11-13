@@ -98,6 +98,10 @@ end sub
 sub fixtureFailed()
     if m.phoneSetup.retryAvailable <> true then return
     if m.registry.writes <> 0 or m.runtimeResets <> 0 or m.apiKey <> "old-runtime-key" then stop
+    if left(m.case, 17) = "protected-default"
+        if m.phoneVerifyTask <> invalid or m.phonePending <> invalid then stop
+        print "[setup-apply] "; formatJson({kind: "protected_default_refused", case: m.case, beforeAuthentication: true})
+    end if
     print "[setup-apply] "; formatJson({kind: "rejected", unchanged: formatJson(m.connectionStore) = m.before})
 end sub
 
@@ -168,7 +172,7 @@ sub completeConnection(result as object)
     end if
     if m.runtimeResets <> 1 then stop
     if instr(1, m.case, "duplicate") = 0 and m.confirmations <> 0 then stop
-    if m.case = "xtream" or m.case = "m3u-query" or m.case = "default-profile"
+    if m.case = "xtream" or m.case = "m3u-query"
         if instr(1, textValue(result.warning), "Diagnostics") = 0 then stop
     end if
     if m.httpMode and m.case = "default-profile"
@@ -225,7 +229,20 @@ end sub
 
 sub showNotice(message as string)
     if m.registry.writes > 0
-        print "[setup-apply] "; formatJson({kind: "handoff_notice", case: m.case, nonblocking: true})
+        multipleNotice = message = "Multiple profiles aren't currently supported on Roku. Stay tuned."
+        if m.case = "multiple-profiles" and not multipleNotice then stop
+        if m.case = "default-profile" and multipleNotice then stop
+        ' Render the actual fixed notice for screenshot inspection as well as
+        ' reporting the production controller's text to the harness.
+        label = m.top.findNode("fixtureNotice")
+        if label = invalid
+            label = m.top.createChild("Label")
+            label.id = "fixtureNotice"
+            label.translation = [80, 900]
+            label.width = 1760
+        end if
+        label.text = message
+        print "[setup-apply] "; formatJson({kind: "handoff_notice", case: m.case, nonblocking: true, multipleProfiles: multipleNotice})
         return
     end if
     if m.registry.writes <> 0 or m.runtimeResets <> 0 then stop
@@ -234,7 +251,7 @@ end sub
 
 sub recordDiagnostic(stage as string, code as integer, message as string)
     if stage <> "connect" then stop
-    omission = instr(1, message, "not be imported") > 0 or instr(1, message, "not be enabled") > 0 or instr(1, message, "session-only") > 0
+    omission = instr(1, message, "not be imported") > 0 or instr(1, message, "not be enabled") > 0 or instr(1, message, "session-only") > 0 or instr(1, message, "Multiple profiles aren't currently supported") > 0
     print "[setup-apply] "; formatJson({kind: "import_notice", case: m.case, omissions: omission})
 end sub
 

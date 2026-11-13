@@ -6,6 +6,11 @@ sub main()
     check(m.registry.flushes = 1 and m.registry.read("connKey_new") = "fixture-key", "automatic add retains atomic key and roster commit")
     check(m.notices.count() = 1 and m.notice <> "", "credential persistence disclosed nonblockingly")
     resetAutoAdd()
+    m.phonePending.multipleProfiles = true
+    m.phonePending.notes = ["Multiple profiles aren't currently supported on Roku. Stay tuned."]
+    showPhoneSetupConfirmation()
+    check(m.completed and m.notice = "Multiple profiles aren't currently supported on Roku. Stay tuned.", "omission notice actually reaches screen after automatic guide handoff")
+    resetAutoAdd()
     before = formatJson(m.connectionStore)
     m.phoneStoreSnapshot = "stale"
     showPhoneSetupConfirmation()
