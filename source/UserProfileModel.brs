@@ -84,7 +84,7 @@ function userProfileFromVerified(slotId as string, id as string, user as dynamic
         role: userProfileResolveRole(level, invalid), userLevel: level
         isStaff: userProfileTrue(user.is_staff), isSuperuser: userProfileTrue(user.is_superuser)
         order: -1, createdAt: now, updatedAt: 0, avatar: {}
-        pinType: "none", pinHash: "", pinSalt: ""
+        pinType: "none", pinHash: "", pinSalt: "", displayNameClaimed: false, avatarClaimed: false
     }
 end function
 

@@ -100,6 +100,21 @@ sub profileProbeStoreRegistry()
                     stale = commitUserProfilePreferences(section, scoped.store, scoped.preferences, effective, activeScope, newer)
                     profileAssert(not stale.ok and before = section.read("settingsV1"), "native-registry-stale-scoped-write-refused")
                 end if
+                if scoped.ok
+                    snapshots = {}
+                    snapshots[userProfileStoreKey(slot)] = section.read(userProfileStoreKey(slot))
+                    snapshots["settingsV1"] = section.read("settingsV1")
+                    otherKey = userProfileKeyName(slot, other.id)
+                    section.write(otherKey, "synthetic-other-pull-key")
+                    section.flush()
+                    snapshots[otherKey] = section.read(otherKey)
+                    tombstones = dispatcharrSyncRosterDecode({rows: [], removed: [[other.username, 200]]})
+                    pulled = commitDispatcharrRosterPull(section, connectionStoreEntry(connections, slot), candidate, tombstones, true, 300, activeScope, activeScope)
+                    profileAssert(pulled.ok and not section.exists(otherKey) and pulled.store.profiles.count() = 1, "native-registry-roster-pull-key-and-metadata-cleanup")
+                    if pulled.ok then profileAssert(pulled.preferences.accounts.count() = 1 and section.read("connKey_" + slot) = "synthetic-default-key", "native-registry-roster-pull-preserves-default-scope-and-key")
+                    restoredPull = userProfileRegistryTransaction(section, snapshots)
+                    profileAssert(restoredPull.ok, "native-registry-roster-pull-fixture-restored-for-lifecycle-checks")
+                end if
                 removal = removeUserProfile(section, connectionStoreEntry(connections, slot), candidate, other.id, 200, "normal")
                 profileAssert(removal.ok, "native-registry-profile-removal")
                 if removal.ok then profileAssert(removal.preferences.accounts.count() = 1, "native-registry-only-target-scope-removed")

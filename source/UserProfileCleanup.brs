@@ -36,6 +36,7 @@ function forgetUserProfileConnection(registry as object, connections as object, 
     changes[userProfileStoreKey(slotId)] = ""
     for each key in registry.getKeyList()
         if left(key, len(prefix)) = prefix then changes[key] = ""
+        if left(key, len("pinHold_" + slotId + "_")) = "pinHold_" + slotId + "_" then changes[key] = ""
     end for
     if slotId = "legacy"
         for each key in ["serverUrl", "apiKey", "accountIdentity", "preferences"]
@@ -62,6 +63,8 @@ function removeUserProfile(registry as object, connection as object, store as ob
     end if
     prepared = userProfileStoreChanges(registry, store, plan.store, {}, connection.remember)
     if not prepared.ok then return denied
+    pinHold = userProfilePinBackoffKey(connection.id, id)
+    if registry.exists(pinHold) then prepared.changes[pinHold] = ""
     preferences = defaultPreferenceStore()
     if registry.exists("settingsV1")
         preferences = ParseJson(registry.read("settingsV1"))

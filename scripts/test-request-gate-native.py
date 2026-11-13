@@ -44,6 +44,7 @@ def build(output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--restore', required=True)
+    parser.add_argument('--video-only', action='store_true', help='Diagnose native decoder admission in a fresh Scene; not full gate acceptance')
     args = parser.parse_args()
     host = os.environ['ROKU_HOST']
     password = os.environ['ROKU_DEV_PASSWORD']
@@ -57,6 +58,8 @@ def main():
     archive = ROOT / 'out/request-gate-probe.zip'
     build(archive)
     operations = ['generic', 'reject', 'parallel-report', 'parallel-held', 'sync-read', 'session-retire', 'park', 'parallel-park', 'transport', 'direct-bypasses', 'bypasses', 'renderers', 'recheck', 'video']
+    if args.video_only:
+        operations = ['video']
     hits = []
 
     class Fixture(BaseHTTPRequestHandler):
@@ -64,7 +67,7 @@ def main():
             pass
 
         def do_GET(self):
-            hits.append({'path': self.path, 'mixed_auth': bool(self.headers.get('Authorization') and self.headers.get('X-API-Key'))})
+            hits.append({'path': self.path, 'method': self.command, 'range': self.headers.get('Range', ''), 'mixed_auth': bool(self.headers.get('Authorization') and self.headers.get('X-API-Key'))})
             status = {'/generic': 401, '/forbidden': 403, '/reject': 401, '/park': 429, '/video-park': 429}.get(self.path, 200)
             body = b'{"ok":true}'
             if self.path == '/generic':
@@ -78,7 +81,7 @@ def main():
                 _, _, scenario, *tail = self.path.split('/')
                 endpoint = '/' + '/'.join(tail)
                 status = 200
-                value = {'schemaVersion': 3, 'categories': {'settings': {'data': {'tv': {'textScale': 1.3}}}, 'syncProviders': {'data': {'updatedAt': 1761700000000}}}}
+                value = {'schemaVersion': 3, 'deviceId': 'synthetic-device', 'platform': 'android', 'appVersion': '1', 'updatedAt': '2026-11-11T18:00:00Z', 'categories': {'settings': {'updatedAt': '2026-11-11T18:00:00Z', 'data': {'tv': {'textScale': 1.3}}}, 'syncProviders': {'updatedAt': '2026-11-11T18:00:00Z', 'data': {'updatedAt': 1761700000000}}}}
                 if endpoint == '/api/accounts/users/me/':
                     value = {'id': 8 if scenario == 'identity' else 7, 'username': 'Alice'}
                     if scenario == 'username':
@@ -174,7 +177,10 @@ def main():
             if scenario in ['canonical', 'key-missing', 'proxy404', 'float-schema', 'malformed', 'newer']:
                 sync_expected.append(prefix + 'app-data/alice.aeriotv/')
         normal_paths = [path for path in paths if not path.startswith('/sync/')]
-        report['passed'] = report['passed'] and sync_paths == sync_expected and [path for path in normal_paths if path != '/slow'][:6] == allowed[:6] and paths.count('/slow') == 1 and '/movie.mp4' in paths and paths.count('/video-park') == 1 and all(path in allowed for path in normal_paths) and not any(row['mixed_auth'] for row in hits)
+        if args.video_only:
+            report['passed'] = report['passed'] and '/movie.mp4' in paths and paths.count('/video-park') == 1 and all(path in ['/poster.png', '/movie.mp4', '/video-park'] for path in paths)
+        else:
+            report['passed'] = report['passed'] and sync_paths == sync_expected and [path for path in normal_paths if path != '/slow'][:6] == allowed[:6] and paths.count('/slow') == 1 and '/movie.mp4' in paths and paths.count('/video-park') == 1 and all(path in allowed for path in normal_paths) and not any(row['mixed_auth'] for row in hits)
     finally:
         if process is not None and process.poll() is None:
             process.terminate()
@@ -186,7 +192,8 @@ def main():
         server.shutdown()
         server.server_close()
         report['requests'] = hits
-        (ROOT / 'out/request-gate-native.json').write_text(json.dumps(report, indent=2) + '\n')
+        report_name = 'request-gate-video-only-native.json' if args.video_only else 'request-gate-native.json'
+        (ROOT / 'out' / report_name).write_text(json.dumps(report, indent=2) + '\n')
         print('Exact prior developer app restored:', report['restored'], flush=True)
         if not report['restored']:
             raise RuntimeError('Prior developer app restore failed')

@@ -90,3 +90,16 @@ active-session/UI behavior have been checked. In particular this document is
 not a claim of real-owner video acceptance, profile-specific Fix Login/Child UI,
 or completed epic delivery. Public switching stays fenced behind scoped state,
 read-only roster, PIN/Child rules and the rest of the profile controller work.
+
+## Current device requalification
+
+Later envelope/merge requalification passes request and own-user App Data
+checks, but the previously working H.264 clip fails with native code -3,
+`Failed to create decoder`. A fresh video-only Scene reproduces it, excluding
+earlier renderer/test stages as a prerequisite. The unchanged clip is H.264
+High level 3.0, 640×480/yuv420p with AAC-LC; the listener receives its request.
+No failure was converted into a pass or retried away. `AerioTV-Roku-a4n` tracks
+diagnosis and renewed media acceptance. Sanitized decoder text, HTTP method
+and Range metadata are captured. Video-only runs have a separate report and
+never replace full-suite acceptance. The exact prior app was restored after
+every failed run. No device reboot/reset was performed for this diagnosis.

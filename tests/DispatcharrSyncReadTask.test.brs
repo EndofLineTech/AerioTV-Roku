@@ -48,8 +48,8 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
         if m.scenario = "unsupported" then response.status = 404
         if m.scenario = "park" then response.status = 429
     else
-        response.body = FormatJson({schemaVersion: 3, categories: {}})
-        if m.scenario = "newer" then response.body = FormatJson({schemaVersion: 4, categories: {}})
+        response.body = "{""schemaVersion"":3,""deviceId"":""fixture"",""platform"":""android"",""appVersion"":""1"",""updatedAt"":""2026-11-11T18:00:00Z"",""categories"":{}}"
+        if m.scenario = "newer" then response.body = "{""schemaVersion"":4}"
         if m.scenario = "key-missing"
             response.status = 404
             response.body = FormatJson({code: "key_not_found"})

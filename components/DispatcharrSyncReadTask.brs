@@ -31,15 +31,14 @@ sub readDispatcharrSync()
     record.key = key
     if not record.ok then finishDispatcharrSyncRead(record) : return
     if record.state = "missing" then finishDispatcharrSyncRead(record) : return
-    if not dispatcharrSyncInteger(record.data["schemaVersion"]) then finishDispatcharrSyncRead(result) : return
-    if record.data["schemaVersion"] > 3
-        finishDispatcharrSyncRead({ok: false, state: "newer", key: key, allowWrite: false})
+    envelope = dispatcharrSyncEnvelopeRead(record.data)
+    if not envelope.ok
+        finishDispatcharrSyncRead({ok: false, state: envelope.state, key: key, allowWrite: false})
         return
     end if
-    if record.data["schemaVersion"] <> 3 or type(record.data["categories"]) <> "roAssociativeArray" then finishDispatcharrSyncRead(result) : return
-    ' This is an envelope candidate, not roster acceptance. The strict schema
-    ' reader must still validate envelope metadata, category timestamps and rows.
-    record.state = "ready"
+    record.state = envelope.state
+    record.profilesState = envelope.profilesState
+    record.malformedCategories = envelope.malformedCategories
     finishDispatcharrSyncRead(record)
 end sub
 

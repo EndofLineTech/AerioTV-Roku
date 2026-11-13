@@ -35,6 +35,10 @@ suites.unshift('UserViewGuards');
 suites.unshift('DispatcharrSyncKey');
 suites.unshift('DispatcharrSyncReadTask');
 suites.unshift('DispatcharrSyncRoster');
+suites.unshift('DispatcharrSyncEnvelope');
+suites.unshift('DispatcharrSyncMerge');
+suites.unshift('DispatcharrSyncPullStore');
+suites.unshift('UserProfilePinPolicy');
 suites.unshift('UserProfileStore');
 suites.unshift('StartupBeaconModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
@@ -86,8 +90,12 @@ for (const suite of suites) {
     ...(suite === 'UserProfilePreferenceNavigation' ? ['components/UserProfilePreferenceNavigation.brs'] : []),
     ...(suite === 'UserViewGuards' ? ['components/MediaNavigation.brs'] : []),
     ...(suite === 'DispatcharrSyncKey' ? ['source/DispatcharrSyncKey.brs'] : []),
-    ...(suite === 'DispatcharrSyncReadTask' ? ['source/DispatcharrSyncKey.brs', 'components/DispatcharrSyncReadTask.brs'] : []),
+    ...(['DispatcharrSyncReadTask', 'DispatcharrSyncEnvelope'].includes(suite) ? ['source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncEnvelope.brs', 'source/DispatcharrSyncRoster.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs'] : []),
+    ...(suite === 'DispatcharrSyncReadTask' ? ['components/DispatcharrSyncReadTask.brs'] : []),
     ...(suite === 'DispatcharrSyncRoster' ? ['source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs'] : []),
+    ...(['DispatcharrSyncMerge', 'DispatcharrSyncPullStore'].includes(suite) ? ['source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/DispatcharrSyncMerge.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(suite === 'DispatcharrSyncPullStore' ? ['source/DispatcharrSyncPullStore.brs', 'source/UserProfileScope.brs'] : []),
+    ...(suite === 'UserProfilePinPolicy' ? ['source/UserProfilePinPolicy.brs', 'source/UserProfilePin.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'HttpTransport' ? ['source/HttpTransport.brs'] : []),
     ...(suite === 'StrictJson' ? ['source/StrictJson.brs'] : []),
     ...(suite === 'UserProfilePin' ? ['source/UserProfilePin.brs'] : []),

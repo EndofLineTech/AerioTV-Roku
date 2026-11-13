@@ -5,6 +5,12 @@ function userProfileStoreKey(slotId as string) as string
     return "userProfilesV1_" + slotId
 end function
 
+function userProfilePinBackoffKey(slotId as string, holder as string) as string
+    if connectionRegistryKey(slotId) = "" then return ""
+    if holder <> "device-admin" and userProfileLocalId(holder) = "" then return ""
+    return "pinHold_" + slotId + "_" + lcase(holder)
+end function
+
 function defaultUserProfileStore(slotId as string) as object
     return {schema: 1, playlistId: slotId, active: "", askAtLaunch: false, profiles: [], removed: [], pendingRoster: false}
 end function
@@ -97,7 +103,7 @@ function userProfileBoolean(value as dynamic) as boolean
 end function
 
 function normalizeUserProfileRecord(raw as dynamic, slotId as string) as dynamic
-    fields = ["id", "playlistId", "userId", "username", "displayName", "isDefault", "role", "userLevel", "isStaff", "isSuperuser", "order", "createdAt", "updatedAt", "avatar", "pinType", "pinHash", "pinSalt", "addOrigin", "addressHeld"]
+    fields = ["id", "playlistId", "userId", "username", "displayName", "isDefault", "role", "userLevel", "isStaff", "isSuperuser", "order", "createdAt", "updatedAt", "avatar", "pinType", "pinHash", "pinSalt", "addOrigin", "addressHeld", "displayNameClaimed", "avatarClaimed"]
     raw = userProfileCanonicalFields(raw, fields)
     if raw = invalid then return invalid
     id = userProfileLocalId(raw.id)
@@ -145,6 +151,14 @@ function normalizeUserProfileRecord(raw as dynamic, slotId as string) as dynamic
     end if
     if held and raw.isDefault then return invalid
     result["addressHeld"] = held
+    for each field in ["displayNameClaimed", "avatarClaimed"]
+        claimed = false
+        if raw.doesExist(field)
+            if not userProfileBoolean(raw[field]) then return invalid
+            claimed = raw[field]
+        end if
+        result[field] = claimed
+    end for
     return result
 end function
 

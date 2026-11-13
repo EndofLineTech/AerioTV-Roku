@@ -10,6 +10,11 @@
   </interface>
   <script type="text/brightscript" uri="DispatcharrSyncReadTask.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncKey.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncRoster.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncEnvelope.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfilePin.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileAvatar.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />

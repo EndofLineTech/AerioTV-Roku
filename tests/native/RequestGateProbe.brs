@@ -174,7 +174,8 @@ sub gateProbeVideoState()
         m.videoPark.observeField("result", "gateProbeVideoParked")
         m.videoPark.control = "RUN"
     else if m.nativeVideo.state = "error"
-        print "[request-gate] "; FormatJson({kind: "failure", assertion: "synthetic-native-video-open", code: m.nativeVideo.errorCode})
+        detail = CreateObject("roRegex", "https?://[^ ]+", "i").replaceAll(m.nativeVideo.errorStr, "[fixture]")
+        print "[request-gate] "; FormatJson({kind: "failure", assertion: "synthetic-native-video-open", code: m.nativeVideo.errorCode, detail: detail})
         print "[request-gate] "; FormatJson({kind: "result", operation: "video", passed: false, workers: 0})
         print "[request-gate] complete"
     end if

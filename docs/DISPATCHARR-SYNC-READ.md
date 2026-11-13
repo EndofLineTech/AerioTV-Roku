@@ -28,9 +28,12 @@ Every plan explicitly has `allowWrite: false`.
 
 Transport admission, response bounds, cancellation and session retirement use
 the existing request gate. The Task clears its credential before publishing a
-result and does not log bodies or credentials. The `ready` state denotes a v3
-object **candidate**, not an accepted roster: strict envelope/category/row
-validation, merge/role/PIN/tombstone rules and application gates remain required.
+result and does not log bodies or credentials. `DispatcharrSyncEnvelope` now
+validates required v3 metadata and ISO timestamps using the existing validated
+UTC parser. Each category is validated independently (timestamp/object data,
+optional object extra and string deviceId). A malformed profiles category is
+explicitly `profilesState: invalid`, never absent/empty; unknown category data
+remains untouched. `ready` is not permission to display or switch profiles.
 
 Host tests cover the shared key vectors, malformed discovery, own-identity
 refusal, legacy/missing records and HTTP failure distinctions. Native primitive
@@ -42,7 +45,10 @@ wrong user/username/string-typed identity, malformed/future/integral-float schem
 It checks exact allowed paths, no cross-user/legacy reads, no mutation methods,
 and preservation of double settings and millisecond integers through the Task
 result. The full matrix, including existing media fencing and slow recheck,
-passes with exact prior-app restoration (`out/request-gate-native.json`).
+passed with exact prior-app restoration at the earlier key/discovery checkpoint.
+Current requalification passes all read/gate operations but the native H.264
+fixture now fails decoder admission, also in a fresh video-only Scene. This is
+tracked as `AerioTV-Roku-a4n`; no renewed all-path media pass is claimed.
 None of this is a claim
 of measured production-server limits, sender interoperability, completed roster
 import, sync writes or public profile switching.
@@ -79,8 +85,34 @@ numeric and direction PINs using real SHA-256, and rejects floating user IDs
 while treating floating stamps/order as absent. Reports are private under
 `out/dispatcharr-sync-roster-native.json`; prior-app restoration is verified.
 
-Still required before import activation: full envelope/category timestamp
-validation, transactional newer-row/name/avatar/stripped-row merging, tombstone
-cleanup/active-user retirement, pause resumption/undo marks, opt-in suggestions,
-PIN/Child controller enforcement and same-slot acceptance. This decoder does
-not close `mrr.15` or `e3e.3`.
+## Merge and atomic pull persistence
+
+`DispatcharrSyncMerge` stages newer-row role/PIN/order/stamp updates against
+verified local server authority, unclaimed name/avatar adoption, stripped-row
+repair and rich-row recovery (including lowering a stripped local stamp).
+Optional `displayNameClaimed` and `avatarClaimed` local fields default false for
+existing records. Importing a remote stamp equal to the clock is not a local
+edit; only an actual stripped-row repair marks the roster pending.
+
+Paused adds settle to roster origin and the source stamp on the first applying
+pull with a row; no row settles them to plain origin. Held/Child/Profiles-Off
+pulls do not settle marks. Suggestions are returned without adding profiles.
+Rows with ambiguous usernames/different known user IDs refuse application.
+Tombstones expire after 90 days, preserve the default, remove eligible local
+keys/blobs without new tombstones, and acknowledge local tombstones only when
+superseded, expired or carried remotely.
+
+`commitDispatcharrRosterPull` checks the captured immutable own-session scope
+before a single registry transaction covering metadata, removed keys, PIN
+backoff and preference cleanup. An active tombstone returns
+`needsDefaultSwitch` **without writing anything**; the controller must first
+authenticate/commit the default switch and re-plan. Failed writes/Flush restore
+previous values; rollback failure requires recovery. Other slots and default
+key/data are preserved. Native checks include actual private-registry cleanup,
+fake-registry faults and stale A/B/A refusals.
+
+Still required before import activation: controller scheduling and safe active
+retirement, opt-in suggestion UI, PIN/Child enforcement and same-slot acceptance.
+The read-before-write/60-second roster-add preservation rules still belong to
+the later sync writer; no App Data writer is introduced. This does not close
+`mrr.15` or `e3e.3`.
