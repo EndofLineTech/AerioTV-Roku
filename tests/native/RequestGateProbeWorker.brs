@@ -61,9 +61,17 @@ sub runGateWorker()
     else if operation = "parallel-park"
         denied = requestGateAcquire("HTTPS://EXAMPLE.TEST:443/other/path", "synthetic-" + m.top.index.toStr())
         workerCheck(not denied.allowed and denied.reason = "parked", "concurrent-task-sees-server-park")
+    else if operation = "video-park"
+        m.key = "synthetic-video"
+        m.timeout = 2000
+        workerCheck(requestJson(m.top.fixtureBase + "/video-park") = invalid, "native-video-park-observed")
+        workerCheck(m.httpFailure.category = "rate-limit", "native-video-server-park-classified")
+        m.key = ""
     else if operation = "direct-bypasses"
         m.base = m.top.fixtureBase
         m.key = "synthetic-transport-replacement"
+        workerCheck(not requestGateAccessAllowed(m.base, m.key), "park-blocks-cache-authorization")
+        workerCheck(not requestGateAccessAllowed("https://third.test/", "synthetic-held"), "held-key-blocks-cache-on-another-host")
         workerCheck(sessionMutation(m.base + "/blocked-session", "POST", {}).status = 0, "park-blocks-session-mutation")
         workerCheck(requestMappedDetails({"7": true}) = invalid, "park-blocks-parallel-mapping")
         m.key = ""

@@ -2,6 +2,7 @@ sub init()
     m.broker = m.top.findNode("broker")
     m.global.addFields({requestGate: m.broker, requestGateRequired: true})
     m.broker.observeField("ready", "gateProbeReady")
+    m.broker.observeField("snapshot", "gateProbeSnapshot")
     m.broker.control = "RUN"
     m.workers = []
 end sub
@@ -11,6 +12,24 @@ sub gateProbeReady()
 end sub
 
 sub gateProbeCommand()
+    if m.top.command = "video"
+        m.nativeVideo = m.top.createChild("Video")
+        m.nativePoster = m.top.createChild("Poster")
+        m.nativePoster.width = 100
+        m.nativePoster.height = 100
+        requestGateSetPoster(m.nativePoster, m.top.fixtureBase + "/poster.png", "synthetic-video")
+        content = CreateObject("roSGNode", "ContentNode")
+        content.url = m.top.fixtureBase + "/movie.mp4"
+        content.streamFormat = "mp4"
+        content.httpHeaders = ["X-API-Key: synthetic-video"]
+        passed = requestGateTrackRenderer(m.nativeVideo, content.url, "synthetic-video")
+        if not passed then print "[request-gate] "; FormatJson({kind: "failure", assertion: "video-allowed-after-old-park-expiry"})
+        m.nativeVideo.observeField("state", "gateProbeVideoState")
+        m.nativeVideo.content = content
+        m.nativeVideo.control = "play"
+        m.videoStarted = false
+        return
+    end if
     if m.top.command = "bypasses"
         m.completed = 0
         m.passed = true
@@ -85,6 +104,39 @@ sub gateProbeCommand()
     end for
 end sub
 
+sub gateProbeSnapshot()
+    requestGateFenceRenderers(m.top)
+end sub
+
+sub gateProbeVideoState()
+    if m.nativeVideo = invalid or m.videoStarted then return
+    if m.nativeVideo.state = "playing"
+        m.videoStarted = true
+        m.videoPark = CreateObject("roSGNode", "RequestGateProbeWorker")
+        m.videoPark.operation = "video-park"
+        m.videoPark.fixtureBase = m.top.fixtureBase
+        m.videoPark.observeField("result", "gateProbeVideoParked")
+        m.videoPark.control = "RUN"
+    else if m.nativeVideo.state = "error"
+        print "[request-gate] "; FormatJson({kind: "failure", assertion: "synthetic-native-video-open", code: m.nativeVideo.errorCode})
+        print "[request-gate] "; FormatJson({kind: "result", operation: "video", passed: false, workers: 0})
+        print "[request-gate] complete"
+    end if
+end sub
+
+sub gateProbeVideoParked(event as object)
+    row = event.getData()
+    m.videoPark.unobserveField("result")
+    passed = row.ok = true and m.videoStarted and m.nativeVideo.content = invalid and m.nativePoster.uri = ""
+    passed = passed and not requestGateTrackRenderer(m.nativeVideo, m.top.fixtureBase + "/movie.mp4", "synthetic-video")
+    requestGateSetPoster(m.nativePoster, m.top.fixtureBase + "/blocked-poster.png", "synthetic-video")
+    passed = passed and m.nativePoster.uri = ""
+    m.nativeVideo.unobserveField("state")
+    m.nativeVideo.control = "stop"
+    print "[request-gate] "; FormatJson({kind: "result", operation: "video", passed: passed, workers: 1})
+    print "[request-gate] complete"
+end sub
+
 sub gateProbeBypassDone(event as object)
     row = event.getData()
     ok = row.ok = false
@@ -114,7 +166,6 @@ sub gateProbeRecheckDone(event as object)
     end if
     passed = m.recheckPassed and result.ok = false
     print "[request-gate] "; FormatJson({kind: "result", operation: "recheck", passed: passed, workers: 2})
-    print "[request-gate] complete"
 end sub
 
 sub gateProbeWorkerDone(event as object)

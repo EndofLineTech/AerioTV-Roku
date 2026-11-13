@@ -9,6 +9,16 @@ import subprocess
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_every_metadata_cache_read_checks_current_request_safety(self):
+        root = Path(__file__).resolve().parent.parent
+        count = 0
+        for path in (root / 'components').glob('*.brs'):
+            for line in path.read_text().splitlines():
+                if 'metadataCacheRead(' in line:
+                    count += 1
+                    self.assertIn('requestGateAccessAllowed(m.base, m.key)', line, str(path))
+        self.assertEqual(count, 6)
+
     def test_request_mailbox_uses_fresh_wire_nodes_and_sanitized_context(self):
         root = Path(__file__).resolve().parent.parent
         client = (root / 'source/RequestGateClient.brs').read_text()

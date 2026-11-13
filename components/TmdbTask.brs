@@ -51,7 +51,7 @@ sub loadTmdb()
     generation = m.authorization + "|tmdb-en-v2|" + metadataCacheDigest(FormatJson({id: fresh.tmdbId, title: fresh.title, year: fresh.year, series: fresh.seriesTmdbId, season: fresh.season, episode: fresh.episode}))
     now = CreateObject("roDateTime").asSeconds()
     key = "tmdb:" + item.key
-    cached = metadataCacheRead(scope, "vod", key, generation, now, true)
+    cached = metadataCacheRead(scope, "vod", key, generation, now, requestGateAccessAllowed(m.base, m.key))
     metadata = invalid
     if cached.state = "fresh" then metadata = cached.payload
     if metadata = invalid

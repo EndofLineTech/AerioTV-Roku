@@ -10,7 +10,7 @@ sub loadWindow()
     allowedKeys = m.top.allowedKeys
     now = CreateObject("roDateTime").asSeconds()
     cached = {state: "miss"}
-    if not m.top.bypassCache then cached = metadataCacheRead(m.top.scope, "guide", windowStart.toStr(), m.top.generation, now, true)
+    if not m.top.bypassCache then cached = metadataCacheRead(m.top.scope, "guide", windowStart.toStr(), m.top.generation, now, requestGateAccessAllowed(m.base, m.key))
     if m.top.cancelRequested
         m.key = ""
         m.top.apiKey = ""

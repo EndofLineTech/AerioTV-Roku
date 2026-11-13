@@ -31,7 +31,7 @@ sub loadEnglishDescription()
     generation = authorization + "|english-v1"
     key = "description:" + item.key
     now = CreateObject("roDateTime").asSeconds()
-    cached = metadataCacheRead(scope, "vod", key, generation, now, true)
+    cached = metadataCacheRead(scope, "vod", key, generation, now, requestGateAccessAllowed(m.base, m.key))
     if cached.state = "fresh"
         publishDescription({ok: true, key: item.key, description: cached.payload.description})
         return

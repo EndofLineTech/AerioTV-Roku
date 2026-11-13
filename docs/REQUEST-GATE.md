@@ -50,6 +50,10 @@ logo-download transports also acquire/report permits. Active transfers poll
 revocation where their event loop permits cancellation; admitted mutations
 cannot be undone after they have already reached the server.
 
+All six metadata-cache read sites pass current key/host authorization instead
+of an unconditional `true`. A fresh cache hit cannot bypass a held key or a
+server park; safe shared metadata still does not become a user-state store.
+
 Native Poster/Video/ContentNode contexts carry only a server key and credential
 digest. Render-thread checks never wait on a Task. Poster assignments and new
 video readers check the current snapshot; a broker change clears affected
@@ -72,6 +76,14 @@ Poster/Video fencing, and the first real 60-second recheck with duplicate-probe
 prevention. The listener checks that forbidden paths receive zero requests and
 that Bearer/API-key headers are not mixed. The remaining slow schedule points
 are deterministic policy tests, not a claimed half-hour wall-clock run.
+
+The expanded native matrix also starts the packaged synthetic 4:3 MP4 through
+the native Video reader and loads a local HTTP image. A subsequent production
+HTTP 429 clears/stops the reader and artwork, and rejects new Video/Poster
+assignments without forbidden HTTP requests. HLS open/close, bridge, logo,
+session mutation and parallel mapping bypass Tasks are exercised while parked.
+This is synthetic media acceptance, not the owner's authenticated live/VOD/DVR
+acceptance tracked separately.
 
 The issue remains open until the complete all-path native matrix and integrated
 active-session/UI behavior have been checked. In particular this document is

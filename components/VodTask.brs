@@ -194,7 +194,7 @@ sub loadVod()
     now = CreateObject("roDateTime").asSeconds()
     episodeStart = m.top.kind = "episode" and m.top.seriesId <> "" and m.top.pageNumber = 1
     if not m.top.bypassCache and not episodeStart
-        cached = metadataCacheRead(scope, "vod", cacheKey, generation, now, true)
+        cached = metadataCacheRead(scope, "vod", cacheKey, generation, now, requestGateAccessAllowed(m.base, m.key))
         if cached.state = "fresh"
             data = cached.payload
             nextPage = ""

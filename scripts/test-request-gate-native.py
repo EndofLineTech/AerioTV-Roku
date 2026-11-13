@@ -55,7 +55,7 @@ def main():
         raise RuntimeError('Restore ZIP differs from installed app')
     archive = ROOT / 'out/request-gate-probe.zip'
     build(archive)
-    operations = ['generic', 'reject', 'parallel-report', 'parallel-held', 'park', 'parallel-park', 'transport', 'direct-bypasses', 'bypasses', 'renderers', 'recheck']
+    operations = ['generic', 'reject', 'parallel-report', 'parallel-held', 'park', 'parallel-park', 'transport', 'direct-bypasses', 'bypasses', 'renderers', 'recheck', 'video']
     hits = []
 
     class Fixture(BaseHTTPRequestHandler):
@@ -64,7 +64,7 @@ def main():
 
         def do_GET(self):
             hits.append({'path': self.path, 'mixed_auth': bool(self.headers.get('Authorization') and self.headers.get('X-API-Key'))})
-            status = {'/generic': 401, '/forbidden': 403, '/reject': 401, '/park': 429}.get(self.path, 200)
+            status = {'/generic': 401, '/forbidden': 403, '/reject': 401, '/park': 429, '/video-park': 429}.get(self.path, 200)
             body = b'{"ok":true}'
             if self.path == '/generic':
                 body = b'<html>Invalid API key</html>'
@@ -72,10 +72,25 @@ def main():
                 body = b'{"detail":"Invalid API key"}'
             if self.path == '/api/accounts/users/me/':
                 body = b'{"id":7}'
+            content_type = 'application/json'
+            if self.path == '/movie.mp4':
+                body = (ROOT / 'tests/native/fixtures/4by3.mp4').read_bytes()
+                content_type = 'video/mp4'
+            if self.path == '/poster.png':
+                body = (ROOT / 'images/channel-icon-hd.png').read_bytes()
+                content_type = 'image/png'
             self.send_response(status)
+            self.send_header('Content-Type', content_type)
             self.send_header('Content-Length', str(len(body)))
             self.end_headers()
-            self.wfile.write(body)
+            if self.command == 'HEAD':
+                return
+            try:
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+
+        do_HEAD = do_GET
 
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as route:
         route.connect((host, 8060))
@@ -112,7 +127,9 @@ def main():
                 if len(completed) < len(operations):
                     command(operations[len(completed)])
         report['passed'] = process.wait(timeout=10) == 0 and completed == operations
-        report['passed'] = report['passed'] and [row['path'] for row in hits] == ['/generic', '/forbidden', '/reject', '/ok', '/park', '/api/accounts/users/me/'] and not any(row['mixed_auth'] for row in hits)
+        paths = [row['path'] for row in hits]
+        allowed = ['/generic', '/forbidden', '/reject', '/ok', '/park', '/api/accounts/users/me/', '/poster.png', '/movie.mp4', '/video-park']
+        report['passed'] = report['passed'] and paths[:6] == allowed[:6] and '/movie.mp4' in paths and paths.count('/video-park') == 1 and all(path in allowed for path in paths) and not any(row['mixed_auth'] for row in hits)
     finally:
         if process is not None and process.poll() is None:
             process.terminate()

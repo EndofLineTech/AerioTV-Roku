@@ -31,6 +31,20 @@ function requestGateCredentialHash(key as string) as string
     return lcase(digest.process(bytes))
 end function
 
+' Cached authorized data is still an account operation; a cache hit must not
+' sidestep an active key hold or host park. This check never starts a request.
+function requestGateAccessAllowed(url as string, key as string) as boolean
+    broker = requestGateBroker()
+    if broker = invalid then return not requestGateMandatory()
+    if not broker.ready then return false
+    state = broker.snapshot
+    if type(state) <> "roAssociativeArray" then return false
+    hash = requestGateCredentialHash(key)
+    if key <> "" and hash = "" then return false
+    permit = requestGatePermit(state, requestGateServer(url), hash, CreateObject("roDateTime").asSeconds(), false)
+    return permit.allowed
+end function
+
 function requestGateExchange(broker as object, ticket as object) as dynamic
     ' Never mutate/re-submit a Node already visible to another thread. A queued
     ' field event carries a Node reference, not a snapshot of its old fields.

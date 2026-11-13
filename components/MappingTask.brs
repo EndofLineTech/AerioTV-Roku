@@ -15,7 +15,7 @@ sub loadMappings()
     channels = m.top.channels
     now = CreateObject("roDateTime").asSeconds()
     cached = {state: "miss"}
-    if not m.top.bypassCache then cached = metadataCacheRead(m.top.scope, "mapping", "epg-links", m.top.generation, now, true)
+    if not m.top.bypassCache then cached = metadataCacheRead(m.top.scope, "mapping", "epg-links", m.top.generation, now, requestGateAccessAllowed(m.base, m.key))
     links = invalid
     source = "network"
     if cached.state = "fresh"

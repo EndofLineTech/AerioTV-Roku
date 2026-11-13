@@ -87,7 +87,7 @@ sub loadChannels()
     selection = profileSelectionIdentity(selectedIds, "")
     scope = metadataCacheDigest(m.base + "|" + textValue(user.id) + "|profile:" + selection)
     generation = metadataCacheDigest(FormatJson(rows))
-    cached = metadataCacheRead(scope, "channels", "summary", generation, CreateObject("roDateTime").asSeconds(), true)
+    cached = metadataCacheRead(scope, "channels", "summary", generation, CreateObject("roDateTime").asSeconds(), requestGateAccessAllowed(m.base, m.key))
     channels = []
     if cached.state = "fresh" then channels = cached.payload
     seen = {}
