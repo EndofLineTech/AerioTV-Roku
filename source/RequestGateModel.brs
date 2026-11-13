@@ -4,12 +4,16 @@ function requestGateDefault() as object
     return {keys: {}, servers: {}, overflow: false}
 end function
 
-function requestGateProbeIdentityMatches(user as dynamic, expected as string) as boolean
+function requestGateProbeIdentityMatches(user as dynamic, expected as string, expectedUsername = "" as string) as boolean
     if type(user) <> "roAssociativeArray" then return false
     if not CreateObject("roRegex", "^[1-9][0-9]{0,15}$", "").isMatch(expected) then return false
     kind = type(user.id)
     if kind <> "Integer" and kind <> "roInt" and kind <> "roInteger" and kind <> "LongInteger" and kind <> "roLongInteger" then return false
     if user.id <= 0 or user.id > 9007199254740991& then return false
+    if expectedUsername <> ""
+        if type(user.username) <> "String" and type(user.username) <> "roString" then return false
+        if lcase(user.username) <> lcase(expectedUsername) then return false
+    end if
     return user.id = ParseJson(expected)
 end function
 

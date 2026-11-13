@@ -14,7 +14,7 @@ sub recheckHeldKey()
             response = httpTransferPermitted(url, invalid, "", 5000, 65536, "GET", invalid, permit)
             if response.status >= 200 and response.status < 300 and response.error = ""
                 if CreateObject("roRegex", "^\s*\{", "").isMatch(response.body)
-                    ok = requestGateProbeIdentityMatches(ParseJson(response.body, "d"), m.top.accountId)
+                    ok = requestGateProbeIdentityMatches(ParseJson(response.body, "d"), m.top.accountId, m.top.expectedUsername)
                 end if
                 ' A proxy HTML/empty/different-user 200 is not authentication.
                 if not ok then response.status = 0

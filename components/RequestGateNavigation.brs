@@ -1,15 +1,43 @@
 ' Raw credential binding lives only on the active Scene, not in the broker,
 ' snapshots, tickets or diagnostics. A slot switch retires it on the next tick.
+function currentRequestGateOwner(entry as object) as dynamic
+    if entry.id <> m.selectedConnectionId then return invalid
+    if normalizeBaseUrl(entry.url) <> normalizeBaseUrl(m.baseUrl) then return invalid
+    if m.scopedPreferencesRequired <> true then return {account: textValue(entry.accountId), username: textValue(entry.accountUsername), profile: "", session: ""}
+    scope = m.activeUserScope
+    if type(scope) <> "roAssociativeArray" then return invalid
+    if scope.playlistId <> entry.id then return invalid
+    if type(scope.accountId) <> "String" and type(scope.accountId) <> "roString" then return invalid
+    if scope.accountId = "" then return invalid
+    if scope.preferenceIdentity <> connectionPreferenceIdentity(entry, scope.accountId) then return invalid
+    if scope.sessionId = "" or scope.sessionId <> currentUserSessionId() then return invalid
+    store = m.userProfileStore
+    if type(store) <> "roAssociativeArray" then return invalid
+    if store.readOnly = true or store.playlistId <> entry.id or store.active <> scope.profileId then return invalid
+    if type(store.profiles) <> "roArray" then return invalid
+    for each profile in store.profiles
+        if profile.id = scope.profileId
+            if textValue(profile.userId) <> scope.accountId then return invalid
+            if type(profile.username) <> "String" and type(profile.username) <> "roString" then return invalid
+            if profile.username = "" then return invalid
+            return {account: scope.accountId, username: profile.username, profile: scope.profileId, session: scope.sessionId}
+        end if
+    end for
+    return invalid
+end function
+
 sub rememberHeldRequestGateBinding()
     if userProfileGateClosed() or requestGateProfileSwitching() then return
     if m.requestGate = invalid or m.apiKey = "" then return
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid or entry.provider <> "dispatcharr" then return
+    owner = currentRequestGateOwner(entry)
+    if owner = invalid then return
     state = m.requestGate.snapshot
     if type(state) <> "roAssociativeArray" then return
     hash = requestGateCredentialHash(m.apiKey)
     if not state.keys.doesExist(hash) then return
-    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
-    if entry = invalid or entry.provider <> "dispatcharr" then return
-    m.requestGateBinding = {slot: entry.id, base: m.baseUrl, key: m.apiKey, hash: hash, account: entry.accountId}
+    m.requestGateBinding = {slot: entry.id, base: m.baseUrl, key: m.apiKey, hash: hash, account: owner.account, username: owner.username, profile: owner.profile, session: owner.session}
     if not state.keys[hash].prompted and m.requestGatePrompt = invalid
         ticket = CreateObject("roSGNode", "RequestGateTicket")
         ticket.id = CreateObject("roDeviceInfo").getRandomUUID()
@@ -73,6 +101,7 @@ sub onRequestGateTick()
     task.baseUrl = binding.base
     task.apiKey = binding.key
     task.accountId = binding.account
+    task.expectedUsername = textValue(binding.username)
     task.observeField("result", "onRequestGateRecheck")
     m.requestGateRecheck = task
     task.control = "RUN"

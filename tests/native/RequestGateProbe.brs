@@ -208,6 +208,8 @@ sub gateProbeRecheckDue()
     m.recheck.baseUrl = m.top.fixtureBase
     m.recheck.apiKey = "synthetic-transport-held"
     m.recheck.accountId = "7"
+    m.recheck.expectedUsername = "Alice"
+    m.recheckIdentityPolicy = requestGateProbeIdentityMatches({id: 7, username: "ALICE"}, "7", "Alice") and not requestGateProbeIdentityMatches({id: 7, username: "Other"}, "7", "Alice") and not requestGateProbeIdentityMatches({id: 7}, "7", "Alice")
     m.recheck.observeField("result", "gateProbeRecheckDone")
     m.recheck.control = "RUN"
 end sub
@@ -221,7 +223,7 @@ sub gateProbeRecheckDone(event as object)
         gateProbeRecheckDue()
         return
     end if
-    passed = m.recheckPassed and result.ok = false
+    passed = m.recheckPassed and m.recheckIdentityPolicy and result.ok = false
     print "[request-gate] "; FormatJson({kind: "result", operation: "recheck", passed: passed, workers: 2})
 end sub
 

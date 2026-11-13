@@ -75,7 +75,7 @@ def main():
             if self.path in ['/reject', '/forbidden']:
                 body = b'{"detail":"Invalid API key"}'
             if self.path == '/api/accounts/users/me/':
-                body = b'{"id":7}'
+                body = b'{"id":7,"username":"Alice"}'
             content_type = 'application/json'
             if self.path.startswith('/sync/'):
                 _, _, scenario, *tail = self.path.split('/')

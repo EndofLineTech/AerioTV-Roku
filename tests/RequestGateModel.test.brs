@@ -3,6 +3,9 @@ sub main()
     check(requestGateTicketUrl("https://example.test/api/accounts/users/me/?secret=hidden", true) = "https://example.test/api/accounts/users/me/", "only probe endpoint marker crosses mailbox")
     check(requestGateTicketUrl("https://user:secret@example.test/", false) = "", "userinfo never crosses mailbox")
     check(requestGateProbeIdentityMatches({id: 7}, "7"), "slow probe confirms expected integer account")
+    check(requestGateProbeIdentityMatches({id: 7, username: "Alice"}, "7", "alice"), "profile slow probe confirms both saved user ID and case-insensitive username")
+    check(not requestGateProbeIdentityMatches({id: 7, username: "Bob"}, "7", "Alice"), "matching integer user ID cannot lift a different profile username's hold")
+    check(not requestGateProbeIdentityMatches({id: 7}, "7", "Alice"), "profile slow probe refuses a missing expected username")
     for each user in [{id: 8}, {id: "7"}, {id: 7.0}, {}, invalid]
         check(not requestGateProbeIdentityMatches(user, "7"), "slow probe cannot lift hold for malformed/different identity")
     end for

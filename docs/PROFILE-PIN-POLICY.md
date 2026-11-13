@@ -224,3 +224,12 @@ admin source switching is allowed. The native Child fixture probes actual Guide
 option lists and direct group handlers, then forges setup/receiver/source calls
 before using the real adult-PIN management route. Public Child activation remains
 disabled while the remaining lifecycle and recovery integration is unfinished.
+
+Rejected-key bindings now derive the expected user from the current immutable
+scope and matching active profile, not the selected connection's default account
+metadata. Missing, retired or mismatched scoped authority cannot label a binding.
+The slow recheck Task receives that holder's expected username as well as user ID
+and refuses a same-ID/different-name or missing-name response. Legacy default
+setup retains its explicit known account expectation. This corrects holder
+selection; it does not complete the non-default refusal prompt, own-sign-in form,
+or unavailable Child lifecycle, which remain separately gated work.

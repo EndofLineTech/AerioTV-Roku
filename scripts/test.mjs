@@ -101,7 +101,7 @@ for (const suite of suites) {
     'source/HttpPolicy.brs',
     'source/RequestGateModel.brs', 'source/RequestGateClient.brs', 'source/RequestGateRenderer.brs',
     ...(suite === 'ConnectionNavigation' ? ['components/RequestGateNavigation.brs'] : []),
-    ...(suite === 'RequestGateNavigation' ? ['components/RequestGateNavigation.brs'] : []),
+    ...(suite === 'RequestGateNavigation' ? ['components/RequestGateNavigation.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'RequestGateTask' ? ['components/RequestGateTask.brs'] : []),
     ...(suite === 'UserProfileScope' ? ['source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(['UserProfileScopeStore', 'UserProfilePreferenceNavigation'].includes(suite) ? ['source/UserProfileScope.brs', 'source/UserProfileScopeStore.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs', 'source/ConnectionStoreModel.brs'] : []),

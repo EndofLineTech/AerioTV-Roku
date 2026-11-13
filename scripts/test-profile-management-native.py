@@ -185,6 +185,8 @@ end sub
     else if phase = 3
         if m.profileSwitchContext <> invalid then m.managementProbePhase-- : return
         m.switchProbeB = m.activeUserScope.profileId = "00000000-0000-4000-8000-000000000002" and m.accountPreferences.favoriteIds[0] = "8" and m.devicePreferences.themePreset = "forest" and m.apiKey = "synthetic-b" and m.guide.callFunc("profileSwitchProbeLineup") = "8"
+        bindingOwner = currentRequestGateOwner(connectionStoreEntry(m.connectionStore, "slot-a"))
+        m.switchProbeB = m.switchProbeB and bindingOwner.account = "8" and bindingOwner.profile = m.activeUserScope.profileId
         print "[profile-management] "; FormatJson({kind: "switch-b", own: m.switchProbeB})
     else if phase = 4
         m.switchProbeBackStarted = beginUserProfileSwitch(m.switchProbeDefault)
