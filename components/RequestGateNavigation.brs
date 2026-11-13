@@ -1,6 +1,7 @@
 ' Raw credential binding lives only on the active Scene, not in the broker,
 ' snapshots, tickets or diagnostics. A slot switch retires it on the next tick.
 sub rememberHeldRequestGateBinding()
+    if userProfileGateClosed() or requestGateProfileSwitching() then return
     if m.requestGate = invalid or m.apiKey = "" then return
     state = m.requestGate.snapshot
     if type(state) <> "roAssociativeArray" then return
@@ -18,6 +19,20 @@ sub rememberHeldRequestGateBinding()
         m.requestGatePrompt = ticket
         m.requestGate.request = ticket
     end if
+end sub
+
+' Bindings contain raw keys and must not outlive a profile/connection lifecycle.
+' Re-login may explicitly carry its own default-holder hold across its reset;
+' a switch never inherits that exception.
+sub retireProfileRequestBinding()
+    if m.requestGatePrompt <> invalid then m.requestGatePrompt.unobserveField("result")
+    m.requestGatePrompt = invalid
+    if m.requestGateRecheck <> invalid
+        m.requestGateRecheck.unobserveField("result")
+        cancelNetworkTask(m.requestGateRecheck)
+    end if
+    m.requestGateRecheck = invalid
+    m.requestGateBinding = invalid
 end sub
 
 sub onRequestGatePrompt(event as object)

@@ -17,6 +17,10 @@ sub main()
     check(not requestGateRenderAllowed("https://other.test/art", ""), "launch protection blocks remote artwork on otherwise admitted hosts")
     check(not requestGateRenderContextAllowed("other.test:443", ""), "already-tracked remote readers are fenced when a PIN gate opens")
     check(requestGateRenderAllowed("pkg:/images/a.png", ""), "protection does not block its own packaged UI")
+    m.global.profilegateclosed = false
+    m.global.profileswitchpending = true
+    check(not requestGateRenderAllowed("https://other.test/art", ""), "switch scrim blocks outgoing remote renderers while target authentication stages")
+    check(requestGateRenderAllowed("pkg:/images/a.png", ""), "switch scrim retains packaged UI without permitting network artwork")
     print "ALL TESTS PASSED"
 end sub
 

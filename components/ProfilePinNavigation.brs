@@ -105,19 +105,31 @@ sub onProfilePinSubmit(event as object)
     if m.startupDialogOpen = true then completeStartupDialog()
     if context.continuation = "connect" then connectServer(true)
     if context.continuation = "complete" then completeConnection(context.resume)
+    if context.continuation = "switch" then onUserProfileSwitchPin(context.resume)
 end sub
 
 sub onProfilePinClosed(event as object)
     if m.profilePinDialog = invalid then return
     if not m.profilePinDialog.isSameNode(event.getRoSGNode()) then return
+    context = m.profilePinContext
     m.profilePinDialog.unobserveField("buttonSelected")
     m.profilePinDialog.unobserveField("wasClosed")
     m.profilePinDialog.textEditBox.text = ""
+    m.profilePinDialog.close = true
+    if type(m.profilePinDialog) = "roSGNode"
+        if m.profilePinDialog.isSubtype("DirectionsPinPad") then m.top.removeChild(m.profilePinDialog)
+    end if
     m.profilePinDialog = invalid
     m.profilePinContext = invalid
     m.profileGateClock.control = "stop"
     m.profileGateCover.visible = true
     m.global.profilegateclosed = true
+    if context <> invalid
+        if context.continuation = "switch"
+            rollbackUserProfileSwitch("Switch cancelled. The previous profile was retained.")
+            return
+        end if
+    end if
     m.top.exitRequested = true
 end sub
 

@@ -65,7 +65,16 @@ sub main()
     end function
     onProfilePinClosed(event)
     check(m.top.exitRequested and m.profileGateCover.visible and m.connectCalls = 1, "native wasClosed exits launch without showing protected content")
+    m.top.exitRequested = false
+    beginProfilePinGate(profile, "switch", "fresh-switch-attempt")
+    onProfilePinClosed(event)
+    check(not m.top.exitRequested and m.switchRollbacks = 1, "target-switch PIN cancellation rolls back rather than using launch whole-app exit")
     print "ALL TESTS PASSED"
+end sub
+
+sub rollbackUserProfileSwitch(message as string)
+    if m.switchRollbacks = invalid then m.switchRollbacks = 0
+    m.switchRollbacks++
 end sub
 
 sub connectServer(skipRfi = false as boolean)

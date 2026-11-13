@@ -59,6 +59,10 @@ sub main()
     m.global.profilegateclosed = false
     assertEqual(isCurrentTaskEvent(event, task), true, "verified closure restores own-session completion admission")
     assertEqual(requestGateTaskSessionCurrent(), true, "verified closure restores tagged network admission")
+    m.global.profileswitchpending = true
+    assertEqual(userEventCurrent(userViewEvent({action: "connection"}, "session-a-3")), false, "switch scrim refuses UI events even with the staging Task session tag")
+    assertEqual(requestGateTaskSessionCurrent(), true, "switch scrim permits only the properly tagged incoming Task, unlike a PIN cover")
+    m.global.profileswitchpending = false
     print "ALL TESTS PASSED"
 end sub
 

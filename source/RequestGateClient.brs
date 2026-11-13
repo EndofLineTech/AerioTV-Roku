@@ -51,6 +51,14 @@ function requestGateProfileClosed() as boolean
     return m.global.profilegateclosed = true
 end function
 
+function requestGateProfileSwitching() as boolean
+    if m.global = invalid then return false
+    if type(m.global) = "roSGNode"
+        if not m.global.hasField("profileswitchpending") then return false
+    end if
+    return m.global.profileswitchpending = true
+end function
+
 function requestGateCredentialHash(key as string) as string
     if key = "" then return ""
     bytes = CreateObject("roByteArray")

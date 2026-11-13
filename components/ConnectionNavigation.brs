@@ -306,6 +306,8 @@ sub updateConnectionUrl(base as string)
 end sub
 
 sub resetConnectionRuntime()
+    retireProfileRequestBinding()
+    retireUserProfileSwitch()
     retireProfileManagement()
     m.rokuRfiPending = ""
     m.rokuRfiOffered = false
@@ -375,11 +377,42 @@ end sub
 
 sub requireConnectionRelogin(message as string)
     rememberHeldRequestGateBinding()
+    heldBinding = m.requestGateBinding
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     removed = true
-    if entry <> invalid then removed = deleteStoredConnectionKey(entry)
+    defaultHolder = true
+    profileStore = invalid
+    if entry <> invalid
+        if entry.provider = "dispatcharr"
+            profileStore = loadUserProfileStore(m.registry, entry.id)
+            revoked = revokeUserProfileCredential(m.registry, entry, profileStore)
+            removed = revoked.ok
+            defaultHolder = revoked.isDefault
+            if type(m.profileSessionKeys) = "roAssociativeArray" and revoked.profileId <> ""
+                m.profileSessionKeys.delete(preferenceScope(entry.url + "|" + entry.id + "|" + revoked.profileId))
+            end if
+        else
+            removed = deleteStoredConnectionKey(entry)
+        end if
+    end if
     resetConnectionRuntime()
+    if not defaultHolder
+        ' A refused non-default/Child cannot fall through the slot setup form
+        ' or reload/delete connKey. Its own sign-in/access UI is separate work.
+        m.userProfileStore = profileStore
+        m.apiKey = ""
+        m.global.profilegateclosed = true
+        m.profileGateCover.visible = true
+        m.top.findNode("profileGateMessage").text = "Could not reach your Dispatcharr server. This profile needs its own sign-in. Back exits AerioTV."
+        return
+    end if
     applySelectedConnection()
+    ' This is the same rejected default holder, not a profile/slot transition.
+    if heldBinding <> invalid
+        if entry <> invalid
+            if heldBinding.slot = entry.id and heldBinding.base = entry.url then m.requestGateBinding = heldBinding
+        end if
+    end if
     ' A failed registry deletion cannot reauthorize this session via the old
     ' in-memory key, even if the app registry still needs manual cleanup.
     m.apiKey = ""

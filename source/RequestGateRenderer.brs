@@ -1,6 +1,7 @@
 ' Render-thread checks never wait for a Task. Every native renderer is tagged
 ' with digest-only context so a later broker transition can clear/stop it.
 function requestGateRenderContextAllowed(server as string, hash as string) as boolean
+    if requestGateProfileSwitching() then return false
     if requestGateProfileClosed() then return false
     broker = requestGateBroker()
     if broker = invalid then return not requestGateMandatory()
@@ -13,6 +14,7 @@ end function
 
 function requestGateRenderAllowed(uri as string, key as string) as boolean
     if uri = "" or left(uri, 5) = "pkg:/" or left(uri, 5) = "tmp:/" then return true
+    if requestGateProfileSwitching() then return false
     if requestGateProfileClosed() then return false
     if requestGateBroker() = invalid and not requestGateMandatory() then return true
     hash = requestGateCredentialHash(key)

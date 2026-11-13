@@ -1,5 +1,5 @@
 sub init()
-    m.global.addFields({activeusersession: "", profilegateclosed: false})
+    m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false})
     m.profileGateCover = m.top.findNode("profileGateCover")
     m.profileGateClock = m.top.findNode("profileGateClock")
     m.profileGateClock.observeField("fire", "onProfilePinTick")
@@ -278,6 +278,7 @@ sub signalStartupComplete()
 end sub
 
 sub onLaunchRequest()
+    if m.profileSwitchContext <> invalid then return
     m.pendingLaunch = normalizeLaunchRequest(m.top.launchRequest)
     if m.pendingLaunch = invalid
         if m.page = "guide" then showNotice("This link is not available. Browse your guide instead.")
@@ -884,6 +885,7 @@ end sub
 
 sub refreshCapabilities()
     if userProfileGateClosed() then return
+    if requestGateProfileSwitching() then return
     if m.page = "setup" or m.apiKey = "" or m.serverAccountId = "" then return
     if m.capabilityTask <> invalid then return
     m.aacDiscoveryState = "pending"
@@ -1034,6 +1036,7 @@ sub onAacFailureClosed(event as object)
 end sub
 
 sub showConnection()
+    if m.profileSwitchContext <> invalid then return
     if userProfileGateClosed() then return
     closeRecentHistoryDialog()
     cancelDiagnosticShare()
@@ -2505,6 +2508,10 @@ sub closeMessage(event as object)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    if m.profileSwitchContext <> invalid and m.profileSwitchTask <> invalid
+        if press and key = "back" then rollbackUserProfileSwitch("Switch cancelled. The previous profile was retained.")
+        return true
+    end if
     if userProfileGateClosed()
         if press and key = "back" then m.top.exitRequested = true
         return true

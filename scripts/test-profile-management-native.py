@@ -9,6 +9,7 @@ from pathlib import Path
 import socket
 import subprocess
 import threading
+import time
 import urllib.request
 import uuid
 import zipfile
@@ -16,7 +17,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def build(output, normal, section, base, directions=False):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False):
     with zipfile.ZipFile(normal) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
@@ -25,7 +26,17 @@ def build(output, normal, section, base, directions=False):
                 if directions:
                     body += b'\naeriotv_profile_directions_test=1\n'
             if name == 'source/MetadataCacheStore.brs':
+                assert body.count(b'"cachefs:/aeriotv-metadata-v1"') == 1
                 body = body.replace(b'"cachefs:/aeriotv-metadata-v1"', b'"tmp:/profile-management-cache"')
+            if switching and name == 'components/GuideView.xml':
+                body = body.replace(b'</interface>', b'<function name="profileSwitchProbeLineup" /></interface>', 1)
+            if switching and name == 'components/GuideView.brs':
+                body += b'''\nfunction profileSwitchProbeLineup() as string
+    if type(m.channels) <> "roArray" then return ""
+    if m.channels.count() = 0 then return ""
+    return m.channels[0].id
+end function
+'''
             if name == 'components/AerioScene.brs':
                 source = body.decode()
                 target = 'm.registry = CreateObject("roRegistrySection", "AerioTV")'
@@ -118,6 +129,113 @@ end sub
                     source = source.replace('        beginAdultProfilePinGate()\n', '        beginAdultProfilePinGate()\n        onAdultProfilePinSubmit(managementProbeEvent(m.adultPinDialog, 1))\n')
                     source = source.replace('m.adultPinDialog.subtype() = "StandardPinPadDialog"', 'm.adultPinDialog.subtype() = "DirectionsPinPad"')
                     source = source.replace('text = "9999"', 'text = "UUUU"').replace('text = "1234"', 'text = "UDLR"')
+                if switching:
+                    source = source.split('sub onManagementProbeTick()', 1)[0] + '''sub onManagementProbeTick()
+    m.managementProbePhase++
+    phase = m.managementProbePhase
+    if phase = 1
+        store = loadUserProfileStore(m.registry, "slot-a")
+        m.switchProbeDefault = store.active
+        m.switchProbeFirstSession = currentUserSessionId()
+        adult = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Synthetic8", user_level: 1}, 1)
+        adult.isDefault = false
+        adult.order = 1
+        store.profiles.push(adult)
+        m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
+        m.registry.write(userProfileKeyName("slot-a", adult.id), "synthetic-b")
+        m.accountPreferences.favoriteIds = ["7"]
+        m.devicePreferences = setCanonicalPreference(m.devicePreferences, "themePreset", "midnight")
+        m.preferenceStore.accounts[preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "8"))] = normalizeAccountPreferences({favoriteIds: ["8"], profileSettings: {themePreset: "forest"}})
+        m.registry.write("settingsV1", FormatJson(m.preferenceStore))
+        m.registry.flush()
+    else if phase = 2
+        started = beginUserProfileSwitch("00000000-0000-4000-8000-000000000002")
+        print "[profile-management] "; FormatJson({kind: "switch-start", started: started})
+    else if phase = 3
+        if m.profileSwitchContext <> invalid then m.managementProbePhase-- : return
+        m.switchProbeB = m.activeUserScope.profileId = "00000000-0000-4000-8000-000000000002" and m.accountPreferences.favoriteIds[0] = "8" and m.devicePreferences.themePreset = "forest" and m.apiKey = "synthetic-b" and m.guide.callFunc("profileSwitchProbeLineup") = "8"
+        print "[profile-management] "; FormatJson({kind: "switch-b", own: m.switchProbeB})
+    else if phase = 4
+        m.switchProbeBackStarted = beginUserProfileSwitch(m.switchProbeDefault)
+    else if phase = 5
+        if m.profileSwitchContext <> invalid then m.managementProbePhase-- : return
+        m.switchProbeA = m.activeUserScope.profileId = m.switchProbeDefault and m.accountPreferences.favoriteIds[0] = "7" and m.devicePreferences.themePreset = "midnight" and currentUserSessionId() <> m.switchProbeFirstSession and m.apiKey = "synthetic-a" and m.guide.callFunc("profileSwitchProbeLineup") = "7"
+        m.switchProbeSecondSession = currentUserSessionId()
+        print "[profile-management] "; FormatJson({kind: "switch-a", own: m.switchProbeA, started: m.switchProbeBackStarted})
+    else if phase = 6
+        m.registry.write(userProfileKeyName("slot-a", "00000000-0000-4000-8000-000000000002"), "rejected-synthetic-key")
+        m.profileSessionKeys[preferenceScope(m.baseUrl + "|slot-a|00000000-0000-4000-8000-000000000002")] = "rejected-synthetic-key"
+        m.registry.flush()
+        m.switchProbeRejectStarted = beginUserProfileSwitch("00000000-0000-4000-8000-000000000002")
+    else if phase = 7
+        if m.profileSwitchContext <> invalid then m.managementProbePhase-- : return
+        store = loadUserProfileStore(m.registry, "slot-a")
+        m.switchProbeEvidence = {kind: "result", b: m.switchProbeB, a: m.switchProbeA, rollback: m.switchProbeRejectStarted and store.active = m.switchProbeDefault and m.activeUserScope.profileId = m.switchProbeDefault and currentUserSessionId() <> m.switchProbeSecondSession and m.apiKey = "synthetic-a", preserved: m.registry.read("connKey_slot-a") = "synthetic-a", uncovered: not m.profileGateCover.visible, no_autoplay: m.playingChannel = invalid}
+    else if phase = 8
+        m.registry.write(userProfileKeyName("slot-a", "00000000-0000-4000-8000-000000000002"), "delayed-b")
+        m.profileSessionKeys[preferenceScope(m.baseUrl + "|slot-a|00000000-0000-4000-8000-000000000002")] = "delayed-b"
+        m.registry.flush()
+        m.switchProbeBeforeCancel = currentUserSessionId()
+        m.switchProbeCancelStarted = beginUserProfileSwitch("00000000-0000-4000-8000-000000000002")
+    else if phase = 9
+        if m.profilePinDialog <> invalid
+            m.profilePinDialog.textEditBox.text = "1234"
+            onProfilePinSubmit(managementProbeEvent(m.profilePinDialog, 0))
+        end if
+    else if phase = 10
+        print "[profile-management] "; FormatJson({kind: "cancel-ready", covered: m.profileGateCover.visible})
+    else if phase = 15
+        m.managementProbeClock.control = "stop"
+        store = loadUserProfileStore(m.registry, "slot-a")
+        m.switchProbeEvidence.cancelled = m.switchProbeCancelStarted and m.profileSwitchContext = invalid and store.active = m.switchProbeDefault and m.activeUserScope.profileId = m.switchProbeDefault and currentUserSessionId() <> m.switchProbeBeforeCancel and not m.profileGateCover.visible
+        m.switchProbeEvidence.stale_a = not userEventCurrent(userViewEvent({action: "connection"}, m.switchProbeFirstSession))
+        print "[profile-management] "; FormatJson(m.switchProbeEvidence)
+    end if
+end sub
+'''
+                    if switch_pin:
+                        source = source.replace('        store.profiles.push(adult)', '''        adult.pinType = "numbers"
+        adult.pinSalt = string(32, "b")
+        adult.pinHash = userProfilePinHash(adult.pinSalt, "1234")
+        store.profiles.push(adult)''')
+                        source = source.replace('        if m.profileSwitchContext <> invalid then m.managementProbePhase-- : return', '''        if m.profilePinDialog <> invalid
+            m.profilePinDialog.textEditBox.text = "1234"
+            onProfilePinSubmit(managementProbeEvent(m.profilePinDialog, 0))
+        end if
+        if m.profileSwitchContext <> invalid then m.managementProbePhase-- : return''')
+                    if cancel_pin:
+                        source = source.replace('''    else if phase = 9
+        if m.profilePinDialog <> invalid
+            m.profilePinDialog.textEditBox.text = "1234"
+            onProfilePinSubmit(managementProbeEvent(m.profilePinDialog, 0))
+        end if
+''', '''    else if phase = 9
+        ' Leave target PIN empty for real ECP Back cancellation.
+''')
+                    if reject_active:
+                        source = source.rsplit('    else if phase = 4\n', 1)[0] + '''    else if phase = 4
+        requireConnectionRelogin("Synthetic own-profile rejection.")
+        m.managementProbeClock.control = "stop"
+        store = loadUserProfileStore(m.registry, "slot-a")
+        print "[profile-management] "; FormatJson({kind: "result", b: m.switchProbeB, active_retained: store.active = "00000000-0000-4000-8000-000000000002", default_preserved: m.registry.read("connKey_slot-a") = "synthetic-a", own_revoked: not m.registry.exists(userProfileKeyName("slot-a", store.active)), covered: m.profileGateCover.visible and m.global.profilegateclosed, no_default_session: m.apiKey = "" and m.activeUserScope = invalid})
+    end if
+end sub
+'''
+                    if remember_off:
+                        source = source.replace('''        m.registry.write("settingsV1", FormatJson(m.preferenceStore))
+        m.registry.flush()''', '''        m.registry.write("settingsV1", FormatJson(m.preferenceStore))
+        m.connectionStore = connectionStoreUpdate(m.connectionStore, "slot-a", {remember: false})
+        m.remember = false
+        m.registry.write("connectionsV1", FormatJson(m.connectionStore))
+        m.registry.delete("connKey_slot-a")
+        m.registry.delete(userProfileKeyName("slot-a", adult.id))
+        m.profileSessionKeys = {}
+        m.profileSessionKeys[preferenceScope(m.baseUrl + "|slot-a|" + adult.id)] = "synthetic-b"
+        m.registry.flush()''')
+                        for key in ['rejected-synthetic-key', 'delayed-b']:
+                            source = source.replace(f'        m.registry.write(userProfileKeyName("slot-a", "00000000-0000-4000-8000-000000000002"), "{key}")\n', '')
+                        source = source.replace('preserved: m.registry.read("connKey_slot-a") = "synthetic-a"', 'preserved: not m.registry.exists("connKey_slot-a")')
+                        source = source.replace('        m.switchProbeEvidence.stale_a =', '        m.switchProbeEvidence.no_stored = not m.registry.exists("connKey_slot-a") and not m.registry.exists(userProfileKeyName("slot-a", "00000000-0000-4000-8000-000000000002"))\n        m.switchProbeEvidence.stale_a =')
                 body = source.encode()
             package.writestr(name, body)
         package.writestr('profile-management-probe.json', json.dumps({'synthetic': True}))
@@ -127,7 +245,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--restore', required=True)
     parser.add_argument('--directions', action='store_true', help='Exercise numeric-to-Directions adult-type selection under developer opt-in')
+    parser.add_argument('--switch', action='store_true', help='Exercise internal same-slot A/B/A and rejected-key rollback without enabling the public picker')
+    parser.add_argument('--switch-pin', action='store_true', help='With --switch, require the real stored numeric target PIN before each switch')
+    parser.add_argument('--cancel-pin', action='store_true', help='With --switch-pin, cancel the final target PIN before any request is sent')
+    parser.add_argument('--reject-active', action='store_true', help='With --switch, qualify profile-owned active-key revocation without default setup fallback')
+    parser.add_argument('--remember-off', action='store_true', help='With --switch, use address/slot/profile-qualified session credentials only')
     args = parser.parse_args()
+    if args.switch and args.directions:
+        parser.error('--switch and --directions are separate cases')
+    if args.switch_pin and not args.switch:
+        parser.error('--switch-pin requires --switch')
+    if args.cancel_pin and not args.switch_pin:
+        parser.error('--cancel-pin requires --switch-pin')
+    if args.reject_active and (not args.switch or args.switch_pin):
+        parser.error('--reject-active requires --switch without --switch-pin')
+    if args.remember_off and (not args.switch or args.reject_active):
+        parser.error('--remember-off requires --switch without --reject-active')
     host, password = os.environ['ROKU_HOST'], os.environ['ROKU_DEV_PASSWORD']
     modules = {}
     for key in ['primitives', 'recovery']:
@@ -142,29 +275,41 @@ def main():
         route.connect((host, 8060))
         local = route.getsockname()[0]
 
+    hits = []
+
     class Fixture(BaseHTTPRequestHandler):
         def log_message(self, *_args):
             pass
 
         def do_GET(self):
+            key = self.headers.get('X-API-Key', '')
+            user = 8 if key in ['synthetic-b', 'delayed-b'] else 7
+            hits.append({'user': user, 'path': self.path, 'rejected': key == 'rejected-synthetic-key', 'delayed': key == 'delayed-b'})
+            if key == 'delayed-b' and self.path == '/api/accounts/users/me/':
+                time.sleep(4)
             value = []
             if self.path == '/api/accounts/users/me/':
-                value = {'id': 7, 'username': 'Synthetic7', 'user_level': 1}
+                value = {'id': user, 'username': 'Synthetic' + str(user), 'user_level': 1}
             if self.path == '/api/accounts/users/me/app-data/':
                 value = {'apps': []}
+            if self.path.split('?', 1)[0] in ['/api/channels/channels/', '/api/channels/channels/summary/']:
+                value = [{'id': user, 'uuid': f'00000000-0000-4000-8000-{user:012d}', 'name': 'Synthetic ' + str(user), 'channel_number': user}]
             body = json.dumps(value).encode()
-            self.send_response(200)
+            self.send_response(401 if key == 'rejected-synthetic-key' else 200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Content-Length', str(len(body)))
             self.end_headers()
-            self.wfile.write(body)
+            try:
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                pass  # The cancellation fixture deliberately closes this reader.
 
     server = ThreadingHTTPServer((local, 0), Fixture)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -188,6 +333,16 @@ def main():
         rows = [json.loads(line.split('[profile-management] ', 1)[1]) for line in result.stdout.splitlines() if '[profile-management] {' in line]
         report['events'] = rows
         report['passed'] = result.returncode == 0 and len(rows) == 5 and rows[0].get('dialog') and rows[1].get('native') and rows[2].get('native') and rows[2].get('covered') and all(rows[4].get(key) for key in ['renamed', 'wrong', 'grant', 'learned', 'management', 'uncovered', 'preserved', 'no_unlock', 'cancelled'])
+        if args.switch:
+            rejected = [hit for hit in hits if hit['rejected']]
+            delayed = [hit for hit in hits if hit['delayed']]
+            report['requests'] = hits
+            cancelled_requests = not delayed if args.cancel_pin else len(delayed) == 1 and delayed[0]['path'] == '/api/accounts/users/me/'
+            report['passed'] = result.returncode == 0 and len(rows) == 5 and rows[0].get('started') and all(rows[4].get(key) for key in ['a', 'b', 'rollback', 'preserved', 'uncovered', 'no_autoplay', 'cancelled', 'stale_a']) and len(rejected) == 1 and rejected[0]['path'] == '/api/accounts/users/me/' and cancelled_requests
+            if args.reject_active:
+                report['passed'] = result.returncode == 0 and len(rows) == 3 and all(rows[2].get(key) for key in ['b', 'active_retained', 'default_preserved', 'own_revoked', 'covered', 'no_default_session'])
+            if args.remember_off:
+                report['passed'] = report['passed'] and rows[-1].get('no_stored', False)
         if not report['passed']:
             raise RuntimeError('Native management controller assertions failed')
     finally:
@@ -201,6 +356,14 @@ def main():
             server.server_close()
             report['passed'] = report['passed'] and report.get('cleaned', False) and report['restored']
             name = 'profile-management-directions-native.json' if args.directions else 'profile-management-native.json'
+            if args.switch:
+                name = 'profile-switch-pin-native.json' if args.switch_pin else 'profile-switch-native.json'
+                if args.cancel_pin:
+                    name = 'profile-switch-pin-cancel-native.json'
+                if args.reject_active:
+                    name = 'profile-switch-active-reject-native.json'
+                if args.remember_off:
+                    name = 'profile-switch-memory-native.json'
             (ROOT / 'out' / name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

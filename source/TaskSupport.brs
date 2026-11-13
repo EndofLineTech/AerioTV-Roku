@@ -65,6 +65,15 @@ end function
 
 function userEventCurrent(value as dynamic) as boolean
     if userProfileGateClosed() then return false
+    if m.global <> invalid
+        if type(m.global) = "roSGNode"
+            if m.global.hasField("profileswitchpending")
+                if m.global.profileswitchpending = true then return false
+            end if
+        else
+            if m.global.profileswitchpending = true then return false
+        end if
+    end if
     if type(value) <> "roAssociativeArray" then return false
     count = 0
     captured = invalid

@@ -125,3 +125,49 @@ Child access/escape, picker, authenticated switching and the complete management
 surface remain unfinished. Directions stays developer-only pending
 certification; production entropy is required for future creation. `mrr.8` and
 the epic remain in progress.
+
+## Internal switching integration (not a public picker)
+
+`UserProfileSwitch` validates incoming `/me/` ID and username, target PIN,
+independent adult authority for leaving a Child, and a fresh switch-attempt UUID.
+The management UI's UUID is separate from the incoming session ID. A non-default
+lineup may not inherit the default's Channel Profile filters. Target metadata,
+own key and scoped preferences commit in one transaction; a failed Flush restores
+the outgoing active profile, keys and settings. Corrupt present settings refuse.
+
+`ProfileSwitchNavigation` now exercises that boundary with real normal-app
+Tasks. It stages only the target's own credential, retires outgoing callbacks,
+blocks UI/remote renderers behind a scrim while permitting the tagged incoming
+Task, and adopts runtime state only after storage succeeds. Failure restores the
+previous profile under another fresh session UUID, with no autoplay. The private
+same-slot A/B/A fixture verifies own keys/preferences and rejected-key rollback.
+The populated-lineup fixture also cancels a delayed target `/me/` with real Back:
+the old request cannot activate after returning to A, and no target lineup is
+fetched. Numeric target-PIN and empty-pad cancellation variants use the real
+stored verifier; cancelling before PIN verification sends no target request.
+The first PIN-backed switch test exposed the learned-length write invalidating
+the captured roster. The controller now accepts only that exact length update,
+rejecting unrelated changes while the pad was open, before consuming the ticket.
+
+Outgoing raw-key prompt/recheck bindings are explicitly retired with connection
+and profile transitions, so a rapid same-slot A/B/A cannot resurrect them. Only
+the same rejected default holder's re-login flow may carry its hold across its
+own reset. Active non-default rejection revokes only its own credential and
+stays covered without calling default setup or reloading the slot key. A native
+active-refusal fixture verifies the default key and active profile are retained;
+the separate own-sign-in/access UI is still unfinished.
+
+Remember-off switching uses Scene-only credentials keyed by server address, slot
+and local profile UUID. The outgoing verified key is captured under that exact
+owner before switching; returning to the default cannot use a profile's key or
+an address-edited/recreated slot bucket. The native memory-only A/B/A fixture
+passes own lineups/settings, rejection and delayed-request cancellation while
+both default and profile credential registry values remain absent. Active-key
+refusal also deletes the corresponding in-memory owner bucket. A failed registry
+rollback stays covered with no active runtime scope instead of reviving possibly
+stale profile protection.
+
+This is not the completed switch feature: the controller is unexposed, refuses
+held/keyless/Child targets and pending roster writes, and still needs the real
+sign-in/hold lifecycle, outgoing sync flush, target sync-session start, playback
+confirmation, launch/picker integration and complete acceptance matrix.
