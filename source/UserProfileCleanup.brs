@@ -38,6 +38,8 @@ function forgetUserProfileConnection(registry as object, connections as object, 
         if left(key, len(prefix)) = prefix then changes[key] = ""
         if left(key, len("pinHold_" + slotId + "_")) = "pinHold_" + slotId + "_" then changes[key] = ""
     end for
+    adminKey = userProfileDeviceAdminKey(slotId)
+    if registry.exists(adminKey) then changes[adminKey] = ""
     if slotId = "legacy"
         for each key in ["serverUrl", "apiKey", "accountIdentity", "preferences"]
             changes[key] = ""

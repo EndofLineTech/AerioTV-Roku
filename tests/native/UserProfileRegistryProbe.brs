@@ -115,12 +115,14 @@ sub profileProbeStoreRegistry()
                     restoredPull = userProfileRegistryTransaction(section, snapshots)
                     profileAssert(restoredPull.ok, "native-registry-roster-pull-fixture-restored-for-lifecycle-checks")
                 end if
+                if scoped.ok then profileProbeAdultGateRegistry(section, candidate)
                 removal = removeUserProfile(section, connectionStoreEntry(connections, slot), candidate, other.id, 200, "normal")
                 profileAssert(removal.ok, "native-registry-profile-removal")
                 if removal.ok then profileAssert(removal.preferences.accounts.count() = 1, "native-registry-only-target-scope-removed")
                 forgotten = forgetUserProfileConnection(section, connections, slot)
                 profileAssert(forgotten.ok and not section.exists(userProfileStoreKey(slot)) and not section.exists("connKey_slot-a"), "native-registry-atomic-slot-forget")
                 profileAssert(section.read(userProfileKeyName("slot-b", other.id)) = "synthetic-other-slot-key", "native-registry-forget-preserves-other-slot-key")
+                profileAssert(not section.exists(userProfileDeviceAdminKey(slot)) and not section.exists(userProfilePinBackoffKey(slot, "device-admin")) and section.exists(userProfileDeviceAdminKey("slot-b")), "native-registry-forget-clears-only-own-device-admin-record-and-ledger")
             else
                 profileAssert(false, "native-registry-forget-fixture-ready")
             end if
@@ -135,4 +137,45 @@ sub profileProbeStoreRegistry()
     removed = registry.delete(sectionName) and removed
     removed = registry.flush() and removed
     profileAssert(removed and empty, "native-registry-store-probe-cleaned")
+end sub
+
+' Fixed public test material lives only in this disposable section. No salt
+' creation API is used or qualified by seeding an existing-record fixture.
+sub profileProbeAdultGateRegistry(section as object, previous as object)
+    slot = previous.playlistId
+    snapshot = section.read(userProfileStoreKey(slot))
+    protected = copyJson(previous)
+    salt = string(32, "b")
+    profile = protected.profiles[0]
+    profile = setCanonicalPreference(profile, "pinType", "numbers")
+    profile = setCanonicalPreference(profile, "pinHash", userProfilePinHash(salt, "1234"))
+    profile = setCanonicalPreference(profile, "pinSalt", salt)
+    protected.profiles[0] = profile
+    admin = {pinType: "directions", pinHash: userProfilePinHash(salt, "UDLR"), pinSalt: salt}
+    staged = section.write(userProfileStoreKey(slot), FormatJson(protected))
+    staged = section.write(userProfileDeviceAdminKey(slot), FormatJson(admin)) and staged
+    staged = section.write(userProfileDeviceAdminKey("slot-b"), FormatJson(admin)) and staged
+    staged = section.flush() and staged
+    profileAssert(staged, "native-registry-adult-gate-fixture-ready")
+    injected = m.pinPolicyDigest
+    m.pinPolicyDigest = invalid
+    if staged
+        loaded = loadUserProfileStore(section, slot)
+        admin = userProfileLoadDeviceAdminPin(section, slot).record
+        wrong = userProfileAdultPinAttemptStored(section, slot, loaded, admin, ["9", "9", "9", "9"], "numbers", 1000)
+        ledger = ParseJson(section.read(userProfilePinBackoffKey(slot, profile.id)))
+        profileAssert(not wrong.verified and ledger.failures = 1 and not section.exists(userProfilePinBackoffKey(slot, "device-admin")), "native-registry-wrong-pin-counts-only-attempted-holder-type")
+        passed = userProfileAdultPinAttemptStored(section, slot, loaded, admin, ["U", "D", "L", "R"], "directions", 1001)
+        refreshedAdmin = userProfileLoadDeviceAdminPin(section, slot)
+        ledger = ParseJson(section.read(userProfilePinBackoffKey(slot, profile.id)))
+        profileAssert(passed.verified and passed.holder = "device-admin" and refreshedAdmin.record.pinLength = 4 and ledger.failures = 1, "native-registry-device-admin-verification-keeps-other-holder-history")
+        passed = userProfileAdultPinAttemptStored(section, slot, loaded, refreshedAdmin.record, ["1", "2", "3", "4"], "numbers", 1002)
+        profileAssert(passed.verified and loadUserProfileStore(section, slot).profiles[0].pinLength = 4 and section.read("connKey_slot-a") = "synthetic-default-key", "native-registry-profile-adult-verification-learns-length-without-touching-key")
+    end if
+    m.pinPolicyDigest = injected
+    changes = {}
+    changes[userProfileStoreKey(slot)] = snapshot
+    changes[userProfilePinBackoffKey(slot, profile.id)] = ""
+    restored = userProfileRegistryTransaction(section, changes)
+    profileAssert(restored.ok, "native-registry-adult-fixture-restores-profile-metadata-before-lifecycle-tests")
 end sub

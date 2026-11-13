@@ -45,6 +45,9 @@ suites.unshift('DirectionsPinPad');
 suites.unshift('ProfileRosterNavigation');
 suites.unshift('UserProfileRuntime');
 suites.unshift('UserProfileCredential');
+suites.unshift('UserProfileManagementPolicy');
+suites.unshift('ProfileAdultPinNavigation');
+suites.unshift('ProfileManagementNavigation');
 suites.unshift('UserProfileStore');
 suites.unshift('StartupBeaconModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
@@ -109,6 +112,9 @@ for (const suite of suites) {
     ...(suite === 'UserProfileRuntime' ? ['source/UserProfileRuntime.brs'] : []),
     ...(['UserProfileCredential', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/UserProfileCredential.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs'] : []),
     ...(suite === 'UserProfileCredential' ? ['source/ConnectionStoreModel.brs'] : []),
+    ...(['UserProfileManagementPolicy', 'ProfileAdultPinNavigation', 'ProfileManagementNavigation'].includes(suite) ? ['source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(['ProfileAdultPinNavigation', 'ProfileManagementNavigation'].includes(suite) ? ['components/ProfileAdultPinNavigation.brs'] : []),
+    ...(suite === 'ProfileManagementNavigation' ? ['components/ProfileManagementNavigation.brs'] : []),
     ...(suite === 'HttpTransport' ? ['source/HttpTransport.brs'] : []),
     ...(suite === 'StrictJson' ? ['source/StrictJson.brs'] : []),
     ...(suite === 'UserProfilePin' ? ['source/UserProfilePin.brs'] : []),
@@ -134,6 +140,7 @@ for (const suite of suites) {
     ...(suite === 'VodShelfTask' ? ['components/VodShelfTask.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/AerioScene.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileRosterNavigation.brs'] : []),
+    ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileAdultPinNavigation.brs', 'components/ProfileManagementNavigation.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/PhoneSetupNavigation.brs'] : []),
     ...(suite === 'ConnectionNavigation' ? ['components/ConnectionNavigation.brs'] : []),
     ...(suite === 'ConnectionAuthTask' ? ['components/DispatcharrTask.brs'] : []),

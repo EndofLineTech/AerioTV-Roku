@@ -306,6 +306,7 @@ sub updateConnectionUrl(base as string)
 end sub
 
 sub resetConnectionRuntime()
+    retireProfileManagement()
     m.rokuRfiPending = ""
     m.rokuRfiOffered = false
     cancelDiagnosticShare()

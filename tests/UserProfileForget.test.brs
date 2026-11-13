@@ -10,6 +10,8 @@ sub main()
             check(result.ok and registry.flushes = 1, "Forget uses a single atomic Flush")
             check(not registry.exists("userProfilesV1_slot-a") and not registry.exists("connKey_slot-a") and not registry.exists(userProfileKeyPrefix("slot-a") + "orphan"), "Forget cleans a corrupt slot roster plus all owned keys")
             check(registry.read("connKey_slot-b") = "other-slot-key" and registry.read(userProfileKeyPrefix("slot-b") + "orphan") = "other-profile-key", "Forget cannot delete another slot's keys")
+            check(not registry.exists(userProfileDeviceAdminKey("slot-a")) and not registry.exists(userProfilePinBackoffKey("slot-a", "device-admin")), "Forget clears its reserved Device Admin record and ledger atomically")
+            check(registry.read(userProfileDeviceAdminKey("slot-b")) = "other-admin-record" and registry.read(userProfilePinBackoffKey("slot-b", "device-admin")) = "other-admin-ledger", "Forget preserves another slot's Device Admin authority")
             check(result.preferences.accounts.count() = 1 and result.preferences.accounts[preferenceScope("https://example.test|7|slot-b")].favoriteIds[0] = "other", "Forget cleans every own user scope, preserves other slot preferences")
             check(result.connections.entries.count() = 1 and result.connections.selected = "slot-b", "Forgotten connection removed without creating tombstones")
         else
@@ -43,6 +45,10 @@ function forgetRegistry() as object
     values["userProfilesV1_slot-a"] = "corrupt-profile-json"
     values[userProfileKeyPrefix("slot-a") + "orphan"] = "own-profile-key"
     values[userProfileKeyPrefix("slot-b") + "orphan"] = "other-profile-key"
+    values[userProfileDeviceAdminKey("slot-a")] = "own-admin-record"
+    values[userProfileDeviceAdminKey("slot-b")] = "other-admin-record"
+    values[userProfilePinBackoffKey("slot-a", "device-admin")] = "own-admin-ledger"
+    values[userProfilePinBackoffKey("slot-b", "device-admin")] = "other-admin-ledger"
     return {values: values, flushes: 0, failure: ""
         exists: function(key as string) as boolean
             return m.values.doesExist(key)
@@ -57,6 +63,8 @@ function forgetRegistry() as object
             for each key in m.values.keys()
                 if lcase(left(key, 8)) = "profkey_"
                     result.push("profKey_" + mid(key, 9))
+                else if lcase(left(key, 8)) = "pinhold_"
+                    result.push("pinHold_" + mid(key, 9))
                 else
                     result.push(key)
                 end if

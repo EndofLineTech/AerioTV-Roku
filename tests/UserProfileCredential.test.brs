@@ -28,6 +28,26 @@ sub main()
     check(userProfileCredential(registry, connection, store, memory).reason = "address-held", "held profile refuses even an available own key")
     store.readOnly = true
     check(userProfileCredential(registry, connection, store, memory).reason = "recovery", "corrupt store never resolves a slot fallback")
+    store.delete("readOnly")
+    store.profiles[1].addressHeld = false
+    registry.exists = function(key as string) as boolean
+        return m.values.doesExist(key)
+    end function
+    registry.write = function(key as string, value as string) as boolean
+        m.values[key] = value
+        return true
+    end function
+    registry.delete = function(key as string) as boolean
+        m.values.delete(key)
+        return true
+    end function
+    registry.flush = function() as boolean
+        return true
+    end function
+    registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
+    revoked = revokeUserProfileCredential(registry, connection, loadUserProfileStore(registry, "slot-a"))
+    check(revoked.ok and not revoked.isDefault and not registry.exists(ownKey) and registry.read("connKey_slot-a") = "default-key", "refused non-default key deletion cannot touch the default holder")
+    check(registry.read(userProfileStoreKey("slot-a")) = FormatJson(store), "credential refusal retains profile identity and protection verbatim")
     print "ALL TESTS PASSED"
 end sub
 

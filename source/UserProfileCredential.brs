@@ -33,3 +33,33 @@ function userProfileCredential(registry as object, connection as object, store a
     if key = "" then reason = "sign-in"
     return {ok: key <> "", key: key, keyName: keyName, profileId: profileId, isDefault: isDefault, reason: reason}
 end function
+
+' Rejection invalidates only the currently selected holder's persisted key.
+' It never converts a non-default/Child refusal into default-account setup.
+function revokeUserProfileCredential(registry as object, connection as object, previous as object) as object
+    denied = {ok: false, recoveryRequired: false, isDefault: false, profileId: ""}
+    if connection.provider <> "dispatcharr" or previous.readOnly = true then return denied
+    if previous.playlistId <> connection.id then return denied
+    actual = loadUserProfileStore(registry, connection.id)
+    if actual.readOnly = true then return denied
+    if FormatJson(actual) <> FormatJson(previous) then return denied
+    keyName = connectionRegistryKey(connection.id)
+    isDefault = true
+    profileId = ""
+    for each profile in actual.profiles
+        if profile.id = actual.active
+            profileId = profile.id
+            isDefault = profile.isDefault
+            if not isDefault then keyName = userProfileKeyName(connection.id, profile.id)
+        end if
+    end for
+    if actual.profiles.count() > 0 and profileId = "" then return denied
+    if keyName = "" then return denied
+    changes = {}
+    changes[keyName] = ""
+    if isDefault and connection.id = "legacy" then changes["apiKey"] = ""
+    saved = userProfileRegistryTransaction(registry, changes)
+    saved.isDefault = isDefault
+    saved.profileId = profileId
+    return saved
+end function

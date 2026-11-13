@@ -96,6 +96,50 @@ sub main()
     check(checked.verified and loadUserProfileStore(registry, "slot-a").profiles[0].pinLength = 4, "correct entry persists known dot count with backoff reset in the same transaction")
     changed = setCanonicalPreference(profile, "pinSalt", string(32, "e"))
     check(not userProfilePinAttemptStored(registry, "slot-a", holder, changed, ["1", "2", "3", "4"], 301).verified, "stale dialog PIN material cannot verify against a changed live holder")
+    adultB = {id: "00000000-0000-4000-8000-000000000002", role: "user", pinType: "directions", pinHash: string(64, "a"), pinSalt: string(32, "b")}
+    adultPins = userProfileAdultPinHolders([profile, adultB], invalid)
+    check(adultPins.count() = 2, "adult gate counts numeric and Directions holders without disclosing names")
+    states = {}
+    states[holder] = {failures: 0, round: 1, until: 430}
+    planned = userProfileAdultPinPlan(adultPins, states, ["1", "2", "3", "4"], "numbers", 400)
+    check(not planned.locked and planned.typeLocked and planned.remaining = 30 and planned.writes.count() = 0, "numeric lock is not an all-holder lock while a Directions holder is unlocked")
+    states[adultB.id] = {failures: 0, round: 1, until: 420}
+    callsBefore = m.digestCalls
+    planned = userProfileAdultPinPlan(adultPins, states, ["1", "2", "3", "4"], "numbers", 400)
+    check(planned.locked and planned.remaining = 20 and m.digestCalls = callsBefore, "all-holder lock uses first expiry and never digests")
+    planned = userProfileAdultPinPlan(adultPins, {}, ["1", "2", "3", "4"], "numbers", 500)
+    check(planned.verified and planned.holder = holder and planned.writes.count() = 1, "valid adult PIN resets only its matching holder")
+    check(userProfileAdultPinPlan([], {}, [], "numbers", 500).noPins, "stranded-Child fallback is distinct from wrong or locked PINs")
+    deviceHolders = userProfileAdultPinHolders([{id: "child", role: "child", pinType: "numbers", pinHash: record.pinHash, pinSalt: record.pinSalt}], record)
+    check(deviceHolders.count() = 1 and deviceHolders[0].id = "device-admin", "Device Admin is reserved per-slot authority and Child PINs do not count")
+    check(userProfileAdultPinPlan(deviceHolders, {}, ["1", "2", "3", "4"], "numbers", 500).holder = "device-admin", "existing Device Admin PIN satisfies the same adult verification policy")
+    states = {}
+    states[holder] = {failures: 4, round: 0, until: 0}
+    planned = userProfileAdultPinPlan(adultPins, states, ["9", "9", "9", "9"], "numbers", 500)
+    check(not planned.locked and planned.typeLocked and planned.writes[holder].until = 530 and not planned.writes.doesExist(adultB.id), "wrong numeric attempt counts only numeric holders, never an untried Directions PIN")
+    badState = {}
+    badState[holder] = {failures: "bad", round: 0, until: 0}
+    planned = userProfileAdultPinPlan(adultPins, badState, ["1", "2", "3", "4"], "numbers", 500)
+    check(planned.recoveryRequired and not planned.noPins and planned.writes.count() = 0, "corrupt adult holder state cannot trigger stranded-Child fallback")
+    malformedAdult = {id: holder, role: "user", pinType: "numbers", pinHash: "bad", pinSalt: "bad"}
+    check(userProfileAdultPinPlan(userProfileAdultPinHolders([malformedAdult], invalid), {}, [], "numbers", 500).recoveryRequired, "malformed present adult protection is not treated as absent")
+    capturedStore = loadUserProfileStore(registry, "slot-a")
+    adultChecked = userProfileAdultPinAttemptStored(registry, "slot-a", capturedStore, invalid, ["1", "2", "3", "4"], "numbers", 600)
+    check(adultChecked.verified and adultChecked.holder = holder, "adult gate persists matching own holder reset before granting")
+    registry.failOnce = true
+    adultChecked = userProfileAdultPinAttemptStored(registry, "slot-a", loadUserProfileStore(registry, "slot-a"), invalid, ["1", "2", "3", "4"], "numbers", 601)
+    check(not adultChecked.verified and adultChecked.recoveryRequired, "adult gate cannot grant on a failed shared transaction")
+    adminKey = userProfileDeviceAdminKey("slot-a")
+    registry.write(adminKey, FormatJson(record))
+    admin = userProfileLoadDeviceAdminPin(registry, "slot-a")
+    check(admin.ok and admin.record.pinLength = 0, "existing Device Admin record loads locally with unknown length")
+    capturedStore = loadUserProfileStore(registry, "slot-a")
+    capturedStore.profiles[0] = setCanonicalPreference(capturedStore.profiles[0], "pinHash", string(64, "c"))
+    registry.write(userProfileStoreKey("slot-a"), FormatJson(capturedStore))
+    adultChecked = userProfileAdultPinAttemptStored(registry, "slot-a", capturedStore, admin.record, ["1", "2", "3", "4"], "numbers", 602)
+    check(adultChecked.verified and adultChecked.holder = "device-admin" and userProfileLoadDeviceAdminPin(registry, "slot-a").record.pinLength = 4, "Device Admin success learns its own length without altering a profile PIN")
+    registry.write(adminKey, "not-json")
+    check(userProfileAdultPinAttemptStored(registry, "slot-a", capturedStore, admin.record, [], "numbers", 603).recoveryRequired, "corrupt present Device Admin record never becomes no-PIN fallback")
     print "ALL TESTS PASSED"
 end sub
 

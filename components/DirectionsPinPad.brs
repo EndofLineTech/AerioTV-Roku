@@ -20,6 +20,14 @@ sub onDirectionTitle()
     m.top.findNode("titleLabel").text = m.top.title
 end sub
 
+sub onDirectionButtons()
+    helper = "Up, Down, Left, Right. Select to confirm, Back to clear."
+    if type(m.top.buttons) = "roArray"
+        if m.top.buttons.count() > 1 then helper += " Replay: " + m.top.buttons[1] + "."
+    end if
+    m.top.findNode("helper").text = helper
+end sub
+
 sub onDirectionText()
     value = m.input.text
     count = m.input.maxTextLength
@@ -50,6 +58,13 @@ function onKeyEvent(key as string, press as boolean) as boolean
     end if
     if key = "OK"
         if len(m.input.text) >= 4 then m.top.buttonSelected = 0
+        return true
+    end if
+    if key = "replay" and type(m.top.buttons) = "roArray"
+        if m.top.buttons.count() > 1
+            m.input.text = ""
+            m.top.buttonSelected = 1
+        end if
         return true
     end if
     if key = "back"

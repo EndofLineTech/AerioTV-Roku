@@ -11,6 +11,11 @@ function userProfilePinBackoffKey(slotId as string, holder as string) as string
     return "pinHold_" + slotId + "_" + lcase(holder)
 end function
 
+function userProfileDeviceAdminKey(slotId as string) as string
+    if connectionRegistryKey(slotId) = "" then return ""
+    return "deviceAdminPinV1_" + slotId
+end function
+
 function defaultUserProfileStore(slotId as string) as object
     return {schema: 1, playlistId: slotId, active: "", askAtLaunch: false, profiles: [], removed: [], pendingRoster: false}
 end function

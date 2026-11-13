@@ -37,6 +37,9 @@ sub main()
     m.input.text = "UD"
     onDirectionText()
     check(m.dots[0].outer.translation[0] = 848 and not m.dots[0].inner.visible and m.dots[2].inner.visible and not m.dots[4].outer.visible, "native shapes mask entries and center known-length dots without unsupported font glyphs")
+    m.top.buttons = ["OK", "Use numbers PIN"]
+    onKeyEvent("replay", true)
+    check(m.input.text = "" and m.top.buttonSelected = 1, "adult-purpose alternate-type action clears directions without submitting a PIN")
     print "ALL TESTS PASSED"
 end sub
 

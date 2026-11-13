@@ -99,7 +99,29 @@ credential for a restored non-default profile; it does not enable switching.
 
 Shared host/native tests cover rounds/cap, expiry, success reset, no digest during
 a lock, invalid input, cross-slot separation, corrupt state and failed Flush.
-Adult-gate holder selection, Child access/escape, picker, authenticated switching
-and management remain unfinished. Directions stays developer-only pending
+Adult-purpose verification now plans all holder ledgers before a single registry
+transaction. It counts both PIN types and an existing slot-local Device Admin
+record, never reveals holder names, penalizes only unlocked holders of the
+attempted type, and resets only the successful holder. Per-type lockout differs
+from all-holder lockout; the latter ends at the earliest holder expiry. Corrupt
+records refuse instead of becoming the stranded-Child fallback. No Device Admin
+creation/import or new salt API is provided. Forget removes only its own slot's
+reserved record and ledger.
+
+`ProfileAdultPinNavigation` supplies a separate adult-purpose native pad with
+safe cancellation back to the caller's cover state. Its grant binds slot, active
+profile, UI lifecycle UUID, purpose, holder and exact PIN material; it never
+creates a profile-unlock grant. `ProfileManagementNavigation` supplies guarded
+rename/avatar/order/role dialogs over atomic metadata plans. Role changes and
+Child removal still require an adult PIN when one exists. Creating a stranded
+kid-only state or an unpinned adult while a Child remains is refused in this
+import-only phase. A private normal-app native fixture exercises roster/editor,
+real keyboard rename, wrong/correct adult verification, learned length, default
+key preservation and real ECP Back cancellation. These controllers are compiled
+but **not yet exposed in Settings**: Child retirement/access, switching, removal,
+full management UX and remote-focus qualification remain unfinished.
+
+Child access/escape, picker, authenticated switching and the complete management
+surface remain unfinished. Directions stays developer-only pending
 certification; production entropy is required for future creation. `mrr.8` and
 the epic remain in progress.
