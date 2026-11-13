@@ -87,6 +87,19 @@ sub profileProbeStoreRegistry()
             seeded = section.write(userProfileKeyName("slot-b", other.id), "synthetic-other-slot-key") and seeded
             seeded = section.flush() and seeded
             if seeded
+                activeScope = userProfileSessionScope(connectionStoreEntry(connections, slot), loaded.active, "2147483648", "synthetic-authority", "00000000-0000-4000-8000-000000000090")
+                effective = normalizeDevicePreferences({themePreset: "forest", clockFormat: "24"})
+                scoped = commitUserProfilePreferences(section, preferences, preferences.accounts[preferenceScope(activeScope.preferenceIdentity)], effective, activeScope, activeScope)
+                profileAssert(scoped.ok, "native-registry-scoped-settings-transaction")
+                if scoped.ok
+                    roundtrip = loadPreferenceStore(section)
+                    account = roundtrip.accounts[preferenceScope(activeScope.preferenceIdentity)]
+                    profileAssert(account.profileSettings.themePreset = "forest" and account.favoriteIds[0] = "synthetic" and roundtrip.accounts.count() = 2, "native-registry-scoped-settings-preserve-own-data-and-other-user")
+                    newer = setCanonicalPreference(activeScope, "sessionId", "00000000-0000-4000-8000-000000000091")
+                    before = section.read("settingsV1")
+                    stale = commitUserProfilePreferences(section, scoped.store, scoped.preferences, effective, activeScope, newer)
+                    profileAssert(not stale.ok and before = section.read("settingsV1"), "native-registry-stale-scoped-write-refused")
+                end if
                 removal = removeUserProfile(section, connectionStoreEntry(connections, slot), candidate, other.id, 200, "normal")
                 profileAssert(removal.ok, "native-registry-profile-removal")
                 if removal.ok then profileAssert(removal.preferences.accounts.count() = 1, "native-registry-only-target-scope-removed")

@@ -28,6 +28,8 @@ suites.unshift('UserProfileNavigation');
 suites.unshift('UserProfileRemoval');
 suites.unshift('RequestGateModel');
 suites.unshift('RequestGateRenderer');
+suites.unshift('UserProfileScope');
+suites.unshift('UserProfileScopeStore');
 suites.unshift('UserProfileStore');
 suites.unshift('StartupBeaconModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
@@ -74,6 +76,8 @@ for (const suite of suites) {
     'source/HttpPolicy.brs',
     'source/RequestGateModel.brs', 'source/RequestGateClient.brs', 'source/RequestGateRenderer.brs',
     ...(suite === 'ConnectionNavigation' ? ['components/RequestGateNavigation.brs'] : []),
+    ...(suite === 'UserProfileScope' ? ['source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(suite === 'UserProfileScopeStore' ? ['source/UserProfileScope.brs', 'source/UserProfileScopeStore.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'HttpTransport' ? ['source/HttpTransport.brs'] : []),
     ...(suite === 'StrictJson' ? ['source/StrictJson.brs'] : []),
     ...(suite === 'UserProfilePin' ? ['source/UserProfilePin.brs'] : []),

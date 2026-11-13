@@ -83,11 +83,11 @@ def build(output, base_url, registry=False, model_store=False):
         package.write(ROOT / 'tests/native/UserProfileProbe.brs', 'source/Main.brs')
         package.write(ROOT / 'tests/native/UserProfileRegistryProbe.brs', 'source/UserProfileRegistryProbe.brs')
         package.write(ROOT / 'tests/native/PhoneSetupProbe.xml', 'components/PhoneSetupProbe.xml')
-        for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'RequestGateClient', 'RequestGateModel', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileCleanup', 'PreferenceModel', 'ConnectionStoreModel', 'RemoteMapModel', 'GuideSettingsModel', 'ReminderModel']:
+        for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'RequestGateClient', 'RequestGateModel', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileCleanup', 'UserProfileScope', 'UserProfileScopeStore', 'PreferenceModel', 'ConnectionStoreModel', 'RemoteMapModel', 'GuideSettingsModel', 'ReminderModel']:
             package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
         if model_store:
             package.write(ROOT / 'components/UserProfileNavigation.brs', 'source/UserProfileNavigation.brs')
-            for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval']:
+            for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval', 'UserProfileScope', 'UserProfileScopeStore']:
                 source = (ROOT / f'tests/{name}.test.brs').read_text().split('sub check(', 1)[0]
                 source = source.replace('sub main()', f'sub run{name}Checks()').replace('check(', 'profileAssert(')
                 package.writestr(f'source/{name}ProbeChecks.brs', source)
@@ -99,6 +99,8 @@ def build(output, base_url, registry=False, model_store=False):
             package.writestr('source/UserProfileForgetProbeChecks.brs', 'sub runUserProfileForgetChecks()\nend sub\n')
             package.writestr('source/UserProfileNavigationProbeChecks.brs', 'sub runUserProfileNavigationChecks()\nend sub\n')
             package.writestr('source/UserProfileRemovalProbeChecks.brs', 'sub runUserProfileRemovalChecks()\nend sub\n')
+            package.writestr('source/UserProfileScopeProbeChecks.brs', 'sub runUserProfileScopeChecks()\nend sub\n')
+            package.writestr('source/UserProfileScopeStoreProbeChecks.brs', 'sub runUserProfileScopeStoreChecks()\nend sub\n')
         package.writestr('profile-probe-config.json', json.dumps({'baseUrl': base_url, 'registry': registry, 'modelStore': model_store}))
         package.writestr('profile-wire-fixture.json', json.dumps(fixture, ensure_ascii=False))
         package.writestr('profile-registry-fixtures.json', json.dumps(registry_fixtures()))

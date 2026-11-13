@@ -88,7 +88,7 @@ class ProfileProbeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             output = builder.build(Path(tmp) / 'probe.zip', 'http://127.0.0.1:1234', model_store=True)
             with zipfile.ZipFile(output) as package:
-                for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval']:
+                for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval', 'UserProfileScope', 'UserProfileScopeStore']:
                     source = package.read(f'source/{name}ProbeChecks.brs').decode()
                     self.assertIn(f'sub run{name}Checks()', source)
                     self.assertIn('profileAssert(', source)
@@ -106,6 +106,8 @@ class ProfileProbeTest(unittest.TestCase):
             for (const name of ['request-gate-probe.json', 'components/RequestGateProbe.brs', 'components/RequestGateProbeWorker.xml', 'source/RequestGateProbeMain.brs']) {
               assert.throws(() => assertPackageEntries([...base, name]), /probe/);
             }
+            assert.throws(() => assertPackageEntries([...base, 'source/UserProfileScopeProbeChecks.brs']), /probe/);
+            assert.throws(() => assertPackageEntries([...base, 'source/UserProfileScopeStoreProbeChecks.brs']), /probe/);
             for (const name of ['profile-probe-config.json', 'profile-wire-fixture.json', 'profile-registry-fixtures.json', 'profile-recovery-probe.json', 'components/UserProfileProbe.brs', 'source/UserProfileRegistryProbe.brs', 'components/UserProfileDialogProbe.brs', 'source/UserProfileModelProbeChecks.brs', 'source/UserProfileStoreProbeChecks.brs']) {
               assert.throws(() => assertPackageEntries([...base, name]), /probe/);
             }
