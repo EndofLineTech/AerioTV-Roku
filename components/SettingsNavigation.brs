@@ -1,7 +1,8 @@
 sub refreshSettingsHub()
     info = CreateObject("roAppInfo")
     version = info.getValue("major_version") + "." + info.getValue("minor_version") + "." + info.getValue("build_version")
-    m.settingsHub.model = {account: m.accountIdentity, version: version, device: m.devicePreferences, guide: m.accountPreferences.guide, vodEnabled: m.accountPreferences.vodEnabled <> false, vodTmdbEnabled: m.accountPreferences.vodTmdbEnabled = true, startupBehavior: m.accountPreferences.startupBehavior, dvrPreRollMinutes: m.accountPreferences.dvrPreRollMinutes, dvrPostRollMinutes: m.accountPreferences.dvrPostRollMinutes, whatsNewVersion: m.accountPreferences.whatsNewVersion, movies: m.capabilities.movies, series: m.capabilities.series, catchup: m.capabilities.catchup, dvr: m.capabilities.dvr}
+    model = {account: m.accountIdentity, version: version, device: m.devicePreferences, guide: m.accountPreferences.guide, vodEnabled: m.accountPreferences.vodEnabled <> false, vodTmdbEnabled: m.accountPreferences.vodTmdbEnabled = true, startupBehavior: m.accountPreferences.startupBehavior, dvrPreRollMinutes: m.accountPreferences.dvrPreRollMinutes, dvrPostRollMinutes: m.accountPreferences.dvrPostRollMinutes, whatsNewVersion: m.accountPreferences.whatsNewVersion, movies: m.capabilities.movies, series: m.capabilities.series, catchup: m.capabilities.catchup, dvr: m.capabilities.dvr}
+    m.settingsHub.model = userViewEvent(model, currentUserSessionId())
 end sub
 
 sub openSettingsHub()
@@ -23,6 +24,7 @@ end sub
 sub onSettingsHubSelection(event as object)
     if not m.settingsHub.isSameNode(event.getRoSGNode()) or m.page <> "settings" then return
     item = event.getData()
+    if not userEventCurrent(item) then return
     if item.account <> m.accountIdentity then return
     if item.action = "connection"
         closeSettingsHub()

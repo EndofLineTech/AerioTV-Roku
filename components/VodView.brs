@@ -69,6 +69,7 @@ sub init()
 end sub
 
 sub configureVod()
+    m.userSessionId = userViewSession(m.top.config)
     cancelVod()
     dismissVodDialog()
     m.discoveryStack = []
@@ -323,7 +324,7 @@ sub onVodLoaded(event as object)
         return
     end if
     if shelfResult
-        if result.patches.count() > 0 then m.top.stateChange = {scope: m.top.config.accountScope, availability: result.patches}
+        if result.patches.count() > 0 then m.top.stateChange = userViewEvent({scope: m.top.config.accountScope, availability: result.patches}, m.userSessionId)
         m.items = result.items
         m.total = m.items.count()
         m.hasNext = false
@@ -625,7 +626,7 @@ sub onVodDetailAction(event as object)
     if action = "autoSource"
         m.relationId = ""
         m.versionFor = m.detail.id
-        m.top.stateChange = {scope: m.detail.accountScope, item: m.detail, patch: {relationId: ""}}
+        m.top.stateChange = userViewEvent({scope: m.detail.accountScope, item: m.detail, patch: {relationId: ""}}, m.userSessionId)
         updated = vodStateUpdate(m.top.savedState, m.detail, {relationId: ""})
         if updated <> invalid then m.top.savedState = updated
         loadVodPage(m.detail.id)
@@ -660,7 +661,7 @@ sub onVodDetailAction(event as object)
         patch = {}
         patch[action] = not entry[action]
         if action = "watched" then patch.position = 0
-        m.top.stateChange = {scope: m.detail.accountScope, item: m.detail, patch: patch}
+        m.top.stateChange = userViewEvent({scope: m.detail.accountScope, item: m.detail, patch: patch}, m.userSessionId)
         updated = vodStateUpdate(m.top.savedState, m.detail, patch)
         if updated <> invalid then m.top.savedState = updated
         if action = "hidden" or m.shelf <> "catalog" then loadVodPage()
@@ -684,8 +685,8 @@ sub onVodDetailAction(event as object)
         if action = "resume" then m.detail.resume = vodResumePosition(entry, entry.duration)
         if action = "mp4" then m.detail.streamFormat = "mp4"
         if action = "mkv" then m.detail.streamFormat = "mkv"
-        if action <> "resume" then m.top.stateChange = {scope: m.detail.accountScope, item: m.detail, patch: {position: 0, watched: false}}
-        m.top.playRequested = m.detail
+        if action <> "resume" then m.top.stateChange = userViewEvent({scope: m.detail.accountScope, item: m.detail, patch: {position: 0, watched: false}}, m.userSessionId)
+        m.top.playRequested = userViewEvent(m.detail, m.userSessionId)
     end if
 end sub
 
@@ -927,13 +928,13 @@ sub onVodOption(event as object)
         m.query = ""
         m.category = ""
     else if choice = 9
-        m.top.stateChange = {scope: m.top.config.accountScope, clearHidden: true}
+        m.top.stateChange = userViewEvent({scope: m.top.config.accountScope, clearHidden: true}, m.userSessionId)
         m.shelf = "catalog"
     else if choice = 11
         if m.items.count() > 0
             item = m.items[m.index]
             if m.shelf = "recent"
-                m.top.stateChange = {scope: m.top.config.accountScope, removeHistoryKey: item.key}
+                m.top.stateChange = userViewEvent({scope: m.top.config.accountScope, removeHistoryKey: item.key}, m.userSessionId)
                 m.top.history = vodHistoryRemove(m.top.history, item.key)
                 return
             else
@@ -942,13 +943,13 @@ sub onVodOption(event as object)
                 if m.shelf = "watchlist" then patch.watchlist = false
                 if m.shelf = "hidden" then patch.hidden = false
                 if m.shelf = "continue" then patch.position = 0 : patch.watched = false
-                m.top.stateChange = {scope: m.top.config.accountScope, item: item, patch: patch}
+                m.top.stateChange = userViewEvent({scope: m.top.config.accountScope, item: item, patch: patch}, m.userSessionId)
                 updated = vodStateUpdate(m.top.savedState, item, patch)
                 if updated <> invalid then m.top.savedState = updated
             end if
         end if
     else if choice = 19
-        m.top.stateChange = {scope: m.top.config.accountScope, clearHistory: true}
+        m.top.stateChange = userViewEvent({scope: m.top.config.accountScope, clearHistory: true}, m.userSessionId)
         m.top.history = []
         return
     else if choice = 12
@@ -1110,7 +1111,7 @@ end function
 
 sub saveLibraryBookmark()
     if m.fromUnifiedSearch or m.top.config = invalid or m.shelf <> "catalog" or m.kind = "episode" then return
-    m.top.bookmark = {scope: m.top.config.accountScope, kind: m.kind, query: m.query, category: m.category, providerId: m.providerId, ordering: m.ordering, page: m.pageNumber, index: m.index}
+    m.top.bookmark = userViewEvent({scope: m.top.config.accountScope, kind: m.kind, query: m.query, category: m.category, providerId: m.providerId, ordering: m.ordering, page: m.pageNumber, index: m.index}, m.userSessionId)
 end sub
 
 sub updateLibraryTabs()

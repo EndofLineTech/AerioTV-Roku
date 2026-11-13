@@ -45,6 +45,7 @@ sub init()
 end sub
 
 sub onDvrConfig()
+    m.userSessionId = userViewSession(m.top.config)
     cancelDvrLoad()
     m.refreshRequested = false
     cancelDvrMutation()
@@ -373,7 +374,7 @@ sub onDvrDetailAction(event as object)
         row = m.targetRow
         if recordingPlaybackPlan(config.baseUrl, row) = invalid then return
         dismissDvrDialog()
-        m.top.playRequested = {scope: config.scope, accountId: config.accountId, recordingId: row.id, fromBeginning: action = "restart"}
+        m.top.playRequested = userViewEvent({scope: config.scope, accountId: config.accountId, recordingId: row.id, fromBeginning: action = "restart"}, m.userSessionId)
         return
     end if
     if action = "deleteRule"

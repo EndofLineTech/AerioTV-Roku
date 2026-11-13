@@ -35,6 +35,20 @@ sub main()
     assertEqual(isCurrentTaskEvent(event, task), false, "returning to A cannot revive old A callback")
     tagTaskForCurrentUser(task)
     assertEqual(isCurrentTaskEvent(event, task), true, "freshly captured incoming session accepted")
+    payload = userViewEvent({favoriteIds: ["own"]}, "session-a-2")
+    assertEqual(userEventCurrent(payload), true, "current view envelope accepted")
+    m.global.activeusersession = "session-b-2"
+    assertEqual(userEventCurrent(payload), false, "queued view data cannot cross into B")
+    m.global.activeusersession = "session-a-3"
+    assertEqual(userEventCurrent(payload), false, "queued view data cannot revive after A/B/A")
+    assertEqual(userEventCurrent({favoriteIds: ["wrong"]}), false, "scoped app refuses untagged view data")
+    assertEqual(userViewSession(payload), "session-a-2", "view captures explicit configured identity, not incoming global")
+    assertEqual(userEventCurrent({aeriosession: 7}), false, "typed malformed context fails closed")
+    aliases = ParseJson("{" + chr(34) + "aeriosession" + chr(34) + ":" + chr(34) + "session-a-3" + chr(34) + "," + chr(34) + "AerioSession" + chr(34) + ":" + chr(34) + "session-a-3" + chr(34) + "}")
+    if aliases.count() = 2 then assertEqual(userEventCurrent(aliases), false, "ambiguous native envelope aliases fail closed")
+    assertEqual(instr(1, FormatJson(userEventData(payload)), "session-a-2"), 0, "transient envelope context never enters persisted account data")
+    m.global.activeusersession = ""
+    assertEqual(userEventCurrent({favoriteIds: ["legacy"]}), true, "unscoped direct-provider fixtures retain their legacy contract")
     print "ALL TESTS PASSED"
 end sub
 

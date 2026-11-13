@@ -41,6 +41,7 @@ sub onActive()
 end sub
 
 sub renderSettings()
+    m.userSessionId = userViewSession(m.top.model)
     if m.top.model = invalid then return
     focused = m.list.itemFocused
     model = m.top.model
@@ -147,21 +148,22 @@ sub selectSetting(index as integer)
     if m.choice = invalid and item.page = invalid and item.action = invalid and item.values = invalid then return
     if m.choice <> invalid and m.choice.action = "remoteSlot"
         choice = m.choice
-        m.top.selection = {account: m.top.model.account, action: "setRemoteAction", context: choice.context, slot: choice.slot, value: item.value}
+        m.top.selection = userViewEvent({account: m.top.model.account, action: "setRemoteAction", context: choice.context, slot: choice.slot, value: item.value}, m.userSessionId)
         goBackSettings()
     else if m.choice <> invalid and (m.choice.action = "resetRemoteMapConfirm" or m.choice.action = "resetAppearanceConfirm")
         action = "resetRemoteMap"
         if m.choice.action = "resetAppearanceConfirm" then action = "resetAppearance"
-        if item.value = "reset" then m.top.selection = {account: m.top.model.account, action: action}
+        if item.value = "reset" then m.top.selection = userViewEvent({account: m.top.model.account, action: action}, m.userSessionId)
         goBackSettings()
     else if m.choice <> invalid
         choice = m.choice
-        m.top.selection = {account: m.top.model.account, scope: choice.scope, key: choice.key, value: item.value}
+        m.top.selection = userViewEvent({account: m.top.model.account, scope: choice.scope, key: choice.key, value: item.value}, m.userSessionId)
         goBackSettings()
     else if item.action = "connection"
-        m.top.selection = {account: m.top.model.account, action: "connection"}
+        m.top.selection = userViewEvent({account: m.top.model.account, action: "connection"}, m.userSessionId)
     else if item.action = "customAccent"
         m.accentDialog = CreateObject("roSGNode", "StandardKeyboardDialog")
+        m.accentDialogSession = m.userSessionId
         m.accentDialog.title = "Accent: 6 hex digits (empty = preset)"
         m.accentDialog.textEditBox.voiceEnabled = true
         m.accentDialog.text = textValue(m.top.model.device.customAccent)
@@ -175,7 +177,7 @@ sub selectSetting(index as integer)
         renderSettings()
         m.list.jumpToItem = 0
     else if item.action = "markWhatsNew"
-        m.top.selection = {account: m.top.model.account, action: "markWhatsNew", value: m.top.model.version}
+        m.top.selection = userViewEvent({account: m.top.model.account, action: "markWhatsNew", value: m.top.model.version}, m.userSessionId)
         goBackSettings()
     else if item.action = "resetRemoteMap" or item.action = "resetAppearance"
         m.stack.push({page: m.page, index: index})
@@ -199,7 +201,7 @@ sub onAccentChoice(event as object)
             m.accentDialog.title = "Use exactly 6 hex digits, or leave empty"
             return
         end if
-        m.top.selection = {account: m.top.model.account, scope: "device", key: "customAccent", value: value}
+        m.top.selection = userViewEvent({account: m.top.model.account, scope: "device", key: "customAccent", value: value}, m.accentDialogSession)
     end if
     m.accentDialog.close = true
 end sub

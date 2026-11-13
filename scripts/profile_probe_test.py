@@ -9,6 +9,16 @@ import subprocess
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_media_controls_observe_immutable_context_events(self):
+        root = Path(__file__).resolve().parent.parent
+        scene = (root / 'components/AerioScene.brs').read_text()
+        player = (root / 'components/OnDemandPlayer.brs').read_text()
+        for field, handler in [('closedContext', 'onMediaClosed'), ('archiveSeekContext', 'onArchiveSeek'), ('goLiveContext', 'onArchiveGoLive')]:
+            self.assertIn(f'm.mediaPlayer.observeField("{field}", "{handler}")', scene)
+            self.assertIn(f'm.top.{field} = userViewEvent(', player)
+        for field, handler in [('closed', 'onMediaClosed'), ('archiveSeek', 'onArchiveSeek'), ('goLiveRequested', 'onArchiveGoLive')]:
+            self.assertNotIn(f'm.mediaPlayer.observeField("{field}", "{handler}")', scene)
+
     def test_network_task_constructors_capture_active_user_session(self):
         import re
         root = Path(__file__).resolve().parent.parent

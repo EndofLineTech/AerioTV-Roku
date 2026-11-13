@@ -13,6 +13,7 @@
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="pkg:/source/RemoteMapModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SettingsModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
   <script type="text/brightscript" uri="SettingsHub.brs" />
   <script type="text/brightscript" uri="SettingsRail.brs" />
   <children>

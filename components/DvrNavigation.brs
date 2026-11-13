@@ -1,6 +1,7 @@
 ' Record-once flow: validate permission and guide identity at the Scene boundary.
 ' A mutation is sent once on a Task; ambiguous failures require server refresh.
 sub onRecordRequested(event as object)
+    if not userEventCurrent(event.getData()) then return
     if not m.guide.isSameNode(event.getRoSGNode()) or m.page <> "guide" then return
     if m.capabilities.dvr <> "manage" or m.recordTask <> invalid or m.recordDialog <> invalid then return
     if m.guide.config = invalid then return

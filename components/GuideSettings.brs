@@ -97,6 +97,7 @@ sub updateHistory()
 end sub
 
 sub applyRefreshedLineup(data as object)
+    m.userSessionId = userViewSession(data)
     suspendGuide()
     cancelMetadataLoads()
     m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
@@ -354,7 +355,7 @@ function handleGuideSetting(kind as string, item as object) as boolean
         else if item.action = "forgetTmdb"
             m.tmdbKey = ""
             m.settings.tmdbFallback = false
-            m.top.devicePreference = {tmdbKey: ""}
+            m.top.devicePreference = userViewEvent({tmdbKey: ""}, m.userSessionId)
         else
             m.settings.tmdbFallback = not m.settings.tmdbFallback
         end if
@@ -465,7 +466,7 @@ sub onTmdbKeyTest(event as object)
     m.tmdbTask = invalid
     if result.ok
         m.tmdbKey = result.token
-        m.top.devicePreference = {tmdbKey: result.token}
+        m.top.devicePreference = userViewEvent({tmdbKey: result.token}, m.userSessionId)
         m.settings.tmdbFallback = true
         m.message = "TMDB key verified. Optional artwork enabled. TMDB data is not endorsed or certified by TMDB."
         m.detailCache = {}

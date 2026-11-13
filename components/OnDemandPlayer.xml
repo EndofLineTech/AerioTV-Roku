@@ -3,6 +3,9 @@
   <interface>
     <field id="request" type="assocarray" onChange="openMedia" />
     <field id="closed" type="boolean" alwaysNotify="true" />
+    <field id="closedContext" type="assocarray" alwaysNotify="true" />
+    <field id="archiveSeekContext" type="assocarray" alwaysNotify="true" />
+    <field id="goLiveContext" type="assocarray" alwaysNotify="true" />
     <field id="progress" type="assocarray" alwaysNotify="true" />
     <field id="diagnostic" type="assocarray" alwaysNotify="true" />
     <field id="archiveSeek" type="integer" alwaysNotify="true" />
@@ -22,6 +25,7 @@
   <script type="text/brightscript" uri="pkg:/source/CatchupModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/RecordingSeekModel.brs" />
   <script type="text/brightscript" uri="OnDemandPlayer.brs" />
+  <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
   <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
   <script type="text/brightscript" uri="pkg:/source/RequestGateRenderer.brs" />

@@ -37,6 +37,51 @@ function taskUserSessionCurrent(task as object) as boolean
     return session <> "" and session = currentUserSessionId()
 end function
 
+' Capture the view's configured session, never the current global session at
+' emission time: a delayed old view must not label its old data as incoming.
+function userViewEvent(value as object, session = invalid as dynamic) as object
+    result = userEventData(value)
+    if type(session) = "String" or type(session) = "roString"
+        if session <> "" then result["aeriosession"] = session
+    end if
+    return result
+end function
+
+function userViewSession(value as dynamic) as string
+    if type(value) <> "roAssociativeArray" then return ""
+    captured = value["aeriosession"]
+    if type(captured) <> "String" and type(captured) <> "roString" then return ""
+    return captured
+end function
+
+function userEventCurrent(value as dynamic) as boolean
+    if type(value) <> "roAssociativeArray" then return false
+    count = 0
+    captured = invalid
+    for each key in value
+        if lcase(key) = "aeriosession"
+            count++
+            captured = value[key]
+        end if
+    end for
+    current = currentUserSessionId()
+    if count = 0 then return current = ""
+    if count <> 1 then return false
+    if type(captured) <> "String" and type(captured) <> "roString" then return false
+    return captured = current
+end function
+
+function userEventData(value as object) as object
+    ' Local SceneGraph event/model schema fields use ordinary case-insensitive
+    ' AA lookup. Do not turn literal apiKey/accountId fields into a parsed,
+    ' case-sensitive JSON map while copying their envelope.
+    result = {}
+    for each key in value
+        if lcase(key) <> "aeriosession" then result[key] = value[key]
+    end for
+    return result
+end function
+
 function connectionTimedOut(elapsedSeconds as integer) as boolean
     return elapsedSeconds >= 120
 end function

@@ -110,6 +110,28 @@ captures a real Task session, begins a delayed HTTP response, retires that
 session, verifies cancellation and refuses a second HTTP path/cache access.
 Its full expanded 13-group matrix still passes with exact prior-app restoration.
 
-Queued view/UI event envelopes, authorization-refresh generation adoption,
+## View event envelopes
+
+Guide, Browser, VOD, DVR, Settings and on-demand media capture the session from
+their explicit configured model/request, not the global identity when delayed
+data is emitted. Preference/state/bookmark, playback/record/archive/history and
+search-selection events carry that captured nonce; owning handlers reject stale
+events. Preference merges strip the transient field before persistence. The
+native accent keyboard retains its opening session independently of rerenders.
+
+On-demand close/seek/go-live use additional assocarray context signals; legacy
+scalar outputs remain available, but the normal app observes the scoped signals.
+Host handler tests exercise stale controls without account/archive/storage state
+present, proving refusal occurs before work. An untagged legacy seek cannot
+bypass an active scoped session.
+
+The normal-app native fixture now toggles favorites through the real Guide save
+path and injects stale Guide preferences, VOD history, Settings, Guide/Browser
+watch/history actions and media close/seek/go-live controls. All three cases
+reject them, preserve current state,
+perform no unintended playback/dialog transition and persist no `aeriosession`.
+Private registry cleanup and exact prior-app restoration pass.
+
+Authorization-refresh generation adoption, remaining dialog/control event audit,
 complete pending-write coverage and same-slot native A/B/A acceptance remain
 implementation work. No public switching or complete `mrr.7` delivery is claimed.

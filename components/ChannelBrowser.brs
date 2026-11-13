@@ -19,6 +19,7 @@ sub init()
 end sub
 
 sub configure()
+    m.userSessionId = userViewSession(m.top.model)
     data = m.top.model
     if data = invalid then return
     m.ready = false
@@ -404,7 +405,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if key = "options" and m.mode = "recent"
         uuid = ""
         if m.filtered.count() > 0 then uuid = m.filtered[m.selected].uuid
-        m.top.historyRequest = {account: m.historyAccount, uuid: uuid}
+        m.top.historyRequest = userViewEvent({account: m.historyAccount, uuid: uuid}, m.userSessionId)
         return true
     end if
     if key = "back" or key = "options"
@@ -440,7 +441,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         if m.focus = "groups"
             m.focus = "channels"
         else if m.filtered.count() > 0
-            m.top.channelSelected = m.filtered[m.selected]
+            m.top.channelSelected = userViewEvent(m.filtered[m.selected], m.userSessionId)
             return true
         end if
     else

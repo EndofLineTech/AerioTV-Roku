@@ -47,6 +47,8 @@ end sub
 sub openMedia()
     request = m.top.request
     if request = invalid then return
+    if not userEventCurrent(request) then return
+    m.userSessionId = userViewSession(request)
     if not requestGateTrackRenderer(m.video, request.url, request.apiKey)
         m.video.control = "stop"
         m.video.content = invalid
@@ -144,7 +146,7 @@ sub onMediaState()
         hideRecordingOverlay()
         m.message.visible = true
         m.mediaFailed = true
-        m.top.diagnostic = {mode: m.session.mode, code: m.video.errorCode, message: sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)}
+        m.top.diagnostic = userViewEvent({mode: m.session.mode, code: m.video.errorCode, message: sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)}, m.userSessionId)
         print "[on-demand] failure code="; m.video.errorCode; " detail="; sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)
         m.message.text = playbackFailureText(m.video.errorCode, sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)) + chr(10) + "OK Retry    Back Return"
         if m.session.mode = "vod"
@@ -193,7 +195,7 @@ sub reportProgress()
     else
         m.session.state = m.video.state
     end if
-    m.top.progress = {account: m.session.account, identity: m.session.identity, key: m.session.item, mode: m.session.mode, position: m.session.position, duration: m.session.duration, finished: m.finished, state: m.video.state, closing: m.closing}
+    m.top.progress = userViewEvent({account: m.session.account, identity: m.session.identity, key: m.session.item, mode: m.session.mode, position: m.session.position, duration: m.session.duration, finished: m.finished, state: m.video.state, closing: m.closing}, m.userSessionId)
     if m.session.mode = "recording" and m.video.state = "playing"
         if m.resumeTarget <> invalid
             if m.resumeTarget > 0
@@ -371,6 +373,7 @@ sub closeMedia()
     if m.seekingArchive
         m.seekingArchive = false
         m.top.visible = false
+        m.top.closedContext = userViewEvent({closed: true}, m.userSessionId)
         m.top.closed = true
         return
     end if
@@ -384,6 +387,7 @@ sub closeMedia()
     m.video.content = invalid
     m.top.request = invalid
     m.top.visible = false
+    m.top.closedContext = userViewEvent({closed: true}, m.userSessionId)
     m.top.closed = true
 end sub
 
@@ -669,6 +673,7 @@ sub commitArchiveScrub()
     end if
     target = m.scrub.target
     cancelArchiveScrub()
+    m.top.archiveSeekContext = userViewEvent({target: target}, m.userSessionId)
     m.top.archiveSeek = target
 end sub
 
@@ -707,11 +712,12 @@ sub onArchiveAction(event as object)
         choices = [60, 120, 300]
         if selection >= 0 and selection < choices.count()
             m.top.skipSeconds = choices[selection]
-            m.top.skipPreference = {account: m.session.account, seconds: choices[selection]}
+            m.top.skipPreference = userViewEvent({account: m.session.account, seconds: choices[selection]}, m.userSessionId)
         end if
         m.top.setFocus(true)
         renderArchiveProgress()
     else if selection = 0
+        m.top.goLiveContext = userViewEvent({requested: true}, m.userSessionId)
         m.top.goLiveRequested = true
     else if selection = 2
         dialog = CreateObject("roSGNode", "AerioDialog")

@@ -1,6 +1,7 @@
 ' Playback is read-only: get the current server row before constructing a
 ' route from its numeric ID. Never use a path or URL returned by the server.
 sub onDvrPlayRequested(event as object)
+    if not userEventCurrent(event.getData()) then return
     if not m.dvr.isSameNode(event.getRoSGNode()) or m.page <> "dvr" then return
     request = event.getData()
     if type(request) <> "roAssociativeArray" or m.dvrPlayTask <> invalid then return
@@ -59,7 +60,7 @@ sub onDvrPlaybackReady(event as object)
     m.mediaReturn = "dvr"
     m.dvr.active = false
     m.page = "onDemand"
-    m.mediaPlayer.request = {account: m.accountIdentity, identity: m.mediaIdentity, key: request.id, mode: "recording", title: result.recording.title, url: plan.url, apiKey: m.apiKey, streamFormat: plan.streamFormat, growing: plan.growing, resume: resume}
+    m.mediaPlayer.request = userViewEvent({account: m.accountIdentity, identity: m.mediaIdentity, key: request.id, mode: "recording", title: result.recording.title, url: plan.url, apiKey: m.apiKey, streamFormat: plan.streamFormat, growing: plan.growing, resume: resume}, currentUserSessionId())
 end sub
 
 sub onDvrProgress(progress as object)

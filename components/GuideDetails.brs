@@ -135,10 +135,10 @@ sub onRichDetailAction(event as object)
     m.details.active = false
     m.top.setFocus(true)
     if action = "record" and recordingScheduleEligible(m.top.dvrPermission, m.detailChannel, m.detailProgram, uiNow())
-        m.top.recordRequest = {channel: m.detailChannel, program: m.detailProgram, scope: m.cacheScope}
+        m.top.recordRequest = userViewEvent({channel: m.detailChannel, program: m.detailProgram, scope: m.cacheScope}, m.userSessionId)
         return
     end if
-    if action = "watch" then m.top.watchChannel = m.detailChannel
-    if action = "catchup" then m.top.archiveRequest = {channel: m.detailChannel, program: m.detailProgram, scope: m.cacheScope}
-    if action = "restart" then m.top.archiveRequest = {channel: m.detailChannel, program: m.detailProgram, scope: m.cacheScope, restart: true}
+    if action = "watch" then m.top.watchChannel = userViewEvent(m.detailChannel, m.userSessionId)
+    if action = "catchup" then m.top.archiveRequest = userViewEvent({channel: m.detailChannel, program: m.detailProgram, scope: m.cacheScope}, m.userSessionId)
+    if action = "restart" then m.top.archiveRequest = userViewEvent({channel: m.detailChannel, program: m.detailProgram, scope: m.cacheScope, restart: true}, m.userSessionId)
 end sub

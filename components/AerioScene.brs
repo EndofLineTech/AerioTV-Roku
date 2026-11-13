@@ -38,11 +38,11 @@ sub init()
     m.vod.observeField("authRejected", "onXtreamVodAuthRejected")
     m.vod.observeField("destination", "onLibraryDestination")
     m.mediaPlayer = m.top.findNode("onDemandPlayer")
-    m.mediaPlayer.observeField("closed", "onMediaClosed")
+    m.mediaPlayer.observeField("closedContext", "onMediaClosed")
     m.mediaPlayer.observeField("progress", "onMediaProgress")
     m.mediaPlayer.observeField("diagnostic", "onMediaDiagnostic")
-    m.mediaPlayer.observeField("archiveSeek", "onArchiveSeek")
-    m.mediaPlayer.observeField("goLiveRequested", "onArchiveGoLive")
+    m.mediaPlayer.observeField("archiveSeekContext", "onArchiveSeek")
+    m.mediaPlayer.observeField("goLiveContext", "onArchiveGoLive")
     m.mediaPlayer.observeField("skipPreference", "onArchiveSkipPreference")
     m.screen = m.top.findNode("screen")
     m.guide = m.top.findNode("guide")
@@ -764,6 +764,7 @@ sub completeConnection(result as dynamic)
         if not rememberConnectedAccount(result.accountId, textValue(result.accountUsername)) then result.warning = "Could not save this connection. Check Roku app storage and reconnect before exiting."
     end if
     m.guide.config = {
+        aeriosession: currentUserSessionId()
         channels: result.channels, groups: result.groups, warning: result.warning
         baseUrl: m.baseUrl, apiKey: m.apiKey, accountId: m.serverAccountId, preferences: prefs
         providerType: "dispatcharr", guideUrl: connection.epgUrl
@@ -890,7 +891,8 @@ end sub
 sub onPreferences(event as object)
     if not m.guide.isSameNode(event.getRoSGNode()) then return
     if m.accountIdentity = "" then return
-    m.accountPreferences = mergeAccountPreferences(m.accountPreferences, event.getData())
+    if not userEventCurrent(event.getData()) then return
+    m.accountPreferences = mergeAccountPreferences(m.accountPreferences, userEventData(event.getData()))
     persistAccountPreferences()
 end sub
 
@@ -1006,6 +1008,7 @@ sub forgetConnection()
 end sub
 
 sub onWatchChannel(event as object)
+    if not userEventCurrent(event.getData()) then return
     if not m.guide.isSameNode(event.getRoSGNode()) or m.page <> "guide" then return
     startPlayback(event.getData())
 end sub
@@ -1539,12 +1542,13 @@ sub openChannelBrowser(mode = "channels" as string)
     model.baseUrl = m.baseUrl
     model.apiKey = m.apiKey
     m.browser.playingUuid = m.playingChannel.uuid
-    m.browser.model = model
+    m.browser.model = userViewEvent(model, currentUserSessionId())
     m.browser.active = true
     updateBufferingIndicator()
 end sub
 
 sub onBrowserSelected(event as object)
+    if not userEventCurrent(event.getData()) then return
     if m.page <> "player" then return
     m.browser.active = false
     startPlayback(event.getData())
@@ -2408,6 +2412,7 @@ sub onLineupRefresh(event as object)
         end if
     end if
     result.preferences = m.accountPreferences
+    result.aeriosession = currentUserSessionId()
     m.guide.callFunc("applyRefreshedLineup", result)
     m.browser.callFunc("invalidateLogos")
     m.guide.recentIds = m.accountPreferences.recent
@@ -2622,6 +2627,7 @@ end sub
 sub onDevicePreference(event as object)
     if not m.guide.isSameNode(event.getRoSGNode()) then return
     change = event.getData()
+    if not userEventCurrent(change) then return
     if change.tmdbKey <> invalid
         written = true
         if change.tmdbKey = ""

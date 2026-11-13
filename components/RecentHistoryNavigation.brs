@@ -1,5 +1,6 @@
 ' Scene-owned history edits; neither menu nor persistence retunes playback.
 sub onRecentHistoryRequested(event as object)
+    if not userEventCurrent(event.getData()) then return
     if m.accountIdentity = "" then return
     request = event.getData()
     if type(request) <> "roAssociativeArray" then return
@@ -33,7 +34,7 @@ sub onRecentHistoryRequested(event as object)
     dialog.buttons = buttons
     dialog.observeField("buttonSelected", "onRecentHistoryChoice")
     dialog.observeField("wasClosed", "onRecentHistoryClosed")
-    m.historyContext = {account: m.accountIdentity, uuid: uuid, actions: actions, origin: origin}
+    m.historyContext = userViewEvent({account: m.accountIdentity, uuid: uuid, actions: actions, origin: origin}, userViewSession(request))
     m.historyDialog = dialog
     m.top.dialog = dialog
 end sub
@@ -42,6 +43,7 @@ sub onRecentHistoryChoice(event as object)
     if m.historyDialog = invalid or m.historyContext = invalid then return
     if not m.historyDialog.isSameNode(event.getRoSGNode()) then return
     context = m.historyContext
+    if not userEventCurrent(context) then return
     index = event.getData()
     if index < 0 or index >= context.actions.count() then return
     action = context.actions[index]

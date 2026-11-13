@@ -7,7 +7,7 @@ sub openDvrLibrary()
     m.guide.visible = false
     m.screen.visible = false
     m.page = "dvr"
-    m.dvr.config = {baseUrl: m.baseUrl, apiKey: m.apiKey, accountId: m.serverAccountId, scope: m.accountIdentity, permission: m.capabilities.dvr, channels: m.guide.config.channels}
+    m.dvr.config = userViewEvent({baseUrl: m.baseUrl, apiKey: m.apiKey, accountId: m.serverAccountId, scope: m.accountIdentity, permission: m.capabilities.dvr, channels: m.guide.config.channels}, currentUserSessionId())
     m.dvr.active = true
 end sub
 
@@ -36,9 +36,9 @@ sub openVodLibrary(kind as string)
     if type(m.accountPreferences.vodBrowse) = "roAssociativeArray" then bookmark = m.accountPreferences.vodBrowse[kind]
     connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if connection <> invalid and connection.provider = "xtream"
-        m.vod.config = {kind: kind, providerType: "xtream", baseUrl: m.baseUrl, username: m.xcUsername, password: m.xcPassword, accountScope: m.accountIdentity, apiKey: "", accountId: "", bookmark: bookmark, tmdbEnabled: false}
+        m.vod.config = userViewEvent({kind: kind, providerType: "xtream", baseUrl: m.baseUrl, username: m.xcUsername, password: m.xcPassword, accountScope: m.accountIdentity, apiKey: "", accountId: "", bookmark: bookmark, tmdbEnabled: false}, currentUserSessionId())
     else
-        m.vod.config = {kind: kind, baseUrl: m.baseUrl, apiKey: m.apiKey, accountId: m.serverAccountId, accountScope: normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId, bookmark: bookmark, tmdbKey: m.registry.read("tmdbApiKey"), tmdbEnabled: m.accountPreferences.vodTmdbEnabled = true}
+        m.vod.config = userViewEvent({kind: kind, baseUrl: m.baseUrl, apiKey: m.apiKey, accountId: m.serverAccountId, accountScope: normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId, bookmark: bookmark, tmdbKey: m.registry.read("tmdbApiKey"), tmdbEnabled: m.accountPreferences.vodTmdbEnabled = true}, currentUserSessionId())
     end if
     m.vod.active = true
 end sub
@@ -62,6 +62,7 @@ sub closeVodLibrary()
 end sub
 
 sub onUnifiedSearchVodSelection(event as object)
+    if not userEventCurrent(event.getData()) then return
     if not m.guide.isSameNode(event.getRoSGNode()) or m.page <> "guide" then return
     selection = event.getData()
     if type(selection) <> "roAssociativeArray" or m.guide.config = invalid then return
@@ -96,6 +97,7 @@ end sub
 sub onVodBookmark(event as object)
     if not m.vod.isSameNode(event.getRoSGNode()) then return
     value = event.getData()
+    if not userEventCurrent(value) then return
     scope = normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId
     if m.vod.config <> invalid then scope = textValue(m.vod.config.accountScope)
     if value.scope <> scope then return
@@ -125,7 +127,7 @@ sub updateLibraryPermissions()
                     updated.append(config)
                     updated.permission = m.capabilities.dvr
                     ' DvrView.onDvrConfig drops old dialogs and in-flight operations.
-                    m.dvr.config = updated
+                    m.dvr.config = userViewEvent(updated, currentUserSessionId())
                 end if
             end if
         end if
@@ -136,6 +138,7 @@ sub updateLibraryPermissions()
 end sub
 
 sub onVodPlay(event as object)
+    if not userEventCurrent(event.getData()) then return
     if not m.vod.isSameNode(event.getRoSGNode()) or m.page <> "library" then return
     item = event.getData()
     scope = normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId
@@ -167,10 +170,12 @@ sub onVodPlay(event as object)
     m.page = "onDemand"
     providerType = "dispatcharr"
     if directXtream then providerType = "xtream"
-    m.mediaPlayer.request = {account: m.accountIdentity, identity: identity, key: item.key, mode: "vod", providerType: providerType, url: url, title: item.title, apiKey: m.apiKey, streamFormat: item.streamFormat, resume: item.resume}
+    m.mediaPlayer.request = userViewEvent({account: m.accountIdentity, identity: identity, key: item.key, mode: "vod", providerType: providerType, url: url, title: item.title, apiKey: m.apiKey, streamFormat: item.streamFormat, resume: item.resume}, currentUserSessionId())
 end sub
 
-sub onMediaClosed()
+sub onMediaClosed(event as object)
+    if not m.mediaPlayer.isSameNode(event.getRoSGNode()) then return
+    if not userEventCurrent(event.getData()) then return
     if m.page <> "onDemand" then return
     m.archiveSeeking = false
     cancelArchiveLoad()
@@ -190,6 +195,7 @@ sub onMediaClosed()
 end sub
 
 sub onArchiveRequested(event as object)
+    if not userEventCurrent(event.getData()) then return
     if not m.guide.isSameNode(event.getRoSGNode()) or m.page <> "guide" then return
     cancelArchiveLoad()
     selected = event.getData()
@@ -268,7 +274,7 @@ sub startXtreamArchive(channel as object, program as object, restarting as boole
     m.page = "onDemand"
     m.mediaPlayer.skipSeconds = m.devicePreferences.archiveSkipSeconds
     m.mediaPlayer.broadcastInfo = invalid
-    m.mediaPlayer.request = {account: m.accountIdentity, identity: CreateObject("roDeviceInfo").getRandomUUID(), key: textValue(program.id), mode: "catchup", providerType: "xtream", url: url, title: program.title, apiKey: "", streamFormat: "ts", programStart: program.startsAt, program: program, offset: 0, startPaused: false, restart: false, rewind: false}
+    m.mediaPlayer.request = userViewEvent({account: m.accountIdentity, identity: CreateObject("roDeviceInfo").getRandomUUID(), key: textValue(program.id), mode: "catchup", providerType: "xtream", url: url, title: program.title, apiKey: "", streamFormat: "ts", programStart: program.startsAt, program: program, offset: 0, startPaused: false, restart: false, rewind: false}, currentUserSessionId())
 end sub
 
 sub openLiveRewind()
@@ -353,7 +359,7 @@ sub onArchiveCreated(event as object)
         m.guide.playbackEpoch = p.startsAt + m.archiveOffset
         m.guide.playbackChannel = m.archiveContext.channel
     end if
-    m.mediaPlayer.request = {account: m.accountIdentity, identity: result.sessionId, key: p.id, mode: "catchup", url: result.url, title: p.title, apiKey: m.apiKey, streamFormat: "ts", programStart: p.startsAt, program: p, offset: m.archiveOffset, startPaused: m.archiveStartPaused, restart: m.archiveContext.restart = true, rewind: m.archiveContext.rewind = true, tuneStart: m.archiveContext.tuneStart}
+    m.mediaPlayer.request = userViewEvent({account: m.accountIdentity, identity: result.sessionId, key: p.id, mode: "catchup", url: result.url, title: p.title, apiKey: m.apiKey, streamFormat: "ts", programStart: p.startsAt, program: p, offset: m.archiveOffset, startPaused: m.archiveStartPaused, restart: m.archiveContext.restart = true, rewind: m.archiveContext.rewind = true, tuneStart: m.archiveContext.tuneStart}, currentUserSessionId())
 end sub
 
 sub deleteOwnArchive(id as string, callback = "" as string)
@@ -417,6 +423,7 @@ end sub
 sub onMediaProgress(event as object)
     if not m.mediaPlayer.isSameNode(event.getRoSGNode()) then return
     progress = event.getData()
+    if not userEventCurrent(progress) then return
     if progress.account <> m.accountIdentity then return
     if progress.mode = "recording"
         onDvrProgress(progress)
@@ -472,10 +479,19 @@ end sub
 
 sub onArchiveSeek(event as object)
     if not m.mediaPlayer.isSameNode(event.getRoSGNode()) or m.page <> "onDemand" then return
+    value = event.getData()
+    if type(value) = "roAssociativeArray"
+        if not userEventCurrent(value) then return
+        target = value.target
+    else
+        if currentUserSessionId() <> "" then return
+        target = value
+    end if
+    if not mediaNumber(target) then return
     if m.archiveContext <> invalid
         if m.archiveContext.providerType = "xtream"
             program = m.archiveContext.program
-            plan = catchupSeekPlan(program, event.getData(), uiNow())
+            plan = catchupSeekPlan(program, target, uiNow())
             if plan = invalid then return
             channel = m.guide.callFunc("channelByUuid", m.archiveContext.channel.uuid)
             if channel = invalid or m.archiveContext.account <> m.accountIdentity then return
@@ -487,13 +503,13 @@ sub onArchiveSeek(event as object)
             state = m.mediaPlayer.callFunc("suspendArchive")
             m.archiveOffset = plan.offset
             m.archiveStartPaused = state.paused
-            m.mediaPlayer.request = {account: m.accountIdentity, identity: CreateObject("roDeviceInfo").getRandomUUID(), key: textValue(program.id), mode: "catchup", providerType: "xtream", url: url, title: program.title, apiKey: "", streamFormat: "ts", programStart: program.startsAt, program: program, offset: m.archiveOffset, startPaused: m.archiveStartPaused, restart: false, rewind: false}
+            m.mediaPlayer.request = userViewEvent({account: m.accountIdentity, identity: CreateObject("roDeviceInfo").getRandomUUID(), key: textValue(program.id), mode: "catchup", providerType: "xtream", url: url, title: program.title, apiKey: "", streamFormat: "ts", programStart: program.startsAt, program: program, offset: m.archiveOffset, startPaused: m.archiveStartPaused, restart: false, rewind: false}, currentUserSessionId())
             return
         end if
     end if
     if m.archiveSeeking = true or m.archiveSession = invalid or m.archiveContext = invalid then return
-    plan = catchupSeekPlan(m.archiveContext.program, event.getData(), uiNow())
-    if m.archiveContext.rewind = true then plan = rewindSeekPlan(m.archiveContext.program, m.archiveContext.tuneStart, event.getData(), uiNow())
+    plan = catchupSeekPlan(m.archiveContext.program, target, uiNow())
+    if m.archiveContext.rewind = true then plan = rewindSeekPlan(m.archiveContext.program, m.archiveContext.tuneStart, target, uiNow())
     if plan = invalid then return
     m.archiveSeeking = true
     m.archiveSeekPlan = plan
@@ -507,6 +523,7 @@ end sub
 sub onArchiveSkipPreference(event as object)
     if not m.mediaPlayer.isSameNode(event.getRoSGNode()) or m.page <> "onDemand" then return
     change = event.getData()
+    if not userEventCurrent(change) then return
     if change.account <> m.accountIdentity then return
     if change.seconds <> 60 and change.seconds <> 120 and change.seconds <> 300 then return
     m.devicePreferences.archiveSkipSeconds = change.seconds
@@ -514,6 +531,7 @@ sub onArchiveSkipPreference(event as object)
 end sub
 
 sub onArchiveGoLive(event as object)
+    if not userEventCurrent(event.getData()) then return
     if not m.mediaPlayer.isSameNode(event.getRoSGNode()) or m.page <> "onDemand" then return
     if m.archiveContext = invalid or m.archiveSeeking = true then return
     channel = m.guide.callFunc("channelByUuid", m.archiveContext.channel.uuid)
@@ -560,6 +578,7 @@ end sub
 sub onVodStateChange(event as object)
     if not m.vod.isSameNode(event.getRoSGNode()) then return
     change = event.getData()
+    if not userEventCurrent(change) then return
     scope = normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId
     if m.vod.config <> invalid then scope = textValue(m.vod.config.accountScope)
     if textValue(change.scope) <> scope then return
@@ -652,6 +671,7 @@ end sub
 
 sub onMediaDiagnostic(event as object)
     if not m.mediaPlayer.isSameNode(event.getRoSGNode()) then return
+    if not userEventCurrent(event.getData()) then return
     value = event.getData()
     stage = "vod"
     if value.mode = "catchup" then stage = "archive"

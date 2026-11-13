@@ -37,6 +37,9 @@ def build(output, normal, section, base, case):
         prefs.device = normalizeDevicePreferences({{themePreset: "sunset"}})
         a = normalizeAccountPreferences({{favoriteIds: ["7"]}})
         b = normalizeAccountPreferences({{favoriteIds: ["8"]}})
+        history = vodHistory([{{id: "1", uuid: "00000000-0000-4000-8000-000000000099", kind: "movie", title: "Synthetic history"}}])
+        a = setCanonicalPreference(a, "vodRecent", history)
+        b = setCanonicalPreference(b, "vodRecent", history)
         b = setCanonicalPreference(b, "profileSettings", normalizeUserProfileSettings({{themePreset: "forest"}}))
         prefs.accounts[preferenceScope("{base}|7|slot-a")] = a
         prefs.accounts[preferenceScope("{base}|8|slot-b")] = b
@@ -89,10 +92,90 @@ def build(output, normal, section, base, case):
     m.registry.flush()
     lineup = ""
     if result.channels.count() = 1 then lineup = result.channels[0].id
-    print "[profile-settings] "; FormatJson({kind: "result", case: fixture.case, before: beforeTheme, theme: m.devicePreferences.themePreset, applied: m.global.appearance.themePreset, baseline: m.preferenceStore.device.themePreset, favorite: m.accountPreferences.favoriteIds[0], accounts: m.preferenceStore.accounts.count(), lineup: lineup, rollback: rollback, stabledefault: stableDefault, scoped: m.activeUserScope.preferenceIdentity = m.accountIdentity})
+    m.scopeFixtureEvidence = {kind: "result", case: fixture.case, before: beforeTheme, theme: m.devicePreferences.themePreset, applied: m.global.appearance.themePreset, baseline: m.preferenceStore.device.themePreset, favorite: m.accountPreferences.favoriteIds[0], accounts: m.preferenceStore.accounts.count(), lineup: lineup, rollback: rollback, stabledefault: stableDefault, scoped: m.activeUserScope.preferenceIdentity = m.accountIdentity}
+    m.scopeFixturePhase = 0
+    m.scopeFixtureAttempts = 0
+    m.scopeFixtureTimer = m.top.createChild("Timer")
+    m.scopeFixtureTimer.duration = 0.25
+    m.scopeFixtureTimer.repeat = true
+    m.scopeFixtureTimer.observeField("fire", "onScopeFixturePhase")
+    m.scopeFixtureTimer.control = "start"
 '''
                 source = source.replace(target, evidence + target, 1)
+                source += '''
+sub onScopeFixturePhase()
+    m.scopeFixtureAttempts++
+    ok = true
+    if m.scopeFixturePhase = 0
+        if not m.guide.callFunc("scopeFixtureToggleFavorite")
+            if m.scopeFixtureAttempts < 20 then return
+            ok = false
+        end if
+        m.scopeFixturePhase = 1
+        if ok then return
+    else if m.scopeFixturePhase = 1
+        ok = m.accountPreferences.favoriteIds.count() = 0
+        if ok
+            m.guide.callFunc("scopeFixtureToggleFavorite")
+            m.scopeFixturePhase = 2
+            return
+        end if
+    else if m.scopeFixturePhase = 2
+        ok = m.accountPreferences.favoriteIds.count() = 1
+        if ok
+            openSettingsHub()
+            m.guide.preferences = userViewEvent({favoriteIds: ["stale-injected"]}, "stale-fixture-session")
+            m.vod.stateChange = userViewEvent({scope: normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId, clearHistory: true}, "stale-fixture-session")
+            m.settingsHub.selection = userViewEvent({account: m.accountIdentity, scope: "device", key: "themePreset", value: "sunset"}, "stale-fixture-session")
+            m.scopeFixturePhase = 3
+            return
+        end if
+    else if m.scopeFixturePhase = 3
+        ok = m.accountPreferences.favoriteIds.count() = 1
+        if ok then ok = m.accountPreferences.favoriteIds[0] = m.scopeFixtureEvidence.favorite
+        ok = ok and m.accountPreferences.vodRecent.count() = 1 and m.devicePreferences.themePreset = m.scopeFixtureEvidence.theme
+        ok = ok and instr(1, m.registry.read("settingsV1"), "aeriosession") = 0
+        closeSettingsHub()
+        if ok
+            m.scopeFixturePlayback = m.playingChannel
+            m.guide.watchChannel = userViewEvent(m.guide.config.channels[0], "stale-fixture-session")
+            m.browser.channelSelected = userViewEvent(m.guide.config.channels[0], "stale-fixture-session")
+            m.guide.historyRequest = userViewEvent({account: m.accountIdentity, uuid: m.guide.config.channels[0].uuid}, "stale-fixture-session")
+            m.scopeFixturePhase = 4
+            return
+        end if
+    else if m.scopeFixturePhase = 4
+        ok = m.playingChannel = invalid and m.top.dialog = invalid and m.page = "guide"
+        if ok
+            m.page = "onDemand"
+            m.mediaPlayer.closedContext = userViewEvent({closed: true}, "stale-fixture-session")
+            m.mediaPlayer.archiveSeekContext = userViewEvent({target: 60}, "stale-fixture-session")
+            m.mediaPlayer.goLiveContext = userViewEvent({requested: true}, "stale-fixture-session")
+            m.scopeFixturePhase = 5
+            return
+        end if
+    else
+        ok = m.page = "onDemand" and m.playingChannel = invalid
+        m.page = "guide"
+    end if
+    m.scopeFixtureTimer.control = "stop"
+    m.scopeFixtureEvidence.events = ok
+    print "[profile-settings] "; FormatJson(m.scopeFixtureEvidence)
+end sub
+'''
                 body = source.encode()
+            if name == 'components/GuideView.xml':
+                body = body.replace(b'<interface>', b'<interface>\n    <function name="scopeFixtureToggleFavorite" />', 1)
+            if name == 'components/GuideView.brs':
+                body += b'''
+function scopeFixtureToggleFavorite() as boolean
+    if not m.ready or m.channels.count() <> 1 then return false
+    uuid = m.channels[0].uuid
+    if m.favorites.doesExist(uuid) then m.favorites.delete(uuid) else m.favorites[uuid] = true
+    savePreferences()
+    return true
+end function
+'''
             if name == 'source/MetadataCacheStore.brs':
                 body = body.replace(b'"cachefs:/aeriotv-metadata-v1"', b'"tmp:/profile-settings-fixture-cache"')
             package.writestr(name, body)
@@ -178,7 +261,7 @@ def main():
                     raise RuntimeError('Normal-app settings fixture did not complete')
                 row = rows[0]
                 report['cases'].append(row)
-                if row.get('before') != before or row.get('theme') != theme or row.get('applied') != theme or row.get('baseline') != 'sunset' or row.get('favorite') != favorite or row.get('lineup') != favorite or row.get('accounts') != 2 or not row.get('rollback') or not row.get('stabledefault') or not row.get('scoped'):
+                if row.get('before') != before or row.get('theme') != theme or row.get('applied') != theme or row.get('baseline') != 'sunset' or row.get('favorite') != favorite or row.get('lineup') != favorite or row.get('accounts') != 2 or not row.get('events') or not row.get('rollback') or not row.get('stabledefault') or not row.get('scoped'):
                     raise RuntimeError('Normal-app scoped A/B/A assertion failed')
                 time.sleep(3)  # Allow the real guide's first rendered frame.
                 captured = subprocess.run(['python3', 'scripts/capture-roku-screenshot.py', '--developer-mode', '--output', f'out/profile-settings-{case}.jpg'], cwd=ROOT, capture_output=True, text=True, timeout=45)

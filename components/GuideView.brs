@@ -57,6 +57,7 @@ sub init()
 end sub
 
 sub configure()
+    m.userSessionId = userViewSession(m.top.config)
     m.top.channelFacts = {}
     m.top.catchupPermission = "unknown"
     m.top.moviesPermission = "unknown"
@@ -775,7 +776,7 @@ sub savePreferences()
     end for
     uuid = ""
     if m.filtered.count() > 0 then uuid = m.filtered[m.selected].uuid
-    m.top.preferences = {favoriteIds: favoriteIds, lastChannel: uuid, group: m.groups[m.groupIndex].id, guide: m.settings, collections: m.collections, reminders: m.reminders}
+    m.top.preferences = userViewEvent({favoriteIds: favoriteIds, lastChannel: uuid, group: m.groups[m.groupIndex].id, guide: m.settings, collections: m.collections, reminders: m.reminders}, m.userSessionId)
 end sub
 
 sub keepAnchorVisible()
@@ -795,7 +796,7 @@ end sub
 sub watchLive()
     if m.filtered.count() = 0 then return
     savePreferences()
-    m.top.watchChannel = m.filtered[m.selected]
+    m.top.watchChannel = userViewEvent(m.filtered[m.selected], m.userSessionId)
 end sub
 
 function adjacentPlayingChannel(currentUuid as string, direction as integer) as dynamic
@@ -1032,7 +1033,7 @@ sub onPickerSelected(event as object)
         if item.action = "now" then jumpTo(uiNow()) else openPicker(item.title, item.days, "date")
         return
     else if kind = "clock"
-        m.top.devicePreference = {clockFormat: item.value}
+        m.top.devicePreference = userViewEvent({clockFormat: item.value}, m.userSessionId)
     else if kind = "groups"
         m.groupIndex = item.index
         filterLineup()
@@ -1058,7 +1059,7 @@ sub onPickerSelected(event as object)
         else if action = "recentHistory"
             uuid = ""
             if m.filtered.count() > 0 then uuid = m.filtered[m.selected].uuid
-            m.top.historyRequest = {account: m.top.historyAccount, uuid: uuid}
+            m.top.historyRequest = userViewEvent({account: m.top.historyAccount, uuid: uuid}, m.userSessionId)
             return
         else if action = "favorite"
             if m.filtered.count() > 0
@@ -1231,7 +1232,7 @@ sub onProgramSearchSelection(event as object)
         if kind <> "movie" and kind <> "series" then return
         if m.top.config = invalid then return
         if m.programSearchAccount <> textValue(m.top.config.accountId) or m.programSearchConnectionScope <> textValue(m.top.config.scope) then return
-        m.top.searchVodSelection = {scope: m.top.config.scope, accountId: textValue(m.top.config.accountId), kind: kind, id: textValue(item.vod.id), query: m.programQuery}
+        m.top.searchVodSelection = userViewEvent({scope: m.top.config.scope, accountId: textValue(m.top.config.accountId), kind: kind, id: textValue(item.vod.id), query: m.programQuery}, m.userSessionId)
     else if item.program <> invalid
         target = channelByUuid(item.channel.uuid)
         if target = invalid then return
