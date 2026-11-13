@@ -30,7 +30,7 @@ def build(output):
             package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
         package.write(ROOT / 'source/SessionHttp.brs', 'source/SessionHttp.brs')
         package.write(ROOT / 'components/MappingDetailFetch.brs', 'components/MappingDetailFetch.brs')
-        for name in ['HlsSessionTask', 'LogoCacheTask', 'PlaybackBridgeTask']:
+        for name in ['HlsSessionTask', 'LogoCacheTask', 'PlaybackBridgeTask', 'DispatcharrSyncReadTask']:
             relative = f'components/{name}.xml'
             package.write(ROOT / relative, relative)
             for script in ET.parse(ROOT / relative).findall('script'):
@@ -56,7 +56,7 @@ def main():
         raise RuntimeError('Restore ZIP differs from installed app')
     archive = ROOT / 'out/request-gate-probe.zip'
     build(archive)
-    operations = ['generic', 'reject', 'parallel-report', 'parallel-held', 'session-retire', 'park', 'parallel-park', 'transport', 'direct-bypasses', 'bypasses', 'renderers', 'recheck', 'video']
+    operations = ['generic', 'reject', 'parallel-report', 'parallel-held', 'sync-read', 'session-retire', 'park', 'parallel-park', 'transport', 'direct-bypasses', 'bypasses', 'renderers', 'recheck', 'video']
     hits = []
 
     class Fixture(BaseHTTPRequestHandler):
@@ -74,6 +74,38 @@ def main():
             if self.path == '/api/accounts/users/me/':
                 body = b'{"id":7}'
             content_type = 'application/json'
+            if self.path.startswith('/sync/'):
+                _, _, scenario, *tail = self.path.split('/')
+                endpoint = '/' + '/'.join(tail)
+                status = 200
+                value = {'schemaVersion': 3, 'categories': {'settings': {'data': {'tv': {'textScale': 1.3}}}, 'syncProviders': {'data': {'updatedAt': 1761700000000}}}}
+                if endpoint == '/api/accounts/users/me/':
+                    value = {'id': 8 if scenario == 'identity' else 7, 'username': 'Alice'}
+                    if scenario == 'username':
+                        value['username'] = 'Other'
+                    if scenario == 'string-identity':
+                        value['id'] = '7'
+                elif endpoint == '/api/accounts/users/me/app-data/':
+                    value = {'apps': [{'key': 'alice.aeriotv', 'bytes': 100}]}
+                    if scenario == 'legacy':
+                        value = {'apps': [{'key': 'app.molinete.aerio', 'bytes': 100}]}
+                    if scenario == 'missing':
+                        value = {'apps': []}
+                    if scenario in ['forbidden', 'unsupported']:
+                        status = 403 if scenario == 'forbidden' else 404
+                elif endpoint == '/api/accounts/users/me/app-data/alice.aeriotv/':
+                    if scenario in ['key-missing', 'proxy404']:
+                        status = 404
+                        value = {'code': 'key_not_found'} if scenario == 'key-missing' else {'detail': 'not found'}
+                    if scenario == 'malformed':
+                        value = []
+                    if scenario == 'newer':
+                        value['schemaVersion'] = 4
+                    if scenario == 'float-schema':
+                        value['schemaVersion'] = 3.0
+                else:
+                    status = 500
+                body = json.dumps(value, ensure_ascii=False).encode()
             if self.path == '/movie.mp4':
                 body = (ROOT / 'tests/native/fixtures/4by3.mp4').read_bytes()
                 content_type = 'video/mp4'
@@ -132,7 +164,17 @@ def main():
         report['passed'] = process.wait(timeout=10) == 0 and completed == operations
         paths = [row['path'] for row in hits]
         allowed = ['/generic', '/forbidden', '/reject', '/ok', '/park', '/api/accounts/users/me/', '/poster.png', '/movie.mp4', '/video-park', '/slow']
-        report['passed'] = report['passed'] and [path for path in paths if path != '/slow'][:6] == allowed[:6] and paths.count('/slow') == 1 and '/movie.mp4' in paths and paths.count('/video-park') == 1 and all(path in allowed for path in paths) and not any(row['mixed_auth'] for row in hits)
+        sync_paths = [path for path in paths if path.startswith('/sync/')]
+        sync_expected = []
+        for scenario in ['canonical', 'legacy', 'missing', 'key-missing', 'forbidden', 'unsupported', 'proxy404', 'identity', 'username', 'string-identity', 'float-schema', 'malformed', 'newer']:
+            prefix = f'/sync/{scenario}/api/accounts/users/me/'
+            sync_expected.append(prefix)
+            if scenario not in ['identity', 'username', 'string-identity']:
+                sync_expected.append(prefix + 'app-data/')
+            if scenario in ['canonical', 'key-missing', 'proxy404', 'float-schema', 'malformed', 'newer']:
+                sync_expected.append(prefix + 'app-data/alice.aeriotv/')
+        normal_paths = [path for path in paths if not path.startswith('/sync/')]
+        report['passed'] = report['passed'] and sync_paths == sync_expected and [path for path in normal_paths if path != '/slow'][:6] == allowed[:6] and paths.count('/slow') == 1 and '/movie.mp4' in paths and paths.count('/video-park') == 1 and all(path in allowed for path in normal_paths) and not any(row['mixed_auth'] for row in hits)
     finally:
         if process is not None and process.poll() is None:
             process.terminate()

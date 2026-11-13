@@ -9,6 +9,19 @@ import subprocess
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_sync_discovery_is_own_user_read_only_and_cannot_ship_probe(self):
+        root = Path(__file__).resolve().parent.parent
+        source = (root / 'components/DispatcharrSyncReadTask.brs').read_text()
+        self.assertNotIn('"PUT"', source)
+        self.assertNotIn('"DELETE"', source)
+        self.assertNotIn('"POST"', source)
+        self.assertNotIn('requestJson(', source)
+        self.assertNotIn('copyJson(', source)
+        self.assertIn('ParseJson(text, "d")', source)
+        self.assertNotIn('roRegistry', source)
+        script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt','source/DispatcharrSyncKeyProbeChecks.brs']), /probe/);"
+        subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)
+
     def test_media_controls_observe_immutable_context_events(self):
         root = Path(__file__).resolve().parent.parent
         scene = (root / 'components/AerioScene.brs').read_text()

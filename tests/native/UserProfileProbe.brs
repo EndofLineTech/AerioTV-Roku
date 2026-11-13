@@ -71,6 +71,9 @@ sub Main()
         runUserProfileScopeChecks()
         runUserProfileScopeStoreChecks()
         runUserProfilePreferenceNavigationChecks()
+        runDispatcharrSyncKeyChecks()
+        profileAssert(dispatcharrSyncUserKey("José") = "jos-c3-a9.aeriotv", "native-sync-key-utf8-username")
+        profileAssert(dispatcharrSyncUserKey("😀") = "u-f0-9f-98-80.aeriotv", "native-sync-key-emoji-bytes")
         profileProbeStoreRegistry()
     end if
     print "[profile-probe] complete failed="; m.profileFailures

@@ -12,6 +12,13 @@ sub gateProbeReady()
 end sub
 
 sub gateProbeCommand()
+    if m.top.command = "sync-read"
+        m.syncCases = ["canonical", "legacy", "missing", "key-missing", "forbidden", "unsupported", "proxy404", "identity", "username", "string-identity", "float-schema", "malformed", "newer"]
+        m.syncIndex = 0
+        m.syncPassed = true
+        gateProbeSyncNext()
+        return
+    end if
     if m.top.command = "session-retire"
         m.global.activeusersession = "fixture-retiring"
         m.retireTimer = m.top.createChild("Timer")
@@ -110,6 +117,43 @@ sub gateProbeCommand()
         m.workers.push(worker)
         worker.control = "RUN"
     end for
+end sub
+
+sub gateProbeSyncNext()
+    task = CreateObject("roSGNode", "DispatcharrSyncReadTask")
+    tagTaskForCurrentUser(task)
+    task.baseUrl = m.top.fixtureBase + "/sync/" + m.syncCases[m.syncIndex]
+    task.apiKey = "synthetic-sync"
+    task.accountId = "7"
+    task.username = "Alice"
+    task.observeField("result", "gateProbeSyncDone")
+    m.syncTask = task
+    task.control = "RUN"
+end sub
+
+sub gateProbeSyncDone(event as object)
+    result = event.getData()
+    m.syncTask.unobserveField("result")
+    expected = "unavailable"
+    scenario = m.syncCases[m.syncIndex]
+    if scenario = "canonical" then expected = "ready"
+    if scenario = "legacy" then expected = "legacy"
+    if scenario = "missing" or scenario = "key-missing" then expected = "missing"
+    if scenario = "newer" then expected = "newer"
+    if scenario = "identity" or scenario = "username" or scenario = "string-identity" or scenario = "float-schema" or scenario = "malformed" then expected = "invalid"
+    passed = result.state = expected and result.allowWrite = false and m.syncTask.apiKey = ""
+    if scenario = "canonical"
+        passed = passed and abs(result.data["categories"]["settings"]["data"]["tv"]["textScale"] - 1.3#) < 0.000000001#
+        passed = passed and result.data["categories"]["syncProviders"]["data"]["updatedAt"] = 1761700000000&
+    end if
+    m.syncPassed = m.syncPassed and passed
+    if not passed then print "[request-gate] "; FormatJson({kind: "failure", assertion: "sync-read-" + scenario})
+    m.syncIndex++
+    if m.syncIndex < m.syncCases.count()
+        gateProbeSyncNext()
+    else
+        print "[request-gate] "; FormatJson({kind: "result", operation: "sync-read", passed: m.syncPassed, workers: m.syncIndex})
+    end if
 end sub
 
 sub gateProbeRetireSession()

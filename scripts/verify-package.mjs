@@ -19,6 +19,7 @@ export function assertPackageEntries(entries) {
   if (entries.includes('ui-audit-build.json')) throw new Error('Package contains synthetic UI probe');
   const probe = entries.find(entry => /(^|\/)(?:fixture-materials\.json|apply-cases\.json|profile-probe-config\.json|profile-wire-fixture\.json|profile-registry-fixtures\.json|profile-recovery-probe\.json|profile-settings-probe\.json|request-gate-probe\.json|RequestGateProbe[^/]*|UserProfile(?:Registry|Dialog|Model|Store|Avatar|Lifecycle|Forget|Navigation|PreferenceNavigation|Removal|Scope|ScopeStore)?Probe[^/]*|UserProfileDialogMain\.brs|UiAudit[^/]*|SetupReceiverProbe[^/]*|SetupReceiverFixtureEntropy\.brs|SetupApply(?:Probe|Fixture)[^/]*)$/i.test(entry));
   if (probe) throw new Error(`Package contains synthetic setup probe: ${probe}`);
+  if (entries.some(entry => /(^|\/)DispatcharrSyncKeyProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic sync probe');
 }
 
 export function assertShippingManifest(manifest) {

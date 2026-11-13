@@ -32,6 +32,8 @@ suites.unshift('UserProfileScope');
 suites.unshift('UserProfileScopeStore');
 suites.unshift('UserProfilePreferenceNavigation');
 suites.unshift('UserViewGuards');
+suites.unshift('DispatcharrSyncKey');
+suites.unshift('DispatcharrSyncReadTask');
 suites.unshift('UserProfileStore');
 suites.unshift('StartupBeaconModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
@@ -82,6 +84,8 @@ for (const suite of suites) {
     ...(['UserProfileScopeStore', 'UserProfilePreferenceNavigation'].includes(suite) ? ['source/UserProfileScope.brs', 'source/UserProfileScopeStore.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'UserProfilePreferenceNavigation' ? ['components/UserProfilePreferenceNavigation.brs'] : []),
     ...(suite === 'UserViewGuards' ? ['components/MediaNavigation.brs'] : []),
+    ...(suite === 'DispatcharrSyncKey' ? ['source/DispatcharrSyncKey.brs'] : []),
+    ...(suite === 'DispatcharrSyncReadTask' ? ['source/DispatcharrSyncKey.brs', 'components/DispatcharrSyncReadTask.brs'] : []),
     ...(suite === 'HttpTransport' ? ['source/HttpTransport.brs'] : []),
     ...(suite === 'StrictJson' ? ['source/StrictJson.brs'] : []),
     ...(suite === 'UserProfilePin' ? ['source/UserProfilePin.brs'] : []),
