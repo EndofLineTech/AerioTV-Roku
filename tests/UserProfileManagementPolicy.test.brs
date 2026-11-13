@@ -71,6 +71,13 @@ sub main()
     registry.failOnce = true
     saved = commitUserProfileMetadataEdit(registry, connection, store, adult.id, "name", "Failed", grant, nonce, nonce, 107)
     check(not saved.ok and registry.read(userProfileStoreKey("slot-a")) = FormatJson(store), "failed metadata Flush restores exact previous protection and names")
+    future = copyJson(store)
+    future.profiles[1] = setCanonicalPreference(future.profiles[1], "updatedAt", 200)
+    regressed = userProfileMetadataEditPlan(future, adult.id, "name", "New name", invalid, grant, nonce, 100)
+    check(not regressed.ok and regressed.reason = "clock-not-ready", "rename cannot lower a pulled future roster stamp")
+    check(not userProfileMetadataEditPlan(future, child.id, "order", 1, invalid, grant, nonce, 100).ok, "reorder refuses when any affected row would receive an older timestamp")
+    unchanged = userProfileMetadataEditPlan(future, adult.id, "name", adult.displayName, invalid, grant, nonce, 100)
+    check(unchanged.ok and unchanged.store.profiles[1].updatedAt = 200, "no-op metadata claim preserves the newer wire timestamp without requiring a write stamp")
     print "ALL TESTS PASSED"
 end sub
 

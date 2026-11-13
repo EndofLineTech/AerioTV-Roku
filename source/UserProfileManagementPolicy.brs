@@ -110,13 +110,23 @@ function userProfileMetadataEditPlan(store as object, targetId as string, operat
         moved = userProfileMove(nextStore.profiles, targetId, value, now)
         if moved = invalid then return denied
         wireChanged = FormatJson(nextStore.profiles) <> FormatJson(moved)
+        for each changedProfile in moved
+            for each previousProfile in cleaned.profiles
+                if previousProfile.id = changedProfile.id and previousProfile.order <> changedProfile.order
+                    if now <= previousProfile.updatedAt then return {ok: false, changed: false, reason: "clock-not-ready"}
+                end if
+            end for
+        end for
         nextStore.profiles = moved
     else
         ' Removal has scoped key/blob/tombstone work in UserProfileCleanup.
         return denied
     end if
     if operation <> "order"
-        if wireChanged then profile = setCanonicalPreference(profile, "updatedAt", now)
+        if wireChanged
+            if now <= profile.updatedAt then return {ok: false, changed: false, reason: "clock-not-ready"}
+            profile = setCanonicalPreference(profile, "updatedAt", now)
+        end if
         nextStore.profiles[index] = profile
     end if
     if wireChanged then nextStore = setCanonicalPreference(nextStore, "pendingRoster", true)
