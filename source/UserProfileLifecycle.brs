@@ -74,6 +74,10 @@ function userProfileRemovalPlan(store as object, id as string, now as integer, r
     localOnly = reason = "pull" or found.addressHeld
     if reason = "undo" and (found.addOrigin = "roster" or found.addOrigin = "paused") then localOnly = true
     if not localOnly and now <= 0 then return denied
+    if not localOnly and now < found.updatedAt
+        denied.reason = "clock-not-ready"
+        return denied
+    end if
     cleaned.profiles = kept
     if not localOnly
         cleaned.removed = userProfileTombstones(cleaned.removed, [[lcase(found.username), now]], now)

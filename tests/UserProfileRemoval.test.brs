@@ -26,6 +26,12 @@ sub main()
     m.store.active = m.other.id
     result = removeUserProfile(m.registry, m.connection, m.store, m.other.id, 200, "pull")
     check(not result.ok and result.needsDefaultSwitch and m.registry.flushes = 0, "active profile cannot be removed before controller retires its session")
+    resetRemovalFixture()
+    m.store.profiles[1] = setCanonicalPreference(m.store.profiles[1], "updatedAt", 300)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.store)
+    before = FormatJson(m.registry.values)
+    result = removeUserProfile(m.registry, m.connection, m.store, m.other.id, 200, "normal")
+    check(not result.ok and m.registry.flushes = 0 and FormatJson(m.registry.values) = before, "regressed deletion clock cannot mutate metadata, key or settings storage")
     print "ALL TESTS PASSED"
 end sub
 

@@ -24,6 +24,23 @@ sub main()
     denied = userProfileRemovalPlan(active, b.id, 200, "pull")
     check(not denied.ok and denied.needsDefaultSwitch, "active target requires staged default switch before key/data removal")
     check(not userProfileRemovalPlan(store, b.id, 0, "normal").ok, "plain removal requires a real timestamp")
+    future = copyJson(store)
+    future.profiles[1] = setCanonicalPreference(future.profiles[1], "updatedAt", 300)
+    for each reason in ["normal", "undo"]
+        denied = userProfileRemovalPlan(future, b.id, 200, reason)
+        check(not denied.ok and denied.reason = "clock-not-ready", "a local deletion cannot emit a tombstone older than the removed row")
+    end for
+    tied = userProfileRemovalPlan(future, b.id, 300, "normal")
+    check(tied.ok and userProfileTombstoneRemoves(tied.store.removed, future.profiles[1]), "equal-stamp deletion is safe because the shared tombstone contract wins ties")
+    check(userProfileRemovalPlan(future, b.id, 0, "pull").ok, "pulled local cleanup does not need a new timestamp")
+    for each origin in ["roster", "paused"]
+        future.profiles[1] = setCanonicalPreference(future.profiles[1], "addOrigin", origin)
+        localUndo = userProfileRemovalPlan(future, b.id, 0, "undo")
+        check(localUndo.ok and not localUndo.pushRequired and localUndo.store.removed.count() = 0, "roster or paused-add undo remains local despite a newer imported timestamp")
+    end for
+    future.profiles[1] = setCanonicalPreference(future.profiles[1], "addressHeld", true)
+    heldCleanup = userProfileRemovalPlan(future, b.id, 0, "normal")
+    check(heldCleanup.ok and not heldCleanup.pushRequired and heldCleanup.store.removed.count() = 0, "address-held local removal still emits no clock-dependent tombstone")
     check(userProfileRemovalPlan(store, b.id, 200, "pull").store.removed.count() = 0, "pulled tombstone cleanup does not manufacture another deletion")
     union = userProfileTombstones([["Bob", 200], ["stale", 1]], [["bob", 201, 9], ["other", 202]], 7776100)
     check(union.count() = 2 and union[0][0] = "bob" and union[0][1] = 201 and union[0][2] = 9, "tombstone union keeps newest and optional existing userId, expires ninety days")

@@ -336,3 +336,9 @@ atomic Flush. Present empty settings are corruption, not an absent store.
 Native red/green fixtures retain root/foreign binary64 values, integral-floating
 number kinds and future Guide values through all three deletion paths; the
 shared suite passes 627 assertions, including existing exact rollback failures.
+
+Local deletion (`AerioTV-Roku-k6x6`) refuses a clock older than the removed
+row's `updatedAt`, before any key/settings/roster write. Equal timestamps remain
+valid because the shared tombstone rule wins ties. Pulled cleanup, address-held
+removal and roster/paused-add undo remain local-only and need no new timestamp;
+they do not manufacture or broadcast a tombstone.
