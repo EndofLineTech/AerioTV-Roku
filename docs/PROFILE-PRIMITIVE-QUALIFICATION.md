@@ -211,3 +211,26 @@ python3 scripts/test-profile-dialogs-native.py --restore /path/to/verified-prior
 Use a restore ZIP matched to the **currently installed** app, not blindly the
 historical path above. Normal packages reject fixture markers/probe sources.
 Build/test outputs are private ignored artifacts, not Beta/Store deliverables.
+
+## Final gates and ordinary-app smoke
+
+`npm run verify` passes the model/controller suites, fixture isolation,16 Python
+build checks,11 package checks,6 tools checks, compiler check, build and282-entry
+normal-package verification. Source review and `git diff --check` are clean for
+the changes in this phase; no independent external review/certification is
+implied.
+
+The normal development ZIP at `out/aeriotv-roku.zip`, version0.3.100, SHA256
+`65a81434aaab9bfcf0fa03742d338c406bb3f10e6bc9dff072610ed8a31a931c`, also installed
+and ran for15 seconds with no captured compile/runtime error. Report:
+`out/profile-application-startup-smoke.json`. This verifies ordinary startup
+after the shared-helper changes, not real authenticated profile switching,
+playback or populated-library acceptance. The exact prior developer app was
+then restored and its checksum verified.
+
+That ZIP includes the owner's pre-existing uncommitted version/cache/mapping
+changes, as did the earlier UI builds; it is not a clean-checkout release or
+signed Beta/Store package. Those unrelated files were not included in these
+implementation commits. The profiles epic remains in progress: storage,
+isolation, roster/request gates, switching/UI, admin actions and full sync/import
+integration are subsequent Beads work, not delivered by these prerequisites.
