@@ -10,4 +10,8 @@
   <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/DvrPresentationModel.brs" />
   <script type="text/brightscript" uri="ProgramDetails.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateRenderer.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
 </component>

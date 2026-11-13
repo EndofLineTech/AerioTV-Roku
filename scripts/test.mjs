@@ -26,6 +26,8 @@ suites.unshift('UserProfileLifecycle');
 suites.unshift('UserProfileForget');
 suites.unshift('UserProfileNavigation');
 suites.unshift('UserProfileRemoval');
+suites.unshift('RequestGateModel');
+suites.unshift('RequestGateRenderer');
 suites.unshift('UserProfileStore');
 suites.unshift('StartupBeaconModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
@@ -70,6 +72,8 @@ for (const suite of suites) {
     'source/ReminderModel.brs',
     ...(['TmdbTask', 'VodShelfTask', 'VodSeriesTask', 'XtreamTask', 'XtreamVodTask', 'ConnectionAuthTask'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
     'source/HttpPolicy.brs',
+    'source/RequestGateModel.brs', 'source/RequestGateClient.brs', 'source/RequestGateRenderer.brs',
+    ...(suite === 'ConnectionNavigation' ? ['components/RequestGateNavigation.brs'] : []),
     ...(suite === 'HttpTransport' ? ['source/HttpTransport.brs'] : []),
     ...(suite === 'StrictJson' ? ['source/StrictJson.brs'] : []),
     ...(suite === 'UserProfilePin' ? ['source/UserProfilePin.brs'] : []),

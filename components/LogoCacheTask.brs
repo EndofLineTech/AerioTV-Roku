@@ -25,16 +25,26 @@ sub downloadLogos()
                 failed.push(id)
                 reasons["invalid image source"] = true
             else
+                key = ""
+                if urlOrigin(plan.url) = urlOrigin(m.top.baseUrl) then key = m.top.apiKey
+                permit = requestGateAcquire(plan.url, key)
+                if not permit.allowed
+                    failed.push(id)
+                    reasons["requests paused"] = true
+                    exit while
+                end if
                 path = m.top.prefix + "-" + id + ".part"
                 created.push(path)
                 transfer = CreateObject("roUrlTransfer")
                 transfer.setMessagePort(port)
                 transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
                 transfer.setUrl(plan.url)
+                transfer.retainBodyOnError(true)
                 transfer.setHeaders(plan.headers)
                 if transfer.asyncGetToFile(path)
-                    active[transfer.getIdentity().toStr()] = {id: id, path: path, transfer: transfer}
+                    active[transfer.getIdentity().toStr()] = {id: id, path: path, transfer: transfer, permit: permit}
                 else
+                    requestGateRelease(permit)
                     failed.push(id)
                     reasons["network"] = true
                 end if
@@ -51,6 +61,9 @@ sub downloadLogos()
                     if stat.size <> invalid then size = stat.size
                 end if
                 valid = false
+                refusal = ""
+                if event.getResponseCode() = 401 and size > 0 and size <= 4096 then refusal = ReadAsciiFile(job.path)
+                requestGateReportEvent(job.permit, event, refusal)
                 if event.getResponseCode() = 200
                     if size > 0 and size <= 2097152
                         bytes = CreateObject("roByteArray")
@@ -80,12 +93,21 @@ sub downloadLogos()
         end if
         for each key in active.keys()
             job = active[key]
+            if not requestGatePermitActive(job.permit)
+                job.transfer.asyncCancel()
+                requestGateRelease(job.permit)
+                fs.delete(job.path)
+                failed.push(job.id)
+                reasons["requests paused"] = true
+                active.delete(key)
+            end if
             stat = fs.stat(job.path)
             if type(stat) = "roAssociativeArray"
                 size = 0
                 if stat.size <> invalid then size = stat.size
                 if size > 2097152
                     job.transfer.asyncCancel()
+                    requestGateRelease(job.permit)
                     fs.delete(job.path)
                     failed.push(job.id)
                     reasons["image over 2 MiB"] = true
@@ -97,6 +119,7 @@ sub downloadLogos()
     for each key in active
         job = active[key]
         job.transfer.asyncCancel()
+        requestGateRelease(job.permit)
         fs.delete(job.path)
         failed.push(job.id)
         reasons["timeout"] = true

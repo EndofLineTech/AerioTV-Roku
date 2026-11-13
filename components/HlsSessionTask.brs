@@ -7,6 +7,8 @@ end sub
 
 function stopOwnedHlsSession(base as string, token as string, key as string) as integer
     if not CreateObject("roRegex", "^[A-Za-z0-9_-]{16,128}$", "").isMatch(token) then return 0
+    permit = requestGateAcquire(base + "/api/proxy/hls/sessions/" + token + "/", key)
+    if not permit.allowed then return 0
     port = CreateObject("roMessagePort")
     transfer = CreateObject("roUrlTransfer")
     transfer.setMessagePort(port)
@@ -16,20 +18,34 @@ function stopOwnedHlsSession(base as string, token as string, key as string) as 
     transfer.setRequest("DELETE")
     status = 0
     if transfer.asyncGetToString()
-        event = wait(8000, port)
-        if type(event) = "roUrlEvent" then status = event.getResponseCode()
+        clock = CreateObject("roTimespan")
+        clock.mark()
+        while clock.totalMilliseconds() < 8000 and requestGatePermitActive(permit) and not m.top.cancelRequested
+            event = wait(50, port)
+            if type(event) = "roUrlEvent"
+                if event.getInt() = 1
+                    status = event.getResponseCode()
+                    requestGateReportEvent(permit, event)
+                    exit while
+                end if
+            end if
+        end while
     end if
     transfer.asyncCancel()
+    requestGateRelease(permit)
     return status
 end function
 
 function mintOwnedHlsSession(base as string, url as string, key as string) as object
     result = {session: invalid, status: 0}
+    permit = requestGateAcquire(url, key)
+    if not permit.allowed then return result
     port = CreateObject("roMessagePort")
     transfer = CreateObject("roUrlTransfer")
     transfer.setMessagePort(port)
     transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
     transfer.setUrl(url)
+    transfer.retainBodyOnError(true)
     transfer.addHeader("X-API-Key", key)
     path = "tmp:/aeriotv-hls-" + CreateObject("roDeviceInfo").getRandomUUID() + ".m3u8"
     fs = CreateObject("roFileSystem")
@@ -37,9 +53,18 @@ function mintOwnedHlsSession(base as string, url as string, key as string) as ob
     clock = CreateObject("roTimespan")
     clock.mark()
     while started and clock.totalMilliseconds() < 20000
+        if not requestGatePermitActive(permit) then exit while
         event = wait(50, port)
         if type(event) = "roUrlEvent" and event.getInt() = 1
             result.status = event.getResponseCode()
+            refusal = ""
+            if result.status = 401
+                stat = fs.stat(path)
+                if type(stat) = "roAssociativeArray"
+                    if stat.size <> invalid and stat.size <= 4096 then refusal = ReadAsciiFile(path)
+                end if
+            end if
+            requestGateReportEvent(permit, event, refusal)
             result.session = hlsSessionFromHeaders(base, event.getResponseHeadersArray())
             exit while
         end if
@@ -50,6 +75,7 @@ function mintOwnedHlsSession(base as string, url as string, key as string) as ob
     end while
     transfer.asyncCancel()
     fs.delete(path)
+    requestGateRelease(permit)
     return result
 end function
 

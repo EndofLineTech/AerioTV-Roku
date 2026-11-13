@@ -61,7 +61,10 @@ sub setPosterUri(uri as string)
             if protected then agent.setHeaders(dispatcharrRequestHeaders(m.top.apiKey, textValue(m.global.authHeaderMode), textValue(m.global.httpUserAgent)))
     m.poster.setHttpAgent(agent)
     m.loadedUri = uri
-    m.poster.uri = uri
+    key = ""
+    if protected then key = m.top.apiKey
+    requestGateSetPoster(m.poster, uri, key)
+    m.loadedUri = m.poster.uri
     m.placeholder.visible = uri = ""
 end sub
 

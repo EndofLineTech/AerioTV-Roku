@@ -13,6 +13,10 @@
   <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
   <script type="text/brightscript" uri="pkg:/source/DvrPresentationModel.brs" />
   <script type="text/brightscript" uri="DvrView.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateRenderer.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
   <children>
     <Rectangle id="background" width="1920" height="1080" color="0x0A1628FF" />
     <Label id="heading" translation="[96,92]" width="1728" height="60" text="Server DVR" font="font:LargeBoldSystemFont" />

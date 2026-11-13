@@ -36,17 +36,25 @@ function requestMappedDetails(allowed as object) as dynamic
         while active.count() < 8 and index < ids.count() and not failed
             id = ids[index]
             index++
+            permit = requestGateAcquire(m.base + "/api/epg/epgdata/" + id + "/", m.key)
+            if not permit.allowed
+                m.httpFailure = httpFailure(0, {}, 0, permit.reason)
+                failed = true
+                exit while
+            end if
             file = "tmp:/aeriotv-mapping-" + CreateObject("roDeviceInfo").getRandomUUID() + ".json"
             transfer = CreateObject("roUrlTransfer")
             transfer.setMessagePort(port)
             transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
             transfer.setUrl(m.base + "/api/epg/epgdata/" + id + "/")
             transfer.enableEncodings(true)
+            transfer.retainBodyOnError(true)
             headers = dispatcharrRequestHeaders(m.key, textValue(m.global.authHeaderMode), textValue(m.global.httpUserAgent))
             transfer.setHeaders(headers)
             if transfer.asyncGetToFile(file)
-                active[transfer.getIdentity().toStr()] = {id: id, file: file, transfer: transfer, started: clock.totalMilliseconds()}
+                active[transfer.getIdentity().toStr()] = {id: id, file: file, transfer: transfer, started: clock.totalMilliseconds(), permit: permit}
             else
+                requestGateRelease(permit)
                 fs.delete(file)
                 m.httpFailure = httpFailure(-1, {}, 0, "network")
                 failed = true
@@ -62,6 +70,9 @@ function requestMappedDetails(allowed as object) as dynamic
                 stat = fs.stat(job.file)
                 bytes = 0
                 if type(stat) = "roAssociativeArray" and stat.size <> invalid then bytes = stat.size
+                refusal = ""
+                if status = 401 and bytes > 0 and bytes <= 4096 then refusal = ReadAsciiFile(job.file)
+                requestGateReportEvent(job.permit, event, refusal)
                 if status = 200 and bytes > 0 and bytes <= 65536
                     row = ParseJson(ReadAsciiFile(job.file))
                     mapped = mappingDetailKey(row, job.id)
@@ -85,6 +96,10 @@ function requestMappedDetails(allowed as object) as dynamic
         end if
         for each key in active.keys()
             job = active[key]
+            if not requestGatePermitActive(job.permit)
+                m.httpFailure = httpFailure(0, {}, 0, "request-held")
+                failed = true
+            end if
             stat = fs.stat(job.file)
             bytes = 0
             if type(stat) = "roAssociativeArray" and stat.size <> invalid then bytes = stat.size
@@ -100,6 +115,7 @@ function requestMappedDetails(allowed as object) as dynamic
     for each key in active
         job = active[key]
         job.transfer.asyncCancel()
+        requestGateRelease(job.permit)
         fs.delete(job.file)
     end for
     if failed

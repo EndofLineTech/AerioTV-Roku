@@ -4,7 +4,12 @@ function httpRetryAfter(headers as dynamic, now as integer) as integer
     for each name in headers
         if lcase(name) = "retry-after" then value = textValue(headers[name]).trim()
     end for
-    if CreateObject("roRegex", "^[0-9]{1,8}$", "").isMatch(value) then return value.toInt()
+    if CreateObject("roRegex", "^[0-9]+$", "").isMatch(value)
+        value = CreateObject("roRegex", "^0+", "").replace(value, "")
+        if value = "" then return 0
+        if len(value) > 8 then return 99999999
+        return value.toInt()
+    end if
     parts = CreateObject("roRegex", "^[A-Za-z]{3}, ([0-9]{2}) ([A-Za-z]{3}) ([0-9]{4}) ([0-9]{2}:[0-9]{2}:[0-9]{2}) GMT$", "").match(value)
     if parts.count() <> 5 then return -1
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -24,7 +29,10 @@ end function
 
 function httpFailure(status as integer, headers as dynamic, now as integer, error = "" as string, responseBytes = invalid as dynamic, maxBytes = invalid as dynamic) as object
     result = {status: status, category: "server", retryable: false, retryAfter: httpRetryAfter(headers, now), sizeBucket: "", message: "Server returned HTTP " + status.toStr() + "."}
-    if error = "cancelled"
+    if error = "rejected-key" or error = "parked" or error = "request-held" or error = "gate-unavailable" or error = "gate-busy" or error = "capacity" or error = "invalid-context"
+        result.category = "request-held"
+        result.message = "Requests are paused for this account or server. Wait before trying again."
+    else if error = "cancelled"
         result.category = "cancelled"
         result.message = "Request cancelled."
     else if error = "timeout"
@@ -61,6 +69,8 @@ function httpFailure(status as integer, headers as dynamic, now as integer, erro
     else if status = 429
         result.category = "rate-limit"
         result.retryable = true
+        if result.retryAfter < 0 then result.retryAfter = 60
+        if result.retryAfter > 120 then result.retryAfter = 120
         result.message = "The server is limiting requests. Wait before trying again."
     else if status = 502 or status = 503 or status = 504 or status = 408
         result.category = "temporary-server"
@@ -76,9 +86,17 @@ end function
 
 function httpAccountRejected(failure as dynamic) as boolean
     if type(failure) <> "roAssociativeArray" then return false
-    ' Apply only to an explicit /users/me verification request. Other 403s
-    ' can mean an optional capability is denied, not that the key is revoked.
-    return failure.status = 401 or failure.status = 403
+    return failure.status = 401 and failure.keyRejected = true
+end function
+
+function httpDispatcharrKeyRejected(status as integer, body as string) as boolean
+    if status <> 401 or len(body) > 4096 then return false
+    if not CreateObject("roRegex", "^\s*\{", "").isMatch(body) then return false
+    parsed = ParseJson(body)
+    if type(parsed) <> "roAssociativeArray" then return false
+    if type(parsed.detail) <> "String" and type(parsed.detail) <> "roString" then return false
+    detail = lcase(parsed.detail.trim())
+    return detail = "invalid api key" or detail = "user inactive"
 end function
 
 function httpResponseSizeBucket(responseBytes as dynamic, maxBytes as dynamic) as string

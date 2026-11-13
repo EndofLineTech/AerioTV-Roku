@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="RequestGateProbeWorker" extends="Task">
+  <interface>
+    <field id="operation" type="string" />
+    <field id="index" type="integer" />
+    <field id="fixtureBase" type="string" />
+    <field id="cancelRequested" type="boolean" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SessionHttp.brs" />
+  <script type="text/brightscript" uri="MappingDetailFetch.brs" />
+  <script type="text/brightscript" uri="RequestGateProbeWorker.brs" />
+</component>

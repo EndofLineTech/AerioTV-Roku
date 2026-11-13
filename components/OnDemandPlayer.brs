@@ -47,6 +47,13 @@ end sub
 sub openMedia()
     request = m.top.request
     if request = invalid then return
+    if not requestGateTrackRenderer(m.video, request.url, request.apiKey)
+        m.video.control = "stop"
+        m.video.content = invalid
+        m.message.visible = true
+        m.message.text = "Requests are paused for this account or server. Back returns."
+        return
+    end if
     cancelArchiveScrub()
     m.archivePanel.visible = request.mode = "catchup"
     m.archiveTrack.visible = false

@@ -94,7 +94,10 @@ function requestJson(url as string, body = invalid as dynamic, bearer = "" as st
             return value
         end if
         failure = httpFailure(response.status, response.headers, CreateObject("roDateTime").asSeconds(), response.error, response.bytes, maxBytes)
+        failure.keyRejected = httpDispatcharrKeyRejected(response.status, response.body)
         setHttpFailure(failure)
+        ' Rate limits are shared server parks, never a local immediate retry.
+        if response.status = 429 then return invalid
         ' Never auto-repeat login/source-switch/catch-up mutations.
         if method <> "GET" or body <> invalid or attempt > 0 or not failure.retryable then return invalid
         delay = failure.retryAfter

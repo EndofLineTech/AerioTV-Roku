@@ -175,7 +175,7 @@ sub draw()
                 uri = m.base + "/api/channels/logos/" + row.logoId + "/cache/"
             end if
             if m.resetFailed and row.logo.loadStatus = "failed" then row.logo.uri = ""
-            if row.logo.uri <> uri then row.logo.uri = uri
+            requestGateSetPoster(row.logo, uri, m.key)
             uiSetColor(row.border, "0x17344A20")
             uiSetColor(row.fill, "0x0D1E35F0")
             if m.focus = "channels" and m.start + i = m.selected

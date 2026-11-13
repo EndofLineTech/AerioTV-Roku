@@ -1,4 +1,18 @@
 sub init()
+    m.requestGate = CreateObject("roSGNode", "RequestGateTask")
+    m.global.addFields({requestGate: m.requestGate, requestGateRequired: true})
+    if m.requestGate <> invalid
+        m.requestGate.observeField("snapshot", "onRequestGateSnapshot")
+        m.requestGate.control = "RUN"
+    end if
+    m.requestGateBinding = invalid
+    m.requestGatePrompt = invalid
+    m.requestGateRecheck = invalid
+    m.requestGateClock = m.top.createChild("Timer")
+    m.requestGateClock.duration = 1
+    m.requestGateClock.repeat = true
+    m.requestGateClock.observeField("fire", "onRequestGateTick")
+    m.requestGateClock.control = "start"
     m.global.addFields({metadataSession: CreateObject("roDeviceInfo").getRandomUUID(), cacheEpoch: CreateObject("roDeviceInfo").getRandomUUID(), networkTimeoutMs: 20000, appearance: {}, audioGuide: false, authHeaderMode: "x-api-key", httpUserAgent: dispatcharrUserAgent(""), httpReferer: ""})
     m.top.focusable = true
     uiSetColor(m.top, "0x0A1628FF", "backgroundColor")
@@ -1089,6 +1103,13 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         content.httpHeaders = dispatcharrHeaderLines(m.apiKey, playbackMode, userAgent)
     end if
     m.video.content = content
+    playbackKey = ""
+    if not directM3u and not directXtream then playbackKey = m.apiKey
+    if not requestGateTrackRenderer(m.video, content.url, playbackKey)
+        m.video.content = invalid
+        showNotice("Requests are paused for this account or server.")
+        return
+    end if
     m.page = "player"
     m.video.visible = true
     ' AerioVideo forwards keys to the Scene instead of native transport actions.
@@ -1103,6 +1124,14 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     end if
     m.playerClock.control = "start"
     showChannelBanner(channel, playerInfoHint())
+end sub
+
+sub onRequestGateSnapshot()
+    rememberHeldRequestGateBinding()
+    if m.video <> invalid
+        if not requestGateRendererAllowed(m.video) then stopPlayback()
+    end if
+    requestGateFenceRenderers(m.top)
 end sub
 
 sub showChannelBanner(channel as object, hint as string)

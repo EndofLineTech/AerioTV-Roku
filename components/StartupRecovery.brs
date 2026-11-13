@@ -37,6 +37,7 @@ function ignoreOutgoingAacFinish() as boolean
 end function
 
 function retryStartupPlayback() as boolean
+    if not requestGateRendererAllowed(m.video) then return false
     if not startupWatchIsCurrent() then return false
     if m.startupRetryCount >= m.startupRetryLimit or m.page = "setup" then return false
     if m.video.state = "playing" or m.video.state = "paused" then return false

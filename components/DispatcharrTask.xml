@@ -20,6 +20,8 @@
   <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MetadataCacheStore.brs" />
   <script type="text/brightscript" uri="DispatcharrTask.brs" />

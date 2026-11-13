@@ -17,6 +17,10 @@
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="VodDetails.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateRenderer.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
   <children>
     <Rectangle id="background" width="1920" height="1080" color="0x081525FF" />
     <Label id="title" translation="[460,90]" width="1300" height="100" wrap="true" maxLines="2" font="font:LargeBoldSystemFont" />

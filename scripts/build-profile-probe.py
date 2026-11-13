@@ -83,7 +83,7 @@ def build(output, base_url, registry=False, model_store=False):
         package.write(ROOT / 'tests/native/UserProfileProbe.brs', 'source/Main.brs')
         package.write(ROOT / 'tests/native/UserProfileRegistryProbe.brs', 'source/UserProfileRegistryProbe.brs')
         package.write(ROOT / 'tests/native/PhoneSetupProbe.xml', 'components/PhoneSetupProbe.xml')
-        for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileCleanup', 'PreferenceModel', 'ConnectionStoreModel', 'RemoteMapModel', 'GuideSettingsModel', 'ReminderModel']:
+        for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'RequestGateClient', 'RequestGateModel', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileCleanup', 'PreferenceModel', 'ConnectionStoreModel', 'RemoteMapModel', 'GuideSettingsModel', 'ReminderModel']:
             package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
         if model_store:
             package.write(ROOT / 'components/UserProfileNavigation.brs', 'source/UserProfileNavigation.brs')

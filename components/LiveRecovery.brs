@@ -1,6 +1,7 @@
 ' A single midstream reconnect per intentional tune. Startup recovery owns the
 ' replacement's deadline, with its own extra retry disabled. No probing client.
 function retryInterruptedLive(state as string, code as integer, detail as string) as boolean
+    if not requestGateRendererAllowed(m.video) then return false
     if m.playingChannel = invalid or m.video.content = invalid or not m.streamReady then return false
     if m.liveRetryCount >= 1 or m.page = "setup" or m.video.state = "paused" then return false
     if m.pendingChannel <> invalid or m.heldZap <> "" then return false

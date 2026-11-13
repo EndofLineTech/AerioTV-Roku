@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="RequestGateTicket" extends="Node">
+  <interface>
+    <field id="action" type="string" />
+    <field id="url" type="string" />
+    <field id="hash" type="string" />
+    <field id="probe" type="boolean" value="false" />
+    <field id="status" type="integer" value="0" />
+    <field id="headers" type="assocarray" />
+    <field id="body" type="string" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+</component>

@@ -24,6 +24,10 @@
   <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="ChannelBrowser.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateRenderer.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
   <children>
     <Group id="canvas" />
     <Timer id="refresh" duration="30" repeat="true" />

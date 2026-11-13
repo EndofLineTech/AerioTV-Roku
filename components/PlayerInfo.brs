@@ -77,7 +77,9 @@ sub setPlayerLogo(channel as object)
         uri = ""
         id = textValue(channel.logoId)
         if id <> "" and m.base <> "" then uri = m.base + "/api/channels/logos/" + id + "/cache/"
-        if m.logo.uri <> uri then m.logo.uri = uri
+        key = ""
+        if type(m.top.session) = "roAssociativeArray" then key = textValue(m.top.session.apiKey)
+        requestGateSetPoster(m.logo, uri, key)
         return
     end if
     if m.playerLogoSource = url then return

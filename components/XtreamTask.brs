@@ -1,3 +1,9 @@
+function xtreamAccountRejected(failure as dynamic) as boolean
+    ' XC username/password is not Dispatcharr API-key authentication.
+    if type(failure) <> "roAssociativeArray" then return false
+    return failure.status = 401 or failure.status = 403
+end function
+
 sub init()
     m.top.functionName = "loadXtream"
 end sub
@@ -27,7 +33,7 @@ sub loadXtream()
     m.deadlineMs = 65000
     m.top.progress = "Verifying Xtream account"
     payload = requestJson(xtreamApiUrl(m.base, username, password))
-    rejected = httpAccountRejected(m.httpFailure)
+    rejected = xtreamAccountRejected(m.httpFailure)
     hasIdentityResponse = payload <> invalid
     account = xtreamAccount(payload)
     payload = invalid ' Server response includes the password; never publish it.
@@ -38,13 +44,13 @@ sub loadXtream()
     m.top.progress = "Loading Xtream live categories"
     categories = requestJson(xtreamApiUrl(m.base, username, password, "get_live_categories"))
     if type(categories) <> "roArray"
-        publishXtreamFailure("Could not load Xtream live categories. " + m.failure, httpAccountRejected(m.httpFailure))
+        publishXtreamFailure("Could not load Xtream live categories. " + m.failure, xtreamAccountRejected(m.httpFailure))
         return
     end if
     m.top.progress = "Loading Xtream live channels"
     rows = requestJson(xtreamApiUrl(m.base, username, password, "get_live_streams"))
     result = xtreamLiveLineup(rows, categories, m.base, username, password)
-    rejected = httpAccountRejected(m.httpFailure)
+    rejected = xtreamAccountRejected(m.httpFailure)
     categories = invalid
     rows = invalid
     if not result.ok

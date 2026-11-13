@@ -1,6 +1,16 @@
 ' Task-thread transport. GET bodies stage in tmp and are size-checked before
 ' reading/ParseJSON. tmp is not a hard byte quota: also abort on memory pressure.
 function httpTransferOnce(url as string, body as dynamic, bearer as string, timeoutMs as integer, maxBytes as integer, method = "GET" as string, checkedJson = invalid as dynamic) as object
+    key = textValue(m.key)
+    if bearer <> "" then key = ""
+    permit = requestGateAcquire(url, key)
+    if not permit.allowed then return {status: 0, headers: {}, body: "", bytes: -1, error: permit.reason}
+    result = httpTransferPermitted(url, body, bearer, timeoutMs, maxBytes, method, checkedJson, permit)
+    requestGateReport(permit, result)
+    return result
+end function
+
+function httpTransferPermitted(url as string, body as dynamic, bearer as string, timeoutMs as integer, maxBytes as integer, method as string, checkedJson as dynamic, permit as object) as object
     result = {status: 0, headers: {}, body: "", bytes: -1, error: ""}
     method = ucase(method)
     if method <> "GET" and method <> "POST" and method <> "PUT" and method <> "PATCH" and method <> "DELETE"
@@ -61,6 +71,10 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
     clock.mark()
     if not started then result.error = "network"
     while started and clock.totalMilliseconds() < timeoutMs
+        if not requestGatePermitActive(permit)
+            result.error = "request-held"
+            exit while
+        end if
         if httpIsCancelled()
             result.error = "cancelled"
             exit while

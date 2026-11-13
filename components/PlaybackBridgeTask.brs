@@ -16,6 +16,13 @@ sub holdConnection()
     ' A bounded temporary client keeps the shared upstream alive during a local
     ' decoder restart. Never call the server's shared-channel Stop endpoint.
     nonce = CreateObject("roDeviceInfo").getRandomUUID()
+    permit = requestGateAcquire(m.top.url, m.key)
+    if not permit.allowed
+        m.top.apiKey = ""
+        m.key = ""
+        m.top.result = {ok: false, message: "Requests are paused for this account or server."}
+        return
+    end if
     path = "tmp:/aeriotv-bridge-" + nonce + ".ts"
     agent = "AerioTV-Roku/decoder-recovery/" + nonce
     fs = CreateObject("roFileSystem")
@@ -24,6 +31,7 @@ sub holdConnection()
     transfer.setMessagePort(port)
     transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
     transfer.setUrl(m.top.url)
+    transfer.retainBodyOnError(true)
     transfer.addHeader("X-API-Key", m.top.apiKey)
     ' The TS proxy can forward Authorization upstream. X-API-Key authenticates
     ' Dispatcharr without forwarding an extra Authorization credential.
@@ -35,9 +43,13 @@ sub holdConnection()
     nextPoll = 0
     if transfer.asyncGetToFile(path)
         while clock.totalMilliseconds() < 12000 and not m.top.release
+            if not requestGatePermitActive(permit) then exit while
             event = wait(50, port)
             if type(event) = "roUrlEvent"
-                if event.getInt() = 1 then exit while
+                if event.getInt() = 1
+                    requestGateReportEvent(permit, event)
+                    exit while
+                end if
             end if
             if clock.totalMilliseconds() >= nextPoll
                 current = requestJson(m.base + "/proxy/ts/status/" + m.top.channelUuid)
@@ -83,6 +95,7 @@ sub holdConnection()
     end if
     m.top.ready = false
     transfer.asyncCancel()
+    requestGateRelease(permit)
     wait(250, port)
     fs.delete(path)
     after = requestJson(m.base + "/proxy/ts/status/" + m.top.channelUuid)

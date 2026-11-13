@@ -362,6 +362,7 @@ sub resetConnectionRuntime()
 end sub
 
 sub requireConnectionRelogin(message as string)
+    rememberHeldRequestGateBinding()
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     removed = true
     if entry <> invalid then removed = deleteStoredConnectionKey(entry)

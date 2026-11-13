@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="RequestGateProbe" extends="Scene">
+  <interface>
+    <field id="command" type="string" alwaysNotify="true" onChange="gateProbeCommand" />
+    <field id="fixtureBase" type="string" />
+  </interface>
+  <script type="text/brightscript" uri="RequestGateProbe.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateRenderer.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
+  <children><RequestGateTask id="broker" /><Label text="Synthetic request-gate broker probe" /></children>
+</component>

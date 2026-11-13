@@ -6,9 +6,9 @@ sub main()
         refreshCapabilities()
         if mode = "identity"
             if m.top.profileResult <> invalid or m.top.result.identityChanged <> true then stop
-        else if mode = "rejected401" or mode = "rejected403"
+        else if mode = "rejected401"
             if m.top.profileResult <> invalid or m.top.result.relogin <> true then stop
-        else if mode = "unavailable"
+        else if mode = "unavailable" or mode = "rejected403"
             if m.top.profileResult <> invalid or m.top.result.relogin = true then stop
         else
             if not m.profileSeenBeforeFacts then stop
@@ -35,6 +35,7 @@ function requestJson(url as string) as dynamic
             if m.testMode = "rejected401" then status = 401
             if m.testMode = "rejected403" then status = 403
             m.httpFailure = httpFailure(status, {}, 1000)
+            m.httpFailure.keyRejected = (m.testMode = "rejected401")
             m.failure = m.httpFailure.message
             return invalid
         end if

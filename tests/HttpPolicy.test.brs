@@ -6,13 +6,16 @@ sub main()
     if inherited.userAgent <> "Old-Connection" or inherited.referer <> "https://old.example.test" then stop
     if httpFailure(401, {}, 1000).category <> "authentication" then stop
     if httpFailure(403, {}, 1000).category <> "permission" then stop
-    if not httpAccountRejected(httpFailure(401, {}, 1000)) then stop
-    if not httpAccountRejected(httpFailure(403, {}, 1000)) then stop
+    if httpAccountRejected(httpFailure(401, {}, 1000)) then stop
+    if httpAccountRejected(httpFailure(403, {}, 1000)) then stop
+    if not httpDispatcharrKeyRejected(401, "{""detail"":""Invalid API key""}") then stop
+    if not httpDispatcharrKeyRejected(401, "{""detail"":""User inactive""}") then stop
+    if httpDispatcharrKeyRejected(403, "{""detail"":""Invalid API key""}") then stop
     if httpAccountRejected(httpFailure(503, {}, 1000)) or httpAccountRejected(invalid) then stop
     for each rejected in [401, 403]
         resetHttpTest([{status: rejected, body: ""}])
         if requestJson("https://example.test/api/accounts/users/me/") <> invalid or m.calls <> 1 then stop
-        if not httpAccountRejected(m.httpFailure) then stop
+        if httpAccountRejected(m.httpFailure) then stop
     end for
     if httpFailure(409, {}, 1000).retryable then stop
     tooLarge = httpFailure(0, {}, 1000, "too-large", 8388609, 8388608)
@@ -26,7 +29,14 @@ sub main()
     if httpRetryAfter({"Retry-After": "bad"}, 1000) <> -1 then stop
     resetHttpTest([{status: 429, headers: {"Retry-After": "0"}, body: ""}, {status: 200, body: "{""ok"":true}"}])
     result = requestJson("https://example.test/api")
-    if result.ok <> true or m.calls <> 2 then stop
+    if result <> invalid or m.calls <> 1 then stop
+    resetHttpTest([{status: 401, body: "{""detail"":""Invalid API key""}"}])
+    if requestJson("https://example.test/api/accounts/users/me/") <> invalid then stop
+    if not httpAccountRejected(m.httpFailure) then stop
+    if httpFailure(429, {}, 1000).retryAfter <> 60 then stop
+    if httpFailure(429, {"Retry-After": "999"}, 1000).retryAfter <> 120 then stop
+    if httpFailure(429, {"Retry-After": "999999999999999999999"}, 1000).retryAfter <> 120 then stop
+    if httpFailure(429, {"Retry-After": "000000000001"}, 1000).retryAfter <> 1 then stop
     if m.observedLimit <> 16000000 then stop
     resetHttpTest([{status: 200, body: "[]"}])
     m.maxResponseBytes = 1048576

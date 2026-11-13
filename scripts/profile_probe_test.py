@@ -9,6 +9,33 @@ import subprocess
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_request_mailbox_uses_fresh_wire_nodes_and_sanitized_context(self):
+        root = Path(__file__).resolve().parent.parent
+        client = (root / 'source/RequestGateClient.brs').read_text()
+        exchange = client.split('function requestGateExchange(', 1)[1].split('end function', 1)[0]
+        self.assertIn('wire = CreateObject("roSGNode", "RequestGateTicket")', exchange)
+        self.assertIn('broker.request = wire', exchange)
+        self.assertNotIn('broker.request = ticket', exchange)
+        self.assertIn('ticket.url = requestGateTicketUrl(url, probe)', client)
+        self.assertNotIn('ticket.body = response.body', client)
+        self.assertNotIn('ticket.headers = response.headers', client)
+
+    def test_request_broker_probe_is_standalone_and_non_mutating(self):
+        path = Path(__file__).with_name('test-request-gate-native.py')
+        spec = importlib.util.spec_from_file_location('gate_probe', path)
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / 'probe.zip'
+            probe.build(output)
+            with zipfile.ZipFile(output) as package:
+                self.assertNotIn('components/AerioScene.xml', package.namelist())
+                self.assertIn('request-gate-probe.json', package.namelist())
+                for name in package.namelist():
+                    if name.endswith('.brs'):
+                        body = package.read(name).decode()
+                        self.assertNotIn('roRegistry', body)
+
     def test_recovery_application_probe_replaces_the_only_application_registry_hook(self):
         path = Path(__file__).with_name('test-profile-recovery-native.py')
         spec = importlib.util.spec_from_file_location('recovery_probe', path)
@@ -66,6 +93,9 @@ class ProfileProbeTest(unittest.TestCase):
             import {assertPackageEntries} from './scripts/verify-package.mjs';
             const base = ['manifest', 'source/Main.brs', 'components/AerioScene.xml',
               'images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt'];
+            for (const name of ['request-gate-probe.json', 'components/RequestGateProbe.brs', 'components/RequestGateProbeWorker.xml', 'source/RequestGateProbeMain.brs']) {
+              assert.throws(() => assertPackageEntries([...base, name]), /probe/);
+            }
             for (const name of ['profile-probe-config.json', 'profile-wire-fixture.json', 'profile-registry-fixtures.json', 'profile-recovery-probe.json', 'components/UserProfileProbe.brs', 'source/UserProfileRegistryProbe.brs', 'components/UserProfileDialogProbe.brs', 'source/UserProfileModelProbeChecks.brs', 'source/UserProfileStoreProbeChecks.brs']) {
               assert.throws(() => assertPackageEntries([...base, name]), /probe/);
             }

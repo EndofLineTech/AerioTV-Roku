@@ -198,7 +198,9 @@ sub drawDvr()
     itemCount = 0
     config = m.top.config
     base = ""
+    key = ""
     if type(config) = "roAssociativeArray" then base = textValue(config.baseUrl)
+    if type(config) = "roAssociativeArray" then key = textValue(config.apiKey)
     for each section in dvrPosterSections(m.rows)
         if section.items.count() > 0
             group = content.createChild("ContentNode")
@@ -211,6 +213,7 @@ sub drawDvr()
                 itemCount++
                 item = group.createChild("ContentNode")
                 item.hdGridPosterUrl = dvrPosterUrl(base, row, m.channelLogos)
+                if not requestGateTrackRenderer(item, item.hdGridPosterUrl, key) then item.hdGridPosterUrl = ""
                 item.sdGridPosterUrl = item.hdGridPosterUrl
                 item.shortDescriptionLine1 = left(row.title, 80)
                 label = "SERIES RULE"

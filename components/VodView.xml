@@ -29,6 +29,10 @@
   <script type="text/brightscript" uri="pkg:/source/DescriptionModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/TmdbModel.brs" />
   <script type="text/brightscript" uri="VodView.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateRenderer.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
   <script type="text/brightscript" uri="VodMetadata.brs" />
   <children>
     <TopNavigation id="primaryNavigation" translation="[96,20]" availableWidth="1728" selected="vod" />

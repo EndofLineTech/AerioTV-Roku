@@ -92,7 +92,9 @@ sub render()
         end if
         m.poster.setHttpAgent(agent)
         m.posterScope = scope
-        m.poster.uri = uri
+        key = ""
+        if same <> "" then key = model.apiKey
+        requestGateSetPoster(m.poster, uri, key)
     end if
     m.actions = ["watch", "close"]
     labels = ["Watch channel LIVE", "Close"]

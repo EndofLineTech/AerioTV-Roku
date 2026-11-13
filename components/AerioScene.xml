@@ -15,6 +15,11 @@
   <script type="text/brightscript" uri="pkg:/source/NavigationModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ConnectionStoreModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateRenderer.brs" />
+  <script type="text/brightscript" uri="RequestGateNavigation.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileAvatar.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfilePin.brs" />

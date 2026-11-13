@@ -74,6 +74,10 @@ sub onHlsSessionOpened(event as object)
             end if
             m.hlsSession = {token: result.token, baseUrl: pending.baseUrl, apiKey: pending.apiKey}
             pending.content.url = result.url
+            if not requestGateTrackRenderer(m.video, result.url, pending.apiKey)
+                stopPlayback()
+                return
+            end if
             beginStartupWatch(pending.content, false, true)
             m.video.control = "play"
             print "[hls-session] owned session opened"

@@ -568,7 +568,9 @@ sub drawVod()
                 agent.setCertificatesFile("common:/certs/ca-bundle.crt")
                 if trustedPageUrl(m.top.config.baseUrl, uri) <> "" then agent.setHeaders(dispatcharrRequestHeaders(m.top.config.apiKey, textValue(m.global.authHeaderMode), textValue(m.global.httpUserAgent)))
                 tile.poster.setHttpAgent(agent)
-                tile.poster.uri = uri
+                key = ""
+                if trustedPageUrl(m.top.config.baseUrl, uri) <> "" then key = m.top.config.apiKey
+                requestGateSetPoster(tile.poster, uri, key)
             end if
         else
             tile.poster.uri = ""

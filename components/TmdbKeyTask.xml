@@ -4,6 +4,8 @@
   <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="TmdbKeyTask.brs" />
 </component>

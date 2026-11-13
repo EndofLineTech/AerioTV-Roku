@@ -22,6 +22,10 @@
   <script type="text/brightscript" uri="pkg:/source/CatchupModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/RecordingSeekModel.brs" />
   <script type="text/brightscript" uri="OnDemandPlayer.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateRenderer.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
   <children>
     <Rectangle width="1920" height="1080" color="0x000000FF" />
     <Video id="mediaVideo" width="1920" height="1080" enableUI="true" allowOptionsKeyOverride="false" />

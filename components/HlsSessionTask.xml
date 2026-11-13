@@ -10,6 +10,9 @@
     <field id="result" type="assocarray" alwaysNotify="true" />
   </interface>
   <script type="text/brightscript" uri="HlsSessionTask.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
 </component>

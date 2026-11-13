@@ -5,7 +5,7 @@ sub main()
         m.top = {baseUrl: "https://example.test", apiKey: "test-only", username: "", password: "", cancelRequested: false}
         loadChannels()
         if m.calls <> 1 or m.top.result.ok <> false then stop
-        if m.top.result.relogin <> (status = 401 or status = 403) then stop
+        if m.top.result.relogin <> (status = 401) then stop
         if m.top.apiKey <> "" then stop
     end for
     m.profileMode = true
@@ -70,6 +70,7 @@ function requestJson(url as string, body = invalid as dynamic, bearer = "" as st
     end if
     if m.profileMode = true then return {id: 7}
     m.httpFailure = httpFailure(m.rejectedStatus, {}, 1000)
+    m.httpFailure.keyRejected = (m.rejectedStatus = 401)
     m.failure = m.httpFailure.message
     return invalid
 end function
