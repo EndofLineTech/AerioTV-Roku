@@ -21,6 +21,24 @@ function requestGateMandatory() as boolean
     return m.global.requestGateRequired = true
 end function
 
+function requestGateTaskSessionCurrent() as boolean
+    if m.top = invalid then return true
+    if type(m.top) = "roAssociativeArray"
+        if not m.top.doesExist("aeriosession") then return true
+    else
+        if not m.top.hasField("aeriosession") then return true
+    end if
+    if m.global = invalid then return false
+    if type(m.global) = "roSGNode"
+        if not m.global.hasField("activeusersession") then return false
+    end if
+    captured = m.top.aeriosession
+    current = m.global.activeusersession
+    if type(captured) <> "String" and type(captured) <> "roString" then return false
+    if type(current) <> "String" and type(current) <> "roString" then return false
+    return captured <> "" and captured = current
+end function
+
 function requestGateCredentialHash(key as string) as string
     if key = "" then return ""
     bytes = CreateObject("roByteArray")
@@ -34,6 +52,7 @@ end function
 ' Cached authorized data is still an account operation; a cache hit must not
 ' sidestep an active key hold or host park. This check never starts a request.
 function requestGateAccessAllowed(url as string, key as string) as boolean
+    if not requestGateTaskSessionCurrent() then return false
     broker = requestGateBroker()
     if broker = invalid then return not requestGateMandatory()
     if not broker.ready then return false
@@ -70,6 +89,7 @@ end function
 
 function requestGateAcquire(url as string, key as string, probe = false as boolean) as object
     denied = {allowed: false, reason: "gate-unavailable", ticket: invalid}
+    if not requestGateTaskSessionCurrent() then return {allowed: false, reason: "stale-session", ticket: invalid}
     broker = requestGateBroker()
     if broker = invalid
         if requestGateMandatory() then return denied
@@ -129,6 +149,7 @@ end sub
 ' Nonblocking cancellation check for an already admitted Task transfer. The
 ' lease's own slow probe is exempt from its key hold, never from a server park.
 function requestGatePermitActive(permit as object) as boolean
+    if not requestGateTaskSessionCurrent() then return false
     if not permit.allowed then return false
     if permit.ticket = invalid then return not requestGateMandatory()
     broker = requestGateBroker()

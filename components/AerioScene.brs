@@ -1,4 +1,5 @@
 sub init()
+    m.global.addFields({activeusersession: ""})
     m.requestGate = CreateObject("roSGNode", "RequestGateTask")
     m.global.addFields({requestGate: m.requestGate, requestGateRequired: true})
     if m.requestGate <> invalid
@@ -187,6 +188,8 @@ sub init()
     m.connectionStore = loadConnectionStore(m.registry)
     m.userProfileStore = invalid
     m.userProfileRecoveryRequired = false
+    m.activeUserScope = invalid
+    m.scopedPreferencesRequired = false
     m.selectedConnectionId = m.connectionStore.selected
     selectedConnection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     m.baseUrl = ""
@@ -564,6 +567,9 @@ sub connectServer(skipRfi = false as boolean)
         requestRokuEmail("connect")
         return
     end if
+    m.activeUserScope = invalid
+    m.scopedPreferencesRequired = entry.provider = "dispatcharr"
+    m.global.activeusersession = ""
     m.busy = true
     m.guide.callFunc("cancelMetadataLoads")
     m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
@@ -574,6 +580,7 @@ sub connectServer(skipRfi = false as boolean)
     drawSetup()
     if entry.provider = "m3u"
         m.task = CreateObject("roSGNode", "M3uTask")
+        tagTaskForCurrentUser(m.task)
         m.task.url = m.baseUrl
         m.task.connectionId = entry.id
         m.task.observeField("result", "onChannelsLoaded")
@@ -584,6 +591,7 @@ sub connectServer(skipRfi = false as boolean)
     end if
     if entry.provider = "xtream"
         m.task = CreateObject("roSGNode", "XtreamTask")
+        tagTaskForCurrentUser(m.task)
         m.task.baseUrl = m.baseUrl
         m.task.username = m.username
         m.task.password = m.password
@@ -595,6 +603,7 @@ sub connectServer(skipRfi = false as boolean)
         return
     end if
     m.task = CreateObject("roSGNode", "DispatcharrTask")
+    tagTaskForCurrentUser(m.task)
     m.task.cacheEpoch = m.global.cacheEpoch
     m.task.baseUrl = m.baseUrl
     m.task.apiKey = m.apiKey
@@ -741,8 +750,14 @@ sub completeConnection(result as dynamic)
     m.accountPreferences = prefs
     if not connectionHasProfileSelection(connection) then m.accountPreferences = reconcileWatchHistory(prefs, result.channels)
     m.accountPreferences = takePhoneSetupPreferences(m.accountPreferences, connection)
+    if not prepareUserProfileConnectionSettings(connection, result)
+        m.status = "Could not safely load or save this account's settings. Existing preferences were retained; restart if local storage needs recovery."
+        drawSetup()
+        return
+    end if
     prefs = m.accountPreferences
-    if persistAccountPreferences() then m.registry.delete("preferences")
+    m.guide.historyAccount = m.accountIdentity
+    m.registry.delete("preferences")
     if m.phoneCommittedId = connection.id
         m.phoneCommittedId = ""
     else
@@ -811,6 +826,7 @@ sub refreshCapabilities()
     if m.capabilityTask <> invalid then return
     m.aacDiscoveryState = "pending"
     m.capabilityTask = CreateObject("roSGNode", "CapabilityTask")
+    tagTaskForCurrentUser(m.capabilityTask)
     m.capabilityTask.baseUrl = m.baseUrl
     m.capabilityTask.apiKey = m.apiKey
     m.capabilityTask.accountId = m.serverAccountId
@@ -886,6 +902,11 @@ function persistAccountPreferences() as boolean
 end function
 
 function persistPreferences() as boolean
+    if m.scopedPreferencesRequired = true
+        if persistCurrentUserProfilePreferences() then return true
+        showNotice("Could not safely save this profile's settings. Other accounts and device settings were retained.")
+        return false
+    end if
     m.preferenceStore.device = m.devicePreferences
     if savePreferenceStore(m.registry, m.preferenceStore) then return true
     showNotice("Your change is active for this session but could not be saved. Local storage is full, unavailable, or uses a newer settings format.")
@@ -1947,6 +1968,7 @@ sub loadServerStreamInfo()
     end if
     m.serverStreamMessage = "Loading server metadata; native facts remain available."
     m.streamInfoTask = CreateObject("roSGNode", "StreamInfoTask")
+    tagTaskForCurrentUser(m.streamInfoTask)
     m.streamInfoTask.baseUrl = m.baseUrl
     m.streamInfoTask.apiKey = m.apiKey
     m.streamInfoTask.channelUuid = m.playingChannel.uuid
@@ -1984,6 +2006,7 @@ sub beginSourceOperation(operation as string, streamId as string)
     if m.sourceTask <> invalid then return
     if operation = "switch" then clearServerStreamInfo()
     m.sourceTask = CreateObject("roSGNode", "StreamSourceTask")
+    tagTaskForCurrentUser(m.sourceTask)
     m.sourceTask.baseUrl = m.baseUrl
     m.sourceTask.apiKey = m.apiKey
     m.sourceTask.accountId = m.serverAccountId
@@ -2236,6 +2259,7 @@ sub recoverFrozenPicture()
     m.recoveryPaused = m.video.state = "paused"
     m.recoveryIssued = false
     m.recoveryTask = CreateObject("roSGNode", "PlaybackBridgeTask")
+    tagTaskForCurrentUser(m.recoveryTask)
     m.recoveryTask.url = m.video.content.url
     m.recoveryTask.baseUrl = m.baseUrl
     m.recoveryTask.channelUuid = m.playingChannel.uuid
@@ -2331,6 +2355,7 @@ sub refreshChannelLineup()
     if m.refreshTask <> invalid then return
     showNotice("Refreshing authorized channels; current playback continues.")
     m.refreshTask = CreateObject("roSGNode", "DispatcharrTask")
+    tagTaskForCurrentUser(m.refreshTask)
     m.refreshTask.cacheEpoch = m.global.cacheEpoch
     m.refreshTask.baseUrl = m.baseUrl
     m.refreshTask.apiKey = m.apiKey

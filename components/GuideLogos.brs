@@ -96,6 +96,7 @@ end sub
 sub startGuideLogoBatch(ids as object)
     if ids.count() = 0 or m.guideLogoTask <> invalid then return
     m.guideLogoTask = CreateObject("roSGNode", "LogoCacheTask")
+    tagTaskForCurrentUser(m.guideLogoTask)
     m.guideLogoTask.baseUrl = m.base
     m.guideLogoTask.apiKey = m.key
     m.guideLogoTask.ids = ids

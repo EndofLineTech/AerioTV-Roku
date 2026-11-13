@@ -33,6 +33,7 @@ sub loadUnifiedSearchPage()
     for each domain in domains
         if domain = "epg"
             m.searchTask = CreateObject("roSGNode", "ProgramSearchTask")
+            tagTaskForCurrentUser(m.searchTask)
             m.searchTask.baseUrl = m.base
             m.searchTask.apiKey = m.key
             m.searchTask.query = m.programQuery
@@ -46,6 +47,7 @@ sub loadUnifiedSearchPage()
             m.searchTask.control = "RUN"
         else
             task = CreateObject("roSGNode", "VodTask")
+            tagTaskForCurrentUser(task)
             task.baseUrl = m.base
             task.apiKey = m.key
             task.accountId = m.programSearchAccount

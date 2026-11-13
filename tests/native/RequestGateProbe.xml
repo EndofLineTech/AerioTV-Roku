@@ -10,5 +10,6 @@
   <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
+  <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
   <children><RequestGateTask id="broker" /><Label text="Synthetic request-gate broker probe" /></children>
 </component>

@@ -122,6 +122,7 @@ sub refreshRecordings()
     if type(config) <> "roAssociativeArray" then return
     if config.permission <> "view" and config.permission <> "manage" then return
     m.task = CreateObject("roSGNode", "DvrRecordingTask")
+    tagTaskForCurrentUser(m.task)
     m.task.baseUrl = config.baseUrl
     m.task.apiKey = config.apiKey
     m.task.accountId = config.accountId
@@ -137,6 +138,7 @@ sub refreshSeriesRules()
     config = m.top.config
     if not m.top.active or type(config) <> "roAssociativeArray" then return
     m.task = CreateObject("roSGNode", "DvrRecordingTask")
+    tagTaskForCurrentUser(m.task)
     m.task.baseUrl = config.baseUrl
     m.task.apiKey = config.apiKey
     m.task.accountId = config.accountId
@@ -427,6 +429,7 @@ sub onDvrConfirmed(event as object)
     m.mutationAction = action
     m.mutationId = request.recordingId
     m.mutationTask = CreateObject("roSGNode", "DvrRecordingTask")
+    tagTaskForCurrentUser(m.mutationTask)
     m.mutationTask.baseUrl = config.baseUrl
     m.mutationTask.apiKey = config.apiKey
     m.mutationTask.accountId = config.accountId

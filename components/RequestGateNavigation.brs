@@ -53,6 +53,7 @@ sub onRequestGateTick()
     due = requestGatePermit(state, requestGateServer(binding.base), binding.hash, uiNow(), true)
     if not due.allowed then return
     task = CreateObject("roSGNode", "RequestGateRecheckTask")
+    tagTaskForCurrentUser(task)
     task.baseUrl = binding.base
     task.apiKey = binding.key
     task.accountId = binding.account

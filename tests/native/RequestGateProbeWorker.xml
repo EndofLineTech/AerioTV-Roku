@@ -14,6 +14,7 @@
   <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
   <script type="text/brightscript" uri="pkg:/source/SessionHttp.brs" />
+  <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
   <script type="text/brightscript" uri="MappingDetailFetch.brs" />
   <script type="text/brightscript" uri="RequestGateProbeWorker.brs" />
 </component>

@@ -1,6 +1,6 @@
 sub init()
     m.broker = m.top.findNode("broker")
-    m.global.addFields({requestGate: m.broker, requestGateRequired: true})
+    m.global.addFields({requestGate: m.broker, requestGateRequired: true, activeusersession: "fixture-active"})
     m.broker.observeField("ready", "gateProbeReady")
     m.broker.observeField("snapshot", "gateProbeSnapshot")
     m.broker.control = "RUN"
@@ -12,6 +12,13 @@ sub gateProbeReady()
 end sub
 
 sub gateProbeCommand()
+    if m.top.command = "session-retire"
+        m.global.activeusersession = "fixture-retiring"
+        m.retireTimer = m.top.createChild("Timer")
+        m.retireTimer.duration = 0.5
+        m.retireTimer.observeField("fire", "gateProbeRetireSession")
+        m.retireTimer.control = "start"
+    end if
     if m.top.command = "video"
         m.nativeVideo = m.top.createChild("Video")
         m.nativePoster = m.top.createChild("Poster")
@@ -95,6 +102,7 @@ sub gateProbeCommand()
     m.expected = count
     for i = 1 to count
         worker = CreateObject("roSGNode", "RequestGateProbeWorker")
+        tagTaskForCurrentUser(worker)
         worker.operation = m.operation
         worker.index = i
         worker.fixtureBase = m.top.fixtureBase
@@ -102,6 +110,10 @@ sub gateProbeCommand()
         m.workers.push(worker)
         worker.control = "RUN"
     end for
+end sub
+
+sub gateProbeRetireSession()
+    m.global.activeusersession = "fixture-incoming"
 end sub
 
 sub gateProbeSnapshot()

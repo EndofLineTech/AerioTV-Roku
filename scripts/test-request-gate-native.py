@@ -9,6 +9,7 @@ from pathlib import Path
 import subprocess
 import socket
 import threading
+import time
 import urllib.parse
 import urllib.request
 import zipfile
@@ -25,7 +26,7 @@ def build(output):
             package.write(ROOT / 'components' / name, 'components/' + name)
         for name in ['RequestGateProbe.xml', 'RequestGateProbe.brs', 'RequestGateProbeWorker.xml', 'RequestGateProbeWorker.brs']:
             package.write(ROOT / 'tests/native' / name, 'components/' + name)
-        for name in ['RequestGateModel', 'RequestGateClient', 'RequestGateRenderer', 'HttpPolicy', 'DispatcharrModel', 'HttpTransport', 'DispatcharrHttp']:
+        for name in ['RequestGateModel', 'RequestGateClient', 'RequestGateRenderer', 'HttpPolicy', 'DispatcharrModel', 'HttpTransport', 'DispatcharrHttp', 'TaskSupport']:
             package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
         package.write(ROOT / 'source/SessionHttp.brs', 'source/SessionHttp.brs')
         package.write(ROOT / 'components/MappingDetailFetch.brs', 'components/MappingDetailFetch.brs')
@@ -55,7 +56,7 @@ def main():
         raise RuntimeError('Restore ZIP differs from installed app')
     archive = ROOT / 'out/request-gate-probe.zip'
     build(archive)
-    operations = ['generic', 'reject', 'parallel-report', 'parallel-held', 'park', 'parallel-park', 'transport', 'direct-bypasses', 'bypasses', 'renderers', 'recheck', 'video']
+    operations = ['generic', 'reject', 'parallel-report', 'parallel-held', 'session-retire', 'park', 'parallel-park', 'transport', 'direct-bypasses', 'bypasses', 'renderers', 'recheck', 'video']
     hits = []
 
     class Fixture(BaseHTTPRequestHandler):
@@ -85,6 +86,8 @@ def main():
             self.end_headers()
             if self.command == 'HEAD':
                 return
+            if self.path == '/slow':
+                time.sleep(2)  # Native cancellation during an actual response.
             try:
                 self.wfile.write(body)
             except (BrokenPipeError, ConnectionResetError):
@@ -128,8 +131,8 @@ def main():
                     command(operations[len(completed)])
         report['passed'] = process.wait(timeout=10) == 0 and completed == operations
         paths = [row['path'] for row in hits]
-        allowed = ['/generic', '/forbidden', '/reject', '/ok', '/park', '/api/accounts/users/me/', '/poster.png', '/movie.mp4', '/video-park']
-        report['passed'] = report['passed'] and paths[:6] == allowed[:6] and '/movie.mp4' in paths and paths.count('/video-park') == 1 and all(path in allowed for path in paths) and not any(row['mixed_auth'] for row in hits)
+        allowed = ['/generic', '/forbidden', '/reject', '/ok', '/park', '/api/accounts/users/me/', '/poster.png', '/movie.mp4', '/video-park', '/slow']
+        report['passed'] = report['passed'] and [path for path in paths if path != '/slow'][:6] == allowed[:6] and paths.count('/slow') == 1 and '/movie.mp4' in paths and paths.count('/video-park') == 1 and all(path in allowed for path in paths) and not any(row['mixed_auth'] for row in hits)
     finally:
         if process is not None and process.poll() is None:
             process.terminate()

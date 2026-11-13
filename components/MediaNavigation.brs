@@ -224,6 +224,7 @@ sub onArchiveRequested(event as object)
     m.archiveStartPaused = false
     m.archiveSeeking = false
     m.archiveTask = CreateObject("roSGNode", "CatchupTask")
+    tagTaskForCurrentUser(m.archiveTask)
     m.archiveTask.baseUrl = m.baseUrl
     m.archiveTask.apiKey = m.apiKey
     m.archiveTask.accountId = m.serverAccountId
@@ -296,6 +297,7 @@ sub openLiveRewind()
     m.archiveStartPaused = paused
     m.archiveSeeking = false
     m.archiveTask = CreateObject("roSGNode", "CatchupTask")
+    tagTaskForCurrentUser(m.archiveTask)
     m.archiveTask.baseUrl = m.baseUrl
     m.archiveTask.apiKey = m.apiKey
     m.archiveTask.accountId = m.serverAccountId
@@ -357,6 +359,7 @@ end sub
 sub deleteOwnArchive(id as string, callback = "" as string)
     if m.archiveContext = invalid or id = "" then return
     task = CreateObject("roSGNode", "CatchupTask")
+    if callback <> "" then tagTaskForCurrentUser(task)
     task.baseUrl = m.archiveContext.baseUrl
     task.apiKey = m.archiveContext.apiKey
     task.sessionId = id
@@ -456,6 +459,7 @@ sub onMediaProgress(event as object)
         end if
         m.lastArchiveReport = uiNow()
         m.archivePositionTask = CreateObject("roSGNode", "CatchupTask")
+        tagTaskForCurrentUser(m.archivePositionTask)
         m.archivePositionTask.baseUrl = m.archiveContext.baseUrl
         m.archivePositionTask.apiKey = m.archiveContext.apiKey
         m.archivePositionTask.sessionId = m.archiveSession
@@ -540,6 +544,7 @@ sub onArchiveSeekReleased(event as object)
     m.archiveSession = invalid
     m.archiveOffset = m.archiveSeekPlan.offset
     m.archiveTask = CreateObject("roSGNode", "CatchupTask")
+    tagTaskForCurrentUser(m.archiveTask)
     m.archiveTask.baseUrl = m.archiveContext.baseUrl
     m.archiveTask.apiKey = m.archiveContext.apiKey
     m.archiveTask.accountId = m.serverAccountId

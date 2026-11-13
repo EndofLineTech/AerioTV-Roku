@@ -1,7 +1,9 @@
 # Scoped-state implementation (`mrr.7`, in progress)
 
-`source/UserProfileScope.brs` supplies internal primitives, **not an activated
-profile switcher or completed application isolation**.
+`source/UserProfileScope.brs` supplies scoped-state primitives. Verified
+Dispatcharr connections now activate per-account settings through
+`UserProfilePreferenceNavigation`, **not a public profile switcher or completed
+application isolation**.
 
 ## New-account seeding
 
@@ -59,7 +61,55 @@ The extended native suite passes 286 assertions with private-registry cleanup
 and exact prior-app restoration;
 report: `out/profile-scope-native.json`.
 
-Application settings load/write routing and recovery UI, callback
-tagging/retirement, library caches, pending writes and native A/B/A UI acceptance
-are still implementation work. No public switching or complete `mrr.7` delivery
-is claimed by these primitives.
+## Application routing and normal-app evidence
+
+The normal Dispatcharr connection stages settings under the verified active
+profile's identity and authorization generation, persists them atomically, then
+adopts the session and effective appearance/player settings before configuring
+the guide. During connection transitions, scoped persistence cannot fall back
+to writing another profile's effective settings into the device baseline.
+Routine preference writes use the captured current scope; failure does not
+adopt a replacement store and rollback failure fences further profile work.
+Connection reset retires the active scope and restores the device baseline.
+
+The controller's shared native tests cover activation, own-data preservation,
+single Flush, profile/device separation, stale scope refusal, failed activation
+without presentation adoption and mismatched-account refusal.
+
+`scripts/test-profile-settings-native.py` exercises the **actual normal app**
+against synthetic own-key HTTP accounts and a unique private registry/cache.
+It runs two-slot A → B → A across reinstalls: A migrates Sunset and saves
+Midnight, B retains Forest, then A restores Midnight with its stable default
+profile ID. Each keeps its own favorite and the original Sunset device baseline.
+All three screenshots were captured/inspected (Midnight/Forest/Midnight guide
+colors). The section is cleaned and the checksum-matched prior app restored
+after each run. Report: `out/profile-settings-native.json`.
+
+This is **two-slot** settings isolation, not same-slot authenticated profile
+switching. The populated normal-app rerun also verifies that each own-key
+account receives only its own synthetic channel (7/8/7) and keeps its FAV marker.
+The A run also injects one failed settings Flush through a private registry
+proxy while exercising the real remote-map controller. The prior registry
+bytes, active Midnight appearance and original Sunset device baseline all
+survive rollback; existing settings-controller rollback restores the entire
+prior store, never the effective profile appearance into the device baseline.
+
+## Task retirement
+
+Account-bound network Task constructors capture the active session nonce before
+RUN. The shared callback guard checks both actual Node identity and this nonce;
+returning to A cannot revive an old A Task. Transport admission, in-flight
+download polling and cache authorization also reject a retired Task's nonce.
+Initial authentication (before an active session), the shared policy broker and
+explicit owned-session/temp-file cleanup have distinct lifecycles; outgoing
+cleanup never borrows the incoming account's key.
+
+Constructor coverage is checked across production component scripts. Shared
+host callback tests cover retirement/A/B/A. The native request-gate fixture
+captures a real Task session, begins a delayed HTTP response, retires that
+session, verifies cancellation and refuses a second HTTP path/cache access.
+Its full expanded 13-group matrix still passes with exact prior-app restoration.
+
+Queued view/UI event envelopes, authorization-refresh generation adoption,
+complete pending-write coverage and same-slot native A/B/A acceptance remain
+implementation work. No public switching or complete `mrr.7` delivery is claimed.

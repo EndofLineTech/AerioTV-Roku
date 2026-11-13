@@ -58,6 +58,7 @@ sub loadMappings(bypass = false as boolean)
     m.mappingState = "loading"
     m.mappingWarning = ""
     m.mappingTask = CreateObject("roSGNode", "MappingTask")
+    tagTaskForCurrentUser(m.mappingTask)
     m.mappingTask.baseUrl = m.base
     m.mappingTask.apiKey = m.key
     m.mappingTask.channels = m.channels

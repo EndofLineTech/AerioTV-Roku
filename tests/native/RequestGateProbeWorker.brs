@@ -61,6 +61,17 @@ sub runGateWorker()
     else if operation = "parallel-park"
         denied = requestGateAcquire("HTTPS://EXAMPLE.TEST:443/other/path", "synthetic-" + m.top.index.toStr())
         workerCheck(not denied.allowed and denied.reason = "parked", "concurrent-task-sees-server-park")
+    else if operation = "session-retire"
+        m.key = "synthetic-session"
+        m.timeout = 5000
+        workerCheck(taskUserSessionCurrent(m.top), "native-tag-current-before-retirement")
+        workerCheck(requestJson(m.top.fixtureBase + "/slow") = invalid, "in-flight-outgoing-transfer-cancelled")
+        workerCheck(not taskUserSessionCurrent(m.top), "native-old-session-tag-rejected")
+        workerCheck(not requestGateAccessAllowed(m.top.fixtureBase, m.key), "retired-context-cannot-read-cache")
+        workerCheck(requestJson(m.top.fixtureBase + "/retired-must-not-send") = invalid, "retired-context-no-new-transport")
+        workerCheck(m.httpFailure.category = "request-held", "retired-context-is-local-refusal")
+        m.key = ""
+        m.global.activeusersession = "fixture-active"
     else if operation = "video-park"
         m.key = "synthetic-video"
         m.timeout = 2000

@@ -9,6 +9,7 @@ sub onDvrPlayRequested(event as object)
     if recordingPlaybackPlan(m.baseUrl, {id: request.recordingId, status: "completed", fileReady: true}) = invalid then return
     m.dvrPlaybackRequest = {id: request.recordingId, account: m.accountIdentity, fromBeginning: request.fromBeginning = true}
     m.dvrPlayTask = CreateObject("roSGNode", "DvrRecordingTask")
+    tagTaskForCurrentUser(m.dvrPlayTask)
     m.dvrPlayTask.baseUrl = m.baseUrl
     m.dvrPlayTask.apiKey = m.apiKey
     m.dvrPlayTask.accountId = m.serverAccountId

@@ -52,6 +52,7 @@ sub loadProgramDetail()
         cancelProgramDetail()
     end if
     m.detailTask = CreateObject("roSGNode", "ProgramDetailTask")
+    tagTaskForCurrentUser(m.detailTask)
     m.detailTask.baseUrl = m.base
     m.detailTask.apiKey = m.key
     m.detailTask.programId = id

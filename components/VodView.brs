@@ -200,6 +200,7 @@ sub loadVodPage(itemId = "" as string)
     savedShelf = m.shelf = "continue" or m.shelf = "watchlist" or m.shelf = "favorite" or m.shelf = "recent" or m.shelf = "hidden"
     if itemId = "" and savedShelf and textValue(m.top.config.providerType) <> "xtream"
         m.task = CreateObject("roSGNode", "VodShelfTask")
+        tagTaskForCurrentUser(m.task)
         m.task.baseUrl = m.top.config.baseUrl
         m.task.apiKey = m.top.config.apiKey
         m.task.accountId = m.top.config.accountId
@@ -212,6 +213,7 @@ sub loadVodPage(itemId = "" as string)
     end if
     if textValue(m.top.config.providerType) = "xtream"
         m.task = CreateObject("roSGNode", "XtreamVodTask")
+        tagTaskForCurrentUser(m.task)
         m.task.baseUrl = m.top.config.baseUrl
         m.task.username = m.top.config.username
         m.task.password = m.top.config.password
@@ -236,6 +238,7 @@ sub loadVodPage(itemId = "" as string)
         return
     end if
     m.task = CreateObject("roSGNode", "VodTask")
+    tagTaskForCurrentUser(m.task)
     m.task.baseUrl = m.top.config.baseUrl
     m.task.apiKey = m.top.config.apiKey
     m.task.accountId = m.top.config.accountId
@@ -597,6 +600,7 @@ sub onVodDetailAction(event as object)
         cancelVod()
         m.pendingSeriesTarget = {seriesId: m.detail.id, key: "", action: ""}
         m.task = CreateObject("roSGNode", "VodTask")
+        tagTaskForCurrentUser(m.task)
         m.task.baseUrl = m.top.config.baseUrl
         m.task.apiKey = m.top.config.apiKey
         m.task.accountId = m.top.config.accountId
@@ -762,6 +766,7 @@ sub beginDescription()
     renderDetailDescription()
     m.descriptionDialog = m.dialog
     m.descriptionTask = CreateObject("roSGNode", "DescriptionTask")
+    tagTaskForCurrentUser(m.descriptionTask)
     m.descriptionTask.baseUrl = m.top.config.baseUrl
     m.descriptionTask.apiKey = m.top.config.apiKey
     m.descriptionTask.accountId = m.top.config.accountId

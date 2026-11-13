@@ -39,6 +39,7 @@ end sub
 
 sub beginOwnedHlsPlayback(content as object)
     task = CreateObject("roSGNode", "HlsSessionTask")
+    tagTaskForCurrentUser(task)
     task.operation = "open"
     task.baseUrl = m.baseUrl
     task.apiKey = m.apiKey
@@ -59,6 +60,7 @@ sub onHlsSessionOpened(event as object)
             m.hlsPendingMints.delete(i)
             result = event.getData()
             current = m.hlsMintTask <> invalid and m.playingChannel <> invalid
+            current = current and taskUserSessionCurrent(pending.task)
             if current and m.video.content <> invalid then current = m.hlsMintTask.isSameNode(pending.task) and m.video.content.isSameNode(pending.content) else current = false
             if not current or pending.task.cancelRequested
                 if result.ok = true

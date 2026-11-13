@@ -76,16 +76,19 @@ sub startPhoneVerification()
     credential = m.phonePending.credential
     if entry.provider = "m3u"
         task = CreateObject("roSGNode", "M3uTask")
+        tagTaskForCurrentUser(task)
         task.url = m.phonePending.url
         task.connectionId = entry.id
     else if entry.provider = "xtream"
         task = CreateObject("roSGNode", "XtreamTask")
+        tagTaskForCurrentUser(task)
         task.baseUrl = m.phonePending.url
         task.connectionId = entry.id
         task.username = credential.username
         task.password = credential.password
     else
         task = CreateObject("roSGNode", "DispatcharrTask")
+        tagTaskForCurrentUser(task)
         task.baseUrl = m.phonePending.url
         task.cacheEpoch = m.global.cacheEpoch
         task.authMode = entry.authMode

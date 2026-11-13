@@ -103,6 +103,11 @@ sub main()
     if not persistRemoteMap(resetRemoteMap()) then stop
     if resolveRemoteAction(m.published.remoteMap, "guide", "replay") <> "jumpToNow" then stop
     if m.applyCount <> 3 then stop
+    m.preferenceStore.device = normalizeDevicePreferences({themePreset: "sunset"})
+    m.devicePreferences = normalizeDevicePreferences({themePreset: "forest"})
+    m.saveOk = false
+    if persistRemoteMap(custom) then stop
+    if m.preferenceStore.device.themePreset <> "sunset" or m.devicePreferences.themePreset <> "forest" then stop
     print "ALL TESTS PASSED"
 end sub
 

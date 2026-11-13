@@ -53,6 +53,7 @@ end sub
 sub runSeriesTask(action as string, callback as string)
     if m.recordIntent = invalid or m.seriesDraft = invalid or m.recordTask <> invalid then return
     m.recordTask = CreateObject("roSGNode", "DvrRecordingTask")
+    tagTaskForCurrentUser(m.recordTask)
     m.recordTask.baseUrl = m.baseUrl
     m.recordTask.apiKey = m.apiKey
     m.recordTask.accountId = m.serverAccountId

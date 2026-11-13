@@ -47,6 +47,7 @@ sub onSettingsHubSelection(event as object)
     end if
     if item.action = "resetAppearance"
         before = copyJson(m.devicePreferences)
+        beforeStore = copyJson(m.preferenceStore)
         defaults = {themePreset: "aerio", appearanceMode: "dark", customAccent: "", panelStyle: "translucent", textSize: 100, subtextSize: 100, contrastMode: "standard"}
         for each field in defaults
             m.devicePreferences = setCanonicalPreference(m.devicePreferences, field, defaults[field])
@@ -54,7 +55,7 @@ sub onSettingsHubSelection(event as object)
         m.devicePreferences = normalizeDevicePreferences(m.devicePreferences)
         if not persistPreferences()
             m.devicePreferences = before
-            m.preferenceStore.device = before
+            m.preferenceStore = beforeStore
         end if
         applyDevicePreferences()
         refreshSettingsHub()
@@ -64,10 +65,11 @@ sub onSettingsHubSelection(event as object)
     if not allowed then return
     if item.scope = "device"
         before = copyJson(m.devicePreferences)
+        beforeStore = copyJson(m.preferenceStore)
         m.devicePreferences = normalizeDevicePreferences(setCanonicalPreference(m.devicePreferences, item.key, item.value))
         if not persistPreferences()
             m.devicePreferences = before
-            m.preferenceStore.device = before
+            m.preferenceStore = beforeStore
             applyDevicePreferences()
             refreshSettingsHub()
             return
@@ -102,12 +104,13 @@ end sub
 
 function persistRemoteMap(map as object) as boolean
     before = copyJson(m.devicePreferences)
+    beforeStore = copyJson(m.preferenceStore)
     m.devicePreferences.remoteMap = map
     m.devicePreferences = normalizeDevicePreferences(m.devicePreferences)
     saved = persistPreferences()
     if not saved
         m.devicePreferences = before
-        m.preferenceStore.device = before
+        m.preferenceStore = beforeStore
     end if
     ' SceneGraph fields are copies: Guide must receive the effective map again,
     ' including the restored map after a failed write.

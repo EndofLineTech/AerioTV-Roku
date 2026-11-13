@@ -29,7 +29,7 @@ end function
 
 function httpFailure(status as integer, headers as dynamic, now as integer, error = "" as string, responseBytes = invalid as dynamic, maxBytes = invalid as dynamic) as object
     result = {status: status, category: "server", retryable: false, retryAfter: httpRetryAfter(headers, now), sizeBucket: "", message: "Server returned HTTP " + status.toStr() + "."}
-    if error = "rejected-key" or error = "parked" or error = "request-held" or error = "gate-unavailable" or error = "gate-busy" or error = "capacity" or error = "invalid-context"
+    if error = "rejected-key" or error = "parked" or error = "request-held" or error = "gate-unavailable" or error = "gate-busy" or error = "capacity" or error = "invalid-context" or error = "stale-session"
         result.category = "request-held"
         result.message = "Requests are paused for this account or server. Wait before trying again."
     else if error = "cancelled"

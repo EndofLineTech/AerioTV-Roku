@@ -70,6 +70,7 @@ sub Main()
         runUserProfileRemovalChecks()
         runUserProfileScopeChecks()
         runUserProfileScopeStoreChecks()
+        runUserProfilePreferenceNavigationChecks()
         profileProbeStoreRegistry()
     end if
     print "[profile-probe] complete failed="; m.profileFailures

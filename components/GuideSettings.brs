@@ -429,6 +429,7 @@ sub onGuideKeyboard(event as object)
             end if
         else if m.guideKeyboardKind = "tmdbKey" and text <> ""
             m.tmdbTask = CreateObject("roSGNode", "TmdbKeyTask")
+            tagTaskForCurrentUser(m.tmdbTask)
             m.tmdbTask.token = text
             m.tmdbTask.observeField("result", "onTmdbKeyTest")
             m.tmdbTask.control = "RUN"

@@ -27,6 +27,9 @@
   <script type="text/brightscript" uri="pkg:/source/UserProfileLifecycle.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileCleanup.brs" />
   <script type="text/brightscript" uri="UserProfileNavigation.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileScope.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileScopeStore.brs" />
+  <script type="text/brightscript" uri="UserProfilePreferenceNavigation.brs" />
   <script type="text/brightscript" uri="pkg:/source/ChannelProfileModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/M3uModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/XtreamModel.brs" />

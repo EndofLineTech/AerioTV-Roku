@@ -93,6 +93,7 @@ sub setPlayerLogo(channel as object)
     urls = {}
     urls[id] = url
     m.playerLogoTask = CreateObject("roSGNode", "LogoCacheTask")
+    tagTaskForCurrentUser(m.playerLogoTask)
     m.playerLogoTask.ids = [id]
     m.playerLogoTask.urls = urls
     m.playerLogoTask.prefix = m.playerLogoPrefix

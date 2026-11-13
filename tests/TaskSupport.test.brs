@@ -23,6 +23,18 @@ sub main()
     assertEqual(connectionTimedOut(119), false, "deadline not reached")
     assertEqual(connectionTimedOut(120), true, "deadline reached")
     assertEqual(connectionTimedOut(121), true, "late timer still expires")
+    event.node = {nodeId: "active"}
+    m.global = {activeusersession: "session-a-1"}
+    tagTaskForCurrentUser(task)
+    assertEqual(isCurrentTaskEvent(event, task), true, "tagged current session callback accepted")
+    m.global.activeusersession = ""
+    assertEqual(isCurrentTaskEvent(event, task), false, "retirement rejects old callbacks before another account is active")
+    m.global.activeusersession = "session-b-1"
+    assertEqual(isCurrentTaskEvent(event, task), false, "A callback cannot mutate B")
+    m.global.activeusersession = "session-a-2"
+    assertEqual(isCurrentTaskEvent(event, task), false, "returning to A cannot revive old A callback")
+    tagTaskForCurrentUser(task)
+    assertEqual(isCurrentTaskEvent(event, task), true, "freshly captured incoming session accepted")
     print "ALL TESTS PASSED"
 end sub
 

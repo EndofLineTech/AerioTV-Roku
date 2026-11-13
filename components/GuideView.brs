@@ -315,6 +315,7 @@ sub loadVisibleWindows()
             if m.failures.doesExist(key) then retry = m.failures[key] <= now
             if retry
                 m.task = CreateObject("roSGNode", "GuideTask")
+                tagTaskForCurrentUser(m.task)
                 m.task.baseUrl = m.base
                 m.task.providerType = m.providerType
                 m.task.guideUrl = m.guideUrl

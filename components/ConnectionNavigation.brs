@@ -89,6 +89,7 @@ sub openPermittedProfiles()
     if m.profileTask <> invalid then return
     m.profileSlotId = entry.id
     m.profileTask = CreateObject("roSGNode", "ProfileTask")
+    tagTaskForCurrentUser(m.profileTask)
     m.profileTask.baseUrl = m.baseUrl
     m.profileTask.apiKey = m.apiKey
     m.profileTask.accountId = m.serverAccountId
@@ -344,6 +345,11 @@ sub resetConnectionRuntime()
     m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
     m.channelFacts = {}
     m.accountIdentity = ""
+    m.activeUserScope = invalid
+    m.scopedPreferencesRequired = false
+    m.global.activeusersession = ""
+    m.devicePreferences = copyJson(m.preferenceStore.device)
+    applyDevicePreferences()
     m.serverAccountId = ""
     m.hlsAvailable = false
     m.accountPreferences = normalizeAccountPreferences(invalid)

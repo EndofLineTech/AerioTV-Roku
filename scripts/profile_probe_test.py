@@ -9,6 +9,42 @@ import subprocess
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_network_task_constructors_capture_active_user_session(self):
+        import re
+        root = Path(__file__).resolve().parent.parent
+        exempt = {'RequestGateTask', 'LogoCleanupTask', 'CacheClearTask', 'PhoneSetupTask'}
+        checked = 0
+        for path in (root / 'components').glob('*.brs'):
+            lines = path.read_text().splitlines()
+            for index, line in enumerate(lines):
+                match = re.search(r'(\w+(?:\.\w+)*) = CreateObject\("roSGNode", "(\w+Task)"\)', line)
+                if not match or match[2] in exempt:
+                    continue
+                following = '\n'.join(lines[index + 1:index + 3])
+                if match[2] == 'HlsSessionTask' and 'task.operation = "close"' in following:
+                    continue  # Own outgoing cleanup must outlive incoming context.
+                self.assertIn(f'tagTaskForCurrentUser({match[1]})', following, f'{path}:{index + 1}')
+                checked += 1
+        self.assertGreaterEqual(checked, 35)
+
+    def test_settings_application_probe_uses_private_registry_and_cache(self):
+        path = Path(__file__).with_name('test-profile-settings-native.py')
+        spec = importlib.util.spec_from_file_location('settings_probe', path)
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        with tempfile.TemporaryDirectory() as tmp:
+            normal = Path(tmp) / 'normal.zip'
+            with zipfile.ZipFile(normal, 'w') as package:
+                package.writestr('manifest', 'title=AerioTV\n')
+                package.writestr('components/AerioScene.brs', 'm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n')
+                package.writestr('source/MetadataCacheStore.brs', 'return "cachefs:/aeriotv-metadata-v1"')
+            output = Path(tmp) / 'probe.zip'
+            probe.build(output, normal, 'SyntheticSettingsSection', 'http://127.0.0.1:1234', 'A')
+            with zipfile.ZipFile(output) as package:
+                self.assertNotIn('"AerioTV"', package.read('components/AerioScene.brs').decode())
+                self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
+                self.assertIn('profile-settings-probe.json', package.namelist())
+
     def test_every_metadata_cache_read_checks_current_request_safety(self):
         root = Path(__file__).resolve().parent.parent
         count = 0
@@ -73,6 +109,7 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertLess(connect.index('selectedUserProfileGate()'), connect.index('"DispatcharrTask"'))
         complete = scene.split('sub completeConnection(', 1)[1].split('end sub', 1)[0]
         self.assertLess(complete.index('ensureConnectedUserProfile(result)'), complete.index('m.apiKey = result.apiKey'))
+        self.assertLess(complete.index('prepareUserProfileConnectionSettings(connection, result)'), complete.index('m.guide.config ='))
         navigation = (root / 'components/ConnectionNavigation.brs').read_text()
         permitted = navigation.split('sub openPermittedProfiles()', 1)[1].split('end sub', 1)[0]
         self.assertLess(permitted.index('selectedUserProfileGate()'), permitted.index('"ProfileTask"'))
@@ -88,7 +125,7 @@ class ProfileProbeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             output = builder.build(Path(tmp) / 'probe.zip', 'http://127.0.0.1:1234', model_store=True)
             with zipfile.ZipFile(output) as package:
-                for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval', 'UserProfileScope', 'UserProfileScopeStore']:
+                for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval', 'UserProfileScope', 'UserProfileScopeStore', 'UserProfilePreferenceNavigation']:
                     source = package.read(f'source/{name}ProbeChecks.brs').decode()
                     self.assertIn(f'sub run{name}Checks()', source)
                     self.assertIn('profileAssert(', source)
@@ -108,6 +145,8 @@ class ProfileProbeTest(unittest.TestCase):
             }
             assert.throws(() => assertPackageEntries([...base, 'source/UserProfileScopeProbeChecks.brs']), /probe/);
             assert.throws(() => assertPackageEntries([...base, 'source/UserProfileScopeStoreProbeChecks.brs']), /probe/);
+            assert.throws(() => assertPackageEntries([...base, 'source/UserProfilePreferenceNavigationProbeChecks.brs']), /probe/);
+            assert.throws(() => assertPackageEntries([...base, 'profile-settings-probe.json']), /probe/);
             for (const name of ['profile-probe-config.json', 'profile-wire-fixture.json', 'profile-registry-fixtures.json', 'profile-recovery-probe.json', 'components/UserProfileProbe.brs', 'source/UserProfileRegistryProbe.brs', 'components/UserProfileDialogProbe.brs', 'source/UserProfileModelProbeChecks.brs', 'source/UserProfileStoreProbeChecks.brs']) {
               assert.throws(() => assertPackageEntries([...base, name]), /probe/);
             }

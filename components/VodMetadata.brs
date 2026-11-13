@@ -10,6 +10,7 @@ end sub
 
 function createTmdbTask(operation as string, item as object) as object
     task = CreateObject("roSGNode", "TmdbTask")
+    tagTaskForCurrentUser(task)
     task.baseUrl = m.top.config.baseUrl
     task.apiKey = m.top.config.apiKey
     task.accountId = m.top.config.accountId

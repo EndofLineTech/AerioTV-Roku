@@ -293,6 +293,7 @@ sub requestLogos()
     if ids.count() = 0 then return
     m.logoAccepted = {}
     m.logoTask = CreateObject("roSGNode", "LogoCacheTask")
+    tagTaskForCurrentUser(m.logoTask)
     m.logoTask.baseUrl = m.base
     m.logoTask.apiKey = m.key
     m.logoTask.ids = ids
