@@ -91,6 +91,7 @@ def build(output, base_url, registry=False, model_store=False):
         package.write(ROOT / 'source/UserProfileCredential.brs', 'source/UserProfileCredential.brs')
         package.write(ROOT / 'source/UserProfileManagementPolicy.brs', 'source/UserProfileManagementPolicy.brs')
         package.write(ROOT / 'source/UserProfileSwitch.brs', 'source/UserProfileSwitch.brs')
+        package.write(ROOT / 'source/UserProfileOwnSignIn.brs', 'source/UserProfileOwnSignIn.brs')
         package.write(ROOT / 'source/UserProfileChildAccess.brs', 'source/UserProfileChildAccess.brs')
         package.write(ROOT / 'source/SettingsModel.brs', 'source/SettingsModel.brs')
         package.write(ROOT / 'source/GuideModel.brs', 'source/GuideModel.brs')
@@ -125,6 +126,20 @@ def build(output, base_url, registry=False, model_store=False):
             switch_checks = (ROOT / 'tests/UserProfileSwitch.test.brs').read_text().split('sub check(', 1)[0]
             switch_checks = switch_checks.replace('sub main()', 'sub runUserProfileSwitchChecks()').replace('check(', 'profileAssert(')
             package.writestr('source/UserProfileSwitchProbeChecks.brs', switch_checks)
+            own_login_checks = (ROOT / 'tests/UserProfileOwnSignIn.test.brs').read_text().split('sub check(', 1)[0]
+            own_login_checks = own_login_checks.replace('sub main()', 'sub runUserProfileOwnSignInChecks()').replace('check(', 'profileAssert(')
+            own_login_checks = own_login_checks.replace('m.profileOwnSignInSettingsDecoder = function(raw as string) as dynamic\n        return ParseJson(raw)\n    end function', 'm.profileOwnSignInSettingsDecoder = invalid')
+            own_login_checks = own_login_checks.replace('    print "ALL TESTS PASSED"', '''    registry = ownSignInRegistry(entry, store)
+    rawSettings = registry.read("settingsV1")
+    rawSettings = left(rawSettings, len(rawSettings) - 1) + "," + chr(34) + "futureDouble" + chr(34) + ":1.2345678901234567," + chr(34) + "futureIntegralDouble" + chr(34) + ":3.0}"
+    registry.write("settingsV1", rawSettings)
+    saved = commitUserProfileOwnSignIn(registry, entry, store, b.id, result, 100, nonce, nonce)
+    precisionSettings = ParseJson(registry.read("settingsV1"), "d")
+    profileAssert(saved.ok and precisionSettings["futureDouble"] = ParseJson("1.2345678901234567", "d"), "own user-ID migration round-trips unknown binary64 settings without shortening")
+    numericKind = type(precisionSettings["futureIntegralDouble"])
+    profileAssert(numericKind = "Double" or numericKind = "roDouble" or numericKind = "Float" or numericKind = "roFloat", "own user-ID migration preserves unknown integral-floating JSON number kind")
+    print "ALL TESTS PASSED"''')
+            package.writestr('source/UserProfileOwnSignInProbeChecks.brs', own_login_checks)
             child_checks = (ROOT / 'tests/UserProfileChildAccess.test.brs').read_text().split('sub check(', 1)[0]
             child_checks = child_checks.replace('sub main()', 'sub runUserProfileChildAccessChecks()').replace('check(', 'profileAssert(')
             package.writestr('source/UserProfileChildAccessProbeChecks.brs', child_checks)
@@ -147,6 +162,7 @@ def build(output, base_url, registry=False, model_store=False):
             package.writestr('source/UserProfileCredentialProbeChecks.brs', 'sub runUserProfileCredentialChecks()\nend sub\n')
             package.writestr('source/UserProfileManagementPolicyProbeChecks.brs', 'sub runUserProfileManagementPolicyChecks()\nend sub\n')
             package.writestr('source/UserProfileSwitchProbeChecks.brs', 'sub runUserProfileSwitchChecks()\nend sub\n')
+            package.writestr('source/UserProfileOwnSignInProbeChecks.brs', 'sub runUserProfileOwnSignInChecks()\nend sub\n')
             package.writestr('source/UserProfileChildAccessProbeChecks.brs', 'sub runUserProfileChildAccessChecks()\nend sub\n')
             package.writestr('source/SettingsChildProbeChecks.brs', 'sub runSettingsChildModelChecks()\nend sub\n')
             package.writestr('source/UserProfileModelProbeChecks.brs', 'sub runUserProfileModelChecks()\nend sub\nsub testProfileNativeNames()\nend sub\n')

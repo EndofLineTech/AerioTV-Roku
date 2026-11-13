@@ -233,3 +233,27 @@ and refuses a same-ID/different-name or missing-name response. Legacy default
 setup retains its explicit known account expectation. This corrects holder
 selection; it does not complete the non-default refusal prompt, own-sign-in form,
 or unavailable Child lifecycle, which remain separately gated work.
+
+## Own-sign-in storage groundwork (not a sign-in UI)
+
+`UserProfileOwnSignIn` separates password recovery from validating a saved key.
+For an existing non-default profile it accepts only the saved username (case
+insensitive), allowing a recreated server user to have a new integer ID. It
+retains the local UUID, PIN and claimed metadata, refuses collisions with another
+live profile, and never activates the target. Default and address-held recovery
+remain explicitly refused until known-default identity and host tags are ready.
+
+The storage commit rechecks the selected connection, exact roster and UI nonce.
+Its single transaction replaces only the own key and moves that user's existing
+preference blob to the new account scope, preserving other accounts and unknown
+settings. Conflicting destination data and corrupt settings refuse without
+overwriting either scope; absent settings stay absent. Native parsing uses the
+OS 14.6 precision option and the strict serializer, not a lossy FormatJson rewrite
+of unknown floating settings. Failed Flush restores the old ID, key and data.
+
+This is not enabled recovery: the actual form, target PIN ticket lifecycle,
+early own-key roster read, outgoing retirement, runtime scope adoption, other
+scoped cache/progress handling and active Child recovery still need integration.
+Changed rows also refuse regressed clocks. The same check now protects existing
+rename/avatar/role/reorder plans, including every affected reorder row; no-op
+claims keep their existing newer stamp (`AerioTV-Roku-xpn`).
