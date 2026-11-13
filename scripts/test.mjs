@@ -58,6 +58,7 @@ suites.unshift('ProfileSetupFence');
 suites.unshift('UserProfileOwnSignIn');
 suites.unshift('ProfileOwnSignInNavigation');
 suites.unshift('UserProfileAddressPolicy');
+suites.unshift('UserProfileAddressStore');
 suites.unshift('UserProfileStore');
 suites.unshift('StartupBeaconModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
@@ -126,6 +127,7 @@ for (const suite of suites) {
     ...(['UserProfileManagementPolicy', 'ProfileAdultPinNavigation', 'ProfileManagementNavigation', 'UserProfileSwitch', 'UserProfileOwnSignIn'].includes(suite) ? ['source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'UserProfileOwnSignIn' ? ['source/UserProfileOwnSignIn.brs', 'source/UserProfileAddressPolicy.brs', 'source/StrictJson.brs'] : []),
     ...(suite === 'UserProfileAddressPolicy' ? ['source/UserProfileAddressPolicy.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(suite === 'UserProfileAddressStore' ? ['source/UserProfileAddressStore.brs', 'source/UserProfileAddressPolicy.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'ProfileOwnSignInNavigation' ? ['components/ProfileOwnSignInNavigation.brs', 'components/SettingsNavigation.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/UserProfileScope.brs', 'source/UserProfileSwitch.brs', 'source/UserProfileOwnSignIn.brs', 'source/UserProfileAddressPolicy.brs', 'source/StrictJson.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'UserProfileSwitch' ? ['source/UserProfileSwitch.brs', 'source/UserProfileScope.brs', 'source/StrictJson.brs'] : []),
     ...(suite === 'UserProfileChildAccess' ? ['source/UserProfileChildAccess.brs', 'source/UserProfileStore.brs'] : []),

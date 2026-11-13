@@ -251,7 +251,7 @@ overwriting either scope; absent settings stay absent. Native parsing uses the
 OS 14.6 precision option and the strict serializer, not a lossy FormatJson rewrite
 of unknown floating settings. Failed Flush restores the old ID, key and data.
 
-This is not enabled recovery: the actual form, target PIN ticket lifecycle,
+At this storage-only stage, the actual form, target PIN ticket lifecycle,
 early own-key roster read, outgoing retirement, runtime scope adoption, other
 scoped cache/progress handling and active Child recovery still need integration.
 Changed rows also refuse regressed clocks. The same check now protects existing
@@ -272,12 +272,14 @@ preference move. The fixture verifies no mixed API-key/bearer authentication,
 no target lineup requests during verify-only sign-in, unchanged default key and
 active session, and no autoplay. Its registry/cache are isolated and its package
 and source fixture are rejected by shipping guards. This qualifies the Task and
-storage boundary, not the still-unimplemented native form/activation lifecycle.
+storage boundary; subsequent sections qualify the form separately, not automatic
+activation or the complete lifecycle.
 
 ## Internal inactive own-sign-in form (not publicly enabled)
 
-`ProfileOwnSignInNavigation` now hosts the native form for an inactive,
-non-default, non-address-held full-access target. Its own PIN is required before
+`ProfileOwnSignInNavigation` hosts the native form for an inactive,
+non-address-held full-access target, including the same-identity default under
+the narrower admission described below. Its own PIN is required before
 credentials appear; that ticket belongs to this form and never activates a
 profile. The username is prefilled, password entry uses the secured standard
 keyboard, and passwords are masked then scrubbed on submit/cancel. Stale nodes,
@@ -289,8 +291,8 @@ are fenced without retiring the credential Task's authenticated session. Back
 cancels the owned request and returns only to the unchanged caller. A successful
 inactive recovery adopts the complete migrated preference root, not just the
 roster; otherwise A's next preference write could resurrect B's old scope.
-There is no public entry and no automatic switch or playback. Active/default/
-address-held/Child recovery and the complete transition/sync lifecycle remain
+There is no public entry and no automatic switch or playback. Active-profile,
+default-replacement, address-held and Child recovery plus the complete transition/sync lifecycle remain
 unfinished.
 
 For `AerioTV-Roku-6qo`, scoped settings commits copy only the root/accounts
@@ -398,3 +400,24 @@ recovers A through its numeric PIN and secured keyboard; it checks unchanged B
 authority/key, exact settings bytes, trust metadata, credential errors, PIN
 cancellation and real Back during delayed `/me/`. This is not a qualification of
 default replacement, Child routing or held/active recovery.
+
+## Atomic manual address-edit storage (not handler activation)
+
+`UserProfileAddressStore` stages the manual URL edit, frozen snapshot and
+non-default holds, default selection on an origin change, Remember-off and saved
+slot/profile-key deletion in one registry transaction. Legacy URL and fallback
+metadata share that Flush too. The immutable outgoing session, exact connection
+and roster snapshots, full-access role and byte ceilings are rechecked before
+writes; failures restore prior values or require covered recovery if rollback
+fails. A path/case/default-port-only edit still clears stored keys but creates
+no holds or profile switch. A keyless holder is held just like a keyed one.
+
+No production URL handler invokes this yet. It leaves settings bytes untouched
+and returns a Child-default destination marker rather than opening setup. The
+controller must fence/retire old traffic and memory credentials, handle data
+scope anchors/Copy, matched setup updates and Child routing before adopting the
+new connection; no owner app URL was changed to qualify this storage boundary.
+The shared native suite passes 719 assertions, including actual private-registry
+URL/hold/key roundtrips with a long-integer snapshot and explicit unknown tag,
+plus write/Flush/rollback, stale-session/connection/roster, caller-immutability,
+keyless-holder, legacy-metadata and Child-default/active-Child storage cases.

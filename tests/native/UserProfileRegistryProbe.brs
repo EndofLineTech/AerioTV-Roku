@@ -145,6 +145,8 @@ end sub
 sub profileProbeAddressRegistry(section as object, previous as object, slot as string)
     snapshot = {}
     snapshot[userProfileStoreKey(slot)] = section.read(userProfileStoreKey(slot))
+    snapshot["connectionsV1"] = section.read("connectionsV1")
+    snapshot[connectionRegistryKey(slot)] = section.read(connectionRegistryKey(slot))
     recorded = userProfileRecordDefaultIdentity(previous, false)
     saved = commitUserProfileStore(section, previous, recorded.store, {}, false)
     profileAssert(saved.ok, "native-registry-recorded-default-identity-and-profile-tag")
@@ -166,6 +168,15 @@ sub profileProbeAddressRegistry(section as object, previous as object, slot as s
             saved = commitUserProfileStore(section, loaded, recovered.store, {}, false)
             loaded = loadUserProfileStore(section, slot)
             profileAssert(saved.ok and not loaded.profiles[1].addressHeld and loaded.profiles[1].doesExist("defaultIdentityTag") and loaded.profiles[1]["defaultIdentityTag"] = invalid, "native-registry-own-verification-keeps-unknown-tag-explicit")
+            connections = {schema: 1, selected: slot, entries: [entry]}
+            section.write("connectionsV1", FormatJson(connections))
+            section.flush()
+            captured = userProfileSessionScope(entry, loaded.active, loaded.profiles[0].userId.toStr(), "address-fixture", "00000000-0000-4000-8000-000000000099")
+            saved = commitUserProfileAddressChange(section, connections, loaded, "https://next.test", captured, captured)
+            finalStore = loadUserProfileStore(section, slot)
+            finalEntry = connectionStoreEntry(loadConnectionStore(section), slot)
+            profileAssert(saved.ok and finalEntry.url = "https://next.test" and finalStore.profiles[1].addressHeld and not section.exists(connectionRegistryKey(slot)), "native-registry-address-transaction-saves-URL-holds-and-key-retirement-together")
+            profileAssert(finalStore["addressChangeSnapshot"]["userId"] = 2147483648& and finalStore.profiles[1]["defaultIdentityTag"] = invalid, "native-registry-address-transaction-keeps-frozen-long-ID-and-explicit-unknown-tag")
         end if
     end if
     restored = userProfileRegistryTransaction(section, snapshot)
