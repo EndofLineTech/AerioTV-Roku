@@ -35,7 +35,15 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertIn('beginUserProfileOwnSignIn(target.id)', source)
                 self.assertIn('"cancel-ready"', source)
                 self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
-        script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; for (const entry of ['profile-own-signin-probe.json','source/ProfileOwnSignInFixture.brs','source/ProfileOwnSignInFormFixture.brs']) assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt',entry]), /probe/);"
+            probe.build(output, normal, 'SyntheticOwnSignInSection', 'http://127.0.0.1:1234', form=True, default_form=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('"AerioTV"', source)
+                self.assertIn('beginUserProfileSwitch(b.id)', source)
+                self.assertIn('expectedUserId = "7"', source)
+                self.assertNotIn('OWN_PROBE_PIN_HASH', source)
+                self.assertIn('"cancel-ready"', source)
+        script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; for (const entry of ['profile-own-signin-probe.json','source/ProfileOwnSignInFixture.brs','source/ProfileOwnSignInFormFixture.brs','source/ProfileDefaultOwnSignInFormFixture.brs']) assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt',entry]), /probe/);"
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)
 
     def test_management_application_probe_is_private_and_cannot_ship(self):

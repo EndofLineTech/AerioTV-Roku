@@ -1,4 +1,4 @@
-' Internal inactive-profile recovery only. Public picker, active/Child/default
+' Internal inactive-profile recovery only. Public picker, active/Child
 ' and address-held recovery remain fenced until their transition rules land.
 function beginUserProfileOwnSignIn(targetId as string) as boolean
     if m.userProfileRecoveryRequired = true then return false
@@ -18,7 +18,10 @@ function beginUserProfileOwnSignIn(targetId as string) as boolean
         if profile.id = targetId then target = profile
     end for
     if target = invalid then return false
-    if target.isDefault or target.addressHeld or not userProfileFullAccess(target.role) then return false
+    if target.addressHeld or not userProfileFullAccess(target.role) then return false
+    if target.isDefault
+        if not userProfileDefaultOwnIdentityMatches(entry, store, {id: target.userId, username: target.username}) then return false
+    end if
     m.profileOwnSignInNonce = CreateObject("roDeviceInfo").getRandomUUID()
     m.profileOwnSignInContext = {nonce: m.profileOwnSignInNonce, connection: copyJson(entry), store: store, target: target, scope: copyJson(m.activeUserScope), page: m.page, guideActive: m.guide.active, covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, unlock: m.profileUnlockGrant, username: target.username, password: ""}
     m.global.profileownsigninpending = true
@@ -144,6 +147,9 @@ sub onProfileOwnSignInChoice(event as object)
         task.verifyOnly = true
         task.expectedUsername = context.target.username
         task.expectedUserId = ""
+        ' Default recovery is narrower than recreated non-default recovery:
+        ' only the existing holder is qualified, even with legacy name-only data.
+        if context.target.isDefault then task.expectedUserId = context.target.userId.toStr()
         task.apiKey = ""
         task.username = context.username.trim()
         task.password = context.password

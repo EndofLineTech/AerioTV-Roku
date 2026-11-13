@@ -1,5 +1,25 @@
 sub main()
     ownFormFixture()
+    defaultId = m.userProfileStore.active
+    m.userProfileStore.active = m.fixtureTarget
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.userProfileStore)
+    entry = m.connectionStore.entries[0]
+    m.activeUserScope = userProfileSessionScope(entry, m.fixtureTarget, 8, "generation-b", "00000000-0000-4000-8000-000000000091")
+    m.global.activeusersession = m.activeUserScope.sessionId
+    check(beginUserProfileOwnSignIn(defaultId), "inactive full-access default opens its known-holder form without activating it")
+    m.profileOwnSignInContext.password = "synthetic-default-password"
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 2))
+    check(m.profileOwnSignInTask.expectedUserId = "7" and m.profileOwnSignInTask.expectedUsername = "Alice", "default credential Task binds both the known username and existing default user ID")
+    task = m.profileOwnSignInTask
+    onProfileOwnSignInResult(ownFormEvent(task, {ok: true, apiKey: "recovered-default-key", verifiedUser: {id: 7, username: "ALICE", user_level: 1}}))
+    check(m.registry.read("connKey_slot-a") = "recovered-default-key" and m.userProfileStore.active = m.fixtureTarget and m.activeUserScope.accountId = "8", "default form saves only its slot key and returns to unchanged outgoing B")
+    ownFormFixture()
+    defaultId = m.userProfileStore.active
+    m.userProfileStore.active = m.fixtureTarget
+    m.userProfileStore = setCanonicalPreference(m.userProfileStore, "knownDefault", {userId: 70, username: "DifferentDefault"})
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.userProfileStore)
+    check(not beginUserProfileOwnSignIn(defaultId), "default form cannot open for a row that conflicts with the frozen known-default identity")
+    ownFormFixture()
     check(beginUserProfileOwnSignIn(m.fixtureTarget), "inactive own-profile recovery opens its scoped form")
     check(m.profileOwnSignInDialog.title = "Sign in to Dispatcharr" and instr(1, m.profileOwnSignInDialog.buttons[0], "Bob") > 0, "form identifies only its own prefilled username")
     onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 1))
@@ -100,6 +120,8 @@ sub ownFormFixture()
     m.profileOwnSignInContext = invalid
     m.profileOwnSignInDialog = invalid
     m.profileOwnSignInTask = invalid
+    m.profileSessionKeys = {}
+    m.fixtureNotice = ""
     m.pinRequested = false
     m.factorySequence = 0
     values = {}
@@ -146,6 +168,10 @@ function beginProfilePinGate(profile as object, continuation as string, nonce as
     m.pinRequested = continuation = "own-signin" and nonce = m.profileOwnSignInNonce
     return true
 end function
+
+sub showNotice(message as string)
+    m.fixtureNotice = message
+end sub
 
 sub check(passed as boolean, message as string)
     if not passed then print "FAIL: "; message : stop

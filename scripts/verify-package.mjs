@@ -20,7 +20,7 @@ export function assertPackageEntries(entries) {
   if (entries.includes('profile-pin-probe.json')) throw new Error('Package contains synthetic profile PIN probe');
   if (entries.includes('profile-management-probe.json')) throw new Error('Package contains synthetic profile management probe');
   if (entries.includes('profile-own-signin-probe.json')) throw new Error('Package contains synthetic own-profile sign-in probe');
-  if (entries.some(entry => /(^|\/)ProfileOwnSignIn(?:Form)?Fixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic own-profile sign-in probe');
+  if (entries.some(entry => /(^|\/)Profile(?:Default)?OwnSignIn(?:Form)?Fixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic own-profile sign-in probe');
   const probe = entries.find(entry => /(^|\/)(?:fixture-materials\.json|apply-cases\.json|profile-probe-config\.json|profile-wire-fixture\.json|profile-registry-fixtures\.json|profile-recovery-probe\.json|profile-settings-probe\.json|request-gate-probe\.json|RequestGateProbe[^/]*|UserProfile(?:Registry|Dialog|Model|Store|Avatar|Lifecycle|Forget|Navigation|PreferenceNavigation|Removal|Scope|ScopeStore)?Probe[^/]*|UserProfileDialogMain\.brs|UiAudit[^/]*|SetupReceiverProbe[^/]*|SetupReceiverFixtureEntropy\.brs|SetupApply(?:Probe|Fixture)[^/]*)$/i.test(entry));
   if (probe) throw new Error(`Package contains synthetic setup probe: ${probe}`);
   if (entries.some(entry => /(^|\/)DispatcharrSync(?:Key|Roster|Envelope|Merge|PullStore)Probe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic sync probe');

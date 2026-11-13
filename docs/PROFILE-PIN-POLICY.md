@@ -380,7 +380,7 @@ existing ID/name and known-default expectation both match. Recorded ID/name
 takes precedence over the slot's default-written username, then the default
 record's username; username-only fallbacks do not invent an authoritative ID.
 Active-default recovery, default identity replacement, held recovery and Child
-default routing remain refused. The native form still refuses default targets.
+default routing remain refused.
 
 Successful recovery updates the slot key, never a non-default key. Remember-off
 deletes the slot key; legacy recovery clears the old `apiKey` fallback in the
@@ -388,3 +388,13 @@ same transaction. Same-ID recovery leaves settings bytes and active selection
 unchanged, retains trust metadata and preserves the outgoing remembered key.
 Failed Flush restores the prior values. This does not activate a default or
 complete its Task/form/runtime lifecycle.
+
+The internal native form now admits that same narrow inactive default holder.
+It binds the credential Task to both the existing default ID and its known
+username, whereas recreated non-default users remain username-bound. There is
+still no public entry, automatic switch or active-default recovery. A separate
+private native fixture first switches A→B through the real controller, then
+recovers A through its numeric PIN and secured keyboard; it checks unchanged B
+authority/key, exact settings bytes, trust metadata, credential errors, PIN
+cancellation and real Back during delayed `/me/`. This is not a qualification of
+default replacement, Child routing or held/active recovery.
