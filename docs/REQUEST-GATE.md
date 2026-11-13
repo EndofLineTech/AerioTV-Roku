@@ -102,4 +102,13 @@ No failure was converted into a pass or retried away. `AerioTV-Roku-a4n` tracks
 diagnosis and renewed media acceptance. Sanitized decoder text, HTTP method
 and Range metadata are captured. Video-only runs have a separate report and
 never replace full-suite acceptance. The exact prior app was restored after
-every failed run. No device reboot/reset was performed for this diagnosis.
+every failed run. No reset or rekey was performed.
+
+After the owner explicitly approved a restart, developer-console remote key
+simulation performed the system-restart shortcut; uptime reset confirmed it.
+The fresh video-only probe then passed, followed by the complete 14-group
+request/App Data/media matrix, including actual native playback and the
+61-second slow recheck. The exact prior app was restored after both runs.
+Decoder admission is recovered; the underlying firmware/resource cause is not
+established, so `a4n` retains the diagnosis history rather than claiming an app
+code fix or permanent cure.

@@ -48,7 +48,9 @@ result. The full matrix, including existing media fencing and slow recheck,
 passed with exact prior-app restoration at the earlier key/discovery checkpoint.
 Current requalification passes all read/gate operations but the native H.264
 fixture now fails decoder admission, also in a fresh video-only Scene. This is
-tracked as `AerioTV-Roku-a4n`; no renewed all-path media pass is claimed.
+tracked as `AerioTV-Roku-a4n`. After an owner-approved, uptime-confirmed restart,
+both the fresh video probe and complete 14-group suite passed again with exact
+prior-app restoration. No permanent firmware/resource fix is claimed.
 None of this is a claim
 of measured production-server limits, sender interoperability, completed roster
 import, sync writes or public profile switching.
