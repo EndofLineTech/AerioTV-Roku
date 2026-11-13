@@ -1,4 +1,46 @@
 function settingsHubEntries(page as string, model as object) as object
+    if settingsHubRestricted(model)
+        if not settingsHubPageAllowed(model, page) then page = ""
+        if page = "" then return [
+            {title: "Live TV", page: "live"}
+            {title: "Player", page: "player"}
+            {title: "Appearance", page: "appearance"}
+            {title: "About", page: "about"}
+            {title: "Manage Profiles", page: "manage-profiles"}
+        ]
+        if page = "manage-profiles" then return [{title: "Manage Profiles", action: "profiles-manage"}]
+    end if
+    return settingsHubAllEntries(page, model)
+end function
+
+function settingsHubRestricted(model as dynamic) as boolean
+    if type(model) <> "roAssociativeArray" then return false
+    role = model.userRole
+    if role = invalid then return false ' Legacy/direct-provider models.
+    if type(role) <> "String" and type(role) <> "roString" then return true
+    return role <> "admin" and role <> "user"
+end function
+
+function settingsHubPageAllowed(model as dynamic, page as string) as boolean
+    if not settingsHubRestricted(model) then return true
+    for each allowed in ["", "live", "player", "appearance", "about", "whatsNew", "licenses", "manage-profiles"]
+        if page = allowed then return true
+    end for
+    return false
+end function
+
+function settingsHubActionAllowed(model as dynamic, action as dynamic) as boolean
+    if not settingsHubRestricted(model) then return true
+    if model.userRole <> "child" then return false
+    if action = invalid then return true ' A setting value, checked separately.
+    if type(action) <> "String" and type(action) <> "roString" then return false
+    for each allowed in ["profiles-manage", "resetAppearance", "markWhatsNew"]
+        if action = allowed then return true
+    end for
+    return false
+end function
+
+function settingsHubAllEntries(page as string, model as object) as object
     if page = ""
         entries = [{title: "Connection", page: "connection"}, {title: "Live TV", page: "live"}, {title: "Player", page: "player"}]
         if model <> invalid
@@ -125,6 +167,15 @@ function settingsHubValue(model as object, scope as string, key as string) as dy
 end function
 
 function settingsHubChangeAllowed(model as object, scope as string, key as string, value as dynamic) as boolean
+    valueType = type(value)
+    primitive = false
+    for each allowedType in ["String", "roString", "Boolean", "roBoolean", "Integer", "roInt", "roInteger", "LongInteger", "roLongInteger", "Float", "roFloat", "Double", "roDouble"]
+        if valueType = allowedType then primitive = true
+    end for
+    if not primitive then return false
+    if settingsHubRestricted(model)
+        if model.userRole <> "child" then return false
+    end if
     if scope = "device" and key = "customAccent"
         if GetInterface(value, "ifString") = invalid then return false
         return value = "" or CreateObject("roRegex", "^[0-9A-Fa-f]{6}$", "").isMatch(value)
@@ -133,7 +184,19 @@ function settingsHubChangeAllowed(model as object, scope as string, key as strin
         for each entry in settingsHubEntries(page, model)
             if entry.scope = scope and entry.key = key
                 for each allowed in entry.values
-                    if allowed = value then return true
+                    sameKind = GetInterface(allowed, "ifString") <> invalid and GetInterface(value, "ifString") <> invalid
+                    if (type(allowed) = "Boolean" or type(allowed) = "roBoolean") and (valueType = "Boolean" or valueType = "roBoolean") then sameKind = true
+                    numericTypes = ["Integer", "roInt", "roInteger", "LongInteger", "roLongInteger", "Float", "roFloat", "Double", "roDouble"]
+                    allowedNumeric = false
+                    valueNumeric = false
+                    for each numericType in numericTypes
+                        if type(allowed) = numericType then allowedNumeric = true
+                        if valueType = numericType then valueNumeric = true
+                    end for
+                    if allowedNumeric and valueNumeric then sameKind = true
+                    if sameKind
+                        if allowed = value then return true
+                    end if
                 end for
             end if
         end for

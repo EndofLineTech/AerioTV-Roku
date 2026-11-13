@@ -27,6 +27,7 @@ export function assertPackageEntries(entries) {
   if (entries.some(entry => /(^|\/)UserProfileManagementPolicyProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic management policy probe');
   if (entries.some(entry => /(^|\/)UserProfileSwitchProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic switch probe');
   if (entries.some(entry => /(^|\/)UserProfileChildAccessProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic Child access probe');
+  if (entries.some(entry => /(^|\/)SettingsChildProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic Child settings probe');
 }
 
 export function assertShippingManifest(manifest) {

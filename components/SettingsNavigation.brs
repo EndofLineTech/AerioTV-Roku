@@ -2,8 +2,24 @@ sub refreshSettingsHub()
     info = CreateObject("roAppInfo")
     version = info.getValue("major_version") + "." + info.getValue("minor_version") + "." + info.getValue("build_version")
     model = {account: m.accountIdentity, version: version, device: m.devicePreferences, guide: m.accountPreferences.guide, vodEnabled: m.accountPreferences.vodEnabled <> false, vodTmdbEnabled: m.accountPreferences.vodTmdbEnabled = true, startupBehavior: m.accountPreferences.startupBehavior, dvrPreRollMinutes: m.accountPreferences.dvrPreRollMinutes, dvrPostRollMinutes: m.accountPreferences.dvrPostRollMinutes, whatsNewVersion: m.accountPreferences.whatsNewVersion, movies: m.capabilities.movies, series: m.capabilities.series, catchup: m.capabilities.catchup, dvr: m.capabilities.dvr}
+    model.userRole = currentUserSettingsRole()
     m.settingsHub.model = userViewEvent(model, currentUserSessionId())
 end sub
+
+function currentUserSettingsRole() as string
+    if m.scopedPreferencesRequired <> true then return "user"
+    if type(m.userProfileStore) <> "roAssociativeArray" or type(m.activeUserScope) <> "roAssociativeArray" then return "restricted"
+    if m.userProfileStore.readOnly = true or type(m.userProfileStore.profiles) <> "roArray" then return "restricted"
+    if m.userProfileStore.active <> m.activeUserScope.profileId or m.activeUserScope.playlistId <> m.selectedConnectionId then return "restricted"
+    for each profile in m.userProfileStore.profiles
+        if profile.id = m.userProfileStore.active
+            if type(profile.userId) <> "Integer" and type(profile.userId) <> "roInt" and type(profile.userId) <> "roInteger" and type(profile.userId) <> "LongInteger" and type(profile.userId) <> "roLongInteger" then return "restricted"
+            if profile.userId.toStr() <> m.activeUserScope.accountId then return "restricted"
+            if profile.role = "user" or profile.role = "admin" or profile.role = "child" then return profile.role
+        end if
+    end for
+    return "restricted"
+end function
 
 sub openSettingsHub()
     if userProfileGateClosed() then return
@@ -28,6 +44,12 @@ sub onSettingsHubSelection(event as object)
     item = event.getData()
     if not userEventCurrent(item) then return
     if item.account <> m.accountIdentity then return
+    roleModel = {userRole: currentUserSettingsRole()}
+    if not settingsHubActionAllowed(roleModel, item.action) then return
+    if item.action = "profiles-manage"
+        openUserProfileManagement()
+        return
+    end if
     if item.action = "connection"
         closeSettingsHub()
         showConnection()
@@ -65,7 +87,12 @@ sub onSettingsHubSelection(event as object)
         refreshSettingsHub()
         return
     end if
-    allowed = settingsHubChangeAllowed(m.settingsHub.model, item.scope, item.key, item.value)
+    if type(item.scope) <> "String" and type(item.scope) <> "roString" then return
+    if type(item.key) <> "String" and type(item.key) <> "roString" then return
+    admissionModel = m.settingsHub.model
+    if type(admissionModel) <> "roAssociativeArray" then return
+    admissionModel = setCanonicalPreference(admissionModel, "userRole", currentUserSettingsRole())
+    allowed = settingsHubChangeAllowed(admissionModel, item.scope, item.key, item.value)
     if not allowed then return
     if item.scope = "device"
         before = copyJson(m.devicePreferences)

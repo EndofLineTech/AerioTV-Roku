@@ -45,6 +45,15 @@ sub renderSettings()
     if m.top.model = invalid then return
     focused = m.list.itemFocused
     model = m.top.model
+    refreshSettingsRailModel(model)
+    if not settingsHubPageAllowed(model, m.page)
+        m.page = ""
+        m.choice = invalid
+        m.stack = []
+    end if
+    if settingsHubRestricted(model) and m.choice <> invalid
+        if m.choice.action = "remoteSlot" or m.choice.action = "resetRemoteMapConfirm" then m.choice = invalid
+    end if
     if m.choice <> invalid and m.choice.action <> "remoteSlot" and m.choice.action <> "resetRemoteMapConfirm" and m.choice.action <> "resetAppearanceConfirm"
         currentValue = settingsHubValue(model, m.choice.scope, m.choice.key)
         if not settingsHubChangeAllowed(model, m.choice.scope, m.choice.key, currentValue)
@@ -59,6 +68,7 @@ sub renderSettings()
     m.heading.text = "Settings"
     titles = {live: "Live TV", player: "Player", movies: "Movies & TV Shows", dvr: "DVR", remote: "Remote control", remotePlayer: "While watching", remoteGuide: "In the TV Guide", appearance: "Appearance", general: "General", connection: "Connection", about: "About", whatsNew: "What's New", licenses: "License notices"}
     if titles.doesExist(m.page) then m.heading.text = titles[m.page]
+    if m.page = "manage-profiles" then m.heading.text = "Manage Profiles"
     m.note.text = "Changes are saved on this Roku. Back returns to the previous page without moving the guide."
     if m.page = "player" then m.note.text = "Archive skip uses whole minutes. Live startup retries apply on the next tune; each Dispatcharr attempt may wait up to 60 seconds."
     if m.page = "appearance" then m.note.text = "Appearance changes apply on this Roku without interrupting playback. Reset restores the default colors."
@@ -66,6 +76,7 @@ sub renderSettings()
     if m.page = "movies" then m.note.text = "Library preferences apply only to this account. Optional artwork requires a configured TMDB key."
     if m.page = "dvr" then m.note.text = "Recording padding applies to new schedules for this account."
     if m.page = "about" then m.note.text = "This is an independent Roku client. License and attribution text is included in the installed package."
+    if m.page = "manage-profiles" then m.note.text = "Switch profiles, Admin PIN. Enter a PIN from an Admin or Standard profile to switch profiles."
     if m.page = "whatsNew" then m.note.text = "Release notes describe implemented Roku features. Marking read only dismisses this version's startup notice."
     if m.page = "licenses" then m.note.text = "License and attribution notices included with this Roku package. Back returns to About."
     m.items = []
@@ -161,6 +172,8 @@ sub selectSetting(index as integer)
         goBackSettings()
     else if item.action = "connection"
         m.top.selection = userViewEvent({account: m.top.model.account, action: "connection"}, m.userSessionId)
+    else if item.action = "profiles-manage"
+        m.top.selection = userViewEvent({account: m.top.model.account, action: "profiles-manage"}, m.userSessionId)
     else if item.action = "customAccent"
         m.accentDialog = CreateObject("roSGNode", "StandardKeyboardDialog")
         m.accentDialogSession = m.userSessionId

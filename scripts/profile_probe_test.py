@@ -73,7 +73,7 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)
         script = script.replace('DispatcharrSyncKeyProbeChecks', 'DispatcharrSyncRosterProbeChecks')
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)
-        for name in ['DispatcharrSyncEnvelopeProbeChecks', 'DispatcharrSyncMergeProbeChecks', 'DispatcharrSyncPullStoreProbeChecks', 'UserProfilePinPolicyProbeChecks', 'UserProfileCredentialProbeChecks', 'UserProfileManagementPolicyProbeChecks', 'UserProfileSwitchProbeChecks', 'UserProfileChildAccessProbeChecks']:
+        for name in ['DispatcharrSyncEnvelopeProbeChecks', 'DispatcharrSyncMergeProbeChecks', 'DispatcharrSyncPullStoreProbeChecks', 'UserProfilePinPolicyProbeChecks', 'UserProfileCredentialProbeChecks', 'UserProfileManagementPolicyProbeChecks', 'UserProfileSwitchProbeChecks', 'UserProfileChildAccessProbeChecks', 'SettingsChildProbeChecks']:
             probe_script = script.replace('DispatcharrSyncRosterProbeChecks', name)
             subprocess.run(['node', '--input-type=module', '-e', probe_script], cwd=root, check=True, capture_output=True, text=True)
 

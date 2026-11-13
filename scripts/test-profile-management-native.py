@@ -17,7 +17,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False):
     with zipfile.ZipFile(normal) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
@@ -35,6 +35,19 @@ def build(output, normal, section, base, directions=False, switching=False, swit
     if type(m.channels) <> "roArray" then return ""
     if m.channels.count() = 0 then return ""
     return m.channels[0].id
+end function
+'''
+            if child_settings and name == 'components/SettingsHub.xml':
+                body = body.replace(b'</interface>', b'<function name="childSettingsProbe" /></interface>', 1)
+            if child_settings and name == 'components/SettingsHub.brs':
+                body += b'''\nfunction childSettingsProbe(page as string) as object
+    m.page = page
+    renderSettings()
+    pages = []
+    for each entry in settingsHubEntries("", m.top.model)
+        pages.push(entry.page)
+    end for
+    return {page: m.page, pages: pages, role: m.top.model.userRole}
 end function
 '''
             if name == 'components/AerioScene.brs':
@@ -236,6 +249,57 @@ end sub
                             source = source.replace(f'        m.registry.write(userProfileKeyName("slot-a", "00000000-0000-4000-8000-000000000002"), "{key}")\n', '')
                         source = source.replace('preserved: m.registry.read("connKey_slot-a") = "synthetic-a"', 'preserved: not m.registry.exists("connKey_slot-a")')
                         source = source.replace('        m.switchProbeEvidence.stale_a =', '        m.switchProbeEvidence.no_stored = not m.registry.exists("connKey_slot-a") and not m.registry.exists(userProfileKeyName("slot-a", "00000000-0000-4000-8000-000000000002"))\n        m.switchProbeEvidence.stale_a =')
+                if child_settings:
+                    source = source.split('sub onManagementProbeTick()', 1)[0] + '''function childSettingsProbeEvent(action as string) as object
+    return {node: m.settingsHub, value: userViewEvent({account: m.accountIdentity, action: action}, currentUserSessionId()), getRoSGNode: function() as object
+        return m.node
+    end function, getData: function() as object
+        return m.value
+    end function}
+end function
+
+sub onManagementProbeTick()
+    m.managementProbePhase++
+    phase = m.managementProbePhase
+    if phase = 1
+        store = loadUserProfileStore(m.registry, "slot-a")
+        store.profiles[0] = setCanonicalPreference(store.profiles[0], "role", "child")
+        adult = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Synthetic8", user_level: 1}, 1)
+        adult.isDefault = false
+        adult.order = 1
+        adult.pinType = "numbers"
+        adult.pinSalt = string(32, "b")
+        adult.pinHash = userProfilePinHash(adult.pinSalt, "1234")
+        store.profiles.push(adult)
+        m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
+        m.registry.flush()
+        m.userProfileStore = loadUserProfileStore(m.registry, "slot-a")
+        openSettingsHub()
+    else if phase = 2
+        observed = m.settingsHub.callFunc("childSettingsProbe", "connection")
+        m.childSettingsRoot = observed.page = "" and observed.pages.count() = 5 and observed.pages[0] = "live" and observed.pages[1] = "player" and observed.pages[2] = "appearance" and observed.pages[3] = "about" and observed.pages[4] = "manage-profiles" and observed.role = "child"
+        print "[profile-management] "; FormatJson({kind: "child-settings", restricted: m.childSettingsRoot})
+    else if phase = 3
+        onSettingsHubSelection(childSettingsProbeEvent("connection"))
+        m.childSettingsForged = m.page = "settings" and m.profileManagementDialog = invalid
+        print "[profile-management] "; FormatJson({kind: "manage-ready"})
+    else if phase = 4
+        if m.adultPinDialog = invalid then m.managementProbePhase-- : return
+        m.childSettingsProtected = m.adultPinDialog <> invalid and m.profileManagementDialog = invalid and m.profileGateCover.visible
+        print "[profile-management] "; FormatJson({kind: "adult", protected: m.childSettingsProtected, title: m.adultPinDialog.title})
+    else if phase = 5
+        m.adultPinDialog.textEditBox.text = "1234"
+        onAdultProfilePinSubmit(managementProbeEvent(m.adultPinDialog, 0))
+        m.childSettingsManaged = m.profileManagementDialog <> invalid and m.profileManagementChoices.count() = 3
+    else if phase = 6
+        print "[profile-management] "; FormatJson({kind: "cancel-ready"})
+    else if phase = 8
+        m.managementProbeClock.control = "stop"
+        store = loadUserProfileStore(m.registry, "slot-a")
+        print "[profile-management] "; FormatJson({kind: "result", restricted: m.childSettingsRoot, forged: m.childSettingsForged, protected: m.childSettingsProtected, management: m.childSettingsManaged, cancelled: m.profileManagementDialog = invalid and m.profileManagementGrant = invalid, preserved: store.profiles[0].role = "child" and m.registry.read("connKey_slot-a") = "synthetic-a"})
+    end if
+end sub
+'''
                 body = source.encode()
             package.writestr(name, body)
         package.writestr('profile-management-probe.json', json.dumps({'synthetic': True}))
@@ -250,6 +314,7 @@ def main():
     parser.add_argument('--cancel-pin', action='store_true', help='With --switch-pin, cancel the final target PIN before any request is sent')
     parser.add_argument('--reject-active', action='store_true', help='With --switch, qualify profile-owned active-key revocation without default setup fallback')
     parser.add_argument('--remember-off', action='store_true', help='With --switch, use address/slot/profile-qualified session credentials only')
+    parser.add_argument('--child-settings', action='store_true', help='Exercise restricted Settings and its adult-gated management shortcut in a private Child-role fixture')
     args = parser.parse_args()
     if args.switch and args.directions:
         parser.error('--switch and --directions are separate cases')
@@ -261,6 +326,8 @@ def main():
         parser.error('--reject-active requires --switch without --switch-pin')
     if args.remember_off and (not args.switch or args.reject_active):
         parser.error('--remember-off requires --switch without --reject-active')
+    if args.child_settings and (args.switch or args.directions):
+        parser.error('--child-settings is a separate case')
     host, password = os.environ['ROKU_HOST'], os.environ['ROKU_DEV_PASSWORD']
     modules = {}
     for key in ['primitives', 'recovery']:
@@ -309,7 +376,7 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -321,6 +388,13 @@ def main():
         with subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as process:
             for line in process.stdout:
                 output.append(line)
+                if '"kind":"manage-ready"' in line:
+                    captured = subprocess.run(['python3', 'scripts/capture-roku-screenshot.py', '--developer-mode', '--output', str(ROOT / 'out/profile-child-settings.jpg')], cwd=ROOT, capture_output=True, text=True, timeout=45)
+                    report['screenshot'] = captured.returncode == 0
+                    for key in ['Down', 'Down', 'Down', 'Down', 'Right', 'Select']:
+                        request = urllib.request.Request(f'http://{host}:8060/keypress/{key}', data=b'', method='POST')
+                        urllib.request.urlopen(request, timeout=10).close()
+                        time.sleep(0.1)
                 if '"kind":"cancel-ready"' in line:
                     request = urllib.request.Request(f'http://{host}:8060/keypress/Back', data=b'', method='POST')
                     urllib.request.urlopen(request, timeout=10).close()
@@ -343,6 +417,8 @@ def main():
                 report['passed'] = result.returncode == 0 and len(rows) == 3 and all(rows[2].get(key) for key in ['b', 'active_retained', 'default_preserved', 'own_revoked', 'covered', 'no_default_session'])
             if args.remember_off:
                 report['passed'] = report['passed'] and rows[-1].get('no_stored', False)
+        if args.child_settings:
+            report['passed'] = result.returncode == 0 and len(rows) == 5 and all(rows[4].get(key) for key in ['restricted', 'forged', 'protected', 'management', 'cancelled', 'preserved']) and rows[2].get('title') == 'Enter a PIN from an Admin or Standard profile' and report.get('screenshot', False)
         if not report['passed']:
             raise RuntimeError('Native management controller assertions failed')
     finally:
@@ -364,6 +440,8 @@ def main():
                     name = 'profile-switch-active-reject-native.json'
                 if args.remember_off:
                     name = 'profile-switch-memory-native.json'
+            if args.child_settings:
+                name = 'profile-child-settings-native.json'
             (ROOT / 'out' / name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

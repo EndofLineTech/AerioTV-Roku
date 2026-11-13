@@ -45,6 +45,14 @@ sub main()
     before = m.page
     selectSettingsCategory(99)
     if m.page <> before then stop
+    m.railItems = settingsHubEntries("", {userRole: "child"})
+    drawSettingsRail()
+    if m.railCells[4].icon.uri <> "pkg:/images/ui-icon-settings.png" then stop
+    m.railItems = settingsHubEntries("", {userRole: "user"})
+    m.railSelected = 0
+    m.railIndex = 8
+    refreshSettingsRailModel({userRole: "child"})
+    if m.railItems.count() <> 5 or m.railIndex <> 0 or m.railSelected <> 0 then stop
     print "ALL TESTS PASSED"
 end sub
 

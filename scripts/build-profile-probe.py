@@ -92,6 +92,7 @@ def build(output, base_url, registry=False, model_store=False):
         package.write(ROOT / 'source/UserProfileManagementPolicy.brs', 'source/UserProfileManagementPolicy.brs')
         package.write(ROOT / 'source/UserProfileSwitch.brs', 'source/UserProfileSwitch.brs')
         package.write(ROOT / 'source/UserProfileChildAccess.brs', 'source/UserProfileChildAccess.brs')
+        package.write(ROOT / 'source/SettingsModel.brs', 'source/SettingsModel.brs')
         package.write(ROOT / 'source/GuideModel.brs', 'source/GuideModel.brs')
         package.write(ROOT / 'tests/native/PhoneSetupProbe.xml', 'components/PhoneSetupProbe.xml')
         for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'RequestGateClient', 'RequestGateModel', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileCleanup', 'UserProfileScope', 'UserProfileScopeStore', 'PreferenceModel', 'ConnectionStoreModel', 'RemoteMapModel', 'GuideSettingsModel', 'ReminderModel']:
@@ -127,6 +128,9 @@ def build(output, base_url, registry=False, model_store=False):
             child_checks = (ROOT / 'tests/UserProfileChildAccess.test.brs').read_text().split('sub check(', 1)[0]
             child_checks = child_checks.replace('sub main()', 'sub runUserProfileChildAccessChecks()').replace('check(', 'profileAssert(')
             package.writestr('source/UserProfileChildAccessProbeChecks.brs', child_checks)
+            settings_child_checks = (ROOT / 'tests/SettingsChildModel.test.brs').read_text().split('sub check(', 1)[0]
+            settings_child_checks = settings_child_checks.replace('sub main()', 'sub runSettingsChildModelChecks()').replace('check(', 'profileAssert(')
+            package.writestr('source/SettingsChildProbeChecks.brs', settings_child_checks)
             package.write(ROOT / 'components/UserProfileNavigation.brs', 'source/UserProfileNavigation.brs')
             package.write(ROOT / 'components/UserProfilePreferenceNavigation.brs', 'source/UserProfilePreferenceNavigation.brs')
             for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval', 'UserProfileScope', 'UserProfileScopeStore', 'UserProfilePreferenceNavigation']:
@@ -144,6 +148,7 @@ def build(output, base_url, registry=False, model_store=False):
             package.writestr('source/UserProfileManagementPolicyProbeChecks.brs', 'sub runUserProfileManagementPolicyChecks()\nend sub\n')
             package.writestr('source/UserProfileSwitchProbeChecks.brs', 'sub runUserProfileSwitchChecks()\nend sub\n')
             package.writestr('source/UserProfileChildAccessProbeChecks.brs', 'sub runUserProfileChildAccessChecks()\nend sub\n')
+            package.writestr('source/SettingsChildProbeChecks.brs', 'sub runSettingsChildModelChecks()\nend sub\n')
             package.writestr('source/UserProfileModelProbeChecks.brs', 'sub runUserProfileModelChecks()\nend sub\nsub testProfileNativeNames()\nend sub\n')
             package.writestr('source/UserProfileStoreProbeChecks.brs', 'sub runUserProfileStoreChecks()\nend sub\nsub testProfileNativeStoreNames()\nend sub\n')
             package.writestr('source/UserProfileAvatarProbeChecks.brs', 'sub runUserProfileAvatarChecks()\nend sub\nsub testProfileNativeAvatar()\nend sub\n')

@@ -18,6 +18,14 @@ sub buildSettingsRail()
     m.focusRegion = "rail"
 end sub
 
+sub refreshSettingsRailModel(model as dynamic)
+    nextItems = settingsHubEntries("", model)
+    if FormatJson(nextItems) = FormatJson(m.railItems) then return
+    m.railItems = nextItems
+    m.railIndex = 0
+    m.railSelected = 0
+end sub
+
 sub drawSettingsRail()
     if m.railCells = invalid then return
     ' The detail list keeps its remembered row when focus is in the rail.
@@ -36,7 +44,9 @@ sub drawSettingsRail()
         if visible
             item = m.railItems[i]
             icons = {connection: "channels", live: "live", player: "play", movies: "vod", dvr: "recent", appearance: "categories", general: "settings", remote: "options", about: "settings"}
-            cell.icon.uri = "pkg:/images/ui-icon-" + icons[item.page] + ".png"
+            icon = "settings"
+            if icons.doesExist(item.page) then icon = icons[item.page]
+            cell.icon.uri = "pkg:/images/ui-icon-" + icon + ".png"
             cell.label.text = item.title
             cell.label.width = 0
             content = uiPillContent(408, 70, cell.label.localBoundingRect().width, 24)

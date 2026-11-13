@@ -214,6 +214,7 @@ sub onProfileManagementClosed(event as object)
 end sub
 
 sub closeProfileManagementDialog()
+    m.profileManagementChoices = []
     if m.profileManagementDialog = invalid then return
     for each field in ["buttonSelected", "wasClosed"]
         m.profileManagementDialog.unobserveField(field)

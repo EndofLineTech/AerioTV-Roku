@@ -118,7 +118,7 @@ kid-only state or an unpinned adult while a Child remains is refused in this
 import-only phase. A private normal-app native fixture exercises roster/editor,
 real keyboard rename, wrong/correct adult verification, learned length, default
 key preservation and real ECP Back cancellation. These controllers are compiled
-but **not yet exposed in Settings**: Child retirement/access, switching, removal,
+but **not yet exposed in normal adult Settings**: Child retirement/access, switching, removal,
 full management UX and remote-focus qualification remain unfinished.
 
 Child access/escape, picker, authenticated switching and the complete management
@@ -171,3 +171,32 @@ This is not the completed switch feature: the controller is unexposed, refuses
 held/keyless/Child targets and pending roster writes, and still needs the real
 sign-in/hold lifecycle, outgoing sync flush, target sync-session start, playback
 confirmation, launch/picker integration and complete acceptance matrix.
+
+## Child Settings boundary
+
+The scoped Child Settings model now exposes only Live TV, Player, Appearance,
+About (including its read-only detail pages), and Manage Profiles. Hidden deep
+links return to that restricted root. Manage Profiles emits an immutable view
+event to the existing adult-purpose gate; no holder names are shown before the
+gate succeeds. Unknown or mismatched scoped authority has no action/write
+permission, rather than borrowing even the Child's management exception.
+
+The Scene rechecks the current scoped role for every Settings action and value
+change, not the view's cached role. A same-session event from a formerly Standard
+view cannot change hidden network, remote, library or DVR controls after a Child
+role change. Closing management clears its rendered identity choices.
+
+The private normal-app Child-role fixture checks the actual Settings component,
+hidden deep-link sanitization and a forged setup event, then uses real ECP D-pad
+navigation to reach Manage Profiles, verifies the generic adult pad, submits its
+existing numeric PIN and cancels management with real Back. An inspected native
+screenshot shows only the permitted pages. The first native run exposed an
+unmapped rail icon crash; the shared renderer now has a safe existing-icon
+fallback with a regression test. This does **not** enable Child launch/playback
+sessions: whole setup/receiver/server-action fences, unavailable/own-sign-in UI
+and authenticated escape integration remain unfinished before that activation.
+The shared native policy suite now passes 578 assertions, including malformed
+and wrong-primitive Settings values. Roku's native comparison raises on a
+String/Boolean mismatch even though the host interpreter accepts the comparison;
+admission now compares only compatible primitive kinds. A changed Settings model
+also refreshes the rail categories so a formerly Standard rail is not retained.
