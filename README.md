@@ -172,6 +172,11 @@ Upstream comparison sources reviewed 2026-09-19; Roku column updated for v0.3.88
 
 ## What you need
 
+- The profile-capable development work targets **Roku OS 14.6 or newer**, by
+  owner decision (precision-safe JSON requires the14.6 parsing API). This does
+  not mean profiles/sync have shipped or that the Developer Dashboard minimum
+  firmware has already been changed. See the [implementation contract](docs/PROFILES-CONTRACT.md)
+  and [isolated native prerequisite evidence](docs/PROFILE-PRIMITIVE-QUALIFICATION.md).
 - A Roku player or Roku TV with a remote. The tested baseline is a **Streaming
   Stick 4K (3820RW2), Roku OS 15.3.4, at 1080p**; other models are not yet verified.
 - A Roku account. Follow Roku's [free developer enrollment](https://developer.roku.com/enrollment/standard)
