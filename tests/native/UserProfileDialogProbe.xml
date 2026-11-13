@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="UserProfileDialogProbe" extends="Scene">
+  <interface>
+    <field id="command" type="string" alwaysNotify="true" onChange="profileDialogCommand" />
+    <field id="exitRequested" type="boolean" value="false" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="UserProfileDialogProbe.brs" />
+  <script type="text/brightscript" uri="pkg:/source/StartupBeaconModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <children>
+    <Rectangle width="1920" height="1080" color="0x000000FF" />
+    <Label id="protected" visible="false" translation="[80,80]" text="PROTECTED FIXTURE — must never be visible before PIN" />
+    <Timer id="sample" duration="0.1" repeat="true" />
+    <Timer id="gateDelay" duration="2" repeat="false" />
+    <Timer id="lineupDelay" duration="3" repeat="false" />
+  </children>
+</component>

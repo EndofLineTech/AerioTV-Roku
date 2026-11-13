@@ -220,31 +220,9 @@ sub init()
     if m.baseUrl <> "" and m.apiKey <> "" then connectServer(true)
 end sub
 
-sub beginStartupBeacons(welcome as boolean)
-    m.startupBeaconSent = false
-    m.startupDialogOpen = false
-    if not welcome then beginStartupDialog()
-end sub
-
-sub beginStartupDialog()
-    if m.startupDialogOpen or m.startupBeaconSent then return
-    m.startupDialogOpen = true
-    m.top.signalBeacon("AppDialogInitiate")
-end sub
-
 sub signalStartupComplete()
-    if m.startupBeaconSent
-        ' Welcome can complete launch before sign-in; resolve pending links
-        ' when the authorized guide arrives without firing the beacon twice.
-        handlePendingLaunch()
-        return
-    end if
-    if m.startupDialogOpen
-        m.top.signalBeacon("AppDialogComplete")
-        m.startupDialogOpen = false
-    end if
-    m.top.signalBeacon("AppLaunchComplete")
-    m.startupBeaconSent = true
+    completeStartupBeacons()
+    ' A later authenticated guide still resolves links without a second beacon.
     handlePendingLaunch()
 end sub
 
@@ -489,7 +467,7 @@ sub editSetupField()
     if field = "username" then dialog.keyboardDomain = "email"
     if field = "password" or field = "key"
         dialog.keyboardDomain = "password"
-        dialog.textEditBox.secureMode = true
+        uiSecureTextInput(dialog.textEditBox)
     end if
     dialog.observeField("buttonSelected", "onKeyboardButton")
     dialog.observeField("wasClosed", "onDialogClosed")

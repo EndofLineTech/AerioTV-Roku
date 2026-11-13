@@ -17,7 +17,7 @@ export function assertPackageEntries(entries) {
   if (invalid) throw new Error(`Package contains excluded development file: ${invalid}`);
   if (entries.includes('pairing-test-build.json')) throw new Error('Package is a pairing test build, not a shipping package');
   if (entries.includes('ui-audit-build.json')) throw new Error('Package contains synthetic UI probe');
-  const probe = entries.find(entry => /(^|\/)(?:fixture-materials\.json|apply-cases\.json|UiAudit[^/]*|SetupReceiverProbe[^/]*|SetupReceiverFixtureEntropy\.brs|SetupApply(?:Probe|Fixture)[^/]*)$/i.test(entry));
+  const probe = entries.find(entry => /(^|\/)(?:fixture-materials\.json|apply-cases\.json|profile-probe-config\.json|profile-wire-fixture\.json|profile-registry-fixtures\.json|UserProfile(?:Registry|Dialog)?Probe[^/]*|UserProfileDialogMain\.brs|UiAudit[^/]*|SetupReceiverProbe[^/]*|SetupReceiverFixtureEntropy\.brs|SetupApply(?:Probe|Fixture)[^/]*)$/i.test(entry));
   if (probe) throw new Error(`Package contains synthetic setup probe: ${probe}`);
 }
 

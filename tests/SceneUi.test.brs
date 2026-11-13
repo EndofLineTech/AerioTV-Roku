@@ -2,6 +2,18 @@
 ' stand-in to check the real helper preserves its face while applying sizing.
 ' This is a font-binding regression test, not an on-device rendering test.
 sub main()
+    secureBox = {secureMode: false, secureLastCharacter: false, hasField: function(field as string) as boolean
+        return field = "secureLastCharacter"
+    end function}
+    uiSecureTextInput(secureBox)
+    assertEqual(secureBox.secureMode, true, "password entry is masked")
+    assertEqual(secureBox.secureLastCharacter, true, "last typed password character stays masked where supported")
+    legacyBox = {secureMode: false, hasField: function(field as string) as boolean
+        return false
+    end function}
+    uiSecureTextInput(legacyBox)
+    assertEqual(legacyBox.secureMode, true, "secure mode retained without optional last-character field")
+    assertEqual(legacyBox.doesExist("secureLastCharacter"), false, "unsupported optional field is not invented")
     assertEqual(uiControlInkOffset("Cancel", 24), 2.5, "native ascender-only control ink needs optical baseline correction")
     assertEqual(uiControlInkOffset("Record current program", 24), 0, "descenders already occupy the lower line box")
     assertEqual(uiControlInkOffset("OK", 19), 2, "hint correction scales with font")

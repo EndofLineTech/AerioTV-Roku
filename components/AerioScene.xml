@@ -6,6 +6,7 @@
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/LaunchModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/StartupBeaconModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/RokuAuthModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />

@@ -17,6 +17,10 @@ suites.unshift('UiAuditFixtureTask');
 suites.unshift('RecentHistory');
 suites.unshift('GuideHistory', 'BrowserHistory');
 suites.unshift('RokuAuthModel');
+suites.unshift('HttpTransport');
+suites.unshift('StrictJson');
+suites.unshift('UserProfilePin');
+suites.unshift('StartupBeaconModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
 for (const suite of suites) {
   const result = spawnSync(process.execPath, [
@@ -47,6 +51,7 @@ for (const suite of suites) {
     ...(suite === 'RemoteHints' ? ['components/RemoteHints.brs'] : []),
     ...(suite === 'AerioSurface' ? ['components/AerioSurface.brs'] : []),
     'source/NowNextModel.brs',
+    'source/StartupBeaconModel.brs',
     'source/RemoteMapModel.brs', 'source/PreferenceModel.brs',
     'components/RecentHistoryNavigation.brs',
     ...(suite === 'ConnectionAuthTask' ? ['source/ChannelProfileModel.brs'] : []),
@@ -58,6 +63,9 @@ for (const suite of suites) {
     'source/ReminderModel.brs',
     ...(['TmdbTask', 'VodShelfTask', 'VodSeriesTask', 'XtreamTask', 'XtreamVodTask', 'ConnectionAuthTask'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
     'source/HttpPolicy.brs',
+    ...(suite === 'HttpTransport' ? ['source/HttpTransport.brs'] : []),
+    ...(suite === 'StrictJson' ? ['source/StrictJson.brs'] : []),
+    ...(suite === 'UserProfilePin' ? ['source/UserProfilePin.brs'] : []),
     ...(suite === 'DvrRecordingModel' ? ['source/DvrRecordingModel.brs'] : []),
     ...(suite === 'DvrRecordingModel' ? ['source/DvrSeriesModel.brs'] : []),
     ...(['DvrPresentationModel', 'DvrNavigation', 'DvrHandoff', 'DvrView'].includes(suite) ? ['source/DvrPresentationModel.brs'] : []),
@@ -165,7 +173,7 @@ for (const args of [
   if (result.status !== 0) process.exit(1);
 }
 
-const pairingBuild = spawnSync('python3', ['-m', 'unittest', 'scripts/pairing_test_build_test.py', 'scripts/ui_library_audit_test.py', 'scripts/ui_assets_test.py'], { encoding: 'utf8' });
+const pairingBuild = spawnSync('python3', ['-m', 'unittest', 'scripts/pairing_test_build_test.py', 'scripts/ui_library_audit_test.py', 'scripts/ui_assets_test.py', 'scripts/profile_probe_test.py'], { encoding: 'utf8' });
 process.stdout.write(pairingBuild.stdout ?? '');
 process.stderr.write(pairingBuild.stderr ?? '');
 if (pairingBuild.error) throw pairingBuild.error;

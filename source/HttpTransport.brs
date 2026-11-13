@@ -1,12 +1,25 @@
 ' Task-thread transport. GET bodies stage in tmp and are size-checked before
 ' reading/ParseJSON. tmp is not a hard byte quota: also abort on memory pressure.
-function httpTransferOnce(url as string, body as dynamic, bearer as string, timeoutMs as integer, maxBytes as integer, method = "GET" as string) as object
+function httpTransferOnce(url as string, body as dynamic, bearer as string, timeoutMs as integer, maxBytes as integer, method = "GET" as string, checkedJson = invalid as dynamic) as object
     result = {status: 0, headers: {}, body: "", bytes: -1, error: ""}
+    method = ucase(method)
+    if method <> "GET" and method <> "POST" and method <> "PUT" and method <> "PATCH" and method <> "DELETE"
+        result.error = "invalid-request"
+        return result
+    end if
+    payload = httpWriteBody(body, checkedJson)
+    if not payload.ok or ((method = "PUT" or method = "PATCH") and not payload.hasBody)
+        result.error = "invalid-request"
+        return result
+    end if
     port = CreateObject("roMessagePort")
     transfer = CreateObject("roUrlTransfer")
     transfer.setMessagePort(port)
     transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
     transfer.setUrl(url)
+    ' GET responses are downloaded to tmp even for failures. Keep Dispatcharr's
+    ' specific rejection body until it has been bounded/read below, then delete.
+    transfer.retainBodyOnError(true)
     transfer.addHeader("Accept", "application/json")
     mode = "x-api-key"
     agent = ""
@@ -33,12 +46,16 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
     if method = "DELETE"
         transfer.setRequest("DELETE")
         started = transfer.asyncGetToString()
-    else if body = invalid
+    else if not payload.hasBody and method = "GET"
         file = "tmp:/aeriotv-http-" + CreateObject("roDeviceInfo").getRandomUUID() + ".json"
         started = transfer.asyncGetToFile(file)
     else
         transfer.addHeader("Content-Type", "application/json")
-        started = transfer.asyncPostFromString(FormatJson(body))
+        bytes = CreateObject("roByteArray")
+        bytes.fromAsciiString(payload.text)
+        transfer.addHeader("Content-Length", bytes.count().toStr())
+        if method = "PUT" or method = "PATCH" then transfer.setRequest(method)
+        started = transfer.asyncPostFromString(payload.text)
     end if
     clock = CreateObject("roTimespan")
     clock.mark()
@@ -70,23 +87,40 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
             if event.getInt() = 1
                 result.status = event.getResponseCode()
                 result.headers = event.getResponseHeaders()
-                if result.status >= 200 and result.status < 300
+                if result.status > 0
                     if file <> ""
                         stat = fs.stat(file)
                         if type(stat) <> "roAssociativeArray" or stat.size = invalid
-                            result.error = "invalid-response"
+                            ' Some firmware retains an error body on the event
+                            ' rather than creating the requested download file.
+                            ' Do not retry a refused credential to recover it.
+                            if result.status >= 400
+                                retained = event.getString()
+                                bytes = CreateObject("roByteArray")
+                                bytes.fromAsciiString(retained)
+                                result.bytes = bytes.count()
+                                if result.bytes > maxBytes
+                                    result.error = "too-large"
+                                else
+                                    result.body = retained
+                                end if
+                            else
+                                result.error = "invalid-response"
+                            end if
                         else if stat.size > maxBytes
                             result.bytes = stat.size
                             result.error = "too-large"
                         else
                             result.body = ReadAsciiFile(file)
-                            result.bytes = len(result.body)
+                            result.bytes = stat.size
                         end if
                     else
                         ' Native POST responses are buffered before this check.
                         result.body = event.getString()
-                        result.bytes = len(result.body)
-                        if len(result.body) > maxBytes then result.error = "too-large"
+                        bytes = CreateObject("roByteArray")
+                        bytes.fromAsciiString(result.body)
+                        result.bytes = bytes.count()
+                        if result.bytes > maxBytes then result.error = "too-large"
                     end if
                 end if
                 exit while
@@ -98,6 +132,18 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
     transfer = invalid
     if file <> "" then fs.delete(file)
     return result
+end function
+
+' checkedJson has already passed the caller's schema/type/UTF-8 budget checks.
+' Keep the checked wire representation: serializing a string would quote it;
+' serializing the object again could change literal types or byte length.
+function httpWriteBody(body as dynamic, checkedJson = invalid as dynamic) as object
+    if checkedJson <> invalid
+        if GetInterface(checkedJson, "ifString") = invalid or body <> invalid then return {ok: false, hasBody: false, text: ""}
+        return {ok: true, hasBody: true, text: checkedJson}
+    end if
+    if body = invalid then return {ok: true, hasBody: false, text: ""}
+    return {ok: true, hasBody: true, text: FormatJson(body)}
 end function
 
 function httpGuideWindowUrl(base as string, startTime as string, endTime as string) as string

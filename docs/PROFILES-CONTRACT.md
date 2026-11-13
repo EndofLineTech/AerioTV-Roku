@@ -41,7 +41,7 @@ Recorded from the kickoff discussion; not inferred from permission to implement:
 | 6 Interim protected default | Refuse before provider authentication or persistence. Never silently convert a Child/PIN-protected default into an unrestricted slot. |
 | 7 Appearance/player scope | Model Apple per-profile settings behavior. Migrate supported appearance, accent and player settings to account scope; keep hardware/network/remote controls device-local. |
 | 8 Child deep links | Route through the default profile's required PIN gate, subject to native/certification verification. Never silently grant adult access. If no safe authenticated route exists, do not play. |
-| 9 Directions PIN | Build/test D-pad entry behind a developer-only gate. Public PIN-dependent profiles remain release-blocked pending certification/access disposition, including all-Directions households. No PIN bypass. |
+| 9 Directions PIN | Build/test D-pad entry behind a developer-only gate. Public PIN-dependent profiles remain release-blocked by mrr.19 pending certification/access disposition, including all-Directions households. No PIN bypass. |
 
 Apple placement is verified in `ProfilesSettingsSection.swift` (header and both
 platform sections), `ServerDetailView.swift` (iOS/tvOS insertion) and

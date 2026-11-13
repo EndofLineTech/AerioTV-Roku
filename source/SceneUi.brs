@@ -1,3 +1,10 @@
+' Standard keyboards can leave the last character visible with secureMode
+' alone. Use the platform's optional full-mask field where it is available.
+sub uiSecureTextInput(textBox as object)
+    textBox.secureMode = true
+    if textBox.hasField("secureLastCharacter") then textBox.secureLastCharacter = true
+end sub
+
 function uiRect(parent as object, x as float, y as float, w as float, h as float, color as string) as object
     node = parent.createChild("Rectangle")
     node.translation = [x, y]
