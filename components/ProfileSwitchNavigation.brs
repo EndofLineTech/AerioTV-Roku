@@ -1,6 +1,7 @@
 ' Internal staged own-key switch controller. No picker/Settings entry enables
 ' this until outgoing sync, Child access and all handler fences are integrated.
 function beginUserProfileSwitch(targetId as string) as boolean
+    if m.profileOwnSignInContext <> invalid then return false
     if m.profileSwitchContext <> invalid or m.profilePinDialog <> invalid or m.adultPinDialog <> invalid then return false
     if m.activeUserScope = invalid or m.userProfileRecoveryRequired = true then return false
     connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)

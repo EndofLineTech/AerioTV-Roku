@@ -22,7 +22,7 @@ function currentUserSettingsRole() as string
 end function
 
 sub openSettingsHub()
-    if userProfileGateClosed() then return
+    if userProfileUiClosed() then return
     if m.page <> "guide" then return
     m.guide.active = false
     m.page = "settings"

@@ -1,0 +1,152 @@
+sub main()
+    ownFormFixture()
+    check(beginUserProfileOwnSignIn(m.fixtureTarget), "inactive own-profile recovery opens its scoped form")
+    check(m.profileOwnSignInDialog.title = "Sign in to Dispatcharr" and instr(1, m.profileOwnSignInDialog.buttons[0], "Bob") > 0, "form identifies only its own prefilled username")
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 1))
+    check(m.profileOwnSignInDialog.keyboardDomain = "password" and m.profileOwnSignInDialog.textEditBox.secureMode, "password uses the secured standard keyboard contract")
+    m.profileOwnSignInDialog.text = "synthetic-password"
+    onProfileOwnSignInEdited(ownFormEvent(m.profileOwnSignInDialog, 0))
+    check(instr(1, FormatJson(m.profileOwnSignInDialog.buttons), "synthetic-password") = 0, "form masks transient password rather than rendering it in buttons")
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 2))
+    task = m.profileOwnSignInTask
+    check(task.ownProfileSignIn and task.verifyOnly and task.expectedUsername = "Bob" and task.expectedUserId = "" and task.apiKey = "", "own form creates a username-bound credential Task, never borrows a slot key or old user ID")
+    check(task.password = "synthetic-password" and m.profileOwnSignInContext.password = "", "password moves only into its owned Task and leaves the form context")
+    onProfileOwnSignInResult(ownFormEvent(task, {ok: false, apiAccessRequired: true}))
+    oldTask = task
+    check(m.profileOwnSignInTask = invalid and m.profileOwnSignInContext.password = "" and instr(1, m.profileOwnSignInDialog.message, "turn on API access") > 0, "failed credential attempt is scrubbed and returns the same scoped form without registry writes")
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 1))
+    m.profileOwnSignInDialog.text = "synthetic-password"
+    onProfileOwnSignInEdited(ownFormEvent(m.profileOwnSignInDialog, 0))
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 2))
+    task = m.profileOwnSignInTask
+    onProfileOwnSignInResult(ownFormEvent(oldTask, {ok: true, apiKey: "stale-verified-key"}))
+    check(m.profileOwnSignInTask.id = task.id and m.registry.flushes = 0, "replaced credential Task cannot submit a late result into the new attempt")
+    onProfileOwnSignInClosed(ownFormEvent(m.profileOwnSignInDialog, 0))
+    check(task.cancelRequested and task.password = "" and m.profileOwnSignInContext = invalid and m.profileOwnSignInDialog = invalid, "Back cancels the owned Task and erases transient credentials")
+    check(m.registry.flushes = 0 and m.guide.active and m.top.exitRequested <> true, "form cancellation returns to the same profile without writes or app exit")
+    ownFormFixture()
+    beginUserProfileOwnSignIn(m.fixtureTarget)
+    oldDialog = m.profileOwnSignInDialog
+    m.activeUserScope.sessionId = "00000000-0000-4000-8000-000000000099"
+    onProfileOwnSignInChoice(ownFormEvent(oldDialog, 2))
+    check(m.profileOwnSignInContext = invalid and m.profileOwnSignInTask = invalid and m.registry.flushes = 0, "old A callbacks cannot submit credentials after a new A lifecycle")
+    ownFormFixture()
+    check(not beginUserProfileOwnSignIn(m.userProfileStore.active), "active-profile recovery stays fenced until runtime adoption is integrated")
+    ownFormFixture()
+    protected = m.userProfileStore
+    protected.profiles[1].pinType = "numbers"
+    protected.profiles[1].pinHash = string(64, "a")
+    protected.profiles[1].pinSalt = string(32, "b")
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(protected)
+    check(beginUserProfileOwnSignIn(m.fixtureTarget) and m.pinRequested and m.profileOwnSignInDialog = invalid and m.profileOwnSignInTask = invalid, "target PIN is required before showing credentials or starting sign-in")
+    m.profileUnlockGrant = {slot: "slot-a", id: m.fixtureTarget, pinType: "numbers", pinHash: string(64, "a"), pinSalt: string(32, "b")}
+    onUserProfileOwnSignInPin(m.profileOwnSignInNonce)
+    check(m.profileOwnSignInDialog <> invalid and m.profileUnlockGrant = invalid and m.profileOwnSignInContext.pin.id = m.fixtureTarget, "target PIN ticket authorizes only this recovery form, not profile activation")
+    cancelUserProfileOwnSignIn()
+    ownFormFixture()
+    beginUserProfileOwnSignIn(m.fixtureTarget)
+    changedStore = ParseJson(m.registry.read(userProfileStoreKey("slot-a")))
+    changedStore.profiles[0].role = "child"
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(changedStore)
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 0))
+    check(m.profileGateCover.visible and m.global.profilegateclosed and m.activeUserScope = invalid and not m.guide.active, "changed outgoing authority cannot be restored as an uncovered Standard caller")
+    ownFormFixture()
+    beginUserProfileOwnSignIn(m.fixtureTarget)
+    changedConnections = ParseJson(m.registry.read("connectionsV1"))
+    changedConnections.entries[0].url = "https://changed.test"
+    m.registry.values["connectionsV1"] = FormatJson(changedConnections)
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 0))
+    check(m.profileGateCover.visible and m.global.profilegateclosed and m.activeUserScope = invalid and not m.guide.active, "changed persisted address cannot uncover the stale outgoing authenticated runtime")
+    ownFormFixture()
+    beginUserProfileOwnSignIn(m.fixtureTarget)
+    m.profileOwnSignInContext.password = "synthetic-password"
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 2))
+    m.registry.failures = 2
+    onProfileOwnSignInResult(ownFormEvent(m.profileOwnSignInTask, {ok: true, apiKey: "synthetic-new-key", verifiedUser: {id: 88, username: "Bob", user_level: 1}}))
+    check(m.userProfileRecoveryRequired and m.profileOwnSignInContext = invalid and m.activeUserScope = invalid and m.profileGateCover.visible and m.global.profilegateclosed, "failed registry rollback retires the form and stays covered with no active runtime authority")
+    print "ALL TESTS PASSED"
+end sub
+
+function ownFormEvent(node as object, index as dynamic) as object
+    return {node: node, index: index, getRoSGNode: function() as object
+        return m.node
+    end function, getData: function() as dynamic
+        return m.index
+    end function}
+end function
+
+sub ownFormFixture()
+    entry = normalizeConnectionEntry({id: "slot-a", name: "Synthetic", provider: "dispatcharr", url: "https://example.test", accountId: "7", remember: true})
+    a = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000001", {id: 7, username: "Alice", user_level: 1}, 1)
+    b = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Bob", user_level: 1}, 1)
+    b.isDefault = false
+    store = defaultUserProfileStore("slot-a")
+    store.profiles = [a, b]
+    store.active = a.id
+    m.userProfileStore = store
+    m.fixtureTarget = b.id
+    m.connectionStore = {schema: 1, selected: "slot-a", entries: [entry]}
+    m.selectedConnectionId = "slot-a"
+    m.baseUrl = entry.url
+    m.activeUserScope = userProfileSessionScope(entry, a.id, 7, "generation", "00000000-0000-4000-8000-000000000090")
+    m.global = {activeusersession: m.activeUserScope.sessionId, profilegateclosed: false}
+    m.scopedPreferencesRequired = true
+    m.userProfileRecoveryRequired = false
+    m.page = "guide"
+    m.guide = {active: true, setFocus: sub(value as boolean)
+    end sub}
+    m.top = {exitRequested: false}
+    m.profileGateCover = {visible: false}
+    m.profileOwnSignInContext = invalid
+    m.profileOwnSignInDialog = invalid
+    m.profileOwnSignInTask = invalid
+    m.pinRequested = false
+    m.factorySequence = 0
+    values = {}
+    values["connectionsV1"] = FormatJson(m.connectionStore)
+    values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    m.registry = {values: values, flushes: 0, failures: 0, exists: function(key as string) as boolean
+        return m.values.doesExist(key)
+    end function, read: function(key as string) as string
+        if not m.values.doesExist(key) then return ""
+        return m.values[key]
+    end function, write: function(key as string, value as string) as boolean
+        m.values[key] = value
+        return true
+    end function, delete: function(key as string) as boolean
+        m.values.delete(key)
+        return true
+    end function, flush: function() as boolean
+        m.flushes++
+        if m.failures > 0 then m.failures-- : return false
+        return true
+    end function}
+    m.profileOwnSignInDialogFactory = function(kind as string) as object
+        m.factorySequence++
+        return {id: m.factorySequence, kind: kind, text: "", textEditBox: {hasField: function(field as string) as boolean
+            return true
+        end function}, isSameNode: function(other as object) as boolean
+            return other.id = m.id
+        end function, observeField: sub(field as string, callback as string)
+        end sub, unobserveField: sub(field as string)
+        end sub, setFocus: sub(value as boolean)
+        end sub}
+    end function
+    m.profileOwnSignInTaskFactory = function() as object
+        m.factorySequence++
+        return {id: "task-" + m.factorySequence.toStr(), aeriosession: "", cancelRequested: false, isSameNode: function(other as object) as boolean
+            return other.id = m.id
+        end function, observeField: sub(field as string, callback as string)
+        end sub, unobserveField: sub(field as string)
+        end sub}
+    end function
+end sub
+
+function beginProfilePinGate(profile as object, continuation as string, nonce as string) as boolean
+    m.pinRequested = continuation = "own-signin" and nonce = m.profileOwnSignInNonce
+    return true
+end function
+
+sub check(passed as boolean, message as string)
+    if not passed then print "FAIL: "; message : stop
+end sub

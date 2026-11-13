@@ -1,6 +1,7 @@
 ' Startup/default migration only. Authenticated switching remains gated until
 ' scoped state, early roster import, PIN/Child rules and request safety land.
 function userProfileConnectionSetupAllowed() as boolean
+    if m.profileOwnSignInContext <> invalid then return false
     if m.userProfileRecoveryRequired = true then return false
     if m.global <> invalid
         if m.global.profilegateclosed = true or m.global.profileswitchpending = true then return false

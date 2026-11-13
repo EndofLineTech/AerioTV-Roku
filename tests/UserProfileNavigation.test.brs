@@ -14,6 +14,9 @@ sub main()
     check(ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100), "verified default migration persists")
     check(m.userProfileStore.profiles[0].username = "Alice" and m.userProfileStore.profiles[0].updatedAt = 0, "migration uses verified identity and stays unstamped")
     check(userProfileConnectionSetupAllowed(), "Standard can configure its selected connection")
+    m.profileOwnSignInContext = {nonce: "pending-own-sign-in"}
+    check(not userProfileConnectionSetupAllowed(), "general setup cannot replace a pending own-profile credential form")
+    m.profileOwnSignInContext = invalid
     m.global = {profilegateclosed: true}
     check(not userProfileConnectionSetupAllowed(), "closed profile gates refuse setup even for a saved Standard role")
     m.global = invalid

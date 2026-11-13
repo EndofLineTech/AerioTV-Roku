@@ -106,6 +106,7 @@ sub onProfilePinSubmit(event as object)
     if context.continuation = "connect" then connectServer(true)
     if context.continuation = "complete" then completeConnection(context.resume)
     if context.continuation = "switch" then onUserProfileSwitchPin(context.resume)
+    if context.continuation = "own-signin" then onUserProfileOwnSignInPin(context.resume)
 end sub
 
 sub onProfilePinClosed(event as object)
@@ -127,6 +128,10 @@ sub onProfilePinClosed(event as object)
     if context <> invalid
         if context.continuation = "switch"
             rollbackUserProfileSwitch("Switch cancelled. The previous profile was retained.")
+            return
+        end if
+        if context.continuation = "own-signin"
+            cancelUserProfileOwnSignIn()
             return
         end if
     end if

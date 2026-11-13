@@ -69,8 +69,8 @@ function commitUserProfileOwnSignIn(registry as object, connection as object, pr
     prepared = userProfileStoreChanges(registry, previous, planned.store, keys, connection.remember)
     if not prepared.ok then return denied
     moved = false
+    settings = invalid
     if planned.oldIdentity <> planned.newIdentity and registry.exists("settingsV1")
-        settings = invalid
         if m.profileOwnSignInSettingsDecoder <> invalid
             settings = m.profileOwnSignInSettingsDecoder(registry.read("settingsV1"))
         else
@@ -109,6 +109,7 @@ function commitUserProfileOwnSignIn(registry as object, connection as object, pr
         saved.target = planned.target
         saved.oldIdentity = planned.oldIdentity
         saved.newIdentity = planned.newIdentity
+        if type(settings) = "roAssociativeArray" then saved.preferenceStore = settings
     end if
     return saved
 end function

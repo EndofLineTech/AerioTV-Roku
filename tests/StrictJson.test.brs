@@ -1,4 +1,9 @@
 sub main()
+    ' Host brs lacks the native numeric toStr(format) overload. Native precision
+    ' fixtures exercise the production branch without this test-only seam.
+    m.strictJsonFloatingText = function(value as dynamic) as string
+        return value.toStr()
+    end function
     raw = {}
     ' brs uses JavaScript's parser, which already drops the 1.0 literal kind.
     ' Native parsing is qualified separately; inject typed values for this test.

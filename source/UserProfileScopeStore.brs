@@ -7,8 +7,10 @@ function commitUserProfilePreferences(registry as object, store as object, prefe
     if store.schema <> 1 then return denied
     prepared = userProfileSettingsCommitPlan(store, captured.preferenceIdentity, preferences, effectiveDevice)
     if not prepared.ok then return denied
-    text = FormatJson(prepared.store)
-    if text = "" or preferenceByteBudget(text) > 24000 then return denied
+    encoded = strictJsonEncode(prepared.store)
+    if not encoded.ok then return denied
+    text = encoded.text
+    if preferenceByteBudget(text) > 24000 then return denied
     changes = {}
     changes["settingsV1"] = text
     saved = userProfileRegistryTransaction(registry, changes)

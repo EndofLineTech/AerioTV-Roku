@@ -37,6 +37,7 @@ sub main()
     nonce = "00000000-0000-4000-8000-000000000090"
     saved = commitUserProfileOwnSignIn(registry, entry, store, b.id, result, 100, nonce, nonce)
     check(saved.ok and saved.preferencesMoved and registry.flushes = 1, "own identity, key and data migration commit in one Flush without runtime activation")
+    check(saved.preferenceStore.accounts[preferenceScope(planned.newIdentity)].favoriteIds[0] = "bob-only", "recovery returns the new complete preference root so outgoing writes cannot resurrect the old scope")
     check(registry.read("connKey_slot-a") = "default-key" and registry.read(userProfileKeyName("slot-a", b.id)) = "synthetic-new-own-key", "own recovered key never replaces the default credential")
     prefs = ParseJson(registry.read("settingsV1"))
     check(not prefs.accounts.doesExist(preferenceScope(planned.oldIdentity)) and prefs.accounts[preferenceScope(planned.newIdentity)].favoriteIds[0] = "bob-only" and prefs.accounts[preferenceScope(planned.newIdentity)].futureField.value = 9, "move preserves own settings, history and unknown fields rather than copying the default or dropping data")

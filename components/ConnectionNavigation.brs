@@ -311,6 +311,7 @@ sub updateConnectionUrl(base as string)
 end sub
 
 sub resetConnectionRuntime()
+    retireUserProfileOwnSignIn()
     retireProfileRequestBinding()
     retireUserProfileSwitch()
     retireProfileManagement()

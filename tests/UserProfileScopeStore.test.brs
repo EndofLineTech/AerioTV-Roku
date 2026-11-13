@@ -4,17 +4,22 @@ sub main()
     store = defaultPreferenceStore()
     prefs = normalizeAccountPreferences({favoriteIds: ["own-private"]})
     effective = normalizeDevicePreferences({themePreset: "forest"})
+    store.accounts["foreign"] = {history: ["foreign-only"], futureField: {value: 9}}
+    store.futureField = {untouched: true}
+    original = FormatJson(store)
     for each failure in ["", "write", "flush", "rollback"]
         registry = scopeRegistry(FormatJson(store), failure)
         before = registry.read("settingsV1")
         saved = commitUserProfilePreferences(registry, store, prefs, effective, scope, scope)
         if failure = ""
-            check(saved.ok and registry.flushes = 1 and saved.store.accounts.count() = 1, "scoped settings and device state share exactly one successful Flush")
+            check(saved.ok and registry.flushes = 1 and saved.store.accounts.count() = 2, "scoped settings and device state share exactly one successful Flush")
             check(saved.preferences.favoriteIds[0] = "own-private" and saved.preferences.profileSettings.themePreset = "forest", "own settings/data persist under captured immutable identity")
+            check(saved.store.accounts.foreign.history[0] = "foreign-only" and saved.store.futureField.untouched, "scoped commit retains foreign accounts and root extensions")
         else
             check(not saved.ok and saved.recoveryRequired = (failure = "rollback"), "write/Flush/rollback failures have explicit recovery outcome")
             check(registry.read("settingsV1") = before, "failed transaction restores exact previous preference blob")
         end if
+        check(FormatJson(store) = original, "planning and commit never mutate the caller's root or accounts container, including failed transactions")
     end for
     registry = scopeRegistry(FormatJson(store), "")
     newer = setCanonicalPreference(scope, "sessionId", "00000000-0000-4000-8000-000000000011")

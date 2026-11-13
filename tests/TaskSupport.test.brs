@@ -63,6 +63,10 @@ sub main()
     assertEqual(userEventCurrent(userViewEvent({action: "connection"}, "session-a-3")), false, "switch scrim refuses UI events even with the staging Task session tag")
     assertEqual(requestGateTaskSessionCurrent(), true, "switch scrim permits only the properly tagged incoming Task, unlike a PIN cover")
     m.global.profileswitchpending = false
+    m.global.profileownsigninpending = true
+    assertEqual(userEventCurrent(userViewEvent({action: "connection"}, "session-a-3")), false, "credential form fences outgoing UI events without relabeling its user's Task session")
+    assertEqual(requestGateTaskSessionCurrent(), true, "credential verification Task remains admitted while ordinary UI actions are fenced")
+    m.global.profileownsigninpending = false
     print "ALL TESTS PASSED"
 end sub
 

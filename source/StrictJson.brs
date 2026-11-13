@@ -34,7 +34,16 @@ function strictJsonEncode(value as dynamic, depth = 0 as integer) as object
     text = FormatJson(value, 1)
     ' Native FormatJson can shorten a Double enough to change its value for
     ' another reader. Seventeen significant digits round-trip IEEE binary64.
-    if kind = "Double" or kind = "roDouble" then text = value.toStr("%.17g")
+    ' Native container assignment may expose a precision-parsed number as
+    ' roFloat while retaining its binary64 value. Format every floating wrapper
+    ' at round-trip precision rather than trusting its reported type name.
+    if floating
+        if m.strictJsonFloatingText <> invalid
+            text = m.strictJsonFloatingText(value)
+        else
+            text = value.toStr("%.17g")
+        end if
+    end if
     if not CreateObject("roRegex", "^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?$", "").isMatch(text) then return {ok: false, text: ""}
     if floating and instr(1, text, ".") = 0 and instr(1, lcase(text), "e") = 0 then text += ".0"
     return {ok: true, text: text}

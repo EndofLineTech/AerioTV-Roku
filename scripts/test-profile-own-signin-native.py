@@ -9,6 +9,8 @@ from pathlib import Path
 import socket
 import subprocess
 import threading
+import time
+import urllib.request
 import uuid
 import zipfile
 
@@ -22,10 +24,12 @@ def module(name):
     return loaded
 
 
-def build(output, normal, section, base):
+def build(output, normal, section, base, form=False):
     seeded = output.with_suffix('.seed.zip')
     module('management').build(seeded, normal, section, base)
-    fixture = (ROOT / 'tests/native/ProfileOwnSignInFixture.brs').read_text()
+    fixture = (ROOT / 'tests/native' / ('ProfileOwnSignInFormFixture.brs' if form else 'ProfileOwnSignInFixture.brs')).read_text()
+    if form:
+        fixture = fixture.replace('OWN_PROBE_PIN_HASH', hashlib.sha256(bytes.fromhex('bb' * 16) + b'1234').hexdigest())
     with zipfile.ZipFile(seeded) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
@@ -40,6 +44,7 @@ def build(output, normal, section, base):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--restore', required=True)
+    parser.add_argument('--form', action='store_true', help='Exercise actual native form/keyboards and delayed-request Back cancellation')
     args = parser.parse_args()
     host, password = os.environ['ROKU_HOST'], os.environ['ROKU_DEV_PASSWORD']
     primitives, recovery = module('primitives'), module('recovery')
@@ -62,13 +67,16 @@ def main():
             self.send_header('Content-Type', 'application/json')
             self.send_header('Content-Length', str(len(body)))
             self.end_headers()
-            self.wfile.write(body)
+            try:
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                pass  # The form deliberately cancels its delayed reader.
 
         def do_POST(self):
             body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', '0'))))
             scenario = body.get('password', '').removeprefix('synthetic-')
             hits.append({'method': 'POST', 'path': self.path, 'scenario': scenario, 'no_api_key': not self.headers.get('X-API-Key'), 'username_ok': body.get('username') == 'Synthetic8'})
-            if self.path != '/api/accounts/token/' or scenario not in ['rejected', 'name', 'no-api', 'correct']:
+            if self.path != '/api/accounts/token/' or scenario not in ['rejected', 'name', 'no-api', 'correct', 'delayed']:
                 self.reply(400, {})
             elif scenario == 'rejected':
                 self.reply(401, {'detail': 'Synthetic refused login'})
@@ -86,6 +94,9 @@ def main():
                     value['api_key'] = None if scenario == 'no-api' else 'synthetic-new-own-key'
                     if scenario == 'name':
                         value['username'] = 'DifferentUser'
+                    if scenario == 'delayed':
+                        time.sleep(4)
+                        value['api_key'] = 'synthetic-must-not-save'
             elif self.path == '/api/accounts/users/me/app-data/':
                 value = {'apps': []}
             self.reply(200, value)
@@ -95,12 +106,23 @@ def main():
     section = 'AerioOwnSignInProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-own-signin-probe.zip'
     cleaner = ROOT / 'out/profile-own-signin-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}')
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.form)
     recovery.cleanup_package(cleaner, section)
     report = {'passed': False}
 
     def run(path, marker, prefix):
-        return subprocess.run(['python3', 'scripts/run-native-probe.py', str(path), '--prefix', prefix, '--marker', marker, '--timeout', '60'], cwd=ROOT, capture_output=True, text=True, timeout=110)
+        command = ['python3', 'scripts/run-native-probe.py', str(path), '--prefix', prefix, '--marker', marker, '--timeout', '60']
+        if path != archive or not args.form:
+            return subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=110)
+        output = []
+        with subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as process:
+            for line in process.stdout:
+                output.append(line)
+                if '"kind":"cancel-ready"' in line:
+                    request = urllib.request.Request(f'http://{host}:8060/keypress/Back', data=b'', method='POST')
+                    urllib.request.urlopen(request, timeout=10).close()
+            stderr = process.stderr.read()
+            return subprocess.CompletedProcess(command, process.wait(timeout=110), ''.join(output), stderr)
 
     try:
         result = run(archive, '"kind":"result"', '[own-signin]')
@@ -109,7 +131,9 @@ def main():
         report['events'], report['requests'] = rows, hits
         posts = [hit for hit in hits if hit['method'] == 'POST']
         own_reads = [hit for hit in hits if hit['method'] == 'GET' and hit['scenario']]
-        report['passed'] = result.returncode == 0 and len(rows) == 5 and all(row.get('passed') for row in rows) and all(rows[-1].get(key) for key in ['default_preserved', 'own_saved', 'active_preserved', 'no_autoplay']) and [hit['scenario'] for hit in posts] == ['rejected', 'name', 'no-api', 'correct'] and all(hit['no_api_key'] and hit['username_ok'] for hit in posts) and len(own_reads) == 3 and all(hit['path'] == '/api/accounts/users/me/' and hit['no_api_key'] for hit in own_reads)
+        cases = [row for row in rows if row.get('kind') == 'case']
+        expected_posts = ['rejected', 'name', 'no-api', 'correct'] + (['delayed'] if args.form else [])
+        report['passed'] = result.returncode == 0 and len(rows) == (6 if args.form else 5) and len(cases) == 4 and all(row.get('passed') for row in cases) and rows[-1].get('passed') and all(rows[-1].get(key) for key in ['default_preserved', 'own_saved', 'active_preserved', 'no_autoplay']) and [hit['scenario'] for hit in posts] == expected_posts and all(hit['no_api_key'] and hit['username_ok'] for hit in posts) and len(own_reads) == (4 if args.form else 3) and all(hit['path'] == '/api/accounts/users/me/' and hit['no_api_key'] for hit in own_reads)
         if not report['passed']:
             raise RuntimeError('Native own-profile sign-in assertions failed')
     finally:
@@ -122,7 +146,8 @@ def main():
             server.shutdown()
             server.server_close()
             report['passed'] = report['passed'] and report.get('cleaned', False) and report['restored']
-            (ROOT / 'out/profile-own-signin-native.json').write_text(json.dumps(report, indent=2) + '\n')
+            report_name = 'profile-own-signin-form-native.json' if args.form else 'profile-own-signin-native.json'
+            (ROOT / 'out' / report_name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:
                 raise RuntimeError('Exact prior app restore failed')

@@ -1,5 +1,5 @@
 sub init()
-    m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false})
+    m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false, profileownsigninpending: false})
     m.profileGateCover = m.top.findNode("profileGateCover")
     m.profileGateClock = m.top.findNode("profileGateClock")
     m.profileGateClock.observeField("fire", "onProfilePinTick")
@@ -278,6 +278,7 @@ sub signalStartupComplete()
 end sub
 
 sub onLaunchRequest()
+    if m.profileOwnSignInContext <> invalid then return
     if m.profileSwitchContext <> invalid then return
     m.pendingLaunch = normalizeLaunchRequest(m.top.launchRequest)
     if m.pendingLaunch = invalid
@@ -288,7 +289,7 @@ sub onLaunchRequest()
 end sub
 
 sub handlePendingLaunch()
-    if userProfileGateClosed() then return
+    if userProfileUiClosed() then return
     if m.pendingLaunch = invalid then return
     if m.page <> "guide" and m.page <> "player" then return
     request = m.pendingLaunch
@@ -529,7 +530,7 @@ sub editSetupField()
 end sub
 
 sub onKeyboardButton(event as object)
-    if userProfileGateClosed() then return
+    if userProfileUiClosed() then return
     dialog = event.getRoSGNode()
     if event.getData() = 0
         if m.editingField = "url"
@@ -1524,6 +1525,7 @@ sub applyVideoLayout()
 end sub
 
 sub onGuidePlayerRequest(event as object)
+    if userProfileUiClosed() then return
     if not m.guide.isSameNode(event.getRoSGNode()) then return
     if event.getData() = "searchMovies" or event.getData() = "searchSeries"
         kind = "movie"
@@ -1862,6 +1864,7 @@ sub openPlayerOptions(kind = "main" as string)
 end sub
 
 sub onPlayerOption(event as object)
+    if userProfileUiClosed() then return
     if m.page <> "player" then return
     item = event.getData()
     if item.action = "sourceMenu" or item.action = "source" or item.action = "sourceConfirm"

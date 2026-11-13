@@ -63,17 +63,24 @@ function userViewSession(value as dynamic) as string
     return captured
 end function
 
-function userEventCurrent(value as dynamic) as boolean
-    if userProfileGateClosed() then return false
+function userProfileUiClosed() as boolean
+    if userProfileGateClosed() then return true
     if m.global <> invalid
-        if type(m.global) = "roSGNode"
-            if m.global.hasField("profileswitchpending")
-                if m.global.profileswitchpending = true then return false
+        for each pendingField in ["profileswitchpending", "profileownsigninpending"]
+            if type(m.global) = "roSGNode"
+                if m.global.hasField(pendingField)
+                    if m.global[pendingField] = true then return true
+                end if
+            else
+                if m.global[pendingField] = true then return true
             end if
-        else
-            if m.global.profileswitchpending = true then return false
-        end if
+        end for
     end if
+    return false
+end function
+
+function userEventCurrent(value as dynamic) as boolean
+    if userProfileUiClosed() then return false
     if type(value) <> "roAssociativeArray" then return false
     count = 0
     captured = invalid

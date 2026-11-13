@@ -1,0 +1,340 @@
+' Internal inactive-profile recovery only. Public picker, active/Child/default
+' and address-held recovery remain fenced until their transition rules land.
+function beginUserProfileOwnSignIn(targetId as string) as boolean
+    if m.userProfileRecoveryRequired = true then return false
+    if m.profileOwnSignInContext <> invalid or m.profileSwitchContext <> invalid then return false
+    if m.profilePinDialog <> invalid or m.adultPinDialog <> invalid then return false
+    if m.playingChannel <> invalid or userProfileGateClosed() then return false
+    role = currentUserSettingsRole()
+    if role <> "user" and role <> "admin" then return false
+    if m.page <> "guide" and m.page <> "settings" then return false
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid or entry.provider <> "dispatcharr" then return false
+    if normalizeBaseUrl(m.baseUrl) <> entry.url then return false
+    store = loadUserProfileStore(m.registry, entry.id)
+    if store.readOnly = true or store.active = targetId then return false
+    target = invalid
+    for each profile in store.profiles
+        if profile.id = targetId then target = profile
+    end for
+    if target = invalid then return false
+    if target.isDefault or target.addressHeld or not userProfileFullAccess(target.role) then return false
+    m.profileOwnSignInNonce = CreateObject("roDeviceInfo").getRandomUUID()
+    m.profileOwnSignInContext = {nonce: m.profileOwnSignInNonce, connection: copyJson(entry), store: store, target: target, scope: copyJson(m.activeUserScope), page: m.page, guideActive: m.guide.active, covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, unlock: m.profileUnlockGrant, username: target.username, password: ""}
+    m.global.profileownsigninpending = true
+    m.guide.active = false
+    if target.pinType <> "none"
+        if beginProfilePinGate(target, "own-signin", m.profileOwnSignInNonce) then return true
+        cancelUserProfileOwnSignIn()
+        return false
+    end if
+    showProfileOwnSignInForm()
+    return m.profileOwnSignInDialog <> invalid
+end function
+
+function profileOwnSignInContextCurrent() as boolean
+    if m.userProfileRecoveryRequired = true then return false
+    context = m.profileOwnSignInContext
+    if type(context) <> "roAssociativeArray" then return false
+    if context.nonce <> m.profileOwnSignInNonce or context.connection.id <> m.selectedConnectionId or context.page <> m.page then return false
+    if not userProfileSameSession(context.scope, m.activeUserScope) then return false
+    if currentUserSessionId() <> context.scope.sessionId then return false
+    role = currentUserSettingsRole()
+    if role <> "user" and role <> "admin" then return false
+    connections = loadConnectionStore(m.registry)
+    if connections.readOnly = true or connections.selected <> context.connection.id then return false
+    actual = connectionStoreEntry(connections, context.connection.id)
+    if actual = invalid then return false
+    if FormatJson(actual) <> FormatJson(normalizeConnectionEntry(context.connection)) then return false
+    return FormatJson(loadUserProfileStore(m.registry, context.connection.id)) = FormatJson(context.store)
+end function
+
+sub onUserProfileOwnSignInPin(nonce as string)
+    context = m.profileOwnSignInContext
+    if context = invalid or context.nonce <> nonce then return
+    current = loadUserProfileStore(m.registry, context.connection.id)
+    if not userProfileSwitchAcceptPinStore(context.store, current, context.target.id, m.profileUnlockGrant)
+        cancelUserProfileOwnSignIn()
+        return
+    end if
+    context.store = current
+    context.pin = m.profileUnlockGrant
+    m.profileUnlockGrant = context.unlock
+    if not profileOwnSignInContextCurrent() then cancelUserProfileOwnSignIn() : return
+    showProfileOwnSignInForm()
+end sub
+
+function newProfileOwnSignInDialog(kind as string) as object
+    if m.profileOwnSignInDialogFactory <> invalid then return m.profileOwnSignInDialogFactory(kind)
+    if kind = "form" then return CreateObject("roSGNode", "AerioDialog")
+    return CreateObject("roSGNode", "StandardKeyboardDialog")
+end function
+
+sub showProfileOwnSignInForm(message = "" as string)
+    closeProfileOwnSignInDialog()
+    if not profileOwnSignInContextCurrent() then cancelUserProfileOwnSignIn() : return
+    context = m.profileOwnSignInContext
+    dialog = newProfileOwnSignInDialog("form")
+    dialog.title = "Sign in to Dispatcharr"
+    dialog.message = message
+    mask = ""
+    if context.password <> "" then mask = "********"
+    dialog.buttons = ["Username: " + context.username, "Password: " + mask, "Sign In", "Cancel"]
+    if m.profileOwnSignInTask <> invalid then dialog.buttons = ["Cancel"]
+    dialog.observeField("buttonSelected", "onProfileOwnSignInChoice")
+    dialog.observeField("wasClosed", "onProfileOwnSignInClosed")
+    m.profileOwnSignInDialog = dialog
+    m.profileOwnSignInDialogKind = "form"
+    m.top.dialog = dialog
+    dialog.setFocus(true)
+end sub
+
+function profileOwnSignInEventCurrent(event as object) as boolean
+    if m.profileOwnSignInDialog = invalid then return false
+    if not m.profileOwnSignInDialog.isSameNode(event.getRoSGNode()) then return false
+    if not profileOwnSignInContextCurrent()
+        cancelUserProfileOwnSignIn()
+        return false
+    end if
+    return true
+end function
+
+sub onProfileOwnSignInChoice(event as object)
+    if not profileOwnSignInEventCurrent(event) then return
+    index = event.getData()
+    if m.profileOwnSignInTask <> invalid then cancelUserProfileOwnSignIn() : return
+    if index = 3 then cancelUserProfileOwnSignIn() : return
+    context = m.profileOwnSignInContext
+    if index = 0 or index = 1
+        kind = "username"
+        if index = 1 then kind = "password"
+        closeProfileOwnSignInDialog()
+        dialog = newProfileOwnSignInDialog(kind)
+        dialog.title = "Username"
+        dialog.text = context.username
+        dialog.textEditBox.voiceEnabled = true
+        dialog.textEditBox.maxTextLength = 256
+        if kind = "password"
+            dialog.title = "Password"
+            dialog.text = ""
+            dialog.keyboardDomain = "password"
+            dialog.textEditBox.maxTextLength = 512
+            uiSecureTextInput(dialog.textEditBox)
+        end if
+        dialog.buttons = ["Save", "Cancel"]
+        dialog.observeField("buttonSelected", "onProfileOwnSignInEdited")
+        dialog.observeField("wasClosed", "onProfileOwnSignInClosed")
+        m.profileOwnSignInDialog = dialog
+        m.profileOwnSignInDialogKind = kind
+        m.top.dialog = dialog
+        dialog.setFocus(true)
+    else if index = 2
+        if lcase(context.username.trim()) <> lcase(context.target.username) or context.password = ""
+            context.password = ""
+            showProfileOwnSignInForm("Dispatcharr did not accept that username or password.")
+            return
+        end if
+        task = invalid
+        if m.profileOwnSignInTaskFactory <> invalid then task = m.profileOwnSignInTaskFactory()
+        if task = invalid then task = CreateObject("roSGNode", "DispatcharrTask")
+        tagTaskForCurrentUser(task)
+        task.baseUrl = context.connection.url
+        task.authMode = context.connection.authMode
+        task.ownProfileSignIn = true
+        task.verifyOnly = true
+        task.expectedUsername = context.target.username
+        task.expectedUserId = ""
+        task.apiKey = ""
+        task.username = context.username.trim()
+        task.password = context.password
+        context.password = ""
+        task.observeField("result", "onProfileOwnSignInResult")
+        task.observeField("state", "onProfileOwnSignInState")
+        m.profileOwnSignInTask = task
+        showProfileOwnSignInForm("Signing in to Dispatcharr...")
+        task.control = "RUN"
+    end if
+end sub
+
+sub onProfileOwnSignInEdited(event as object)
+    if not profileOwnSignInEventCurrent(event) then return
+    kind = m.profileOwnSignInDialogKind
+    if event.getData() = 0
+        value = m.profileOwnSignInDialog.text
+        if kind = "username" then m.profileOwnSignInContext.username = value.trim()
+        if kind = "password" then m.profileOwnSignInContext.password = value
+        value = ""
+    else if kind = "password"
+        m.profileOwnSignInContext.password = ""
+    end if
+    closeProfileOwnSignInDialog()
+    showProfileOwnSignInForm()
+end sub
+
+sub onProfileOwnSignInResult(event as object)
+    if not isCurrentTaskEvent(event, m.profileOwnSignInTask) then return
+    if not profileOwnSignInContextCurrent() then cancelUserProfileOwnSignIn() : return
+    context = m.profileOwnSignInContext
+    result = event.getData()
+    closeProfileOwnSignInTask()
+    if type(result) <> "roAssociativeArray" then showProfileOwnSignInForm("Dispatcharr did not accept that username or password.") : return
+    if result.ok <> true
+        message = "Dispatcharr did not accept that username or password."
+        if result.apiAccessRequired = true then message = "This account has no API key yet. Ask your Dispatcharr administrator to turn on API access for it."
+        showProfileOwnSignInForm(message)
+        return
+    end if
+    saved = commitUserProfileOwnSignIn(m.registry, context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.nonce, m.profileOwnSignInNonce)
+    if not saved.ok
+        result.apiKey = ""
+        if saved.recoveryRequired = true
+            m.userProfileRecoveryRequired = true
+            retireUserProfileOwnSignIn()
+            m.activeUserScope = invalid
+            m.global.activeusersession = ""
+            m.global.profilegateclosed = true
+            m.profileGateCover.visible = true
+            if type(m.top) = "roSGNode"
+                m.top.findNode("profileGateMessage").text = "Saved profiles need recovery. Back exits AerioTV."
+                requestGateFenceRenderers(m.top)
+            end if
+            return
+        end if
+        showProfileOwnSignInForm("Could not safely save this profile. Existing credentials and data were retained.")
+        return
+    end if
+    if type(m.profileSessionKeys) <> "roAssociativeArray" then m.profileSessionKeys = {}
+    m.profileSessionKeys[preferenceScope(context.connection.url + "|" + context.connection.id + "|" + context.target.id)] = result.apiKey
+    result.apiKey = ""
+    m.userProfileStore = saved.store
+    if type(saved.preferenceStore) = "roAssociativeArray" then m.preferenceStore = saved.preferenceStore
+    cancelUserProfileOwnSignIn()
+    showNotice("Signed in. Select this profile when switching is available.")
+end sub
+
+sub onProfileOwnSignInState(event as object)
+    if not isCurrentTaskEvent(event, m.profileOwnSignInTask) then return
+    if event.getData() <> "done" and event.getData() <> "stop" then return
+    if type(m.profileOwnSignInTask.result) = "roAssociativeArray" then return
+    closeProfileOwnSignInTask()
+    showProfileOwnSignInForm("Dispatcharr did not accept that username or password.")
+end sub
+
+sub onProfileOwnSignInClosed(event as object)
+    if not profileOwnSignInEventCurrent(event) then return
+    if m.profileOwnSignInDialogKind = "form"
+        cancelUserProfileOwnSignIn()
+    else
+        if m.profileOwnSignInDialogKind = "password" then m.profileOwnSignInContext.password = ""
+        closeProfileOwnSignInDialog()
+        showProfileOwnSignInForm()
+    end if
+end sub
+
+sub closeProfileOwnSignInDialog()
+    if m.profileOwnSignInDialog = invalid then return
+    dialog = m.profileOwnSignInDialog
+    dialog.unobserveField("buttonSelected")
+    dialog.unobserveField("wasClosed")
+    if m.profileOwnSignInDialogKind <> "form"
+        dialog.text = ""
+        dialog.textEditBox.text = ""
+    end if
+    dialog.buttons = []
+    dialog.close = true
+    m.profileOwnSignInDialog = invalid
+end sub
+
+sub closeProfileOwnSignInTask()
+    if m.profileOwnSignInTask = invalid then return
+    task = m.profileOwnSignInTask
+    task.unobserveField("result")
+    task.unobserveField("state")
+    cancelNetworkTask(task)
+    task.password = ""
+    task.apiKey = ""
+    task.username = ""
+    task.result = invalid
+    m.profileOwnSignInTask = invalid
+end sub
+
+sub retireUserProfileOwnSignIn()
+    context = m.profileOwnSignInContext
+    if context <> invalid and m.profilePinContext <> invalid and m.profilePinDialog <> invalid
+        if m.profilePinContext.continuation = "own-signin" and m.profilePinContext.resume = context.nonce
+            pad = m.profilePinDialog
+            pad.unobserveField("buttonSelected")
+            pad.unobserveField("wasClosed")
+            pad.textEditBox.text = ""
+            pad.close = true
+            if type(pad) = "roSGNode"
+                if pad.isSubtype("DirectionsPinPad") then m.top.removeChild(pad)
+            end if
+            m.profilePinDialog = invalid
+            m.profilePinContext = invalid
+            if m.profileGateClock <> invalid then m.profileGateClock.control = "stop"
+        end if
+    end if
+    closeProfileOwnSignInDialog()
+    closeProfileOwnSignInTask()
+    if m.profileOwnSignInContext <> invalid then m.profileOwnSignInContext.password = ""
+    m.profileOwnSignInContext = invalid
+    m.profileOwnSignInNonce = ""
+    if m.global <> invalid then m.global.profileownsigninpending = false
+end sub
+
+sub cancelUserProfileOwnSignIn()
+    context = m.profileOwnSignInContext
+    retireUserProfileOwnSignIn()
+    if context = invalid then return
+    if context.connection.id <> m.selectedConnectionId or not userProfileSameSession(context.scope, m.activeUserScope) then return
+    live = loadUserProfileStore(m.registry, context.connection.id)
+    before = invalid
+    after = invalid
+    for each profile in context.store.profiles
+        if profile.id = context.store.active then before = profile
+    end for
+    if live.readOnly <> true and live.active = context.store.active
+        for each profile in live.profiles
+            if profile.id = live.active then after = profile
+        end for
+    end if
+    callerAllowed = before <> invalid and after <> invalid and m.userProfileRecoveryRequired <> true and m.page = context.page
+    connections = loadConnectionStore(m.registry)
+    actualConnection = connectionStoreEntry(connections, context.connection.id)
+    if connections.readOnly = true or connections.selected <> context.connection.id or actualConnection = invalid
+        callerAllowed = false
+    else
+        if FormatJson(actualConnection) <> FormatJson(normalizeConnectionEntry(context.connection)) then callerAllowed = false
+    end if
+    if callerAllowed
+        for each field in ["userId", "role", "pinType", "pinHash", "pinSalt"]
+            if before[field] <> after[field] then callerAllowed = false
+        end for
+    end if
+    if not callerAllowed
+        if m.mediaPlayer <> invalid then resetMediaNavigation()
+        m.userProfileStore = live
+        m.userProfileRecoveryRequired = true
+        m.profileUnlockGrant = invalid
+        m.activeUserScope = invalid
+        m.global.activeusersession = ""
+        m.global.profilegateclosed = true
+        m.profileGateCover.visible = true
+        m.guide.active = false
+        if type(m.top) = "roSGNode"
+            m.top.findNode("profileGateMessage").text = "Saved profile access changed. Back exits AerioTV."
+            requestGateFenceRenderers(m.top)
+        end if
+        return
+    end if
+    m.profileUnlockGrant = context.unlock
+    m.profileGateCover.visible = context.covered
+    m.global.profilegateclosed = context.closed
+    if context.page = "guide"
+        m.guide.active = context.guideActive
+        m.guide.setFocus(true)
+    else if m.settingsHub <> invalid
+        m.settingsHub.setFocus(true)
+    end if
+end sub

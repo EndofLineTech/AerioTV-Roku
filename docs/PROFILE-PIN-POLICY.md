@@ -273,3 +273,35 @@ no target lineup requests during verify-only sign-in, unchanged default key and
 active session, and no autoplay. Its registry/cache are isolated and its package
 and source fixture are rejected by shipping guards. This qualifies the Task and
 storage boundary, not the still-unimplemented native form/activation lifecycle.
+
+## Internal inactive own-sign-in form (not publicly enabled)
+
+`ProfileOwnSignInNavigation` now hosts the native form for an inactive,
+non-default, non-address-held full-access target. Its own PIN is required before
+credentials appear; that ticket belongs to this form and never activates a
+profile. The username is prefilled, password entry uses the secured standard
+keyboard, and passwords are masked then scrubbed on submit/cancel. Stale nodes,
+replaced Tasks, changed roster/connection/session and failed rollback cannot
+commit or uncover an outgoing caller whose authority changed.
+
+While the form is pending, ordinary UI events, setup, switching and management
+are fenced without retiring the credential Task's authenticated session. Back
+cancels the owned request and returns only to the unchanged caller. A successful
+inactive recovery adopts the complete migrated preference root, not just the
+roster; otherwise A's next preference write could resurrect B's old scope.
+There is no public entry and no automatic switch or playback. Active/default/
+address-held/Child recovery and the complete transition/sync lifecycle remain
+unfinished.
+
+For `AerioTV-Roku-6qo`, scoped settings commits copy only the root/accounts
+containers they replace and strictly serialize untouched extensions and foreign
+accounts. Native Roku can expose a precision-parsed binary64 value as `roFloat`
+after container assignment; all floating wrappers therefore use 17 significant
+digits. The native regression recovers B to user ID 88 and then persists A,
+verifying both root and B's unknown binary64 values survive exactly. Cold-load
+and active-account normalization fidelity remain separate work (`AerioTV-Roku-rqq`).
+The private native form fixture also exercises the actual numeric target-PIN
+pad, cancellation before credential entry, four real credential outcomes and
+Back while a delayed `/me/` is pending. The shared native suite passes 616
+assertions, including unchanged caller containers after failed commits. Each
+native run checksum-restores the exact preceding developer app.

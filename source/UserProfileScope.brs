@@ -184,7 +184,18 @@ function userProfileSettingsCommitPlan(store as object, identity as string, pref
     for each field in userProfileSettingsFields()
         persistedDevice = setCanonicalPreference(persistedDevice, field, baseline[field])
     end for
-    nextStore = copyJson(store)
+    ' Copy only the containers this plan replaces. Never serialize untouched
+    ' accounts/root extensions through FormatJson: it shortens native Doubles.
+    ' Foreign blobs remain read-only; neither this plan nor the commit edits them.
+    nextStore = ParseJson("{}")
+    for each key in store
+        nextStore[key] = store[key]
+    end for
+    nextAccounts = ParseJson("{}")
+    for each key in store.accounts
+        nextAccounts[key] = store.accounts[key]
+    end for
+    nextStore.accounts = nextAccounts
     nextStore.device = persistedDevice
     nextStore.accounts[preferenceScope(identity)] = nextPreferences
     return {ok: true, store: nextStore, preferences: nextPreferences}
