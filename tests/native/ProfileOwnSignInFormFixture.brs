@@ -12,6 +12,13 @@ sub onManagementProbeTick()
         target.pinSalt = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
         target.pinHash = "OWN_PROBE_PIN_HASH"
         store.profiles.push(target)
+        recorded = userProfileRecordDefaultIdentity(store, false)
+        if not recorded.ok
+            m.managementProbeClock.control = "stop"
+            print "[own-signin] "; FormatJson({kind: "result", passed: false, address_record: false})
+            return
+        end if
+        store = recorded.store
         m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
         entry = connectionStoreEntry(m.connectionStore, "slot-a")
         preferences = m.preferenceStore
@@ -106,7 +113,8 @@ sub onManagementProbeTick()
         m.managementProbeClock.control = "stop"
         actual = loadUserProfileStore(m.registry, "slot-a")
         cancelled = m.profileOwnSignInContext = invalid and m.profileOwnSignInDialog = invalid and m.profileOwnSignInTask = invalid and m.registry.read(userProfileStoreKey("slot-a")) = m.ownProbeCancelStore and m.registry.read("settingsV1") = m.ownProbeCancelSettings and m.top.exitRequested <> true and m.guide.active
-        print "[own-signin] "; FormatJson({kind: "result", passed: m.ownProbePassed and cancelled and m.ownProbeRebased, cancelled: cancelled, root_rebased: m.ownProbeRebased, default_preserved: m.registry.read("connKey_slot-a") = "synthetic-a", own_saved: m.registry.read(userProfileKeyName("slot-a", m.ownProbeTarget)) = "synthetic-new-own-key", active_preserved: actual.active = m.ownProbeStore.active and currentUserSessionId() = m.ownProbeSession and m.apiKey = "synthetic-a", no_autoplay: m.playingChannel = invalid})
+        trustPreserved = actual["knownDefault"]["userId"] = 7 and actual.profiles[1]["defaultIdentityTag"]["userId"] = 7
+        print "[own-signin] "; FormatJson({kind: "result", passed: m.ownProbePassed and cancelled and m.ownProbeRebased and trustPreserved, trust_preserved: trustPreserved, cancelled: cancelled, root_rebased: m.ownProbeRebased, default_preserved: m.registry.read("connKey_slot-a") = "synthetic-a", own_saved: m.registry.read(userProfileKeyName("slot-a", m.ownProbeTarget)) = "synthetic-new-own-key", active_preserved: actual.active = m.ownProbeStore.active and currentUserSessionId() = m.ownProbeSession and m.apiKey = "synthetic-a", no_autoplay: m.playingChannel = invalid})
     end if
 end sub
 

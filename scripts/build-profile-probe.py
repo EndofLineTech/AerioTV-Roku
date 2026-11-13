@@ -92,6 +92,7 @@ def build(output, base_url, registry=False, model_store=False):
         package.write(ROOT / 'source/UserProfileManagementPolicy.brs', 'source/UserProfileManagementPolicy.brs')
         package.write(ROOT / 'source/UserProfileSwitch.brs', 'source/UserProfileSwitch.brs')
         package.write(ROOT / 'source/UserProfileOwnSignIn.brs', 'source/UserProfileOwnSignIn.brs')
+        package.write(ROOT / 'source/UserProfileAddressPolicy.brs', 'source/UserProfileAddressPolicy.brs')
         package.write(ROOT / 'source/UserProfileChildAccess.brs', 'source/UserProfileChildAccess.brs')
         package.write(ROOT / 'source/SettingsModel.brs', 'source/SettingsModel.brs')
         package.write(ROOT / 'source/GuideModel.brs', 'source/GuideModel.brs')
@@ -194,7 +195,7 @@ def build(output, base_url, registry=False, model_store=False):
             package.writestr('source/SettingsChildProbeChecks.brs', settings_child_checks)
             package.write(ROOT / 'components/UserProfileNavigation.brs', 'source/UserProfileNavigation.brs')
             package.write(ROOT / 'components/UserProfilePreferenceNavigation.brs', 'source/UserProfilePreferenceNavigation.brs')
-            for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval', 'UserProfileScope', 'UserProfileScopeStore', 'UserProfilePreferenceNavigation']:
+            for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval', 'UserProfileScope', 'UserProfileScopeStore', 'UserProfilePreferenceNavigation', 'UserProfileAddressPolicy']:
                 source = (ROOT / f'tests/{name}.test.brs').read_text().split('sub check(', 1)[0]
                 source = source.replace('sub main()', f'sub run{name}Checks()').replace('check(', 'profileAssert(')
                 source = source.replace('m.profilePreferenceDecoder = function(raw as string) as dynamic\n        return ParseJson(raw)\n    end function', 'm.profilePreferenceDecoder = invalid')
@@ -225,6 +226,7 @@ def build(output, base_url, registry=False, model_store=False):
             package.writestr('source/UserProfileManagementPolicyProbeChecks.brs', 'sub runUserProfileManagementPolicyChecks()\nend sub\n')
             package.writestr('source/UserProfileSwitchProbeChecks.brs', 'sub runUserProfileSwitchChecks()\nend sub\n')
             package.writestr('source/UserProfileOwnSignInProbeChecks.brs', 'sub runUserProfileOwnSignInChecks()\nend sub\n')
+            package.writestr('source/UserProfileAddressPolicyProbeChecks.brs', 'sub runUserProfileAddressPolicyChecks()\nend sub\n')
             package.writestr('source/UserProfileChildAccessProbeChecks.brs', 'sub runUserProfileChildAccessChecks()\nend sub\n')
             package.writestr('source/SettingsChildProbeChecks.brs', 'sub runSettingsChildModelChecks()\nend sub\n')
             package.writestr('source/UserProfileModelProbeChecks.brs', 'sub runUserProfileModelChecks()\nend sub\nsub testProfileNativeNames()\nend sub\n')

@@ -34,6 +34,7 @@
   <script type="text/brightscript" uri="ProfileOwnSignInNavigation.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileSwitch.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileOwnSignIn.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileAddressPolicy.brs" />
   <script type="text/brightscript" uri="pkg:/source/StrictJson.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileManagementPolicy.brs" />
   <script type="text/brightscript" uri="ProfileRosterNavigation.brs" />

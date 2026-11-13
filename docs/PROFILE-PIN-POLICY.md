@@ -342,3 +342,33 @@ row's `updatedAt`, before any key/settings/roster write. Equal timestamps remain
 valid because the shared tombstone rule wins ties. Pulled cleanup, address-held
 removal and roster/paused-add undo remain local-only and need no new timestamp;
 they do not manufacture or broadcast a tombstone.
+
+## Server-address policy groundwork (not URL-handler integration)
+
+Local roster metadata can now retain a validated `knownDefault` identity, frozen
+`addressChangeSnapshot`, and each non-default profile's `defaultIdentityTag`.
+Tags may be explicitly null (unknown); absence means a pre-feature record that
+takes the recorded identity once. Unknown tags never gain trust from that legacy
+migration. Malformed present identities/tags fence the roster. These fields are
+local-only and must not enter the shared profiles-category writer.
+
+`UserProfileAddressPolicy` compares scheme, case-insensitive host and effective
+port (including IPv6/default ports), ignoring path-only changes. A changed
+origin plans holds for every non-default profile, keyless included, and selects
+the default. Active Child edits are refused. The old record/snapshot cannot be
+refreshed during the change or while any holder remains held. A passing live
+default ID plus username lifts only tags matching the captured identity; wrong,
+missing or unknown tags remain held. Own verification can lift only that holder
+and tags it with the live default answer, or explicit unknown if unavailable,
+never the frozen record.
+
+This remains pure policy: no URL or key writes, request scheduling, runtime
+adoption, or public held-profile recovery has been enabled. The controller still
+owes one atomic URL/hold/snapshot Flush, setup-update handling, credential and
+scope retirement, URL-bound default verification, preference-scope transfer/
+Copy rules, Child-default routing and whole-pause settlement before activation.
+The shared native suite passes 675 assertions, including real private-registry
+roundtrips of a long-integer default identity, keyless hold and explicit unknown
+tag. The actual protected own-sign-in form also preserves the recorded identity
+and tag while recovering a recreated user ID, and still passes delayed Back
+cancellation with exact owner-app restoration.

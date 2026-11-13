@@ -77,6 +77,7 @@ sub profileProbeStoreRegistry()
             saved = commitUserProfileStore(section, candidate, candidate, {}, false)
             profileAssert(saved.ok and not section.exists(userProfileKeyName(slot, other.id)), "native-registry-remember-off-deletes-own-key")
             profileAssert(section.read("connKey_slot-a") = "synthetic-default-key", "native-registry-default-key-untouched")
+            profileProbeAddressRegistry(section, candidate, slot)
             connections = connectionStoreAdd(defaultConnectionStore(), slot, "Synthetic")
             connections = connectionStoreUpdate(connections, slot, {url: "https://example.test", accountId: "2147483648"})
             preferences = defaultPreferenceStore()
@@ -137,6 +138,37 @@ sub profileProbeStoreRegistry()
     removed = registry.delete(sectionName) and removed
     removed = registry.flush() and removed
     profileAssert(removed and empty, "native-registry-store-probe-cleaned")
+end sub
+
+' Local metadata roundtrip only: no URL changes or requests are made here.
+sub profileProbeAddressRegistry(section as object, previous as object, slot as string)
+    snapshot = {}
+    snapshot[userProfileStoreKey(slot)] = section.read(userProfileStoreKey(slot))
+    recorded = userProfileRecordDefaultIdentity(previous, false)
+    saved = commitUserProfileStore(section, previous, recorded.store, {}, false)
+    profileAssert(saved.ok, "native-registry-recorded-default-identity-and-profile-tag")
+    if saved.ok
+        actual = loadUserProfileStore(section, slot)
+        entry = normalizeConnectionEntry({id: slot, name: "Synthetic", provider: "dispatcharr", url: "https://old.test"})
+        held = userProfileAddressChangePlan(entry, actual, "https://new.test")
+        saved = commitUserProfileStore(section, actual, held.store, {}, false)
+        loaded = loadUserProfileStore(section, slot)
+        profileAssert(saved.ok and loaded.profiles[1].addressHeld and loaded["addressChangeSnapshot"]["userId"] = 2147483648&, "native-registry-frozen-long-integer-snapshot-and-keyless-hold")
+        if saved.ok
+            unknown = copyJson(loaded)
+            unknown.profiles[1] = setCanonicalPreference(unknown.profiles[1], "defaultIdentityTag", invalid)
+            saved = commitUserProfileStore(section, loaded, unknown, {}, false)
+            loaded = loadUserProfileStore(section, slot)
+            checked = userProfileAddressCheckPlan(loaded, {id: 2147483648&, username: "ALICE"})
+            profileAssert(saved.ok and checked.store.profiles[1].addressHeld and loaded.profiles[1].doesExist("defaultIdentityTag"), "native-registry-explicit-unknown-tag-survives-and-refuses-same-server-lift")
+            recovered = userProfileAddressOwnTagPlan(loaded, loaded.profiles[1].id, {id: 9, username: "other"}, invalid, true)
+            saved = commitUserProfileStore(section, loaded, recovered.store, {}, false)
+            loaded = loadUserProfileStore(section, slot)
+            profileAssert(saved.ok and not loaded.profiles[1].addressHeld and loaded.profiles[1].doesExist("defaultIdentityTag") and loaded.profiles[1]["defaultIdentityTag"] = invalid, "native-registry-own-verification-keeps-unknown-tag-explicit")
+        end if
+    end if
+    restored = userProfileRegistryTransaction(section, snapshot)
+    profileAssert(restored.ok, "native-registry-address-policy-fixture-restored")
 end sub
 
 ' Fixed public test material lives only in this disposable section. No salt

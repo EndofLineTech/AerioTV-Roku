@@ -134,6 +134,8 @@ def main():
         cases = [row for row in rows if row.get('kind') == 'case']
         expected_posts = ['rejected', 'name', 'no-api', 'correct'] + (['delayed'] if args.form else [])
         report['passed'] = result.returncode == 0 and len(rows) == (6 if args.form else 5) and len(cases) == 4 and all(row.get('passed') for row in cases) and rows[-1].get('passed') and all(rows[-1].get(key) for key in ['default_preserved', 'own_saved', 'active_preserved', 'no_autoplay']) and [hit['scenario'] for hit in posts] == expected_posts and all(hit['no_api_key'] and hit['username_ok'] for hit in posts) and len(own_reads) == (4 if args.form else 3) and all(hit['path'] == '/api/accounts/users/me/' and hit['no_api_key'] for hit in own_reads)
+        if args.form:
+            report['passed'] = report['passed'] and rows[-1].get('trust_preserved', False)
         if not report['passed']:
             raise RuntimeError('Native own-profile sign-in assertions failed')
     finally:

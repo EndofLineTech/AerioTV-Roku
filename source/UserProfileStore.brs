@@ -32,7 +32,7 @@ end function
 function normalizeUserProfileStore(raw as dynamic, slotId as string) as object
     failure = userProfileStoreRecovery(slotId)
     if userProfileStoreKey(slotId) = "" then return failure
-    raw = userProfileCanonicalFields(raw, ["schema", "playlistId", "active", "askAtLaunch", "profiles", "removed", "pendingRoster"])
+    raw = userProfileCanonicalFields(raw, ["schema", "playlistId", "active", "askAtLaunch", "profiles", "removed", "pendingRoster", "knownDefault", "addressChangeSnapshot"])
     if raw = invalid then return failure
     if not userProfileInteger(raw.schema) then return failure
     if raw.schema <> 1 then return failure
@@ -61,6 +61,13 @@ function normalizeUserProfileStore(raw as dynamic, slotId as string) as object
     if defaults <> 1 or not ids.doesExist(active) then return failure
     result.active = active
     result.askAtLaunch = raw.askAtLaunch
+    for each field in ["knownDefault", "addressChangeSnapshot"]
+        if raw.doesExist(field)
+            identity = normalizeUserProfileAddressIdentity(raw[field])
+            if identity = invalid then return failure
+            result = setCanonicalPreference(result, field, identity)
+        end if
+    end for
     if raw.doesExist("removed")
         removed = userProfileNormalizeTombstones(raw.removed)
         if removed = invalid then return failure
@@ -107,8 +114,24 @@ function userProfileBoolean(value as dynamic) as boolean
     return type(value) = "Boolean" or type(value) = "roBoolean"
 end function
 
+' Local server-address trust only; never part of the shared profiles category.
+function normalizeUserProfileAddressIdentity(raw as dynamic) as dynamic
+    raw = userProfileCanonicalFields(raw, ["userId", "username"])
+    if raw = invalid then return invalid
+    if not userProfileInteger(raw.userId) then return invalid
+    id = userProfileUserId(raw.userId)
+    if id = invalid then return invalid
+    if type(raw.username) <> "String" and type(raw.username) <> "roString" then return invalid
+    if raw.username.trim() = "" or userProfileUtf8ByteCount(raw.username) > 256 then return invalid
+    if CreateObject("roRegex", "[\x00-\x1F\x7F]", "").isMatch(raw.username) then return invalid
+    result = ParseJson("{}")
+    result["userId"] = id
+    result["username"] = raw.username
+    return result
+end function
+
 function normalizeUserProfileRecord(raw as dynamic, slotId as string) as dynamic
-    fields = ["id", "playlistId", "userId", "username", "displayName", "isDefault", "role", "userLevel", "isStaff", "isSuperuser", "order", "createdAt", "updatedAt", "avatar", "pinType", "pinHash", "pinSalt", "pinLength", "addOrigin", "addressHeld", "displayNameClaimed", "avatarClaimed"]
+    fields = ["id", "playlistId", "userId", "username", "displayName", "isDefault", "role", "userLevel", "isStaff", "isSuperuser", "order", "createdAt", "updatedAt", "avatar", "pinType", "pinHash", "pinSalt", "pinLength", "addOrigin", "addressHeld", "displayNameClaimed", "avatarClaimed", "defaultIdentityTag"]
     raw = userProfileCanonicalFields(raw, fields)
     if raw = invalid then return invalid
     id = userProfileLocalId(raw.id)
@@ -156,6 +179,15 @@ function normalizeUserProfileRecord(raw as dynamic, slotId as string) as dynamic
     end if
     if held and raw.isDefault then return invalid
     result["addressHeld"] = held
+    if raw.doesExist("defaultIdentityTag")
+        if raw.isDefault then return invalid
+        tag = raw["defaultIdentityTag"]
+        if tag <> invalid
+            tag = normalizeUserProfileAddressIdentity(tag)
+            if tag = invalid then return invalid
+        end if
+        result["defaultIdentityTag"] = tag
+    end if
     pinLength = 0
     if raw.doesExist("pinLength")
         if not userProfileInteger(raw["pinLength"]) then return invalid
