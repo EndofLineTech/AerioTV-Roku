@@ -9,6 +9,28 @@ import subprocess
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_own_signin_application_probe_is_private_and_cannot_ship(self):
+        root = Path(__file__).resolve().parent.parent
+        spec = importlib.util.spec_from_file_location('own_signin_probe', Path(__file__).with_name('test-profile-own-signin-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        with tempfile.TemporaryDirectory() as tmp:
+            normal = Path(tmp) / 'normal.zip'
+            with zipfile.ZipFile(normal, 'w') as package:
+                package.writestr('manifest', 'title=AerioTV\n')
+                package.writestr('components/AerioScene.brs', 'sub init()\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub')
+                package.writestr('source/MetadataCacheStore.brs', 'return "cachefs:/aeriotv-metadata-v1"')
+            output = Path(tmp) / 'probe.zip'
+            probe.build(output, normal, 'SyntheticOwnSignInSection', 'http://127.0.0.1:1234')
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('"AerioTV"', source)
+                self.assertIn('task.ownProfileSignIn = true', source)
+                self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
+                self.assertIn('profile-own-signin-probe.json', package.namelist())
+        script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; for (const entry of ['profile-own-signin-probe.json','source/ProfileOwnSignInFixture.brs']) assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt',entry]), /probe/);"
+        subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)
+
     def test_management_application_probe_is_private_and_cannot_ship(self):
         root = Path(__file__).resolve().parent.parent
         spec = importlib.util.spec_from_file_location('management_probe', Path(__file__).with_name('test-profile-management-native.py'))

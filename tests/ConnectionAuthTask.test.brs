@@ -59,11 +59,52 @@ sub main()
     m.top = {baseUrl: "https://example.test", apiKey: "test-only", authMode: "x-api-key", username: "", password: "", cancelRequested: false, expectedUserId: "7", expectedUsername: "another"}
     loadChannels()
     if m.calls <> 1 or m.top.result.ok or not m.top.result.identityChanged then stop
+    m.ownSignInMode = true
+    for each outcome in ["ok", "rejected", "verify-rejected", "bad-token", "api", "name", "name-no-api"]
+        m.loginOutcome = outcome
+        m.calls = 0
+        m.top = {baseUrl: "https://example.test", apiKey: "", username: "viewer", password: "synthetic-password", cancelRequested: false, ownProfileSignIn: true, expectedUsername: "VIEWER", verifyOnly: true}
+        loadChannels()
+        if m.top.password <> "" or m.top.apiKey <> "" then stop
+        if outcome = "ok"
+            if m.calls <> 2 or not m.top.result.ok or m.top.result.verifiedUser.id <> 88 or m.top.result.apiKey <> "verified-own-key" then stop
+        else if outcome = "api"
+            if m.top.result.ok or m.top.result.apiAccessRequired <> true then stop
+            if m.top.result.message <> "This account has no API key yet. Ask your Dispatcharr administrator to turn on API access for it." then stop
+        else
+            if m.top.result.ok or m.top.result.message <> "Dispatcharr did not accept that username or password." then stop
+        end if
+    end for
+    m.calls = 0
+    m.top = {baseUrl: "https://example.test", apiKey: "", username: "viewer", password: "synthetic-password", cancelRequested: true, ownProfileSignIn: true, expectedUsername: "viewer", verifyOnly: true}
+    loadChannels()
+    if m.calls <> 0 or m.top.password <> "" or m.top.result <> invalid then stop
+    m.calls = 0
+    m.top = {baseUrl: "https://example.test", apiKey: "", username: "viewer", password: "synthetic-password", cancelRequested: false, ownProfileSignIn: true, verifyOnly: true}
+    loadChannels()
+    if m.calls <> 0 or m.top.result.ok or m.top.password <> "" then stop
     print "ALL TESTS PASSED"
 end sub
 
 function requestJson(url as string, body = invalid as dynamic, bearer = "" as string, method = "GET" as string) as dynamic
     m.calls++
+    if m.ownSignInMode = true
+        if instr(1, url, "/api/accounts/token/") > 0
+            if body.username <> "viewer" or body.password <> "synthetic-password" then stop
+            if m.loginOutcome = "rejected" then return invalid
+            if m.loginOutcome = "bad-token" then return {}
+            return {access: "synthetic-session-token"}
+        end if
+        if bearer <> "synthetic-session-token" then stop
+        if m.loginOutcome = "verify-rejected" then return invalid
+        username = "viewer"
+        key = "verified-own-key"
+        if m.loginOutcome = "name" then username = "another"
+        if m.loginOutcome = "name-no-api" then username = "another"
+        if m.loginOutcome = "api" then key = invalid
+        if m.loginOutcome = "name-no-api" then key = invalid
+        return {id: 88, username: username, user_level: 1, api_key: key}
+    end if
     if m.unionMode = true then return {id: 7, username: "viewer", user_level: 1}
     if m.passwordMode = true
         if instr(1, url, "/api/accounts/token/") > 0

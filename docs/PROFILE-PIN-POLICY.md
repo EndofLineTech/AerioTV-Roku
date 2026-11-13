@@ -257,3 +257,19 @@ scoped cache/progress handling and active Child recovery still need integration.
 Changed rows also refuse regressed clocks. The same check now protects existing
 rename/avatar/role/reorder plans, including every affected reorder row; no-op
 claims keep their existing newer stamp (`AerioTV-Roku-xpn`).
+
+`DispatcharrTask.ownProfileSignIn` now enforces an expected username before any
+credential request, uses the contract's refused-login and missing-API-access
+messages, and permits a recreated ID when only that username is expected. A
+wrong username is refused before its API-access state is reported. Cancelled
+Tasks clear credentials without starting a request. Ordinary setup/key checks
+retain their existing behavior when this mode is off.
+
+A private normal-app fixture runs actual token + bearer `/me/` requests for
+refused credentials, a different username, a null API key, and the correct own
+user recreated as ID 88. Only the last case commits the recovered own key and
+preference move. The fixture verifies no mixed API-key/bearer authentication,
+no target lineup requests during verify-only sign-in, unchanged default key and
+active session, and no autoplay. Its registry/cache are isolated and its package
+and source fixture are rejected by shipping guards. This qualifies the Task and
+storage boundary, not the still-unimplemented native form/activation lifecycle.

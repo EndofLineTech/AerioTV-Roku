@@ -3,6 +3,11 @@ sub init()
 end sub
 
 sub loadChannels()
+    if m.top.cancelRequested = true
+        m.top.password = ""
+        m.top.apiKey = ""
+        return
+    end if
     m.progressLabel = "Verifying account"
     m.top.progress = m.progressLabel
     m.clock = CreateObject("roTimespan")
@@ -20,17 +25,26 @@ sub loadChannels()
         return
     end if
     user = invalid
+    ownSignIn = m.top.ownProfileSignIn = true and m.top.username <> ""
+    if ownSignIn and textValue(m.top.expectedUsername) = ""
+        publishError("Dispatcharr did not accept that username or password.")
+        return
+    end if
     if m.top.username <> ""
         m.key = ""
         m.top.progress = "Signing in to Dispatcharr"
         token = requestJson(m.base + "/api/accounts/token/", {username: m.top.username, password: m.top.password})
         m.top.password = ""
         if type(token) <> "roAssociativeArray"
-            publishError("Could not sign in. " + m.failure)
+            message = "Could not sign in. " + m.failure
+            if ownSignIn then message = "Dispatcharr did not accept that username or password."
+            publishError(message)
             return
         end if
         if textValue(token.access) = ""
-            publishError("Unexpected login response. Use your Dispatcharr dashboard credentials.")
+            message = "Unexpected login response. Use your Dispatcharr dashboard credentials."
+            if ownSignIn then message = "Dispatcharr did not accept that username or password."
+            publishError(message)
             return
         end if
         m.top.progress = "Verifying account"
@@ -49,21 +63,30 @@ sub loadChannels()
         end if
     end if
     if type(user) <> "roAssociativeArray"
-        publishError("Could not verify the Dispatcharr account. " + m.failure, httpAccountRejected(m.httpFailure))
+        if ownSignIn
+            publishError("Dispatcharr did not accept that username or password.")
+        else
+            publishError("Could not verify the Dispatcharr account. " + m.failure, httpAccountRejected(m.httpFailure))
+        end if
         return
     end if
-    if textValue(user.id) = "" or m.key = ""
-        publishError("The account needs an API key. Generate one under Dispatcharr > System > Users.")
-        return
-    end if
-
     expectedId = textValue(m.top.expectedUserId)
     expectedName = textValue(m.top.expectedUsername)
     if (expectedId <> "" and expectedId <> textValue(user.id)) or (expectedName <> "" and lcase(expectedName) <> lcase(textValue(user.username)))
         m.key = ""
         m.top.apiKey = ""
         m.top.password = ""
-        if m.top.cancelRequested <> true then m.top.result = {ok: false, identityChanged: true, message: "The verified account no longer matches this profile. Sign in as this profile before continuing."}
+        message = "The verified account no longer matches this profile. Sign in as this profile before continuing."
+        if ownSignIn then message = "Dispatcharr did not accept that username or password."
+        if m.top.cancelRequested <> true then m.top.result = {ok: false, identityChanged: true, message: message}
+        return
+    end if
+    if textValue(user.id) = "" or m.key = ""
+        if ownSignIn and textValue(user.id) <> "" and m.key = ""
+            publishError("This account has no API key yet. Ask your Dispatcharr administrator to turn on API access for it.", false, true)
+        else
+            publishError("The account needs an API key. Generate one under Dispatcharr > System > Users.")
+        end if
         return
     end if
     if m.top.verifyOnly = true
@@ -157,10 +180,10 @@ sub loadChannels()
     m.top.apiKey = ""
 end sub
 
-sub publishError(message as string, relogin = false as boolean)
+sub publishError(message as string, relogin = false as boolean, apiAccessRequired = false as boolean)
     m.key = ""
     m.top.apiKey = ""
     m.top.password = ""
     if m.top.cancelRequested = true then return
-    m.top.result = {ok: false, message: message, relogin: relogin}
+    m.top.result = {ok: false, message: message, relogin: relogin, apiAccessRequired: apiAccessRequired}
 end sub

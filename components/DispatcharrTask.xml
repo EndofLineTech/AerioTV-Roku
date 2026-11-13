@@ -3,6 +3,7 @@
   <interface>
     <field id="cancelRequested" type="boolean" />
     <field id="verifyOnly" type="boolean" />
+    <field id="ownProfileSignIn" type="boolean" />
     <field id="expectedUserId" type="string" />
     <field id="expectedUsername" type="string" />
     <field id="cacheEpoch" type="string" />
