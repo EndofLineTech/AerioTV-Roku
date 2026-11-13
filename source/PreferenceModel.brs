@@ -272,25 +272,37 @@ function mergeAccountPreferences(current as object, patch as object) as object
 end function
 
 function loadPreferenceStore(registry as object, preservePrecision = false as boolean) as object
-    raw = registry.read("settingsV1")
-    if raw = "" then return defaultPreferenceStore()
     if preservePrecision
-        if m.profilePreferenceDecoder <> invalid
-            decoded = m.profilePreferenceDecoder(raw)
-        else
-            decoded = ParseJson(raw, "d")
-        end if
-        refused = {schema: 0, readOnly: true, device: normalizeDevicePreferences(invalid), accounts: {}}
-        if type(decoded) <> "roAssociativeArray" then return refused
-        kind = type(decoded.schema)
-        if kind <> "Integer" and kind <> "roInt" and kind <> "roInteger" then return refused
-        if decoded.schema <> 1 or type(decoded.device) <> "roAssociativeArray" or type(decoded.accounts) <> "roAssociativeArray" then return refused
-        for each key in decoded.accounts
-            if type(decoded.accounts[key]) <> "roAssociativeArray" then return refused
-        end for
+        decoded = loadStrictPreferenceStore(registry)
+        if decoded.readOnly = true then return decoded
         return normalizePreferenceStore(decoded)
     end if
+    raw = registry.read("settingsV1")
+    if raw = "" then return defaultPreferenceStore()
     return normalizePreferenceStore(ParseJson(raw))
+end function
+
+' Cleanup owns deletions, not normalization of other users' known/future fields.
+function loadStrictPreferenceStore(registry as object) as object
+    refused = {schema: 0, readOnly: true, device: normalizeDevicePreferences(invalid), accounts: {}}
+    raw = registry.read("settingsV1")
+    if raw = ""
+        if registry.exists("settingsV1") then return refused
+        return defaultPreferenceStore()
+    end if
+    if m.profilePreferenceDecoder <> invalid
+        decoded = m.profilePreferenceDecoder(raw)
+    else
+        decoded = ParseJson(raw, "d")
+    end if
+    if type(decoded) <> "roAssociativeArray" then return refused
+    kind = type(decoded.schema)
+    if kind <> "Integer" and kind <> "roInt" and kind <> "roInteger" then return refused
+    if decoded.schema <> 1 or type(decoded.device) <> "roAssociativeArray" or type(decoded.accounts) <> "roAssociativeArray" then return refused
+    for each key in decoded.accounts
+        if type(decoded.accounts[key]) <> "roAssociativeArray" then return refused
+    end for
+    return decoded
 end function
 
 function savePreferenceStore(registry as object, store as object, maxBytes = 24000 as integer) as boolean

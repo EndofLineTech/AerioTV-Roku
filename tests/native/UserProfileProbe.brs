@@ -122,6 +122,32 @@ sub profileAssert(passed as boolean, label as string)
     print "[profile-probe] "; status; " "; label
 end sub
 
+' Public synthetic values only; qualify settings cleanup without provider data.
+sub profileSeedPrecisionSettings(registry as object, identities as object)
+    root = ParseJson(registry.read("settingsV1"), "d")
+    root["futureDouble"] = ParseJson("1.2345678901234567", "d")
+    for each identity in identities
+        root.accounts[preferenceScope(identity)]["futureDouble"] = ParseJson("1.2345678901234567", "d")
+        root.accounts[preferenceScope(identity)]["futureFloating"] = ParseJson("3.0", "d")
+        root.accounts[preferenceScope(identity)]["guide"] = {groupSort: "future-sort"}
+    end for
+    encoded = strictJsonEncode(root)
+    registry.write("settingsV1", encoded.text)
+end sub
+
+function profilePrecisionSettingsMatch(registry as object, identities as object) as boolean
+    root = ParseJson(registry.read("settingsV1"), "d")
+    if root["futureDouble"] <> ParseJson("1.2345678901234567", "d") then return false
+    for each identity in identities
+        row = root.accounts[preferenceScope(identity)]
+        if row["futureDouble"] <> ParseJson("1.2345678901234567", "d") then return false
+        kind = type(row["futureFloating"])
+        if kind <> "Double" and kind <> "roDouble" and kind <> "Float" and kind <> "roFloat" then return false
+        if row.guide.groupSort <> "future-sort" then return false
+    end for
+    return true
+end function
+
 function profilePinVector(saltHex as string, pin as string, expected as string) as boolean
     actual = userProfilePinHash(saltHex, pin)
     if actual = invalid then return false

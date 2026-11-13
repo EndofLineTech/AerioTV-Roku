@@ -1,4 +1,8 @@
 sub main()
+    ' Host interpreter lacks ParseJson(d); native builder removes this seam.
+    m.profilePreferenceDecoder = function(raw as string) as dynamic
+        return ParseJson(raw)
+    end function
     for each failure in ["", "write", "flush", "rollback"]
         registry = forgetRegistry()
         before = normalizeConnectionStore(ParseJson(registry.read("connectionsV1")))

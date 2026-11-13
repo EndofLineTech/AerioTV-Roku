@@ -326,3 +326,13 @@ Its existing size/write/Flush failure and rollback behavior is retained.
 These paths pass 623 shared native assertions. Cleanup/removal-specific writers
 remain separately tracked as `AerioTV-Roku-5r1`; this is not a claim that every
 unreleased profile/sync mutation path has been qualified for numeric fidelity.
+
+`AerioTV-Roku-5r1` now uses the validated precision loader's raw form for
+whole-slot Forget, single-profile removal and pulled-tombstone cleanup. These
+transactions delete only owned scopes; they do not normalize another account's
+known fields (which may contain values introduced by a future client). They
+strictly serialize the retained root within the byte budget before their single
+atomic Flush. Present empty settings are corruption, not an absent store.
+Native red/green fixtures retain root/foreign binary64 values, integral-floating
+number kinds and future Guide values through all three deletion paths; the
+shared suite passes 627 assertions, including existing exact rollback failures.

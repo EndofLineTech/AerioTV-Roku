@@ -113,6 +113,14 @@ def build(output, base_url, registry=False, model_store=False):
             package.writestr('source/DispatcharrSyncMergeProbeChecks.brs', merge_checks)
             pull_checks = (ROOT / 'tests/DispatcharrSyncPullStore.test.brs').read_text().split('sub check(', 1)[0]
             pull_checks = pull_checks.replace('sub main()', 'sub runDispatcharrSyncPullStoreChecks()').replace('check(', 'profileAssert(')
+            pull_checks = pull_checks.replace('m.profilePreferenceDecoder = function(raw as string) as dynamic\n        return ParseJson(raw)\n    end function', 'm.profilePreferenceDecoder = invalid')
+            pull_checks = pull_checks.replace('    print "ALL TESTS PASSED"', '''    store.active = a.id
+    registry = syncPullRegistry(connection, store, "")
+    kept = ["https://example.test|7|slot-a", "https://example.test|8|slot-b"]
+    profileSeedPrecisionSettings(registry, kept)
+    result = commitDispatcharrRosterPull(registry, connection, store, data, true, 300, scope, scope)
+    profileAssert(result.ok and profilePrecisionSettingsMatch(registry, kept), "roster tombstone cleanup retains untouched root and foreign settings precision and future known values")
+    print "ALL TESTS PASSED"''')
             package.writestr('source/DispatcharrSyncPullStoreProbeChecks.brs', pull_checks)
             pin_checks = (ROOT / 'tests/UserProfilePinPolicy.test.brs').read_text().split('sub check(', 1)[0]
             pin_checks = pin_checks.replace('sub main()', 'sub runUserProfilePinPolicyChecks()').replace('check(', 'profileAssert(')
@@ -171,7 +179,7 @@ def build(output, base_url, registry=False, model_store=False):
     legacySaved = savePreferenceStore(registry, loadPreferenceStore(registry, true))
     afterLegacy = ParseJson(registry.read("settingsV1"), "d")
     profileAssert(legacySaved and afterLegacy["futureDouble"] = ParseJson("1.2345678901234567", "d") and afterLegacy.accounts[actorKey]["futureDouble"] = ParseJson("1.2345678901234567", "d"), "legacy device-settings writer also preserves foreign profile precision")
-    for each unreadable in ["not-json", FormatJson({schema: 2, device: {}, accounts: {}}), FormatJson({schema: 1, device: {}, accounts: {foreign: "preserve-unreadable"}})]
+    for each unreadable in ["", "not-json", FormatJson({schema: 2, device: {}, accounts: {}}), FormatJson({schema: 1, device: {}, accounts: {foreign: "preserve-unreadable"}})]
         registry.write("settingsV1", unreadable)
         readonlySettings = loadPreferenceStore(registry, true)
         profileAssert(readonlySettings.readOnly = true and registry.read("settingsV1") = unreadable, "strict settings cold load retains malformed or newer data without a writable empty fallback")
@@ -190,6 +198,21 @@ def build(output, base_url, registry=False, model_store=False):
                 source = (ROOT / f'tests/{name}.test.brs').read_text().split('sub check(', 1)[0]
                 source = source.replace('sub main()', f'sub run{name}Checks()').replace('check(', 'profileAssert(')
                 source = source.replace('m.profilePreferenceDecoder = function(raw as string) as dynamic\n        return ParseJson(raw)\n    end function', 'm.profilePreferenceDecoder = invalid')
+                if name == 'UserProfileForget':
+                    source = source.replace('    print "ALL TESTS PASSED"', '''    registry = forgetRegistry()
+    before = normalizeConnectionStore(ParseJson(registry.read("connectionsV1")))
+    kept = ["https://example.test|7|slot-b"]
+    profileSeedPrecisionSettings(registry, kept)
+    result = forgetUserProfileConnection(registry, before, "slot-a")
+    profileAssert(result.ok and profilePrecisionSettingsMatch(registry, kept), "whole-slot Forget preserves foreign settings precision and future known values")
+    print "ALL TESTS PASSED"''')
+                if name == 'UserProfileRemoval':
+                    source = source.replace('    print "ALL TESTS PASSED"', '''    resetRemovalFixture()
+    kept = ["https://example.test|1|slot-a", "https://example.test|2|slot-b"]
+    profileSeedPrecisionSettings(m.registry, kept)
+    result = removeUserProfile(m.registry, m.connection, m.store, m.other.id, 200, "normal")
+    profileAssert(result.ok and profilePrecisionSettingsMatch(m.registry, kept), "profile removal preserves outgoing and foreign settings precision and future known values")
+    print "ALL TESTS PASSED"''')
                 package.writestr(f'source/{name}ProbeChecks.brs', source)
         else:
             package.writestr('source/DispatcharrSyncKeyProbeChecks.brs', 'sub runDispatcharrSyncKeyChecks()\nend sub\n')

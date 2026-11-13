@@ -16,7 +16,8 @@ function forgetUserProfileConnection(registry as object, connections as object, 
     if nextConnections = invalid then return denied
     preferences = defaultPreferenceStore()
     if registry.exists("settingsV1")
-        preferences = ParseJson(registry.read("settingsV1"))
+        preferences = loadStrictPreferenceStore(registry)
+        if preferences.readOnly = true then return denied
         if type(preferences) <> "roAssociativeArray" then return denied
         if not userProfileInteger(preferences.schema) then return denied
         if preferences.schema <> 1 then return denied
@@ -31,7 +32,12 @@ function forgetUserProfileConnection(registry as object, connections as object, 
     if slotId = "legacy" and entry.accountId <> "" then preferences.accounts.delete(preferenceScope(entry.url + "|" + entry.accountId))
     changes = {}
     changes["connectionsV1"] = FormatJson(nextConnections)
-    if registry.exists("settingsV1") then changes["settingsV1"] = FormatJson(preferences)
+    if registry.exists("settingsV1")
+        encoded = strictJsonEncode(preferences)
+        if not encoded.ok then return denied
+        if preferenceByteBudget(encoded.text) > 24000 then return denied
+        changes["settingsV1"] = encoded.text
+    end if
     changes[connectionRegistryKey(slotId)] = ""
     changes[userProfileStoreKey(slotId)] = ""
     for each key in registry.getKeyList()
@@ -69,14 +75,18 @@ function removeUserProfile(registry as object, connection as object, store as ob
     if registry.exists(pinHold) then prepared.changes[pinHold] = ""
     preferences = defaultPreferenceStore()
     if registry.exists("settingsV1")
-        preferences = ParseJson(registry.read("settingsV1"))
+        preferences = loadStrictPreferenceStore(registry)
+        if preferences.readOnly = true then return denied
         if type(preferences) <> "roAssociativeArray" then return denied
         if not userProfileInteger(preferences.schema) then return denied
         if preferences.schema <> 1 or type(preferences.accounts) <> "roAssociativeArray" then return denied
         identity = connectionPreferenceIdentity(connection, plan.removedProfile.userId.toStr())
         if identity = "" then return denied
         preferences.accounts.delete(preferenceScope(identity))
-        prepared.changes["settingsV1"] = FormatJson(preferences)
+        encoded = strictJsonEncode(preferences)
+        if not encoded.ok then return denied
+        if preferenceByteBudget(encoded.text) > 24000 then return denied
+        prepared.changes["settingsV1"] = encoded.text
     end if
     result = userProfileRegistryTransaction(registry, prepared.changes)
     result.needsDefaultSwitch = false

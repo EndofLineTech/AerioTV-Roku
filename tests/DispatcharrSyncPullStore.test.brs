@@ -1,4 +1,8 @@
 sub main()
+    ' Host interpreter lacks ParseJson(d); native builder removes this seam.
+    m.profilePreferenceDecoder = function(raw as string) as dynamic
+        return ParseJson(raw)
+    end function
     connection = normalizeConnectionEntry({id: "slot-a", name: "A", provider: "dispatcharr", url: "https://example.test", accountId: "7", remember: true})
     a = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000001", {id: 7, username: "alice", user_level: 1}, 1)
     b = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "bob", user_level: 1}, 1)

@@ -1,4 +1,8 @@
 sub main()
+    ' Host interpreter lacks ParseJson(d); native builder removes this seam.
+    m.profilePreferenceDecoder = function(raw as string) as dynamic
+        return ParseJson(raw)
+    end function
     for each failFlush in [false, true]
         resetRemovalFixture()
         m.registry.failFlush = failFlush

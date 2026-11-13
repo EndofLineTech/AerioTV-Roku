@@ -27,7 +27,8 @@ function commitDispatcharrRosterPull(registry as object, connection as object, p
     end for
     preferences = defaultPreferenceStore()
     if registry.exists("settingsV1")
-        preferences = ParseJson(registry.read("settingsV1"))
+        preferences = loadStrictPreferenceStore(registry)
+        if preferences.readOnly = true then return denied
         if type(preferences) <> "roAssociativeArray" then return denied
         if not userProfileInteger(preferences.schema) then return denied
         if preferences.schema <> 1 or type(preferences.accounts) <> "roAssociativeArray" or type(preferences.device) <> "roAssociativeArray" then return denied
@@ -36,7 +37,9 @@ function commitDispatcharrRosterPull(registry as object, connection as object, p
             if identity = "" then return denied
             preferences.accounts.delete(preferenceScope(identity))
         end for
-        text = FormatJson(preferences)
+        encoded = strictJsonEncode(preferences)
+        if not encoded.ok then return denied
+        text = encoded.text
         if preferenceByteBudget(text) > 24000 then return denied
         if plan.removed.count() > 0 then prepared.changes["settingsV1"] = text
     end if

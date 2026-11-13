@@ -10,12 +10,20 @@ sub main()
     end function
     registry = {value: "not-json", read: function(key as string) as string
         return m.value
+    end function, exists: function(key as string) as boolean
+        return true
     end function}
     assertEqual(loadPreferenceStore(registry, true).readOnly, true, "strict cold load refuses malformed saved data without turning it into an empty writable root")
     registry.value = FormatJson({schema: 2, device: {}, accounts: {}})
     assertEqual(loadPreferenceStore(registry, true).readOnly, true, "strict cold load refuses a newer schema")
     registry.value = FormatJson({schema: 1, device: {}, accounts: {foreign: "unreadable-preserve-me"}})
     assertEqual(loadPreferenceStore(registry, true).readOnly, true, "strict cold load cannot replace a malformed foreign account with normalized defaults")
+    registry.value = ""
+    assertEqual(loadPreferenceStore(registry, true).readOnly, true, "present empty settings are corruption, not permission to migrate an empty writable root")
+    registry.value = FormatJson({schema: 1, device: {}, accounts: {foreign: {guide: {groupSort: "future-sort"}}}})
+    rawSettings = loadStrictPreferenceStore(registry)
+    assertEqual(rawSettings.accounts.foreign.guide.groupSort, "future-sort", "raw precision reader never normalizes another account during cleanup")
+    assertEqual(rawSettings.accounts.foreign.doesExist("favoriteIds"), false, "raw cleanup reader cannot add defaults to retained accounts")
     positions = normalizeDvrPositions({"12": 420, "13": -1, "14/15": 60, "16": 999999})
     if positions.count() <> 1 or positions["12"] <> 420 then stop
     store = defaultPreferenceStore()
