@@ -63,6 +63,7 @@ def main():
     parser.add_argument('--restore', required=True)
     parser.add_argument('--report', default='out/profile-primitives-native.json')
     parser.add_argument('--registry', action='store_true', help='Measure disposable registry fixtures and clean up before restoring')
+    parser.add_argument('--model-store', action='store_true', help='Run profile model and fake-registry transaction tests on native Roku')
     args = parser.parse_args()
     host = os.environ['ROKU_HOST']
     password = os.environ['ROKU_DEV_PASSWORD']
@@ -146,7 +147,7 @@ def main():
     spec = importlib.util.spec_from_file_location('profile_builder', ROOT / 'scripts/build-profile-probe.py')
     builder = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(builder)
-    archive = builder.build(ROOT / 'out/user-profile-probe.zip', f'http://{local}:{server.server_port}', registry=args.registry)
+    archive = builder.build(ROOT / 'out/user-profile-probe.zip', f'http://{local}:{server.server_port}', registry=args.registry, model_store=args.model_store)
     with zipfile.ZipFile(archive) as package:
         expected = package.read('profile-wire-fixture.json')
     report = {'restore_sha256': hashlib.sha256(restore.read_bytes()).hexdigest(),

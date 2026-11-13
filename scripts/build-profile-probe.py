@@ -51,7 +51,7 @@ def registry_fixtures():
     return cases
 
 
-def build(output, base_url, registry=False):
+def build(output, base_url, registry=False, model_store=False):
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     fixture = {
@@ -80,9 +80,17 @@ def build(output, base_url, registry=False):
         package.write(ROOT / 'tests/native/UserProfileProbe.brs', 'source/Main.brs')
         package.write(ROOT / 'tests/native/UserProfileRegistryProbe.brs', 'source/UserProfileRegistryProbe.brs')
         package.write(ROOT / 'tests/native/PhoneSetupProbe.xml', 'components/PhoneSetupProbe.xml')
-        for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'StrictJson', 'UserProfilePin']:
+        for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'PreferenceModel', 'ConnectionStoreModel']:
             package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
-        package.writestr('profile-probe-config.json', json.dumps({'baseUrl': base_url, 'registry': registry}))
+        if model_store:
+            for name in ['UserProfileModel', 'UserProfileStore']:
+                source = (ROOT / f'tests/{name}.test.brs').read_text().split('sub check(', 1)[0]
+                source = source.replace('sub main()', f'sub run{name}Checks()').replace('check(', 'profileAssert(')
+                package.writestr(f'source/{name}ProbeChecks.brs', source)
+        else:
+            package.writestr('source/UserProfileModelProbeChecks.brs', 'sub runUserProfileModelChecks()\nend sub\nsub testProfileNativeNames()\nend sub\n')
+            package.writestr('source/UserProfileStoreProbeChecks.brs', 'sub runUserProfileStoreChecks()\nend sub\nsub testProfileNativeStoreNames()\nend sub\n')
+        package.writestr('profile-probe-config.json', json.dumps({'baseUrl': base_url, 'registry': registry, 'modelStore': model_store}))
         package.writestr('profile-wire-fixture.json', json.dumps(fixture, ensure_ascii=False))
         package.writestr('profile-registry-fixtures.json', json.dumps(registry_fixtures()))
     return output

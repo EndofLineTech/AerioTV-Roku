@@ -19,6 +19,7 @@ sub Main()
     profileAssert(value.categories.syncProviders.data.updatedAt = 1761700000000, "millisecond-exact")
     encoded = strictJsonEncode(value)
     profileAssert(encoded.ok, "strict-encode")
+    profileAssert(strictJsonEncode({boxedInteger: 1}).ok, "strict-json-native-boxed-integer")
     raw = encoded.text
     again = ParseJson(raw, "d")
     profileAssert(again.categories.profiles.data.rows[0][2] = "Alice 🦉", "emoji-roundtrip")
@@ -56,6 +57,13 @@ sub Main()
     profileAssert(profilePinVector("b81e4c2a9d07f3e1a5c6d8e90f1b2c3d", "UULR", "3ea9be0818449911ef5780edfe9d3a36b030efa593f1116922e88e687f04915f"), "pin-v2-directions4")
     profileAssert(profilePinVector("b81e4c2a9d07f3e1a5c6d8e90f1b2c3d", "UDLRUD", "1743a521f797b639615d35a3ec1f317b23e2c8a1b7c212a6d2ad70699555c1ea"), "pin-v2-directions6")
     if config.registry = true then profileProbeRegistry()
+    if config.modelStore = true
+        runUserProfileModelChecks()
+        testProfileNativeNames()
+        runUserProfileStoreChecks()
+        testProfileNativeStoreNames()
+        profileProbeStoreRegistry()
+    end if
     print "[profile-probe] complete failed="; m.profileFailures
     while true
         event = wait(0, port)

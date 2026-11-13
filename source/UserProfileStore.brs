@@ -1,0 +1,241 @@
+' Internal storage foundation only. Callers must not connect/expose switching
+' until the slot's store has loaded successfully and all authorization gates pass.
+function userProfileStoreKey(slotId as string) as string
+    if connectionRegistryKey(slotId) = "" then return ""
+    return "userProfilesV1_" + slotId
+end function
+
+function defaultUserProfileStore(slotId as string) as object
+    return {schema: 1, playlistId: slotId, active: "", askAtLaunch: false, profiles: []}
+end function
+
+function userProfileStoreRecovery(slotId as string) as object
+    result = defaultUserProfileStore(slotId)
+    result.readOnly = true
+    return result
+end function
+
+' An empty store is valid ONLY before first verified migration. A present empty
+' registry value, missing default, unknown schema/fields or bad PIN is recovery,
+' never a reason to synthesize an unrestricted replacement.
+function normalizeUserProfileStore(raw as dynamic, slotId as string) as object
+    failure = userProfileStoreRecovery(slotId)
+    if userProfileStoreKey(slotId) = "" then return failure
+    raw = userProfileCanonicalFields(raw, ["schema", "playlistId", "active", "askAtLaunch", "profiles"])
+    if raw = invalid then return failure
+    if not userProfileInteger(raw.schema) then return failure
+    if raw.schema <> 1 then return failure
+    if type(raw.playlistId) <> "String" and type(raw.playlistId) <> "roString" then return failure
+    if raw.playlistId <> slotId then return failure
+    if not userProfileBoolean(raw.askAtLaunch) or type(raw.profiles) <> "roArray" then return failure
+    if raw.profiles.count() < 1 or raw.profiles.count() > 4 then return failure
+    result = defaultUserProfileStore(slotId)
+    ids = {}
+    usernames = {}
+    users = {}
+    defaults = 0
+    for each entry in raw.profiles
+        profile = normalizeUserProfileRecord(entry, slotId)
+        if profile = invalid then return failure
+        username = lcase(profile.username)
+        userId = profile.userId.toStr()
+        if ids.doesExist(profile.id) or usernames.doesExist(username) or users.doesExist(userId) then return failure
+        ids[profile.id] = true
+        usernames[username] = true
+        users[userId] = true
+        if profile.isDefault then defaults++
+        result.profiles.push(profile)
+    end for
+    active = userProfileLocalId(raw.active)
+    if defaults <> 1 or not ids.doesExist(active) then return failure
+    result.active = active
+    result.askAtLaunch = raw.askAtLaunch
+    return result
+end function
+
+' Native literals and ParseJson maps differ in case sensitivity. Canonicalize
+' recognized keys explicitly before dynamic field lookup, preserving values
+' while refusing case-colliding keys rather than choosing one arbitrarily.
+function userProfileCanonicalFields(raw as dynamic, allowed as object) as dynamic
+    if not userProfileFields(raw, allowed) then return invalid
+    result = ParseJson("{}")
+    for each key in raw
+        for each name in allowed
+            if lcase(key) = lcase(name) then result[name] = raw[key]
+        end for
+    end for
+    return result
+end function
+
+function userProfileFields(raw as dynamic, allowed as object) as boolean
+    if type(raw) <> "roAssociativeArray" then return false
+    seen = {}
+    for each key in raw
+        canonical = lcase(key)
+        if seen.doesExist(canonical) then return false
+        seen[canonical] = true
+        found = false
+        for each name in allowed
+            if lcase(key) = lcase(name) then found = true
+        end for
+        if not found then return false
+    end for
+    return true
+end function
+
+function userProfileBoolean(value as dynamic) as boolean
+    return type(value) = "Boolean" or type(value) = "roBoolean"
+end function
+
+function normalizeUserProfileRecord(raw as dynamic, slotId as string) as dynamic
+    fields = ["id", "playlistId", "userId", "username", "displayName", "isDefault", "role", "userLevel", "isStaff", "isSuperuser", "order", "createdAt", "updatedAt", "avatar", "pinType", "pinHash", "pinSalt"]
+    raw = userProfileCanonicalFields(raw, fields)
+    if raw = invalid then return invalid
+    id = userProfileLocalId(raw.id)
+    if id = "" then return invalid
+    if type(raw.playlistId) <> "String" and type(raw.playlistId) <> "roString" then return invalid
+    if raw.playlistId <> slotId then return invalid
+    if not userProfileInteger(raw.userId) then return invalid
+    userId = userProfileUserId(raw.userId)
+    if userId = invalid then return invalid
+    for each field in ["username", "displayName", "role", "pinType", "pinHash", "pinSalt"]
+        if type(raw[field]) <> "String" and type(raw[field]) <> "roString" then return invalid
+    end for
+    if raw.username.trim() = "" or userProfileUtf8ByteCount(raw.username) > 256 then return invalid
+    if CreateObject("roRegex", "[\x00-\x1F\x7F]", "").isMatch(raw.username) then return invalid
+    if userProfileUtf8ByteCount(raw.displayName) > 40 then return invalid
+    for each field in ["isDefault", "isStaff", "isSuperuser"]
+        if not userProfileBoolean(raw[field]) then return invalid
+    end for
+    for each field in ["userLevel", "order", "createdAt", "updatedAt"]
+        if not userProfileInteger(raw[field]) then return invalid
+    end for
+    if raw.userLevel < 0 or raw.order < -1 or raw.createdAt < 0 or raw.updatedAt < 0 then return invalid
+    if (raw.isStaff or raw.isSuperuser) and raw.userLevel < 10 then return invalid
+    if userProfileResolveRole(raw.userLevel, raw.role) <> raw.role then return invalid
+    if raw.pinType = "none"
+        if raw.pinHash <> "" or raw.pinSalt <> "" then return invalid
+    else if not userProfilePinRecordValid(raw)
+        return invalid
+    end if
+    if not userProfileFields(raw.avatar, ["icon", "color"]) then return invalid
+    for each key in raw.avatar
+        if type(raw.avatar[key]) <> "String" and type(raw.avatar[key]) <> "roString" then return invalid
+    end for
+    result = copyJson(raw)
+    result.id = id
+    result["userId"] = userId
+    return result
+end function
+
+function loadUserProfileStore(registry as object, slotId as string) as object
+    key = userProfileStoreKey(slotId)
+    if key = "" then return userProfileStoreRecovery(slotId)
+    if not registry.exists(key) then return defaultUserProfileStore(slotId)
+    text = registry.read(key)
+    if text = "" then return userProfileStoreRecovery(slotId)
+    return normalizeUserProfileStore(ParseJson(text), slotId)
+end function
+
+' Repeated migration does not re-ID, stamp, clear a PIN, change role or replace
+' metadata. Default identity replacement is a different, gated lifecycle action.
+function userProfileEnsureDefault(store as object, verified as object) as dynamic
+    if store.readOnly = true or store.playlistId <> verified.playlistId then return invalid
+    if verified.isDefault <> true then return invalid
+    if store.profiles.count() = 0
+        result = copyJson(store)
+        result.profiles.push(copyJson(verified))
+        result.active = verified.id
+        cleaned = normalizeUserProfileStore(result, store.playlistId)
+        if cleaned.readOnly = true then return invalid
+        return cleaned
+    end if
+    cleaned = normalizeUserProfileStore(store, store.playlistId)
+    if cleaned.readOnly = true then return invalid
+    for each profile in cleaned.profiles
+        if profile.isDefault
+            if profile.userId <> verified.userId or lcase(profile.username) <> lcase(verified.username) then return invalid
+        end if
+    end for
+    return cleaned
+end function
+
+' One atomic Flush for metadata + nondefault key updates/deletions. No active
+' runtime state changes here. Default key/Remember and scope cleanup belong to
+' the slot lifecycle transaction, not this deliberately narrower primitive.
+function commitUserProfileStore(registry as object, previous as object, staged as object, keys as object, remember as boolean) as object
+    failure = {ok: false, recoveryRequired: false}
+    if previous.readOnly = true or staged.readOnly = true then return failure
+    slotId = previous.playlistId
+    if staged.playlistId <> slotId then return failure
+    key = userProfileStoreKey(slotId)
+    if key = "" then return failure
+    before = previous
+    if previous.profiles.count() > 0 then before = normalizeUserProfileStore(previous, slotId)
+    if before.readOnly = true then return failure
+    actual = loadUserProfileStore(registry, slotId)
+    if actual.readOnly = true or FormatJson(actual) <> FormatJson(before) then return failure
+    cleaned = normalizeUserProfileStore(staged, slotId)
+    if cleaned.readOnly = true then return failure
+    for each profile in previous.profiles
+        if profile.isDefault
+            found = false
+            for each target in cleaned.profiles
+                if target.isDefault and target.id = profile.id then found = true
+            end for
+            if not found then return failure
+        end if
+    end for
+    text = FormatJson(cleaned)
+    ' Safety ceiling for this small four-record format, not free-registry space.
+    if userProfileUtf8ByteCount(text) > 8192 then return failure
+    owned = {}
+    for each profile in cleaned.profiles
+        if not profile.isDefault then owned[profile.id] = true
+    end for
+    changes = {}
+    for each id in keys
+        if not owned.doesExist(id) then return failure
+        value = keys[id]
+        if type(value) <> "String" and type(value) <> "roString" then return failure
+        if len(value) > 512 then return failure
+        changes[userProfileKeyName(id)] = value
+    end for
+    for each profile in previous.profiles
+        if not profile.isDefault and (not owned.doesExist(profile.id) or not remember) then changes[userProfileKeyName(profile.id)] = ""
+    end for
+    if not remember
+        for each id in owned
+            changes[userProfileKeyName(id)] = ""
+        end for
+    end if
+    changes[key] = text
+    snapshots = {}
+    present = {}
+    for each name in changes
+        snapshots[name] = registry.read(name)
+        present[name] = registry.exists(name)
+    end for
+    written = true
+    for each name in changes
+        if changes[name] = ""
+            written = registry.delete(name) and written
+        else
+            written = registry.write(name, changes[name]) and written
+        end if
+    end for
+    flushed = false
+    if written then flushed = registry.flush()
+    if written and flushed then return {ok: true, recoveryRequired: false}
+    restored = true
+    for each name in snapshots
+        if present[name]
+            restored = registry.write(name, snapshots[name]) and restored
+        else
+            restored = registry.delete(name) and restored
+        end if
+    end for
+    restored = registry.flush() and restored
+    failure.recoveryRequired = not restored
+    return failure
+end function

@@ -28,7 +28,7 @@ function strictJsonEncode(value as dynamic, depth = 0 as integer) as object
     if kind = "String" or kind = "roString" or kind = "Boolean" or kind = "roBoolean"
         return {ok: true, text: FormatJson(value, 1)}
     end if
-    integral = kind = "Integer" or kind = "roInt" or kind = "LongInteger" or kind = "roLongInteger"
+    integral = kind = "Integer" or kind = "roInt" or kind = "roInteger" or kind = "LongInteger" or kind = "roLongInteger"
     floating = kind = "Float" or kind = "roFloat" or kind = "Double" or kind = "roDouble"
     if not integral and not floating then return {ok: false, text: ""}
     text = FormatJson(value, 1)

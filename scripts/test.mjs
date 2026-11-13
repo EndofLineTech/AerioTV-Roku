@@ -20,6 +20,8 @@ suites.unshift('RokuAuthModel');
 suites.unshift('HttpTransport');
 suites.unshift('StrictJson');
 suites.unshift('UserProfilePin');
+suites.unshift('UserProfileModel');
+suites.unshift('UserProfileStore');
 suites.unshift('StartupBeaconModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
 for (const suite of suites) {
@@ -66,6 +68,8 @@ for (const suite of suites) {
     ...(suite === 'HttpTransport' ? ['source/HttpTransport.brs'] : []),
     ...(suite === 'StrictJson' ? ['source/StrictJson.brs'] : []),
     ...(suite === 'UserProfilePin' ? ['source/UserProfilePin.brs'] : []),
+    ...(['UserProfileModel', 'UserProfileStore'].includes(suite) ? ['source/UserProfileModel.brs'] : []),
+    ...(suite === 'UserProfileStore' ? ['source/UserProfileStore.brs', 'source/UserProfilePin.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'DvrRecordingModel' ? ['source/DvrRecordingModel.brs'] : []),
     ...(suite === 'DvrRecordingModel' ? ['source/DvrSeriesModel.brs'] : []),
     ...(['DvrPresentationModel', 'DvrNavigation', 'DvrHandoff', 'DvrView'].includes(suite) ? ['source/DvrPresentationModel.brs'] : []),

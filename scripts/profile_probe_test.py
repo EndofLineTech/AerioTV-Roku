@@ -9,13 +9,30 @@ import subprocess
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_optional_model_store_checks_use_shared_tests_and_private_section(self):
+        path = Path(__file__).with_name('build-profile-probe.py')
+        spec = importlib.util.spec_from_file_location('profile_builder', path)
+        builder = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(builder)
+        with tempfile.TemporaryDirectory() as tmp:
+            output = builder.build(Path(tmp) / 'probe.zip', 'http://127.0.0.1:1234', model_store=True)
+            with zipfile.ZipFile(output) as package:
+                for name in ['UserProfileModel', 'UserProfileStore']:
+                    source = package.read(f'source/{name}ProbeChecks.brs').decode()
+                    self.assertIn(f'sub run{name}Checks()', source)
+                    self.assertIn('profileAssert(', source)
+                    self.assertNotIn('roRegistry', source)
+                probe = package.read('source/UserProfileRegistryProbe.brs').decode()
+                self.assertNotIn('getSectionList', probe)
+                self.assertIn('AerioProfileStoreProbe-', probe)
+
     def test_shipping_guard_rejects_profile_fixtures(self):
         result = subprocess.run(['node', '--input-type=module', '-e', '''
             import assert from 'node:assert/strict';
             import {assertPackageEntries} from './scripts/verify-package.mjs';
             const base = ['manifest', 'source/Main.brs', 'components/AerioScene.xml',
               'images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt'];
-            for (const name of ['profile-probe-config.json', 'profile-wire-fixture.json', 'profile-registry-fixtures.json', 'components/UserProfileProbe.brs', 'source/UserProfileRegistryProbe.brs', 'components/UserProfileDialogProbe.brs']) {
+            for (const name of ['profile-probe-config.json', 'profile-wire-fixture.json', 'profile-registry-fixtures.json', 'components/UserProfileProbe.brs', 'source/UserProfileRegistryProbe.brs', 'components/UserProfileDialogProbe.brs', 'source/UserProfileModelProbeChecks.brs', 'source/UserProfileStoreProbeChecks.brs']) {
               assert.throws(() => assertPackageEntries([...base, name]), /probe/);
             }
         '''], cwd=Path(__file__).resolve().parent.parent, capture_output=True, text=True)
