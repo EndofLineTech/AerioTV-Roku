@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Developer-only D-pad research surface; never enabled by a shipping manifest. -->
+<component name="DirectionsPinPad" extends="Group">
+  <interface>
+    <field id="title" type="string" onChange="onDirectionTitle" />
+    <field id="textEditBox" type="node" />
+    <field id="buttons" type="array" />
+    <field id="buttonSelected" type="integer" value="-1" alwaysNotify="true" />
+    <field id="wasClosed" type="boolean" value="false" alwaysNotify="true" />
+    <field id="close" type="boolean" value="false" onChange="onDirectionClose" />
+  </interface>
+  <script type="text/brightscript" uri="DirectionsPinPad.brs" />
+  <children>
+    <Rectangle translation="[400,240]" width="1120" height="600" color="0x172D43FF" />
+    <Label id="titleLabel" translation="[456,296]" width="1008" height="120" wrap="true" font="font:LargeSystemFont" />
+    <Group id="dots" translation="[0,456]" />
+    <Label translation="[456,552]" width="1008" height="100" wrap="true" text="Up, Down, Left, Right. Select to confirm, Back to clear." font="font:MediumSystemFont" />
+    <Label translation="[456,708]" width="1008" height="64" text="Developer-only Directions entry — not approved for public release" wrap="true" font="font:SmallSystemFont" color="0x9EB5C9FF" />
+    <TextEditBox id="input" visible="false" maxTextLength="6" secureMode="true" />
+  </children>
+</component>

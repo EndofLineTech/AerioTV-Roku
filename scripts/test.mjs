@@ -41,6 +41,7 @@ suites.unshift('DispatcharrSyncMerge');
 suites.unshift('DispatcharrSyncPullStore');
 suites.unshift('UserProfilePinPolicy');
 suites.unshift('ProfilePinNavigation');
+suites.unshift('DirectionsPinPad');
 suites.unshift('ProfileRosterNavigation');
 suites.unshift('UserProfileRuntime');
 suites.unshift('UserProfileCredential');
@@ -103,6 +104,7 @@ for (const suite of suites) {
     ...(suite === 'DispatcharrSyncPullStore' ? ['source/DispatcharrSyncPullStore.brs', 'source/UserProfileScope.brs'] : []),
     ...(suite === 'UserProfilePinPolicy' ? ['source/UserProfilePinPolicy.brs', 'source/UserProfilePin.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'ProfilePinNavigation' ? ['source/UserProfilePin.brs', 'components/ProfilePinNavigation.brs'] : []),
+    ...(suite === 'DirectionsPinPad' ? ['components/DirectionsPinPad.brs'] : []),
     ...(suite === 'ProfileRosterNavigation' ? ['source/UserProfileScope.brs', 'components/ProfileRosterNavigation.brs'] : []),
     ...(suite === 'UserProfileRuntime' ? ['source/UserProfileRuntime.brs'] : []),
     ...(['UserProfileCredential', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/UserProfileCredential.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs'] : []),

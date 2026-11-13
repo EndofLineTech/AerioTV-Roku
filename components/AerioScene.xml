@@ -133,7 +133,7 @@
     <Timer id="profileGateClock" duration="1" repeat="true" />
     <Group id="profileGateCover" visible="true">
       <Rectangle width="1920" height="1080" color="0x0A1628FF" />
-      <Label id="profileGateMessage" translation="[160,440]" width="1600" height="200" wrap="true" text="Protected profile" font="font:LargeSystemFont" />
+      <Label id="profileGateMessage" translation="[160,440]" width="1600" height="200" wrap="true" font="font:LargeSystemFont" />
     </Group>
   </children>
 </component>

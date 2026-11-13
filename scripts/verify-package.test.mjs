@@ -40,6 +40,12 @@ test('rejects full-app pairing test artifacts as shipping packages', () => {
   assert.doesNotThrow(() => assertShippingManifest('title=AerioTV\n'));
 });
 
+test('developer Directions PIN opt-in cannot ship under any flag value', () => {
+  for (const value of ['1', '0', 'true']) {
+    assert.throws(() => assertShippingManifest(`title=AerioTV\naeriotv_profile_directions_test=${value}\n`), /Directions PIN.*shipping/);
+  }
+});
+
 test('the packaged notices remain identical to the repository originals', () => {
   for (const name of ['LICENSE', 'NOTICE']) {
     assert.equal(

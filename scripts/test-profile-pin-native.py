@@ -18,14 +18,17 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def build(output, normal, section, base, imported=False, old_os=False):
+def build(output, normal, section, base, imported=False, old_os=False, directions=False, directions_disabled=False):
     salt = 'bb' * 16
-    digest = hashlib.sha256(bytes.fromhex(salt) + b'1234').hexdigest()
+    pin = b'UDLR' if directions else b'1234'
+    digest = hashlib.sha256(bytes.fromhex(salt) + pin).hexdigest()
     with zipfile.ZipFile(normal) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
             if name == 'manifest':
                 body = body.replace(b'title=AerioTV\n', b'title=Aerio Profile PIN Probe\n')
+                if directions and not directions_disabled:
+                    body += b'\naeriotv_profile_directions_test=1\n'
             if name == 'source/Main.brs':
                 body = body.replace(b'sub Main(args as dynamic)', b'sub Main(args as dynamic)\n    print "[profile-pin] stage=main"', 1)
                 body = body.replace(b'    scene.observeField("exitRequested", port)', b'    observed = scene.observeField("exitRequested", port)\n    print "[profile-pin] exit-observed="; observed', 1)
@@ -34,6 +37,19 @@ def build(output, normal, section, base, imported=False, old_os=False):
             if name == 'components/AerioScene.brs':
                 source = body.decode()
                 source = source.replace('sub init()', 'sub init()\n    print "[profile-pin] stage=scene"', 1)
+                if directions_disabled:
+                    target_boundary = '            m.top.findNode("profileGateMessage").text = "This profile\'s PIN requires approved access on this Roku. Back exits AerioTV."'
+                    assert target_boundary in source
+                    source = source.replace(target_boundary, target_boundary + '''
+            clock = m.top.createChild("Timer")
+            clock.duration = 1
+            clock.observeField("fire", "onPinDirectionsBoundary")
+            clock.control = "start"''', 1)
+                    source += '''
+sub onPinDirectionsBoundary()
+    print "[profile-pin] "; FormatJson({kind: "covered", covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, developer_blocked: true, task: m.task <> invalid})
+end sub
+'''
                 if old_os:
                     source = source.replace('userProfileRuntimeSupported(CreateObject("roDeviceInfo").getOSVersion())', 'userProfileRuntimeSupported({major: "14", minor: "5"})', 1)
                     target_os = '        m.top.setFocus(true)\n        return'
@@ -55,7 +71,7 @@ end sub
     entry = normalizeConnectionEntry({{id: "slot-a", name: "Synthetic", provider: "dispatcharr", url: "{base}", accountId: "7", remember: true}})
     connections = {{schema: 1, selected: "slot-a", entries: [entry]}}
     profile = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000001", {{id: 7, username: "Synthetic7", user_level: 1}}, 1)
-    profile.pinType = "{'none' if imported else 'numbers'}"
+    profile.pinType = "{'none' if imported else 'directions' if directions else 'numbers'}"
     profile.pinHash = "{'' if imported else digest}"
     profile.pinSalt = "{'' if imported else salt}"
     store = defaultUserProfileStore("slot-a")
@@ -72,6 +88,7 @@ end sub
             if name == 'components/ProfilePinNavigation.brs':
                 source = body.decode()
                 source = source.replace('    m.top.exitRequested = true', '    m.top.exitRequested = true\n    print "[profile-pin] exit-field-set="; m.top.exitRequested', 1)
+                source = source.replace('    m.profileGateCover.visible = false', '    m.profileGateCover.visible = false\n    print "[profile-pin] "; FormatJson({kind: "unlocked", covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, grant: m.profileUnlockGrant <> invalid})', 1)
                 target = '    dialog.setFocus(true)'
                 assert source.count(target) == 1
                 source = source.replace(target, target + '''
@@ -94,7 +111,7 @@ sub onPinFixtureTick()
         return
     end if
     if m.pinFixturePhase = 1
-        print "[profile-pin] "; FormatJson({kind: "covered", covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, native: m.profilePinDialog.subtype() = "StandardPinPadDialog", task: m.task <> invalid})
+        print "[profile-pin] "; FormatJson({kind: "covered", covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, native: m.profilePinDialog.subtype() = "StandardPinPadDialog", directions: m.profilePinDialog.subtype() = "DirectionsPinPad", task: m.task <> invalid})
         return
     end if
     if m.pinFixturePhase <= 6
@@ -125,6 +142,10 @@ sub onPinFixtureTick()
         return
     end if
     if m.pinFixturePhase < 38 then return
+    if m.profilePinContext.profile.pinType = "directions"
+        print "[profile-pin] directions-ready"
+        return
+    end if
     m.profilePinDialog.textEditBox.text = "1234"
     event = {node: m.pinFixtureEventNode, getRoSGNode: function() as object
         return m.node
@@ -133,9 +154,10 @@ sub onPinFixtureTick()
         return 0
     end function}
     onProfilePinSubmit(event)
-    print "[profile-pin] "; FormatJson({kind: "unlocked", covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, grant: m.profileUnlockGrant <> invalid, busy: m.busy, credential: m.apiKey <> "", status: m.status})
 end sub
 '''
+                if directions:
+                    source = source.replace('text = "9999"', 'text = "UUUU"').replace('text = "1234"', 'text = "UDLR"')
                 body = source.encode()
             if name == 'components/DispatcharrTask.brs':
                 body = body.replace(b'sub loadChannels()', b'sub loadChannels()\n    print "[profile-pin] task-running verify="; m.top.verifyOnly', 1)
@@ -157,11 +179,15 @@ def main():
     parser.add_argument('--cancel', action='store_true', help='Press real remote Back on the native launch pad and verify Main exits')
     parser.add_argument('--options', action='store_true', help='With --cancel, press Options before Back to test native pad behavior')
     parser.add_argument('--old-os', action='store_true', help='With --cancel, inject OS14.5 to verify the whole-app runtime fence')
+    parser.add_argument('--directions', action='store_true', help='Enable developer-only Directions entry; correct entry uses real ECP D-pad keys')
+    parser.add_argument('--directions-disabled', action='store_true', help='With --directions --cancel, verify absence of the developer opt-in refuses entry')
     args = parser.parse_args()
     if args.options and not args.cancel:
         parser.error('--options requires --cancel')
     if args.old_os and not args.cancel:
         parser.error('--old-os requires --cancel')
+    if args.directions_disabled and (not args.directions or not args.cancel or args.imported):
+        parser.error('--directions-disabled requires --directions --cancel without --imported')
     host, password = os.environ['ROKU_HOST'], os.environ['ROKU_DEV_PASSWORD']
     modules = {}
     for key, filename in [('primitives', 'test-profile-primitives-native.py'), ('recovery', 'test-profile-recovery-native.py')]:
@@ -190,9 +216,10 @@ def main():
                 value = {'apps': [{'key': 'synthetic7.aeriotv', 'bytes': 600}]} if args.imported else {'apps': []}
             if self.path == '/api/accounts/users/me/app-data/synthetic7.aeriotv/':
                 stamp = '2026-11-13T16:00:00Z'
-                digest = hashlib.sha256(bytes.fromhex('bb' * 16) + b'1234').hexdigest()
+                digest = hashlib.sha256(bytes.fromhex('bb' * 16) + (b'UDLR' if args.directions else b'1234')).hexdigest()
+                pin_type = 'directions' if args.directions else 'numbers'
                 value = {'schemaVersion': 3, 'deviceId': 'synthetic-phone', 'platform': 'android', 'appVersion': '1', 'updatedAt': stamp,
-                         'categories': {'profiles': {'updatedAt': stamp, 'data': {'rows': [[7, 'Synthetic7', 'Synthetic7', 'numbers', digest, 'bb' * 16, 'user', 1794585600]]}}}}
+                         'categories': {'profiles': {'updatedAt': stamp, 'data': {'rows': [[7, 'Synthetic7', 'Synthetic7', pin_type, digest, 'bb' * 16, 'user', 1794585600]]}}}}
             body = json.dumps(value).encode()
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -205,7 +232,7 @@ def main():
     section = 'AerioProfilePinProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-pin-probe.zip'
     cleaner = ROOT / 'out/profile-pin-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.imported, args.old_os)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.imported, args.old_os, args.directions, args.directions_disabled)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False, 'restore_sha256': hashlib.sha256(restore.read_bytes()).hexdigest()}
 
@@ -218,6 +245,17 @@ def main():
         with subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as process:
             for line in process.stdout:
                 output.append(line)
+                if '[profile-pin] directions-ready' in line:
+                    for key in ['Up', 'Down', 'Left', 'Right']:
+                        request = urllib.request.Request(f'http://{host}:8060/keypress/{key}', data=b'', method='POST')
+                        urllib.request.urlopen(request, timeout=10).close()
+                        time.sleep(0.1)
+                    report['preSubmitHits'] = list(hits)
+                    screenshot = ROOT / ('out/profile-directions-import-entered.jpg' if args.imported else 'out/profile-directions-entered.jpg')
+                    captured = subprocess.run(['python3', 'scripts/capture-roku-screenshot.py', '--developer-mode', '--output', str(screenshot)], cwd=ROOT, capture_output=True, text=True, timeout=45)
+                    report['entryScreenshot'] = captured.returncode == 0
+                    request = urllib.request.Request(f'http://{host}:8060/keypress/Select', data=b'', method='POST')
+                    urllib.request.urlopen(request, timeout=10).close()
                 if '[profile-pin] {' not in line:
                     continue
                 event = json.loads(line.split('[profile-pin] ', 1)[1])
@@ -225,8 +263,12 @@ def main():
                     report.setdefault('protectedHits', []).append({'kind': event['kind'], 'paths': list(hits)})
                 if event.get('kind') == 'covered':
                     screenshot = ROOT / ('out/profile-pin-import-covered.jpg' if args.imported else 'out/profile-pin-covered.jpg')
+                    if args.directions:
+                        screenshot = ROOT / ('out/profile-directions-import-covered.jpg' if args.imported else 'out/profile-directions-covered.jpg')
                     if args.old_os:
                         screenshot = ROOT / 'out/profile-runtime-floor.jpg'
+                    if args.directions_disabled:
+                        screenshot = ROOT / 'out/profile-directions-disabled.jpg'
                     captured = subprocess.run(['python3', 'scripts/capture-roku-screenshot.py', '--developer-mode', '--output', str(screenshot)], cwd=ROOT, capture_output=True, text=True, timeout=45)
                     report['screenshot'] = captured.returncode == 0
                     if args.cancel:
@@ -238,6 +280,8 @@ def main():
                         urllib.request.urlopen(request, timeout=10).close()
                 if event.get('kind') == 'locked':
                     screenshot = ROOT / ('out/profile-pin-import-locked.jpg' if args.imported else 'out/profile-pin-locked.jpg')
+                    if args.directions:
+                        screenshot = ROOT / ('out/profile-directions-import-locked.jpg' if args.imported else 'out/profile-directions-locked.jpg')
                     captured = subprocess.run(['python3', 'scripts/capture-roku-screenshot.py', '--developer-mode', '--output', str(screenshot)], cwd=ROOT, capture_output=True, text=True, timeout=45)
                     report['lockScreenshot'] = captured.returncode == 0
             stderr = process.stderr.read()
@@ -254,11 +298,16 @@ def main():
         rows = [json.loads(line.split('[profile-pin] ', 1)[1]) for line in result.stdout.splitlines() if '[profile-pin] {' in line]
         report['events'] = rows
         report['hits'] = hits
-        report['passed'] = result.returncode == 0 and len(rows) == 5 and all(row.get('covered') and not row.get('task') for row in rows[:3]) and rows[0].get('native') and not rows[3].get('covered') and not rows[3].get('closed') and rows[3].get('grant') and rows[4].get('account') == '7' and not rows[4].get('covered')
+        expected_surface = bool(rows and rows[0].get('directions' if args.directions else 'native'))
+        report['passed'] = result.returncode == 0 and len(rows) == 5 and all(row.get('covered') and not row.get('task') for row in rows[:3]) and expected_surface and not rows[3].get('covered') and not rows[3].get('closed') and rows[3].get('grant') and rows[4].get('account') == '7' and not rows[4].get('covered')
         allowed = ['/api/accounts/users/me/', '/api/accounts/users/me/app-data/', '/api/accounts/users/me/app-data/synthetic7.aeriotv/'] if args.imported else []
         report['passed'] = report['passed'] and report.get('screenshot', False) and len(report.get('protectedHits', [])) == 3 and all(path in allowed for sample in report['protectedHits'] for path in sample['paths'])
+        if args.directions and not args.cancel:
+            report['passed'] = report['passed'] and report.get('entryScreenshot', False) and all(path in allowed for path in report.get('preSubmitHits', []))
         if args.cancel:
-            expected_surface = bool(rows and (rows[0].get('runtime_rejected') if args.old_os else rows[0].get('native')))
+            expected_surface = bool(rows and (rows[0].get('runtime_rejected') if args.old_os else rows[0].get('directions' if args.directions else 'native')))
+            if args.directions_disabled:
+                expected_surface = bool(rows and rows[0].get('developer_blocked'))
             report['passed'] = result.returncode == 0 and '[profile-pin] exit-main' in result.stdout and len(rows) == 1 and rows[0].get('covered') and expected_surface and report.get('screenshot', False) and all(path in allowed for path in hits)
         if not report['passed']:
             raise RuntimeError('Normal-app numeric gate assertion failed')
@@ -279,6 +328,10 @@ def main():
                 report_name = report_name.replace('-cancel-', '-options-')
             if args.old_os:
                 report_name = 'profile-runtime-floor-native.json'
+            if args.directions:
+                report_name = report_name.replace('profile-pin', 'profile-directions')
+            if args.directions_disabled:
+                report_name = 'profile-directions-disabled-native.json'
             (ROOT / 'out' / report_name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

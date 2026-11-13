@@ -55,8 +55,9 @@ applies own-user protection before any channel/cache/settings activation.
 Imported numeric protection uses the same gate. The early-read authorization is
 single-use and bound to the captured immutable scope and credential; PIN wait
 does not invalidate its authenticated continuation. Changed material retires
-old grants. Unsupported Directions/Child startup remains safely covered rather
-than falling into an unlocked setup page; those controllers are still unfinished.
+old grants. Directions is usable only under the developer manifest opt-in below;
+without it, and for the still-unfinished Child controller, startup remains safely
+covered rather than falling into an unlocked setup page.
 
 The isolated normal-app fixture `scripts/test-profile-pin-native.py` exercises
 both a saved numeric PIN and a PIN discovered from App Data, using a private
@@ -70,6 +71,24 @@ checksum-restores the prior app. This is not complete profile acceptance.
 Real ECP Back and Options→Back runs also verify the whole-screen exit signal.
 The Main field observer is attached only after the render thread starts; a
 successful `wasClosed` callback alone is not sufficient evidence of app exit.
+
+## Developer-only Directions entry
+
+`DirectionsPinPad` uses the D-pad itself, explicit Select submission, masked dot
+shapes, Back-to-clear and empty-Back/Options exit. Known local length controls
+the dot count; imported length starts unknown. Real ECP Up/Down/Left/Right/Select
+entry passes the saved and imported roster gate after a full lockout interval.
+The same persisted verifier and exact-material grant apply; no PIN is created.
+Native screenshots were inspected: unsupported circle glyphs in the first
+render were replaced with the existing native rounded shape component.
+
+This surface is enabled only when `aeriotv_profile_directions_test=1` exists in
+the developer manifest. The shipping archive verifier rejects **any** occurrence
+of that opt-in, even value zero, so renaming a developer package cannot promote
+it to a Beta/Store package. With no opt-in, a saved Directions profile remains
+covered and Back exits with zero provider requests. This implements the approved
+developer phase, not Roku certification or an approved public fallback; `mrr.19`
+continues to block public profile delivery.
 
 The selected-connection key loader now goes through `userProfileCredential`:
 default migration owns the slot key, non-default profiles own only their

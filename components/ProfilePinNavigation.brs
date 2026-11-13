@@ -2,7 +2,11 @@
 ' verification succeeds, or Main closes the entire application on wasClosed.
 function beginProfilePinGate(profile as object, continuation as string, resume = invalid as dynamic) as boolean
     if m.profilePinDialog <> invalid then return true
-    if profile.pinType <> "numbers" or not userProfilePinRecordValid(profile) then return false
+    if not userProfilePinRecordValid(profile) then return false
+    directions = profile.pinType = "directions"
+    if directions
+        if CreateObject("roAppInfo").getValue("aeriotv_profile_directions_test") <> "1" then return false
+    end if
     m.profileGateCover.visible = true
     m.global.profilegateclosed = true
     if type(m.top) = "roSGNode" then requestGateFenceRenderers(m.top)
@@ -12,18 +16,34 @@ function beginProfilePinGate(profile as object, continuation as string, resume =
     m.profilePinContext = {slot: m.selectedConnectionId, profile: profile, continuation: continuation, resume: resume}
     dialog = invalid
     if m.profilePinDialogFactory <> invalid then dialog = m.profilePinDialogFactory()
-    if dialog = invalid then dialog = CreateObject("roSGNode", "StandardPinPadDialog")
+    if dialog = invalid
+        if directions
+            dialog = CreateObject("roSGNode", "DirectionsPinPad")
+        else
+            dialog = CreateObject("roSGNode", "StandardPinPadDialog")
+        end if
+    end if
     dialog.title = "Enter PIN for " + profile.displayName
     ' Roku's platform-specific rule requires six native slots even when the
     ' profile's locally learned length is known (spec 7.7, Roku item 1).
     dialog.textEditBox.maxTextLength = 6
+    if directions
+        lengthType = type(profile.pinLength)
+        if lengthType = "Integer" or lengthType = "roInt" or lengthType = "roInteger"
+            if profile.pinLength >= 4 and profile.pinLength <= 6 then dialog.textEditBox.maxTextLength = profile.pinLength
+        end if
+    end if
     uiSecureTextInput(dialog.textEditBox)
-    dialog.textEditBox.voiceEnabled = true
+    if not directions then dialog.textEditBox.voiceEnabled = true
     dialog.buttons = ["OK"]
     dialog.observeField("buttonSelected", "onProfilePinSubmit")
     dialog.observeField("wasClosed", "onProfilePinClosed")
     m.profilePinDialog = dialog
-    m.top.dialog = dialog
+    if directions
+        m.top.appendChild(dialog)
+    else
+        m.top.dialog = dialog
+    end if
     dialog.setFocus(true)
     if m.registry <> invalid and m.profilePinVerifier = invalid
         checked = userProfilePinAttemptStored(m.registry, m.selectedConnectionId, profile.id, profile, [], CreateObject("roDateTime").asSeconds())
@@ -40,8 +60,14 @@ sub onProfilePinSubmit(event as object)
     if context.slot <> m.selectedConnectionId then return
     text = m.profilePinDialog.textEditBox.text
     m.profilePinDialog.textEditBox.text = ""
-    if not CreateObject("roRegex", "^[0-9]{4,6}$", "").isMatch(text)
-        m.profilePinDialog.title = "Enter 4 to 6 numbers"
+    pattern = "^[0-9]{4,6}$"
+    message = "Enter 4 to 6 numbers"
+    if context.profile.pinType = "directions"
+        pattern = "^[UDLR]{4,6}$"
+        message = "Enter 4 to 6 directions"
+    end if
+    if not CreateObject("roRegex", pattern, "").isMatch(text)
+        m.profilePinDialog.title = message
         return
     end if
     entries = []
@@ -68,6 +94,9 @@ sub onProfilePinSubmit(event as object)
     m.profilePinDialog.unobserveField("buttonSelected")
     m.profilePinDialog.unobserveField("wasClosed")
     m.profilePinDialog.close = true
+    if type(m.profilePinDialog) = "roSGNode"
+        if m.profilePinDialog.isSubtype("DirectionsPinPad") then m.top.removeChild(m.profilePinDialog)
+    end if
     m.profilePinDialog = invalid
     m.profilePinContext = invalid
     m.profileGateClock.control = "stop"
@@ -83,6 +112,7 @@ sub onProfilePinClosed(event as object)
     if not m.profilePinDialog.isSameNode(event.getRoSGNode()) then return
     m.profilePinDialog.unobserveField("buttonSelected")
     m.profilePinDialog.unobserveField("wasClosed")
+    m.profilePinDialog.textEditBox.text = ""
     m.profilePinDialog = invalid
     m.profilePinContext = invalid
     m.profileGateClock.control = "stop"
