@@ -14,6 +14,7 @@ sub handleOptionsShortcut()
 end sub
 
 sub openNavigationLayout()
+    if not guideProfileActionAllowed(m.userRole, "navigationLayout") then return
     m.settingField = "groupLayout"
     items = []
     for each choice in [{value: "modal", title: "Modal group list"}, {value: "pills", title: "Top group pills (always visible)"}, {value: "sidebar", title: "Docked group sidebar (always visible)"}]
@@ -44,6 +45,7 @@ function applyHubGuideSetting(key as string, value as dynamic) as dynamic
 end function
 
 sub onGroupPreview(event as object)
+    if not guideProfileActionAllowed(m.userRole, "groups") then return
     for i = 0 to m.groups.count() - 1
         if m.groups[i].id = event.getData() then m.groupIndex = i
     end for
@@ -131,6 +133,7 @@ sub applyRefreshedLineup(data as object)
 end sub
 
 sub openGuideSetting(kind as string)
+    if not guideProfileActionAllowed(m.userRole, kind) then return
     items = []
     if kind = "guideSettings"
         items = [
@@ -191,6 +194,7 @@ sub openGuideSetting(kind as string)
 end sub
 
 function handleGuideSetting(kind as string, item as object) as boolean
+    if not guideProfileActionAllowed(m.userRole, kind) then return true
     if kind = "guideSettings"
         if item.field <> invalid
             if item.field = "groupLayout"
@@ -398,6 +402,7 @@ function collectionIndex() as integer
 end function
 
 sub openGuideKeyboard(kind as string, title as string, text as string)
+    if not guideProfileActionAllowed(m.userRole, kind) then return
     m.guideKeyboardKind = kind
     dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
     dialog.title = title
@@ -418,6 +423,11 @@ end sub
 
 sub onGuideKeyboard(event as object)
     dialog = event.getRoSGNode()
+    if not guideProfileActionAllowed(m.userRole, m.guideKeyboardKind)
+        dialog.text = ""
+        dialog.close = true
+        return
+    end if
     text = dialog.text.trim()
     if event.getData() = 0
         if m.guideKeyboardKind = "number"

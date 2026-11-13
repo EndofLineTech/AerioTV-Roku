@@ -80,6 +80,7 @@ sub applyVerifiedHeaderMode(mode as string)
 end sub
 
 sub openPermittedProfiles()
+    if not userProfileConnectionSetupAllowed() then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid or entry.provider <> "dispatcharr" then return
     gate = selectedUserProfileGate()
@@ -154,6 +155,7 @@ sub finishPermittedProfiles(result as dynamic)
 end sub
 
 sub selectPermittedProfile(choice as object)
+    if not userProfileConnectionSetupAllowed() then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid or entry.provider <> "dispatcharr" then return
     print "[profile-choice] previous="; entry.profileId; " requested="; choice.id
@@ -175,6 +177,7 @@ sub selectPermittedProfile(choice as object)
 end sub
 
 sub updateConnectionGuideUrl(url as string)
+    if not userProfileConnectionSetupAllowed() then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid or entry.provider = "xtream" then return
     if entry.epgUrl = url then return
@@ -238,6 +241,7 @@ function rememberConnectedAccount(accountId as string, accountUsername = invalid
 end function
 
 sub changeConnectionRemember(remember as boolean)
+    if not userProfileConnectionSetupAllowed() then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid then return
     if not remember and not deleteStoredConnectionKey(entry)
@@ -264,6 +268,7 @@ sub changeConnectionRemember(remember as boolean)
 end sub
 
 sub updateConnectionUrl(base as string)
+    if not userProfileConnectionSetupAllowed() then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid
         candidate = connectionStoreAdd(m.connectionStore, CreateObject("roDeviceInfo").getRandomUUID(), "Main")
@@ -457,6 +462,7 @@ sub completeDirectConnection(result as object, entry as object, xcUsername = "" 
     m.capabilities.dvr = "none"
     m.capabilities.switchStreams = "denied"
     m.guide.config = {
+        userRole: "user"
         channels: result.channels, groups: result.groups, warning: result.warning
         baseUrl: urlOrigin(m.baseUrl), apiKey: "", providerType: entry.provider, guideUrl: m.guideUrl
         preferences: m.accountPreferences, tmdbKey: ""
@@ -480,6 +486,7 @@ sub completeDirectConnection(result as object, entry as object, xcUsername = "" 
 end sub
 
 sub openConnectionPicker()
+    if not userProfileConnectionSetupAllowed() then return
     if m.busy or m.connectionDialog <> invalid then return
     if m.connectionStore.readOnly = true
         showNotice("Saved connections use an unsupported newer format. Do not overwrite them on this build.")
@@ -497,6 +504,7 @@ sub openConnectionPicker()
 end sub
 
 sub openConnectionManager()
+    if not userProfileConnectionSetupAllowed() then return
     choices = [{title: "Add Dispatcharr connection", action: "add"}, {title: "Add direct M3U and XMLTV connection", action: "addM3u"}, {title: "Add Xtream Codes connection (session-only)", action: "addXtream"}]
     choices.push({title: "Set up from another device", action: "phoneSetup"})
     if m.selectedConnectionId <> ""
@@ -511,6 +519,7 @@ sub openConnectionManager()
 end sub
 
 sub openConnectionAdvanced()
+    if not userProfileConnectionSetupAllowed() then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid then return
     userAgent = "Default Roku application agent"
@@ -534,6 +543,7 @@ sub openConnectionAdvanced()
 end sub
 
 sub openConnectionAuthModes()
+    if not userProfileConnectionSetupAllowed() then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid or entry.provider <> "dispatcharr" then return
     choices = []
@@ -547,6 +557,7 @@ sub openConnectionAuthModes()
 end sub
 
 sub saveConnectionRequestChoice(patch as object, description as string)
+    if not userProfileConnectionSetupAllowed() then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid then return
     updated = connectionStoreUpdate(m.connectionStore, entry.id, patch)
@@ -564,6 +575,7 @@ sub saveConnectionRequestChoice(patch as object, description as string)
 end sub
 
 sub openConnectionAgentEditor()
+    if not userProfileConnectionSetupAllowed() then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid then return
     dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
@@ -578,6 +590,7 @@ sub openConnectionAgentEditor()
 end sub
 
 sub openConnectionRefererEditor()
+    if not userProfileConnectionSetupAllowed() then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid or entry.provider <> "m3u" then return
     dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
@@ -592,6 +605,7 @@ sub openConnectionRefererEditor()
 end sub
 
 sub onConnectionRefererSaved(event as object)
+    if not userProfileConnectionSetupAllowed() then return
     if m.connectionDialog = invalid or not m.connectionDialog.isSameNode(event.getRoSGNode()) then return
     value = m.connectionDialog.text.trim()
     saved = event.getData() = 0
@@ -601,6 +615,7 @@ sub onConnectionRefererSaved(event as object)
 end sub
 
 sub onConnectionAgentSaved(event as object)
+    if not userProfileConnectionSetupAllowed() then return
     if m.connectionDialog = invalid or not m.connectionDialog.isSameNode(event.getRoSGNode()) then return
     value = m.connectionDialog.text.trim()
     saved = event.getData() = 0
@@ -610,6 +625,7 @@ sub onConnectionAgentSaved(event as object)
 end sub
 
 sub openConnectionDialog(title as string, message as string, choices as object)
+    if not userProfileConnectionSetupAllowed() then return
     if userProfileGateClosed() then return
     closeConnectionDialog()
     dialog = CreateObject("roSGNode", "AerioDialog")
@@ -642,6 +658,7 @@ sub onConnectionDialogClosed(event as object)
 end sub
 
 sub onConnectionChoice(event as object)
+    if not userProfileConnectionSetupAllowed() then return
     if m.connectionDialog = invalid or not m.connectionDialog.isSameNode(event.getRoSGNode()) then return
     index = event.getData()
     if index < 0 or index >= m.connectionChoices.count() then return
@@ -690,6 +707,7 @@ sub onConnectionChoice(event as object)
 end sub
 
 sub switchSavedConnection(id as string)
+    if not userProfileConnectionSetupAllowed() then return
     if id = m.selectedConnectionId then return
     updated = connectionStoreSelect(m.connectionStore, id)
     if updated = invalid or not saveConnectionStore(m.registry, updated)
@@ -706,6 +724,7 @@ sub switchSavedConnection(id as string)
 end sub
 
 sub addSavedConnection(provider = "dispatcharr" as string)
+    if not userProfileConnectionSetupAllowed() then return
     name = "Connection " + (m.connectionStore.entries.count() + 1).toStr()
     if provider = "m3u" then name = "M3U " + (m.connectionStore.entries.count() + 1).toStr()
     if provider = "xtream" then name = "Xtream " + (m.connectionStore.entries.count() + 1).toStr()
@@ -725,6 +744,7 @@ sub addSavedConnection(provider = "dispatcharr" as string)
 end sub
 
 sub openConnectionRename()
+    if not userProfileConnectionSetupAllowed() then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid then return
     dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
@@ -739,6 +759,7 @@ sub openConnectionRename()
 end sub
 
 sub onConnectionRenamed(event as object)
+    if not userProfileConnectionSetupAllowed() then return
     if m.connectionDialog = invalid or not m.connectionDialog.isSameNode(event.getRoSGNode()) then return
     if event.getData() = 0
         renamed = connectionStoreRename(m.connectionStore, m.selectedConnectionId, m.connectionDialog.text)
@@ -754,6 +775,7 @@ sub onConnectionRenamed(event as object)
 end sub
 
 sub openRemoveConnectionConfirmation()
+    if not userProfileConnectionSetupAllowed() then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid
         showNotice("No selected connection to remove.")
@@ -763,6 +785,7 @@ sub openRemoveConnectionConfirmation()
 end sub
 
 sub removeSelectedConnection()
+    if not userProfileConnectionSetupAllowed() then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid then return
     removed = forgetUserProfileConnection(m.registry, m.connectionStore, entry.id)

@@ -1,6 +1,7 @@
 ' The receiver has already written 200. Verification and user confirmation occur
 ' here without touching the selected connection or its stored credential.
 sub openPhoneSetup()
+    if not userProfileConnectionSetupAllowed() then return
     if userProfileGateClosed() then return
     if m.busy or (m.page <> "setup" and m.page <> "welcome") then return
     if m.phoneRecoveryRequired = true
@@ -37,6 +38,7 @@ sub onPhoneSetupPayload(event as object)
 end sub
 
 sub acceptPhoneSetupPayload(payload as object)
+    if not userProfileConnectionSetupAllowed() then return
     if m.page <> "phoneSetup" or not m.phoneSetup.active then return
     digest = ""
     if payload.playlist.type = "m3u" then digest = metadataCacheDigest("m3u|" + phoneSetupFeedIdentity(payload.playlist.url))
@@ -66,6 +68,7 @@ sub stopPhoneVerification()
 end sub
 
 sub startPhoneVerification()
+    if not userProfileConnectionSetupAllowed() then return
     stopPhoneVerification()
     if m.phonePending = invalid or m.page <> "phoneSetup" then return
     profileGate = selectedUserProfileGate()
@@ -192,6 +195,7 @@ sub onPhoneSetupDialogClosed(event as object)
 end sub
 
 sub showPhoneSetupConfirmation()
+    if not userProfileConnectionSetupAllowed() then return
     closePhoneSetupDialog()
     matches = phoneSetupDuplicateIds(m.connectionStore, m.phonePending.entry)
     m.phoneMatches = matches
@@ -238,6 +242,7 @@ sub showPhoneSetupConfirmation()
 end sub
 
 sub onPhoneSetupChoice(event as object)
+    if not userProfileConnectionSetupAllowed() then return
     if not isCurrentTaskEvent(event, m.phoneDialog) or m.phonePending = invalid then return
     index = event.getData()
     mode = m.phoneDialogMode
@@ -272,6 +277,7 @@ sub onPhoneSetupChoice(event as object)
 end sub
 
 sub commitPhoneSetup(choice as string)
+    if not userProfileConnectionSetupAllowed() then return
     if m.phonePending = invalid or m.phoneResult = invalid then return
     if formatJson(m.connectionStore) <> m.phoneStoreSnapshot
         failPhoneSetup("Saved connections changed during verification. Cancel and send setup again.")

@@ -36,6 +36,24 @@ sub main()
     assertEqual(guidePresentationGeometry(m.saved.guideDensity, m.saved.showSubtitles).rowCount, 7, "saved Off restores compact Preview")
     applyHubGuideSetting("showSubtitles", true)
     assertEqual(guidePresentationGeometry(m.saved.guideDensity, m.saved.showSubtitles).rowCount, 6, "saved On restores subtitle-rich Preview")
+    m.userRole = "child"
+    m.pickedKind = "unchanged"
+    before = FormatJson(m.settings)
+    openGuideSetting("manageGroups")
+    assertEqual(m.pickedKind, "unchanged", "Child cannot open Manage Groups through a direct handler")
+    handleGuideSetting("manageGroups", {id: "1"})
+    assertEqual(FormatJson(m.settings), before, "Child stale group-management selection cannot change group filters")
+    for each action in ["groups", "groupList", "manageGroups", "settings", "toggleVod", "diagnostics", "clock"]
+        assertEqual(guideProfileActionAllowed("child", action), false, "Child guide shortcut cannot bypass hidden settings or group restrictions")
+    end for
+    assertEqual(guideProfileActionAllowed("child", "settingsHub"), true, "Child retains the restricted Settings entry")
+    assertEqual(guideProfileActionAllowed("child", "favorite"), true, "Child keeps its own favorite action")
+    assertEqual(guideProfileActionAllowed("user", "manageGroups"), true, "Standard retains existing group controls")
+    m.groups.push({id: "1", name: "Other group"})
+    onGroupPreview({getData: function() as string
+        return "1"
+    end function})
+    assertEqual(m.groupIndex, 0, "Child direct navigator callbacks cannot change group filters")
     print "ALL TESTS PASSED"
 end sub
 

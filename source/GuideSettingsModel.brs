@@ -161,6 +161,18 @@ function guideHoldStep(elapsedMs as integer) as integer
     return 1
 end function
 
+function guideProfileActionAllowed(role as dynamic, action as dynamic) as boolean
+    if role = invalid then return true ' Legacy/direct-provider configuration.
+    if type(role) <> "String" and type(role) <> "roString" then return false
+    if role = "user" or role = "admin" then return true
+    if role <> "child" then return false
+    if type(action) <> "String" and type(action) <> "roString" then return false
+    for each blocked in ["groups", "groupList", "manageGroups", "groupEdit", "startup", "collections", "collectionEdit", "collectionMembers", "collectionName", "guideSettings", "settingValue", "navigationLayout", "settings", "toggleVod", "diagnostics", "clock", "tmdb", "tmdbKey", "badges", "sourceMenu", "sourceConfirm", "source", "markRadio"]
+        if action = blocked then return false
+    end for
+    return true
+end function
+
 function guideOptionItems(items as object, advanced as boolean) as object
     result = []
     if advanced then result.push({title: "Back to common actions", action: "mainOptions"})

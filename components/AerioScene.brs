@@ -826,6 +826,7 @@ sub completeConnection(result as dynamic)
     end if
     m.guide.config = {
         aeriosession: currentUserSessionId()
+        userRole: currentUserSettingsRole()
         channels: result.channels, groups: result.groups, warning: result.warning
         baseUrl: m.baseUrl, apiKey: m.apiKey, accountId: m.serverAccountId, preferences: prefs
         providerType: "dispatcharr", guideUrl: connection.epgUrl
@@ -1036,6 +1037,7 @@ sub onAacFailureClosed(event as object)
 end sub
 
 sub showConnection()
+    if not userProfileConnectionSetupAllowed() then return
     if m.profileSwitchContext <> invalid then return
     if userProfileGateClosed() then return
     closeRecentHistoryDialog()
@@ -1723,7 +1725,8 @@ sub openPlayerOptions(kind = "main" as string)
     end if
     if m.capabilities.switchStreams = "allowed"
         items.unshift({title: "Recover frozen picture (this player)", action: "recoverPicture"})
-        items.unshift({title: "Switch stream source", action: "sourceMenu"})
+        role = currentUserSettingsRole()
+        if role = "user" or role = "admin" then items.unshift({title: "Switch stream source", action: "sourceMenu"})
     else if m.capabilities.switchStreams = "unknown"
         items.unshift({title: "Refresh source-switch permissions", action: "refreshCapabilities"})
     end if
@@ -1861,6 +1864,10 @@ end sub
 sub onPlayerOption(event as object)
     if m.page <> "player" then return
     item = event.getData()
+    if item.action = "sourceMenu" or item.action = "source" or item.action = "sourceConfirm"
+        role = currentUserSettingsRole()
+        if role <> "user" and role <> "admin" then return
+    end if
     if m.optionKind = "main" then m.optionReturnAction = item.action
     if item.action = "rewindHistory"
         m.playerOptions.active = false
@@ -2064,6 +2071,8 @@ sub loadStreamSources()
 end sub
 
 sub beginSourceOperation(operation as string, streamId as string)
+    role = currentUserSettingsRole()
+    if role <> "user" and role <> "admin" then return
     if m.playingChannel = invalid or m.capabilities.switchStreams <> "allowed"
         showNotice("Stream source changes require verified admin permission.")
         return

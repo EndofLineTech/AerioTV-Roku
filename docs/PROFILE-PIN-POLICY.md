@@ -200,3 +200,27 @@ and wrong-primitive Settings values. Roku's native comparison raises on a
 String/Boolean mismatch even though the host interpreter accepts the comparison;
 admission now compares only compatible primitive kinds. A changed Settings model
 also refreshes the rail categories so a formerly Standard rail is not retained.
+
+Connection/receiver admission now re-reads the selected slot's persisted active
+role before opening or changing general connection setup. A Child or unreadable
+roster cannot use a forged connection action, picker, address/Remember change,
+Channel Profile choice, add/remove/rename, HTTP header editor or phone-setup
+payload/verification/commit to escape. This does not borrow management authority:
+an adult-purpose grant is only for its management operation. Closed PIN/switch
+gates also refuse setup. Empty first-time installations and full-access profiles
+retain normal setup. Unit direct-handler probes and the private native Child
+fixture exercise these refusals without mutating the selected connection.
+This is an additional handler boundary, not a claim that Child activation,
+server-action fencing, unavailable recovery or authenticated escape is complete.
+
+The Guide receives an explicit local role in its authenticated configuration.
+Child options omit group filters/management, legacy connection/general shortcuts,
+library toggles and shared source switching; direct picker, setting, group-preview
+and group-edit callbacks enforce the same boundary. Child uses the restricted
+Settings Hub for permitted Live TV and appearance/player settings instead of the
+legacy advanced Guide editor. The Scene independently denies shared source
+operations for Child/unknown roles even if a stale capability snapshot says
+admin source switching is allowed. The native Child fixture probes actual Guide
+option lists and direct group handlers, then forges setup/receiver/source calls
+before using the real adult-PIN management route. Public Child activation remains
+disabled while the remaining lifecycle and recovery integration is unfinished.

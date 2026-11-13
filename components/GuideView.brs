@@ -75,6 +75,7 @@ sub configure()
     m.top.playbackInfo = invalid
     config = m.top.config
     if config = invalid then return
+    m.userRole = config.userRole
     m.top.vodEnabled = config.preferences.vodEnabled <> false
     m.channels = config.channels
     m.guideLogoUrls = channelLogoRemoteUrls(m.channels)
@@ -916,6 +917,7 @@ sub onDialogClosed()
 end sub
 
 sub openPicker(title as string, items as object, kind as string)
+    if not guideProfileActionAllowed(m.userRole, kind) then return
     cancelGuideHold()
     closePicker()
     m.pickerKind = kind
@@ -1007,6 +1009,11 @@ sub openOptions(advanced = false as boolean)
     if m.top.vodEnabled then label = "Disable VOD libraries for this connection"
     if m.providerType <> "m3u" and m.providerType <> "xtream" then items.push({title: label, action: "toggleVod"})
     if m.top.pendingTune then items.unshift({title: "Cancel pending channel tune", action: "cancelPendingTune"})
+    permittedItems = []
+    for each item in items
+        if guideProfileActionAllowed(m.userRole, item.action) then permittedItems.push(item)
+    end for
+    items = permittedItems
     title = "Guide options"
     if m.groups[m.groupIndex].id = "recent" then items.unshift({title: "Manage Recently Watched", action: "recentHistory"})
     if advanced then title = "More guide actions"
@@ -1019,6 +1026,10 @@ sub onPickerSelected(event as object)
     if event.getData() < 0 or event.getData() >= m.pickerItems.count() then return
     item = m.pickerItems[event.getData()]
     kind = m.pickerKind
+    if not guideProfileActionAllowed(m.userRole, kind) then return
+    if item.action <> invalid
+        if not guideProfileActionAllowed(m.userRole, item.action) then return
+    end if
     m.pickerWakeKey = "OK"
     closePicker()
     m.top.setFocus(true)

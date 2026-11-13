@@ -1,5 +1,27 @@
 ' Startup/default migration only. Authenticated switching remains gated until
 ' scoped state, early roster import, PIN/Child rules and request safety land.
+function userProfileConnectionSetupAllowed() as boolean
+    if m.userProfileRecoveryRequired = true then return false
+    if m.global <> invalid
+        if m.global.profilegateclosed = true or m.global.profileswitchpending = true then return false
+    end if
+    if type(m.connectionStore) <> "roAssociativeArray" then return false
+    if m.connectionStore.readOnly = true then return false
+    if type(m.connectionStore.entries) <> "roArray" then return false
+    selected = textValue(m.selectedConnectionId)
+    if selected = "" then selected = textValue(m.connectionStore.selected)
+    entry = connectionStoreEntry(m.connectionStore, selected)
+    if entry = invalid then return m.connectionStore.entries.count() = 0
+    if entry.provider <> "dispatcharr" then return true
+    store = loadUserProfileStore(m.registry, entry.id)
+    if store.readOnly = true then return false
+    if store.profiles.count() = 0 then return true
+    for each profile in store.profiles
+        if profile.id = store.active then return userProfileFullAccess(profile.role)
+    end for
+    return false
+end function
+
 function selectedUserProfileGate() as object
     if m.userProfileRecoveryRequired = true then return {allowed: false, reason: "recovery"}
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)

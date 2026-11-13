@@ -23,6 +23,8 @@ sub main()
     for i = 1 to 4
         m.connectionStore.entries.push(normalizeConnectionEntry({id: "old" + i.toStr(), name: "Old", provider: "dispatcharr", url: "https://other.test", accountId: i.toStr()}))
     end for
+    m.connectionStore.selected = "old1"
+    m.selectedConnectionId = "old1"
     showPhoneSetupConfirmation()
     check(not m.completed and m.registry.flushes = 0 and not m.phoneSetup.retryAvailable, "full roster refuses auto-add before any write")
     notes = phoneSetupImportNotices({entry: {provider: "xtream"}, notes: ["Household profiles and PINs will not be imported.", "Dispatcharr Sync will not be enabled."]})
@@ -44,8 +46,12 @@ sub resetAutoAdd()
     m.phonePending = {entry: normalizeConnectionEntry({id: "new", name: "New", provider: "dispatcharr", url: "https://provider.test", accountId: "7", remember: true}), credential: {username: "", password: ""}, notes: []}
     m.phoneResult = {ok: true, apiKey: "fixture-key", warning: ""}
     m.connectionStore = defaultConnectionStore()
+    m.selectedConnectionId = ""
     m.phoneStoreSnapshot = formatJson(m.connectionStore)
     m.registry = {values: {}, flushes: 0, failWrite: false
+        exists: function(key as string) as boolean
+            return m.values.doesExist(key)
+        end function
         read: function(key as string) as string
             if not m.values.doesExist(key) then return ""
             return m.values[key]

@@ -50,6 +50,24 @@ end function
     return {page: m.page, pages: pages, role: m.top.model.userRole}
 end function
 '''
+            if child_settings and name == 'components/GuideView.xml':
+                body = body.replace(b'</interface>', b'<function name="childGuideActionsProbe" /></interface>', 1)
+            if child_settings and name == 'components/GuideView.brs':
+                body += b'''\nfunction childGuideActionsProbe() as boolean
+    safe = m.userRole = "child"
+    for each advanced in [false, true]
+        openOptions(advanced)
+        for each item in m.pickerItems
+            if not guideProfileActionAllowed("child", item.action) then safe = false
+        end for
+        closePicker()
+    end for
+    before = FormatJson(m.settings)
+    openGuideSetting("manageGroups")
+    handleGuideSetting("manageGroups", {groupId: "forged"})
+    return safe and m.picker = invalid and FormatJson(m.settings) = before
+end function
+'''
             if name == 'components/AerioScene.brs':
                 source = body.decode()
                 target = 'm.registry = CreateObject("roRegistrySection", "AerioTV")'
@@ -274,14 +292,37 @@ sub onManagementProbeTick()
         m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
         m.registry.flush()
         m.userProfileStore = loadUserProfileStore(m.registry, "slot-a")
+        m.guide.config = setCanonicalPreference(m.guide.config, "userRole", "child")
         openSettingsHub()
     else if phase = 2
+        m.childGuideRestricted = m.guide.callFunc("childGuideActionsProbe")
+        m.settingsHub.setFocus(true)
         observed = m.settingsHub.callFunc("childSettingsProbe", "connection")
         m.childSettingsRoot = observed.page = "" and observed.pages.count() = 5 and observed.pages[0] = "live" and observed.pages[1] = "player" and observed.pages[2] = "appearance" and observed.pages[3] = "about" and observed.pages[4] = "manage-profiles" and observed.role = "child"
         print "[profile-management] "; FormatJson({kind: "child-settings", restricted: m.childSettingsRoot})
     else if phase = 3
         onSettingsHubSelection(childSettingsProbeEvent("connection"))
+        beforeSetup = FormatJson(m.connectionStore)
+        showConnection()
+        openConnectionPicker()
+        openConnectionManager()
+        updateConnectionUrl("https://synthetic-forged.invalid")
+        changeConnectionRemember(false)
+        switchSavedConnection("forged-slot")
+        addSavedConnection()
+        removeSelectedConnection()
+        openPhoneSetup()
+        acceptPhoneSetupPayload({})
+        startPhoneVerification()
+        commitPhoneSetup("add")
+        priorCapabilities = m.capabilities
+        m.capabilities = setCanonicalPreference(m.capabilities, "switchStreams", "allowed")
+        m.playingChannel = {id: "7", uuid: "00000000-0000-4000-8000-000000000007"}
+        beginSourceOperation("switch", "forged-stream")
+        m.playingChannel = invalid
+        m.capabilities = priorCapabilities
         m.childSettingsForged = m.page = "settings" and m.profileManagementDialog = invalid
+        m.childSettingsForged = m.childSettingsForged and FormatJson(m.connectionStore) = beforeSetup and m.phonePending = invalid and m.sourceTask = invalid
         print "[profile-management] "; FormatJson({kind: "manage-ready"})
     else if phase = 4
         if m.adultPinDialog = invalid then m.managementProbePhase-- : return
@@ -296,7 +337,7 @@ sub onManagementProbeTick()
     else if phase = 8
         m.managementProbeClock.control = "stop"
         store = loadUserProfileStore(m.registry, "slot-a")
-        print "[profile-management] "; FormatJson({kind: "result", restricted: m.childSettingsRoot, forged: m.childSettingsForged, protected: m.childSettingsProtected, management: m.childSettingsManaged, cancelled: m.profileManagementDialog = invalid and m.profileManagementGrant = invalid, preserved: store.profiles[0].role = "child" and m.registry.read("connKey_slot-a") = "synthetic-a"})
+        print "[profile-management] "; FormatJson({kind: "result", guide_restricted: m.childGuideRestricted, restricted: m.childSettingsRoot, forged: m.childSettingsForged, protected: m.childSettingsProtected, management: m.childSettingsManaged, cancelled: m.profileManagementDialog = invalid and m.profileManagementGrant = invalid, preserved: store.profiles[0].role = "child" and m.registry.read("connKey_slot-a") = "synthetic-a"})
     end if
 end sub
 '''
@@ -418,7 +459,7 @@ def main():
             if args.remember_off:
                 report['passed'] = report['passed'] and rows[-1].get('no_stored', False)
         if args.child_settings:
-            report['passed'] = result.returncode == 0 and len(rows) == 5 and all(rows[4].get(key) for key in ['restricted', 'forged', 'protected', 'management', 'cancelled', 'preserved']) and rows[2].get('title') == 'Enter a PIN from an Admin or Standard profile' and report.get('screenshot', False)
+            report['passed'] = result.returncode == 0 and len(rows) == 5 and all(rows[4].get(key) for key in ['guide_restricted', 'restricted', 'forged', 'protected', 'management', 'cancelled', 'preserved']) and rows[2].get('title') == 'Enter a PIN from an Admin or Standard profile' and report.get('screenshot', False)
         if not report['passed']:
             raise RuntimeError('Native management controller assertions failed')
     finally:

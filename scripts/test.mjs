@@ -54,6 +54,7 @@ suites.unshift('UserProfileChildAccess');
 suites.unshift('ProfileSwitchNavigation');
 suites.unshift('SettingsChildModel');
 suites.unshift('SettingsChildNavigation');
+suites.unshift('ProfileSetupFence');
 suites.unshift('UserProfileStore');
 suites.unshift('StartupBeaconModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
@@ -90,7 +91,7 @@ for (const suite of suites) {
     'source/RemoteMapModel.brs', 'source/PreferenceModel.brs',
     'components/RecentHistoryNavigation.brs',
     ...(suite === 'ConnectionAuthTask' ? ['source/ChannelProfileModel.brs'] : []),
-    ...(['PhoneSetupStore', 'PhoneSetupApplyModel', 'PhoneSetupAutoAdd', 'ConnectionStore', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/ConnectionStoreModel.brs'] : []),
+    ...(['PhoneSetupStore', 'PhoneSetupApplyModel', 'PhoneSetupAutoAdd', 'PhoneSetupNavigation', 'ConnectionStore', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/ConnectionStoreModel.brs'] : []),
     'source/CapabilityModel.brs',
     'source/ProgramSearchModel.brs',
     'source/VideoGeometry.brs',
@@ -134,7 +135,9 @@ for (const suite of suites) {
     ...(suite === 'UserProfileAvatar' ? ['source/UserProfileAvatar.brs'] : []),
     ...(['UserProfileStore', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval'].includes(suite) ? ['source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(['UserProfileForget', 'UserProfileRemoval'].includes(suite) ? ['source/UserProfileCleanup.brs'] : []),
-    ...(suite === 'UserProfileNavigation' ? ['components/UserProfileNavigation.brs'] : []),
+    ...(['UserProfileNavigation', 'ProfileSetupFence', 'ConnectionNavigation', 'PlayerLifecycle', 'PhoneSetupNavigation', 'PhoneSetupAutoAdd'].includes(suite) ? ['components/UserProfileNavigation.brs'] : []),
+    ...(['ProfileSetupFence', 'PhoneSetupNavigation', 'PhoneSetupAutoAdd'].includes(suite) ? ['source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs'] : []),
+    ...(suite === 'ProfileSetupFence' ? ['components/ConnectionNavigation.brs', 'components/PhoneSetupNavigation.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'DvrRecordingModel' ? ['source/DvrRecordingModel.brs'] : []),
     ...(suite === 'DvrRecordingModel' ? ['source/DvrSeriesModel.brs'] : []),
     ...(['DvrPresentationModel', 'DvrNavigation', 'DvrHandoff', 'DvrView'].includes(suite) ? ['source/DvrPresentationModel.brs'] : []),
@@ -151,6 +154,7 @@ for (const suite of suites) {
     ...(suite === 'TmdbTask' ? ['components/TmdbTask.brs'] : []),
     ...(suite === 'VodShelfTask' ? ['components/VodShelfTask.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/AerioScene.brs'] : []),
+    ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/SettingsNavigation.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileRosterNavigation.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileAdultPinNavigation.brs', 'components/ProfileManagementNavigation.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileSwitchNavigation.brs'] : []),

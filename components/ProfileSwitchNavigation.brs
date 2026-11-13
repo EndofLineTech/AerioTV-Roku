@@ -159,7 +159,7 @@ sub onUserProfileSwitchResult(event as object)
     applyDevicePreferences()
     m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
     m.guide.historyAccount = m.accountIdentity
-    m.guide.config = {aeriosession: currentUserSessionId(), channels: verified.channels, groups: verified.groups, warning: verified.warning, baseUrl: m.baseUrl, apiKey: m.apiKey, accountId: m.serverAccountId, preferences: m.accountPreferences, providerType: "dispatcharr", guideUrl: context.connection.epgUrl, tmdbKey: m.registry.read("tmdbApiKey"), scope: verified.scope, generation: verified.generation}
+    m.guide.config = {aeriosession: currentUserSessionId(), userRole: currentUserSettingsRole(), channels: verified.channels, groups: verified.groups, warning: verified.warning, baseUrl: m.baseUrl, apiKey: m.apiKey, accountId: m.serverAccountId, preferences: m.accountPreferences, providerType: "dispatcharr", guideUrl: context.connection.epgUrl, tmdbKey: m.registry.read("tmdbApiKey"), scope: verified.scope, generation: verified.generation}
     m.banner.session = {baseUrl: m.baseUrl, apiKey: m.apiKey}
     m.banner.preferences = m.devicePreferences
     m.guide.remotePreferences = m.devicePreferences

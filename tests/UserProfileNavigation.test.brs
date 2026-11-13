@@ -1,6 +1,7 @@
 sub main()
     resetProfileNavigation()
     check(selectedUserProfileGate().allowed, "absent roster permits verified legacy migration")
+    check(userProfileConnectionSetupAllowed(), "absent roster retains first-time setup")
     m.userProfileRecoveryRequired = true
     check(not selectedUserProfileGate().allowed, "failed rollback remains fenced until process recovery")
     m.userProfileRecoveryRequired = false
@@ -12,6 +13,19 @@ sub main()
     resetProfileNavigation()
     check(ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100), "verified default migration persists")
     check(m.userProfileStore.profiles[0].username = "Alice" and m.userProfileStore.profiles[0].updatedAt = 0, "migration uses verified identity and stays unstamped")
+    check(userProfileConnectionSetupAllowed(), "Standard can configure its selected connection")
+    m.global = {profilegateclosed: true}
+    check(not userProfileConnectionSetupAllowed(), "closed profile gates refuse setup even for a saved Standard role")
+    m.global = invalid
+    childStore = copyJson(m.userProfileStore)
+    childStore.profiles[0] = setCanonicalPreference(childStore.profiles[0], "role", "child")
+    m.registry.write(userProfileStoreKey("slot-a"), FormatJson(childStore))
+    check(not userProfileConnectionSetupAllowed(), "persisted Child cannot open general setup without an active authenticated scope")
+    m.profileManagementGrant = {kind: "pin", purpose: "manage-profiles"}
+    check(not userProfileConnectionSetupAllowed(), "adult management authority never grants Child general setup or receiver access")
+    m.registry.write(userProfileStoreKey("slot-a"), "not-json")
+    check(not userProfileConnectionSetupAllowed(), "corrupt persisted authority cannot become an unrestricted setup form")
+    m.registry.write(userProfileStoreKey("slot-a"), FormatJson(m.userProfileStore))
     check(m.registry.read("connKey_slot-a") = "default-key", "migration cannot move the default key")
     check(ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000002", 101), "reconnect preserves default identity")
     check(m.userProfileStore.profiles[0].id = "00000000-0000-4000-8000-000000000001", "reconnect does not create another UUID")
@@ -26,6 +40,8 @@ sub main()
     resetProfileNavigation()
     m.connectionStore.entries[0].provider = "xtream"
     check(selectedUserProfileGate().allowed, "XC/M3U never acquire a profile gate")
+    m.connectionStore = {}
+    check(not userProfileConnectionSetupAllowed(), "malformed connection authority cannot grant setup access")
     print "ALL TESTS PASSED"
 end sub
 
