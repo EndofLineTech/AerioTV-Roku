@@ -66,6 +66,13 @@ sub main()
     check(userProfileSwitchAcceptPinStore(store, learned, b.id, pin), "successful target verification may update only its locally learned PIN length before staging")
     learned.profiles[0] = setCanonicalPreference(learned.profiles[0], "displayName", "Changed while waiting")
     check(not userProfileSwitchAcceptPinStore(store, learned, b.id, pin), "PIN wait cannot authorize an unrelated roster change or stale switch snapshot")
+    returning = copyJson(store)
+    returning.active = b.id
+    registry = switchRegistryFixture(connection, returning)
+    outgoingB = userProfileSessionScope(connection, b.id, 8, "outgoing-b", session)
+    defaultVerified = {ok: true, apiKey: "default-key", verifiedUser: {id: 7, username: "ALICE", user_level: 1}, accountId: "7", accountUsername: "alice", channels: [], groups: [], generation: "return-default"}
+    committed = commitUserProfileSwitch(registry, connection, returning, a.id, defaultVerified, invalid, invalid, "", nextAttempt, nextAttempt, outgoingB, outgoingB)
+    check(committed.ok and committed.store.doesExist("knownDefault") and committed.store["knownDefault"]["userId"] = 7, "returning to a verified default records its own identity in the atomic switch commit")
     print "ALL TESTS PASSED"
 end sub
 

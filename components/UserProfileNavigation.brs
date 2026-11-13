@@ -82,6 +82,12 @@ function ensureConnectedUserProfile(result as object, id = "" as string, now = 0
         m.status = "This sign-in belongs to a different saved default profile. Existing profile protection was retained; use a separate connection or Forget this Roku's copy."
         return false
     end if
+    ' Record only from this default-owned /me/, never cleared slot metadata.
+    ' A persisted change snapshot also freezes recording until its URL-bound
+    ' verification/settlement lifecycle can explicitly complete the change.
+    recorded = userProfileRecordDefaultIdentity(candidate, candidate.doesExist("addressChangeSnapshot"))
+    if not recorded.ok then return false
+    candidate = recorded.store
     if FormatJson(candidate) = FormatJson(m.userProfileStore) then return true
     saved = commitUserProfileStore(m.registry, m.userProfileStore, candidate, {}, entry.remember)
     if not saved.ok

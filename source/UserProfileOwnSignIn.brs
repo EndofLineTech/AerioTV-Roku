@@ -71,6 +71,11 @@ function commitUserProfileOwnSignIn(registry as object, connection as object, pr
         denied.reason = planned.reason
         return denied
     end if
+    if planned.target.isDefault
+        recorded = userProfileRecordDefaultIdentity(planned.store, planned.store.doesExist("addressChangeSnapshot"))
+        if not recorded.ok then return denied
+        planned.store = recorded.store
+    end if
     keys = {}
     if not planned.target.isDefault then keys[targetId] = verified.apiKey
     prepared = userProfileStoreChanges(registry, previous, planned.store, keys, connection.remember)

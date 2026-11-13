@@ -421,3 +421,11 @@ The shared native suite passes 719 assertions, including actual private-registry
 URL/hold/key roundtrips with a long-integer snapshot and explicit unknown tag,
 plus write/Flush/rollback, stale-session/connection/roster, caller-immutability,
 keyless-holder, legacy-metadata and Child-default/active-Child storage cases.
+
+Successful default verification now records the default profile's ID/name in
+the existing migration/reconnect transaction, in default-return switch commits,
+and in inactive-default credential recovery. It never records from non-default
+verification or cleared slot fields. Any held profile keeps the record frozen;
+a persisted address-change snapshot also freezes it until the still-pending
+URL-bound verification/settlement controller can explicitly finish that change.
+Thus even a one-profile change cannot rewrite its own comparison baseline.

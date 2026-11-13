@@ -92,6 +92,11 @@ function commitUserProfileSwitch(registry as object, connection as object, previ
     if not admin.ok then return {ok: false, recoveryRequired: true, reason: "pin-recovery"}
     planned = userProfileSwitchPlan(connection, previous, targetId, verified, targetPinGrant, admin.record, managementGrant, capturedNonce, activeNonce, managementNonce)
     if not planned.ok then return {ok: false, recoveryRequired: false, reason: planned.reason}
+    if planned.target.isDefault
+        recorded = userProfileRecordDefaultIdentity(planned.store, planned.store.doesExist("addressChangeSnapshot"))
+        if not recorded.ok then return denied
+        planned.store = recorded.store
+    end if
     keys = {}
     if not planned.target.isDefault then keys[targetId] = verified.apiKey
     prepared = userProfileStoreChanges(registry, previous, planned.store, keys, connection.remember)
