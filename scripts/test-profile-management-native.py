@@ -32,7 +32,9 @@ def startup_probe_timer(source):
     return source.replace('sub init()', 'sub init()\n' + timer, 1)
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False):
+    if manual_refresh:
+        assignment_refresh = True
     if child_rejected:
         child_available = child_rejected
     if child_retry:
@@ -462,7 +464,8 @@ end sub
                     fixture = fixture.replace('OWN_COLD_ACCOUNT', f'"{expected}"').replace('OWN_COLD_HELD', held)
                     source = source.split('sub onManagementProbeTick()', 1)[0] + fixture
                 if assignment_refresh:
-                    source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native/ProfileAssignmentRefreshFixture.brs').read_text()
+                    fixture_name = 'ProfileManualRefreshFixture.brs' if manual_refresh else 'ProfileAssignmentRefreshFixture.brs'
+                    source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native' / fixture_name).read_text()
                 if child_escape:
                     source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native/ProfileChildEscapeFixture.brs').read_text()
                 if child_launch:
@@ -536,12 +539,15 @@ def main():
     parser.add_argument('--cold-restore', choices=['remembered', 'keyless', 'held'], help='Launch a fresh process with a persisted nondefault selection; unavailable adults restore default')
     parser.add_argument('--default-filter', action='store_true', help='Give default A a two-Channel-Profile choice; nondefault B must never borrow either filter')
     parser.add_argument('--assignment-refresh', action='store_true', help='Qualify active-B assignment and VOD permission revocation through the real CapabilityTask callback and fresh own-session reload')
+    parser.add_argument('--manual-refresh', action='store_true', help='Reproduce active-B assignment/VOD authority changes through manual lineup refresh instead of the periodic callback')
     parser.add_argument('--child-escape', action='store_true', help='Qualify held Child adult admission, target PIN cancellation, rejected key, delayed Back and own target activation')
     parser.add_argument('--child-launch', action='store_true', help='Cold protected held Child: own launch PIN, unavailable surface, then separate adult-purpose admission with zero provider requests')
     parser.add_argument('--child-available', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private readiness seam: qualify own Child auth/roster/lineup without enabling shipping Child activation')
     parser.add_argument('--child-retry', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private Child transient failure, own Retry and Back during delayed authentication, followed by own retry')
     parser.add_argument('--child-rejected', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private actual Child rejection: exact cut prompt, permitted own form/dismissal, no stale replay, adult management and real Back exit')
     args = parser.parse_args()
+    if args.manual_refresh:
+        args.assignment_refresh = True
     if args.child_rejected and (args.child_available or args.child_retry or args.switch or args.child_launch or args.child_escape or args.cold_restore or args.child_settings or args.directions or args.assignment_refresh or args.default_filter):
         parser.error('--child-rejected is a separate case')
     if args.child_retry:
@@ -649,7 +655,7 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -786,6 +792,8 @@ def main():
                 name = name.replace('-native.json', '-default-filter-native.json')
             if args.assignment_refresh:
                 name = 'profile-assignment-refresh-native.json'
+                if args.manual_refresh:
+                    name = 'profile-manual-refresh-native.json'
             if args.child_escape:
                 name = 'profile-child-escape-native.json'
             if args.child_launch:

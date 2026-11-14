@@ -364,6 +364,24 @@ A late acknowledgement cannot restore data, credentials
 or scope. This does not enable a refused active non-default Child's own form or
 complete the public held-key picker flow.
 
+The active full-access default's general setup password flow has a separate
+credential-only admission, before its early roster read. It captures the exact
+verification Task, connection/current address, submitted username, roster/PIN
+bytes and held hash versions. Only current same-holder password proof may
+resolve a captured returned hash through the broker; neither account replacement
+nor a generic successful response clears the previous holder's rejection.
+The setup owns Back while verifying or awaiting acknowledgement and retires the
+old generic prompt/probe binding. Cancellation and the five-second reply deadline
+wipe the pending key and nonce without adopting a session or touching data.
+
+Private native cases exercise same-key recovery, delayed-acknowledgement Back,
+lost reply followed by a usable setup retry, and different-new-key recovery.
+An intentional new-default-account control retains the old account's private
+data and rejected hash while keeping its favorites out of the new account;
+other-profile credentials/data remain intact. Existing default replacement,
+legacy/current-address and frozen-owner boundaries still perform adoption.
+This admission never gives a Child or non-default profile general setup.
+
 The Scene's existing one-second broker tick bounds an own-proof acknowledgement
 wait to five seconds. Expiry wipes the pending key, detaches the old ticket and
 retires its credential nonce, then re-admits only the same own form under a fresh

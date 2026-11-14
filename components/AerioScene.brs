@@ -722,6 +722,13 @@ sub connectServer(skipRfi = false as boolean)
     if m.authMode = "password"
         m.task.username = m.username
         m.task.password = m.password
+        if not rosterReady
+            if beginProfileSetupCredential(m.task, entry)
+                retireProfileRequestBinding()
+                closeConnectionDialog()
+                m.top.setFocus(true)
+            end if
+        end if
     end if
     m.task.observeField("result", "onChannelsLoaded")
     m.task.observeField("progress", "onConnectionProgress")
@@ -765,6 +772,7 @@ sub onConnectionTick()
 end sub
 
 sub failConnection(message as string)
+    retireProfileSetupCredential()
     recordDiagnostic("connect", -1, message)
     m.connectionClock.control = "stop"
     if m.task <> invalid
@@ -781,6 +789,17 @@ end sub
 
 sub completeConnection(result as dynamic)
     if userProfileGateClosed() then return
+    if resolveProfileSetupCredential(result)
+        if m.profileSetupCredentialHold <> invalid
+            if m.task <> invalid
+                m.task.unobserveField("result")
+                m.task.unobserveField("progress")
+            end if
+            m.task = invalid
+            m.password = ""
+        end if
+        return
+    end if
     m.connectionClock.control = "stop"
     if m.task <> invalid
         m.task.unobserveField("result")
@@ -2608,6 +2627,10 @@ sub closeMessage(event as object)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    if m.profileSetupCredentialContext <> invalid
+        if press and key = "back" then failConnection("Connection cancelled.")
+        return true
+    end if
     if m.childConnectionLoading = true
         if press and key = "back" then failConnection("Connection cancelled.")
         return true

@@ -61,6 +61,7 @@ suites.unshift('ProfileSetupFence');
 suites.unshift('UserProfileOwnSignIn');
 suites.unshift('UserProfileChildOwnSignIn');
 suites.unshift('ProfileOwnSignInNavigation');
+suites.unshift('ProfileSetupCredentialNavigation');
 suites.unshift('ProfileChildUnavailableNavigation');
 suites.unshift('ProfileChildRejectedNavigation');
 suites.unshift('UserProfileAddressPolicy');
@@ -111,7 +112,8 @@ for (const suite of suites) {
     'source/ReminderModel.brs',
     ...(['TmdbTask', 'VodShelfTask', 'VodSeriesTask', 'XtreamTask', 'XtreamVodTask', 'ConnectionAuthTask'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
     'source/HttpPolicy.brs',
-    'source/RequestGateModel.brs', 'source/RequestGateClient.brs', 'source/RequestGateRenderer.brs',
+    'source/RequestGateModel.brs', ...(suite === 'ProfileSetupCredentialNavigation' ? [] : ['source/RequestGateClient.brs']), 'source/RequestGateRenderer.brs',
+    ...(['ProfileSetupCredentialNavigation', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['components/ProfileSetupCredentialNavigation.brs'] : []),
     ...(suite === 'ConnectionNavigation' ? ['components/RequestGateNavigation.brs'] : []),
     ...(suite === 'RequestGateNavigation' ? ['components/RequestGateNavigation.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'RequestGateTask' ? ['components/RequestGateTask.brs'] : []),

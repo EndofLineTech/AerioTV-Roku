@@ -24,6 +24,8 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'UserProfileChildRejectedPromptProbeChecks')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileChildRejectedFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileChildRecheckFixture')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileDefaultSetupRecoveryFixture')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileManualRefreshFixture')], check=True)
 
     def test_address_handler_probe_is_private_and_cannot_ship(self):
         spec = importlib.util.spec_from_file_location('address_probe', Path(__file__).with_name('test-profile-address-native.py'))
@@ -180,6 +182,26 @@ class ProfileProbeTest(unittest.TestCase):
                     self.assertNotIn('OWN_CHILD_', source)
                     self.assertIn('"child-retry-ready"', source)
                     self.assertNotIn('"AerioTV"', source)
+            for same in [False, True]:
+                probe.build(output, normal, 'SyntheticDefaultSetupSection', 'http://127.0.0.1:1234', form=True, default_form=True, default_setup=True, same_key=same)
+                with zipfile.ZipFile(output) as package:
+                    source = package.read('components/AerioScene.brs').decode()
+                    self.assertIn('"default-setup-ready"', source)
+                    self.assertNotIn('OWN_SETUP_', source)
+                    self.assertNotIn('"AerioTV"', source)
+            for mode in ['hold_cancel', 'hold_timeout']:
+                probe.build(output, normal, 'SyntheticDefaultSetupWaitSection', 'http://127.0.0.1:1234', form=True, default_form=True, default_setup=True, same_key=True, **{mode: True})
+                with zipfile.ZipFile(output) as package:
+                    source = package.read('components/AerioScene.brs').decode()
+                    self.assertNotIn('OWN_SETUP_', source)
+                    self.assertIn('m.defaultSetupOldProof', source)
+                    self.assertNotIn('"AerioTV"', source)
+            probe.build(output, normal, 'SyntheticDefaultReplacementSection', 'http://127.0.0.1:1234', form=True, default_form=True, default_setup=True, setup_replacement=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('OWN_SETUP_', source)
+                self.assertIn('Synthetic99', source)
+                self.assertNotIn('"AerioTV"', source)
         script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; for (const entry of ['profile-own-signin-probe.json','source/ProfileOwnSignInFixture.brs','source/ProfileOwnSignInFormFixture.brs','source/ProfileDefaultOwnSignInFormFixture.brs','source/ProfileActiveOwnSignInFixture.brs','source/ProfileColdRestoreFixture.brs','source/ProfileAssignmentRefreshFixture.brs']) assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt',entry]), /probe/);"
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)
 
@@ -223,6 +245,13 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertNotIn('"AerioTV"', source)
                 self.assertIn('"assignment-ready"', source)
                 self.assertIn('refreshCapabilities()', source)
+                self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
+            probe.build(output, normal, 'SyntheticManualRefreshSection', 'http://127.0.0.1:1234', manual_refresh=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('"AerioTV"', source)
+                self.assertIn('refreshChannelLineup()', source)
+                self.assertIn('m.manualOldSession', source)
                 self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
             probe.build(output, normal, 'SyntheticChildEscapeSection', 'http://127.0.0.1:1234', child_escape=True)
             with zipfile.ZipFile(output) as package:

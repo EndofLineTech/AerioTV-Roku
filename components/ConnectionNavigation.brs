@@ -406,6 +406,7 @@ sub changeProfiledConnectionUrl(entry as object, profiles as object, base as str
 end sub
 
 sub resetConnectionRuntime()
+    retireProfileSetupCredential()
     closeChildRejectedKeyDialog()
     m.childConnectionLoading = false
     m.profileRosterContext = invalid

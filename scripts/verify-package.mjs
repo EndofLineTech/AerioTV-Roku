@@ -7,6 +7,8 @@ const root = new URL('../', import.meta.url);
 export function assertPackageEntries(entries) {
   if (entries.some(entry => /(^|\/)RequestGateOwnCredentialProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic own-key broker probe');
   if (entries.some(entry => /(^|\/)ProfileOwnHeldKeyCancelFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic own-key cancellation probe');
+  if (entries.some(entry => /(^|\/)ProfileDefaultSetupRecoveryFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic default-setup recovery probe');
+  if (entries.some(entry => /(^|\/)ProfileManualRefreshFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic manual-refresh probe');
   if (!entries.includes('manifest')) throw new Error('Package must contain manifest at its root');
   for (const required of ['images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt']) {
     if (!entries.includes(required)) throw new Error(`Package is missing ${required}`);
