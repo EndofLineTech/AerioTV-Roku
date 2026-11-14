@@ -309,3 +309,23 @@ generic setup. A retired binding is not carried across a reset when the current
 holder is unverified or the current key has no matching broker hold. Native
 qualification uses actual PIN-admitted reconnect, a same-ID foreign username,
 own credential outcomes and late-request cancellation, preserving the default.
+
+Successful own-password recovery can also return the exact previously rejected
+key. Its hash is not a new credential to the broker, so ordinary reconnect is
+still refused until an explicit verified-own transition resolves it. Each
+memory-only rejection now has a monotonically increasing version; timestamps
+alone cannot distinguish a same-second re-rejection. The own form captures the
+held versions at admission and has an independent credential nonce, including
+when an authenticated outgoing profile remains active.
+
+After current own username/ID/current-address proof, a digest-only broker ticket
+may lift precisely that captured hash generation. It cannot clear another hash
+or a server-wide429 park, and old leases for the lifted hash retire. A generic
+200, profile switch, retired credential nonce or newer rejection has no such
+exception. The controller waits asynchronously for acknowledgement before
+committing the credential/settings transaction; Cancel wipes the pending key and
+detaches the observer. The pending proof retains only identity/role commit facts
+and one wipeable raw-key field, not a nested API key or unused bearer response.
+A late acknowledgement cannot restore data, credentials
+or scope. This does not enable a refused active non-default Child's own form or
+complete the public held-key picker flow.

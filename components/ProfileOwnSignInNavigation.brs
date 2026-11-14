@@ -104,10 +104,19 @@ function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as
     if target.isDefault
         if not userProfileDefaultOwnIdentityMatches(entry, store, {id: target.userId, username: target.username}) then return false
     end if
+    holds = {}
+    if m.requestGate <> invalid
+        state = m.requestGate.snapshot
+        if type(state) = "roAssociativeArray"
+            if type(state.keys) = "roAssociativeArray" then holds = requestGateCopy(state.keys)
+        end if
+    end if
     retireProfileRequestBinding()
     m.profileOwnSignInNonce = CreateObject("roDeviceInfo").getRandomUUID()
     m.profileOwnSignInContext = {nonce: m.profileOwnSignInNonce, activeRecovery: activeRecovery, childRecovery: childRecovery, connection: copyJson(entry), store: store, target: target, scope: copyJson(m.activeUserScope), page: m.page, guideActive: m.guide.active, covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, unlock: m.profileUnlockGrant, username: target.username, password: ""}
+    m.profileOwnSignInContext.holds = holds
     m.global.profileownsigninpending = true
+    m.global.profileownsigninnonce = m.profileOwnSignInNonce
     if activeRecovery
         ' This nonce authorizes only the credential Task. No authenticated
         ' user scope is invented while the unavailable holder has no key.
@@ -135,6 +144,7 @@ function profileOwnSignInContextCurrent() as boolean
     context = m.profileOwnSignInContext
     if type(context) <> "roAssociativeArray" then return false
     if context.nonce <> m.profileOwnSignInNonce or context.connection.id <> m.selectedConnectionId or context.page <> m.page then return false
+    if textValue(m.global.profileownsigninnonce) <> context.nonce or m.global.profileownsigninpending <> true then return false
     if context.childRecovery = true and m.profileChildAccessReady <> true then return false
     if context.activeRecovery = true
         if m.activeUserScope <> invalid or m.apiKey <> "" or currentUserSessionId() <> context.nonce then return false
@@ -189,7 +199,7 @@ sub showProfileOwnSignInForm(message = "" as string)
     mask = ""
     if context.password <> "" then mask = "********"
     dialog.buttons = ["Username: " + context.username, "Password: " + mask, "Sign In", "Cancel"]
-    if m.profileOwnSignInTask <> invalid then dialog.buttons = ["Cancel"]
+    if m.profileOwnSignInTask <> invalid or m.profileOwnSignInHold <> invalid then dialog.buttons = ["Cancel"]
     dialog.observeField("buttonSelected", "onProfileOwnSignInChoice")
     dialog.observeField("wasClosed", "onProfileOwnSignInClosed")
     m.profileOwnSignInDialog = dialog
@@ -217,7 +227,7 @@ end function
 sub onProfileOwnSignInChoice(event as object)
     if not profileOwnSignInEventCurrent(event) then return
     index = event.getData()
-    if m.profileOwnSignInTask <> invalid then cancelUserProfileOwnSignIn() : return
+    if m.profileOwnSignInTask <> invalid or m.profileOwnSignInHold <> invalid then cancelUserProfileOwnSignIn() : return
     if index = 3 then cancelUserProfileOwnSignIn() : return
     context = m.profileOwnSignInContext
     if index = 0 or index = 1
@@ -308,6 +318,88 @@ sub onProfileOwnSignInResult(event as object)
         showProfileOwnSignInForm("Dispatcharr did not accept that username or password.")
         return
     end if
+    planned = userProfileOwnSignInPlan(context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.childRecovery = true)
+    if not planned.ok
+        result.apiKey = ""
+        showProfileOwnSignInForm("Could not safely save this profile. Existing credentials and data were retained.")
+        return
+    end if
+    if m.requestGate <> invalid
+        state = m.requestGate.snapshot
+        if type(state) = "roAssociativeArray"
+            if state.keys.count() > 0
+                if beginProfileOwnSignInHeldCredential(result, requestGateCredentialHash(result.apiKey)) then return
+            end if
+        end if
+    end if
+    finishUserProfileOwnSignIn(result)
+end sub
+
+' Only a verified current own-password result reaches this boundary. The broker
+' independently checks the credential lifecycle and captured hold generation.
+' No raw key, bearer token or account response is put on the broker mailbox.
+function beginProfileOwnSignInHeldCredential(result as object, hash as string) as boolean
+    if not profileOwnSignInContextCurrent()
+        result.apiKey = ""
+        cancelUserProfileOwnSignIn()
+        return true
+    end if
+    state = m.requestGate.snapshot
+    if not state.keys.doesExist(hash) then return false
+    context = m.profileOwnSignInContext
+    if not context.holds.doesExist(hash)
+        result.apiKey = ""
+        showProfileOwnSignInForm("Profile access changed. Please sign in again.")
+        return true
+    end if
+    captured = context.holds[hash].version
+    if captured <> state.keys[hash].version
+        result.apiKey = ""
+        showProfileOwnSignInForm("Profile access changed. Please sign in again.")
+        return true
+    end if
+    ticket = invalid
+    if m.profileOwnSignInHoldFactory <> invalid then ticket = m.profileOwnSignInHoldFactory()
+    if ticket = invalid then ticket = CreateObject("roSGNode", "RequestGateTicket")
+    tagTaskForCurrentUser(ticket)
+    ticket.id = CreateObject("roDeviceInfo").getRandomUUID()
+    ticket.action = "own-verified"
+    ticket.hash = hash
+    ticket.holdVersion = captured
+    ticket.credentialNonce = context.nonce
+    ticket.observeField("result", "onProfileOwnSignInHoldResolved")
+    user = result.verifiedUser
+    context.pendingVerified = {ok: true, apiKey: result.apiKey, verifiedBaseUrl: result.verifiedBaseUrl, verifiedUser: {id: user.id, username: user.username, user_level: user.user_level, is_staff: user.is_staff = true, is_superuser: user.is_superuser = true}}
+    ' Retain only commit facts and one wipeable raw-key field, not the bearer
+    ' response's nested api_key or any other unused server/account payload.
+    result.apiKey = ""
+    result.verifiedUser = invalid
+    m.profileOwnSignInHold = ticket
+    m.requestGate.request = ticket
+    return true
+end function
+
+sub onProfileOwnSignInHoldResolved(event as object)
+    if not isCurrentTaskEvent(event, m.profileOwnSignInHold) then return
+    if not profileOwnSignInContextCurrent() then cancelUserProfileOwnSignIn() : return
+    m.profileOwnSignInHold.unobserveField("result")
+    m.profileOwnSignInHold = invalid
+    result = m.profileOwnSignInContext.pendingVerified
+    m.profileOwnSignInContext.delete("pendingVerified")
+    decision = event.getData()
+    accepted = false
+    if type(decision) = "roAssociativeArray" then accepted = decision.allowed = true
+    if not accepted
+        result.apiKey = ""
+        showProfileOwnSignInForm("Profile access changed. Please sign in again.")
+        return
+    end if
+    finishUserProfileOwnSignIn(result)
+end sub
+
+sub finishUserProfileOwnSignIn(result as object)
+    if not profileOwnSignInContextCurrent() then cancelUserProfileOwnSignIn() : return
+    context = m.profileOwnSignInContext
     saved = commitUserProfileOwnSignIn(m.registry, context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.nonce, m.profileOwnSignInNonce, context.childRecovery = true)
     if not saved.ok
         result.apiKey = ""
@@ -400,6 +492,11 @@ sub closeProfileOwnSignInTask()
 end sub
 
 sub retireUserProfileOwnSignIn()
+    if m.profileOwnSignInHold <> invalid then m.profileOwnSignInHold.unobserveField("result")
+    m.profileOwnSignInHold = invalid
+    if m.profileOwnSignInContext <> invalid
+        if type(m.profileOwnSignInContext.pendingVerified) = "roAssociativeArray" then m.profileOwnSignInContext.pendingVerified.apiKey = ""
+    end if
     closeActiveUserProfileRecoveryPrompt()
     context = m.profileOwnSignInContext
     if context <> invalid and m.profilePinContext <> invalid and m.profilePinDialog <> invalid
@@ -422,7 +519,10 @@ sub retireUserProfileOwnSignIn()
     if m.profileOwnSignInContext <> invalid then m.profileOwnSignInContext.password = ""
     m.profileOwnSignInContext = invalid
     m.profileOwnSignInNonce = ""
-    if m.global <> invalid then m.global.profileownsigninpending = false
+    if m.global <> invalid
+        m.global.profileownsigninpending = false
+        m.global.profileownsigninnonce = ""
+    end if
 end sub
 
 sub cancelUserProfileOwnSignIn()

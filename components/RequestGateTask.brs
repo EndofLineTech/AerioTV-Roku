@@ -75,6 +75,19 @@ sub processRequestGateTicket(ticket as object)
         ticket.body = ""
         ticket.headers = {}
         ticket.url = ""
+    else if action = "own-verified"
+        if m.global <> invalid
+            accepted = requestGateOwnCredentialVerified(m.gateState, ticket.hash, ticket.holdVersion, ticket.credentialNonce, textValue(m.global.profileownsigninnonce), m.global.profileownsigninpending = true)
+            if accepted.ok
+                m.gateState = accepted.state
+                hash = lcase(ticket.hash)
+                for each leaseId in m.gateLeases.keys()
+                    if m.gateLeases[leaseId].hash = hash then m.gateLeases.delete(leaseId)
+                end for
+                result = {allowed: true, reason: "", probe: false, deadline: 0}
+            end if
+        end if
+        ticket.credentialNonce = ""
     else if action = "prompt"
         prompt = requestGatePrompt(m.gateState, ticket.hash)
         m.gateState = prompt.state

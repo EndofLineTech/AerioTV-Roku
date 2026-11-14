@@ -2,7 +2,7 @@ sub init()
     ' Remains false in shipping builds until Child own loading/recovery paths
     ' and all required access/certification boundaries are qualified.
     m.profileChildAccessReady = false
-    m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false, profileownsigninpending: false, requestgaterecovery: ""})
+    m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false, profileownsigninpending: false, profileownsigninnonce: "", requestgaterecovery: ""})
     m.profileGateCover = m.top.findNode("profileGateCover")
     m.profileGateClock = m.top.findNode("profileGateClock")
     m.profileGateClock.observeField("fire", "onProfilePinTick")

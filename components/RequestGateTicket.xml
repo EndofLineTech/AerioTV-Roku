@@ -5,6 +5,8 @@
     <field id="url" type="string" />
     <field id="hash" type="string" />
     <field id="probe" type="boolean" value="false" />
+    <field id="holdVersion" type="integer" value="0" />
+    <field id="credentialNonce" type="string" />
     <field id="status" type="integer" value="0" />
     <field id="headers" type="assocarray" />
     <field id="body" type="string" />

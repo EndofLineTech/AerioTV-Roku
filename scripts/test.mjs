@@ -27,6 +27,7 @@ suites.unshift('UserProfileForget');
 suites.unshift('UserProfileNavigation');
 suites.unshift('UserProfileRemoval');
 suites.unshift('RequestGateModel');
+suites.unshift('RequestGateOwnCredential');
 suites.unshift('RequestGateTask');
 suites.unshift('RequestGateNavigation');
 suites.unshift('RequestGateRenderer');

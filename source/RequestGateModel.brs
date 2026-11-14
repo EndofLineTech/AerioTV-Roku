@@ -1,7 +1,7 @@
 ' Pure memory-only safety policy. Inputs contain credential digests, never raw
 ' credentials. The runtime broker must serialize permits/reports across Tasks.
 function requestGateDefault() as object
-    return {keys: {}, servers: {}, overflow: false}
+    return {keys: {}, servers: {}, overflow: false, version: 0}
 end function
 
 function requestGateProbeIdentityMatches(user as dynamic, expected as string, expectedUsername = "" as string) as boolean
@@ -78,7 +78,12 @@ function requestGateObserve(state as object, server as string, hash as string, s
                 result.overflow = true
                 return result
             end if
-            result.keys[hash] = {rejectedat: now, nextprobe: now + 60, lastprobe: 0, probeindex: 0, prompted: false}
+            if result.version >= 2147483646
+                result.overflow = true
+                return result
+            end if
+            result.version++
+            result.keys[hash] = {version: result.version, rejectedat: now, nextprobe: now + 60, lastprobe: 0, probeindex: 0, prompted: false}
         end if
     else if verifiedProbe and status >= 200 and status < 300
         ' A normal in-flight 200 must never re-lift a later rejection. Only a
@@ -86,6 +91,24 @@ function requestGateObserve(state as object, server as string, hash as string, s
         result.keys.delete(hash)
     end if
     return result
+end function
+
+function requestGateOwnCredentialVerified(state as object, hash as string, capturedVersion as dynamic, nonce as string, activeNonce as string, ownSignInPending as boolean) as object
+    denied = {ok: false, state: state}
+    if not ownSignInPending or nonce <> activeNonce then return denied
+    if not CreateObject("roRegex", "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", "").isMatch(nonce) then return denied
+    if not requestGateDigestValid(hash) then return denied
+    kind = type(capturedVersion)
+    if kind <> "Integer" and kind <> "roInt" and kind <> "roInteger" then return denied
+    if capturedVersion <= 0 or state.overflow = true then return denied
+    hash = lcase(hash)
+    if not state.keys.doesExist(hash) then return denied
+    if state.keys[hash].version <> capturedVersion then return denied
+    result = requestGateCopy(state)
+    result.keys.delete(hash)
+    ' Explicit successful own-password proof is not a transport200 or a switch.
+    ' Only this captured hash generation lifts; server parks remain unchanged.
+    return {ok: true, state: result}
 end function
 
 function requestGatePermit(state as object, server as string, hash as string, now as integer, probe as boolean) as object

@@ -1,4 +1,29 @@
 sub main()
+    heldOwnFormFixture()
+    beforeHeld = FormatJson(m.registry.values)
+    proof = {ok: true, apiKey: "synthetic-recovered-active", verifiedBaseUrl: "https://example.test", verifiedUser: {id: 88, username: "Bob", user_level: 1}}
+    check(beginProfileOwnSignInHeldCredential(proof, string(64, "a")) and m.profileOwnSignInHold <> invalid and FormatJson(m.registry.values) = beforeHeld, "held own key waits for broker acknowledgement before committing any credential/data")
+    ticket = m.profileOwnSignInHold
+    check(ticket.action = "own-verified" and ticket.holdVersion = 1 and ticket.credentialNonce = m.profileOwnSignInNonce and ticket.hash = string(64, "a") and ticket.apiKey = invalid, "broker ticket carries captured hash/version/lifecycle only, never the raw key or bearer proof")
+    check(proof.apiKey = "" and proof.verifiedUser = invalid and not m.profileOwnSignInContext.pendingVerified.verifiedUser.doesExist("api_key"), "pending own proof retains only one wipeable key field, never a nested API key or unused bearer response")
+    cancelUserProfileOwnSignIn()
+    onProfileOwnSignInHoldResolved(ownFormEvent(ticket, {allowed: true}))
+    check(proof.apiKey = "" and m.profileOwnSignInHold = invalid and m.activeUserScope = invalid and m.global.profileownsigninnonce = "" and FormatJson(m.registry.values) = beforeHeld, "Cancel wipes pending own key and refuses a late broker success without storage or scope adoption")
+    heldOwnFormFixture()
+    m.requestGate.snapshot.keys[string(64, "a")].version = 2
+    proof = {ok: true, apiKey: "synthetic-recovered-active", verifiedBaseUrl: "https://example.test", verifiedUser: {id: 88, username: "Bob", user_level: 1}}
+    check(beginProfileOwnSignInHeldCredential(proof, string(64, "a")) and m.profileOwnSignInHold = invalid and proof.apiKey = "", "a newer broker hold cannot be cleared by an older own credential lifecycle")
+    heldOwnFormFixture()
+    beforeHeld = FormatJson(m.registry.values)
+    proof = {ok: true, apiKey: "synthetic-recovered-active", verifiedBaseUrl: "https://example.test", verifiedUser: {id: 88, username: "Bob", user_level: 1}}
+    check(beginProfileOwnSignInHeldCredential(proof, string(64, "a")), "malformed acknowledgement fixture queues only current own proof")
+    onProfileOwnSignInHoldResolved(ownFormEvent(m.profileOwnSignInHold, invalid))
+    check(proof.apiKey = "" and m.profileOwnSignInHold = invalid and FormatJson(m.registry.values) = beforeHeld, "missing broker acknowledgement fails closed without adopting or persisting the pending key")
+    heldOwnFormFixture()
+    proof = {ok: true, apiKey: "synthetic-recovered-active", verifiedBaseUrl: "https://example.test", verifiedUser: {id: 88, username: "Bob", user_level: 1}}
+    check(beginProfileOwnSignInHeldCredential(proof, string(64, "a")), "matching held own key queues its dedicated broker transition")
+    onProfileOwnSignInHoldResolved(ownFormEvent(m.profileOwnSignInHold, {allowed: true}))
+    check(m.fixtureActiveReconnect and m.profileOwnSignInContext = invalid and m.profileOwnSignInHold = invalid and m.global.profileownsigninnonce = "", "accepted same-hash own credentials commit once and reconnect through the ordinary fresh-session path")
     childOwnFormFixture(false)
     beforeChild = FormatJson(m.registry.values)
     check(beginUserProfileOwnSignIn(m.fixtureTarget, true, true), "private active keyless Child opens only its admitted own form")
@@ -152,6 +177,15 @@ sub main()
     print "ALL TESTS PASSED"
 end sub
 
+sub heldOwnFormFixture()
+    activeOwnFormFixture()
+    state = requestGateDefault()
+    state.keys[string(64, "a")] = {version: 1}
+    m.requestGate = {snapshot: state}
+    m.profileOwnSignInHoldFactory = m.profileOwnSignInTaskFactory
+    check(beginUserProfileOwnSignIn(m.fixtureTarget, true), "held-key proof fixture starts an explicit own credential lifecycle")
+end sub
+
 sub activeOwnFormFixture()
     ownFormFixture()
     m.userProfileStore.active = m.fixtureTarget
@@ -217,6 +251,8 @@ function ownFormEvent(node as object, index as dynamic) as object
 end function
 
 sub ownFormFixture()
+    m.requestGate = invalid
+    m.profileOwnSignInHold = invalid
     entry = normalizeConnectionEntry({id: "slot-a", name: "Synthetic", provider: "dispatcharr", url: "https://example.test", accountId: "7", remember: true})
     a = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000001", {id: 7, username: "Alice", user_level: 1}, 1)
     b = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Bob", user_level: 1}, 1)

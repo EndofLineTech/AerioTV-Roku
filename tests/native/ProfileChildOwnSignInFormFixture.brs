@@ -15,6 +15,17 @@ sub onManagementProbeTick()
             m.childFormLaunchPinDone = true
             return
         end if
+        if OWN_CHILD_REJECTED and m.childFormRevokeStarted <> true
+            if m.busy or m.capabilityTask <> invalid or m.page <> "guide" then return
+            m.childFormRevokeStarted = true
+            print "[own-signin] "; FormatJson({kind: "revoke-ready"})
+            return
+        end if
+        if OWN_CHILD_REJECTED and m.childFormRevokeSubmitted <> true
+            m.childFormRevokeSubmitted = true
+            refreshCapabilities()
+            return
+        end if
         if m.childUnavailableDialog = invalid then return
         rawDevice = strictJsonEncode(m.preferenceStore.device).text
         settingsBeforeReset = m.registry.read("settingsV1")
