@@ -52,7 +52,7 @@ end function
 
 ' Content-only pure calculation shared AFTER the authenticated-session or
 ' unavailable-Child admission wrapper. It grants no persistence/runtime access.
-function dispatcharrSyncSwitchRosterContentPlan(connection as object, store as object, targetId as string, verified as object, decoded as object, enabled as boolean, now as integer) as object
+function dispatcharrSyncSwitchRosterContentPlan(connection as object, store as object, targetId as string, verified as object, decoded as object, enabled as boolean, now as integer, allowTargetRemoval = false as boolean) as object
     denied = {ok: false, applied: false, reason: "stale-context", store: store, removed: [], suggestions: [], needsDefaultSwitch: false}
     target = invalid
     originalOutgoing = invalid
@@ -88,11 +88,15 @@ function dispatcharrSyncSwitchRosterContentPlan(connection as object, store as o
     staging.active = target.id
     merged = dispatcharrSyncRosterMerge(staging, decoded, enabled, now)
     if not merged.ok then return denied
+    targetRemoved = false
     for each removed in merged.removed
         if removed.id = target.id
-            denied.reason = "target-removed"
-            denied.needsDefaultSwitch = true
-            return denied
+            if not allowTargetRemoval
+                denied.reason = "target-removed"
+                denied.needsDefaultSwitch = true
+                return denied
+            end if
+            targetRemoved = true
         end if
         if removed.id = originalOutgoing.id
             denied.reason = "outgoing-removal"
@@ -100,17 +104,19 @@ function dispatcharrSyncSwitchRosterContentPlan(connection as object, store as o
             return denied
         end if
     end for
-    if merged.needsDefaultSwitch then return denied
+    if merged.needsDefaultSwitch and not targetRemoved then return denied
     merged.store.active = originalOutgoing.id
     for each profile in merged.store.profiles
         if profile.id = target.id then target = profile
         if profile.id = originalOutgoing.id then result.outgoingProtectionChanged = FormatJson(profile) <> FormatJson(originalOutgoing)
     end for
     result.store = merged.store
+    result.targetRemoved = targetRemoved
     result.target = target
+    if targetRemoved then result.target = invalid
     result.applied = merged.applied
     result.removed = merged.removed
     result.suggestions = merged.suggestions
-    result.pinChanged = target.pinType <> originalTarget.pinType or target.pinHash <> originalTarget.pinHash or target.pinSalt <> originalTarget.pinSalt
+    if not targetRemoved then result.pinChanged = target.pinType <> originalTarget.pinType or target.pinHash <> originalTarget.pinHash or target.pinSalt <> originalTarget.pinSalt
     return result
 end function

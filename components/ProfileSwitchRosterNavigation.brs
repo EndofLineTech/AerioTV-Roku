@@ -111,23 +111,21 @@ sub finishUserProfileSwitchRosterRead(read as object)
     if not saved.ok and saved.reason = "cleanup-required"
         saved = commitDispatcharrSwitchRosterCleanup(m.registry, context, proof, decoded, apply, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, textValue(m.apiKey), userProfileSwitchRosterMemory(context))
     end if
+    if not saved.ok and saved.reason = "target-removed"
+        retireTombstonedUserProfileSwitchTarget(context, proof, decoded, apply)
+        return
+    end if
     if not saved.ok
         m.userProfileRecoveryRequired = saved.recoveryRequired
+        if saved.reason = "outgoing-removal" and saved.needsDefaultSwitch = true then m.userProfileRecoveryRequired = true
         rollbackUserProfileSwitch("Could not safely stage profile protection. Saved data was retained.")
         return
     end if
     closeUserProfileSwitchTask()
     context.authentication = proof
-    context.store = saved.store
     context.target = saved.target
     context.rosterSuggestions = saved.suggestions
-    m.userProfileStore = saved.store
-    if type(saved.removed) = "roArray" and type(m.profileSessionKeys) = "roAssociativeArray"
-        for each removed in saved.removed
-            bucket = preferenceScope(context.connection.url + "|" + context.connection.id + "|" + removed.id)
-            m.profileSessionKeys.delete(bucket)
-        end for
-    end if
+    publishUserProfileSwitchRosterStore(context, saved)
     if saved.outgoingProtectionChanged
         if context.unavailableChild = true then m.userProfileRecoveryRequired = true
         rollbackUserProfileSwitch("Outgoing profile access changed. Please verify access again.")
@@ -154,6 +152,48 @@ sub finishUserProfileSwitchRosterRead(read as object)
         return
     end if
     startUserProfileSwitchRosterLineup()
+end sub
+
+sub publishUserProfileSwitchRosterStore(context as object, saved as object)
+    context.store = saved.store
+    m.userProfileStore = saved.store
+    if type(saved.preferenceStore) = "roAssociativeArray" then m.preferenceStore = saved.preferenceStore
+    if type(saved.removed) = "roArray" and type(m.profileSessionKeys) = "roAssociativeArray"
+        for each removed in saved.removed
+            bucket = preferenceScope(context.connection.url + "|" + context.connection.id + "|" + removed.id)
+            m.profileSessionKeys.delete(bucket)
+        end for
+    end if
+end sub
+
+sub retireTombstonedUserProfileSwitchTarget(context as object, proof as object, decoded as object, apply as boolean)
+    ' The read has published and wiped its thread key. Close/wipe the Scene's
+    ' node before deleting its inactive holder; keep only the incoming nonce
+    ' as a storage-admission lifecycle, never an authenticated target scope.
+    if m.profileSwitchTask <> invalid then m.profileSwitchTask.apiKey = ""
+    closeUserProfileSwitchTask()
+    saved = commitDispatcharrSwitchTargetRetirement(m.registry, context, proof, decoded, apply, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, textValue(m.apiKey), userProfileSwitchRosterMemory(context))
+    context.key = ""
+    context.pin = invalid
+    if type(context.authentication) = "roAssociativeArray" then context.authentication.apiKey = ""
+    proof.apiKey = ""
+    if not saved.ok
+        m.userProfileRecoveryRequired = saved.recoveryRequired
+        if saved.reason = "outgoing-removal" and saved.needsDefaultSwitch = true then m.userProfileRecoveryRequired = true
+        rollbackUserProfileSwitch("Could not safely retire the removed profile. Saved data was retained.")
+        return
+    end if
+    publishUserProfileSwitchRosterStore(context, saved)
+    if saved.outgoingProtectionChanged and context.unavailableChild = true then m.userProfileRecoveryRequired = true
+    if type(context.management) = "roAssociativeArray" and textValue(context.managementNonce) <> "" and textValue(m.profileManagementNonce) = textValue(context.managementNonce)
+        for each removed in saved.removed
+            if removed.id = textValue(context.management.id)
+                m.profileManagementGrant = invalid
+                m.profileManagementNonce = ""
+            end if
+        end for
+    end if
+    rollbackUserProfileSwitch("This profile was removed on another device. The previous profile was retained.")
 end sub
 
 sub onUserProfileSwitchRosterPin(nonce as string)

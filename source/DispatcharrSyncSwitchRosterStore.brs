@@ -16,6 +16,45 @@ function commitDispatcharrSwitchRosterPull(registry as object, context as object
     return dispatcharrSyncCommitSwitchRosterMetadata(registry, context, plan)
 end function
 
+' A selected target is not the active actor during early own-roster discovery.
+' Retiring that target therefore preserves the actual outgoing holder; only an
+' actual outgoing tombstone needs a default switch first. No target scope/PIN
+' grant is fabricated to authorize its key/backoff/preference cleanup.
+function commitDispatcharrSwitchTargetRetirement(registry as object, context as object, verified as object, decoded as object, enabled as boolean, now as integer, activeNonce as string, activeOutgoing as dynamic, activeKey as string, memoryKeys as object) as object
+    denied = {ok: false, applied: false, committed: false, recoveryRequired: false, reason: "stale-context", needsDefaultSwitch: false}
+    if type(context.connection) <> "roAssociativeArray" or type(context.store) <> "roAssociativeArray" or type(context.target) <> "roAssociativeArray" then return denied
+    if context.unavailableChild = true
+        if not dispatcharrSyncUnavailableChildRosterAccessCurrent(registry, context, verified, now, activeNonce, activeOutgoing, activeKey, memoryKeys) then return denied
+    else
+        if not dispatcharrSyncSwitchRosterAccessCurrent(registry, context, verified, now, activeNonce, activeOutgoing, memoryKeys) then return denied
+    end if
+    working = normalizeUserProfileStore(context.store, context.connection.id)
+    if working.readOnly = true then return denied
+    plan = dispatcharrSyncSwitchRosterContentPlan(context.connection, working, context.target.id, verified, decoded, enabled, now, true)
+    if not plan.ok
+        denied.reason = plan.reason
+        denied.needsDefaultSwitch = plan.needsDefaultSwitch
+        return denied
+    end if
+    if not plan.applied or plan.targetRemoved <> true then return denied
+    prepared = dispatcharrSyncPrepareSwitchRosterCleanup(registry, context.connection, context.store, plan)
+    if not prepared.ok
+        denied.recoveryRequired = prepared.recoveryRequired = true
+        if prepared.reason = "preferences" then denied.reason = "preferences"
+        return denied
+    end if
+    saved = userProfileRegistryTransaction(registry, prepared.changes)
+    if not saved.ok
+        denied.reason = "storage"
+        denied.recoveryRequired = saved.recoveryRequired
+        return denied
+    end if
+    plan.committed = true
+    plan.recoveryRequired = false
+    if type(prepared.preferenceStore) = "roAssociativeArray" then plan.preferenceStore = prepared.preferenceStore
+    return plan
+end function
+
 ' Explicit inactive-only cleanup after the metadata-only path reports
 ' cleanup-required. Active/target/default retirement is never authorized here.
 function commitDispatcharrSwitchRosterCleanup(registry as object, context as object, verified as object, decoded as object, enabled as boolean, now as integer, activeNonce as string, activeOutgoing as dynamic, activeKey as string, memoryKeys as object) as object
@@ -41,7 +80,11 @@ function commitDispatcharrSwitchRosterCleanup(registry as object, context as obj
         if profile.isDefault or profile.id = context.store.active or profile.id = context.target.id then return denied
     end for
     prepared = dispatcharrSyncPrepareSwitchRosterCleanup(registry, context.connection, context.store, plan)
-    if not prepared.ok then return denied
+    if not prepared.ok
+        denied.recoveryRequired = prepared.recoveryRequired = true
+        if prepared.reason = "preferences" then denied.reason = "preferences"
+        return denied
+    end if
     saved = userProfileRegistryTransaction(registry, prepared.changes)
     if not saved.ok
         denied.reason = "storage"
@@ -50,6 +93,7 @@ function commitDispatcharrSwitchRosterCleanup(registry as object, context as obj
     end if
     plan.committed = true
     plan.recoveryRequired = false
+    if type(prepared.preferenceStore) = "roAssociativeArray" then plan.preferenceStore = prepared.preferenceStore
     return plan
 end function
 
@@ -66,20 +110,22 @@ function dispatcharrSyncPrepareSwitchRosterCleanup(registry as object, connectio
         if registry.exists(pinHold) then prepared.changes[pinHold] = ""
     end for
     if registry.exists("settingsV1")
+        unreadable = {ok: false, recoveryRequired: true, reason: "preferences"}
         preferences = loadStrictPreferenceStore(registry)
-        if preferences.readOnly = true then return denied
-        if type(preferences) <> "roAssociativeArray" then return denied
-        if not userProfileInteger(preferences.schema) then return denied
-        if preferences.schema <> 1 or type(preferences.accounts) <> "roAssociativeArray" or type(preferences.device) <> "roAssociativeArray" then return denied
+        if preferences.readOnly = true then return unreadable
+        if type(preferences) <> "roAssociativeArray" then return unreadable
+        if not userProfileInteger(preferences.schema) then return unreadable
+        if preferences.schema <> 1 or type(preferences.accounts) <> "roAssociativeArray" or type(preferences.device) <> "roAssociativeArray" then return unreadable
         for each profile in plan.removed
             identity = userProfilePreferenceIdentity(connection, profile)
             if identity = "" then return denied
             preferences.accounts.delete(preferenceScope(identity))
         end for
         encoded = strictJsonEncode(preferences)
-        if not encoded.ok then return denied
-        if preferenceByteBudget(encoded.text) > 24000 then return denied
+        if not encoded.ok then return unreadable
+        if preferenceByteBudget(encoded.text) > 24000 then return unreadable
         prepared.changes["settingsV1"] = encoded.text
+        prepared.preferenceStore = preferences
     end if
     return prepared
 end function

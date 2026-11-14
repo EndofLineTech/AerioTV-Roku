@@ -452,7 +452,8 @@ changed target PIN/outgoing protection explicitly. It publishes no credentials,
 performs no storage or network operations. Its controller use remains private
 and gated as described below. Child and Profiles-Off inputs do not apply the remote roster; verified
 upstream Admin facts still win. Pending outgoing roster edits and target or
-outgoing tombstones fail retained for explicit session/default-retirement work.
+outgoing tombstones fail retained by the normal planner; explicit retirement
+paths are described below.
 Unknown users remain suggestions, not automatic profile additions.
 
 `components/ProfileSwitchRosterNavigation.brs` integrates a private opt-in path;
@@ -468,7 +469,7 @@ before another profile's PIN/name UI can appear. Original protection remains an
 immutable rollback admission even when the working roster advances.
 
 Unavailable-Child escape uses the separate actual no-session admission described
-below, never an invented outgoing session. Tombstone/default-retirement cleanup, outgoing sync-writer
+below, never an invented outgoing session. Actual active-profile default retirement, outgoing sync-writer
 settlement, full Child-target integration and public activation remain unfinished.
 The defensive controller suite injects PIN verification and final commit refusal;
 separate host integration tests use the real final transaction. Neither establishes
@@ -491,8 +492,8 @@ not a stale persisted fallback. It never changes credentials or private settings
 Write/flush faults restore captured metadata, with failed rollback flagged for
 recovery. Profiles-Off performs no normalization write. Any profile removal is
 refused as `cleanup-required` by this metadata-only API; the private controller's
-separate inactive-only cleanup is described below. Target/outgoing tombstones
-still await default retirement. The caller must bind actual auth/read nodes, derive memory
+separate inactive-only cleanup and unadopted-target retirement are described below.
+Actual outgoing tombstones still await default retirement. The caller must bind actual auth/read nodes, derive memory
 keys from the current slot/address/profile lease, and keep the incoming scrim up;
 this helper is not itself a target session or a public switching entry point.
 The same fresh binding/key checks are exposed as a write-free preflight for each
@@ -568,8 +569,9 @@ Roster, only removed holders' keys/backoff and their scoped preference blobs sha
 one transaction; exact fault restoration is host-tested. It does not repair
 Remember policy or delete unrelated retained credentials, even with Remember off.
 Only removed holders' current address/slot/profile memory leases are retired.
-Active, target and default removals remain outside this API: active/target
-tombstones still require explicit default retirement, and defaults are retained.
+Active, target and default removals remain outside this inactive-only API:
+actual active tombstones require default retirement, unadopted targets use the
+separate retirement path below, and defaults are retained.
 Authenticated Child actors now also revalidate adult-purpose material after any
 import/cleanup before another profile's PIN/name UI; no grant upgrades occur.
 This cleanup is host-qualified only, not a native or peer acceptance result.
@@ -579,6 +581,26 @@ lease, plus foreign account data. Target own App Data supplies a current remote
 tombstone; generated assertions require only the third holder's cleanup, no new
 local tombstone, foreign retention and own discovery before lineup. This archive
 has been generated and syntax-checked only, not installed or run on the Roku.
+
+An early-roster target has not become the active profile. Its own tombstone can
+therefore retire that target without switching the genuine outgoing holder to a
+different default. The private controller closes/wipes its read Task, validates
+the actual actor/own proof/key/root/nonce/purpose again, atomically cleans only
+eligible inactive holders, drops removed memory leases and wipes captured target
+credentials. It then resumes only freshly revalidated outgoing admission, or the
+actual unavailable Child surface. Host tests explicitly use a non-default
+outgoing holder and a different default; no target/default scope or PIN grant is
+fabricated, and no target PIN/lineup runs after the tombstone.
+
+Cleanup publishes its successfully committed strict preference root before any
+PIN cancellation or rollback can resume writes; an outgoing save must not
+resurrect deleted blobs from an older cached root. An unreadable present root
+instead stays untouched and covered for recovery, never replaced from memory.
+Actual outgoing tombstones (including simultaneous target removal) also stay
+covered with no deletion until explicit default retirement is implemented. This
+is current-controller containment, not restart/default-retirement acceptance.
+The target-retirement and rollback-root checks are host-only; native qualification
+remains outstanding and both shipping readiness flags remain false.
 
 The earlier manual-refresh native cases (not this new switch/roster pipeline)
 qualify changed assignments/VOD revocation, foreign own

@@ -191,7 +191,73 @@ sub main()
         onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
         check(m.profilePinDialog <> invalid and m.registry.flushes = 1 and m.fixtureLineups = 0 and not m.registry.exists(m.fixtureThirdKey) and not m.registry.exists(m.fixtureThirdBackoff), "explicit inactive cleanup atomically removes only tombstoned third holder before target stored-PIN admission")
         check(not m.profileSessionKeys.doesExist(m.fixtureThirdBucket) and m.profileSessionKeys.foreign = "foreign-memory" and m.registry.read("connKey_slot-a") = "synthetic-a", "incoming cleanup retires only removed holder's current memory lease without touching default/foreign keys")
+        check(not m.preferenceStore.accounts.doesExist(m.fixtureThirdAccount), "staged cleanup publishes its committed strict preference root before any target PIN cancellation can revive outgoing writes")
+        onProfilePinClosed(switchRosterControllerEvent(m.profilePinDialog, true))
+        if not unavailable
+            futureSave = userProfileSettingsCommitPlan(m.preferenceStore, m.activeUserScope.preferenceIdentity, normalizeAccountPreferences({favoriteIds: ["7"]}), normalizeDevicePreferences(m.preferenceStore.device))
+            check(futureSave.ok and not futureSave.store.accounts.doesExist(m.fixtureThirdAccount), "outgoing save after cancelled switch cannot resurrect a cleaned holder's old preference blob")
+        end if
     end for
+    for each unavailable in [false, true]
+        switchRosterControllerInactiveFixture(unavailable)
+        store = m.profileSwitchContext.store
+        store.profiles[0] = setCanonicalPreference(store.profiles[0], "isDefault", false)
+        store.profiles[2] = setCanonicalPreference(store.profiles[2], "isDefault", true)
+        m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+        m.registry.values[userProfileKeyName("slot-a", m.fixtureOutgoing.profileId)] = "synthetic-a"
+        m.registry.values["connKey_slot-a"] = "synthetic-third"
+        m.profileSwitchContext.store = loadUserProfileStore(m.registry, "slot-a")
+        m.profileSwitchContext.target = m.profileSwitchContext.store.profiles[1]
+        if not unavailable then m.profileSwitchContext.outgoingProtection = FormatJson(m.profileSwitchContext.store.profiles[0])
+        targetId = m.profileSwitchContext.target.id
+        targetAccount = preferenceScope(connectionPreferenceIdentity(m.profileSwitchContext.connection, "8"))
+        targetBucket = preferenceScope(m.profileSwitchContext.connection.url + "|slot-a|" + targetId)
+        targetBackoff = userProfilePinBackoffKey("slot-a", targetId)
+        m.profileSessionKeys[targetBucket] = "synthetic-b"
+        m.registry.values[targetBackoff] = "target-ledger"
+        m.preferenceStore.accounts[targetAccount] = normalizeAccountPreferences({favoriteIds: ["8"]})
+        m.registry.values["settingsV1"] = FormatJson(m.preferenceStore)
+        m.fixtureRead.data.categories.profiles.data.rows = []
+        m.fixtureRead.data.categories.profiles.data.removed = [["bob", CreateObject("roDateTime").asSeconds()]]
+        onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+        context = m.profileSwitchContext
+        readTask = m.profileSwitchTask
+        onUserProfileSwitchResult(switchRosterControllerEvent(readTask, m.fixtureRead))
+        check(m.profileSwitchContext = invalid and m.profilePinDialog = invalid and m.fixtureLineups = 0 and m.registry.flushes = 1 and readTask.cancelRequested and readTask.apiKey = "", "a tombstoned unadopted target closes/wipes its read Task and retires without any target PIN, lineup or active scope")
+        check(not m.registry.exists(userProfileKeyName("slot-a", targetId)) and not m.registry.exists(targetBackoff) and not m.profileSessionKeys.doesExist(targetBucket) and not m.preferenceStore.accounts.doesExist(targetAccount) and m.registry.exists(m.fixtureThirdKey), "target retirement publishes cleaned roots and drops only removed target key/backoff/blob/memory, preserving unrelated third holder")
+        check(context.key = "" and context.authentication.apiKey = "" and loadUserProfileStore(m.registry, "slot-a").active = m.fixtureOutgoing.profileId and m.registry.read("connKey_slot-a") = "synthetic-third", "no retired target credential survives in the controller, and the different default is preserved rather than replacing the genuine non-default outgoing holder")
+        if unavailable
+            check(m.activeUserScope = invalid and m.apiKey = "" and m.global.profilegateclosed and m.global.activeusersession = "" and m.page = "profile-unavailable", "unavailable Child target retirement returns only its real no-session Child surface")
+        else
+            check(m.activeUserScope.profileId = m.fixtureOutgoing.profileId and m.activeUserScope.sessionId <> m.fixtureOutgoing.sessionId and m.apiKey = "synthetic-a" and not m.global.profilegateclosed, "full-access target retirement resumes only fresh unchanged outgoing admission without autoplay")
+        end if
+    end for
+    for each alsoTarget in [false, true]
+        switchRosterControllerInactiveFixture(false)
+        store = m.profileSwitchContext.store
+        outgoing = setCanonicalPreference(store.profiles[0], "isDefault", false)
+        target = store.profiles[1]
+        third = setCanonicalPreference(store.profiles[2], "isDefault", true)
+        store.profiles = [target, outgoing, third]
+        m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+        m.registry.values[userProfileKeyName("slot-a", outgoing.id)] = "synthetic-a"
+        m.registry.values["connKey_slot-a"] = "synthetic-third"
+        m.profileSwitchContext.store = loadUserProfileStore(m.registry, "slot-a")
+        m.profileSwitchContext.target = m.profileSwitchContext.store.profiles[0]
+        m.profileSwitchContext.outgoingProtection = FormatJson(m.profileSwitchContext.store.profiles[1])
+        removed = [["alice", CreateObject("roDateTime").asSeconds()]]
+        if alsoTarget then removed.push(["bob", CreateObject("roDateTime").asSeconds()])
+        m.fixtureRead.data.categories.profiles.data.rows = []
+        m.fixtureRead.data.categories.profiles.data.removed = removed
+        onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+        onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+        check(m.registry.flushes = 0 and m.activeUserScope = invalid and m.global.activeusersession = "" and m.global.profilegateclosed and m.userProfileRecoveryRequired and m.fixtureLineups = 0, "an actual outgoing tombstone, alone or alongside target removal, stays covered pending default retirement instead of reviving the removed actor")
+    end for
+    switchRosterControllerInactiveFixture(false)
+    m.registry.values["settingsV1"] = "{malformed"
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+    check(m.registry.flushes = 0 and m.registry.read("settingsV1") = "{malformed" and m.activeUserScope = invalid and m.global.profilegateclosed and m.userProfileRecoveryRequired, "unreadable present preference root freezes cleanup/rollback admission so an outgoing save cannot overwrite it from stale memory")
     print "ALL TESTS PASSED"
 end sub
 
@@ -321,7 +387,11 @@ sub switchRosterControllerInactiveFixture(unavailable as boolean)
     m.fixtureThirdBucket = preferenceScope(m.profileSwitchContext.connection.url + "|slot-a|" + third.id)
     m.registry.values[m.fixtureThirdKey] = "synthetic-third"
     m.registry.values[m.fixtureThirdBackoff] = "private-ledger"
-    m.registry.values["settingsV1"] = FormatJson(defaultPreferenceStore())
+    preferences = defaultPreferenceStore()
+    m.fixtureThirdAccount = preferenceScope(connectionPreferenceIdentity(m.profileSwitchContext.connection, "9"))
+    preferences.accounts[m.fixtureThirdAccount] = normalizeAccountPreferences({favoriteIds: ["99"]})
+    m.registry.values["settingsV1"] = FormatJson(preferences)
+    m.preferenceStore = preferences
     m.profilePreferenceDecoder = function(raw as string) as dynamic
         return ParseJson(raw)
     end function

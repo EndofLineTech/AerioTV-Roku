@@ -156,6 +156,45 @@ sub main()
         result = switchRosterCleanupCommit()
         check(result.ok and not m.registry.exists(m.thirdKey) and m.registry.read(m.ownKeyName) = "synthetic-b" and m.registry.read("connKey_slot-a") = "synthetic-a", "current own memory admits inactive cleanup without using it to repair or delete unrelated persisted credentials")
     end for
+    for each fault in ["", "write", "flush", "rollback"]
+        switchRosterTargetRetirementFixture()
+        m.registry.fault = fault
+        before = FormatJson(m.registry.values)
+        result = switchRosterTargetRetirementCommit()
+        if fault = ""
+            check(result.ok and result.targetRemoved and result.target = invalid and result.store.active = m.context.store.active and m.registry.flushes = 1, "tombstoned unadopted target retires atomically while the actual outgoing profile remains active")
+            check(not m.registry.exists(m.ownKeyName) and not m.registry.exists(m.targetBackoff) and m.registry.read(m.thirdKey) = "synthetic-third" and m.registry.read("connKey_slot-a") = "synthetic-a", "target retirement deletes only its own key/backoff, never the default or unrelated third holder")
+            saved = ParseJson(m.registry.read("settingsV1"))
+            check(not saved.accounts.doesExist(m.targetAccount) and saved.accounts.doesExist(m.thirdAccount) and saved.accounts[m.foreignAccount].future = "foreign" and result.store.removed.count() = 0 and result.scope = invalid and result.apiKey = invalid, "retired target data leaves no new tombstone, credential or invented active target/default session")
+        else
+            check(not result.ok and result.recoveryRequired = (fault = "rollback") and FormatJson(m.registry.values) = before, "target retirement write/flush faults restore exact metadata/credentials/settings/backoff without actor replacement")
+        end if
+    end for
+    for each change in ["key", "root", "nonce", "identity", "outgoing-tombstone", "child", "profiles-off", "newer-readd"]
+        switchRosterTargetRetirementFixture()
+        if change = "key" then m.registry.values[m.ownKeyName] = ""
+        if change = "root" then m.registry.values["connectionsV1"] = ""
+        if change = "nonce" then m.activeNonce = "00000000-0000-4000-8000-000000000099"
+        if change = "identity" then m.verified.verifiedUser.id = 80
+        if change = "outgoing-tombstone"
+            m.context.store.profiles[0] = setCanonicalPreference(m.context.store.profiles[0], "isDefault", false)
+            m.context.store.profiles[2] = setCanonicalPreference(m.context.store.profiles[2], "isDefault", true)
+            m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.context.store)
+            m.context.store = loadUserProfileStore(m.registry, "slot-a")
+            m.decoded = dispatcharrSyncRosterDecode({rows: [], removed: [["alice", 500], ["bob", 500]]})
+        end if
+        if change = "child"
+            m.context.store.profiles[1] = setCanonicalPreference(m.context.store.profiles[1], "role", "child")
+            m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.context.store)
+            m.context.store = loadUserProfileStore(m.registry, "slot-a")
+            m.context.target = m.context.store.profiles[1]
+        end if
+        if change = "profiles-off" then m.enabled = false
+        if change = "newer-readd" then m.decoded = dispatcharrSyncRosterDecode({rows: [[8, "bob", "Bob", "none", "", "", "user", 501]], removed: [["bob", 500]]})
+        before = FormatJson(m.registry.values)
+        result = switchRosterTargetRetirementCommit()
+        check(not result.ok and m.registry.flushes = 0 and FormatJson(m.registry.values) = before, "target retirement refuses " + change + " without deleting a live actor, paused category or intentionally newer target")
+    end for
     print "ALL TESTS PASSED"
 end sub
 
@@ -266,6 +305,17 @@ end sub
 
 function switchRosterCleanupCommit() as object
     return commitDispatcharrSwitchRosterCleanup(m.registry, m.context, m.verified, m.decoded, true, 600, m.activeNonce, m.outgoing, textValue(m.actorKey), m.memory)
+end function
+
+sub switchRosterTargetRetirementFixture()
+    switchRosterCleanupFixture()
+    m.targetBackoff = userProfilePinBackoffKey("slot-a", m.context.target.id)
+    m.registry.values[m.targetBackoff] = "target-private-ledger"
+    m.decoded = dispatcharrSyncRosterDecode({rows: [], removed: [["bob", 500]]})
+end sub
+
+function switchRosterTargetRetirementCommit() as object
+    return commitDispatcharrSwitchTargetRetirement(m.registry, m.context, m.verified, m.decoded, m.enabled, 600, m.activeNonce, m.outgoing, textValue(m.actorKey), m.memory)
 end function
 
 function requestGateAccessAllowed(url as string, key as string) as boolean
