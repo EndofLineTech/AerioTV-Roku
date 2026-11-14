@@ -573,6 +573,12 @@ tombstones still require explicit default retirement, and defaults are retained.
 Authenticated Child actors now also revalidate adult-purpose material after any
 import/cleanup before another profile's PIN/name UI; no grant upgrades occur.
 This cleanup is host-qualified only, not a native or peer acceptance result.
+`--switch --switch-roster --switch-inactive-cleanup` prepares a private normal-app
+fixture with a seeded third holder's key, backoff, preference blob and memory
+lease, plus foreign account data. Target own App Data supplies a current remote
+tombstone; generated assertions require only the third holder's cleanup, no new
+local tombstone, foreign retention and own discovery before lineup. This archive
+has been generated and syntax-checked only, not installed or run on the Roku.
 
 The earlier manual-refresh native cases (not this new switch/roster pipeline)
 qualify changed assignments/VOD revocation, foreign own

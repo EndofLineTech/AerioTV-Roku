@@ -33,6 +33,16 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertNotEqual(row[4], hashlib.sha256(row[5].encode() + b'5678').hexdigest())
         self.assertNotIn('"5678"', json.dumps(envelope))
 
+    def test_inactive_cleanup_wire_has_only_current_remote_tombstone(self):
+        spec = importlib.util.spec_from_file_location('management_cleanup_probe', Path(__file__).with_name('test-profile-management-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        with patch.object(probe.time, 'time', return_value=1794657600):
+            envelope = probe.switch_inactive_cleanup_envelope()
+        self.assertEqual(envelope['categories']['profiles']['data'], {'rows': [], 'removed': [['synthetic9', 1794657600]]})
+        self.assertEqual(envelope['updatedAt'], '2026-11-14T12:00:00Z')
+        self.assertNotIn('apiKey', json.dumps(envelope))
+
     def test_native_timeout_diagnostics_are_boolean_only(self):
         spec = importlib.util.spec_from_file_location('native_runner', Path(__file__).with_name('run-native-probe.py'))
         probe = importlib.util.module_from_spec(spec)
@@ -305,6 +315,17 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertNotIn('"AerioTV"', source)
             with self.assertRaises(ValueError):
                 probe.build(output, normal, 'SyntheticImportedPinSection', 'http://127.0.0.1:1234', switching=True, switch_import_pin=True)
+            probe.build(output, normal, 'SyntheticInactiveCleanupSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_cleanup=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertIn('m.profileSwitchRosterReady = true', source)
+                self.assertIn('m.switchProbeInactiveCleaned', source)
+                self.assertIn('m.switchProbeThirdSeeded', source)
+                self.assertIn('userProfilePinBackoffKey("slot-a", third.id)', source)
+                self.assertIn('inactive_cleaned:', source)
+                self.assertNotIn('"AerioTV"', source)
+            with self.assertRaises(ValueError):
+                probe.build(output, normal, 'SyntheticInactiveCleanupSection', 'http://127.0.0.1:1234', switching=True, switch_cleanup=True)
             for mode in ['remembered', 'keyless', 'held']:
                 probe.build(output, normal, 'SyntheticColdSection', 'http://127.0.0.1:1234', cold_restore=mode)
                 with zipfile.ZipFile(output) as package:

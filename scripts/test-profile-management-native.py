@@ -28,6 +28,15 @@ def switch_import_pin_envelope():
                 'rows': [[8, 'Synthetic8', 'Imported target', 'numbers', digest, salt, 'user', 1794657600]]}}}}
 
 
+def switch_inactive_cleanup_envelope():
+    stamp = int(time.time())
+    updated = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(stamp))
+    return {'schemaVersion': 3, 'deviceId': 'synthetic-phone', 'platform': 'android',
+            'appVersion': '1', 'updatedAt': updated,
+            'categories': {'profiles': {'updatedAt': updated, 'data': {
+                'rows': [], 'removed': [['synthetic9', stamp]]}}}}
+
+
 def startup_probe_timer(source):
     timer = '''    m.managementProbeClock = m.top.createChild("Timer")
     m.managementProbeClock.duration = 1
@@ -43,11 +52,13 @@ def startup_probe_timer(source):
     return source.replace('sub init()', 'sub init()\n' + timer, 1)
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False):
     if switch_roster and (not (switching or child_escape) or (switching and child_escape)):
         raise ValueError('Private early-roster mode requires either switch or Child escape fixture')
     if switch_import_pin and (not switching or not switch_roster or any([switch_pin, cancel_pin, reject_active, remember_off, reconnect, child_settings, cold_restore, default_filter, assignment_refresh, child_escape, child_launch, child_available, child_retry, child_rejected, manual_refresh, manual_recording, favorite_retention, switch_recording, directions])):
         raise ValueError('Imported PIN fixture requires only --switch --switch-roster')
+    if switch_cleanup and (not switching or not switch_roster or any([switch_pin, cancel_pin, reject_active, remember_off, reconnect, child_settings, cold_restore, default_filter, assignment_refresh, child_escape, child_launch, child_available, child_retry, child_rejected, manual_refresh, manual_recording, favorite_retention, switch_recording, directions, switch_import_pin])):
+        raise ValueError('Inactive cleanup fixture requires only --switch --switch-roster')
     recording_probe = bool(manual_recording or switch_recording)
     if manual_refresh:
         assignment_refresh = True
@@ -377,6 +388,43 @@ end sub
             onProfilePinSubmit(managementProbeEvent(m.profilePinDialog, 0))
         end if
         if m.profileSwitchContext <> invalid then m.managementProbePhase-- : return''')
+                    if switch_cleanup:
+                        target = '        store.profiles.push(adult)\n'
+                        assert source.count(target) == 1
+                        source = source.replace(target, target + '''        third = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000003", {id: 9, username: "Synthetic9", user_level: 1}, 1)
+        third = setCanonicalPreference(third, "isDefault", false)
+        third = setCanonicalPreference(third, "order", 2)
+        store.profiles.push(third)
+        m.registry.write(userProfileKeyName("slot-a", third.id), "synthetic-third")
+        m.registry.write(userProfilePinBackoffKey("slot-a", third.id), FormatJson({failures: 1, round: 0, until: 0}))
+        if type(m.profileSessionKeys) <> "roAssociativeArray" then m.profileSessionKeys = {}
+        m.profileSessionKeys[preferenceScope(m.baseUrl + "|slot-a|" + third.id)] = "synthetic-third"
+''', 1)
+                        target = '        m.registry.write("settingsV1", FormatJson(m.preferenceStore))\n'
+                        assert source.count(target) == 1
+                        source = source.replace(target, '''        m.preferenceStore.accounts[preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "9"))] = normalizeAccountPreferences({favoriteIds: ["99"]})
+        m.preferenceStore.accounts[preferenceScope("https://foreign.test|99|slot-b")] = {future: "retain"}
+''' + target, 1)
+                        target = '        m.registry.flush()\n        showConnection()\n'
+                        assert source.count(target) == 1
+                        source = source.replace(target, '''        m.registry.flush()
+        seeded = loadUserProfileStore(m.registry, "slot-a")
+        seededSettings = ParseJson(m.registry.read("settingsV1"), "d")
+        thirdAccount = preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "9"))
+        m.switchProbeThirdSeeded = seeded.profiles.count() = 3 and m.registry.exists(userProfileKeyName("slot-a", third.id)) and m.registry.exists(userProfilePinBackoffKey("slot-a", third.id)) and m.profileSessionKeys.doesExist(preferenceScope(m.baseUrl + "|slot-a|" + third.id)) and seededSettings.accounts.doesExist(thirdAccount)
+        showConnection()
+''', 1)
+                        target = '        m.switchProbeB = m.switchProbeB and m.switchProbeSetupHidden\n'
+                        assert source.count(target) == 1
+                        source = source.replace(target, target + '''        cleaned = loadUserProfileStore(m.registry, "slot-a")
+        preferences = ParseJson(m.registry.read("settingsV1"), "d")
+        thirdId = "00000000-0000-4000-8000-000000000003"
+        removedAccount = preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "9"))
+        foreignAccount = preferenceScope("https://foreign.test|99|slot-b")
+        m.switchProbeInactiveCleaned = m.switchProbeThirdSeeded and cleaned.profiles.count() = 2 and cleaned.removed.count() = 0 and not m.registry.exists(userProfileKeyName("slot-a", thirdId)) and not m.registry.exists(userProfilePinBackoffKey("slot-a", thirdId)) and not m.profileSessionKeys.doesExist(preferenceScope(m.baseUrl + "|slot-a|" + thirdId)) and not preferences.accounts.doesExist(removedAccount) and preferences.accounts[foreignAccount].future = "retain"
+        m.switchProbeB = m.switchProbeB and m.switchProbeInactiveCleaned
+''', 1)
+                        source = source.replace('kind: "result", reconnected:', 'kind: "result", inactive_cleaned: m.switchProbeInactiveCleaned = true, reconnected:', 1)
                     if cancel_pin:
                         source = source.replace('''    else if phase = 9
         if m.profilePinDialog <> invalid
@@ -643,6 +691,7 @@ def main():
     parser.add_argument('--switch', action='store_true', help='Exercise internal same-slot A/B/A and rejected-key rollback without enabling the public picker')
     parser.add_argument('--switch-roster', action='store_true', help='With --switch or --child-escape, opt in ONLY this synthetic package to staged target authentication/own roster read before lineup; no public flag change')
     parser.add_argument('--switch-import-pin', action='store_true', help='Only with --switch --switch-roster: import a previously absent target numeric PIN, reject the old value and admit its real stored v2 value')
+    parser.add_argument('--switch-inactive-cleanup', action='store_true', help='Only with --switch --switch-roster: remove a synthetic inactive third holder through own App Data, preserving default/target/foreign data')
     parser.add_argument('--reconnect', action='store_true', help='With --switch, reconnect B through early roster read and full activation before returning to A')
     parser.add_argument('--switch-pin', action='store_true', help='With --switch, require the real stored numeric target PIN before each switch')
     parser.add_argument('--cancel-pin', action='store_true', help='With --switch-pin, cancel the final target PIN before any request is sent')
@@ -667,6 +716,8 @@ def main():
         parser.error('--switch-roster requires --switch or --child-escape')
     if args.switch_import_pin and (not args.switch or not args.switch_roster or any([args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.reconnect, args.child_settings, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.favorite_retention, args.switch_recording, args.directions])):
         parser.error('--switch-import-pin requires only --switch --switch-roster')
+    if args.switch_inactive_cleanup and (not args.switch or not args.switch_roster or any([args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.reconnect, args.child_settings, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.favorite_retention, args.switch_recording, args.directions, args.switch_import_pin])):
+        parser.error('--switch-inactive-cleanup requires only --switch --switch-roster')
     if args.switch_recording and any([args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.reconnect, args.cold_restore, args.child_settings, args.directions, args.default_filter, args.assignment_refresh, args.manual_refresh, args.manual_recording, args.favorite_retention, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected]):
         parser.error('--switch-recording is a separate case')
     if args.favorite_retention and any([args.switch, args.cold_restore, args.child_settings, args.directions, args.default_filter, args.assignment_refresh, args.manual_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected]):
@@ -789,10 +840,12 @@ def main():
                     value.setdefault('custom_properties', {})['dvr_access'] = 'manage'
             if self.path == '/api/accounts/users/me/app-data/':
                 value = {'apps': []}
-                if args.child_available or (args.switch_import_pin and user == 8):
+                if args.child_available or ((args.switch_import_pin or args.switch_inactive_cleanup) and user == 8):
                     value = {'apps': [{'key': f'synthetic{user}.aeriotv', 'bytes': 600}]}
             if args.switch_import_pin and user == 8 and self.path == '/api/accounts/users/me/app-data/synthetic8.aeriotv/':
                 value = switch_import_pin_envelope()
+            if args.switch_inactive_cleanup and user == 8 and self.path == '/api/accounts/users/me/app-data/synthetic8.aeriotv/':
+                value = switch_inactive_cleanup_envelope()
             if args.child_available and self.path == f'/api/accounts/users/me/app-data/synthetic{user}.aeriotv/':
                 stamp = '2026-11-14T12:00:00Z'
                 value = {'schemaVersion': 3, 'deviceId': 'synthetic-phone', 'platform': 'android', 'appVersion': '1', 'updatedAt': stamp,
@@ -822,7 +875,7 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode, args.favorite_retention, args.switch_recording, args.switch_roster, args.switch_import_pin)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode, args.favorite_retention, args.switch_recording, args.switch_roster, args.switch_import_pin, args.switch_inactive_cleanup)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -894,6 +947,10 @@ def main():
                 own_record = next((index for index, hit in enumerate(hits) if hit['user'] == 8 and hit['path'] == '/api/accounts/users/me/app-data/synthetic8.aeriotv/'), -1)
                 report['imported_pin_before_lineup'] = own_record >= 0 and lineup > own_record and rows[-1].get('imported_stored', False) and rows[-1].get('imported_old_refused', False)
                 report['passed'] = report['passed'] and report['imported_pin_before_lineup']
+            if args.switch_inactive_cleanup:
+                own_record = next((index for index, hit in enumerate(hits) if hit['user'] == 8 and hit['path'] == '/api/accounts/users/me/app-data/synthetic8.aeriotv/'), -1)
+                report['inactive_cleanup_before_lineup'] = own_record >= 0 and lineup > own_record and rows[-1].get('inactive_cleaned', False) and all(hit['user'] in [7, 8] for hit in hits)
+                report['passed'] = report['passed'] and report['inactive_cleanup_before_lineup']
         if args.child_settings:
             report['passed'] = result.returncode == 0 and len(rows) == 5 and all(rows[4].get(key) for key in ['guide_restricted', 'restricted', 'forged', 'protected', 'management', 'cancelled', 'preserved']) and rows[2].get('title') == 'Enter a PIN from an Admin or Standard profile' and report.get('screenshot', False)
         if args.cold_restore:
@@ -1021,6 +1078,8 @@ def main():
                 name = name.replace('-native.json', '-early-roster-native.json')
             if args.switch_import_pin:
                 name = name.replace('-native.json', '-imported-pin-native.json')
+            if args.switch_inactive_cleanup:
+                name = name.replace('-native.json', '-inactive-cleanup-native.json')
             (ROOT / 'out' / name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:
