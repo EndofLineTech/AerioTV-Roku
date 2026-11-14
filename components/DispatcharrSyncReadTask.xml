@@ -3,6 +3,7 @@
   <interface>
     <field id="baseUrl" type="string" />
     <field id="apiKey" type="string" />
+    <field id="authMode" type="string" />
     <field id="accountId" type="string" />
     <field id="username" type="string" />
     <field id="cancelRequested" type="boolean" />

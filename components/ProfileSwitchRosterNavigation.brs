@@ -1,0 +1,178 @@
+' Private staged-switch pipeline. Readiness stays off until native integration,
+' outgoing sync settlement and the remaining roster/default paths qualify.
+function handleUserProfileSwitchRosterResult(result as object) as boolean
+    if m.profileSwitchRosterReady <> true then return false
+    context = m.profileSwitchContext
+    if context = invalid then return false
+    if context.phase = "authenticate"
+        beginUserProfileSwitchRosterRead(result)
+        return true
+    end if
+    if context.phase = "roster"
+        finishUserProfileSwitchRosterRead(result)
+        return true
+    end if
+    if context.phase = "lineup"
+        proof = {ok: true, phase: "verified", apiKey: result.apiKey, accountId: result.accountId, accountUsername: result.accountUsername, verifiedBaseUrl: result.verifiedBaseUrl, verifiedUser: result.verifiedUser}
+        if not dispatcharrSyncSwitchRosterAccessCurrent(m.registry, context, proof, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, userProfileSwitchRosterMemory(context))
+            rollbackUserProfileSwitch("Profile access changed before activation. Saved data was retained.")
+            return true
+        end if
+    end if
+    return false
+end function
+
+function userProfileSwitchRosterMemory(context as object) as object
+    memory = {}
+    if context.connection.remember or type(m.profileSessionKeys) <> "roAssociativeArray" then return memory
+    bucket = preferenceScope(context.connection.url + "|" + context.connection.id + "|" + context.target.id)
+    if not m.profileSessionKeys.doesExist(bucket) then return memory
+    keyName = userProfileKeyName(context.connection.id, context.target.id)
+    if context.target.isDefault then keyName = connectionRegistryKey(context.connection.id)
+    memory[keyName] = m.profileSessionKeys[bucket]
+    return memory
+end function
+
+sub beginUserProfileSwitchRosterRead(verified as object)
+    context = m.profileSwitchContext
+    if context = invalid then return
+    if not dispatcharrSyncSwitchRosterAccessCurrent(m.registry, context, verified, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, userProfileSwitchRosterMemory(context))
+        rollbackUserProfileSwitch("Profile access changed. Please verify access again.")
+        return
+    end if
+    context.authentication = {ok: true, phase: "verified", apiKey: context.key, accountId: verified.accountId, accountUsername: verified.accountUsername, verifiedBaseUrl: verified.verifiedBaseUrl, verifiedUser: dispatcharrVerifiedAuthority(verified.verifiedUser)}
+    context.targetAuthMode = dispatcharrHeaderMode(textValue(verified.authModeUsed))
+    closeUserProfileSwitchTask()
+    task = invalid
+    if m.profileSwitchReadTaskFactory <> invalid then task = m.profileSwitchReadTaskFactory()
+    if task = invalid then task = CreateObject("roSGNode", "DispatcharrSyncReadTask")
+    tagTaskForCurrentUser(task)
+    task.baseUrl = context.connection.url
+    task.apiKey = context.key
+    task.accountId = verified.accountId
+    task.username = verified.accountUsername
+    task.authMode = context.targetAuthMode
+    task.observeField("result", "onUserProfileSwitchResult")
+    task.observeField("state", "onUserProfileSwitchState")
+    context.phase = "roster"
+    m.profileSwitchTask = task
+    m.top.findNode("profileGateMessage").text = "Reading profile protection..."
+    task.control = "RUN"
+end sub
+
+sub finishUserProfileSwitchRosterRead(read as object)
+    context = m.profileSwitchContext
+    if context = invalid or type(context.authentication) <> "roAssociativeArray" then return
+    valid = read.allowWrite = false and read.verifiedBaseUrl = context.connection.url and textValue(read.accountId) = context.target.userId.toStr() and lcase(textValue(read.accountUsername)) = lcase(context.target.username)
+    if type(read.verifiedUser) <> "roAssociativeArray" then valid = false
+    if not valid
+        rollbackUserProfileSwitch("Could not verify this profile's protection. Saved data was retained.")
+        return
+    end if
+    proof = {ok: true, phase: "verified", apiKey: context.key, accountId: read.accountId, accountUsername: read.accountUsername, verifiedBaseUrl: read.verifiedBaseUrl, verifiedUser: dispatcharrVerifiedAuthority(read.verifiedUser)}
+    decoded = {ok: true, rows: [], removed: []}
+    apply = false
+    if read.state = "ready"
+        if read.profilesState = "ready"
+            wire = invalid
+            if type(read.data) = "roAssociativeArray"
+                categories = read.data["categories"]
+                if type(categories) = "roAssociativeArray"
+                    category = categories["profiles"]
+                    if type(category) = "roAssociativeArray" then wire = category["data"]
+                end if
+            end if
+            decoded = dispatcharrSyncRosterDecode(wire)
+            apply = m.profileRosterEnabled <> false
+        else if read.profilesState <> "absent"
+            rollbackUserProfileSwitch("Saved profile protection could not be read. Please retry.")
+            return
+        end if
+    else if read.state <> "missing" and read.state <> "legacy"
+        rollbackUserProfileSwitch("Could not read profile protection. Please retry.")
+        return
+    end if
+    saved = commitDispatcharrSwitchRosterPull(m.registry, context, proof, decoded, apply, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, userProfileSwitchRosterMemory(context))
+    if not saved.ok
+        m.userProfileRecoveryRequired = saved.recoveryRequired
+        rollbackUserProfileSwitch("Could not safely stage profile protection. Saved data was retained.")
+        return
+    end if
+    closeUserProfileSwitchTask()
+    context.authentication = proof
+    context.store = saved.store
+    context.target = saved.target
+    context.rosterSuggestions = saved.suggestions
+    m.userProfileStore = saved.store
+    if saved.outgoingProtectionChanged
+        rollbackUserProfileSwitch("Outgoing profile access changed. Please verify access again.")
+        return
+    end if
+    if context.target.role = "child" and m.profileChildAccessReady <> true
+        rollbackUserProfileSwitch("Child profile access is not available yet. The previous profile was retained.")
+        return
+    end if
+    if context.target.pinType <> "none" and not userProfilePinGrantMatches(context.pin, context.connection.id, context.target)
+        context.phase = "pin"
+        if beginProfilePinGate(context.target, "switch-roster", context.nonce) then return
+        rollbackUserProfileSwitch("Could not open this profile's PIN. The previous profile was retained.")
+        return
+    end if
+    startUserProfileSwitchRosterLineup()
+end sub
+
+sub onUserProfileSwitchRosterPin(nonce as string)
+    context = m.profileSwitchContext
+    if context = invalid or context.nonce <> nonce or context.phase <> "pin" then return
+    if not userProfilePinGrantMatches(m.profileUnlockGrant, context.connection.id, context.target) then return
+    current = loadUserProfileStore(m.registry, context.connection.id)
+    if not userProfileSwitchAcceptPinStore(context.store, current, context.target.id, m.profileUnlockGrant)
+        rollbackUserProfileSwitch("Profile protection changed while entering the PIN. Please retry.")
+        return
+    end if
+    context.store = current
+    for each profile in current.profiles
+        if profile.id = context.target.id then context.target = profile
+    end for
+    context.pin = m.profileUnlockGrant
+    m.profileUnlockGrant = invalid
+    startUserProfileSwitchRosterLineup()
+end sub
+
+sub startUserProfileSwitchRosterLineup()
+    context = m.profileSwitchContext
+    if context = invalid then return
+    if m.global.profileswitchpending <> true then return
+    if m.global.profilegateclosed and context.phase <> "pin" then return
+    if not dispatcharrSyncSwitchRosterAccessCurrent(m.registry, context, context.authentication, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, userProfileSwitchRosterMemory(context))
+        rollbackUserProfileSwitch("Profile access changed. Please verify access again.")
+        return
+    end if
+    if context.target.pinType <> "none" and not userProfilePinGrantMatches(context.pin, context.connection.id, context.target)
+        rollbackUserProfileSwitch("This profile needs its current PIN. Please retry.")
+        return
+    end if
+    closeUserProfileSwitchTask()
+    task = invalid
+    if m.profileSwitchTaskFactory <> invalid then task = m.profileSwitchTaskFactory()
+    if task = invalid then task = CreateObject("roSGNode", "DispatcharrTask")
+    tagTaskForCurrentUser(task)
+    task.baseUrl = context.connection.url
+    task.apiKey = context.key
+    task.authMode = context.targetAuthMode
+    task.verifyOnly = false
+    task.expectedUserId = context.target.userId.toStr()
+    task.expectedUsername = context.target.username
+    if context.target.isDefault
+        task.profileId = context.connection.profileId
+        task.channelProfileIds = context.connection.channelProfileIds
+    end if
+    task.observeField("result", "onUserProfileSwitchResult")
+    task.observeField("state", "onUserProfileSwitchState")
+    context.phase = "lineup"
+    m.profileSwitchTask = task
+    m.profileGateCover.visible = true
+    m.global.profilegateclosed = false
+    m.top.findNode("profileGateMessage").text = "Loading authorized profile content..."
+    task.control = "RUN"
+end sub

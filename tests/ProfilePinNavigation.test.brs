@@ -66,10 +66,55 @@ sub main()
     onProfilePinClosed(event)
     check(m.top.exitRequested and m.profileGateCover.visible and m.connectCalls = 1, "native wasClosed exits launch without showing protected content")
     m.top.exitRequested = false
+    pinSwitchOwner(profile, "fresh-switch-attempt")
     beginProfilePinGate(profile, "switch", "fresh-switch-attempt")
     onProfilePinClosed(event)
     check(not m.top.exitRequested and m.switchRollbacks = 1, "target-switch PIN cancellation rolls back rather than using launch whole-app exit")
+    pinSwitchOwner(profile, "valid-switch-attempt")
+    beginProfilePinGate(profile, "switch", "valid-switch-attempt")
+    m.profilePinDialog.textEditBox.text = "1234"
+    event.getData = function() as integer
+        return 0
+    end function
+    onProfilePinSubmit(event)
+    check(m.switchResumes and m.gateAtSwitchResume and m.global.profilegateclosed and m.profileGateCover.visible, "valid switch PIN keeps the old network gate and cover closed until its controller validates and rotates admission")
+    pinSwitchOwner(profile, "retired-switch-attempt")
+    beginProfilePinGate(profile, "switch", "retired-switch-attempt")
+    m.profileSwitchContext = invalid
+    m.profileUnlockGrant = {marker: "successor"}
+    m.profilePinDialog.textEditBox.text = "1234"
+    event.getData = function() as integer
+        return 0
+    end function
+    before = m.submissions
+    onProfilePinSubmit(event)
+    check(m.global.profilegateclosed and m.profileGateCover.visible and m.submissions = before and m.profileUnlockGrant.marker = "successor", "retired switch PIN cannot verify, overwrite a successor grant or open the global gate before its continuation rejects stale ownership")
+    m.global.profilegateclosed = false
+    m.profileGateCover.visible = false
+    onProfilePinClosed(event)
+    check(not m.global.profilegateclosed and not m.profileGateCover.visible and m.switchRollbacks = 1 and m.profileUnlockGrant.marker = "successor", "stale pad closure leaves a successor gate/lifecycle alone instead of rolling back the current switch")
+    m.profileSwitchContext = {connection: {id: "slot-a"}, target: profile, nonce: "unavailable-child-attempt", unavailableChild: true}
+    m.activeUserScope = invalid
+    m.apiKey = ""
+    m.page = "profile-unavailable"
+    m.global.activeusersession = ""
+    m.global.profileswitchpending = false
+    beginProfilePinGate(profile, "switch", "unavailable-child-attempt")
+    onProfilePinClosed(event)
+    check(m.switchRollbacks = 2 and m.activeUserScope = invalid and m.global.activeusersession = "" and m.global.profilegateclosed, "actual unavailable-Child cancellation needs no fabricated outgoing authenticated scope")
     print "ALL TESTS PASSED"
+end sub
+
+sub pinSwitchOwner(profile as object, nonce as string)
+    m.activeUserScope = {playlistId: "slot-a", profileId: profile.id, accountId: "7", preferenceIdentity: "https://example.test|7|slot-a", authorizationGeneration: "old", sessionId: "00000000-0000-4000-8000-000000000090"}
+    m.profileSwitchContext = {connection: {id: "slot-a"}, target: profile, outgoing: m.activeUserScope, nonce: nonce}
+    m.global.activeusersession = m.activeUserScope.sessionId
+    m.global.profileswitchpending = false
+end sub
+
+sub onUserProfileSwitchPin(nonce as string)
+    m.switchResumes = true
+    m.gateAtSwitchResume = m.global.profilegateclosed
 end sub
 
 sub rollbackUserProfileSwitch(message as string)

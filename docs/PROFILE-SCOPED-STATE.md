@@ -444,34 +444,44 @@ Outgoing protection is captured as an immutable value separate from the working
 roster: advancing a staged import can never bless a changed outgoing role/PIN
 as though it were the original admission.
 
-The next switch/roster boundary has a pure planning primitive in
+The staged switch/roster boundary has a pure planning primitive in
 `source/DispatcharrSyncSwitchRoster.brs`. It binds a verified target identity and
 current address to both the incoming nonce and captured outgoing session, stages
 target-owned protection without changing the active local selection, and exposes
 changed target PIN/outgoing protection explicitly. It publishes no credentials,
-performs no storage or network operations, and is not wired into the controller
-yet. Child and Profiles-Off inputs do not apply the remote roster; verified
+performs no storage or network operations. Its controller use remains private
+and gated as described below. Child and Profiles-Off inputs do not apply the remote roster; verified
 upstream Admin facts still win. Pending outgoing roster edits and target or
 outgoing tombstones fail retained for explicit session/default-retirement work.
 Unknown users remain suggestions, not automatic profile additions.
 
-Controller integration must still verify the actual authentication/read nodes,
-atomically revalidate storage, apply protection before requesting a changed PIN
-or loading target content, and preserve that immutable outgoing rollback admission
-when updating the switch's working roster. The existing active-session roster
-commit must not be given a fabricated incoming scope. Unavailable-Child escape
-and outgoing sync-writer settlement require their own integration. Passing model
-tests are not switch, native, or peer interoperability acceptance.
+`components/ProfileSwitchRosterNavigation.brs` integrates a private opt-in path;
+shipping `m.profileSwitchRosterReady` remains **false**, as does Child readiness.
+It authenticates the target without loading channels, reads own protection through
+an exact-node/session-bound Task, uses that read's latest authority, atomically
+stages metadata, and requires any changed stored PIN before loading target content.
+Current connection, roster, own key and broker checks precede each next request
+and the final existing commit boundary. The outgoing scope stays captured while
+the distinct incoming nonce owns requests; no active target scope is fabricated
+to reuse the active-session roster API. Changed outgoing protection stays covered
+before another profile's PIN/name UI can appear. Original protection remains an
+immutable rollback admission even when the working roster advances.
+
+This path explicitly refuses unavailable-Child escape rather than inventing an
+outgoing session. Tombstone/default-retirement cleanup, outgoing sync-writer
+settlement, full Child-target integration and public activation remain unfinished.
+Host controller tests inject PIN verification and final commit refusal; they do
+not establish actual native PIN/lineup/adoption or peer interoperability acceptance.
 
 Successful own App Data reads now expose the read Task's latest whitelisted
-`/me/` authority, identity and current address for that future staging boundary.
+`/me/` authority, identity and current address for this staging boundary.
 Arbitrary `/me/` credentials/cookies are not copied. Failed/cancelled reads carry
 no previous read's authority; transient proof is cleared at start and finish.
 The result remains read-only and has neither an API key nor a credential-verify
-phase. Existing controllers do not yet consume these facts for staged switching;
-their presence alone does not fix the ordering or authorize a roster commit.
+phase. The private staged controller consumes these facts, but their presence alone
+does not activate that path or authorize a generic credential recovery/roster write.
 
-`source/DispatcharrSyncSwitchRosterStore.brs` adds the unwired metadata-only
+`source/DispatcharrSyncSwitchRosterStore.brs` provides the metadata-only
 transaction boundary. It rechecks captured connection-root bytes/presence,
 current roster, distinct incoming nonce/outgoing session, current target-owned
 credential and broker access before one atomic roster write. Remember-on requires
@@ -483,8 +493,38 @@ refused as `cleanup-required` until explicit tombstone/default-retirement cleanu
 is integrated. The caller must still bind actual auth/read nodes, derive memory
 keys from the current slot/address/profile lease, and keep the incoming scrim up;
 this helper is not itself a target session or a public switching entry point.
+The same fresh binding/key checks are exposed as a write-free preflight for each
+next target request, not merely the final metadata commit. Imported changes to
+outgoing protection must invalidate its old admission before any other-profile
+PIN/name UI is exposed.
 
-Private native cases qualify changed assignments/VOD revocation, foreign own
+Own-read Tasks also accept a task-local header mode from their verified
+authentication result. They do not overwrite the outgoing global header mode,
+and clear the local override at start/finish; existing callers with no override
+keep the global fallback. Startup roster reads pass their verified mode explicitly.
+
+Both original-switch and staged-switch PIN callbacks now validate their current
+owning nonce, slot, target PIN material and actual outgoing lifecycle before a
+verifier or gate change. A retired pad cannot overwrite a successor grant, open
+its gate, or roll back its switch. Actual unavailable-Child cancellation remains
+scope-free. Valid switch PINs keep cover and the old network gate closed until
+controller protection checks and incoming nonce admission complete. Connect,
+launch and own-sign-in continuations retain their existing behavior. These new
+callback contracts pass host tests; native regression remains pending.
+Switch retirement also detaches callbacks, wipes input and closes its owned PIN
+widget, matching captured nonce, slot and switch continuation. It does not open
+the content gate or clear another continuation's widget, timer or unlock grant.
+Host tests cover both switch continuations and each ownership mismatch; these
+checks do not establish native widget removal or complete switch adoption.
+Separate host integration coverage now runs the real final switch transaction
+and controller runtime adoption, with and without a newly imported numeric PIN.
+It checks target settings/keys/session/Guide ownership, covered outgoing teardown
+ordering, late-read refusal and exact storage restoration on final Flush failure.
+Native nodes, PIN digest verification and runtime resource teardown remain test
+seams; this is not native cryptography, playback or peer interoperability evidence.
+
+The earlier manual-refresh native cases (not this new switch/roster pipeline)
+qualify changed assignments/VOD revocation, foreign own
 identity, unchanged authority and transient failures. Two cases delay a real
 synthetic recording POST by twelve seconds: changed authority confirms once via
 operation-only observation after retirement; unchanged authority confirms via

@@ -2,6 +2,7 @@ sub main()
     m.syncJsonParser = function(text as string) as dynamic
         return ParseJson(text)
     end function
+    m.fixtureCheckHeader = false
     for each scenario in ["ready", "missing", "identity", "username", "rejected", "newer", "cancelled"]
         m.fixtureScenario = scenario
         m.top = {baseUrl: "https://example.test", apiKey: "synthetic-own", accountId: "7", username: "Alice", cancelRequested: false}
@@ -17,6 +18,17 @@ sub main()
         end if
         check(result.allowWrite = false and result.apiKey = invalid and result.phase = invalid and m.top.apiKey = "" and m.key = "" and m.syncReadAuthority = invalid, "authority metadata never turns the read into a writer or credential recovery proof")
     end for
+    for each mode in ["authorization", "compatible", "invalid-mode", ""]
+        m.global = {authHeaderMode: "compatible"}
+        m.top = {baseUrl: "https://example.test", apiKey: "synthetic-own", accountId: "7", username: "Alice", authMode: mode, cancelRequested: false}
+        m.fixtureScenario = "ready"
+        m.fixtureCheckHeader = true
+        m.fixtureExpectedHeader = invalid
+        if mode <> "" then m.fixtureExpectedHeader = dispatcharrHeaderMode(mode)
+        readDispatcharrSync()
+        check(m.top.result.ok and m.global.authHeaderMode = "compatible" and m.requestMode = invalid, "target own read uses task-local verified header mode without changing or retaining the outgoing global mode")
+    end for
+    m.fixtureCheckHeader = false
     for each retired in ["cancelled", "session"]
         m.global = {activeusersession: "new-session", profilegateclosed: false}
         m.top = {apiKey: "synthetic-own", cancelRequested: retired = "cancelled"}
@@ -31,6 +43,7 @@ end sub
 
 function httpTransferOnce(url as string, body as dynamic, bearer as string, timeoutMs as integer, maxBytes as integer, method = "GET" as string, checked = invalid as dynamic) as object
     if method <> "GET" or bearer <> "" or body <> invalid or m.key <> "synthetic-own" then stop
+    if m.fixtureCheckHeader then check(m.requestMode = m.fixtureExpectedHeader, "every target read request carries only its task-local header override")
     value = {apps: [{key: "alice.aeriotv", bytes: 50}]}
     if right(url, 10) = "/users/me/"
         value = {id: 7, username: "Alice", user_level: 1, is_staff: false, stream_limit: 2, channel_profiles: [8], custom_properties: {vod_movies_enabled: false, private_token: "private-token"}, api_key: "private-key", password: "private-password", cookie: "private-cookie"}

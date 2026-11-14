@@ -6,6 +6,8 @@ end sub
 
 sub readDispatcharrSync()
     m.syncReadAuthority = invalid
+    m.requestMode = invalid
+    if textValue(m.top.authMode) <> "" then m.requestMode = dispatcharrHeaderMode(m.top.authMode)
     m.key = m.top.apiKey
     base = normalizeBaseUrl(m.top.baseUrl)
     result = {ok: false, state: "invalid", key: "", allowWrite: false}
@@ -80,6 +82,7 @@ sub finishDispatcharrSyncRead(result as object)
         end for
     end if
     m.syncReadAuthority = invalid
+    m.requestMode = invalid
     result.allowWrite = false
     m.top.result = result
 end sub

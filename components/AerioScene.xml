@@ -32,6 +32,7 @@
   <script type="text/brightscript" uri="ProfileAdultPinNavigation.brs" />
   <script type="text/brightscript" uri="ProfileManagementNavigation.brs" />
   <script type="text/brightscript" uri="ProfileSwitchNavigation.brs" />
+  <script type="text/brightscript" uri="ProfileSwitchRosterNavigation.brs" />
   <script type="text/brightscript" uri="ProfileChildUnavailableNavigation.brs" />
   <script type="text/brightscript" uri="ProfileChildRejectedNavigation.brs" />
   <script type="text/brightscript" uri="ProfileOwnSignInNavigation.brs" />
@@ -49,6 +50,8 @@
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncRoster.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncMerge.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncPullStore.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncSwitchRoster.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncSwitchRosterStore.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileStore.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileLifecycle.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileCleanup.brs" />

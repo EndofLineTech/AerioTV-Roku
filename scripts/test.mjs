@@ -71,6 +71,8 @@ suites.unshift('ProfileSwitchRollbackProtection');
 suites.unshift('DispatcharrSyncSwitchRoster');
 suites.unshift('DispatcharrSyncReadAuthority');
 suites.unshift('DispatcharrSyncSwitchRosterStore');
+suites.unshift('ProfileSwitchRosterNavigation');
+suites.unshift('ProfileSwitchRosterAdoption');
 suites.unshift('ProfileChildUnavailableNavigation');
 suites.unshift('ProfileChildRejectedNavigation');
 suites.unshift('UserProfileAddressPolicy');
@@ -140,7 +142,7 @@ for (const suite of suites) {
     ...(['DispatcharrSyncMerge', 'DispatcharrSyncPullStore'].includes(suite) ? ['source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/DispatcharrSyncMerge.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'DispatcharrSyncPullStore' ? ['source/DispatcharrSyncPullStore.brs', 'source/UserProfileScope.brs', 'source/StrictJson.brs'] : []),
     ...(suite === 'UserProfilePinPolicy' ? ['source/UserProfilePinPolicy.brs', 'source/UserProfilePin.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
-    ...(suite === 'ProfilePinNavigation' ? ['source/UserProfilePin.brs', 'components/ProfilePinNavigation.brs'] : []),
+    ...(suite === 'ProfilePinNavigation' ? ['source/UserProfilePin.brs', 'source/UserProfileScope.brs', 'components/ProfilePinNavigation.brs'] : []),
     ...(suite === 'DirectionsPinPad' ? ['components/DirectionsPinPad.brs'] : []),
     ...(suite === 'ProfileRosterNavigation' ? ['source/UserProfileScope.brs', 'components/ProfileRosterNavigation.brs'] : []),
     ...(suite === 'UserProfileRuntime' ? ['source/UserProfileRuntime.brs'] : []),
@@ -163,6 +165,9 @@ for (const suite of suites) {
     ...(suite === 'ProfileSwitchRollbackProtection' ? ['components/ProfileSwitchNavigation.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(['DispatcharrSyncSwitchRoster', 'DispatcharrSyncSwitchRosterStore'].includes(suite) ? ['source/DispatcharrSyncSwitchRoster.brs', 'source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/DispatcharrSyncMerge.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'DispatcharrSyncSwitchRosterStore' ? ['source/DispatcharrSyncSwitchRosterStore.brs', 'source/UserProfileCredential.brs'] : []),
+    ...(['ProfileSwitchNavigation', 'ProfileSwitchRollbackProtection', 'ProfileSwitchRecordingSettlement', 'PlayerLifecycle', 'ConnectionNavigation', 'ProfileSwitchRosterNavigation', 'ProfileSwitchRosterAdoption'].includes(suite) ? ['components/ProfileSwitchRosterNavigation.brs'] : []),
+    ...(['ProfileSwitchRosterNavigation', 'ProfileSwitchRosterAdoption'].includes(suite) ? ['components/ProfileSwitchNavigation.brs', 'components/ProfilePinNavigation.brs', 'components/DvrSettlementNavigation.brs', 'source/DispatcharrSyncSwitchRoster.brs', 'source/DispatcharrSyncSwitchRosterStore.brs', 'source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/DispatcharrSyncMerge.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/UserProfileCredential.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(suite === 'ProfileSwitchRosterAdoption' ? ['source/UserProfileSwitch.brs', 'source/UserProfileAddressPolicy.brs', 'source/StrictJson.brs', 'source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs'] : []),
     ...(suite === 'ProfileSwitchRecordingSettlement' ? ['components/ProfileSwitchNavigation.brs', 'components/DvrSettlementNavigation.brs', 'components/DvrNavigation.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'SettingsChildModel' ? ['source/SettingsModel.brs'] : []),
     ...(suite === 'SettingsChildNavigation' ? ['source/SettingsModel.brs', 'components/SettingsNavigation.brs'] : []),

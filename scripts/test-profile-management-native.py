@@ -32,7 +32,9 @@ def startup_probe_timer(source):
     return source.replace('sub init()', 'sub init()\n' + timer, 1)
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False):
+    if switch_roster and not switching:
+        raise ValueError('Private early-roster mode requires the switch fixture')
     recording_probe = bool(manual_recording or switch_recording)
     if manual_refresh:
         assignment_refresh = True
@@ -564,6 +566,10 @@ end sub
                 if default_filter:
                     source = source.replace('m.registry.write("connectionsV1", FormatJson({schema: 1, selected: "slot-a", entries: [entry]}))', '''entry.channelProfileIds = ["99", "100"]
     m.registry.write("connectionsV1", FormatJson({schema: 1, selected: "slot-a", entries: [entry]}))''', 1)
+                if switch_roster:
+                    target = 'm.profileSwitchRosterReady = false'
+                    assert source.count(target) == 1
+                    source = source.replace(target, 'm.profileSwitchRosterReady = true', 1)
                 body = source.replace('OWN_RECONNECT_PROBE', 'true' if reconnect else 'false').encode()
             package.writestr(name, body)
         package.writestr('profile-management-probe.json', json.dumps({'synthetic': True}))
@@ -574,6 +580,7 @@ def main():
     parser.add_argument('--restore', required=True)
     parser.add_argument('--directions', action='store_true', help='Exercise numeric-to-Directions adult-type selection under developer opt-in')
     parser.add_argument('--switch', action='store_true', help='Exercise internal same-slot A/B/A and rejected-key rollback without enabling the public picker')
+    parser.add_argument('--switch-roster', action='store_true', help='With --switch, opt in ONLY this synthetic package to staged target authentication/own roster read before lineup; no public flag change')
     parser.add_argument('--reconnect', action='store_true', help='With --switch, reconnect B through early roster read and full activation before returning to A')
     parser.add_argument('--switch-pin', action='store_true', help='With --switch, require the real stored numeric target PIN before each switch')
     parser.add_argument('--cancel-pin', action='store_true', help='With --switch-pin, cancel the final target PIN before any request is sent')
@@ -594,6 +601,8 @@ def main():
     parser.add_argument('--child-retry', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private Child transient failure, own Retry and Back during delayed authentication, followed by own retry')
     parser.add_argument('--child-rejected', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private actual Child rejection: exact cut prompt, permitted own form/dismissal, no stale replay, adult management and real Back exit')
     args = parser.parse_args()
+    if args.switch_roster and not args.switch:
+        parser.error('--switch-roster requires --switch')
     if args.switch_recording and any([args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.reconnect, args.cold_restore, args.child_settings, args.directions, args.default_filter, args.assignment_refresh, args.manual_refresh, args.manual_recording, args.favorite_retention, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected]):
         parser.error('--switch-recording is a separate case')
     if args.favorite_retention and any([args.switch, args.cold_restore, args.child_settings, args.directions, args.default_filter, args.assignment_refresh, args.manual_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected]):
@@ -747,7 +756,7 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode, args.favorite_retention, args.switch_recording)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode, args.favorite_retention, args.switch_recording, args.switch_roster)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -810,6 +819,11 @@ def main():
                 report['passed'] = report['passed'] and rows[-1].get('no_stored', False)
             if args.reconnect:
                 report['passed'] = report['passed'] and rows[-1].get('reconnected', False)
+            if args.switch_roster:
+                roster = [index for index, hit in enumerate(hits) if hit['user'] == 8 and hit['path'] == '/api/accounts/users/me/app-data/']
+                lineup = next((index for index, hit in enumerate(hits) if hit['user'] == 8 and hit['path'].startswith('/api/channels/channels/summary/')), -1)
+                report['own_roster_before_lineup'] = bool(roster) and lineup > roster[0]
+                report['passed'] = report['passed'] and report['own_roster_before_lineup']
         if args.child_settings:
             report['passed'] = result.returncode == 0 and len(rows) == 5 and all(rows[4].get(key) for key in ['guide_restricted', 'restricted', 'forged', 'protected', 'management', 'cancelled', 'preserved']) and rows[2].get('title') == 'Enter a PIN from an Admin or Standard profile' and report.get('screenshot', False)
         if args.cold_restore:
@@ -927,6 +941,8 @@ def main():
                 name = f'profile-child-retry-{args.child_retry}-native.json'
             if args.child_rejected:
                 name = f'profile-child-rejected-prompt-{args.child_rejected}-native.json'
+            if args.switch_roster:
+                name = name.replace('-native.json', '-early-roster-native.json')
             (ROOT / 'out' / name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

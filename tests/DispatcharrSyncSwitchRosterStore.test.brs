@@ -1,4 +1,6 @@
 sub main()
+    switchRosterStoreFixture()
+    check(switchRosterStoreAccess() and m.registry.flushes = 0, "request preflight validates current own admission without a write or fabricated target scope")
     for each fault in ["", "write", "flush", "rollback"]
         switchRosterStoreFixture()
         m.registry.fault = fault
@@ -21,6 +23,7 @@ sub main()
         if change = "nonce" then m.activeNonce = "00000000-0000-4000-8000-000000000099"
         if change = "held" then m.fixtureHeld = true
         before = FormatJson(m.registry.values)
+        check(not switchRosterStoreAccess(), "changed " + change + " refuses even the next target request preflight")
         result = switchRosterStoreCommit()
         check(not result.ok and m.registry.flushes = 0 and FormatJson(m.registry.values) = before, "changed " + change + " cannot authorize staged protection through a captured proof")
     end for
@@ -100,6 +103,10 @@ end sub
 
 function switchRosterStoreCommit() as object
     return commitDispatcharrSwitchRosterPull(m.registry, m.context, m.verified, m.decoded, m.enabled, 600, m.activeNonce, m.outgoing, m.memory)
+end function
+
+function switchRosterStoreAccess() as boolean
+    return dispatcharrSyncSwitchRosterAccessCurrent(m.registry, m.context, m.verified, 600, m.activeNonce, m.outgoing, m.memory)
 end function
 
 function requestGateAccessAllowed(url as string, key as string) as boolean

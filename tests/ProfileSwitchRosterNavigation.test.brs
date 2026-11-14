@@ -1,0 +1,244 @@
+sub main()
+    switchRosterControllerFixture()
+    m.fixtureVerified.verifiedUser.user_level = 10
+    authentication = m.profileSwitchTask
+    onUserProfileSwitchResult(switchRosterControllerEvent(authentication, m.fixtureVerified))
+    check(m.fixtureCommitAttempts = 0 and m.fixtureReads = 1 and m.fixtureLineups = 0 and m.profileSwitchContext.phase = "roster", "verify-only target proof reads own protection before any lineup or commit attempt")
+    readTask = m.profileSwitchTask
+    check(readTask.accountId = "8" and readTask.username = "bob" and readTask.apiKey = "synthetic-b" and readTask.authMode = "authorization" and m.global.authHeaderMode = "compatible", "incoming read carries only target identity/key/header mode without changing the outgoing global header context")
+    onUserProfileSwitchResult(switchRosterControllerEvent(authentication, m.fixtureVerified))
+    check(m.fixtureReads = 1 and m.fixtureCommitAttempts = 0 and m.registry.flushes = 0, "late authentication callback cannot donate another roster read or bypass staging")
+    onUserProfileSwitchResult(switchRosterControllerEvent(readTask, m.fixtureRead))
+    check(m.profilePinDialog <> invalid and m.global.profilegateclosed and m.fixtureLineups = 0 and m.fixtureCommitAttempts = 0, "newly imported PIN is required before acquiring target lineup")
+    saved = loadUserProfileStore(m.registry, "slot-a")
+    check(saved.active = m.fixtureOutgoing.profileId and saved.profiles[1].pinHash = string(64, "a") and saved.profiles[1].userLevel = 1 and saved.profiles[1].role = "user" and m.registry.flushes = 1, "changed PIN and latest read authority are stored before the stored-PIN verifier can admit it")
+    m.profilePinDialog.textEditBox.text = "1234"
+    onProfilePinSubmit(switchRosterControllerEvent(m.profilePinDialog, 0))
+    check(m.fixtureLineups = 1 and m.fixtureCommitAttempts = 0 and m.profileSwitchContext.phase = "lineup" and m.profileSwitchTask.verifyOnly <> true, "fresh target PIN resumes staged own lineup, not a second outgoing flush or automatic adoption")
+    check(userProfileSameSession(m.activeUserScope, m.fixtureOutgoing) and m.global.activeusersession = m.profileSwitchContext.nonce and m.profileGateCover.visible, "outgoing scope remains captured while incoming nonce owns the still-covered target reload")
+    onUserProfileSwitchResult(switchRosterControllerEvent(readTask, m.fixtureRead))
+    check(m.fixtureLineups = 1 and m.fixtureCommitAttempts = 0, "late read result cannot reapply protection during lineup staging")
+    switchRosterControllerFixture()
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    m.fixtureRead.accountId = "80"
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+    check(m.registry.flushes = 0 and m.fixtureLineups = 0 and m.fixtureCommitAttempts = 0 and m.profileSwitchContext = invalid, "foreign own-read identity refuses staging without storage mutation or target acquisition")
+    switchRosterControllerFixture()
+    m.registry.values[userProfileKeyName("slot-a", m.profileSwitchContext.target.id)] = ""
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    check(m.fixtureReads = 0 and m.registry.flushes = 0 and m.fixtureCommitAttempts = 0, "lost current own key refuses even the next App Data request")
+    switchRosterControllerFixture()
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    m.fixtureRead.data.categories.profiles.data.rows.push([7, "alice", "Alice", "none", "", "", "child", 500])
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+    check(m.activeUserScope = invalid and m.global.profilegateclosed and m.profilePinDialog = invalid and m.fixtureLineups = 0, "imported outgoing protection change stays covered before exposing another profile's PIN or content")
+    switchRosterControllerFixture()
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+    onProfilePinClosed(switchRosterControllerEvent(m.profilePinDialog, true))
+    check(m.profileSwitchContext = invalid and m.fixtureLineups = 0 and m.activeUserScope.profileId = m.fixtureOutgoing.profileId and not m.global.profilegateclosed, "Back on the imported target PIN returns only to fresh unchanged outgoing admission")
+    check(loadUserProfileStore(m.registry, "slot-a").profiles[1].pinHash = string(64, "a"), "cancelling the switch never undoes legitimately imported target protection")
+    for each state in ["missing", "legacy"]
+        switchRosterControllerFixture()
+        onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+        m.fixtureRead.state = state
+        onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+        check(m.fixtureLineups = 1 and m.registry.flushes = 0 and m.profilePinDialog = invalid and m.fixtureCommitAttempts = 0, "missing/legacy category keeps local protection without applying stray canonical data or migrating the wire")
+    end for
+    switchRosterControllerFixture()
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    m.fixtureRead.state = "missing"
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+    m.registry.values[userProfileKeyName("slot-a", m.profileSwitchContext.target.id)] = ""
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    check(m.fixtureCommitAttempts = 0 and m.profileSwitchContext = invalid, "own key loss during target reload is rechecked before final adoption, not just acquisition")
+    switchRosterControllerFixture()
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    m.fixtureRead.data = {}
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+    check(m.registry.flushes = 0 and m.fixtureLineups = 0 and m.fixtureCommitAttempts = 0, "inconsistent ready-read payload fails retained instead of indexing malformed wire data")
+    switchRosterControllerFixture()
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+    m.profileSwitchContext.nonce = "00000000-0000-4000-8000-000000000099"
+    m.global.activeusersession = m.profileSwitchContext.nonce
+    m.profileUnlockGrant = {marker: "successor"}
+    m.profilePinDialog.textEditBox.text = "1234"
+    onProfilePinSubmit(switchRosterControllerEvent(m.profilePinDialog, 0))
+    check(m.fixturePinChecks = 0 and m.registry.flushes = 1 and m.global.profilegateclosed and m.profileUnlockGrant.marker = "successor" and m.fixtureLineups = 0, "stale staged PIN cannot verify or open a successor gate")
+    onProfilePinClosed(switchRosterControllerEvent(m.profilePinDialog, true))
+    check(m.profileSwitchContext.nonce = "00000000-0000-4000-8000-000000000099" and m.global.activeusersession = m.profileSwitchContext.nonce and m.global.profilegateclosed and m.global.profileswitchpending, "stale staged pad closure does not cancel or replace the successor switch lifecycle")
+    switchRosterControllerFixture()
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+    changed = loadUserProfileStore(m.registry, "slot-a")
+    changed.profiles[1].pinHash = string(64, "c")
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(changed)
+    m.profilePinDialog.textEditBox.text = "1234"
+    onProfilePinSubmit(switchRosterControllerEvent(m.profilePinDialog, 0))
+    check(m.fixtureLineups = 0 and m.fixtureCommitAttempts = 0 and m.global.profilegateclosed and m.activeUserScope = invalid, "even an injected positive PIN verifier cannot bypass a newer stored target PIN or revive stale outgoing protection")
+    switchRosterControllerFixture()
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    m.fixtureRead.state = "missing"
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+    final = {ok: true, apiKey: "synthetic-b", accountId: "8", accountUsername: "bob", verifiedBaseUrl: "https://example.test", verifiedUser: {id: 8, username: "bob", user_level: 1}, channels: [], groups: [], scope: "own-lineup", generation: "own-generation", authModeUsed: "authorization"}
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, final))
+    check(m.fixtureCommitAttempts = 1 and m.profileSwitchContext = invalid and m.activeUserScope.profileId = m.fixtureOutgoing.profileId, "fresh final own result reaches the existing atomic commit boundary; injected commit refusal retains only the outgoing holder")
+    switchRosterControllerFixture()
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+    pad = m.profilePinDialog
+    pad.textEditBox.text = "9999"
+    retireUserProfileSwitch()
+    check(pad.close = true and pad.textEditBox.text = "" and m.profilePinDialog = invalid and m.profilePinContext = invalid and m.global.profilegateclosed and m.profileGateCover.visible, "retiring a switch closes and wipes its owned PIN widget without exposing its name or opening the next holder's gate")
+    for each mismatch in ["nonce", "slot", "continuation"]
+        switchRosterControllerFixture()
+        onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+        onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+        pad = m.profilePinDialog
+        pad.close = false
+        pad.textEditBox.text = "8888"
+        if mismatch = "nonce" then m.profilePinContext.resume = "successor"
+        if mismatch = "slot" then m.profilePinContext.slot = "slot-b"
+        if mismatch = "continuation" then m.profilePinContext.continuation = "own-signin"
+        m.profileGateClock.control = "start"
+        m.profileUnlockGrant = {marker: "successor"}
+        retireUserProfileSwitch()
+        check(not pad.close and pad.textEditBox.text = "8888" and m.profilePinDialog <> invalid and m.profilePinContext <> invalid and m.profileGateClock.control = "start" and m.profileUnlockGrant.marker = "successor" and m.global.profilegateclosed, "switch retirement leaves another nonce/slot/continuation PIN widget, timer and grant untouched")
+    end for
+    switchRosterControllerFixture()
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+    m.profilePinContext.continuation = "switch"
+    pad = m.profilePinDialog
+    pad.textEditBox.text = "7777"
+    retireUserProfileSwitch()
+    check(pad.close = true and pad.textEditBox.text = "" and m.profilePinDialog = invalid and m.profileGateClock.control = "stop" and m.global.profilegateclosed, "legacy switch retirement also wipes only its captured PIN prompt without releasing the gate")
+    print "ALL TESTS PASSED"
+end sub
+
+sub switchRosterControllerFixture()
+    entry = normalizeConnectionEntry({id: "slot-a", name: "Fixture", provider: "dispatcharr", url: "https://example.test", remember: true})
+    a = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000001", {id: 7, username: "alice", user_level: 1}, 1)
+    b = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "bob", user_level: 1}, 1)
+    b.isDefault = false
+    store = defaultUserProfileStore(entry.id)
+    store.profiles = [a, b]
+    store.active = a.id
+    m.registry = {values: {}, flushes: 0, read: function(key as string) as string
+        if not m.values.doesExist(key) then return ""
+        return m.values[key]
+    end function, exists: function(key as string) as boolean
+        return m.values.doesExist(key)
+    end function, write: function(key as string, value as string) as boolean
+        m.values[key] = value
+        return true
+    end function, delete: function(key as string) as boolean
+        m.values.delete(key)
+        return true
+    end function, flush: function() as boolean
+        m.flushes++
+        return true
+    end function}
+    m.registry.values["connectionsV1"] = FormatJson({schema: 1, selected: entry.id, entries: [entry]})
+    m.registry.values[userProfileStoreKey(entry.id)] = FormatJson(store)
+    m.registry.values["connKey_slot-a"] = "synthetic-a"
+    m.registry.values[userProfileKeyName(entry.id, b.id)] = "synthetic-b"
+    m.connectionStore = loadConnectionStore(m.registry)
+    m.userProfileStore = loadUserProfileStore(m.registry, entry.id)
+    m.fixtureOutgoing = userProfileSessionScope(entry, a.id, "7", "old", "00000000-0000-4000-8000-000000000090")
+    m.activeUserScope = m.fixtureOutgoing
+    m.selectedConnectionId = entry.id
+    m.accountIdentity = m.fixtureOutgoing.preferenceIdentity
+    m.serverAccountId = "7"
+    m.apiKey = "synthetic-a"
+    m.profileSwitchRosterReady = true
+    m.profileChildAccessReady = false
+    m.profileSwitchContext = {phase: "authenticate", connection: entry, connectionRoot: m.registry.read("connectionsV1"), connectionRootPresent: true, store: m.userProfileStore, target: m.userProfileStore.profiles[1], key: "synthetic-b", outgoing: m.activeUserScope, outgoingProtection: FormatJson(m.userProfileStore.profiles[0]), nonce: "00000000-0000-4000-8000-000000000091", managementNonce: ""}
+    m.global = {activeusersession: m.profileSwitchContext.nonce, profileswitchpending: true, profilegateclosed: false, authHeaderMode: "compatible"}
+    m.profileSwitchTask = switchRosterControllerNode("authenticate")
+    m.profileSwitchTask.aeriosession = m.profileSwitchContext.nonce
+    m.fixtureVerified = {ok: true, phase: "verified", apiKey: "synthetic-b", accountId: "8", accountUsername: "bob", verifiedBaseUrl: entry.url, verifiedUser: {id: 8, username: "bob", user_level: 1}, authModeUsed: "authorization"}
+    wire = {rows: [[8, "bob", "Bob", "numbers", string(64, "a"), string(32, "b"), "user", 500]]}
+    m.fixtureRead = {ok: true, state: "ready", profilesState: "ready", allowWrite: false, accountId: "8", accountUsername: "bob", verifiedBaseUrl: entry.url, verifiedUser: {id: 8, username: "bob", user_level: 1}, data: {categories: {profiles: {data: wire}}}}
+    m.fixtureCommitAttempts = 0
+    m.fixtureReads = 0
+    m.fixtureLineups = 0
+    m.fixturePinChecks = 0
+    m.profileSwitchReadTaskFactory = function() as object
+        m.fixtureReads++
+        return switchRosterControllerNode("roster")
+    end function
+    m.profileSwitchTaskFactory = function() as object
+        m.fixtureLineups++
+        return switchRosterControllerNode("lineup")
+    end function
+    m.profilePinDialog = invalid
+    m.profilePinContext = invalid
+    m.profilePinDialogFactory = function() as object
+        dialog = switchRosterControllerNode("target-pin")
+        dialog.textEditBox = {text: "", hasField: function(name as string) as boolean
+            return false
+        end function}
+        return dialog
+    end function
+    m.profilePinVerifier = function(profile as object, entries as object) as object
+        m.fixturePinChecks++
+        return {verified: true, locked: false, recoveryRequired: false}
+    end function
+    m.profileGateCover = {visible: true}
+    m.profileGateClock = {control: "stop"}
+    m.guide = {active: false, config: {aeriosession: m.fixtureOutgoing.sessionId}}
+    m.capabilityClock = {control: "stop"}
+    m.reminderClock = {control: "stop"}
+    m.top = {label: {}, findNode: function(id as string) as object
+        return m.label
+    end function, hasField: function(field as string) as boolean
+        return false
+    end function, getChildren: function(count as integer, first as integer) as object
+        return []
+    end function}
+    m.recordTask = invalid
+    m.recordSettlementTask = invalid
+    m.playingChannel = invalid
+    m.userProfileRecoveryRequired = false
+end sub
+
+function switchRosterControllerNode(id as string) as object
+    return {id: id, cancelRequested: false, isSameNode: function(other as object) as boolean
+        return m.id = other.id
+    end function, observeField: sub(field as string, callback as string)
+    end sub, unobserveField: sub(field as string)
+    end sub, setFocus: sub(focus as boolean)
+    end sub}
+end function
+
+function switchRosterControllerEvent(node as object, value as dynamic) as object
+    return {node: node, value: value, getRoSGNode: function() as object
+        return m.node
+    end function, getData: function() as dynamic
+        return m.value
+    end function}
+end function
+
+function commitUserProfileSwitch(registry as object, connection as object, previous as object, targetId as string, verified as object, pin as dynamic, management as dynamic, managementNonce as string, nonce as string, activeNonce as string, outgoing as dynamic, activeOutgoing as dynamic) as object
+    m.fixtureCommitAttempts++
+    return {ok: false, recoveryRequired: false}
+end function
+
+' This controller fixture injects PIN verification, so no learned-length write
+' occurs. The real policy/length transaction is exercised by UserProfileSwitch.
+function userProfileSwitchAcceptPinStore(previous as object, current as object, targetId as string, grant as dynamic) as boolean
+    if FormatJson(previous) <> FormatJson(current) then return false
+    for each profile in current.profiles
+        if profile.id = targetId then return userProfilePinGrantMatches(grant, current.playlistId, profile)
+    end for
+    return false
+end function
+
+sub showNotice(message as string)
+end sub
+
+sub check(passed as boolean, message as string)
+    if not passed then print "FAIL: "; message : stop
+end sub

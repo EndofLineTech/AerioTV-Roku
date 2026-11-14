@@ -58,6 +58,11 @@ sub onProfilePinSubmit(event as object)
     if event.getData() <> 0 then return
     context = m.profilePinContext
     if context.slot <> m.selectedConnectionId then return
+    switching = context.continuation = "switch" or context.continuation = "switch-roster"
+    if switching and not profileSwitchPinContextCurrent(context)
+        m.profilePinDialog.textEditBox.text = ""
+        return
+    end if
     text = m.profilePinDialog.textEditBox.text
     m.profilePinDialog.textEditBox.text = ""
     pattern = "^[0-9]{4,6}$"
@@ -100,12 +105,17 @@ sub onProfilePinSubmit(event as object)
     m.profilePinDialog = invalid
     m.profilePinContext = invalid
     m.profileGateClock.control = "stop"
-    m.global.profilegateclosed = false
-    m.profileGateCover.visible = false
+    ' The switch continuation owns unblocking after current protection checks
+    ' and incoming nonce retirement. Do not briefly resume old authenticated Tasks.
+    if not switching
+        m.global.profilegateclosed = false
+        m.profileGateCover.visible = false
+    end if
     if m.startupDialogOpen = true then completeStartupDialog()
     if context.continuation = "connect" then connectServer(true)
     if context.continuation = "complete" then completeConnection(context.resume)
     if context.continuation = "switch" then onUserProfileSwitchPin(context.resume)
+    if context.continuation = "switch-roster" then onUserProfileSwitchRosterPin(context.resume)
     if context.continuation = "own-signin" then onUserProfileOwnSignInPin(context.resume)
 end sub
 
@@ -113,6 +123,10 @@ sub onProfilePinClosed(event as object)
     if m.profilePinDialog = invalid then return
     if not m.profilePinDialog.isSameNode(event.getRoSGNode()) then return
     context = m.profilePinContext
+    staleSwitch = false
+    if context <> invalid
+        if context.continuation = "switch" or context.continuation = "switch-roster" then staleSwitch = not profileSwitchPinContextCurrent(context)
+    end if
     m.profilePinDialog.unobserveField("buttonSelected")
     m.profilePinDialog.unobserveField("wasClosed")
     m.profilePinDialog.textEditBox.text = ""
@@ -122,11 +136,12 @@ sub onProfilePinClosed(event as object)
     end if
     m.profilePinDialog = invalid
     m.profilePinContext = invalid
+    if staleSwitch then return
     m.profileGateClock.control = "stop"
     m.profileGateCover.visible = true
     m.global.profilegateclosed = true
     if context <> invalid
-        if context.continuation = "switch"
+        if context.continuation = "switch" or context.continuation = "switch-roster"
             rollbackUserProfileSwitch("Switch cancelled. The previous profile was retained.")
             return
         end if
@@ -137,6 +152,27 @@ sub onProfilePinClosed(event as object)
     end if
     m.top.exitRequested = true
 end sub
+
+function profileSwitchPinContextCurrent(pin as object) as boolean
+    context = m.profileSwitchContext
+    if context = invalid or m.global = invalid then return false
+    if type(context.connection) <> "roAssociativeArray" or type(context.target) <> "roAssociativeArray" or type(pin.profile) <> "roAssociativeArray" then return false
+    if textValue(context.nonce) = "" or context.nonce <> pin.resume then return false
+    if context.connection.id <> m.selectedConnectionId or pin.slot <> context.connection.id then return false
+    if m.global.profilegateclosed <> true then return false
+    material = {slot: pin.slot, id: pin.profile.id, pinType: pin.profile.pinType, pinHash: pin.profile.pinHash, pinSalt: pin.profile.pinSalt}
+    if not userProfilePinGrantMatches(material, context.connection.id, context.target) then return false
+    if pin.continuation = "switch-roster"
+        if m.profileSwitchRosterReady <> true or context.phase <> "pin" or m.global.profileswitchpending <> true then return false
+        return textValue(m.global.activeusersession) = context.nonce and userProfileSameSession(context.outgoing, m.activeUserScope)
+    end if
+    if m.global.profileswitchpending = true then return false
+    if context.unavailableChild = true
+        return m.activeUserScope = invalid and textValue(m.global.activeusersession) = "" and textValue(m.apiKey) = "" and m.page = "profile-unavailable"
+    end if
+    if not userProfileSameSession(context.outgoing, m.activeUserScope) then return false
+    return textValue(m.global.activeusersession) = context.outgoing.sessionId
+end function
 
 sub updateProfilePinFeedback(checked as object)
     if m.profilePinDialog = invalid then return

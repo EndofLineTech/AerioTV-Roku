@@ -96,6 +96,10 @@ sub startUserProfileSwitchTask(nonce as string)
     context = m.profileSwitchContext
     if context = invalid or context.nonce <> nonce then return
     if context.connection.id <> m.selectedConnectionId then return
+    if m.profileSwitchRosterReady = true and context.unavailableChild = true
+        rollbackUserProfileSwitch("Profile protection staging is not available for this escape yet.")
+        return
+    end if
     connections = loadConnectionStore(m.registry)
     currentEntry = connectionStoreEntry(connections, context.connection.id)
     if connections.readOnly = true or connections.selected <> context.connection.id or currentEntry = invalid
@@ -150,6 +154,10 @@ sub startUserProfileSwitchTask(nonce as string)
     task.baseUrl = context.connection.url
     task.apiKey = context.key
     task.authMode = context.connection.authMode
+    if m.profileSwitchRosterReady = true
+        context.phase = "authenticate"
+        task.verifyOnly = true
+    end if
     task.expectedUserId = context.target.userId.toStr()
     task.expectedUsername = context.target.username
     if context.target.isDefault
@@ -181,6 +189,7 @@ sub onUserProfileSwitchResult(event as object)
         rollbackUserProfileSwitch(message)
         return
     end if
+    if handleUserProfileSwitchRosterResult(verified) then return
     if context.unavailableChild = true
         if m.activeUserScope <> invalid or m.apiKey <> "" then return
         saved = commitUnavailableChildProfileSwitch(m.registry, context.connection, context.store, context.target.id, verified, context.pin, context.management, context.managementNonce, context.nonce, m.global.activeusersession)
@@ -197,6 +206,7 @@ sub onUserProfileSwitchResult(event as object)
     m.profileSwitchContext = invalid
     resetConnectionRuntime()
     m.userProfileStore = saved.store
+    if type(context.rosterSuggestions) = "roArray" then m.profileRosterSuggestions = context.rosterSuggestions
     m.preferenceStore = saved.preferenceStore
     m.accountPreferences = saved.preferences
     m.devicePreferences = saved.device
@@ -342,6 +352,24 @@ function profileSwitchOutgoingProtectionCurrent(context as object) as boolean
 end function
 
 sub retireUserProfileSwitch()
+    context = m.profileSwitchContext
+    pinContext = m.profilePinContext
+    if context <> invalid and pinContext <> invalid and m.profilePinDialog <> invalid
+        switching = pinContext.continuation = "switch" or pinContext.continuation = "switch-roster"
+        if switching and pinContext.resume = context.nonce and pinContext.slot = context.connection.id
+            pad = m.profilePinDialog
+            pad.unobserveField("buttonSelected")
+            pad.unobserveField("wasClosed")
+            pad.textEditBox.text = ""
+            pad.close = true
+            if type(pad) = "roSGNode"
+                if pad.isSubtype("DirectionsPinPad") then m.top.removeChild(pad)
+            end if
+            m.profilePinDialog = invalid
+            m.profilePinContext = invalid
+            if m.profileGateClock <> invalid then m.profileGateClock.control = "stop"
+        end if
+    end if
     closeUserProfileSwitchTask()
     m.profileSwitchContext = invalid
     if m.global <> invalid then m.global.profileswitchpending = false

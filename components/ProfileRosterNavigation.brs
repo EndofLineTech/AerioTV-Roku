@@ -28,6 +28,7 @@ sub beginAuthenticatedRosterRead(result as object)
     tagTaskForCurrentUser(m.task)
     m.task.baseUrl = connection.url
     m.task.apiKey = result.apiKey
+    m.task.authMode = textValue(result.authModeUsed)
     m.task.accountId = result.accountId
     m.task.username = result.accountUsername
     m.task.observeField("result", "onProfileRosterRead")

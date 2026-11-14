@@ -13,6 +13,13 @@ from unittest.mock import MagicMock, patch
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_staged_switch_readiness_is_not_publicly_enabled(self):
+        root = Path(__file__).resolve().parent.parent
+        scene = (root / 'components/AerioScene.brs').read_text()
+        self.assertIn('    m.profileSwitchRosterReady = false', scene)
+        self.assertNotIn('\n    m.profileSwitchRosterReady = true', scene)
+        self.assertIn('    m.profileChildAccessReady = false', scene)
+
     def test_native_timeout_diagnostics_are_boolean_only(self):
         spec = importlib.util.spec_from_file_location('native_runner', Path(__file__).with_name('run-native-probe.py'))
         probe = importlib.util.module_from_spec(spec)
@@ -102,7 +109,7 @@ class ProfileProbeTest(unittest.TestCase):
             normal = Path(tmp) / 'normal.zip'
             with zipfile.ZipFile(normal, 'w') as package:
                 package.writestr('manifest', 'title=AerioTV\n')
-                package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub')
+                package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.profileSwitchRosterReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub')
                 package.writestr('source/MetadataCacheStore.brs', 'return "cachefs:/aeriotv-metadata-v1"')
                 package.writestr('components/RequestGateTask.brs', '    else if action = "own-verified"\n')
             output = Path(tmp) / 'probe.zip'
@@ -246,7 +253,7 @@ class ProfileProbeTest(unittest.TestCase):
             normal = Path(tmp) / 'normal.zip'
             with zipfile.ZipFile(normal, 'w') as package:
                 package.writestr('manifest', 'title=AerioTV\n')
-                package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub')
+                package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.profileSwitchRosterReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub')
                 package.writestr('source/MetadataCacheStore.brs', 'return "cachefs:/aeriotv-metadata-v1"')
                 package.writestr('components/GuideView.xml', '<component name="GuideView"><interface></interface></component>')
                 package.writestr('components/GuideView.brs', 'sub init()\nend sub\n')
@@ -265,6 +272,14 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertIn('m.switchProbeReconnectStarted = true', source)
                 self.assertIn('connectServer(true)', source)
                 self.assertNotIn('"AerioTV"', source)
+            probe.build(output, normal, 'SyntheticEarlyRosterSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertIn('m.profileSwitchRosterReady = true', source)
+                self.assertNotIn('m.profileSwitchRosterReady = false', source)
+                self.assertNotIn('"AerioTV"', source)
+            with self.assertRaises(ValueError):
+                probe.build(output, normal, 'SyntheticEarlyRosterSection', 'http://127.0.0.1:1234', switch_roster=True)
             for mode in ['remembered', 'keyless', 'held']:
                 probe.build(output, normal, 'SyntheticColdSection', 'http://127.0.0.1:1234', cold_restore=mode)
                 with zipfile.ZipFile(output) as package:
