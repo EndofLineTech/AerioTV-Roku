@@ -25,6 +25,15 @@ def management_probe_user(key):
     return 7
 
 
+def authority_race_user(state, user):
+    result = dict(user)
+    if user['id'] == 8:
+        state['authority_target_me'] = state.get('authority_target_me', 0) + 1
+        if state['authority_target_me'] >= 3:
+            result['user_level'] = 10
+    return result
+
+
 def switch_import_pin_envelope():
     # Synthetic fixed fixture salt, never a production salt source.
     salt = '0123456789abcdef0123456789abcdef'
@@ -60,7 +69,7 @@ def startup_probe_timer(source):
     return source.replace('sub init()', 'sub init()\n' + timer, 1)
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False, switch_authority_race=False):
     if switch_roster and (not (switching or child_escape) or (switching and child_escape)):
         raise ValueError('Private early-roster mode requires either switch or Child escape fixture')
     if switch_import_pin and (not switching or not switch_roster or any([switch_pin, cancel_pin, reject_active, remember_off, reconnect, child_settings, cold_restore, default_filter, assignment_refresh, child_escape, child_launch, child_available, child_retry, child_rejected, manual_refresh, manual_recording, favorite_retention, switch_recording, directions])):
@@ -69,6 +78,8 @@ def build(output, normal, section, base, directions=False, switching=False, swit
         raise ValueError('Inactive cleanup fixture requires only --switch --switch-roster')
     if switch_target_retirement and (not switching or not switch_roster or any([switch_pin, cancel_pin, reject_active, remember_off, reconnect, child_settings, cold_restore, default_filter, assignment_refresh, child_escape, child_launch, child_available, child_retry, child_rejected, manual_refresh, manual_recording, favorite_retention, switch_recording, directions, switch_import_pin, switch_cleanup])):
         raise ValueError('Target retirement fixture requires only --switch --switch-roster')
+    if switch_authority_race and (not switching or not switch_roster or any([switch_pin, cancel_pin, reject_active, remember_off, reconnect, child_settings, cold_restore, default_filter, assignment_refresh, child_escape, child_launch, child_available, child_retry, child_rejected, manual_refresh, manual_recording, favorite_retention, switch_recording, directions, switch_import_pin, switch_cleanup, switch_target_retirement])):
+        raise ValueError('Authority race fixture requires only --switch --switch-roster')
     recording_probe = bool(manual_recording or switch_recording)
     if manual_refresh:
         assignment_refresh = True
@@ -698,6 +709,8 @@ end sub
                     target = 'm.profileSwitchRosterReady = false'
                     assert source.count(target) == 1
                     source = source.replace(target, 'm.profileSwitchRosterReady = true', 1)
+                if switch_authority_race:
+                    source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native/ProfileAuthorityRaceFixture.brs').read_text()
                 body = source.replace('OWN_RECONNECT_PROBE', 'true' if reconnect else 'false').encode()
             package.writestr(name, body)
         package.writestr('profile-management-probe.json', json.dumps({'synthetic': True}))
@@ -712,6 +725,7 @@ def main():
     parser.add_argument('--switch-import-pin', action='store_true', help='Only with --switch --switch-roster: import a previously absent target numeric PIN, reject the old value and admit its real stored v2 value')
     parser.add_argument('--switch-inactive-cleanup', action='store_true', help='Only with --switch --switch-roster: remove a synthetic inactive third holder through own App Data, preserving default/target/foreign data')
     parser.add_argument('--switch-target-retirement', action='store_true', help='Only with --switch --switch-roster: non-default B selects C, whose own tombstone retires C without adopting C or the different default A')
+    parser.add_argument('--switch-authority-race', action='store_true', help='Only with --switch --switch-roster: change target authority on final me and require rollback with zero target lineup requests')
     parser.add_argument('--reconnect', action='store_true', help='With --switch, reconnect B through early roster read and full activation before returning to A')
     parser.add_argument('--switch-pin', action='store_true', help='With --switch, require the real stored numeric target PIN before each switch')
     parser.add_argument('--cancel-pin', action='store_true', help='With --switch-pin, cancel the final target PIN before any request is sent')
@@ -740,6 +754,8 @@ def main():
         parser.error('--switch-inactive-cleanup requires only --switch --switch-roster')
     if args.switch_target_retirement and (not args.switch or not args.switch_roster or any([args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.reconnect, args.child_settings, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.favorite_retention, args.switch_recording, args.directions, args.switch_import_pin, args.switch_inactive_cleanup])):
         parser.error('--switch-target-retirement requires only --switch --switch-roster')
+    if args.switch_authority_race and (not args.switch or not args.switch_roster or any([args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.reconnect, args.child_settings, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.favorite_retention, args.switch_recording, args.directions, args.switch_import_pin, args.switch_inactive_cleanup, args.switch_target_retirement])):
+        parser.error('--switch-authority-race requires only --switch --switch-roster')
     if args.switch_recording and any([args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.reconnect, args.cold_restore, args.child_settings, args.directions, args.default_filter, args.assignment_refresh, args.manual_refresh, args.manual_recording, args.favorite_retention, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected]):
         parser.error('--switch-recording is a separate case')
     if args.favorite_retention and any([args.switch, args.cold_restore, args.child_settings, args.directions, args.default_filter, args.assignment_refresh, args.manual_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected]):
@@ -849,6 +865,8 @@ def main():
             value = []
             if self.path == '/api/accounts/users/me/':
                 value = {'id': user, 'username': 'Synthetic' + str(user), 'user_level': 1}
+                if args.switch_authority_race:
+                    value = authority_race_user(fixture_state, value)
                 if failure:
                     value = {'detail': 'Synthetic server unavailable'}
                 if args.assignment_refresh and user == 8:
@@ -899,7 +917,7 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode, args.favorite_retention, args.switch_recording, args.switch_roster, args.switch_import_pin, args.switch_inactive_cleanup, args.switch_target_retirement)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode, args.favorite_retention, args.switch_recording, args.switch_roster, args.switch_import_pin, args.switch_inactive_cleanup, args.switch_target_retirement, args.switch_authority_race)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -979,6 +997,10 @@ def main():
                 target_paths = [hit['path'] for hit in hits if hit['user'] == 9]
                 report['target_own_read_only'] = target_paths == ['/api/accounts/users/me/', '/api/accounts/users/me/', '/api/accounts/users/me/app-data/', '/api/accounts/users/me/app-data/synthetic9.aeriotv/']
                 report['passed'] = report['passed'] and report['target_own_read_only'] and rows[-1].get('target_retired', False)
+        if args.switch_authority_race:
+            target_paths = [hit['path'] for hit in hits if hit['user'] == 8]
+            report['target_pre_lineup_only'] = target_paths == ['/api/accounts/users/me/', '/api/accounts/users/me/', '/api/accounts/users/me/app-data/', '/api/accounts/users/me/']
+            report['passed'] = result.returncode == 0 and len(rows) == 1 and rows[0].get('authority_race_refused', False) and report['target_pre_lineup_only'] and fixture_state.get('authority_target_me') == 3 and all(not hit['rejected'] for hit in hits)
         if args.child_settings:
             report['passed'] = result.returncode == 0 and len(rows) == 5 and all(rows[4].get(key) for key in ['guide_restricted', 'restricted', 'forged', 'protected', 'management', 'cancelled', 'preserved']) and rows[2].get('title') == 'Enter a PIN from an Admin or Standard profile' and report.get('screenshot', False)
         if args.cold_restore:
@@ -1110,6 +1132,8 @@ def main():
                 name = name.replace('-native.json', '-inactive-cleanup-native.json')
             if args.switch_target_retirement:
                 name = name.replace('-native.json', '-target-retirement-native.json')
+            if args.switch_authority_race:
+                name = name.replace('-native.json', '-authority-race-native.json')
             (ROOT / 'out' / name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

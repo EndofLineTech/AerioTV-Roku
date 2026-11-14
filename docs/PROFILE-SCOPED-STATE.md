@@ -626,6 +626,13 @@ create broker holds, or authorize retries. Focused host suites and full verifica
 pass (`out/mrr-authority-continuity-full-verify.log`); native authority-race,
 default-retirement and interoperability qualification remain outstanding. Existing
 offline fixture ZIPs predate these changes and must be regenerated before use.
+The new private `--switch --switch-roster --switch-authority-race` fixture is
+generated from the updated application. Its server changes B's authority on the
+third target `/me/` (after authentication and own roster verification). The report
+requires exactly those three verifications plus own App Data discovery, no target
+lineup, retained own keys and fresh outgoing admission. Generation, server-helper
+tests and syntax checks pass; the archive has not been installed or run. Startup
+authority-race native coverage and actual device qualification remain unfinished.
 
 The earlier manual-refresh native cases (not this new switch/roster pipeline)
 qualify changed assignments/VOD revocation, foreign own

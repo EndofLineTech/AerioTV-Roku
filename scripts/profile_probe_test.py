@@ -53,6 +53,18 @@ class ProfileProbeTest(unittest.TestCase):
             self.assertEqual(probe.management_probe_user(key), 8)
         self.assertEqual(probe.management_probe_user('synthetic-a'), 7)
 
+    def test_authority_race_changes_only_final_target_me(self):
+        spec = importlib.util.spec_from_file_location('management_authority_probe', Path(__file__).with_name('test-profile-management-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        state = {}
+        user = {'id': 8, 'username': 'Synthetic8', 'user_level': 1}
+        for call in range(1, 4):
+            result = probe.authority_race_user(state, user)
+            self.assertEqual(result['user_level'], 10 if call >= 3 else 1)
+        self.assertEqual(user['user_level'], 1)
+        self.assertEqual(probe.authority_race_user(state, {'id': 7, 'user_level': 1})['user_level'], 1)
+
     def test_native_timeout_diagnostics_are_boolean_only(self):
         spec = importlib.util.spec_from_file_location('native_runner', Path(__file__).with_name('run-native-probe.py'))
         probe = importlib.util.module_from_spec(spec)
@@ -100,6 +112,7 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncSwitchRosterProbeChecks')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncUnavailableChildRosterProbeChecks')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileTargetRetirementFixture')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileAuthorityRaceFixture')], check=True)
 
     def test_address_handler_probe_is_private_and_cannot_ship(self):
         spec = importlib.util.spec_from_file_location('address_probe', Path(__file__).with_name('test-profile-address-native.py'))
@@ -348,6 +361,14 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertNotIn('"AerioTV"', source)
             with self.assertRaises(ValueError):
                 probe.build(output, normal, 'SyntheticTargetRetirementSection', 'http://127.0.0.1:1234', switching=True, switch_target_retirement=True)
+            probe.build(output, normal, 'SyntheticAuthorityRaceSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_authority_race=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertIn('authority_race_refused:', source)
+                self.assertIn('m.authorityRaceStarted', source)
+                self.assertNotIn('"AerioTV"', source)
+            with self.assertRaises(ValueError):
+                probe.build(output, normal, 'SyntheticAuthorityRaceSection', 'http://127.0.0.1:1234', switching=True, switch_authority_race=True)
             for mode in ['remembered', 'keyless', 'held']:
                 probe.build(output, normal, 'SyntheticColdSection', 'http://127.0.0.1:1234', cold_restore=mode)
                 with zipfile.ZipFile(output) as package:
