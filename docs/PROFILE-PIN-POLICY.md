@@ -526,3 +526,23 @@ secured keyboard, four credential outcomes, retained explanation, other-holder
 hold preservation, own data migration, outgoing persistence and delayed-Back
 cancellation. Active and Child recovery, automatic activation and the public
 picker remain separate unfinished integration; this does not enable them.
+
+## Selected non-default reconnect
+
+A selected non-default now reconnects only with its own remembered or
+URL/slot/profile-bound memory credential. Held, Child, missing-key, picker and
+PIN gates still apply; a default key cannot authorize this admission. Both the
+early verification Task and the controller bind the existing numeric ID and
+case-insensitive username. A recreated ID requires the own sign-in form rather
+than saved-key adoption. Reconnect updates only that holder's live authority
+and anchored data; it cannot rebuild or record the default from B's `/me/`.
+
+Full activation persists B's key under B's own profile key (or memory-only with
+Remember off) without rewriting the slot/default identity or credential. Failed
+metadata/key Flushes restore prior bytes. The native
+`scripts/test-profile-management-native.py --switch --reconnect` fixture runs
+A → B → reconnect B through early read/full activation → A, checking B's fresh
+session, own lineup/favorites/theme and unchanged default, then existing
+rejected-key rollback and delayed cancellation. Cold-process restore, active
+own-password recovery and complete refresh/assignment-change handling remain
+separate acceptance work.

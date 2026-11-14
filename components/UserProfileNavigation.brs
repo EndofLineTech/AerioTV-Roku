@@ -30,7 +30,17 @@ function selectedUserProfileGate() as object
     if entry = invalid then return {allowed: m.connectionStore.readOnly <> true, reason: ""}
     if entry.provider <> "dispatcharr" then return {allowed: true, reason: ""}
     m.userProfileStore = loadUserProfileStore(m.registry, entry.id)
-    gate = userProfileStartupGate(m.userProfileStore)
+    ownCredential = false
+    for each profile in m.userProfileStore.profiles
+        if profile.id = m.userProfileStore.active and not profile.isDefault and not profile.addressHeld
+            if entry.remember then ownCredential = m.registry.read(userProfileKeyName(entry.id, profile.id)) <> ""
+            if type(m.profileSessionKeys) = "roAssociativeArray"
+                bucket = preferenceScope(entry.url + "|" + entry.id + "|" + profile.id)
+                if m.profileSessionKeys.doesExist(bucket) then ownCredential = textValue(m.profileSessionKeys[bucket]) <> ""
+            end if
+        end if
+    end for
+    gate = userProfileStartupGate(m.userProfileStore, ownCredential)
     if gate.reason = "pin"
         for each profile in m.userProfileStore.profiles
             if profile.id = m.userProfileStore.active
@@ -64,6 +74,11 @@ function ensureConnectedUserProfile(result as object, id = "" as string, now = 0
     expectedId = userProfileUserId(result.accountId)
     if actualId = invalid or expectedId = invalid then return false
     if actualId <> expectedId then return false
+    for each selected in m.userProfileStore.profiles
+        if selected.id = m.userProfileStore.active and not selected.isDefault
+            return ensureConnectedNonDefaultProfile(entry, selected, result)
+        end if
+    end for
     if id = ""
         for each profile in m.userProfileStore.profiles
             if profile.isDefault then id = profile.id
@@ -163,6 +178,51 @@ function ensureConnectedUserProfile(result as object, id = "" as string, now = 0
     if replacing and type(m.profileSessionKeys) = "roAssociativeArray"
         m.profileSessionKeys.delete(preferenceScope(entry.url + "|" + entry.id + "|" + previousDefault.id))
     end if
+    if moved.moved then m.preferenceStore = moved.store
+    return true
+end function
+
+' Reconnect is not an own-password recovery or a default replacement. A saved
+' nondefault holder must still match BOTH its server ID and username.
+function ensureConnectedNonDefaultProfile(entry as object, selected as object, result as object) as boolean
+    verified = userProfileFromVerified(entry.id, selected.id, result.verifiedUser, 0)
+    if verified = invalid then return false
+    if verified.userId <> selected.userId or lcase(verified.username) <> lcase(selected.username)
+        m.status = "This profile needs its own Dispatcharr sign-in. Saved profiles and data were retained."
+        return false
+    end if
+    candidate = copyPreferenceValue(m.userProfileStore)
+    target = copyPreferenceValue(selected)
+    for each field in ["userLevel", "isStaff", "isSuperuser"]
+        target = setCanonicalPreference(target, field, verified[field])
+    end for
+    target = setCanonicalPreference(target, "role", userProfileResolveRole(verified.userLevel, selected.role))
+    oldIdentity = userProfilePreferenceIdentity(entry, selected)
+    newIdentity = connectionPreferenceIdentity(entry, selected.userId.toStr())
+    target = setCanonicalPreference(target, "preferenceAnchor", newIdentity)
+    for i = 0 to candidate.profiles.count() - 1
+        if candidate.profiles[i].id = selected.id then candidate.profiles[i] = target
+    end for
+    moved = {ok: true, moved: false}
+    if oldIdentity <> newIdentity and m.registry.exists("settingsV1")
+        moved = userProfilePreferenceMovePlan(loadStrictPreferenceStore(m.registry), oldIdentity, newIdentity)
+        if not moved.ok then return false
+    end if
+    if FormatJson(candidate) = FormatJson(m.userProfileStore) and not moved.moved then return true
+    prepared = userProfileStoreChanges(m.registry, m.userProfileStore, candidate, {}, entry.remember)
+    if not prepared.ok then return false
+    if moved.moved
+        encoded = strictJsonEncode(moved.store)
+        if not encoded.ok then return false
+        if preferenceByteBudget(encoded.text) > 24000 then return false
+        prepared.changes["settingsV1"] = encoded.text
+    end if
+    saved = userProfileRegistryTransaction(m.registry, prepared.changes)
+    if not saved.ok
+        m.userProfileRecoveryRequired = saved.recoveryRequired
+        return false
+    end if
+    m.userProfileStore = candidate
     if moved.moved then m.preferenceStore = moved.store
     return true
 end function

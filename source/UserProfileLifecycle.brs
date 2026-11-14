@@ -88,15 +88,16 @@ end function
 
 ' Fail-closed interim activation boundary, replaced by the real PIN/picker
 ' controller only once mrr.8/.9 and the active credential resolver are present.
-function userProfileStartupGate(store as object) as object
+function userProfileStartupGate(store as object, ownProfileCredential = false as boolean) as object
     if store.readOnly = true then return {allowed: false, reason: "recovery"}
     if store.profiles.count() = 0 then return {allowed: true, reason: ""}
     cleaned = normalizeUserProfileStore(store, store.playlistId)
     if cleaned.readOnly = true then return {allowed: false, reason: "recovery"}
     for each profile in cleaned.profiles
         if profile.id = cleaned.active
+            if profile.addressHeld then return {allowed: false, reason: "address-held"}
             if profile.role = "child" then return {allowed: false, reason: "child"}
-            if not profile.isDefault then return {allowed: false, reason: "profileKey"}
+            if not profile.isDefault and not ownProfileCredential then return {allowed: false, reason: "profileKey"}
             if profile.pinType <> "none" then return {allowed: false, reason: "pin"}
         end if
     end for

@@ -126,6 +126,23 @@ sub main()
     check(selectedUserProfileGate().allowed, "XC/M3U never acquire a profile gate")
     m.connectionStore = {}
     check(not userProfileConnectionSetupAllowed(), "malformed connection authority cannot grant setup access")
+    resetProfileNavigation()
+    check(ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100), "nondefault reconnect fixture establishes default")
+    previous = copyJson(m.userProfileStore)
+    b = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000003", {id: 8, username: "Bob", user_level: 1}, 1)
+    b.isDefault = false
+    previous.profiles.push(b)
+    previous.active = b.id
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(previous)
+    m.registry.values[userProfileKeyName("slot-a", b.id)] = "synthetic-b"
+    beforeDefault = FormatJson(previous.profiles[0])
+    beforeReconnect = FormatJson(m.registry.values)
+    m.registry.failFlush = true
+    check(not ensureConnectedUserProfile({ok: true, phase: "verified", accountId: "8", accountUsername: "BOB", verifiedUser: {id: 8, username: "BOB", user_level: 1}}, "", 101) and FormatJson(m.registry.values) = beforeReconnect, "failed nondefault reconnect metadata Flush retains its exact prior roster and credentials")
+    check(ensureConnectedUserProfile({ok: true, phase: "verified", accountId: "8", accountUsername: "BOB", verifiedUser: {id: 8, username: "BOB", user_level: 1}}, "", 101), "selected nondefault reconnect validates its own existing identity without replacing the default")
+    check(m.userProfileStore.active = b.id and FormatJson(m.userProfileStore.profiles[0]) = beforeDefault and m.userProfileStore["knownDefault"]["userId"] = 7, "nondefault reconnect preserves default metadata, selection and recorded default authority")
+    before = FormatJson(m.registry.values)
+    check(not ensureConnectedUserProfile({ok: true, phase: "verified", accountId: "88", accountUsername: "Bob", verifiedUser: {id: 88, username: "Bob", user_level: 1}}, "", 102) and FormatJson(m.registry.values) = before, "saved-key reconnect cannot adopt a recreated nondefault ID; only its own form may migrate it")
     print "ALL TESTS PASSED"
 end sub
 

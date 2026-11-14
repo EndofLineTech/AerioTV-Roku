@@ -88,6 +88,45 @@ sub main()
     restored = loadConnectionStore(m.registry)
     assertEqual(restored.entries[0].remember, false, "session-only choice persists on relaunch")
     assertEqual(storedConnectionKey(m.registry, restored.entries[0]), "", "session-only choice deletes the saved key")
+    m.registry.failKeyWrite = false
+    a = userProfileFromVerified("legacy", "00000000-0000-4000-8000-000000000001", {id: 7, username: "VerifiedAlice", user_level: 1}, 1)
+    b = userProfileFromVerified("legacy", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Bob", user_level: 1}, 1)
+    b.isDefault = false
+    m.connectionStore = connectionStoreAdd(defaultConnectionStore(), "legacy", "Main")
+    m.connectionStore = connectionStoreUpdate(m.connectionStore, "legacy", {url: "https://example.test", accountId: "7", accountUsername: "VerifiedAlice", remember: true})
+    m.selectedConnectionId = "legacy"
+    m.registry.write("connectionsV1", FormatJson(m.connectionStore))
+    profiles = defaultUserProfileStore("legacy")
+    profiles.profiles = [a, b]
+    profiles.active = b.id
+    m.registry.write(userProfileStoreKey("legacy"), FormatJson(profiles))
+    m.registry.write("connKey_legacy", "default-only")
+    m.apiKey = "bob-verified-key"
+    m.remember = true
+    beforeConnection = FormatJson(m.connectionStore)
+    assertEqual(rememberConnectedAccount("8", "BOB"), true, "nondefault reconnect persists only its own verified key")
+    assertEqual(m.registry.read(userProfileKeyName("legacy", b.id)), "bob-verified-key", "nondefault credential is saved under its own profile key")
+    assertEqual(m.registry.read("connKey_legacy"), "default-only", "nondefault reconnect cannot overwrite or retire the default slot credential")
+    assertEqual(FormatJson(m.connectionStore), beforeConnection, "nondefault reconnect cannot rewrite default slot identity metadata")
+    m.registry.failOnce = true
+    m.registry.flush = function() as boolean
+        if m.failOnce then m.failOnce = false : return false
+        return true
+    end function
+    beforeFailure = FormatJson(m.registry.values)
+    m.apiKey = "bob-new-verified-key"
+    assertEqual(rememberConnectedAccount("8", "Bob"), false, "failed own credential Flush refuses persistence")
+    assertEqual(FormatJson(m.registry.values), beforeFailure, "failed own credential Flush restores exact own/default keys and metadata")
+    oldConnectionBytes = m.registry.read("connectionsV1")
+    changed = connectionStoreUpdate(m.connectionStore, "legacy", {url: "https://changed.test"})
+    m.registry.write("connectionsV1", FormatJson(changed))
+    staleSnapshot = FormatJson(m.registry.values)
+    assertEqual(rememberConnectedAccount("8", "Bob"), false, "changed persisted URL retires an old nondefault credential result")
+    assertEqual(FormatJson(m.registry.values), staleSnapshot, "stale nondefault persistence writes no key at the replacement address")
+    m.registry.write("connectionsV1", oldConnectionBytes)
+    before = FormatJson(m.registry.values)
+    assertEqual(rememberConnectedAccount("88", "Bob"), false, "remembering a recreated nondefault ID requires its own recovery transaction")
+    assertEqual(FormatJson(m.registry.values), before, "wrong nondefault persistence changes no keys or metadata")
     print "ALL TESTS PASSED"
 end sub
 

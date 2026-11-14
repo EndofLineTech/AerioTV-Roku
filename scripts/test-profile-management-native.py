@@ -17,7 +17,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False):
     with zipfile.ZipFile(normal) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
@@ -191,6 +191,27 @@ end sub
         m.switchProbeB = m.switchProbeB and bindingOwner.account = "8" and bindingOwner.profile = m.activeUserScope.profileId
         print "[profile-management] "; FormatJson({kind: "switch-b", own: m.switchProbeB})
     else if phase = 4
+        if OWN_RECONNECT_PROBE
+            if m.switchProbeReconnectStarted <> true
+                m.switchProbeReconnectStarted = true
+                m.switchProbeBeforeReconnect = currentUserSessionId()
+                m.switchProbeDefaultBeforeReconnect = FormatJson(m.userProfileStore.profiles[0])
+                connectServer(true)
+                m.managementProbePhase--
+                return
+            end if
+            if m.profilePinDialog <> invalid
+                m.switchProbeReconnectPin = m.profileGateCover.visible and m.global.profilegateclosed
+                m.profilePinDialog.textEditBox.text = "1234"
+                onProfilePinSubmit(managementProbeEvent(m.profilePinDialog, 0))
+                m.managementProbePhase--
+                return
+            end if
+            if m.busy then m.managementProbePhase-- : return
+            m.switchProbeReconnected = m.page = "guide" and m.activeUserScope <> invalid
+            if m.switchProbeReconnected then m.switchProbeReconnected = m.activeUserScope.accountId = "8" and m.accountPreferences.favoriteIds[0] = "8" and m.devicePreferences.themePreset = "forest" and m.apiKey = "synthetic-b" and currentUserSessionId() <> m.switchProbeBeforeReconnect and FormatJson(m.userProfileStore.profiles[0]) = m.switchProbeDefaultBeforeReconnect
+            m.switchProbeB = m.switchProbeB and m.switchProbeReconnected
+        end if
         m.switchProbeBackStarted = beginUserProfileSwitch(m.switchProbeDefault)
     else if phase = 5
         if m.profileSwitchContext <> invalid then m.managementProbePhase-- : return
@@ -205,7 +226,7 @@ end sub
     else if phase = 7
         if m.profileSwitchContext <> invalid then m.managementProbePhase-- : return
         store = loadUserProfileStore(m.registry, "slot-a")
-        m.switchProbeEvidence = {kind: "result", b: m.switchProbeB, a: m.switchProbeA, rollback: m.switchProbeRejectStarted and store.active = m.switchProbeDefault and m.activeUserScope.profileId = m.switchProbeDefault and currentUserSessionId() <> m.switchProbeSecondSession and m.apiKey = "synthetic-a", preserved: m.registry.read("connKey_slot-a") = "synthetic-a", uncovered: not m.profileGateCover.visible, no_autoplay: m.playingChannel = invalid}
+        m.switchProbeEvidence = {kind: "result", reconnected: m.switchProbeReconnected = true, b: m.switchProbeB, a: m.switchProbeA, rollback: m.switchProbeRejectStarted and store.active = m.switchProbeDefault and m.activeUserScope.profileId = m.switchProbeDefault and currentUserSessionId() <> m.switchProbeSecondSession and m.apiKey = "synthetic-a", preserved: m.registry.read("connKey_slot-a") = "synthetic-a", uncovered: not m.profileGateCover.visible, no_autoplay: m.playingChannel = invalid}
     else if phase = 8
         m.registry.write(userProfileKeyName("slot-a", "00000000-0000-4000-8000-000000000002"), "delayed-b")
         m.profileSessionKeys[preferenceScope(m.baseUrl + "|slot-a|00000000-0000-4000-8000-000000000002")] = "delayed-b"
@@ -345,7 +366,7 @@ sub onManagementProbeTick()
     end if
 end sub
 '''
-                body = source.encode()
+                body = source.replace('OWN_RECONNECT_PROBE', 'true' if reconnect else 'false').encode()
             package.writestr(name, body)
         package.writestr('profile-management-probe.json', json.dumps({'synthetic': True}))
 
@@ -355,12 +376,15 @@ def main():
     parser.add_argument('--restore', required=True)
     parser.add_argument('--directions', action='store_true', help='Exercise numeric-to-Directions adult-type selection under developer opt-in')
     parser.add_argument('--switch', action='store_true', help='Exercise internal same-slot A/B/A and rejected-key rollback without enabling the public picker')
+    parser.add_argument('--reconnect', action='store_true', help='With --switch, reconnect B through early roster read and full activation before returning to A')
     parser.add_argument('--switch-pin', action='store_true', help='With --switch, require the real stored numeric target PIN before each switch')
     parser.add_argument('--cancel-pin', action='store_true', help='With --switch-pin, cancel the final target PIN before any request is sent')
     parser.add_argument('--reject-active', action='store_true', help='With --switch, qualify profile-owned active-key revocation without default setup fallback')
     parser.add_argument('--remember-off', action='store_true', help='With --switch, use address/slot/profile-qualified session credentials only')
     parser.add_argument('--child-settings', action='store_true', help='Exercise restricted Settings and its adult-gated management shortcut in a private Child-role fixture')
     args = parser.parse_args()
+    if args.reconnect and not args.switch:
+        parser.error('--reconnect requires --switch')
     if args.switch and args.directions:
         parser.error('--switch and --directions are separate cases')
     if args.switch_pin and not args.switch:
@@ -421,7 +445,7 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -462,6 +486,8 @@ def main():
                 report['passed'] = result.returncode == 0 and len(rows) == 3 and all(rows[2].get(key) for key in ['b', 'active_retained', 'default_preserved', 'own_revoked', 'covered', 'no_default_session'])
             if args.remember_off:
                 report['passed'] = report['passed'] and rows[-1].get('no_stored', False)
+            if args.reconnect:
+                report['passed'] = report['passed'] and rows[-1].get('reconnected', False)
         if args.child_settings:
             report['passed'] = result.returncode == 0 and len(rows) == 5 and all(rows[4].get(key) for key in ['guide_restricted', 'restricted', 'forged', 'protected', 'management', 'cancelled', 'preserved']) and rows[2].get('title') == 'Enter a PIN from an Admin or Standard profile' and report.get('screenshot', False)
         if not report['passed']:
@@ -485,6 +511,8 @@ def main():
                     name = 'profile-switch-active-reject-native.json'
                 if args.remember_off:
                     name = 'profile-switch-memory-native.json'
+                if args.reconnect:
+                    name = 'profile-reconnect-memory-native.json' if args.remember_off else 'profile-reconnect-saved-native.json'
             if args.child_settings:
                 name = 'profile-child-settings-native.json'
             (ROOT / 'out' / name).write_text(json.dumps(report, indent=2) + '\n')

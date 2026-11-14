@@ -95,6 +95,13 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertNotIn('"AerioTV"', package.read('components/AerioScene.brs').decode())
                 self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
                 self.assertIn('profile-management-probe.json', package.namelist())
+            probe.build(output, normal, 'SyntheticManagementSection', 'http://127.0.0.1:1234', switching=True, reconnect=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('OWN_RECONNECT_PROBE', source)
+                self.assertIn('m.switchProbeReconnectStarted = true', source)
+                self.assertIn('connectServer(true)', source)
+                self.assertNotIn('"AerioTV"', source)
         script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt','profile-management-probe.json']), /probe/);"
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)
 

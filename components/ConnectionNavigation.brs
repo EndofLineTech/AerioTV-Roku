@@ -197,6 +197,35 @@ end sub
 function rememberConnectedAccount(accountId as string, accountUsername = invalid as dynamic) as boolean
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid then return false
+    if entry.provider = "dispatcharr"
+        profiles = loadUserProfileStore(m.registry, entry.id)
+        if profiles.readOnly = true then return false
+        for each profile in profiles.profiles
+            if profile.id = profiles.active and not profile.isDefault
+                actualConnections = loadConnectionStore(m.registry)
+                if actualConnections.readOnly = true then return false
+                if FormatJson(actualConnections) <> FormatJson(normalizeConnectionStore(m.connectionStore)) then return false
+                if profile.addressHeld or profile.userId.toStr() <> accountId then return false
+                if accountUsername = invalid then return false
+                if lcase(textValue(accountUsername)) <> lcase(profile.username) then return false
+                if m.remember <> entry.remember then return false
+                if m.apiKey = "" then return false
+                keys = {}
+                keys[profile.id] = m.apiKey
+                prepared = userProfileStoreChanges(m.registry, profiles, profiles, keys, entry.remember)
+                if not prepared.ok then return false
+                saved = userProfileRegistryTransaction(m.registry, prepared.changes)
+                if not saved.ok
+                    m.userProfileRecoveryRequired = saved.recoveryRequired
+                    return false
+                end if
+                if type(m.profileSessionKeys) <> "roAssociativeArray" then m.profileSessionKeys = {}
+                m.profileSessionKeys[preferenceScope(entry.url + "|" + entry.id + "|" + profile.id)] = m.apiKey
+                m.userProfileStore = profiles
+                return true
+            end if
+        end for
+    end if
     keyName = connectionRegistryKey(entry.id)
     ' A different verified account must never inherit the previous account's
     ' remembered key, even if a later registry write or flush fails.

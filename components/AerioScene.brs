@@ -659,6 +659,13 @@ sub connectServer(skipRfi = false as boolean)
         for each profile in m.userProfileStore.profiles
             if profile.id = m.userProfileStore.active then m.task.expectedUsername = profile.username
         end for
+    else if type(m.userProfileStore) = "roAssociativeArray"
+        for each profile in m.userProfileStore.profiles
+            if profile.id = m.userProfileStore.active and not profile.isDefault
+                m.task.expectedUserId = profile.userId.toStr()
+                m.task.expectedUsername = profile.username
+            end if
+        end for
     end if
     m.task.cacheEpoch = m.global.cacheEpoch
     m.task.baseUrl = m.baseUrl
