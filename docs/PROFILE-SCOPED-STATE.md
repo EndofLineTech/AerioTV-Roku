@@ -634,6 +634,26 @@ lineup, retained own keys and fresh outgoing admission. Generation, server-helpe
 tests and syntax checks pass; the archive has not been installed or run. Startup
 authority-race native coverage and actual device qualification remain unfinished.
 
+### November 14 native continuation
+
+After the owner explicitly approved restoring the known owner ZIP, installed MD5
+was verified against that exact archive before each isolated run. The private
+final-authority race passed on the Roku, including its zero-target-lineup request
+ledger. Staged baseline A/B/A, stored PIN, imported PIN/old-value refusal, PIN
+cancellation, inactive cleanup, unadopted-target retirement and unavailable-Child
+escape cases also passed with fixture cleanup and exact owner-app restoration.
+Evidence is in `out/mrr-staged-*-native.log` and
+`out/mrr-authority-race-native.log`. The current shared primitive/store matrix
+finished with zero failures (`out/mrr-roster-current-primitives-native.log`).
+
+The first baseline run failed delayed Back cancellation. Two subsequent diagnostic
+baseline runs and the PIN/cleanup/retirement cases observed Back reaching Scene
+and cancelling successfully. Private-only key/focus telemetry retains that
+distinction; no speculative production fix was made and `AerioTV-Roku-667m`
+remains open for the intermittent failure. Startup authority races, actual active
+default retirement, outgoing writer settlement and peer/public acceptance are
+not established by these native results. Both shipping flags remain false.
+
 The earlier manual-refresh native cases (not this new switch/roster pipeline)
 qualify changed assignments/VOD revocation, foreign own
 identity, unchanged authority and transient failures. Two cases delay a real

@@ -157,7 +157,7 @@ class ProfileProbeTest(unittest.TestCase):
             normal = Path(tmp) / 'normal.zip'
             with zipfile.ZipFile(normal, 'w') as package:
                 package.writestr('manifest', 'title=AerioTV\n')
-                package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.profileSwitchRosterReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub')
+                package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.profileSwitchRosterReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub\nfunction onKeyEvent(key as string, press as boolean) as boolean\nreturn false\nend function\n')
                 package.writestr('source/MetadataCacheStore.brs', 'return "cachefs:/aeriotv-metadata-v1"')
                 package.writestr('components/RequestGateTask.brs', '    else if action = "own-verified"\n')
             output = Path(tmp) / 'probe.zip'
@@ -301,7 +301,7 @@ class ProfileProbeTest(unittest.TestCase):
             normal = Path(tmp) / 'normal.zip'
             with zipfile.ZipFile(normal, 'w') as package:
                 package.writestr('manifest', 'title=AerioTV\n')
-                package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.profileSwitchRosterReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub')
+                package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.profileSwitchRosterReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub\nfunction onKeyEvent(key as string, press as boolean) as boolean\nreturn false\nend function\n')
                 package.writestr('source/MetadataCacheStore.brs', 'return "cachefs:/aeriotv-metadata-v1"')
                 package.writestr('components/GuideView.xml', '<component name="GuideView"><interface></interface></component>')
                 package.writestr('components/GuideView.brs', 'sub init()\nend sub\n')
@@ -324,6 +324,8 @@ class ProfileProbeTest(unittest.TestCase):
             with zipfile.ZipFile(output) as package:
                 source = package.read('components/AerioScene.brs').decode()
                 self.assertIn('m.profileSwitchRosterReady = true', source)
+                self.assertIn('kind: "switch-key"', source)
+                self.assertIn('scene_focus: m.top.isInFocusChain()', source)
                 self.assertNotIn('m.profileSwitchRosterReady = false', source)
                 self.assertNotIn('"AerioTV"', source)
             with self.assertRaises(ValueError):

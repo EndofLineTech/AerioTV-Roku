@@ -709,6 +709,13 @@ end sub
                     target = 'm.profileSwitchRosterReady = false'
                     assert source.count(target) == 1
                     source = source.replace(target, 'm.profileSwitchRosterReady = true', 1)
+                    target = 'function onKeyEvent(key as string, press as boolean) as boolean\n'
+                    assert source.count(target) == 1
+                    source = source.replace(target, target + '''    if m.profileSwitchContext <> invalid and press
+        print "[profile-management] "; FormatJson({kind: "switch-key", key: key, scene_focus: m.top.isInFocusChain(), guide_focus: m.guide.isInFocusChain(), has_task: m.profileSwitchTask <> invalid})
+    end if
+''', 1)
+                    source = source.replace('kind: "cancel-ready", covered: m.profileGateCover.visible', 'kind: "cancel-ready", scene_focus: m.top.isInFocusChain(), guide_focus: m.guide.isInFocusChain(), has_dialog: m.top.dialog <> invalid, covered: m.profileGateCover.visible')
                 if switch_authority_race:
                     source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native/ProfileAuthorityRaceFixture.brs').read_text()
                 body = source.replace('OWN_RECONNECT_PROBE', 'true' if reconnect else 'false').encode()
@@ -964,6 +971,8 @@ def main():
         if result.returncode:
             print(result.stderr, end='', flush=True)
         rows = [json.loads(line.split('[profile-management] ', 1)[1]) for line in result.stdout.splitlines() if '[profile-management] {' in line]
+        report['switch_key_events'] = [row for row in rows if row.get('kind') == 'switch-key']
+        rows = [row for row in rows if row.get('kind') != 'switch-key']
         report['events'] = rows
         if args.child_escape:
             report['requests'] = hits
