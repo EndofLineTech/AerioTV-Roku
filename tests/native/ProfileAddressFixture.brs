@@ -8,7 +8,7 @@ sub onManagementProbeTick()
         m.addressOldEntry = connectionStoreEntry(m.connectionStore, "slot-a")
         m.addressOldSession = currentUserSessionId()
         m.addressOldProfile = m.activeUserScope.profileId
-        m.accountPreferences.favoriteIds = ["default-private"]
+        m.accountPreferences = setCanonicalPreference(m.accountPreferences, "favoriteIds", ["default-private"])
         m.addressPassed = persistCurrentUserProfilePreferences()
         store = loadUserProfileStore(m.registry, "slot-a")
         b = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Synthetic8", user_level: 1}, 1)

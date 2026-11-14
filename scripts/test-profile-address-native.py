@@ -22,26 +22,51 @@ def module(name):
     return loaded
 
 
-def build(output, normal, section, old_url, new_url, replacement=False):
+def build(output, normal, section, old_url, new_url, replacement=False, legacy=False):
     seed = output.with_suffix('.seed.zip')
     module('management').build(seed, normal, section, old_url)
     fixture = (ROOT / 'tests/native/ProfileAddressFixture.brs').read_text().replace('OWN_ADDRESS_NEW_URL', json.dumps(new_url))
     fixture = fixture.replace('OWN_ADDRESS_REPLACE', 'true' if replacement else 'false')
+    if legacy:
+        fixture = fixture.replace('"slot-a"', '"legacy"').replace('"|slot-a|"', '"|legacy|"').replace('connKey_slot-a', 'connKey_legacy')
+        fixture = fixture.replace('m.addressPassed = persistCurrentUserProfilePreferences()', '''m.addressPassed = persistCurrentUserProfilePreferences() and m.legacyMigrationPassed
+        print "[profile-address] legacy-owner="; m.legacyMigrationPassed''')
+        fixture = fixture.replace('m.addressOldSession = currentUserSessionId()', '''m.legacyMigrationPassed = not m.registry.exists("preferences") and m.accountPreferences.favoriteIds.count() = 1
+        if m.legacyMigrationPassed then m.legacyMigrationPassed = m.accountPreferences.favoriteIds[0] = "legacy-private"
+        ownKey = preferenceScope(connectionPreferenceIdentity(m.addressOldEntry, "7"))
+        legacySettings = ParseJson(m.registry.read("settingsV1"), "d")
+        m.legacyMigrationPassed = m.legacyMigrationPassed and not legacySettings.accounts.doesExist(preferenceScope(m.addressOldEntry.url + "|7")) and legacySettings.accounts[ownKey]["FutureCase"]["precise"] = ParseJson("1.234567891234567", "d") and legacySettings["FutureRoot"]["precise"] = ParseJson("1.234567891234567", "d") and legacySettings.accounts["foreign"]["private"] = "foreign-only"
+        m.addressOldSession = currentUserSessionId()''')
     with zipfile.ZipFile(seed) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
             if name == 'components/AerioScene.brs':
                 source = body.decode()
                 assert source.count('sub onManagementProbeTick()') == 1
+                if legacy:
+                    source = source.replace('id: "slot-a", name: "Synthetic"', 'id: "legacy", name: "Synthetic"', 1)
+                    source = source.replace('selected: "slot-a", entries: [entry]', 'selected: "legacy", entries: [entry]', 1)
+                    source = source.replace('m.registry.write("connKey_slot-a", "synthetic-a")', '''m.registry.write("connKey_legacy", "synthetic-a")
+    m.registry.write("serverUrl", entry.url)
+    m.registry.write("accountIdentity", entry.url + "|7")
+    m.registry.write("preferences", ReadAsciiFile("pkg:/profile-legacy-preferences.json"))
+    initialSettings = ParseJson(ReadAsciiFile("pkg:/profile-legacy-settings.json"), "d")
+    initialSettings.accounts[preferenceScope(entry.url + "|7")] = {guide: {showLogos: false}}
+    encodedSettings = strictJsonEncode(initialSettings)
+    m.registry.write("settingsV1", encodedSettings.text)''', 1)
                 body = (source.split('sub onManagementProbeTick()', 1)[0] + fixture).encode()
             package.writestr(name, body)
         package.writestr('profile-address-probe.json', '{"synthetic":true}')
+        if legacy:
+            package.writestr('profile-legacy-preferences.json', json.dumps({'favoriteIds': ['legacy-private'], 'FutureCase': {'precise': 1.234567891234567}}))
+            package.writestr('profile-legacy-settings.json', json.dumps({'schema': 1, 'device': {}, 'accounts': {'foreign': {'private': 'foreign-only'}}, 'FutureRoot': {'precise': 1.234567891234567}}))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--restore', required=True)
     parser.add_argument('--replace-default', action='store_true', help='New origin verifies a different default account; preserve holds and seed settings only')
+    parser.add_argument('--legacy', action='store_true', help='Qualify original-owner legacy startup migration before the real address handler')
     args = parser.parse_args()
     host, password = os.environ['ROKU_HOST'], os.environ['ROKU_DEV_PASSWORD']
     primitives, recovery = module('primitives'), module('recovery')
@@ -89,7 +114,7 @@ def main():
     section = 'AerioAddressProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-address-probe.zip'
     cleaner = ROOT / 'out/profile-address-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, *(f'http://{local}:{server.server_port}' for server in servers), replacement=args.replace_default)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, *(f'http://{local}:{server.server_port}' for server in servers), replacement=args.replace_default, legacy=args.legacy)
     recovery.cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -118,6 +143,8 @@ def main():
                 server.server_close()
             report['passed'] = report['passed'] and report.get('cleaned', False) and report['restored']
             report_name = 'profile-address-replacement-native.json' if args.replace_default else 'profile-address-handler-native.json'
+            if args.legacy:
+                report_name = 'profile-address-legacy-native.json'
             (ROOT / 'out' / report_name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

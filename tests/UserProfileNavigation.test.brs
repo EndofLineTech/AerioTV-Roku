@@ -2,6 +2,12 @@ sub main()
     m.profilePreferenceDecoder = function(raw as string) as dynamic
         return ParseJson(raw)
     end function
+    runLegacyOwnerMigrationChecks()
+    runColdProfileRestoreChecks()
+    parsedDevice = normalizeDevicePreferences(ParseJson("{}"))
+    check(parsedDevice.networkTimeoutSeconds = 20 and parsedDevice.refreshSeconds = 300, "parsed empty device settings provide runtime timeout and refresh defaults")
+    parsedAccount = normalizeAccountPreferences(ParseJson("{}"))
+    check(type(parsedAccount.favoriteIds) = "roArray" and parsedAccount.startupBehavior = "guide", "parsed empty own account provides runtime data and startup defaults")
     resetProfileNavigation()
     check(ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100), "legacy replacement fixture establishes old holder")
     m.registry.values["preferences"] = FormatJson({favoriteIds: ["old-private"]})
@@ -9,6 +15,18 @@ sub main()
     snapshot = FormatJson(m.registry.values)
     check(not ensureConnectedUserProfile({phase: "verified", accountId: "7", accountUsername: "DifferentAlice", verifiedUser: {id: 7, username: "DifferentAlice", user_level: 1}}, "", 101), "same-ID replacement refuses while unscoped legacy personal data has no safe migrated owner")
     check(FormatJson(m.registry.values) = snapshot, "legacy replacement refusal preserves all old private bytes and creates no empty canonical root")
+    resetProfileNavigation()
+    m.connectionStore.entries[0].id = "legacy"
+    m.selectedConnectionId = "legacy"
+    m.connectionStore.selected = "legacy"
+    check(ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100), "slot-less replacement fixture establishes old holder")
+    m.registry.values["serverUrl"] = "https://example.test"
+    m.registry.values["accountIdentity"] = "https://example.test|7"
+    priorSettings = {schema: 1, device: {}, accounts: {}}
+    priorSettings.accounts[preferenceScope("https://example.test|7")] = {FuturePrivate: {retained: true}}
+    m.registry.values["settingsV1"] = FormatJson(priorSettings)
+    snapshot = FormatJson(m.registry.values)
+    check(not ensureConnectedUserProfile({phase: "verified", accountId: "7", accountUsername: "DifferentAlice", verifiedUser: {id: 7, username: "DifferentAlice", user_level: 1}}, "", 101) and FormatJson(m.registry.values) = snapshot, "slot-less legacy private data cannot survive replacement as an importable old-owner source")
     resetProfileNavigation()
     check(selectedUserProfileGate().allowed, "absent roster permits verified legacy migration")
     check(userProfileConnectionSetupAllowed(), "absent roster retains first-time setup")
@@ -144,6 +162,99 @@ sub main()
     before = FormatJson(m.registry.values)
     check(not ensureConnectedUserProfile({ok: true, phase: "verified", accountId: "88", accountUsername: "Bob", verifiedUser: {id: 88, username: "Bob", user_level: 1}}, "", 102) and FormatJson(m.registry.values) = before, "saved-key reconnect cannot adopt a recreated nondefault ID; only its own form may migrate it")
     print "ALL TESTS PASSED"
+end sub
+
+sub runLegacyOwnerMigrationChecks()
+    for each failFlush in [false, true]
+        resetProfileNavigation()
+        m.connectionStore.entries[0].id = "legacy"
+        m.connectionStore.selected = "legacy"
+        m.selectedConnectionId = "legacy"
+        m.registry.values["serverUrl"] = "https://example.test"
+        m.registry.values["accountIdentity"] = "https://example.test|7"
+        m.registry.values["preferences"] = FormatJson({favoriteIds: ["legacy-private"], FutureCase: {retained: true}})
+        settings = {schema: 1, device: {}, accounts: {}, FutureRoot: {retained: true}}
+        settings.accounts.foreign = {favoriteIds: ["foreign-private"]}
+        settings.accounts[preferenceScope("https://example.test|7")] = {guide: {showLogos: false}}
+        m.registry.values["settingsV1"] = FormatJson(settings)
+        snapshot = FormatJson(m.registry.values)
+        m.registry.failFlush = failFlush
+        migrated = ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100)
+        if failFlush
+            check(not migrated and FormatJson(m.registry.values) = snapshot, "failed owner migration restores legacy bytes, canonical root and absent roster atomically")
+        else
+            check(migrated and not m.registry.exists("preferences") and m.registry.flushes = 1, "verified original holder retires legacy data only in the canonical-data and roster Flush")
+            saved = ParseJson(m.registry.read("settingsV1"))
+            own = saved.accounts[preferenceScope("https://example.test|7|legacy")]
+            check(own.favoriteIds[0] = "legacy-private" and own.FutureCase.retained and not own.guide.showLogos, "owner migration reconciles non-overlapping legacy sources without normalizing private extensions")
+            check(saved.accounts.foreign.favoriteIds[0] = "foreign-private" and saved.FutureRoot.retained and not saved.accounts.doesExist(preferenceScope("https://example.test|7")), "owner migration preserves unrelated data and retires only its scoped predecessor")
+            check(m.preferenceStore.accounts[preferenceScope("https://example.test|7|legacy")].favoriteIds[0] = "legacy-private", "controller adopts exact committed migration root for subsequent writes")
+        end if
+    end for
+    for each variant in ["foreign-slot", "wrong-server", "wrong-account", "corrupt", "conflict", "empty", "oversize"]
+        resetProfileNavigation()
+        m.connectionStore.entries[0].id = "legacy"
+        m.connectionStore.selected = "legacy"
+        m.selectedConnectionId = "legacy"
+        m.registry.values["serverUrl"] = "https://example.test"
+        m.registry.values["accountIdentity"] = "https://example.test|7"
+        m.registry.values["preferences"] = FormatJson({favoriteIds: ["legacy-private"]})
+        if variant = "foreign-slot"
+            m.connectionStore.entries[0].id = "slot-a"
+            m.selectedConnectionId = "slot-a"
+        end if
+        if variant = "wrong-server" then m.registry.values["serverUrl"] = "https://old.test"
+        if variant = "wrong-account" then m.registry.values["accountIdentity"] = "https://example.test|8"
+        if variant = "corrupt" then m.registry.values["preferences"] = "not-json"
+        if variant = "empty" then m.registry.values["preferences"] = ""
+        if variant = "oversize" then m.registry.values["preferences"] = FormatJson({futurePrivate: string(25000, "x")})
+        if variant = "conflict"
+            settings = {schema: 1, device: {}, accounts: {}}
+            settings.accounts[preferenceScope("https://example.test|7|legacy")] = {favoriteIds: ["canonical-private"]}
+            m.registry.values["settingsV1"] = FormatJson(settings)
+        end if
+        originalLegacy = m.registry.read("preferences")
+        originalSettings = m.registry.read("settingsV1")
+        migrated = ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100)
+        check(m.registry.exists("preferences") and m.registry.read("preferences") = originalLegacy and m.registry.read("settingsV1") = originalSettings, "unproven/malformed/conflicting/oversize legacy migration retains all private sources: " + variant)
+        if variant = "corrupt" or variant = "conflict" or variant = "empty" or variant = "oversize" then check(not migrated and m.registry.flushes = 0, "unsafe owner reconciliation refuses before writes: " + variant)
+    end for
+end sub
+
+sub runColdProfileRestoreChecks()
+    for each variant in ["remembered", "keyless", "held", "child", "failed-flush"]
+        resetProfileNavigation()
+        check(ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100), "restore fixture establishes default")
+        store = copyJson(m.userProfileStore)
+        own = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Bob", user_level: 1}, 1)
+        own.isDefault = false
+        own.addressHeld = false
+        if variant = "held" then own.addressHeld = true
+        if variant = "child" then own.role = "child"
+        store.active = own.id
+        store.profiles.push(own)
+        m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+        entry = m.connectionStore.entries[0]
+        entry.remember = variant = "remembered" or variant = "held"
+        if entry.remember then m.registry.values[userProfileKeyName(entry.id, own.id)] = "synthetic-own"
+        before = FormatJson(m.registry.values)
+        beforeFlush = m.registry.flushes
+        m.registry.failFlush = variant = "failed-flush"
+        restored = prepareUserProfileLaunchRestore(entry)
+        if variant = "failed-flush"
+            check(not restored and m.userProfileRecoveryRequired and FormatJson(m.registry.values) = before, "failed launch fallback rolls back exact active holder and requests process recovery")
+        else
+            check(restored, "cold launch restore policy accepts valid roster: " + variant)
+            loaded = loadUserProfileStore(m.registry, entry.id)
+            fallback = variant = "keyless" or variant = "held"
+            if fallback
+                check(loaded.active = loaded.profiles[0].id and m.registry.flushes = beforeFlush + 1, "unavailable full-access restore selects default atomically before any credential read: " + variant)
+            else
+                check(loaded.active = own.id and FormatJson(m.registry.values) = before and m.registry.flushes = beforeFlush, "remembered own holder and unavailable Child never silently become adult default: " + variant)
+            end if
+            check(loaded.profiles[1].addressHeld = own.addressHeld and m.registry.read("connKey_slot-a") = "default-key", "restore preserves own holds and independent default credential: " + variant)
+        end if
+    end for
 end sub
 
 function profileResult() as object

@@ -287,6 +287,74 @@ function accountPreferences(store as object, identity as string, legacyIdentity 
     return normalizeAccountPreferences(invalid)
 end function
 
+' Lossless reconciliation is deliberately not last-writer-wins: the old values
+' have no reliable timestamps. Conflicting leaves require recovery, not deletion.
+function reconcileLegacyPreferenceObjects(first as object, second as object, depth = 0 as integer) as object
+    if depth > 24 then return {ok: false}
+    result = copyPreferenceValue(first)
+    for each key in second
+        if not result.doesExist(key)
+            result[key] = copyPreferenceValue(second[key])
+        else if type(result[key]) = "roAssociativeArray" and type(second[key]) = "roAssociativeArray"
+            nested = reconcileLegacyPreferenceObjects(result[key], second[key], depth + 1)
+            if not nested.ok then return {ok: false}
+            result[key] = nested.value
+        else
+            prior = strictJsonEncode(result[key])
+            incoming = strictJsonEncode(second[key])
+            if not prior.ok or not incoming.ok then return {ok: false}
+            if prior.text <> incoming.text then return {ok: false}
+        end if
+    end for
+    return {ok: true, value: result}
+end function
+
+' Only the original legacy connection and its verified holder can consume the
+' unscoped value. Slot/account replacement must be refused before calling this.
+' No registry writes occur here; retirement shares the caller's roster Flush.
+function legacyOwnerPreferencePlan(registry as object, connection as object, accountId as string) as object
+    unchanged = {ok: true, moved: false, retireLegacy: false}
+    if connection.id <> "legacy" or connection.provider <> "dispatcharr" then return unchanged
+    oldIdentity = connection.url + "|" + accountId
+    if normalizeBaseUrl(registry.read("serverUrl")) <> connection.url or registry.read("accountIdentity") <> oldIdentity then return unchanged
+    store = loadStrictPreferenceStore(registry)
+    if store.readOnly = true then return {ok: false}
+    priorKey = preferenceScope(oldIdentity)
+    ' This helper is Dispatcharr/legacy-only; keep the shared preference model
+    ' independent of the connection controller in Guide/Browser component scope.
+    newKey = preferenceScope(oldIdentity + "|" + connection.id)
+    hasLegacy = registry.exists("preferences")
+    if not hasLegacy and not store.accounts.doesExist(priorKey) then return unchanged
+    combined = ParseJson("{}")
+    for each source in [newKey, priorKey]
+        if store.accounts.doesExist(source)
+            merged = reconcileLegacyPreferenceObjects(combined, store.accounts[source])
+            if not merged.ok then return {ok: false}
+            combined = merged.value
+        end if
+    end for
+    if hasLegacy
+        raw = registry.read("preferences")
+        if raw = "" then return {ok: false}
+        if m.profilePreferenceDecoder <> invalid
+            decoded = m.profilePreferenceDecoder(raw)
+        else
+            decoded = ParseJson(raw, "d")
+        end if
+        if type(decoded) <> "roAssociativeArray" then return {ok: false}
+        merged = reconcileLegacyPreferenceObjects(combined, decoded)
+        if not merged.ok then return {ok: false}
+        combined = merged.value
+    end if
+    nextStore = copyPreferenceValue(store)
+    nextStore.accounts[newKey] = combined
+    nextStore.accounts.delete(priorKey)
+    encoded = strictJsonEncode(nextStore)
+    if not encoded.ok then return {ok: false}
+    if preferenceByteBudget(encoded.text) > 24000 then return {ok: false}
+    return {ok: true, moved: true, retireLegacy: hasLegacy, store: nextStore}
+end function
+
 function mergeAccountPreferences(current as object, patch as object) as object
     result = copyPreferenceValue(current)
     for each key in patch

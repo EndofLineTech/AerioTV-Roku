@@ -10,6 +10,10 @@ sub main()
     before = m.registry.flushes
     check(not persistCurrentUserProfilePreferences(old) and m.registry.flushes = before, "stale captured session cannot persist into active session")
     resetScopedNavigation()
+    m.preferenceStore.device = ParseJson("{}")
+    check(prepareUserProfileConnectionSettings(m.connection, {accountId: "7", generation: "g1"}, "00000000-0000-4000-8000-000000000010"), "strict migrated root with sparse device baseline activates safely")
+    check(m.devicePreferences.networkTimeoutSeconds = 20 and m.devicePreferences.refreshSeconds = 300, "raw migrated device root gains runtime defaults before presentation")
+    resetScopedNavigation()
     m.registry.failFlush = true
     check(not prepareUserProfileConnectionSettings(m.connection, {accountId: "7", generation: "g1"}, "00000000-0000-4000-8000-000000000010"), "failed migration never activates a scoped session")
     check(m.activeUserScope = invalid and m.presentationChanges = 0, "failed write does not adopt theme or session")

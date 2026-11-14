@@ -1,5 +1,37 @@
 ' Startup/default migration only. Authenticated switching remains gated until
 ' scoped state, early roster import, PIN/Child rules and request safety land.
+function prepareUserProfileLaunchRestore(entry as dynamic) as boolean
+    if entry = invalid then return true
+    if entry.provider <> "dispatcharr" then return true
+    store = loadUserProfileStore(m.registry, entry.id)
+    if store.readOnly = true then return false
+    if store.profiles.count() = 0 then return true
+    selected = invalid
+    defaultId = ""
+    for each profile in store.profiles
+        if profile.id = store.active then selected = profile
+        if profile.isDefault then defaultId = profile.id
+    end for
+    if selected = invalid or defaultId = "" then return false
+    ' Only cold-process restoration uses this automatic fallback. A rejected
+    ' active key/reconnect must keep its holder; a Child never leaves here.
+    if selected.isDefault or selected.role = "child" then return true
+    ownKey = ""
+    if entry.remember then ownKey = m.registry.read(userProfileKeyName(entry.id, selected.id))
+    if not selected.addressHeld and ownKey <> "" then return true
+    candidate = setCanonicalPreference(store, "active", defaultId)
+    saved = commitUserProfileStore(m.registry, store, candidate, {}, entry.remember)
+    if not saved.ok
+        ' Even a successful rollback cannot allow startup with the slot key
+        ' while the persisted selection still names another holder.
+        m.userProfileRecoveryRequired = true
+        return false
+    end if
+    m.userProfileStore = candidate
+    m.profileUnlockGrant = invalid
+    return true
+end function
+
 function userProfileConnectionSetupAllowed() as boolean
     if m.profileOwnSignInContext <> invalid then return false
     if m.userProfileRecoveryRequired = true then return false
@@ -111,6 +143,15 @@ function ensureConnectedUserProfile(result as object, id = "" as string, now = 0
         m.status = "Reconnect the previous account to migrate its legacy settings before replacing this default. Existing data was retained."
         return false
     end if
+    if replacing and entry.id = "legacy" and m.registry.exists("settingsV1")
+        originalSettings = loadStrictPreferenceStore(m.registry)
+        if originalSettings.readOnly = true then return false
+        originalIdentity = m.registry.read("accountIdentity")
+        if originalIdentity <> "" and originalSettings.accounts.doesExist(preferenceScope(originalIdentity))
+            m.status = "Reconnect the previous account to migrate its legacy settings before replacing this default. Existing data was retained."
+            return false
+        end if
+    end if
     candidate = userProfileEnsureDefault(m.userProfileStore, verified, result.phase = "verified")
     if candidate = invalid
         m.status = "Could not safely replace this default identity. Existing profiles and data were retained."
@@ -125,8 +166,18 @@ function ensureConnectedUserProfile(result as object, id = "" as string, now = 0
         end if
     end for
     moved = {ok: true, moved: false}
+    legacyMigration = {ok: true, moved: false, retireLegacy: false}
+    if not replacing
+        legacyMigration = legacyOwnerPreferencePlan(m.registry, entry, verified.userId.toStr())
+        if not legacyMigration.ok
+            m.status = "Could not reconcile this account's legacy settings without losing data. Existing values were retained."
+            return false
+        end if
+        if legacyMigration.moved then moved = legacyMigration
+    end if
     if m.registry.exists("settingsV1") and (oldIdentity <> newIdentity or replacing)
         settings = loadStrictPreferenceStore(m.registry)
+        if legacyMigration.moved then settings = legacyMigration.store
         if settings.readOnly = true then return false
         if replacing
             oldKey = preferenceScope(oldIdentity)
@@ -142,6 +193,7 @@ function ensureConnectedUserProfile(result as object, id = "" as string, now = 0
         else
             moved = userProfilePreferenceMovePlan(settings, oldIdentity, newIdentity)
             if not moved.ok then return false
+            if legacyMigration.moved and not moved.moved then moved = legacyMigration
         end if
     end if
     ' Record only from this default-owned /me/, never cleared slot metadata.
@@ -168,6 +220,7 @@ function ensureConnectedUserProfile(result as object, id = "" as string, now = 0
         if preferenceByteBudget(encoded.text) > 24000 then return false
         prepared.changes["settingsV1"] = encoded.text
     end if
+    if legacyMigration.retireLegacy then prepared.changes["preferences"] = ""
     saved = userProfileRegistryTransaction(m.registry, prepared.changes)
     if not saved.ok
         m.userProfileRecoveryRequired = saved.recoveryRequired

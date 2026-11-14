@@ -2,6 +2,16 @@
 
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
+## Active epic continuity
+
+The owner's standing request is to finish `AerioTV-Roku-mrr`, not stop after a
+tested increment. After compaction, interruption, or a checkpoint commit/push,
+resume that epic from its Beads state and continue feasible implementation,
+integration, and acceptance work without waiting for another "continue".
+Carry this instruction into every compaction handoff. Passing tests or pushing
+a commit is a checkpoint, not epic completion. Keep unfinished work in Beads;
+do not infer blocked owner approvals or claim acceptance that was not verified.
+
 ## Roku Beta Packages
 
 Always hand off a signed Beta/Store package as

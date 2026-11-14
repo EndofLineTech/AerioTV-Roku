@@ -17,7 +17,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None):
     with zipfile.ZipFile(normal) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
@@ -366,6 +366,25 @@ sub onManagementProbeTick()
     end if
 end sub
 '''
+                if cold_restore:
+                    seed_target = '    m.registry.flush()'
+                    held = 'true' if cold_restore == 'held' else 'false'
+                    key_seed = 'm.registry.write("profKey_slot-a_00000000-0000-4000-8000-000000000002", "synthetic-b")' if cold_restore != 'keyless' else ''
+                    source = source.replace(seed_target, f'''    defaultHolder = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000001", {{id: 7, username: "Synthetic7", user_level: 1}}, 1)
+    ownHolder = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {{id: 8, username: "Synthetic8", user_level: 1}}, 2)
+    ownHolder.isDefault = false
+    ownHolder.addressHeld = {held}
+    m.registry.write("userProfilesV1_slot-a", FormatJson({{schema: 1, playlistId: "slot-a", active: ownHolder.id, askAtLaunch: false, profiles: [defaultHolder, ownHolder], removed: [], pendingRoster: false}}))
+    {key_seed}
+    coldSettings = {{schema: 1, device: {{}}, accounts: {{}}}}
+    coldSettings.accounts[preferenceScope(connectionPreferenceIdentity(entry, "7"))] = {{favoriteIds: ["00000000-0000-4000-8000-000000000007"], profileSettings: {{themePreset: "midnight"}}}}
+    coldSettings.accounts[preferenceScope(connectionPreferenceIdentity(entry, "8"))] = {{favoriteIds: ["00000000-0000-4000-8000-000000000008"], profileSettings: {{themePreset: "forest"}}}}
+    m.registry.write("settingsV1", strictJsonEncode(coldSettings).text)
+''' + seed_target, 1)
+                    expected = '8' if cold_restore == 'remembered' else '7'
+                    fixture = (ROOT / 'tests/native/ProfileColdRestoreFixture.brs').read_text()
+                    fixture = fixture.replace('OWN_COLD_ACCOUNT', f'"{expected}"').replace('OWN_COLD_HELD', held)
+                    source = source.split('sub onManagementProbeTick()', 1)[0] + fixture
                 body = source.replace('OWN_RECONNECT_PROBE', 'true' if reconnect else 'false').encode()
             package.writestr(name, body)
         package.writestr('profile-management-probe.json', json.dumps({'synthetic': True}))
@@ -382,6 +401,7 @@ def main():
     parser.add_argument('--reject-active', action='store_true', help='With --switch, qualify profile-owned active-key revocation without default setup fallback')
     parser.add_argument('--remember-off', action='store_true', help='With --switch, use address/slot/profile-qualified session credentials only')
     parser.add_argument('--child-settings', action='store_true', help='Exercise restricted Settings and its adult-gated management shortcut in a private Child-role fixture')
+    parser.add_argument('--cold-restore', choices=['remembered', 'keyless', 'held'], help='Launch a fresh process with a persisted nondefault selection; unavailable adults restore default')
     args = parser.parse_args()
     if args.reconnect and not args.switch:
         parser.error('--reconnect requires --switch')
@@ -445,7 +465,7 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -490,6 +510,10 @@ def main():
                 report['passed'] = report['passed'] and rows[-1].get('reconnected', False)
         if args.child_settings:
             report['passed'] = result.returncode == 0 and len(rows) == 5 and all(rows[4].get(key) for key in ['guide_restricted', 'restricted', 'forged', 'protected', 'management', 'cancelled', 'preserved']) and rows[2].get('title') == 'Enter a PIN from an Admin or Standard profile' and report.get('screenshot', False)
+        if args.cold_restore:
+            expected = 8 if args.cold_restore == 'remembered' else 7
+            report['requests'] = hits
+            report['passed'] = result.returncode == 0 and len(rows) == 1 and rows[0].get('passed') and bool(hits) and all(hit['user'] == expected for hit in hits) and any(hit['path'] == '/api/accounts/users/me/app-data/' for hit in hits)
         if not report['passed']:
             raise RuntimeError('Native management controller assertions failed')
     finally:
@@ -503,6 +527,8 @@ def main():
             server.server_close()
             report['passed'] = report['passed'] and report.get('cleaned', False) and report['restored']
             name = 'profile-management-directions-native.json' if args.directions else 'profile-management-native.json'
+            if args.cold_restore:
+                name = f'profile-cold-{args.cold_restore}-native.json'
             if args.switch:
                 name = 'profile-switch-pin-native.json' if args.switch_pin else 'profile-switch-native.json'
                 if args.cancel_pin:

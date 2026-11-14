@@ -18,7 +18,11 @@ function prepareUserProfileConnectionSettings(connection as object, result as ob
     scope = userProfileSessionScope(connection, profile.id, result.accountId, textValue(result.generation), sessionId)
     if scope = invalid then return false
     if scope.preferenceIdentity <> m.accountIdentity then return false
-    prepared = userProfilePrepareSettings(m.accountPreferences, m.preferenceStore.device)
+    ' A strict migration adopts raw settings to preserve foreign extensions.
+    ' Normalize only this device's runtime baseline before applying presentation;
+    ' sparse valid stored device maps must still supply timeout/refresh defaults.
+    baseline = normalizeDevicePreferences(m.preferenceStore.device)
+    prepared = userProfilePrepareSettings(m.accountPreferences, baseline)
     if not prepared.ok then return false
     saved = commitUserProfilePreferences(m.registry, m.preferenceStore, prepared.preferences, prepared.device, scope, scope)
     if not saved.ok

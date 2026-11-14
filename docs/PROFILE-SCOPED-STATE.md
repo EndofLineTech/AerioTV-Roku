@@ -135,3 +135,28 @@ Private registry cleanup and exact prior-app restoration pass.
 Authorization-refresh generation adoption, remaining dialog/control event audit,
 complete pending-write coverage and same-slot native A/B/A acceptance remain
 implementation work. No public switching or complete `mrr.7` delivery is claimed.
+## Legacy owner reconciliation and cold-process selection
+
+The original `legacy` Dispatcharr slot can reconcile unscoped `preferences`
+only after its own verified default matches the original `serverUrl` and
+`accountIdentity`. An existing default with a different username or ID is not
+that owner. The old slot-less account blob, canonical owner blob, and unscoped
+object merge only when overlapping leaves agree; differing private arrays or
+values are a recovery condition, never a last-writer-wins guess. Malformed,
+empty-present, conflicting, and over-budget sources remain untouched.
+
+The canonical owner data, stable default roster, and retirement of the consumed
+legacy value share one registry transaction. A failed Flush restores exact
+previous bytes and absence. Unknown fields and binary64 values survive. The
+rendering path no longer reads unscoped preferences. Unrelated connections do
+not consume or delete them, and replacement/address fences remain until the
+owner's migration succeeds. A strict raw migrated root may have sparse device
+settings; only its device runtime baseline is normalized before presentation.
+
+At process launch, a selected full-access non-default with no remembered own key
+or an address hold restores the default before any credential is read. This
+selection is committed atomically; failed persistence prevents connection.
+Remembered own holders remain selected. A Child never takes this automatic
+fallback. This does not authorize active-key rejection/reconnect fallback, which
+must retain the active holder, or claim completion of Child unavailable/escape,
+public picker, or sync lifecycle work.

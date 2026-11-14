@@ -205,6 +205,7 @@ sub init()
     m.scopedPreferencesRequired = false
     m.selectedConnectionId = m.connectionStore.selected
     selectedConnection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    launchRestoreReady = prepareUserProfileLaunchRestore(selectedConnection)
     m.baseUrl = ""
     m.guideUrl = ""
     m.xcUsername = ""
@@ -216,7 +217,7 @@ sub init()
         m.baseUrl = selectedConnection.url
         m.guideUrl = selectedConnection.epgUrl
         m.remember = selectedConnection.remember
-        if m.remember then m.apiKey = storedConnectionKey(m.registry, selectedConnection)
+        if m.remember and launchRestoreReady then m.apiKey = storedConnectionKey(m.registry, selectedConnection)
         m.global.authHeaderMode = selectedConnection.authMode
         m.global.httpUserAgent = dispatcharrUserAgent(selectedConnection.userAgent)
         m.global.httpReferer = textValue(selectedConnection.referer)
@@ -800,22 +801,9 @@ sub completeConnection(result as dynamic)
     m.accountIdentity = connectionPreferenceIdentity(connection, result.accountId)
     recordDiagnostic("connect", 0, "Authorized lineup ready", m.connectionElapsed.totalMilliseconds())
     m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
-    legacy = invalid
-    legacyJson = m.registry.read("preferences")
-    if legacyJson <> "" then legacy = ParseJson(legacyJson)
-    if connection.id = "legacy"
-        oldIdentity = m.baseUrl + "|" + result.accountId
-        priorKey = preferenceScope(oldIdentity)
-        newKey = preferenceScope(m.accountIdentity)
-        if m.preferenceStore.accounts.doesExist(priorKey) and not m.preferenceStore.accounts.doesExist(newKey)
-            m.preferenceStore.accounts[newKey] = m.preferenceStore.accounts[priorKey]
-            m.preferenceStore.accounts.delete(priorKey)
-        end if
-        if legacy <> invalid and legacyConnectionPreferencesMatch(m.registry, m.baseUrl, result.accountId) and not m.preferenceStore.accounts.doesExist(newKey)
-            m.preferenceStore.accounts[newKey] = normalizeAccountPreferences(legacy)
-        end if
-    end if
-    prefs = accountPreferences(m.preferenceStore, m.accountIdentity, m.registry.read("accountIdentity"), legacy)
+    ' ensureConnectedUserProfile already reconciled the proven legacy owner in
+    ' the roster transaction. Never import unscoped bytes during rendering.
+    prefs = accountPreferences(m.preferenceStore, m.accountIdentity)
     m.accountPreferences = prefs
     if not connectionHasProfileSelection(connection) then m.accountPreferences = reconcileWatchHistory(prefs, result.channels)
     m.accountPreferences = takePhoneSetupPreferences(m.accountPreferences, connection)
