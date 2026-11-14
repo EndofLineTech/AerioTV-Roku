@@ -32,28 +32,29 @@ def startup_probe_timer(source):
     return source.replace('sub init()', 'sub init()\n' + timer, 1)
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None):
+    recording_probe = bool(manual_recording or switch_recording)
     if manual_refresh:
         assignment_refresh = True
     if child_rejected:
         child_available = child_rejected
     if child_retry:
         child_available = child_retry
-    if assignment_refresh or child_escape or child_launch or child_available or favorite_retention:
+    if assignment_refresh or child_escape or child_launch or child_available or favorite_retention or switch_recording:
         cold_restore = 'remembered'
     if child_available:
         default_filter = True
     with zipfile.ZipFile(normal) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
-            if manual_recording and name == 'components/DvrSettlementNavigation.brs':
+            if recording_probe and name == 'components/DvrSettlementNavigation.brs':
                 target = b'    showNotice(message)\n'
                 assert body.count(target) == 1
-                body = body.replace(target, b'    m.manualRecordingSettled = message = "Server recording scheduled. Open DVR to confirm its status."\n    print "[profile-management] "; FormatJson({kind: "record-settled", confirmed: m.manualRecordingSettled, operation_only: true, retired: currentUserSessionId() <> m.manualOldSession})\n' + target, 1)
-            if manual_recording and name == 'components/DvrNavigation.brs':
+                body = body.replace(target, b'    m.probeRecordConfirmed = message = "Server recording scheduled. Open DVR to confirm its status."\n    m.manualRecordingSettled = m.probeRecordConfirmed\n    print "[profile-management] "; FormatJson({kind: "record-settled", confirmed: m.probeRecordConfirmed, operation_only: true, retired: currentUserSessionId() <> m.probeRecordOldSession})\n' + target, 1)
+            if recording_probe and name == 'components/DvrNavigation.brs':
                 target = b'    result = event.getData()\n'
                 assert body.count(target) == 1
-                body = body.replace(target, target + b'    m.manualRecordingSettled = result.ok = true\n    print "[profile-management] "; FormatJson({kind: "record-settled", confirmed: m.manualRecordingSettled, operation_only: false, retired: currentUserSessionId() <> m.manualOldSession})\n', 1)
+                body = body.replace(target, target + b'    m.probeRecordConfirmed = result.ok = true\n    m.manualRecordingSettled = m.probeRecordConfirmed\n    print "[profile-management] "; FormatJson({kind: "record-settled", confirmed: m.probeRecordConfirmed, operation_only: false, retired: currentUserSessionId() <> m.probeRecordOldSession})\n', 1)
             if name == 'manifest':
                 body = body.replace(b'title=AerioTV\n', b'title=Aerio Profile Management Probe\n')
                 if directions:
@@ -493,12 +494,22 @@ end sub
                     for variant in ['identity', 'unchanged', 'transient']:
                         fixture = fixture.replace('MANUAL_' + variant.upper(), 'true' if manual_mode == variant else 'false')
                     source = source.split('sub onManagementProbeTick()', 1)[0] + fixture
-                if favorite_retention:
-                    for account, favorites in [(7, '["7"]'), (8, '["99", "8"]')]:
+                if favorite_retention or switch_recording:
+                    for account, favorites in [(7, '["7"]'), (8, '["99", "8"]' if favorite_retention else '["8"]')]:
                         target = f'coldSettings.accounts[preferenceScope(connectionPreferenceIdentity(entry, "{account}"))] = {{favoriteIds: ["00000000-0000-4000-8000-{account:012d}"]'
                         assert source.count(target) == 1
                         source = source.replace(target, f'coldSettings.accounts[preferenceScope(connectionPreferenceIdentity(entry, "{account}"))] = {{favoriteIds: {favorites}', 1)
-                    source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native/ProfileFavoriteRetentionFixture.brs').read_text()
+                    fixture_name = 'ProfileFavoriteRetentionFixture.brs' if favorite_retention else 'ProfileSwitchRecordingFixture.brs'
+                    fixture = (ROOT / 'tests/native' / fixture_name).read_text().replace('SWITCH_RECORD_PIN', 'true' if switch_recording == 'pin-cancel' else 'false').replace('SWITCH_RECORD_CANCEL', 'true' if switch_recording == 'cancel' else 'false')
+                    source = source.split('sub onManagementProbeTick()', 1)[0] + fixture
+                    if switch_recording == 'pin-cancel':
+                        target = '    m.registry.write("userProfilesV1_slot-a", FormatJson('
+                        assert source.count(target) == 1
+                        source = source.replace(target, '''    defaultHolder = setCanonicalPreference(defaultHolder, "pinType", "numbers")
+    defaultHolder = setCanonicalPreference(defaultHolder, "pinSalt", string(32, "b"))
+    defaultHolder = setCanonicalPreference(defaultHolder, "pinHash", userProfilePinHash(defaultHolder.pinSalt, "1234"))
+    defaultHolder = setCanonicalPreference(defaultHolder, "pinLength", 4)
+''' + target, 1)
                 if child_escape:
                     source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native/ProfileChildEscapeFixture.brs').read_text()
                 if child_launch:
@@ -576,12 +587,15 @@ def main():
     parser.add_argument('--manual-recording', action='store_true', help='Private manual-refresh variant: settle one real delayed synthetic recording POST across authority retirement')
     parser.add_argument('--manual-mode', choices=['changed', 'unchanged', 'identity', 'transient'], default='changed', help='Private manual refresh authority/control outcome')
     parser.add_argument('--favorite-retention', action='store_true', help='Private numeric-ID Guide edit/refresh/explicit favorite toggle, including unavailable favorites and other-holder isolation')
+    parser.add_argument('--switch-recording', choices=['commit', 'cancel', 'pin-cancel'], help='Private submitted recording across actual switch/return, delayed-auth Back or target-PIN Back')
     parser.add_argument('--child-escape', action='store_true', help='Qualify held Child adult admission, target PIN cancellation, rejected key, delayed Back and own target activation')
     parser.add_argument('--child-launch', action='store_true', help='Cold protected held Child: own launch PIN, unavailable surface, then separate adult-purpose admission with zero provider requests')
     parser.add_argument('--child-available', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private readiness seam: qualify own Child auth/roster/lineup without enabling shipping Child activation')
     parser.add_argument('--child-retry', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private Child transient failure, own Retry and Back during delayed authentication, followed by own retry')
     parser.add_argument('--child-rejected', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private actual Child rejection: exact cut prompt, permitted own form/dismissal, no stale replay, adult management and real Back exit')
     args = parser.parse_args()
+    if args.switch_recording and any([args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.reconnect, args.cold_restore, args.child_settings, args.directions, args.default_filter, args.assignment_refresh, args.manual_refresh, args.manual_recording, args.favorite_retention, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected]):
+        parser.error('--switch-recording is a separate case')
     if args.favorite_retention and any([args.switch, args.cold_restore, args.child_settings, args.directions, args.default_filter, args.assignment_refresh, args.manual_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected]):
         parser.error('--favorite-retention is a separate case')
     if args.manual_recording and not args.manual_refresh:
@@ -637,6 +651,7 @@ def main():
 
     hits = []
     fixture_state = {'changed': False}
+    recording_probe = bool(args.manual_recording or args.switch_recording)
 
     class Fixture(BaseHTTPRequestHandler):
         def log_message(self, *_args):
@@ -646,7 +661,7 @@ def main():
             body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', '0'))))
             user = 8 if self.headers.get('X-API-Key') == 'synthetic-b' else 7
             hits.append({'user': user, 'path': self.path, 'method': 'POST', 'rejected': False, 'delayed': True})
-            if not args.manual_recording or self.path != '/api/channels/recordings/':
+            if not recording_probe or self.path != '/api/channels/recordings/':
                 self.send_error(404)
                 return
             time.sleep(12)
@@ -672,6 +687,9 @@ def main():
             hits.append({'user': user, 'path': self.path, 'rejected': rejected, 'delayed': key in ['delayed-b', 'delayed-a']})
             if key in ['delayed-b', 'delayed-a'] and self.path == '/api/accounts/users/me/':
                 time.sleep(4)
+            if args.switch_recording == 'cancel' and key == 'synthetic-a' and self.path == '/api/accounts/users/me/':
+                fixture_state['switch_auth_delayed'] = True
+                time.sleep(4)
             failure = False
             if args.manual_refresh and args.manual_mode == 'transient' and fixture_state['changed'] and self.path == '/api/accounts/users/me/':
                 failure = True
@@ -694,6 +712,8 @@ def main():
                     if args.manual_refresh and args.manual_mode == 'identity' and changed:
                         value['id'] = 80
                         value['username'] = 'DifferentUser'
+                if recording_probe and user == 8:
+                    value.setdefault('custom_properties', {})['dvr_access'] = 'manage'
             if self.path == '/api/accounts/users/me/app-data/':
                 value = {'apps': []}
                 if args.child_available:
@@ -727,7 +747,7 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode, args.favorite_retention)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode, args.favorite_retention, args.switch_recording)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -812,6 +832,20 @@ def main():
         if args.favorite_retention:
             report['requests'] = hits
             report['passed'] = result.returncode == 0 and rows[-1].get('passed') and bool(hits) and all(hit['user'] == 8 and hit.get('method', 'GET') == 'GET' for hit in hits) and any(row.get('kind') == 'favorite-edit' and row.get('retained') for row in rows) and any(row.get('kind') == 'favorite-returned' and row.get('passed') for row in rows)
+        if args.switch_recording:
+            report['requests'] = hits
+            report['recording_replied'] = fixture_state.get('recording_replied')
+            posts = [hit for hit in hits if hit.get('method') == 'POST']
+            settled = [row for row in rows if row.get('kind') == 'record-settled']
+            report['passed'] = result.returncode == 0 and rows[-1].get('passed') and len(posts) == 1 and posts[0]['user'] == 8 and fixture_state.get('recording_replied') is True and len(settled) == 1 and all(settled[0].get(key) is True for key in ['confirmed', 'operation_only', 'retired']) and all(hit['user'] in [7, 8] for hit in hits)
+            if args.switch_recording == 'commit':
+                report['passed'] = report['passed'] and rows[-1].get('other_visited') is True and any(row.get('kind') == 'record-withheld' and row.get('passed') for row in rows)
+            else:
+                report['passed'] = report['passed'] and report.get('back_count') == 1 and rows[-1].get('other_visited') is False
+                if args.switch_recording == 'cancel':
+                    report['passed'] = report['passed'] and fixture_state.get('switch_auth_delayed') is True
+                else:
+                    report['passed'] = report['passed'] and all(hit['user'] == 8 for hit in hits) and any(row.get('kind') == 'record-covered' and row.get('passed') for row in rows)
         if args.child_escape:
             rejected = [hit for hit in hits if hit['rejected']]
             delayed = [hit for hit in hits if hit['delayed']]
@@ -859,6 +893,8 @@ def main():
             name = 'profile-management-directions-native.json' if args.directions else 'profile-management-native.json'
             if args.favorite_retention:
                 name = 'profile-favorite-retention-native.json'
+            if args.switch_recording:
+                name = f'profile-switch-recording-{args.switch_recording}-native.json'
             if args.cold_restore:
                 name = f'profile-cold-{args.cold_restore}-native.json'
             if args.switch:

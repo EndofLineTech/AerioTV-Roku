@@ -65,7 +65,7 @@ function beginUserProfileSwitch(targetId as string, unavailableChild = false as 
     if not credential.ok then return false
     if not requestGateAccessAllowed(connection.url, credential.key) then return false
     nonce = CreateObject("roDeviceInfo").getRandomUUID()
-    m.profileSwitchContext = {nonce: nonce, unavailableChild: unavailableChild, connection: connection, store: store, target: target, key: credential.key, outgoing: m.activeUserScope, unlock: m.profileUnlockGrant, management: m.profileManagementGrant, managementNonce: textValue(m.profileManagementNonce)}
+    m.profileSwitchContext = {nonce: nonce, unavailableChild: unavailableChild, connection: connection, connectionRoot: m.registry.read("connectionsV1"), connectionRootPresent: m.registry.exists("connectionsV1"), store: store, target: target, key: credential.key, outgoing: m.activeUserScope, unlock: m.profileUnlockGrant, management: m.profileManagementGrant, managementNonce: textValue(m.profileManagementNonce)}
     if target.pinType <> "none"
         if beginProfilePinGate(target, "switch", nonce) then return true
         m.profileSwitchContext = invalid
@@ -96,7 +96,10 @@ sub startUserProfileSwitchTask(nonce as string)
     if context.connection.id <> m.selectedConnectionId then return
     connections = loadConnectionStore(m.registry)
     currentEntry = connectionStoreEntry(connections, context.connection.id)
-    if connections.readOnly = true or connections.selected <> context.connection.id or currentEntry = invalid then return
+    if connections.readOnly = true or connections.selected <> context.connection.id or currentEntry = invalid
+        rollbackUserProfileSwitch("Saved connections changed. Please verify access again.")
+        return
+    end if
     currentStore = loadUserProfileStore(m.registry, context.connection.id)
     admin = userProfileLoadDeviceAdminPin(m.registry, context.connection.id)
     if FormatJson(currentEntry) <> FormatJson(normalizeConnectionEntry(context.connection)) or FormatJson(currentStore) <> FormatJson(context.store) or not admin.ok
@@ -116,6 +119,10 @@ sub startUserProfileSwitchTask(nonce as string)
             return
         end if
     end if
+    ' Keep a submitted operation observable, but close unsent inputs before
+    ' retiring the outgoing authorization nonce or adopting another holder.
+    preserveSubmittedRecording()
+    cancelRecordFlow()
     if m.playingChannel <> invalid then stopPlayback()
     resetMediaNavigation()
     cancelCapabilityRefresh()
@@ -134,7 +141,9 @@ sub startUserProfileSwitchTask(nonce as string)
     m.global.profileswitchpending = true
     m.global.profilegateclosed = false
     requestGateFenceRenderers(m.top)
-    task = CreateObject("roSGNode", "DispatcharrTask")
+    task = invalid
+    if m.profileSwitchTaskFactory <> invalid then task = m.profileSwitchTaskFactory()
+    if task = invalid then task = CreateObject("roSGNode", "DispatcharrTask")
     tagTaskForCurrentUser(task)
     task.baseUrl = context.connection.url
     task.apiKey = context.key
@@ -224,10 +233,16 @@ end sub
 sub rollbackUserProfileSwitch(message as string)
     context = m.profileSwitchContext
     if context = invalid then return
+    if context.connection.id <> m.selectedConnectionId then return
+    if type(context.outgoing) = "roAssociativeArray" and type(m.activeUserScope) = "roAssociativeArray"
+        if not userProfileSameSession(context.outgoing, m.activeUserScope) then return
+    end if
+    if type(context.outgoing) = "roAssociativeArray"
+        if userProfileSameSession(context.outgoing, m.activeUserScope) then preserveSubmittedRecording()
+    end if
     closeUserProfileSwitchTask()
     m.profileSwitchContext = invalid
     m.global.profileswitchpending = false
-    if context.connection.id <> m.selectedConnectionId then return
     if m.userProfileRecoveryRequired = true
         m.activeUserScope = invalid
         m.global.activeusersession = ""
@@ -247,6 +262,20 @@ sub rollbackUserProfileSwitch(message as string)
         m.busy = false
         m.profileUnlockGrant = context.unlock
         showUnavailableChildProfile()
+        return
+    end if
+    if not profileSwitchOutgoingProtectionCurrent(context)
+        if m.playingChannel <> invalid then stopPlayback()
+        m.activeUserScope = invalid
+        m.global.activeusersession = ""
+        m.global.profilegateclosed = true
+        m.profileGateCover.visible = true
+        m.guide.active = false
+        m.profileUnlockGrant = invalid
+        m.busy = false
+        m.userProfileRecoveryRequired = true
+        m.top.findNode("profileGateMessage").text = "Profile access changed. Saved data was retained. Back exits AerioTV; reopen to verify access."
+        requestGateFenceRenderers(m.top)
         return
     end if
     restored = userProfileSessionScope(context.connection, context.outgoing.profileId, context.outgoing.accountId, context.outgoing.authorizationGeneration, CreateObject("roDeviceInfo").getRandomUUID())
@@ -269,6 +298,43 @@ sub rollbackUserProfileSwitch(message as string)
     m.reminderClock.control = "start"
     showNotice(message)
 end sub
+
+' Rollback is a fresh admission, not permission to revive a captured PIN/role.
+' Re-read storage, including the current address and only the outgoing key.
+function profileSwitchOutgoingProtectionCurrent(context as object) as boolean
+    if not userProfileSameSession(context.outgoing, m.activeUserScope) then return false
+    if type(context.store) <> "roAssociativeArray" then return false
+    if GetInterface(context.connectionRoot, "ifString") = invalid then return false
+    if context.connectionRoot <> m.registry.read("connectionsV1") or context.connectionRootPresent <> m.registry.exists("connectionsV1") then return false
+    connections = loadConnectionStore(m.registry)
+    if connections.readOnly = true or connections.selected <> context.connection.id then return false
+    entry = connectionStoreEntry(connections, context.connection.id)
+    if entry = invalid then return false
+    if FormatJson(entry) <> FormatJson(normalizeConnectionEntry(context.connection)) then return false
+    store = loadUserProfileStore(m.registry, entry.id)
+    if store.readOnly = true or FormatJson(store) <> FormatJson(context.store) then return false
+    if store.active <> context.outgoing.profileId then return false
+    if context.outgoing.preferenceIdentity <> connectionPreferenceIdentity(entry, context.outgoing.accountId) then return false
+    if m.accountIdentity <> context.outgoing.preferenceIdentity or m.serverAccountId <> context.outgoing.accountId or textValue(m.apiKey) = "" then return false
+    if m.global.activeusersession <> context.nonce and m.global.activeusersession <> context.outgoing.sessionId then return false
+    holder = invalid
+    for each profile in store.profiles
+        if profile.id = store.active then holder = profile
+    end for
+    if holder = invalid then return false
+    if holder.addressHeld or textValue(holder.userId) <> context.outgoing.accountId then return false
+    keyName = userProfileKeyName(entry.id, holder.id)
+    if holder.isDefault then keyName = connectionRegistryKey(entry.id)
+    key = ""
+    if entry.remember
+        key = m.registry.read(keyName)
+    else if type(m.profileSessionKeys) = "roAssociativeArray"
+        memoryScope = preferenceScope(entry.url + "|" + entry.id + "|" + holder.id)
+        if m.profileSessionKeys.doesExist(memoryScope) then key = textValue(m.profileSessionKeys[memoryScope])
+    end if
+    if key = "" or key <> m.apiKey then return false
+    return requestGateAccessAllowed(entry.url, key)
+end function
 
 sub retireUserProfileSwitch()
     closeUserProfileSwitchTask()

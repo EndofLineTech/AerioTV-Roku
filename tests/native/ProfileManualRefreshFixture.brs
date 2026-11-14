@@ -29,6 +29,7 @@ sub onManagementProbeTick()
             if m.recordTask.scheduleSubmitted <> true then return
         end if
         m.manualOldSession = currentUserSessionId()
+        m.probeRecordOldSession = m.manualOldSession
         m.manualProfile = m.activeUserScope.profileId
         m.manualRoster = m.registry.read(userProfileStoreKey("slot-a"))
         m.manualSettings = m.registry.read("settingsV1")

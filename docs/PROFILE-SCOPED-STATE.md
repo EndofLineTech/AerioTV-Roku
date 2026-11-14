@@ -419,6 +419,28 @@ behind content/PIN gates or from another holder. The existing Scene tick bounds
 lost-result observation to 35 seconds. Periodic authority changes and own-login
 revocation also preserve submitted record observation before retirement.
 
+The internal switch controller also hands off submitted recordings before its
+incoming nonce retires outgoing callbacks, and before rollback creates a fresh
+outgoing session. This includes an already-terminal result withheld while the
+target PIN covered content, plus rollback after an outgoing settings-save
+failure. Unsent forms close only after switch admission succeeds. Host tests
+exercise the real admission/rollback controller and operation notice isolation;
+native switch/recording qualification remains pending while the authorized Roku
+is unreachable. This does not expose a public picker or loosen any PIN/role gate.
+
+Rollback now re-reads the selected connection/current address and saved roster
+before rebuilding the outgoing scope. It requires the captured outgoing session,
+identity and unchanged protection, plus the same current own key (persisted when
+Remember is on, or slot/address/profile-bound memory when it is off), with broker
+access still allowed. Missing, replaced or held credentials never borrow the
+default's key or revive a stale memory fallback. Changed/unreadable protection
+stays covered, retires the authenticated scope and unlock grant, and retains
+saved data and submitted operation receipt. A successor slot/session is left
+alone. This conservative refusal requires reopening for current own admission;
+it does not reset or rewrite protection to make rollback succeed. Host tests
+cover changed role, PIN, identity, address, key and Remember-off leases. Native
+qualification remains pending, separate from the passing host contracts.
+
 Private native cases qualify changed assignments/VOD revocation, foreign own
 identity, unchanged authority and transient failures. Two cases delay a real
 synthetic recording POST by twelve seconds: changed authority confirms once via

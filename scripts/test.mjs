@@ -66,6 +66,8 @@ suites.unshift('ProfileRefreshNavigation', 'DvrSettlementNavigation', 'Submitted
 suites.unshift('LineupHistoryReconciliation');
 suites.unshift('GuideRefreshPreferences');
 suites.unshift('GuideFavoriteRetention');
+suites.unshift('ProfileSwitchRecordingSettlement');
+suites.unshift('ProfileSwitchRollbackProtection');
 suites.unshift('ProfileChildUnavailableNavigation');
 suites.unshift('ProfileChildRejectedNavigation');
 suites.unshift('UserProfileAddressPolicy');
@@ -116,7 +118,7 @@ for (const suite of suites) {
     'source/ReminderModel.brs',
     ...(['TmdbTask', 'VodShelfTask', 'VodSeriesTask', 'XtreamTask', 'XtreamVodTask', 'ConnectionAuthTask'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
     'source/HttpPolicy.brs',
-    'source/RequestGateModel.brs', ...(suite === 'ProfileSetupCredentialNavigation' ? [] : ['source/RequestGateClient.brs']), 'source/RequestGateRenderer.brs',
+    'source/RequestGateModel.brs', ...(['ProfileSetupCredentialNavigation', 'ProfileSwitchRollbackProtection'].includes(suite) ? [] : ['source/RequestGateClient.brs']), ...(suite === 'ProfileSwitchRollbackProtection' ? [] : ['source/RequestGateRenderer.brs']),
     ...(['ProfileSetupCredentialNavigation', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['components/ProfileSetupCredentialNavigation.brs'] : []),
     ...(['ProfileRefreshNavigation', 'PlayerLifecycle'].includes(suite) ? ['components/ProfileRefreshNavigation.brs'] : []),
     ...(suite === 'GuideRefreshPreferences' ? ['components/GuideSettings.brs'] : []),
@@ -154,7 +156,9 @@ for (const suite of suites) {
     ...(suite === 'UserProfileSwitch' ? ['source/UserProfileSwitch.brs', 'source/UserProfileAddressPolicy.brs', 'source/UserProfileScope.brs', 'source/StrictJson.brs'] : []),
     ...(['UserProfileChildAccess', 'UserProfileChildRejectedPrompt'].includes(suite) ? ['source/UserProfileChildAccess.brs', 'source/UserProfileStore.brs', 'source/UserProfileModel.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'UserProfileChildActivation' ? ['source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
-    ...(suite === 'ProfileSwitchNavigation' ? ['components/ProfileSwitchNavigation.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(suite === 'ProfileSwitchNavigation' ? ['components/ProfileSwitchNavigation.brs', 'components/DvrSettlementNavigation.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(suite === 'ProfileSwitchRollbackProtection' ? ['components/ProfileSwitchNavigation.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(suite === 'ProfileSwitchRecordingSettlement' ? ['components/ProfileSwitchNavigation.brs', 'components/DvrSettlementNavigation.brs', 'components/DvrNavigation.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'SettingsChildModel' ? ['source/SettingsModel.brs'] : []),
     ...(suite === 'SettingsChildNavigation' ? ['source/SettingsModel.brs', 'components/SettingsNavigation.brs'] : []),
     ...(['ProfileAdultPinNavigation', 'ProfileManagementNavigation'].includes(suite) ? ['components/ProfileAdultPinNavigation.brs'] : []),

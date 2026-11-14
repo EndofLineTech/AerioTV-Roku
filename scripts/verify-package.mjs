@@ -12,6 +12,7 @@ export function assertPackageEntries(entries) {
   if (entries.some(entry => /(^|\/)LineupHistoryReconciliationProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic lineup history probe');
   if (entries.some(entry => /(^|\/)ProfileFavoriteRetentionFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic favorite retention probe');
   if (entries.some(entry => /(^|\/)GuideFavoriteRetentionProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic favorite selection probe');
+  if (entries.some(entry => /(^|\/)ProfileSwitchRecordingFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic switch recording probe');
   if (!entries.includes('manifest')) throw new Error('Package must contain manifest at its root');
   for (const required of ['images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt']) {
     if (!entries.includes(required)) throw new Error(`Package is missing ${required}`);

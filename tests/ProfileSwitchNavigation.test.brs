@@ -23,9 +23,21 @@ sub showUnavailableChildProfile()
 end sub
 
 sub switchRollbackFixture()
-    connection = {id: "slot-a", provider: "dispatcharr", url: "https://example.test"}
+    connection = normalizeConnectionEntry({id: "slot-a", provider: "dispatcharr", name: "Fixture", url: "https://example.test", remember: true})
     outgoing = userProfileSessionScope(connection, "00000000-0000-4000-8000-000000000001", 7, "old-generation", "00000000-0000-4000-8000-000000000090")
-    m.profileSwitchContext = {connection: connection, outgoing: outgoing}
+    store = defaultUserProfileStore(connection.id)
+    store.profiles = [userProfileFromVerified(connection.id, outgoing.profileId, {id: 7, username: "Alice", user_level: 1}, 1)]
+    store.active = outgoing.profileId
+    m.registry = {values: {}, read: function(key as string) as string
+        if not m.values.doesExist(key) then return ""
+        return m.values[key]
+    end function, exists: function(key as string) as boolean
+        return m.values.doesExist(key)
+    end function}
+    m.registry.values["connectionsV1"] = FormatJson({schema: 1, selected: connection.id, entries: [connection]})
+    m.registry.values[userProfileStoreKey(connection.id)] = FormatJson(store)
+    m.registry.values["connKey_slot-a"] = "synthetic-a"
+    m.profileSwitchContext = {nonce: "staging-session", connection: connection, connectionRoot: m.registry.read("connectionsV1"), connectionRootPresent: true, store: loadUserProfileStore(m.registry, connection.id), outgoing: outgoing}
     m.selectedConnectionId = "slot-a"
     m.global = {profilegateclosed: false, profileswitchpending: true, activeusersession: "staging-session"}
     m.profileGateCover = {visible: true}
@@ -36,6 +48,9 @@ sub switchRollbackFixture()
         return m.label
     end function}
     m.activeUserScope = outgoing
+    m.accountIdentity = outgoing.preferenceIdentity
+    m.serverAccountId = "7"
+    m.apiKey = "synthetic-a"
     m.userProfileRecoveryRequired = false
 end sub
 

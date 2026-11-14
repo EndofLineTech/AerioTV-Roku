@@ -56,6 +56,7 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'LineupHistoryReconciliationProbeChecks')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileFavoriteRetentionFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'GuideFavoriteRetentionProbeChecks')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileSwitchRecordingFixture')], check=True)
 
     def test_address_handler_probe_is_private_and_cannot_ship(self):
         spec = importlib.util.spec_from_file_location('address_probe', Path(__file__).with_name('test-profile-address-native.py'))
@@ -303,6 +304,17 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertNotIn('"AerioTV"', source)
                 self.assertIn('profileFavoriteProbe', package.read('components/GuideView.xml').decode())
                 self.assertIn('profileFavoriteProbe', package.read('components/GuideView.brs').decode())
+            for mode in ['commit', 'cancel', 'pin-cancel']:
+                probe.build(output, normal, 'SyntheticSwitchRecordingSection', 'http://127.0.0.1:1234', switch_recording=mode)
+                with zipfile.ZipFile(output) as package:
+                    source = package.read('components/AerioScene.brs').decode()
+                    self.assertIn('m.probeSwitchRecordNode', source)
+                    self.assertIn('favoriteIds: ["8"]', source)
+                    self.assertNotIn('SWITCH_RECORD_', source)
+                    self.assertNotIn('"AerioTV"', source)
+                    self.assertIn('m.probeRecordConfirmed', package.read('components/DvrSettlementNavigation.brs').decode())
+                    if mode == 'pin-cancel':
+                        self.assertIn('userProfilePinHash(defaultHolder.pinSalt, "1234")', source)
             probe.build(output, normal, 'SyntheticChildEscapeSection', 'http://127.0.0.1:1234', child_escape=True)
             with zipfile.ZipFile(output) as package:
                 source = package.read('components/AerioScene.brs').decode()
