@@ -522,6 +522,13 @@ It checks target settings/keys/session/Guide ownership, covered outgoing teardow
 ordering, late-read refusal and exact storage restoration on final Flush failure.
 Native nodes, PIN digest verification and runtime resource teardown remain test
 seams; this is not native cryptography, playback or peer interoperability evidence.
+The private normal-app builder also has an offline-tested
+`--switch --switch-roster --switch-import-pin` case: the target begins without a
+local PIN and its own canonical App Data supplies a synthetic raw-salt v2 numeric
+record. The generated probe checks persistence under the outgoing holder, rejects
+an obsolete value, then submits the imported value before target lineup/adoption.
+This case has only been generated and syntax-checked, not executed on the Roku;
+its fixed synthetic salt is not a production entropy source.
 
 The earlier manual-refresh native cases (not this new switch/roster pipeline)
 qualify changed assignments/VOD revocation, foreign own
