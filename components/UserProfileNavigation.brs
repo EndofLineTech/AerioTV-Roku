@@ -32,6 +32,76 @@ function prepareUserProfileLaunchRestore(entry as dynamic) as boolean
     return true
 end function
 
+' Every connect/lineup refresh must use the selected user's own server lineup.
+' A slot's client-side Channel Profile choice belongs only to its default.
+function configureUserProfileConnectionTask(task as object, entry as object, bindDefault as boolean) as boolean
+    store = loadUserProfileStore(m.registry, entry.id)
+    if store.readOnly = true then return false
+    task.profileId = entry.profileId
+    task.channelProfileIds = entry.channelProfileIds
+    if store.profiles.count() = 0 then return not bindDefault
+    for each profile in store.profiles
+        if profile.id = store.active
+            if profile.addressHeld then return false
+            if not profile.isDefault
+                task.profileId = ""
+                task.channelProfileIds = []
+            end if
+            if bindDefault or not profile.isDefault
+                task.expectedUserId = profile.userId.toStr()
+                task.expectedUsername = profile.username
+            end if
+            return true
+        end if
+    end for
+    return false
+end function
+
+' A permission refresh updates only the active holder's live server authority.
+' It is not account replacement, credential recovery, or a new default proof.
+function refreshActiveUserProfileAuthority(result as object, now as integer) as boolean
+    if m.userProfileRecoveryRequired = true or now <= 0 then return false
+    scope = m.activeUserScope
+    if type(scope) <> "roAssociativeArray" then return false
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid then return false
+    if entry.provider <> "dispatcharr" or scope.playlistId <> entry.id then return false
+    if result.verifiedBaseUrl <> entry.url then return false
+    if scope.preferenceIdentity <> connectionPreferenceIdentity(entry, scope.accountId) then return false
+    before = loadUserProfileStore(m.registry, entry.id)
+    if before.readOnly = true or before.active <> scope.profileId then return false
+    candidate = copyPreferenceValue(before)
+    found = false
+    for i = 0 to candidate.profiles.count() - 1
+        profile = candidate.profiles[i]
+        if profile.id = scope.profileId
+            if profile.addressHeld or profile.userId.toStr() <> scope.accountId then return false
+            verified = userProfileFromVerified(entry.id, profile.id, result.verifiedUser, now)
+            if verified = invalid then return false
+            if verified.userId <> profile.userId or lcase(verified.username) <> lcase(profile.username) then return false
+            nextRole = userProfileResolveRole(verified.userLevel, profile.role)
+            if nextRole <> profile.role
+                if now <= profile.updatedAt then return false
+                profile = setCanonicalPreference(profile, "updatedAt", now)
+                candidate = setCanonicalPreference(candidate, "pendingRoster", true)
+            end if
+            for each field in ["userLevel", "isStaff", "isSuperuser"]
+                profile = setCanonicalPreference(profile, field, verified[field])
+            end for
+            profile = setCanonicalPreference(profile, "role", nextRole)
+            candidate.profiles[i] = profile
+            found = true
+        end if
+    end for
+    if not found then return false
+    if FormatJson(candidate) <> FormatJson(before)
+        saved = commitUserProfileStore(m.registry, before, candidate, {}, entry.remember)
+        if not saved.ok then return false
+    end if
+    m.userProfileStore = candidate
+    return true
+end function
+
 function userProfileConnectionSetupAllowed() as boolean
     if m.profileOwnSignInContext <> invalid then return false
     if m.userProfileRecoveryRequired = true then return false
@@ -53,6 +123,70 @@ function userProfileConnectionSetupAllowed() as boolean
         if profile.id = store.active then return userProfileFullAccess(profile.role)
     end for
     return false
+end function
+
+function selectedUserProfileIsChild() as boolean
+    if type(m.connectionStore) <> "roAssociativeArray" then return false
+    if type(m.connectionStore.entries) <> "roArray" then return false
+    entry = connectionStoreEntry(m.connectionStore, textValue(m.selectedConnectionId))
+    if entry = invalid or entry.provider <> "dispatcharr" then return false
+    store = loadUserProfileStore(m.registry, entry.id)
+    if store.readOnly = true then return false
+    for each profile in store.profiles
+        if profile.id = store.active then return profile.role = "child"
+    end for
+    return false
+end function
+
+function userProfileSetupFieldAllowed(field as string) as boolean
+    if not userProfileConnectionSetupAllowed() then return false
+    credentialField = field = "method" or field = "username" or field = "password" or field = "key" or field = "profile"
+    if not credentialField then return true
+    entry = connectionStoreEntry(m.connectionStore, textValue(m.selectedConnectionId))
+    if entry = invalid then return false
+    if entry.provider <> "dispatcharr" then return true
+    store = loadUserProfileStore(m.registry, entry.id)
+    if store.readOnly = true then return false
+    if store.profiles.count() = 0 then return true
+    for each profile in store.profiles
+        if profile.id = store.active then return profile.isDefault
+    end for
+    return false
+end function
+
+function captureUserProfileSetupEdit(field as string, nonce as string) as dynamic
+    if userProfileLocalId(nonce) = "" or not userProfileSetupFieldAllowed(field) then return invalid
+    slot = textValue(m.selectedConnectionId)
+    entry = connectionStoreEntry(m.connectionStore, slot)
+    connection = ""
+    roster = ""
+    if entry <> invalid
+        ' Capture the same normalized representation used by the registry
+        ' loader; native in-memory patch aliases need not serialize identically.
+        connection = FormatJson(normalizeConnectionEntry(entry))
+        if entry.provider = "dispatcharr" then roster = m.registry.read(userProfileStoreKey(entry.id))
+    end if
+    session = ""
+    if m.global <> invalid then session = textValue(m.global.activeusersession)
+    return {nonce: nonce, field: field, slot: slot, connection: connection, roster: roster, session: session}
+end function
+
+function userProfileSetupEditCurrent(context as dynamic) as boolean
+    if type(context) <> "roAssociativeArray" then return false
+    if context.nonce <> m.setupEditNonce or context.slot <> textValue(m.selectedConnectionId) then return false
+    if not userProfileSetupFieldAllowed(context.field) then return false
+    session = ""
+    if m.global <> invalid then session = textValue(m.global.activeusersession)
+    if context.session <> session then return false
+    connections = loadConnectionStore(m.registry)
+    if connections.readOnly = true then return false
+    entry = connectionStoreEntry(connections, context.slot)
+    if entry = invalid then return context.connection = "" and connections.entries.count() = 0
+    if FormatJson(entry) <> context.connection then return false
+    if entry.provider = "dispatcharr"
+        if m.registry.read(userProfileStoreKey(entry.id)) <> context.roster then return false
+    end if
+    return true
 end function
 
 function selectedUserProfileGate() as object

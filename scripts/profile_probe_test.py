@@ -85,7 +85,15 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertIn('expectedUserId = "7"', source)
                 self.assertNotIn('OWN_PROBE_PIN_HASH', source)
                 self.assertIn('"cancel-ready"', source)
-        script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; for (const entry of ['profile-own-signin-probe.json','source/ProfileOwnSignInFixture.brs','source/ProfileOwnSignInFormFixture.brs','source/ProfileDefaultOwnSignInFormFixture.brs']) assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt',entry]), /probe/);"
+            probe.build(output, normal, 'SyntheticActiveOwnSection', 'http://127.0.0.1:1234', form=True, active_form=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('"AerioTV"', source)
+                self.assertNotIn('OWN_PROBE_PIN_HASH', source)
+                self.assertIn('onActiveUserProfileRecoveryChoice', source)
+                self.assertIn('"revoke-new-ready"', source)
+                self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
+        script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; for (const entry of ['profile-own-signin-probe.json','source/ProfileOwnSignInFixture.brs','source/ProfileOwnSignInFormFixture.brs','source/ProfileDefaultOwnSignInFormFixture.brs','source/ProfileActiveOwnSignInFixture.brs','source/ProfileColdRestoreFixture.brs','source/ProfileAssignmentRefreshFixture.brs']) assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt',entry]), /probe/);"
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)
 
     def test_management_application_probe_is_private_and_cannot_ship(self):
@@ -122,6 +130,13 @@ class ProfileProbeTest(unittest.TestCase):
                     self.assertIn('expected = "8"' if mode == 'remembered' else 'expected = "7"', source)
                     self.assertNotIn('beginUserProfileSwitch(', source)
                     self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
+            probe.build(output, normal, 'SyntheticAssignmentSection', 'http://127.0.0.1:1234', assignment_refresh=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('"AerioTV"', source)
+                self.assertIn('"assignment-ready"', source)
+                self.assertIn('refreshCapabilities()', source)
+                self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
         script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt','profile-management-probe.json']), /probe/);"
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)
 

@@ -80,7 +80,7 @@ sub applyVerifiedHeaderMode(mode as string)
 end sub
 
 sub openPermittedProfiles()
-    if not userProfileConnectionSetupAllowed() then return
+    if not userProfileSetupFieldAllowed("profile") then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid or entry.provider <> "dispatcharr" then return
     gate = selectedUserProfileGate()
@@ -131,6 +131,7 @@ sub finishPermittedProfiles(result as dynamic)
     m.profileClock.control = "stop"
     m.profileTask.unobserveField("result")
     m.profileTask = invalid
+    if not userProfileSetupFieldAllowed("profile") then return
     if m.page <> "setup" or m.profileSlotId <> m.selectedConnectionId then return
     m.profileSlotId = ""
     if type(result) <> "roAssociativeArray"
@@ -155,6 +156,7 @@ sub finishPermittedProfiles(result as dynamic)
 end sub
 
 sub selectPermittedProfile(choice as object)
+    if not userProfileSetupFieldAllowed("profile") then return
     if not userProfileConnectionSetupAllowed() then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid or entry.provider <> "dispatcharr" then return
@@ -404,6 +406,8 @@ sub changeProfiledConnectionUrl(entry as object, profiles as object, base as str
 end sub
 
 sub resetConnectionRuntime()
+    m.setupEditContext = invalid
+    m.setupEditNonce = ""
     retireUserProfileOwnSignIn()
     retireProfileRequestBinding()
     retireUserProfileSwitch()
@@ -486,6 +490,7 @@ sub requireConnectionRelogin(message as string)
             profileStore = loadUserProfileStore(m.registry, entry.id)
             revoked = revokeUserProfileCredential(m.registry, entry, profileStore)
             removed = revoked.ok
+            if revoked.recoveryRequired = true then m.userProfileRecoveryRequired = true
             defaultHolder = revoked.isDefault
             if type(m.profileSessionKeys) = "roAssociativeArray" and revoked.profileId <> ""
                 m.profileSessionKeys.delete(preferenceScope(entry.url + "|" + entry.id + "|" + revoked.profileId))
@@ -503,6 +508,7 @@ sub requireConnectionRelogin(message as string)
         m.global.profilegateclosed = true
         m.profileGateCover.visible = true
         m.top.findNode("profileGateMessage").text = "Could not reach your Dispatcharr server. This profile needs its own sign-in. Back exits AerioTV."
+        showActiveUserProfileRecoveryPrompt()
         return
     end if
     applySelectedConnection()

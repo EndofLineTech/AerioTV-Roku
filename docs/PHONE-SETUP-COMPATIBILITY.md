@@ -3,6 +3,16 @@
 Research and implementation slice, 2026-10-28. Bead: `AerioTV-Roku-e3e.2`.
 This is not an enabled sign-in feature or a successful phone-to-Roku transfer.
 
+## Profile-era identity fields
+
+The validator now retains optional string `playlist.id` and `profiles[].id`
+without changing case. Validation does not use them as registry names or proof
+of an account. The import controller does **not yet** implement matched-ID
+in-place updates or full profile import; these fields alone do not enable either
+behavior. The November 12 profile specification and corrected standalone
+handoff protocol control that integration. Production entropy, protected-default,
+Child, and public profile-access gates remain in force.
+
 ## New-account direct guide handoff — 2026-11-11
 
 Owner confirmed Xtream channel logos working, then requested removal of the

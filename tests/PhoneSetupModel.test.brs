@@ -74,6 +74,9 @@ function setupFixtureEnvelope() as object
 end function
 
 sub testSetupPayload()
+    identified = {playlist: {id: "6F1C2A4E-0B7D-4E52-9C1A-2D3E4F5A6B7C", type: "dispatcharr", name: "Synthetic", url: "https://example.test", credential: {apiKey: "synthetic"}}, profiles: [{id: "0A1B2C3D-4E5F-4A6B-8C7D-9E0F1A2B3C4D", username: "alice", displayName: "Alice", isDefault: true}]}
+    parsedIds = validatePhoneSetupPayload(identified)
+    check(parsedIds.ok and parsedIds.payload.playlist.id = identified.playlist.id and parsedIds.payload.profiles[0].id = identified.profiles[0].id, "optional playlist/profile IDs survive validation without case changes or credential use")
     raw = {playlist: {type: "m3u", name: "Home", url: "http://192.168.1.10/a.m3u"}}
     result = validatePhoneSetupPayload(raw)
     check(result.ok, "minimal supplied M3U payload")

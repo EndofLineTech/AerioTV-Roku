@@ -160,3 +160,42 @@ Remembered own holders remain selected. A Child never takes this automatic
 fallback. This does not authorize active-key rejection/reconnect fallback, which
 must retain the active holder, or claim completion of Child unavailable/escape,
 public picker, or sync lifecycle work.
+
+## Own refresh and unavailable full-access recovery
+
+Connect and manual lineup-refresh Tasks now derive identity binding and Channel
+Profile filters from the persisted selected holder. Non-default Tasks clear both
+default filters and bind their own user ID and username. Default Tasks retain
+the slot's complete `channelProfileIds` choice. Capability refresh also binds the
+username; a same-ID response for another username is not accepted.
+
+Network results retain only allowlisted identity/assignment/permission facts,
+never passwords or API keys inside `verifiedUser`. A changed assignment or
+permission signature retires the old session and reconnects the same holder
+through its own authentication/roster/full-lineup path. Old UI callbacks cannot
+write into the new session, and this reload does not auto-play. Server promotion
+or demotion updates and stamps only that holder's roster row atomically; failure
+keeps the application covered instead of granting unsaved authority.
+
+An active non-default Admin/Standard whose key was refused now receives its own
+“Sign In with Remote” / “Not Now” prompt, without a playlist-edit or phone-update
+action. Its own form runs under a fresh credential-task nonce, **not** a fabricated
+authenticated user scope. The existing PIN still gates the form. A successful
+own-username login may move a recreated user's data and key, then starts a fresh
+own-user authentication/roster/reload before exposing content. Cancel, including
+Back during delayed verification, retains the unavailable holder and cover.
+The default key is never borrowed. A rejected non-default Child receives neither
+this prompt nor this form. Active-default/Child recovery and Child escape remain
+separate unfinished integration, not implicit authorization from this path.
+
+General setup now hides the default sign-in and Channel Profile rows while a
+non-default is selected. Independent field guards refuse forged method/key/
+password/username/Channel Profile callbacks; reconnect, Remember and eligible
+address edits remain available to full-access holders. A persisted Child is
+never rendered on the general setup page, including failure paths.
+
+The general native setup keyboard also captures its exact node, fresh editor
+nonce, selected connection, persisted roster, field and current session. A late
+callback cannot change credentials after A → B → A or a replaced editor. Its
+connection snapshot uses the registry loader's normalized representation:
+native in-memory patch aliases are not a valid byte-comparison baseline.

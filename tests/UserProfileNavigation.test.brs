@@ -4,6 +4,18 @@ sub main()
     end function
     runLegacyOwnerMigrationChecks()
     runColdProfileRestoreChecks()
+    runProfileTaskFilterChecks()
+    runSetupFieldPolicyChecks()
+    runAuthorityRefreshChecks()
+    authority = {id: 7, username: "Alice", user_level: 1, channel_profiles: [2, 5], custom_properties: {vod_movies_enabled: true}, api_key: "synthetic-never-copy", password: "synthetic-never-copy"}
+    safeAuthority = dispatcharrVerifiedAuthority(authority)
+    check(not safeAuthority.doesExist("api_key") and not safeAuthority.doesExist("password") and safeAuthority.channel_profiles.count() = 2, "authority snapshots copy only identity/assignment/permission facts, never credentials")
+    firstSignature = dispatcharrAuthorizationSignature(safeAuthority)
+    reordered = copyJson(authority)
+    reordered.channel_profiles = [5, 2]
+    check(firstSignature <> "" and dispatcharrAuthorizationSignature(dispatcharrVerifiedAuthority(reordered)) = firstSignature, "assignment order is not an authorization change")
+    reordered.custom_properties.vod_movies_enabled = false
+    check(dispatcharrAuthorizationSignature(dispatcharrVerifiedAuthority(reordered)) <> firstSignature, "own VOD permission revocation changes the authorization signature")
     parsedDevice = normalizeDevicePreferences(ParseJson("{}"))
     check(parsedDevice.networkTimeoutSeconds = 20 and parsedDevice.refreshSeconds = 300, "parsed empty device settings provide runtime timeout and refresh defaults")
     parsedAccount = normalizeAccountPreferences(ParseJson("{}"))
@@ -253,6 +265,93 @@ sub runColdProfileRestoreChecks()
                 check(loaded.active = own.id and FormatJson(m.registry.values) = before and m.registry.flushes = beforeFlush, "remembered own holder and unavailable Child never silently become adult default: " + variant)
             end if
             check(loaded.profiles[1].addressHeld = own.addressHeld and m.registry.read("connKey_slot-a") = "default-key", "restore preserves own holds and independent default credential: " + variant)
+        end if
+    end for
+end sub
+
+sub runProfileTaskFilterChecks()
+    resetProfileNavigation()
+    check(ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100), "task-filter fixture establishes default")
+    entry = m.connectionStore.entries[0]
+    entry.profileId = "99"
+    entry.channelProfileIds = ["99"]
+    task = {}
+    check(configureUserProfileConnectionTask(task, entry, true) and task.profileId = "99" and task.channelProfileIds[0] = "99" and task.expectedUsername = "Alice" and task.expectedUserId = "7", "default refresh binds its own identity and retains its chosen Channel Profiles")
+    store = copyJson(m.userProfileStore)
+    own = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Bob", user_level: 1}, 1)
+    own.isDefault = false
+    store.profiles.push(own)
+    store.active = own.id
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    task = {profileId: "99", channelProfileIds: ["99"]}
+    check(configureUserProfileConnectionTask(task, entry, false) and task.profileId = "" and task.channelProfileIds.count() = 0 and task.expectedUsername = "Bob" and task.expectedUserId = "8", "nondefault reconnect clears all default Channel Profile filters and binds both own ID and username")
+    task = {profileId: "99", channelProfileIds: ["99"]}
+    check(configureUserProfileConnectionTask(task, entry, true) and task.profileId = "" and task.channelProfileIds.count() = 0, "nondefault manual/assignment refresh cannot borrow default filters either")
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "addressHeld", true)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    check(not configureUserProfileConnectionTask({}, entry, true), "an address-held selected holder cannot start a refresh Task")
+end sub
+
+sub runSetupFieldPolicyChecks()
+    resetProfileNavigation()
+    check(ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100), "setup-field fixture establishes default")
+    check(userProfileSetupFieldAllowed("key") and userProfileSetupFieldAllowed("profile"), "full-access default retains its own sign-in and Channel Profile controls")
+    m.global = {activeusersession: "00000000-0000-4000-8000-000000000090", profilegateclosed: false}
+    m.registry.values["connectionsV1"] = FormatJson(m.connectionStore)
+    m.setupEditNonce = "00000000-0000-4000-8000-000000000091"
+    captured = captureUserProfileSetupEdit("key", m.setupEditNonce)
+    if captured <> invalid
+        if not userProfileSetupEditCurrent(captured)
+            actualConnection = connectionStoreEntry(loadConnectionStore(m.registry), m.selectedConnectionId)
+            print "[profile-probe] setup-edit diagnostic nonce="; captured.nonce = m.setupEditNonce; " slot="; captured.slot = m.selectedConnectionId; " allowed="; userProfileSetupFieldAllowed(captured.field); " session="; captured.session = textValue(m.global.activeusersession); " connection="; captured.connection = FormatJson(actualConnection); " normalized="; captured.connection = FormatJson(normalizeConnectionEntry(m.connectionStore.entries[0])); " roster="; captured.roster = m.registry.read(userProfileStoreKey(m.selectedConnectionId))
+        end if
+    end if
+    check(captured <> invalid and userProfileSetupEditCurrent(captured), "native setup keyboard captures its allowed holder, connection, field and current lifecycle")
+    m.global.activeusersession = "00000000-0000-4000-8000-000000000092"
+    check(not userProfileSetupEditCurrent(captured), "old setup keyboard cannot write after a fresh A session, even if selected slot and holder are unchanged")
+    m.global.activeusersession = "00000000-0000-4000-8000-000000000090"
+    m.setupEditNonce = "00000000-0000-4000-8000-000000000093"
+    check(not userProfileSetupEditCurrent(captured), "replaced setup keyboard lifecycle cannot submit into the current editor")
+    m.global = invalid
+    store = copyJson(m.userProfileStore)
+    own = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Bob", user_level: 1}, 1)
+    own.isDefault = false
+    store.profiles.push(own)
+    store.active = own.id
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    for each field in ["method", "username", "password", "key", "profile"]
+        check(not userProfileSetupFieldAllowed(field), "nondefault cannot edit the default's setup field: " + field)
+    end for
+    check(userProfileSetupFieldAllowed("connect") and userProfileSetupFieldAllowed("url") and userProfileSetupFieldAllowed("remember"), "nondefault full-access reconnect/address/Remember actions remain independently available")
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "role", "child")
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    check(selectedUserProfileIsChild() and not userProfileSetupFieldAllowed("connect") and not userProfileSetupFieldAllowed("key"), "persisted Child authority fences every general setup field, including direct forged edits")
+end sub
+
+sub runAuthorityRefreshChecks()
+    for each failure in [false, true]
+        resetProfileNavigation()
+        check(ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100), "authority refresh fixture establishes own holder")
+        entry = m.connectionStore.entries[0]
+        m.activeUserScope = userProfileSessionScope(entry, m.userProfileStore.active, "7", "old-generation", "00000000-0000-4000-8000-000000000010")
+        m.registry.failFlush = failure
+        before = FormatJson(m.registry.values)
+        promoted = {ok: true, accountId: "7", accountUsername: "ALICE", verifiedBaseUrl: entry.url, verifiedUser: {id: 7, username: "ALICE", user_level: 10}}
+        refreshed = refreshActiveUserProfileAuthority(promoted, 101)
+        if failure
+            check(not refreshed and FormatJson(m.registry.values) = before, "failed authority refresh restores prior metadata and every key")
+        else
+            check(refreshed and m.userProfileStore.profiles[0].role = "admin" and m.userProfileStore.profiles[0].updatedAt = 101 and m.userProfileStore.pendingRoster, "verified promotion stamps only its own row and marks the roster pending")
+            snapshot = FormatJson(m.registry.values)
+            wrong = copyJson(promoted)
+            wrong.verifiedUser.username = "DifferentAlice"
+            check(not refreshActiveUserProfileAuthority(wrong, 102) and FormatJson(m.registry.values) = snapshot, "same-ID foreign username cannot refresh active profile authority")
+            wrong = setCanonicalPreference(promoted, "verifiedBaseUrl", "https://old.test")
+            check(not refreshActiveUserProfileAuthority(wrong, 102) and FormatJson(m.registry.values) = snapshot, "stale-address capability evidence cannot update role or trust")
+            demoted = copyJson(promoted)
+            demoted.verifiedUser.user_level = 1
+            check(not refreshActiveUserProfileAuthority(demoted, 100) and FormatJson(m.registry.values) = snapshot, "clock regression cannot stamp a server role change older than its current row")
+            check(refreshActiveUserProfileAuthority(demoted, 102) and m.userProfileStore.profiles[0].role = "user" and m.userProfileStore.profiles[0].updatedAt = 102, "verified demotion removes local Admin and stamps the own row")
         end if
     end for
 end sub

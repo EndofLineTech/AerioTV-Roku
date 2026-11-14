@@ -106,7 +106,7 @@ sub startUserProfileSwitchTask(nonce as string)
     task.expectedUsername = context.target.username
     if context.target.isDefault
         task.profileId = context.connection.profileId
-        task.channelProfileIds = context.connection.profileIds
+        task.channelProfileIds = context.connection.channelProfileIds
     end if
     task.observeField("result", "onUserProfileSwitchResult")
     task.observeField("state", "onUserProfileSwitchState")
@@ -148,6 +148,7 @@ sub onUserProfileSwitchResult(event as object)
     m.accountPreferences = saved.preferences
     m.devicePreferences = saved.device
     m.activeUserScope = saved.scope
+    m.profileAuthorizationSignature = dispatcharrAuthorizationSignature(verified.verifiedUser)
     m.scopedPreferencesRequired = true
     m.global.activeusersession = saved.scope.sessionId
     m.apiKey = verified.apiKey

@@ -17,7 +17,9 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False):
+    if assignment_refresh:
+        cold_restore = 'remembered'
     with zipfile.ZipFile(normal) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
@@ -28,9 +30,9 @@ def build(output, normal, section, base, directions=False, switching=False, swit
             if name == 'source/MetadataCacheStore.brs':
                 assert body.count(b'"cachefs:/aeriotv-metadata-v1"') == 1
                 body = body.replace(b'"cachefs:/aeriotv-metadata-v1"', b'"tmp:/profile-management-cache"')
-            if switching and name == 'components/GuideView.xml':
+            if (switching or assignment_refresh) and name == 'components/GuideView.xml':
                 body = body.replace(b'</interface>', b'<function name="profileSwitchProbeLineup" /></interface>', 1)
-            if switching and name == 'components/GuideView.brs':
+            if (switching or assignment_refresh) and name == 'components/GuideView.brs':
                 body += b'''\nfunction profileSwitchProbeLineup() as string
     if type(m.channels) <> "roArray" then return ""
     if m.channels.count() = 0 then return ""
@@ -181,6 +183,22 @@ end sub
         m.preferenceStore.accounts[preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "8"))] = normalizeAccountPreferences({favoriteIds: ["8"], profileSettings: {themePreset: "forest"}})
         m.registry.write("settingsV1", FormatJson(m.preferenceStore))
         m.registry.flush()
+        showConnection()
+        m.rokuRfiOffered = true
+        for index = 0 to m.setupRows.count() - 1
+            if m.setupRows[index].field = "key" then m.setupIndex = index
+        end for
+        editSetupField()
+        m.switchProbeStaleKeyboard = m.top.dialog
+        m.switchProbeStaleKeyboard.text = "synthetic-stale-default-key"
+        m.switchProbeStaleKeyboard.unobserveField("buttonSelected")
+        m.switchProbeStaleKeyboard.unobserveField("wasClosed")
+        m.switchProbeStaleKeyboard.close = true
+        m.top.dialog = invalid
+        m.page = "guide"
+        m.screen.visible = false
+        m.guide.visible = true
+        m.guide.active = true
     else if phase = 2
         started = beginUserProfileSwitch("00000000-0000-4000-8000-000000000002")
         print "[profile-management] "; FormatJson({kind: "switch-start", started: started})
@@ -189,7 +207,28 @@ end sub
         m.switchProbeB = m.activeUserScope.profileId = "00000000-0000-4000-8000-000000000002" and m.accountPreferences.favoriteIds[0] = "8" and m.devicePreferences.themePreset = "forest" and m.apiKey = "synthetic-b" and m.guide.callFunc("profileSwitchProbeLineup") = "8"
         bindingOwner = currentRequestGateOwner(connectionStoreEntry(m.connectionStore, "slot-a"))
         m.switchProbeB = m.switchProbeB and bindingOwner.account = "8" and bindingOwner.profile = m.activeUserScope.profileId
-        print "[profile-management] "; FormatJson({kind: "switch-b", own: m.switchProbeB})
+        beforeConnection = m.registry.read("connectionsV1")
+        beforeKey = m.apiKey
+        showConnection()
+        m.switchProbeSetupHidden = m.page = "setup"
+        for each row in m.setupRows
+            if row.field = "method" or row.field = "username" or row.field = "password" or row.field = "key" or row.field = "profile" then m.switchProbeSetupHidden = false
+        end for
+        m.setupRows = [{field: "method", title: "Forged"}]
+        m.setupIndex = 0
+        beforeMode = m.authMode
+        editSetupField()
+        m.editingField = "key"
+        onKeyboardButton(managementProbeEvent({text: "synthetic-forged-key"}, 0))
+        openPermittedProfiles()
+        selectPermittedProfile({id: "99"})
+        m.switchProbeSetupHidden = m.switchProbeSetupHidden and m.authMode = beforeMode and m.apiKey = beforeKey and m.profileTask = invalid and m.registry.read("connectionsV1") = beforeConnection
+        m.switchProbeB = m.switchProbeB and m.switchProbeSetupHidden
+        m.page = "guide"
+        m.screen.visible = false
+        m.guide.visible = true
+        m.guide.active = true
+        print "[profile-management] "; FormatJson({kind: "switch-b", own: m.switchProbeB, setup_hidden: m.switchProbeSetupHidden})
     else if phase = 4
         if OWN_RECONNECT_PROBE
             if m.switchProbeReconnectStarted <> true
@@ -217,6 +256,10 @@ end sub
         if m.profileSwitchContext <> invalid then m.managementProbePhase-- : return
         m.switchProbeA = m.activeUserScope.profileId = m.switchProbeDefault and m.accountPreferences.favoriteIds[0] = "7" and m.devicePreferences.themePreset = "midnight" and currentUserSessionId() <> m.switchProbeFirstSession and m.apiKey = "synthetic-a" and m.guide.callFunc("profileSwitchProbeLineup") = "7"
         m.switchProbeSecondSession = currentUserSessionId()
+        beforeKeyboardKey = m.apiKey
+        beforeKeyboardStored = m.registry.read("connKey_slot-a")
+        onKeyboardButton(managementProbeEvent(m.switchProbeStaleKeyboard, 0))
+        m.switchProbeStaleKeyboardRejected = m.apiKey = beforeKeyboardKey and m.registry.read("connKey_slot-a") = beforeKeyboardStored
         print "[profile-management] "; FormatJson({kind: "switch-a", own: m.switchProbeA, started: m.switchProbeBackStarted})
     else if phase = 6
         m.registry.write(userProfileKeyName("slot-a", "00000000-0000-4000-8000-000000000002"), "rejected-synthetic-key")
@@ -244,7 +287,15 @@ end sub
         m.managementProbeClock.control = "stop"
         store = loadUserProfileStore(m.registry, "slot-a")
         m.switchProbeEvidence.cancelled = m.switchProbeCancelStarted and m.profileSwitchContext = invalid and store.active = m.switchProbeDefault and m.activeUserScope.profileId = m.switchProbeDefault and currentUserSessionId() <> m.switchProbeBeforeCancel and not m.profileGateCover.visible
+        m.switchProbeEvidence.cancel_started = m.switchProbeCancelStarted
+        m.switchProbeEvidence.cancel_context_cleared = m.profileSwitchContext = invalid
+        m.switchProbeEvidence.cancel_store_default = store.active = m.switchProbeDefault
+        m.switchProbeEvidence.cancel_scope_default = m.activeUserScope.profileId = m.switchProbeDefault
+        m.switchProbeEvidence.cancel_fresh = currentUserSessionId() <> m.switchProbeBeforeCancel
+        m.switchProbeEvidence.cancel_uncovered = not m.profileGateCover.visible
+        m.switchProbeEvidence.cancel_busy = m.busy
         m.switchProbeEvidence.stale_a = not userEventCurrent(userViewEvent({action: "connection"}, m.switchProbeFirstSession))
+        m.switchProbeEvidence.stale_keyboard = m.switchProbeStaleKeyboardRejected
         print "[profile-management] "; FormatJson(m.switchProbeEvidence)
     end if
 end sub
@@ -385,6 +436,11 @@ end sub
                     fixture = (ROOT / 'tests/native/ProfileColdRestoreFixture.brs').read_text()
                     fixture = fixture.replace('OWN_COLD_ACCOUNT', f'"{expected}"').replace('OWN_COLD_HELD', held)
                     source = source.split('sub onManagementProbeTick()', 1)[0] + fixture
+                if assignment_refresh:
+                    source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native/ProfileAssignmentRefreshFixture.brs').read_text()
+                if default_filter:
+                    source = source.replace('m.registry.write("connectionsV1", FormatJson({schema: 1, selected: "slot-a", entries: [entry]}))', '''entry.channelProfileIds = ["99", "100"]
+    m.registry.write("connectionsV1", FormatJson({schema: 1, selected: "slot-a", entries: [entry]}))''', 1)
                 body = source.replace('OWN_RECONNECT_PROBE', 'true' if reconnect else 'false').encode()
             package.writestr(name, body)
         package.writestr('profile-management-probe.json', json.dumps({'synthetic': True}))
@@ -402,7 +458,13 @@ def main():
     parser.add_argument('--remember-off', action='store_true', help='With --switch, use address/slot/profile-qualified session credentials only')
     parser.add_argument('--child-settings', action='store_true', help='Exercise restricted Settings and its adult-gated management shortcut in a private Child-role fixture')
     parser.add_argument('--cold-restore', choices=['remembered', 'keyless', 'held'], help='Launch a fresh process with a persisted nondefault selection; unavailable adults restore default')
+    parser.add_argument('--default-filter', action='store_true', help='Give default A a two-Channel-Profile choice; nondefault B must never borrow either filter')
+    parser.add_argument('--assignment-refresh', action='store_true', help='Qualify active-B assignment and VOD permission revocation through the real CapabilityTask callback and fresh own-session reload')
     args = parser.parse_args()
+    if args.assignment_refresh and (args.switch or args.cold_restore or args.child_settings or args.directions or args.default_filter):
+        parser.error('--assignment-refresh is a separate case')
+    if args.default_filter and not args.switch:
+        parser.error('--default-filter requires --switch')
     if args.reconnect and not args.switch:
         parser.error('--reconnect requires --switch')
     if args.switch and args.directions:
@@ -432,6 +494,7 @@ def main():
         local = route.getsockname()[0]
 
     hits = []
+    fixture_state = {'changed': False}
 
     class Fixture(BaseHTTPRequestHandler):
         def log_message(self, *_args):
@@ -446,10 +509,17 @@ def main():
             value = []
             if self.path == '/api/accounts/users/me/':
                 value = {'id': user, 'username': 'Synthetic' + str(user), 'user_level': 1}
+                if args.assignment_refresh and user == 8:
+                    value['channel_profiles'] = [2 if fixture_state['changed'] else 1]
+                    value['custom_properties'] = {'vod_movies_enabled': not fixture_state['changed']}
             if self.path == '/api/accounts/users/me/app-data/':
                 value = {'apps': []}
+            if self.path.split('?', 1)[0] == '/api/channels/profiles/' and user == 7:
+                value = [{'id': 99, 'name': 'Synthetic default first', 'channels': [7]}, {'id': 100, 'name': 'Synthetic default second', 'channels': [7]}]
             if self.path.split('?', 1)[0] in ['/api/channels/channels/', '/api/channels/channels/summary/']:
                 value = [{'id': user, 'uuid': f'00000000-0000-4000-8000-{user:012d}', 'name': 'Synthetic ' + str(user), 'channel_number': user}]
+                if args.assignment_refresh and user == 8 and fixture_state['changed']:
+                    value = [{'id': 80, 'uuid': '00000000-0000-4000-8000-000000000080', 'name': 'Synthetic reassigned', 'channel_number': 80}]
             body = json.dumps(value).encode()
             self.send_response(401 if key == 'rejected-synthetic-key' else 200)
             self.send_header('Content-Type', 'application/json')
@@ -465,7 +535,7 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -477,6 +547,8 @@ def main():
         with subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as process:
             for line in process.stdout:
                 output.append(line)
+                if '"kind":"assignment-ready"' in line:
+                    fixture_state['changed'] = True
                 if '"kind":"manage-ready"' in line:
                     captured = subprocess.run(['python3', 'scripts/capture-roku-screenshot.py', '--developer-mode', '--output', str(ROOT / 'out/profile-child-settings.jpg')], cwd=ROOT, capture_output=True, text=True, timeout=45)
                     report['screenshot'] = captured.returncode == 0
@@ -501,7 +573,7 @@ def main():
             delayed = [hit for hit in hits if hit['delayed']]
             report['requests'] = hits
             cancelled_requests = not delayed if args.cancel_pin else len(delayed) == 1 and delayed[0]['path'] == '/api/accounts/users/me/'
-            report['passed'] = result.returncode == 0 and len(rows) == 5 and rows[0].get('started') and all(rows[4].get(key) for key in ['a', 'b', 'rollback', 'preserved', 'uncovered', 'no_autoplay', 'cancelled', 'stale_a']) and len(rejected) == 1 and rejected[0]['path'] == '/api/accounts/users/me/' and cancelled_requests
+            report['passed'] = result.returncode == 0 and len(rows) == 5 and rows[0].get('started') and all(rows[4].get(key) for key in ['a', 'b', 'rollback', 'preserved', 'uncovered', 'no_autoplay', 'cancelled', 'stale_a', 'stale_keyboard']) and len(rejected) == 1 and rejected[0]['path'] == '/api/accounts/users/me/' and cancelled_requests
             if args.reject_active:
                 report['passed'] = result.returncode == 0 and len(rows) == 3 and all(rows[2].get(key) for key in ['b', 'active_retained', 'default_preserved', 'own_revoked', 'covered', 'no_default_session'])
             if args.remember_off:
@@ -514,6 +586,13 @@ def main():
             expected = 8 if args.cold_restore == 'remembered' else 7
             report['requests'] = hits
             report['passed'] = result.returncode == 0 and len(rows) == 1 and rows[0].get('passed') and bool(hits) and all(hit['user'] == expected for hit in hits) and any(hit['path'] == '/api/accounts/users/me/app-data/' for hit in hits)
+        if args.default_filter:
+            filters = [hit for hit in hits if hit['path'].split('?', 1)[0] == '/api/channels/profiles/']
+            report['default_filter'] = len(filters) >= 2 and all(hit['user'] == 7 for hit in filters)
+            report['passed'] = report['passed'] and report['default_filter']
+        if args.assignment_refresh:
+            report['requests'] = hits
+            report['passed'] = result.returncode == 0 and len(rows) == 2 and rows[0].get('own') and rows[1].get('passed') and bool(hits) and all(hit['user'] == 8 for hit in hits)
         if not report['passed']:
             raise RuntimeError('Native management controller assertions failed')
     finally:
@@ -541,6 +620,10 @@ def main():
                     name = 'profile-reconnect-memory-native.json' if args.remember_off else 'profile-reconnect-saved-native.json'
             if args.child_settings:
                 name = 'profile-child-settings-native.json'
+            if args.default_filter:
+                name = name.replace('-native.json', '-default-filter-native.json')
+            if args.assignment_refresh:
+                name = 'profile-assignment-refresh-native.json'
             (ROOT / 'out' / name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

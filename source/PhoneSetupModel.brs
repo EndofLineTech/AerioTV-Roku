@@ -61,6 +61,7 @@ function validatePhoneSetupPayload(raw as dynamic) as object
     failure = phoneSetupFailure(400, "bad_request")
     if type(raw) <> "roAssociativeArray" then return failure
     playlist = phoneSetupFields(raw.playlist, [
+        ["id", "string"]
         ["type", "string"], ["name", "string"], ["url", "string"], ["xmltvUrl", "string"]
         ["localUrl", "string"], ["userAgent", "string"], ["guideDays", "int"]
         ["catchupOffsetMinutes", "int"], ["vodEnabled", "bool"], ["channelProfileIds", "array"]
@@ -108,6 +109,7 @@ end function
 
 function phoneSetupProfile(raw as dynamic) as dynamic
     profile = phoneSetupFields(raw, [
+        ["id", "string"]
         ["username", "string"], ["displayName", "string"], ["role", "string"], ["order", "int"]
         ["isDefault", "bool"], ["pinType", "string"], ["pinHash", "string"], ["pinSalt", "string"]
     ], {role: "", order: -1, isDefault: false, pinType: "none", pinHash: "", pinSalt: ""})

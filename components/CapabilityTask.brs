@@ -14,7 +14,8 @@ sub refreshCapabilities()
         finish({ok: false, relogin: httpAccountRejected(m.httpFailure), message: "Could not refresh account permissions. " + m.failure})
         return
     end if
-    if textValue(user.id) <> accountId
+    expectedUsername = textValue(m.top.expectedUsername)
+    if textValue(user.id) <> accountId or (expectedUsername <> "" and lcase(textValue(user.username)) <> lcase(expectedUsername))
         finish({ok: false, identityChanged: true, message: "The connected account changed. Reconnect before continuing."})
         return
     end if
@@ -40,11 +41,13 @@ sub refreshCapabilities()
     version = requestJson(m.base + "/api/core/version/")
     settings = requestJson(m.base + "/api/core/settings/")
     capabilities = normalizeCapabilities(user, version, settings, CreateObject("roDateTime").asSeconds())
+    verifiedUser = dispatcharrVerifiedAuthority(user)
+    accountUsername = textValue(user.username)
     user = invalid
     ' Facts supplement the lean summary but do not replace its scoped lineup.
     rows = requestPages("/api/channels/channels/?page=1&page_size=200")
     facts = normalizeChannelCapabilities(rows)
-    finish({ok: true, capabilities: capabilities, audioProfile: audioProfile, ac3Profile: ac3Profile, channelFacts: facts, factsAvailable: rows <> invalid})
+    finish({ok: true, accountId: accountId, accountUsername: accountUsername, verifiedBaseUrl: m.base, verifiedUser: verifiedUser, capabilities: capabilities, audioProfile: audioProfile, ac3Profile: ac3Profile, channelFacts: facts, factsAvailable: rows <> invalid})
 end sub
 
 sub finish(result as object)

@@ -356,6 +356,16 @@ sub drawWelcome()
 end sub
 
 sub drawSetup()
+    if selectedUserProfileIsChild()
+        m.page = "profile-unavailable"
+        m.screen.visible = false
+        m.guide.active = false
+        m.guide.visible = false
+        m.global.profilegateclosed = true
+        m.profileGateCover.visible = true
+        m.top.findNode("profileGateMessage").text = "Could not reach your Dispatcharr server. Back exits AerioTV."
+        return
+    end if
     m.screen.removeChildrenIndex(m.screen.getChildCount(), 0)
     uiLabel(m.screen, "AerioTV", 160, 70, 1600, 86, 64)
     selectedConnection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
@@ -427,6 +437,12 @@ sub drawSetup()
     if m.busy then connect = "CONNECTING..."
     m.setupRows.push({field: "connect", title: "Connect", value: connect})
     m.setupRows.push({field: "forget", title: "Forget selected", value: "Remove this connection's saved key and account preferences"})
+    visibleRows = []
+    for each row in m.setupRows
+        defaultField = row.field = "method" or row.field = "username" or row.field = "password" or row.field = "key" or row.field = "profile"
+        if not defaultField or userProfileSetupFieldAllowed(row.field) then visibleRows.push(row)
+    end for
+    m.setupRows = visibleRows
     if m.setupIndex >= m.setupRows.count() then m.setupIndex = m.setupRows.count() - 1
     spacing = 78
     if m.setupRows.count() > 8 then spacing = 68
@@ -481,7 +497,10 @@ sub drawSetup()
 end sub
 
 sub editSetupField()
+    if type(m.setupRows) <> "roArray" then return
+    if m.setupIndex < 0 or m.setupIndex >= m.setupRows.count() then return
     field = m.setupRows[m.setupIndex].field
+    if not userProfileSetupFieldAllowed(field) then return
     if field = "connect"
         connectServer()
         return
@@ -511,6 +530,9 @@ sub editSetupField()
         end if
     end if
     m.editingField = field
+    m.setupEditNonce = CreateObject("roDeviceInfo").getRandomUUID()
+    m.setupEditContext = captureUserProfileSetupEdit(field, m.setupEditNonce)
+    if m.setupEditContext = invalid then return
     dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
     dialog.buttons = ["Save", "Cancel"]
     dialog.title = m.setupRows[m.setupIndex].title
@@ -532,7 +554,12 @@ end sub
 
 sub onKeyboardButton(event as object)
     if userProfileUiClosed() then return
+    if not userProfileSetupFieldAllowed(textValue(m.editingField)) then return
     dialog = event.getRoSGNode()
+    if m.top.dialog = invalid then return
+    if not m.top.dialog.isSameNode(dialog) then return
+    if not userProfileSetupEditCurrent(m.setupEditContext) then return
+    if m.setupEditContext.field <> m.editingField then return
     if event.getData() = 0
         if m.editingField = "url"
             base = normalizeBaseUrl(dialog.text)
@@ -557,6 +584,7 @@ sub onKeyboardButton(event as object)
         end if
     end if
     dialog.close = true
+    m.setupEditContext = invalid
     drawSetup()
 end sub
 
@@ -672,8 +700,14 @@ sub connectServer(skipRfi = false as boolean)
     m.task.baseUrl = m.baseUrl
     m.task.apiKey = m.apiKey
     m.task.authMode = entry.authMode
-    m.task.profileId = entry.profileId
-    m.task.channelProfileIds = entry.channelProfileIds
+    if not configureUserProfileConnectionTask(m.task, entry, rosterReady)
+        cancelNetworkTask(m.task)
+        m.task = invalid
+        m.busy = false
+        m.status = "Saved profile authority changed. Reconnect before continuing."
+        drawSetup()
+        return
+    end if
     if m.authMode = "password"
         m.task.username = m.username
         m.task.password = m.password
@@ -813,6 +847,7 @@ sub completeConnection(result as dynamic)
         return
     end if
     prefs = m.accountPreferences
+    m.profileAuthorizationSignature = dispatcharrAuthorizationSignature(result.verifiedUser)
     m.guide.historyAccount = m.accountIdentity
     ' Unscoped legacy data may belong to another slot. Retain it until its own
     ' verified migration can remove it atomically with the canonical data write.
@@ -844,7 +879,8 @@ sub completeConnection(result as dynamic)
     m.reminderClock.control = "start"
     version = CreateObject("roAppInfo").getValue("major_version") + "." + CreateObject("roAppInfo").getValue("minor_version") + "." + CreateObject("roAppInfo").getValue("build_version")
     if m.accountPreferences.whatsNewVersion <> version then showNotice("What's New in " + version + ". Open Settings > About > What's New.")
-    startConfiguredMiniPlayback(result.channels)
+    if m.profileRefreshReload <> true then startConfiguredMiniPlayback(result.channels)
+    m.profileRefreshReload = false
 end sub
 
 sub startConfiguredMiniPlayback(channels as object)
@@ -882,8 +918,7 @@ sub cancelCapabilityRefresh()
 end sub
 
 sub refreshCapabilities()
-    if userProfileGateClosed() then return
-    if requestGateProfileSwitching() then return
+    if userProfileUiClosed() then return
     if m.page = "setup" or m.apiKey = "" or m.serverAccountId = "" then return
     if m.capabilityTask <> invalid then return
     m.aacDiscoveryState = "pending"
@@ -892,6 +927,11 @@ sub refreshCapabilities()
     m.capabilityTask.baseUrl = m.baseUrl
     m.capabilityTask.apiKey = m.apiKey
     m.capabilityTask.accountId = m.serverAccountId
+    if type(m.userProfileStore) = "roAssociativeArray"
+        for each profile in m.userProfileStore.profiles
+            if profile.id = m.userProfileStore.active then m.capabilityTask.expectedUsername = profile.username
+        end for
+    end if
     m.capabilityTask.observeField("result", "onCapabilities")
     m.capabilityTask.observeField("profileResult", "onAacProfileDiscovered")
     m.capabilityTask.control = "RUN"
@@ -915,7 +955,37 @@ sub onCapabilities(event as object)
     m.capabilityTask.unobserveField("profileResult")
     m.capabilityTask.unobserveField("result")
     m.capabilityTask = invalid
+    if userProfileUiClosed() then return
     if result.ok
+        if m.scopedPreferencesRequired = true
+            if not refreshActiveUserProfileAuthority(result, CreateObject("roDateTime").asSeconds())
+                m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
+                m.userProfileRecoveryRequired = true
+                m.global.profilegateclosed = true
+                m.profileGateCover.visible = true
+                m.top.findNode("profileGateMessage").text = "Could not safely save current profile permissions. Saved data was retained. Back exits AerioTV."
+                requestGateFenceRenderers(m.top)
+                return
+            end if
+            nextAuthority = dispatcharrAuthorizationSignature(result.verifiedUser)
+            changedAuthority = textValue(m.profileAuthorizationSignature) <> "" and nextAuthority <> m.profileAuthorizationSignature
+            m.profileAuthorizationSignature = nextAuthority
+            if changedAuthority
+                if not persistCurrentUserProfilePreferences()
+                    m.userProfileRecoveryRequired = true
+                    m.global.profilegateclosed = true
+                    m.profileGateCover.visible = true
+                    m.top.findNode("profileGateMessage").text = "Could not preserve this profile before updating permissions. Back exits AerioTV."
+                    requestGateFenceRenderers(m.top)
+                    return
+                end if
+                ' Retire the old authorization/session before loading newly
+                ' assigned channels, VOD and DVR under this holder's own key.
+                m.profileRefreshReload = true
+                connectServer(true)
+                return
+            end if
+        end if
         m.capabilities = result.capabilities
         m.aacProfile = result.audioProfile
         m.ac3Profile = result.ac3Profile
@@ -2429,6 +2499,7 @@ sub checkPlaybackAudio()
 end sub
 
 sub refreshChannelLineup()
+    if userProfileUiClosed() then return
     cancelAacWait()
     if m.refreshTask <> invalid then return
     showNotice("Refreshing authorized channels; current playback continues.")
@@ -2439,9 +2510,15 @@ sub refreshChannelLineup()
     m.refreshTask.apiKey = m.apiKey
     selected = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if selected <> invalid
-        m.refreshTask.profileId = selected.profileId
-        m.refreshTask.channelProfileIds = selected.channelProfileIds
         m.refreshTask.authMode = selected.authMode
+    end if
+    profileReady = false
+    if selected <> invalid then profileReady = configureUserProfileConnectionTask(m.refreshTask, selected, true)
+    if not profileReady
+        cancelNetworkTask(m.refreshTask)
+        m.refreshTask = invalid
+        showNotice("Saved profile authority changed. Reconnect before refreshing channels.")
+        return
     end if
     m.refreshTask.observeField("result", "onLineupRefresh")
     m.refreshTask.control = "RUN"

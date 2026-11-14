@@ -1,10 +1,10 @@
 sub main()
-    for each mode in ["ready", "missing", "denied", "identity", "rejected401", "rejected403", "unavailable"]
+    for each mode in ["ready", "missing", "denied", "identity", "username", "username-case", "rejected401", "rejected403", "unavailable"]
         m.testMode = mode
         m.profileSeenBeforeFacts = false
-        m.top = {baseUrl: "https://example.test", apiKey: "test-only", accountId: "one", profileResult: invalid}
+        m.top = {baseUrl: "https://example.test", apiKey: "test-only", accountId: "one", expectedUsername: "Alice", profileResult: invalid}
         refreshCapabilities()
-        if mode = "identity"
+        if mode = "identity" or mode = "username"
             if m.top.profileResult <> invalid or m.top.result.identityChanged <> true then stop
         else if mode = "rejected401"
             if m.top.profileResult <> invalid or m.top.result.relogin <> true then stop
@@ -12,7 +12,9 @@ sub main()
             if m.top.profileResult <> invalid or m.top.result.relogin = true then stop
         else
             if not m.profileSeenBeforeFacts then stop
-            if mode = "ready"
+            if m.top.result.accountUsername <> "Alice" and m.top.result.accountUsername <> "ALICE" then stop
+            if m.top.result.verifiedUser.username <> m.top.result.accountUsername or m.top.result.verifiedBaseUrl <> "https://example.test" then stop
+            if mode = "ready" or mode = "username-case"
                 if m.top.profileResult.state <> "ready" or m.top.profileResult.profile.id <> "7" then stop
             else if mode = "missing"
                 if m.top.profileResult.state <> "unavailable" then stop
@@ -30,6 +32,8 @@ function requestJson(url as string) as dynamic
     m.httpFailure = invalid
     if instr(1, url, "users/me") > 0
         if m.testMode = "identity" then return {id: "other", user_level: 10}
+        if m.testMode = "username" then return {id: "one", username: "OtherAlice", user_level: 10}
+        if m.testMode = "username-case" then return {id: "one", username: "ALICE", user_level: 10}
         if m.testMode = "rejected401" or m.testMode = "rejected403" or m.testMode = "unavailable"
             status = 503
             if m.testMode = "rejected401" then status = 401
@@ -39,7 +43,7 @@ function requestJson(url as string) as dynamic
             m.failure = m.httpFailure.message
             return invalid
         end if
-        return {id: "one", user_level: 10}
+        return {id: "one", username: "Alice", user_level: 10}
     end if
     if instr(1, url, "outputprofiles") > 0
         if m.testMode = "denied"

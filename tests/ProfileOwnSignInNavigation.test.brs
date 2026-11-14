@@ -1,4 +1,33 @@
 sub main()
+    activeOwnFormFixture()
+    snapshot = FormatJson(m.registry.values)
+    check(showActiveUserProfileRecoveryPrompt(), "unavailable full-access holder exposes its own recovery prompt, not default setup")
+    check(m.profileRecoveryDialog.title = "API key no longer valid" and m.profileRecoveryDialog.buttons.count() = 2, "own rejected-key prompt offers only Sign In with Remote and Not Now")
+    onActiveUserProfileRecoveryChoice(ownFormEvent(m.profileRecoveryDialog, 0))
+    check(m.profileOwnSignInContext <> invalid, "unavailable active nondefault can open its own form without a fabricated authenticated scope")
+    check(m.activeUserScope = invalid and m.profileGateCover.visible and m.global.profileownsigninpending and m.global.activeusersession = m.profileOwnSignInNonce, "active recovery keeps content covered and grants only a fresh credential-task lifecycle")
+    onProfileOwnSignInClosed(ownFormEvent(m.profileOwnSignInDialog, 0))
+    check(m.activeUserScope = invalid and m.global.profilegateclosed and m.profileGateCover.visible and m.global.activeusersession = "" and FormatJson(m.registry.values) = snapshot, "active form Cancel returns to the same unavailable holder without requests or writes")
+    activeOwnFormFixture()
+    check(beginUserProfileOwnSignIn(m.fixtureTarget, true), "active recovery reopens with independent nonce")
+    m.profileOwnSignInContext.password = "synthetic-active-password"
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 2))
+    task = m.profileOwnSignInTask
+    onProfileOwnSignInResult(ownFormEvent(task, {ok: true, verifiedBaseUrl: "https://example.test", apiKey: "synthetic-recovered-active", verifiedUser: {id: 8, username: "BOB", user_level: 1}}))
+    check(m.fixtureActiveReconnect and m.apiKey = "synthetic-recovered-active" and m.activeUserScope = invalid and m.profileOwnSignInContext = invalid, "active recovery retires form before starting a new own-user authentication/roster/reload sequence")
+    check(m.registry.read("connKey_slot-a") = "synthetic-default" and m.registry.read(userProfileKeyName("slot-a", m.fixtureTarget)) = "synthetic-recovered-active", "active recovery never overwrites the default credential")
+    activeOwnFormFixture()
+    m.userProfileStore.profiles[1] = setCanonicalPreference(m.userProfileStore.profiles[1], "role", "child")
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.userProfileStore)
+    check(not showActiveUserProfileRecoveryPrompt() and not beginUserProfileOwnSignIn(m.fixtureTarget, true), "a rejected active nondefault Child never receives the adult own-sign-in prompt or form")
+    activeOwnFormFixture()
+    beginUserProfileOwnSignIn(m.fixtureTarget, true)
+    m.profileOwnSignInContext.password = "synthetic-active-password"
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 2))
+    snapshot = FormatJson(m.registry.values)
+    onProfileOwnSignInResult(ownFormEvent(m.profileOwnSignInTask, {ok: true, verifiedBaseUrl: "https://stale.test", apiKey: "synthetic-stale-active", verifiedUser: {id: 8, username: "Bob", user_level: 1}}))
+    check(FormatJson(m.registry.values) = snapshot and m.profileOwnSignInContext <> invalid and not m.fixtureActiveReconnect, "active recovery rejects a foreign-address verification result before writes or runtime adoption")
+    cancelUserProfileOwnSignIn()
     ownFormFixture()
     m.userProfileStore.profiles[1] = setCanonicalPreference(m.userProfileStore.profiles[1], "addressHeld", true)
     m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.userProfileStore)
@@ -35,6 +64,9 @@ sub main()
     ownFormFixture()
     check(beginUserProfileOwnSignIn(m.fixtureTarget), "inactive own-profile recovery opens its scoped form")
     check(m.profileOwnSignInDialog.title = "Sign in to Dispatcharr" and instr(1, m.profileOwnSignInDialog.buttons[0], "Bob") > 0, "form identifies only its own prefilled username")
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 0))
+    check(m.profileOwnSignInDialog.keyboardDomain = "email", "own username uses the native email-domain keyboard")
+    onProfileOwnSignInEdited(ownFormEvent(m.profileOwnSignInDialog, 1))
     onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 1))
     check(m.profileOwnSignInDialog.keyboardDomain = "password" and m.profileOwnSignInDialog.textEditBox.secureMode, "password uses the secured standard keyboard contract")
     m.profileOwnSignInDialog.text = "synthetic-password"
@@ -98,6 +130,35 @@ sub main()
     onProfileOwnSignInResult(ownFormEvent(m.profileOwnSignInTask, {ok: true, apiKey: "synthetic-new-key", verifiedUser: {id: 88, username: "Bob", user_level: 1}}))
     check(m.userProfileRecoveryRequired and m.profileOwnSignInContext = invalid and m.activeUserScope = invalid and m.profileGateCover.visible and m.global.profilegateclosed, "failed registry rollback retires the form and stays covered with no active runtime authority")
     print "ALL TESTS PASSED"
+end sub
+
+sub activeOwnFormFixture()
+    ownFormFixture()
+    m.userProfileStore.active = m.fixtureTarget
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.userProfileStore)
+    m.registry.values["connKey_slot-a"] = "synthetic-default"
+    m.apiKey = ""
+    m.activeUserScope = invalid
+    m.global.activeusersession = ""
+    m.global.profilegateclosed = true
+    m.profileGateCover.visible = true
+    m.page = "setup"
+    m.guide.active = false
+    m.fixtureActiveReconnect = false
+end sub
+
+sub resetConnectionRuntime()
+    retireUserProfileOwnSignIn()
+    m.activeUserScope = invalid
+    m.global.activeusersession = ""
+    m.apiKey = ""
+end sub
+
+sub applySelectedConnection()
+end sub
+
+sub connectServer(skipRfi as boolean)
+    m.fixtureActiveReconnect = skipRfi and m.apiKey = "synthetic-recovered-active" and m.profileRefreshReload = true and m.global.activeusersession = ""
 end sub
 
 function ownFormEvent(node as object, index as dynamic) as object

@@ -1,4 +1,38 @@
 ' Pure provider-model helpers, shared by the network Task and the UI.
+function dispatcharrVerifiedAuthority(user as object) as object
+    result = {id: user.id, username: user.username, user_level: user.user_level, is_staff: user.is_staff, is_superuser: user.is_superuser, stream_limit: user.stream_limit}
+    ids = []
+    if type(user.channel_profiles) = "roArray"
+        for each id in user.channel_profiles
+            ids.push(id)
+        end for
+    end if
+    result["channel_profiles"] = ids
+    properties = {}
+    if type(user.custom_properties) = "roAssociativeArray"
+        for each field in ["dvr_access", "catchup_enabled", "vod_movies_enabled", "vod_series_enabled", "hide_adult_content"]
+            if user.custom_properties.doesExist(field) then properties[field] = user.custom_properties[field]
+        end for
+    end if
+    result["custom_properties"] = properties
+    return result
+end function
+
+function dispatcharrAuthorizationSignature(user as dynamic) as string
+    if type(user) <> "roAssociativeArray" then return ""
+    ids = []
+    if type(user.channel_profiles) = "roArray"
+        for each id in user.channel_profiles
+            ids.push(textValue(id))
+        end for
+    end if
+    ids.sort()
+    properties = user.custom_properties
+    if type(properties) <> "roAssociativeArray" then properties = {}
+    snapshot = {level: textValue(user.user_level), staff: user.is_staff = true, superuser: user.is_superuser = true, assignments: ids, streamLimit: textValue(user.stream_limit), dvr: textValue(properties.dvr_access), catchup: properties.catchup_enabled <> false, movies: properties.vod_movies_enabled <> false, series: properties.vod_series_enabled <> false, hideAdult: properties.hide_adult_content = true}
+    return FormatJson(snapshot)
+end function
+
 function textValue(value as dynamic) as string
     if value = invalid then return ""
     if GetInterface(value, "ifString") <> invalid then return value.trim()
