@@ -255,3 +255,11 @@ Select to open the holder's native sign-in form while that response is in
 flight. The old transport/binding is retired; after its late response, the
 unavailable holder remains covered with no authenticated scope, no restored
 credential and no change to the default key.
+
+Bound-identity failures during the connection Task now enter the same selected
+holder recovery boundary as a refused key. A 200 `/me/` naming another account
+never reaches its lineup or App Data and cannot leave the saved selected key in
+generic setup. A retired binding is not carried across a reset when the current
+holder is unverified or the current key has no matching broker hold. Native
+qualification uses actual PIN-admitted reconnect, a same-ID foreign username,
+own credential outcomes and late-request cancellation, preserving the default.

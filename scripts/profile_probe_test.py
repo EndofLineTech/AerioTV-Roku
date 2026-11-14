@@ -113,6 +113,12 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertNotIn('OWN_RECHECK_', source)
                 self.assertIn('m.ownRecheckCancelTicks', source)
                 self.assertNotIn('"AerioTV"', source)
+            probe.build(output, normal, 'SyntheticOwnIdentitySection', 'http://127.0.0.1:1234', form=True, active_form=True, identity_change=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('OWN_ACTIVE_CONNECT', source)
+                self.assertIn('bound_identity_recovery', source)
+                self.assertNotIn('"AerioTV"', source)
         script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; for (const entry of ['profile-own-signin-probe.json','source/ProfileOwnSignInFixture.brs','source/ProfileOwnSignInFormFixture.brs','source/ProfileDefaultOwnSignInFormFixture.brs','source/ProfileActiveOwnSignInFixture.brs','source/ProfileColdRestoreFixture.brs','source/ProfileAssignmentRefreshFixture.brs']) assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt',entry]), /probe/);"
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)
 

@@ -71,11 +71,11 @@ sub rememberHeldRequestGateBinding()
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid or entry.provider <> "dispatcharr" then return
     owner = currentRequestGateOwner(entry)
-    if owner = invalid then return
+    if owner = invalid then retireProfileRequestBinding() : return
     state = m.requestGate.snapshot
     if type(state) <> "roAssociativeArray" then return
     hash = requestGateCredentialHash(m.apiKey)
-    if not state.keys.doesExist(hash) then return
+    if not state.keys.doesExist(hash) then retireProfileRequestBinding() : return
     m.requestGateBinding = {slot: entry.id, base: m.baseUrl, key: m.apiKey, hash: hash, account: owner.account, username: owner.username, profile: owner.profile, session: owner.session}
     if not state.keys[hash].prompted and m.requestGatePrompt = invalid
         ticket = CreateObject("roSGNode", "RequestGateTicket")

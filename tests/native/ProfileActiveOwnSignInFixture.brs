@@ -19,10 +19,25 @@ sub onManagementProbeTick()
         print "[own-signin] "; FormatJson({kind: "revoke-ready"})
         m.managementProbePhase = 1
     else if phase = 1
-        refreshCapabilities()
+        if OWN_ACTIVE_CONNECT
+            store = loadUserProfileStore(m.registry, "slot-a")
+            beginProfilePinGate(store.profiles[1], "connect")
+            m.profilePinDialog.textEditBox.text = "1234"
+            onProfilePinSubmit(managementProbeEvent(m.profilePinDialog, 0))
+        else
+            refreshCapabilities()
+        end if
         m.managementProbePhase = 2
     else if phase = 2
         if m.capabilityTask <> invalid then return
+        if OWN_ACTIVE_CONNECT
+            if m.task <> invalid or m.busy then return
+            if not m.global.profilegateclosed or m.activeUserScope <> invalid or m.profileRecoveryDialog = invalid
+                m.managementProbeClock.control = "stop"
+                print "[own-signin] "; FormatJson({kind: "result", passed: false, bound_identity_recovery: false})
+                return
+            end if
+        end if
         if not m.global.profilegateclosed or m.activeUserScope <> invalid then return
         store = loadUserProfileStore(m.registry, "slot-a")
         m.activeOwnPassed = m.activeOwnPassed and store.active = m.activeOwnProfile and m.registry.read("connKey_slot-a") = "synthetic-a" and not m.registry.exists(userProfileKeyName("slot-a", m.activeOwnProfile)) and m.profileRecoveryDialog <> invalid

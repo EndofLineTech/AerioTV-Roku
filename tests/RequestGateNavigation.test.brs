@@ -83,6 +83,17 @@ sub main()
     m.global.profileownsigninpending = false
     m.global.activeusersession = "new-authenticated-session"
     check(not requestGateTaskSessionCurrent(), "an authenticated successor session cannot inherit an unavailable-holder probe exception")
+    m.global = {profilegateclosed: false, profileswitchpending: false}
+    m.connectionStore = {schema: 1, selected: entry.id, entries: [entry]}
+    m.selectedConnectionId = entry.id
+    m.baseUrl = entry.url
+    m.scopedPreferencesRequired = true
+    m.activeUserScope = invalid
+    m.apiKey = "synthetic-new-unheld-key"
+    m.requestGate = {snapshot: requestGateDefault()}
+    m.requestGateBinding = {slot: entry.id, base: entry.url, key: "synthetic-retired-key", hash: string(64, "a")}
+    rememberHeldRequestGateBinding()
+    check(m.requestGateBinding = invalid, "an unverified current holder cannot carry a previous raw-key binding across identity-error recovery")
     print "ALL TESTS PASSED"
 end sub
 

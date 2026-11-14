@@ -787,9 +787,8 @@ sub completeConnection(result as dynamic)
     end if
     if not result.ok
         m.password = ""
-        if result.identityChanged = true then m.apiKey = ""
         recordDiagnostic("connect", -1, result.message)
-        if result.relogin = true
+        if result.relogin = true or result.identityChanged = true
             requireConnectionRelogin(result.message)
             return
         end if

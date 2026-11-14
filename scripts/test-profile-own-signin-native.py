@@ -24,7 +24,7 @@ def module(name):
     return loaded
 
 
-def build(output, normal, section, base, form=False, default_form=False, held=False, active_form=False, active_recheck=False, recheck_cancel=False):
+def build(output, normal, section, base, form=False, default_form=False, held=False, active_form=False, active_recheck=False, recheck_cancel=False, identity_change=False):
     if active_recheck:
         active_form = True
     if held:
@@ -43,6 +43,7 @@ def build(output, normal, section, base, form=False, default_form=False, held=Fa
     fixture = (ROOT / 'tests/native' / fixture_name).read_text()
     fixture = fixture.replace('OWN_PROBE_HELD', 'true' if held else 'false')
     fixture = fixture.replace('OWN_RECHECK_CANCEL', 'true' if recheck_cancel else 'false')
+    fixture = fixture.replace('OWN_ACTIVE_CONNECT', 'true' if identity_change else 'false')
     if form:
         fixture = fixture.replace('OWN_PROBE_PIN_HASH', hashlib.sha256(bytes.fromhex('bb' * 16) + b'1234').hexdigest())
     with zipfile.ZipFile(seeded) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
@@ -65,7 +66,12 @@ def main():
     parser.add_argument('--active-form', action='store_true', help='Qualify active nondefault rejection→own prompt/PIN/password→recreated holder reload and delayed Back')
     parser.add_argument('--active-recheck', action='store_true', help='Real one-minute own rejected-key probe behind closed content gates, then a fresh own-session reload')
     parser.add_argument('--recheck-cancel', action='store_true', help='Open the own native sign-in form while its scheduled real /me probe is in flight; reject late restoration')
+    parser.add_argument('--identity-change', action='store_true', help='Return a 200 foreign-username /me during a PIN-admitted own reconnect, then qualify the same own recovery form')
     args = parser.parse_args()
+    if args.identity_change:
+        if args.default_form or args.held or args.active_recheck:
+            parser.error('--identity-change is separate from default/held/recheck')
+        args.active_form = True
     if args.recheck_cancel and not args.active_recheck:
         parser.error('--recheck-cancel requires --active-recheck')
     if args.active_recheck:
@@ -126,6 +132,10 @@ def main():
             value = []
             if self.path == '/api/accounts/users/me/':
                 if args.active_form and not scenario and ((key == 'synthetic-b' and fixture_state['revoke_old']) or (key == 'synthetic-new-own-key' and fixture_state['revoke_new'])):
+                    if args.identity_change:
+                        hits[-1]['foreign_identity'] = True
+                        self.reply(200, {'id': 8 if key == 'synthetic-b' else 88, 'username': 'SyntheticForeign', 'user_level': 1})
+                        return
                     hits[-1]['rejected'] = True
                     self.reply(401, {'detail': 'Invalid API key'})
                     return
@@ -158,7 +168,7 @@ def main():
     section = 'AerioOwnSignInProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-own-signin-probe.zip'
     cleaner = ROOT / 'out/profile-own-signin-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.form, args.default_form, args.held, args.active_form, args.active_recheck, args.recheck_cancel)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.form, args.default_form, args.held, args.active_form, args.active_recheck, args.recheck_cancel, args.identity_change)
     recovery.cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -199,6 +209,14 @@ def main():
             report['passed'] = report['passed'] and rows[-1].get('trust_preserved', False)
         if args.active_form:
             report['passed'] = result.returncode == 0 and [row.get('scenario') for row in cases] == expected_cases and all(row.get('passed') for row in cases) and rows[-1].get('passed') and all(rows[-1].get(key) for key in ['cancelled', 'default_preserved', 'own_key_absent', 'active_preserved', 'no_autoplay']) and [hit['scenario'] for hit in posts] == expected_posts and all(hit['no_api_key'] and hit['username_ok'] for hit in posts) and all(not hit.get('default_key') for hit in hits) and any(hit.get('new_own_key') and hit['path'] == '/api/accounts/users/me/app-data/' for hit in hits)
+            if args.identity_change:
+                foreign = [index for index, hit in enumerate(hits) if hit.get('foreign_identity')]
+                bounded = len(foreign) == 2 and all(hits[index]['path'] == '/api/accounts/users/me/' for index in foreign)
+                for index in foreign:
+                    end = next((j for j in range(index + 1, len(hits)) if hits[j]['method'] == 'POST'), len(hits))
+                    bounded = bounded and all(hit['no_api_key'] for hit in hits[index + 1:end])
+                report['foreign_identity_bounded'] = bounded
+                report['passed'] = report['passed'] and bounded
         if args.active_recheck:
             boundary = fixture_state.get('recheck_boundary')
             rejected = [hit for hit in hits if hit.get('rejected')]
@@ -225,6 +243,8 @@ def main():
                 report_name = 'profile-held-own-signin-form-native.json'
             if args.active_form:
                 report_name = 'profile-active-own-signin-form-native.json'
+                if args.identity_change:
+                    report_name = 'profile-active-identity-recovery-native.json'
             if args.active_recheck:
                 report_name = 'profile-active-own-recheck-native.json'
                 if args.recheck_cancel:
