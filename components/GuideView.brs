@@ -116,12 +116,10 @@ sub configure()
     m.followNow = true
     m.viewStart = (m.anchor \ 1800) * 1800
     m.direction = 1
-    savedIds = {}
+    m.savedFavoriteIds = []
     if type(prefs) = "roAssociativeArray"
         if type(prefs.favoriteIds) = "roArray"
-            for each id in prefs.favoriteIds
-                savedIds[textValue(id)] = true
-            end for
+            m.savedFavoriteIds = copyPreferenceValue(prefs.favoriteIds)
         end if
         for i = 0 to m.groups.count() - 1
             startup = m.settings.startupGroup
@@ -129,8 +127,8 @@ sub configure()
             if m.groups[i].id = startup then m.groupIndex = i
         end for
     end if
+    m.favorites = guideFavoriteSelection(m.savedFavoriteIds, m.channels)
     for each channel in m.channels
-        if savedIds.doesExist(channel.id) then m.favorites[channel.uuid] = true
         m.allowedKeys[channel.uuid] = true
         if channel.epgKey <> "" then m.allowedKeys[channel.epgKey] = true
     end for
@@ -771,10 +769,11 @@ sub filterLineup()
 end sub
 
 sub savePreferences()
-    favoriteIds = []
-    for each channel in m.channels
-        if m.favorites.doesExist(channel.uuid) then favoriteIds.push(channel.id)
-    end for
+    favoriteIds = retainedGuideFavoriteIds(m.savedFavoriteIds, m.channels, m.favorites)
+    selected = guideFavoriteSelection(favoriteIds, m.channels)
+    if selected.count() < m.favorites.count() then m.message = "Favorite limit reached. Remove a favorite before adding another."
+    m.favorites = selected
+    m.savedFavoriteIds = copyPreferenceValue(favoriteIds)
     uuid = ""
     if m.filtered.count() > 0 then uuid = m.filtered[m.selected].uuid
     m.top.preferences = userViewEvent({favoriteIds: favoriteIds, lastChannel: uuid, group: m.groups[m.groupIndex].id, guide: m.settings, collections: m.collections, reminders: m.reminders}, m.userSessionId)

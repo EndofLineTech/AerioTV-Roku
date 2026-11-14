@@ -32,14 +32,14 @@ def startup_probe_timer(source):
     return source.replace('sub init()', 'sub init()\n' + timer, 1)
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed'):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False):
     if manual_refresh:
         assignment_refresh = True
     if child_rejected:
         child_available = child_rejected
     if child_retry:
         child_available = child_retry
-    if assignment_refresh or child_escape or child_launch or child_available:
+    if assignment_refresh or child_escape or child_launch or child_available or favorite_retention:
         cold_restore = 'remembered'
     if child_available:
         default_filter = True
@@ -65,6 +65,22 @@ def build(output, normal, section, base, directions=False, switching=False, swit
             if name == 'source/MetadataCacheStore.brs':
                 assert body.count(b'"cachefs:/aeriotv-metadata-v1"') == 1
                 body = body.replace(b'"cachefs:/aeriotv-metadata-v1"', b'"tmp:/profile-management-cache"')
+            if favorite_retention and name == 'components/GuideView.xml':
+                body = body.replace(b'</interface>', b'<function name="profileFavoriteProbe" /></interface>', 1)
+            if favorite_retention and name == 'components/GuideView.brs':
+                body += b'''\nfunction profileFavoriteProbe(action as string) as object
+    if action = "edit"
+        m.settings.groupSort = "alpha"
+        rebuildGuideGroups()
+    else if action = "untoggle"
+        m.favorites.delete("00000000-0000-4000-8000-000000000008")
+        savePreferences()
+    end if
+    ids = m.savedFavoriteIds
+    if type(ids) <> "roArray" then ids = m.top.config.preferences.favoriteIds
+    return {ids: ids, selected8: m.favorites.doesExist("00000000-0000-4000-8000-000000000008"), selected99: m.favorites.doesExist("00000000-0000-4000-8000-000000000099")}
+end function
+'''
             if (switching or assignment_refresh or child_available) and name == 'components/GuideView.xml':
                 body = body.replace(b'</interface>', b'<function name="profileSwitchProbeLineup" /></interface>', 1)
             if (switching or assignment_refresh or child_available) and name == 'components/GuideView.brs':
@@ -477,6 +493,12 @@ end sub
                     for variant in ['identity', 'unchanged', 'transient']:
                         fixture = fixture.replace('MANUAL_' + variant.upper(), 'true' if manual_mode == variant else 'false')
                     source = source.split('sub onManagementProbeTick()', 1)[0] + fixture
+                if favorite_retention:
+                    for account, favorites in [(7, '["7"]'), (8, '["99", "8"]')]:
+                        target = f'coldSettings.accounts[preferenceScope(connectionPreferenceIdentity(entry, "{account}"))] = {{favoriteIds: ["00000000-0000-4000-8000-{account:012d}"]'
+                        assert source.count(target) == 1
+                        source = source.replace(target, f'coldSettings.accounts[preferenceScope(connectionPreferenceIdentity(entry, "{account}"))] = {{favoriteIds: {favorites}', 1)
+                    source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native/ProfileFavoriteRetentionFixture.brs').read_text()
                 if child_escape:
                     source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native/ProfileChildEscapeFixture.brs').read_text()
                 if child_launch:
@@ -553,12 +575,15 @@ def main():
     parser.add_argument('--manual-refresh', action='store_true', help='Reproduce active-B assignment/VOD authority changes through manual lineup refresh instead of the periodic callback')
     parser.add_argument('--manual-recording', action='store_true', help='Private manual-refresh variant: settle one real delayed synthetic recording POST across authority retirement')
     parser.add_argument('--manual-mode', choices=['changed', 'unchanged', 'identity', 'transient'], default='changed', help='Private manual refresh authority/control outcome')
+    parser.add_argument('--favorite-retention', action='store_true', help='Private numeric-ID Guide edit/refresh/explicit favorite toggle, including unavailable favorites and other-holder isolation')
     parser.add_argument('--child-escape', action='store_true', help='Qualify held Child adult admission, target PIN cancellation, rejected key, delayed Back and own target activation')
     parser.add_argument('--child-launch', action='store_true', help='Cold protected held Child: own launch PIN, unavailable surface, then separate adult-purpose admission with zero provider requests')
     parser.add_argument('--child-available', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private readiness seam: qualify own Child auth/roster/lineup without enabling shipping Child activation')
     parser.add_argument('--child-retry', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private Child transient failure, own Retry and Back during delayed authentication, followed by own retry')
     parser.add_argument('--child-rejected', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private actual Child rejection: exact cut prompt, permitted own form/dismissal, no stale replay, adult management and real Back exit')
     args = parser.parse_args()
+    if args.favorite_retention and any([args.switch, args.cold_restore, args.child_settings, args.directions, args.default_filter, args.assignment_refresh, args.manual_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected]):
+        parser.error('--favorite-retention is a separate case')
     if args.manual_recording and not args.manual_refresh:
         parser.error('--manual-recording requires --manual-refresh')
     if args.manual_recording and args.manual_mode not in ['changed', 'unchanged']:
@@ -681,6 +706,8 @@ def main():
                 value = [{'id': 99, 'name': 'Synthetic default first', 'channels': [7]}, {'id': 100, 'name': 'Synthetic default second', 'channels': [7]}]
             if self.path.split('?', 1)[0] in ['/api/channels/channels/', '/api/channels/channels/summary/']:
                 value = [{'id': user, 'uuid': f'00000000-0000-4000-8000-{user:012d}', 'name': 'Synthetic ' + str(user), 'channel_number': user}]
+                if args.favorite_retention and fixture_state.get('favorite_return'):
+                    value.append({'id': 99, 'uuid': '00000000-0000-4000-8000-000000000099', 'name': 'Synthetic returned', 'channel_number': 99})
                 if args.assignment_refresh and user == 8 and fixture_state['changed'] and args.manual_mode != 'unchanged':
                     value = [{'id': 80, 'uuid': '00000000-0000-4000-8000-000000000080', 'name': 'Synthetic reassigned', 'channel_number': 80}]
             if child_rejected:
@@ -700,7 +727,7 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode, args.favorite_retention)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -714,6 +741,8 @@ def main():
                 output.append(line)
                 if '"kind":"assignment-ready"' in line:
                     fixture_state['changed'] = True
+                if '"kind":"favorite-return-ready"' in line:
+                    fixture_state['favorite_return'] = True
                 if '"kind":"retry-ready"' in line:
                     fixture_state['child_retry_started'] = True
                 if '"kind":"revoke-ready"' in line:
@@ -780,6 +809,9 @@ def main():
                 changed = args.manual_mode == 'changed'
                 settled = [row for row in rows if row.get('kind') == 'record-settled']
                 report['passed'] = result.returncode == 0 and rows[-1].get('passed') and len(settled) == 1 and settled[0].get('confirmed') and settled[0].get('operation_only') is changed and settled[0].get('retired') is changed and len(posts) == 1 and fixture_state.get('recording_replied') is True and all(hit['user'] == 8 for hit in hits)
+        if args.favorite_retention:
+            report['requests'] = hits
+            report['passed'] = result.returncode == 0 and rows[-1].get('passed') and bool(hits) and all(hit['user'] == 8 and hit.get('method', 'GET') == 'GET' for hit in hits) and any(row.get('kind') == 'favorite-edit' and row.get('retained') for row in rows) and any(row.get('kind') == 'favorite-returned' and row.get('passed') for row in rows)
         if args.child_escape:
             rejected = [hit for hit in hits if hit['rejected']]
             delayed = [hit for hit in hits if hit['delayed']]
@@ -825,6 +857,8 @@ def main():
             server.server_close()
             report['passed'] = report['passed'] and report.get('cleaned', False) and report['restored']
             name = 'profile-management-directions-native.json' if args.directions else 'profile-management-native.json'
+            if args.favorite_retention:
+                name = 'profile-favorite-retention-native.json'
             if args.cold_restore:
                 name = f'profile-cold-{args.cold_restore}-native.json'
             if args.switch:

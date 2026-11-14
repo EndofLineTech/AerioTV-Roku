@@ -111,8 +111,10 @@ sub applyRefreshedLineup(data as object)
     if type(data.preferences) = "roAssociativeArray"
         m.recent = data.preferences.recent
         m.reminders = data.preferences.reminders
+        if type(data.preferences.favoriteIds) = "roArray" then m.savedFavoriteIds = copyPreferenceValue(data.preferences.favoriteIds)
     end if
     m.channels = data.channels
+    m.favorites = guideFavoriteSelection(m.savedFavoriteIds, m.channels)
     if m.providerType = "xtream" then resetGuideLogos()
     m.guideLogoUrls = channelLogoRemoteUrls(m.channels)
     m.serverGroups = data.groups

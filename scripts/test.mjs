@@ -65,6 +65,7 @@ suites.unshift('ProfileSetupCredentialNavigation');
 suites.unshift('ProfileRefreshNavigation', 'DvrSettlementNavigation', 'SubmittedRecordingPermit');
 suites.unshift('LineupHistoryReconciliation');
 suites.unshift('GuideRefreshPreferences');
+suites.unshift('GuideFavoriteRetention');
 suites.unshift('ProfileChildUnavailableNavigation');
 suites.unshift('ProfileChildRejectedNavigation');
 suites.unshift('UserProfileAddressPolicy');

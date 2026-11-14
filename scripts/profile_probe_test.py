@@ -6,9 +6,36 @@ import tempfile
 import unittest
 import zipfile
 import subprocess
+import contextlib
+import io
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_native_timeout_diagnostics_are_boolean_only(self):
+        spec = importlib.util.spec_from_file_location('native_runner', Path(__file__).with_name('run-native-probe.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        xml = b'<active-app><app id="private-app-id">Private app name</app></active-app>'
+        with patch.object(probe.urllib.request, 'urlopen', return_value=io.BytesIO(xml)):
+            self.assertIs(probe.active_dev_app('192.0.2.1'), False)
+        with patch.object(probe.urllib.request, 'urlopen', return_value=io.BytesIO(b'<active-app><app id="dev">Private dev title</app></active-app>')):
+            self.assertIs(probe.active_dev_app('192.0.2.1'), True)
+        with patch.object(probe.urllib.request, 'urlopen', return_value=io.BytesIO(b'malformed')):
+            self.assertIsNone(probe.active_dev_app('192.0.2.1'))
+        console = MagicMock()
+        console.recv.side_effect = probe.socket.timeout
+        output = io.StringIO()
+        with patch.dict(probe.os.environ, {'ROKU_HOST': '192.0.2.1', 'ROKU_DEV_PASSWORD': 'synthetic-test-password'}), patch.object(probe.socket, 'create_connection', return_value=console), patch.object(probe.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout='Install Success')), patch.object(probe.urllib.request, 'urlopen', return_value=io.BytesIO(xml)), patch('sys.argv', ['probe', 'fixture.zip', '--marker', 'missing', '--timeout', '0']), contextlib.redirect_stdout(output):
+            with self.assertRaises(SystemExit):
+                probe.main()
+        text = output.getvalue()
+        self.assertIn('Native dev active: False', text)
+        self.assertIn('Native launch observed: False', text)
+        for secret in ['private-app-id', 'Private app name', '192.0.2.1', 'synthetic-test-password']:
+            self.assertNotIn(secret, text)
+
     def test_child_escape_fixture_cannot_ship(self):
         script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt','source/ProfileChildEscapeFixture.brs']), /probe/);"
         subprocess.run(['node', '--input-type=module', '-e', script], check=True)
@@ -27,6 +54,8 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileDefaultSetupRecoveryFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileManualRefreshFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'LineupHistoryReconciliationProbeChecks')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileFavoriteRetentionFixture')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'GuideFavoriteRetentionProbeChecks')], check=True)
 
     def test_address_handler_probe_is_private_and_cannot_ship(self):
         spec = importlib.util.spec_from_file_location('address_probe', Path(__file__).with_name('test-profile-address-native.py'))
@@ -217,6 +246,8 @@ class ProfileProbeTest(unittest.TestCase):
                 package.writestr('manifest', 'title=AerioTV\n')
                 package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub')
                 package.writestr('source/MetadataCacheStore.brs', 'return "cachefs:/aeriotv-metadata-v1"')
+                package.writestr('components/GuideView.xml', '<component name="GuideView"><interface></interface></component>')
+                package.writestr('components/GuideView.brs', 'sub init()\nend sub\n')
                 for name in ['components/DvrSettlementNavigation.brs', 'components/DvrNavigation.brs', 'components/DvrRecordingTask.brs', 'source/HttpTransport.brs']:
                     package.writestr(name, (root / name).read_text())
             output = Path(tmp) / 'probe.zip'
@@ -265,6 +296,13 @@ class ProfileProbeTest(unittest.TestCase):
                     self.assertNotIn('"AerioTV"', source)
                     if mode in ['changed', 'unchanged']:
                         self.assertIn('m.manualRecordingSettled', package.read('components/DvrSettlementNavigation.brs').decode())
+            probe.build(output, normal, 'SyntheticFavoriteSection', 'http://127.0.0.1:1234', favorite_retention=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertIn('favoriteIds: ["99", "8"]', source)
+                self.assertNotIn('"AerioTV"', source)
+                self.assertIn('profileFavoriteProbe', package.read('components/GuideView.xml').decode())
+                self.assertIn('profileFavoriteProbe', package.read('components/GuideView.brs').decode())
             probe.build(output, normal, 'SyntheticChildEscapeSection', 'http://127.0.0.1:1234', child_escape=True)
             with zipfile.ZipFile(output) as package:
                 source = package.read('components/AerioScene.brs').decode()

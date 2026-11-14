@@ -9,6 +9,21 @@ import re
 import socket
 import subprocess
 import time
+import urllib.request
+import xml.etree.ElementTree as ET
+
+
+def active_dev_app(host):
+    """Return only dev-active state; never publish another app's ID or title."""
+    try:
+        with urllib.request.urlopen(f'http://{host}:8060/query/active-app', timeout=3) as response:
+            root = ET.fromstring(response.read(65536))
+        app = root.find('app')
+        if app is None:
+            return False
+        return app.get('id') == 'dev'
+    except (OSError, ValueError, ET.ParseError):
+        return None
 
 
 def main():
@@ -45,6 +60,7 @@ def main():
     deadline = time.monotonic() + (args.timeout if installed else 3)
     pending = b""
     complete = False
+    launch_observed = False
     while time.monotonic() < deadline:
         try:
             chunk = console.recv(65536)
@@ -54,8 +70,11 @@ def main():
             while b"\n" in pending:
                 raw, pending = pending.split(b"\n", 1)
                 line = raw.decode("utf-8", "replace").strip()
+                if "Running dev" in line:
+                    launch_observed = True
                 relevant = args.prefix in line or any(term in line for term in (
                     "ERROR:", "error &h", "Syntax Error", "Running dev",
+                    "Compile Error", "Error in XML", "ERROR compiling", "Compilation Failed",
                 ))
                 if relevant:
                     line = re.sub(r'https?://[^\s"<>]+', "[URL]", line)
@@ -71,6 +90,8 @@ def main():
     if not installed:
         raise SystemExit("Native install failed; inspect compiler evidence above")
     if args.marker and not complete:
+        print("Native launch observed:", launch_observed, flush=True)
+        print("Native dev active:", active_dev_app(host), flush=True)
         raise SystemExit("Probe did not report completion within its time budget")
 
 

@@ -432,7 +432,26 @@ fail retained. Internal guide rebinding no longer publishes a synthetic user
 preference edit, while explicit guide edits still save normally. Native shared
 checks include precise fractional extensions and case-sensitive dictionaries.
 
-These are private lifecycle checks, not visible-favorites or peer sync evidence:
+Those lifecycle checks are not visible-favorites or peer sync evidence:
 older storage-isolation fixtures use UUID-shaped sentinel favorites, whereas the
-corrected sync protocol uses integer Dispatcharr channel IDs. Lossless explicit
-Guide favorite edits and unavailable IDs remain tracked separately.
+corrected sync protocol uses integer Dispatcharr channel IDs.
+
+## Guide favorite retention
+
+The Guide retains its ordered saved channel-ID list separately from the visible
+UUID-selection map. An explicit preference edit keeps unavailable IDs in their
+existing order, removes only a currently visible favorite that was untoggled,
+and appends genuinely new visible favorites. The existing local 2,000-ID bound
+never displaces an unavailable favorite to admit a new one; a rejected addition
+is reflected in the selection and a limit message. Unavailable IDs do not create
+visible channels or authorize content.
+
+Refresh rebuilds the visible selection from retained IDs, so an authorized
+channel that returns also regains its favorite badge. The normal save event
+continues to carry the Guide's captured own session, not an outgoing or borrowed
+identity. A private numeric-ID case qualifies an unrelated edit retaining
+`[99, 8]` while only channel 8 is available, channel 99 returning on refresh,
+explicitly untoggling 8, and `[99]` surviving fresh own authentication. The
+stored favorite field remains unambiguous, while the other profile's raw data,
+roster and credentials remain intact. This is local Guide/persistence evidence,
+not peer-wire category merge or sync-write acceptance.

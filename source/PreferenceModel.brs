@@ -192,6 +192,54 @@ function normalizeDvrPositions(raw as dynamic) as object
     return result
 end function
 
+' Saved IDs are an ordered account value, not just the visible UUID selection.
+' Unavailable IDs survive unrelated Guide edits and temporary assignment loss.
+function retainedGuideFavoriteIds(saved as dynamic, channels as object, selected as object) as object
+    available = {}
+    available.setModeCaseSensitive()
+    for each channel in channels
+        id = textValue(channel.id)
+        uuid = textValue(channel.uuid)
+        if id <> "" and uuid <> ""
+            if not available.doesExist(id) then available[id] = false
+            if selected.doesExist(uuid) then available[id] = true
+        end if
+    end for
+    result = []
+    seen = {}
+    seen.setModeCaseSensitive()
+    for each id in compactIds(saved, 2000)
+        keep = true
+        if available.doesExist(id) then keep = available[id]
+        if keep
+            result.push(id)
+            seen[id] = true
+        end if
+    end for
+    for each channel in channels
+        id = textValue(channel.id)
+        if id <> "" and selected.doesExist(textValue(channel.uuid)) and not seen.doesExist(id) and result.count() < 2000
+            result.push(id)
+            seen[id] = true
+        end if
+    end for
+    return result
+end function
+
+function guideFavoriteSelection(saved as dynamic, channels as object) as object
+    ids = {}
+    ids.setModeCaseSensitive()
+    for each id in compactIds(saved, 2000)
+        ids[id] = true
+    end for
+    selected = {}
+    selected.setModeCaseSensitive()
+    for each channel in channels
+        if ids.doesExist(textValue(channel.id)) and textValue(channel.uuid) <> "" then selected[channel.uuid] = true
+    end for
+    return selected
+end function
+
 function normalizeAccountPreferences(raw as dynamic) as object
     result = {}
     if type(raw) = "roAssociativeArray" then result = copyPreferenceValue(raw)
