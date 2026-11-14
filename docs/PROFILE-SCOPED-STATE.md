@@ -471,6 +471,19 @@ The result remains read-only and has neither an API key nor a credential-verify
 phase. Existing controllers do not yet consume these facts for staged switching;
 their presence alone does not fix the ordering or authorize a roster commit.
 
+`source/DispatcharrSyncSwitchRosterStore.brs` adds the unwired metadata-only
+transaction boundary. It rechecks captured connection-root bytes/presence,
+current roster, distinct incoming nonce/outgoing session, current target-owned
+credential and broker access before one atomic roster write. Remember-on requires
+the canonical persisted own key; Remember-off requires a current own memory map,
+not a stale persisted fallback. It never changes credentials or private settings.
+Write/flush faults restore captured metadata, with failed rollback flagged for
+recovery. Profiles-Off performs no normalization write. Any profile removal is
+refused as `cleanup-required` until explicit tombstone/default-retirement cleanup
+is integrated. The caller must still bind actual auth/read nodes, derive memory
+keys from the current slot/address/profile lease, and keep the incoming scrim up;
+this helper is not itself a target session or a public switching entry point.
+
 Private native cases qualify changed assignments/VOD revocation, foreign own
 identity, unchanged authority and transient failures. Two cases delay a real
 synthetic recording POST by twelve seconds: changed authority confirms once via

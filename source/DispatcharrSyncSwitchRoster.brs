@@ -5,6 +5,7 @@ function dispatcharrSyncSwitchRosterPlan(connection as object, previous as objec
     denied = {ok: false, applied: false, reason: "stale-context", store: previous, removed: [], suggestions: [], needsDefaultSwitch: false}
     if userProfileLocalId(nonce) = "" or nonce <> activeNonce then return denied
     if not userProfileSameSession(outgoing, activeOutgoing) then return denied
+    if nonce = outgoing.sessionId then return denied
     if connection.provider <> "dispatcharr" or connection.id <> previous.playlistId then return denied
     if outgoing.playlistId <> connection.id or outgoing.profileId <> previous.active then return denied
     if outgoing.preferenceIdentity <> connectionPreferenceIdentity(connection, outgoing.accountId) then return denied

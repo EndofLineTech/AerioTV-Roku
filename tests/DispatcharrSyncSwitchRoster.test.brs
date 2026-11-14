@@ -18,6 +18,10 @@ sub main()
     m.activeNonce = "00000000-0000-4000-8000-000000000099"
     check(not switchRosterPlan(m.remote).ok, "retired incoming nonce rejects a delayed own roster")
     switchRosterFixture()
+    m.nonce = m.outgoing.sessionId
+    m.activeNonce = m.nonce
+    check(not switchRosterPlan(m.remote).ok, "an outgoing session ID is not an incoming switch admission nonce")
+    switchRosterFixture()
     m.activeOutgoing = setCanonicalPreference(m.outgoing, "sessionId", "00000000-0000-4000-8000-000000000098")
     check(not switchRosterPlan(m.remote).ok, "A/B/A outgoing replacement rejects old roster staging")
     switchRosterFixture()
