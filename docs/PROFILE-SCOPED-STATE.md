@@ -329,3 +329,14 @@ and one wipeable raw-key field, not a nested API key or unused bearer response.
 A late acknowledgement cannot restore data, credentials
 or scope. This does not enable a refused active non-default Child's own form or
 complete the public held-key picker flow.
+
+The Scene's existing one-second broker tick bounds an own-proof acknowledgement
+wait to five seconds. Expiry wipes the pending key, detaches the old ticket and
+retires its credential nonce, then re-admits only the same own form under a fresh
+nonce. Thus an old ticket processed after the deadline also refuses, not merely
+its callback. Ordinary latency below the deadline does not reset the form.
+Reopening a Child form explicitly detaches the underlying unavailable dialog
+before native replacement, preserving launch-PIN authority without an unintended
+close/exit event. Private eight-second-delay fixtures qualify full-access and
+PIN-protected default-Child timeout, unchanged data/hold, usable fresh form,
+stale-proof refusal and later successful retry without app restart or autoplay.

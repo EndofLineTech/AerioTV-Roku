@@ -1,5 +1,26 @@
 sub main()
     heldOwnFormFixture()
+    beforeTimeout = FormatJson(m.registry.values)
+    oldNonce = m.profileOwnSignInNonce
+    proof = {ok: true, apiKey: "synthetic-recovered-active", verifiedBaseUrl: "https://example.test", verifiedUser: {id: 88, username: "Bob", user_level: 1}}
+    check(beginProfileOwnSignInHeldCredential(proof, string(64, "a")), "bounded-wait fixture queues a current verified own key")
+    oldTicket = m.profileOwnSignInHold
+    m.profileOwnSignInHoldClock = {elapsed: 4000, totalMilliseconds: function() as integer
+        return m.elapsed
+    end function}
+    tickUserProfileOwnSignInHold()
+    check(m.profileOwnSignInNonce = oldNonce and m.profileOwnSignInHold <> invalid and FormatJson(m.registry.values) = beforeTimeout, "ordinary acknowledgement latency below the deadline does not cancel or mutate the own credential flow")
+    m.profileOwnSignInHoldClock.elapsed = 6000
+    tickUserProfileOwnSignInHold()
+    check(m.profileOwnSignInContext <> invalid and m.profileOwnSignInNonce <> oldNonce and m.global.profileownsigninnonce = m.profileOwnSignInNonce and m.profileOwnSignInHold = invalid and m.activeUserScope = invalid and m.apiKey = "" and m.profileGateCover.visible, "lost broker acknowledgement retires its old proof and reopens only a fresh own credential lifecycle without app restart")
+    check(FormatJson(m.registry.values) = beforeTimeout and m.profileOwnSignInDialog.buttons.count() = 4, "bounded wait leaves data/credentials unchanged and returns a usable own form")
+    onProfileOwnSignInHoldResolved(ownFormEvent(oldTicket, {allowed: true}))
+    check(FormatJson(m.registry.values) = beforeTimeout and m.profileOwnSignInNonce <> oldNonce, "late acknowledgement after timeout cannot commit into the reopened credential lifecycle")
+    proof = {ok: true, apiKey: "synthetic-recovered-active", verifiedBaseUrl: "https://example.test", verifiedUser: {id: 88, username: "Bob", user_level: 1}}
+    check(beginProfileOwnSignInHeldCredential(proof, string(64, "a")), "fresh own proof can retry after the expired broker wait")
+    onProfileOwnSignInHoldResolved(ownFormEvent(m.profileOwnSignInHold, {allowed: true}))
+    check(m.fixtureActiveReconnect, "a later accepted proof resumes ordinary own authentication rather than staying stranded")
+    heldOwnFormFixture()
     beforeHeld = FormatJson(m.registry.values)
     proof = {ok: true, apiKey: "synthetic-recovered-active", verifiedBaseUrl: "https://example.test", verifiedUser: {id: 88, username: "Bob", user_level: 1}}
     check(beginProfileOwnSignInHeldCredential(proof, string(64, "a")) and m.profileOwnSignInHold <> invalid and FormatJson(m.registry.values) = beforeHeld, "held own key waits for broker acknowledgement before committing any credential/data")
@@ -27,6 +48,7 @@ sub main()
     childOwnFormFixture(false)
     beforeChild = FormatJson(m.registry.values)
     check(beginUserProfileOwnSignIn(m.fixtureTarget, true, true), "private active keyless Child opens only its admitted own form")
+    check(m.fixtureUnavailableClosed, "direct Child own-form admission detaches its underlying unavailable node before replacement")
     check(m.activeUserScope = invalid and m.profileGateCover.visible and m.global.profileownsigninpending, "Child own form has only a credential lifecycle behind the cover")
     cancelUserProfileOwnSignIn()
     check(m.fixtureChildSurfaceRestored and m.global.profilegateclosed and m.global.activeusersession = "" and FormatJson(m.registry.values) = beforeChild, "Child form Cancel returns to its unavailable surface with unchanged data and no authenticated scope")
@@ -224,6 +246,10 @@ function showUnavailableChildProfile() as boolean
     return true
 end function
 
+sub closeUnavailableChildDialog()
+    m.fixtureUnavailableClosed = true
+end sub
+
 sub resetConnectionRuntime()
     retireUserProfileOwnSignIn()
     m.activeUserScope = invalid
@@ -251,6 +277,7 @@ function ownFormEvent(node as object, index as dynamic) as object
 end function
 
 sub ownFormFixture()
+    m.fixtureUnavailableClosed = false
     m.requestGate = invalid
     m.profileOwnSignInHold = invalid
     entry = normalizeConnectionEntry({id: "slot-a", name: "Synthetic", provider: "dispatcharr", url: "https://example.test", accountId: "7", remember: true})

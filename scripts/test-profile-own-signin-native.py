@@ -24,7 +24,7 @@ def module(name):
     return loaded
 
 
-def build(output, normal, section, base, form=False, default_form=False, held=False, active_form=False, active_recheck=False, recheck_cancel=False, identity_change=False, child_form=None, same_key=False, hold_cancel=False, child_rejected=False):
+def build(output, normal, section, base, form=False, default_form=False, held=False, active_form=False, active_recheck=False, recheck_cancel=False, identity_change=False, child_form=None, same_key=False, hold_cancel=False, child_rejected=False, hold_timeout=False):
     if active_recheck:
         active_form = True
     if held:
@@ -47,7 +47,7 @@ def build(output, normal, section, base, form=False, default_form=False, held=Fa
         fixture_name = 'ProfileOwnRecheckFixture.brs'
     if child_form:
         fixture_name = 'ProfileChildOwnSignInFormFixture.brs'
-    if hold_cancel:
+    if hold_cancel or hold_timeout:
         fixture_name = 'ProfileOwnHeldKeyCancelFixture.brs'
     fixture = (ROOT / 'tests/native' / fixture_name).read_text()
     if same_key:
@@ -60,15 +60,21 @@ def build(output, normal, section, base, form=False, default_form=False, held=Fa
     fixture = fixture.replace('OWN_CHILD_PIN', 'true' if child_form and child_form.endswith('-pin') else 'false')
     fixture = fixture.replace('OWN_CHILD_HELD', 'true' if child_form == 'held-keyless' else 'false')
     fixture = fixture.replace('OWN_CHILD_REJECTED', 'true' if child_rejected else 'false')
+    fixture = fixture.replace('OWN_HOLD_TIMEOUT', 'true' if hold_timeout else 'false')
+    fixture = fixture.replace('OWN_HOLD_CHILD', 'true' if child_form else 'false')
+    fixture = fixture.replace('OWN_HOLD_PIN', 'true' if child_form and child_form.endswith('-pin') else 'false')
     if form:
         fixture = fixture.replace('OWN_PROBE_PIN_HASH', hashlib.sha256(bytes.fromhex('bb' * 16) + b'1234').hexdigest())
     with zipfile.ZipFile(seeded) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
-            if hold_cancel and name == 'components/RequestGateTask.brs':
+            if (hold_cancel or hold_timeout) and name == 'components/RequestGateTask.brs':
                 target = b'    else if action = "own-verified"\n'
                 assert body.count(target) == 1
-                body = body.replace(target, target + b'        sleep(4000)\n', 1)
+                delay = b'        sleep(4000)\n'
+                if hold_timeout:
+                    delay = b'        if m.probeOwnDelay <> true\n            m.probeOwnDelay = true\n            sleep(8000)\n        end if\n'
+                body = body.replace(target, target + delay, 1)
             if name == 'components/AerioScene.brs':
                 source = body.decode()
                 assert source.count('sub onManagementProbeTick()') == 1
@@ -99,11 +105,14 @@ def main():
     parser.add_argument('--same-key', action='store_true', help='Active own-form variant: password recovery returns the same previously rejected key hash')
     parser.add_argument('--hold-cancel', action='store_true', help='Cancel while a private delayed broker acknowledgement is pending; stale proof must not lift hold or commit')
     parser.add_argument('--child-rejected', action='store_true', help='Default Child form variant: reject its actual own slot key before recovering with own credentials')
+    parser.add_argument('--hold-timeout', action='store_true', help='Delay one private broker acknowledgement beyond the own-form deadline; refuse stale proof and retry without app restart')
     args = parser.parse_args()
     if args.child_rejected and args.child_form not in ['default', 'default-pin']:
         parser.error('--child-rejected requires --child-form default or default-pin')
     if args.hold_cancel and not (args.same_key and args.active_form):
         parser.error('--hold-cancel requires --active-form --same-key')
+    if args.hold_timeout and (args.hold_cancel or not (args.same_key and (args.active_form or args.child_rejected))):
+        parser.error('--hold-timeout requires a separate --active-form or --child-rejected same-key case')
     if args.same_key and not args.child_rejected and (not args.active_form or args.active_recheck or args.identity_change or args.child_form or args.default_form or args.held):
         parser.error('--same-key requires a separate --active-form or --child-rejected case')
     if args.child_form:
@@ -226,7 +235,7 @@ def main():
     section = 'AerioOwnSignInProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-own-signin-probe.zip'
     cleaner = ROOT / 'out/profile-own-signin-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.form, args.default_form, args.held, args.active_form, args.active_recheck, args.recheck_cancel, args.identity_change, args.child_form, args.same_key, args.hold_cancel, args.child_rejected)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.form, args.default_form, args.held, args.active_form, args.active_recheck, args.recheck_cancel, args.identity_change, args.child_form, args.same_key, args.hold_cancel, args.child_rejected, args.hold_timeout)
     recovery.cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -306,6 +315,9 @@ def main():
                 report['passed'] = report['passed'] and report.get('pre_pin_requests') == []
         if args.hold_cancel:
             report['passed'] = result.returncode == 0 and rows[-1].get('passed') and all(rows[-1].get(key) for key in ['unchanged', 'retired', 'held', 'no_autoplay']) and report.get('back_sent') is True and [hit['scenario'] for hit in posts] == ['correct']
+        if args.hold_timeout:
+            waits = [row for row in rows if row.get('kind') == 'timeout-ready']
+            report['passed'] = result.returncode == 0 and rows[-1].get('passed') and len(waits) == 1 and waits[0].get('passed') and [hit['scenario'] for hit in posts] == ['correct', 'correct'] and report.get('back_sent') is not True
         if not report['passed']:
             raise RuntimeError('Native own-profile sign-in assertions failed')
     finally:
@@ -329,6 +341,8 @@ def main():
                     report_name = 'profile-active-same-key-recovery-native.json'
                     if args.hold_cancel:
                         report_name = 'profile-active-same-key-cancel-native.json'
+                    if args.hold_timeout:
+                        report_name = 'profile-active-same-key-timeout-native.json'
             if args.active_recheck:
                 report_name = 'profile-active-own-recheck-native.json'
                 if args.recheck_cancel:
@@ -339,6 +353,8 @@ def main():
                     report_name = f'profile-child-rejected-{args.child_form}-native.json'
                     if args.same_key:
                         report_name = f'profile-child-same-key-{args.child_form}-native.json'
+                    if args.hold_timeout:
+                        report_name = f'profile-child-broker-timeout-{args.child_form}-native.json'
             (ROOT / 'out' / report_name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

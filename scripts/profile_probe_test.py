@@ -139,6 +139,20 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertIn('m.heldCancelRoster', source)
                 self.assertNotIn('"AerioTV"', source)
                 self.assertIn('sleep(4000)', package.read('components/RequestGateTask.brs').decode())
+                self.assertNotIn('OWN_HOLD_', source)
+            probe.build(output, normal, 'SyntheticSameOwnTimeoutSection', 'http://127.0.0.1:1234', form=True, active_form=True, same_key=True, hold_timeout=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertIn('"timeout-ready"', source)
+                self.assertNotIn('OWN_HOLD_', source)
+                self.assertNotIn('"AerioTV"', source)
+                self.assertIn('sleep(8000)', package.read('components/RequestGateTask.brs').decode())
+            probe.build(output, normal, 'SyntheticChildOwnTimeoutSection', 'http://127.0.0.1:1234', form=True, child_form='default-pin', child_rejected=True, same_key=True, hold_timeout=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('OWN_HOLD_', source)
+                self.assertIn('onUnavailableChildChoice', source)
+                self.assertNotIn('"AerioTV"', source)
             for mode in ['own', 'own-pin', 'default', 'default-pin', 'held-keyless']:
                 probe.build(output, normal, 'SyntheticChildOwnSection', 'http://127.0.0.1:1234', form=True, child_form=mode)
                 with zipfile.ZipFile(output) as package:

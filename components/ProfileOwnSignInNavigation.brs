@@ -112,6 +112,7 @@ function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as
         end if
     end if
     retireProfileRequestBinding()
+    if childRecovery then closeUnavailableChildDialog()
     m.profileOwnSignInNonce = CreateObject("roDeviceInfo").getRandomUUID()
     m.profileOwnSignInContext = {nonce: m.profileOwnSignInNonce, activeRecovery: activeRecovery, childRecovery: childRecovery, connection: copyJson(entry), store: store, target: target, scope: copyJson(m.activeUserScope), page: m.page, guideActive: m.guide.active, covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, unlock: m.profileUnlockGrant, username: target.username, password: ""}
     m.profileOwnSignInContext.holds = holds
@@ -375,15 +376,33 @@ function beginProfileOwnSignInHeldCredential(result as object, hash as string) a
     result.apiKey = ""
     result.verifiedUser = invalid
     m.profileOwnSignInHold = ticket
+    m.profileOwnSignInHoldClock = CreateObject("roTimespan")
+    m.profileOwnSignInHoldClock.mark()
     m.requestGate.request = ticket
     return true
 end function
+
+sub tickUserProfileOwnSignInHold()
+    if m.profileOwnSignInHold = invalid or m.profileOwnSignInHoldClock = invalid then return
+    if m.profileOwnSignInHoldClock.totalMilliseconds() < 5000 then return
+    current = profileOwnSignInContextCurrent()
+    context = m.profileOwnSignInContext
+    cancelUserProfileOwnSignIn()
+    if not current or context = invalid then return
+    ' Retire the credential nonce, not just its observer: an old broker ticket
+    ' processed after the deadline must also refuse. Reopen only the same own
+    ' form under fresh admission so a lost reply does not require app restart.
+    if beginUserProfileOwnSignIn(context.target.id, context.activeRecovery = true, context.childRecovery = true)
+        if m.profileOwnSignInDialog <> invalid then showProfileOwnSignInForm("Could not verify profile access. Please try again.")
+    end if
+end sub
 
 sub onProfileOwnSignInHoldResolved(event as object)
     if not isCurrentTaskEvent(event, m.profileOwnSignInHold) then return
     if not profileOwnSignInContextCurrent() then cancelUserProfileOwnSignIn() : return
     m.profileOwnSignInHold.unobserveField("result")
     m.profileOwnSignInHold = invalid
+    m.profileOwnSignInHoldClock = invalid
     result = m.profileOwnSignInContext.pendingVerified
     m.profileOwnSignInContext.delete("pendingVerified")
     decision = event.getData()
@@ -494,6 +513,7 @@ end sub
 sub retireUserProfileOwnSignIn()
     if m.profileOwnSignInHold <> invalid then m.profileOwnSignInHold.unobserveField("result")
     m.profileOwnSignInHold = invalid
+    m.profileOwnSignInHoldClock = invalid
     if m.profileOwnSignInContext <> invalid
         if type(m.profileOwnSignInContext.pendingVerified) = "roAssociativeArray" then m.profileOwnSignInContext.pendingVerified.apiKey = ""
     end if

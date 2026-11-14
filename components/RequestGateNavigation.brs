@@ -124,6 +124,7 @@ sub onRequestGatePrompt(event as object)
 end sub
 
 sub onRequestGateTick()
+    tickUserProfileOwnSignInHold()
     if m.requestGateBinding = invalid or m.requestGate = invalid then return
     binding = m.requestGateBinding
     recovery = textValue(binding.recoveryNonce) <> ""
