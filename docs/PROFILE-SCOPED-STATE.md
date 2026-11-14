@@ -530,6 +530,20 @@ an obsolete value, then submits the imported value before target lineup/adoption
 This case has only been generated and syntax-checked, not executed on the Roku;
 its fixed synthetic salt is not a production entropy source.
 
+Unavailable-Child staging now has a separate **unwired** planning entry
+point. It requires the actual absent authenticated actor/empty runtime key, an
+incoming nonce and a current adult-purpose management grant; it never constructs
+an outgoing session to reuse authenticated switching. Target own proof, held-slot
+pause, protection-change flags and explicit tombstone/default-retirement refusal
+share the content-only calculation after admission. Pending roster edits still
+refuse until writer settlement exists. Its separate metadata-only transaction and
+write-free preflight recheck exact connection-root/roster, current Device Admin
+and adult grant, empty actor/key, nonce, target own credential and broker access.
+Host tests cover exact fault restoration, stale adult material after imported
+PIN changes, Remember-off own memory and authenticated-API no-scope refusal.
+Neither entry point has an unavailable-Child controller caller yet; the private
+runtime refusal remains. No native transaction or escape qualification is implied.
+
 The earlier manual-refresh native cases (not this new switch/roster pipeline)
 qualify changed assignments/VOD revocation, foreign own
 identity, unchanged authority and transient failures. Two cases delay a real

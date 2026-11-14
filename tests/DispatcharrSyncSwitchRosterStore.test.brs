@@ -55,6 +55,50 @@ sub main()
     before = FormatJson(m.registry.values)
     result = switchRosterStoreCommit()
     check(not result.ok and result.reason = "cleanup-required" and m.registry.flushes = 0 and FormatJson(m.registry.values) = before, "metadata-only admission never silently deletes tombstoned holders without the explicit cleanup integration")
+    for each fault in ["", "write", "flush", "rollback"]
+        unavailableSwitchRosterStoreFixture()
+        m.registry.fault = fault
+        before = FormatJson(m.registry.values)
+        check(unavailableSwitchRosterStoreAccess() and m.registry.flushes = 0, "unavailable Child preflight uses real empty actor plus current adult purpose without writing or inventing a scope")
+        result = unavailableSwitchRosterStoreCommit()
+        if fault = ""
+            check(result.ok and result.committed and m.registry.flushes = 1 and result.store.active = m.context.store.active and result.target.pinHash = string(64, "a"), "separate unavailable admission persists imported target protection but retains Child active")
+            check(m.registry.read("settingsV1") = m.settings and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(m.ownKeyName) = "synthetic-b" and m.outgoing = invalid, "no-session transaction never changes own/default settings/keys or fabricates a holder")
+            m.context.store = result.store
+            m.context.target = result.target
+            check(not unavailableSwitchRosterStoreAccess(), "changed imported adult-holder PIN invalidates old management material before any following request")
+        else
+            check(not result.ok and result.recoveryRequired = (fault = "rollback") and FormatJson(m.registry.values) = before, "unavailable admission restores exact metadata on write/flush faults without changing actor or credentials")
+        end if
+    end for
+    for each change in ["actor", "context-actor", "actor-key", "purpose", "grant", "management-nonce", "key", "root", "roster", "nonce", "held", "device-admin"]
+        unavailableSwitchRosterStoreFixture()
+        if change = "actor" then m.outgoing = {profileId: "not-unavailable"}
+        if change = "context-actor" then m.context.outgoing = {profileId: "fabricated"}
+        if change = "actor-key" then m.actorKey = "not-empty"
+        if change = "purpose" then m.context.unavailableChild = false
+        if change = "grant" then m.context.management.pinHash = string(64, "f")
+        if change = "management-nonce" then m.context.managementNonce = "00000000-0000-4000-8000-000000000099"
+        if change = "key" then m.registry.values[m.ownKeyName] = ""
+        if change = "root" then m.registry.values["connectionsV1"] = ""
+        if change = "roster" then m.registry.values[userProfileStoreKey("slot-a")] = "{malformed"
+        if change = "nonce" then m.activeNonce = "00000000-0000-4000-8000-000000000099"
+        if change = "held" then m.fixtureHeld = true
+        if change = "device-admin" then m.registry.values[userProfileDeviceAdminKey("slot-a")] = "{malformed"
+        before = FormatJson(m.registry.values)
+        check(not unavailableSwitchRosterStoreAccess(), "unavailable preflight refuses changed " + change + " before another target request")
+        result = unavailableSwitchRosterStoreCommit()
+        check(not result.ok and m.registry.flushes = 0 and FormatJson(m.registry.values) = before, "unavailable transaction refuses changed " + change + " without a fake authenticated bypass")
+    end for
+    unavailableSwitchRosterStoreFixture()
+    check(not switchRosterStoreAccess() and not switchRosterStoreCommit().ok and m.registry.flushes = 0, "authenticated admission still refuses a genuine no-session Child instead of weakening its existing scope invariant")
+    m.context.connection.remember = false
+    m.registry.values["connectionsV1"] = FormatJson({schema: 1, selected: "slot-a", entries: [m.context.connection]})
+    m.context.connectionRoot = m.registry.read("connectionsV1")
+    check(not unavailableSwitchRosterStoreAccess(), "no-session admission with Remember-off cannot borrow retained persisted own bytes")
+    m.memory[m.ownKeyName] = "synthetic-b"
+    result = unavailableSwitchRosterStoreCommit()
+    check(result.ok and m.registry.read(m.ownKeyName) = "synthetic-b", "current caller-owned target memory lease can stage metadata without credential repair/deletion")
     print "ALL TESTS PASSED"
 end sub
 
@@ -107,6 +151,33 @@ end function
 
 function switchRosterStoreAccess() as boolean
     return dispatcharrSyncSwitchRosterAccessCurrent(m.registry, m.context, m.verified, 600, m.activeNonce, m.outgoing, m.memory)
+end function
+
+sub unavailableSwitchRosterStoreFixture()
+    switchRosterStoreFixture()
+    store = m.context.store
+    store.profiles[0] = setCanonicalPreference(store.profiles[0], "role", "child")
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinType", "numbers")
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinHash", string(64, "c"))
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinSalt", string(32, "d"))
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    m.context.store = loadUserProfileStore(m.registry, "slot-a")
+    m.context.target = m.context.store.profiles[1]
+    m.outgoing = invalid
+    m.context.outgoing = invalid
+    m.context.unavailableChild = true
+    m.actorKey = ""
+    m.context.managementNonce = "00000000-0000-4000-8000-000000000092"
+    target = m.context.target
+    m.context.management = {slot: "slot-a", active: store.active, nonce: m.context.managementNonce, purpose: "manage-profiles", kind: "pin", id: target.id, pinType: target.pinType, pinHash: target.pinHash, pinSalt: target.pinSalt}
+end sub
+
+function unavailableSwitchRosterStoreAccess() as boolean
+    return dispatcharrSyncUnavailableChildRosterAccessCurrent(m.registry, m.context, m.verified, 600, m.activeNonce, m.outgoing, m.actorKey, m.memory)
+end function
+
+function unavailableSwitchRosterStoreCommit() as object
+    return commitDispatcharrUnavailableChildRosterPull(m.registry, m.context, m.verified, m.decoded, m.enabled, 600, m.activeNonce, m.outgoing, m.actorKey, m.memory)
 end function
 
 function requestGateAccessAllowed(url as string, key as string) as boolean

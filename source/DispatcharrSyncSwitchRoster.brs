@@ -15,12 +15,51 @@ function dispatcharrSyncSwitchRosterPlan(connection as object, previous as objec
         denied.reason = "outgoing-pending"
         return denied
     end if
+    for each profile in store.profiles
+        if profile.id = outgoing.profileId and textValue(profile.userId) <> outgoing.accountId then return denied
+    end for
+    result = dispatcharrSyncSwitchRosterContentPlan(connection, store, targetId, verified, decoded, enabled, now)
+    if not result.ok then result.store = previous
+    return result
+end function
+
+' An unavailable Child has no outgoing authenticated session to borrow or
+' fabricate. Its actual empty actor/key and current adult-purpose admission are
+' separate inputs; storage/controller callers must freshly bind those inputs.
+' This pure plan is NOT wired to an unavailable-Child runtime caller yet.
+function dispatcharrSyncUnavailableChildRosterPlan(connection as object, previous as object, targetId as string, verified as object, decoded as object, enabled as boolean, now as integer, nonce as string, activeNonce as string, activeOutgoing as dynamic, activeKey as string, deviceAdmin as dynamic, management as dynamic, managementNonce as string) as object
+    denied = {ok: false, applied: false, reason: "stale-context", store: previous, removed: [], suggestions: [], needsDefaultSwitch: false}
+    if userProfileLocalId(nonce) = "" or nonce <> activeNonce then return denied
+    if activeOutgoing <> invalid or activeKey <> "" then return denied
+    if connection.provider <> "dispatcharr" or connection.id <> previous.playlistId then return denied
+    store = normalizeUserProfileStore(previous, connection.id)
+    if store.readOnly = true or now <= 0 then return denied
+    child = false
+    for each profile in store.profiles
+        if profile.id = store.active then child = profile.role = "child"
+    end for
+    if not child then return denied
+    if not userProfileManagementGrantMatches(store, deviceAdmin, management, managementNonce) then return denied
+    ' Until writer settlement exists, never erase a pending local roster edit.
+    if store.pendingRoster
+        denied.reason = "outgoing-pending"
+        return denied
+    end if
+    result = dispatcharrSyncSwitchRosterContentPlan(connection, store, targetId, verified, decoded, enabled, now)
+    if not result.ok then result.store = previous
+    return result
+end function
+
+' Content-only pure calculation shared AFTER the authenticated-session or
+' unavailable-Child admission wrapper. It grants no persistence/runtime access.
+function dispatcharrSyncSwitchRosterContentPlan(connection as object, store as object, targetId as string, verified as object, decoded as object, enabled as boolean, now as integer) as object
+    denied = {ok: false, applied: false, reason: "stale-context", store: store, removed: [], suggestions: [], needsDefaultSwitch: false}
     target = invalid
     originalOutgoing = invalid
     targetIndex = -1
     for i = 0 to store.profiles.count() - 1
         profile = store.profiles[i]
-        if profile.id = outgoing.profileId then originalOutgoing = profile
+        if profile.id = store.active then originalOutgoing = profile
         if profile.id = targetId
             target = profile
             targetIndex = i
@@ -28,7 +67,6 @@ function dispatcharrSyncSwitchRosterPlan(connection as object, previous as objec
     end for
     if target = invalid or originalOutgoing = invalid then return denied
     if target.id = originalOutgoing.id or target.addressHeld then return denied
-    if textValue(originalOutgoing.userId) <> outgoing.accountId then return denied
     if verified.ok <> true or verified.phase <> "verified" or verified.verifiedBaseUrl <> connection.url then return denied
     if GetInterface(verified.apiKey, "ifString") = invalid then return denied
     if verified.apiKey = "" or len(verified.apiKey) > 512 then return denied
@@ -56,17 +94,17 @@ function dispatcharrSyncSwitchRosterPlan(connection as object, previous as objec
             denied.needsDefaultSwitch = true
             return denied
         end if
-        if removed.id = outgoing.profileId
+        if removed.id = originalOutgoing.id
             denied.reason = "outgoing-removal"
             denied.needsDefaultSwitch = true
             return denied
         end if
     end for
     if merged.needsDefaultSwitch then return denied
-    merged.store.active = outgoing.profileId
+    merged.store.active = originalOutgoing.id
     for each profile in merged.store.profiles
         if profile.id = target.id then target = profile
-        if profile.id = outgoing.profileId then result.outgoingProtectionChanged = FormatJson(profile) <> FormatJson(originalOutgoing)
+        if profile.id = originalOutgoing.id then result.outgoingProtectionChanged = FormatJson(profile) <> FormatJson(originalOutgoing)
     end for
     result.store = merged.store
     result.target = target
