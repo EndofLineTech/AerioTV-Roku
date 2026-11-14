@@ -113,6 +113,23 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncUnavailableChildRosterProbeChecks')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileTargetRetirementFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileAuthorityRaceFixture')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncSwitchRosterStoreProbeChecks')], check=True)
+
+    def test_native_roster_storage_checks_keep_broker_seam_private(self):
+        spec = importlib.util.spec_from_file_location('native_store_probe', Path(__file__).with_name('build-profile-probe.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / 'native-store.zip'
+            probe.build(output, 'http://127.0.0.1:1234', model_store=True)
+            with zipfile.ZipFile(output) as package:
+                checks = package.read('source/DispatcharrSyncSwitchRosterStoreProbeChecks.brs').decode()
+                storage = package.read('source/DispatcharrSyncSwitchRosterStore.brs').decode()
+                self.assertIn('runDispatcharrSyncSwitchRosterStoreChecks()', checks)
+                self.assertIn('function switchRosterStoreFixtureAccessAllowed(', checks)
+                self.assertNotIn('function requestGateAccessAllowed(', checks)
+                self.assertIn('switchRosterStoreFixtureAccessAllowed(', storage)
+                self.assertIn('m.profilePreferenceDecoder = invalid', checks)
 
     def test_address_handler_probe_is_private_and_cannot_ship(self):
         spec = importlib.util.spec_from_file_location('address_probe', Path(__file__).with_name('test-profile-address-native.py'))

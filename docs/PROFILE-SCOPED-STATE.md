@@ -654,6 +654,24 @@ remains open for the intermittent failure. Startup authority races, actual activ
 default retirement, outgoing writer settlement and peer/public acceptance are
 not established by these native results. Both shipping flags remain false.
 
+Active-removal storage now has separate, currently **unwired** system boundaries.
+`commitDispatcharrDefaultRetirementSelection` validates the original authenticated
+or actual unavailable-Child own-read admission, proves an actual outgoing
+tombstone, and selects the existing default in one metadata transaction without
+a PIN prompt, credential change, deletion or authenticated default scope. A
+missing default key does not authorize borrowing the source key.
+
+`commitDispatcharrDefaultRetirementCleanup` requires the exact committed selection,
+unchanged source evidence/authority/current own credential, connection root and
+retirement nonce, plus an actually absent runtime actor and empty runtime key.
+Only then may its separate transaction remove tombstoned holders' records, keys,
+backoff and blobs. Foreign/default/source ownership is retained where not removed;
+faults restore exact bytes without reviving the old actor. Child adult-purpose
+material is revalidated. Host and native primitive/store tests pass with a
+private broker-decision seam; this is not yet normal-app runtime teardown,
+default own authentication/reload, held-key/Child UI or restart acceptance.
+The Scene still uses the covered refusal until that integration qualifies.
+
 The earlier manual-refresh native cases (not this new switch/roster pipeline)
 qualify changed assignments/VOD revocation, foreign own
 identity, unchanged authority and transient failures. Two cases delay a real

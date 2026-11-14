@@ -1,4 +1,100 @@
 sub main()
+    for each fault in ["", "write", "flush", "rollback"]
+        switchDefaultRetirementFixture()
+        m.registry.fault = fault
+        before = FormatJson(m.registry.values)
+        result = switchDefaultRetirementSelect()
+        if fault = ""
+            check(result.ok and result.selected and result.store.active = m.defaultId and result.scope = invalid and result.apiKey = invalid and result.pin = invalid, "system retirement selects actual default without authenticating it or inventing a PIN grant")
+            check(result.store.profiles.count() = 3 and m.registry.exists(m.outgoingKey) and m.registry.exists(m.outgoingBackoff) and m.registry.read("settingsV1") = m.settings and m.registry.read("connKey_slot-a") = "synthetic-default", "default selection precedes deletion and retains old holder key/backoff/blob until runtime retirement")
+            check(m.registry.flushes = 1 and m.outgoing.profileId <> result.store.active, "selection is one metadata transaction while captured outgoing admission remains explicit")
+        else
+            check(not result.ok and result.recoveryRequired = (fault = "rollback") and FormatJson(m.registry.values) = before, "failed system default selection restores exact metadata without touching any credentials or settings")
+        end if
+    end for
+    for each change in ["key", "root", "nonce", "actor", "profiles-off", "target-only", "newer-readd", "held-source", "pending"]
+        switchDefaultRetirementFixture()
+        if change = "key" then m.registry.values[m.ownKeyName] = ""
+        if change = "root" then m.registry.values["connectionsV1"] = ""
+        if change = "nonce" then m.activeNonce = "00000000-0000-4000-8000-000000000099"
+        if change = "actor" then m.outgoing = invalid
+        if change = "profiles-off" then m.enabled = false
+        if change = "target-only" then m.decoded = dispatcharrSyncRosterDecode({rows: [], removed: [["bob", 500]]})
+        if change = "newer-readd" then m.decoded = dispatcharrSyncRosterDecode({rows: [[7, "alice", "Alice", "none", "", "", "user", 501]], removed: [["alice", 500]]})
+        if change = "held-source" then m.fixtureHeld = true
+        if change = "pending"
+            m.context.store = setCanonicalPreference(m.context.store, "pendingRoster", true)
+            m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.context.store)
+        end if
+        before = FormatJson(m.registry.values)
+        result = switchDefaultRetirementSelect()
+        check(not result.ok and m.registry.flushes = 0 and FormatJson(m.registry.values) = before, "system default selection refuses " + change + " without replacing the real actor or discarding data")
+    end for
+    switchDefaultRetirementFixture()
+    m.registry.values.delete("connKey_slot-a")
+    result = switchDefaultRetirementSelect()
+    check(result.ok and result.store.active = m.defaultId and not m.registry.exists("connKey_slot-a") and result.scope = invalid, "missing default key cannot prevent local system default selection or authorize a borrowed-key request")
+    for each fault in ["", "write", "flush", "rollback"]
+        switchDefaultRetirementFixture()
+        selected = switchDefaultRetirementSelect()
+        m.registry.flushes = 0
+        before = FormatJson(m.registry.values)
+        denied = switchDefaultRetirementCleanup(selected)
+        check(not denied.ok and m.registry.flushes = 0 and FormatJson(m.registry.values) = before, "cleanup cannot delete an outgoing holder while its genuine authenticated runtime still exists")
+        m.outgoing = invalid
+        m.actorKey = ""
+        m.registry.fault = fault
+        result = switchDefaultRetirementCleanup(selected)
+        if fault = ""
+            check(result.ok and result.committed and result.store.active = m.defaultId and not m.registry.exists(m.outgoingKey) and not m.registry.exists(m.outgoingBackoff), "phase-two cleanup removes old key/backoff only AFTER default selection and actual runtime retirement")
+            check(not result.preferenceStore.accounts.doesExist(m.outgoingAccount) and result.preferenceStore.accounts[m.foreignAccount].future = "foreign" and m.registry.read("connKey_slot-a") = "synthetic-default" and m.registry.read(m.ownKeyName) = "synthetic-b", "default retirement cleans only removed blobs and retains default, source and foreign ownership")
+        else
+            check(not result.ok and result.recoveryRequired = (fault = "rollback") and FormatJson(m.registry.values) = before, "phase-two write/flush faults retain selected default and restore exact remaining private data without reviving old actor")
+        end if
+    end for
+    for each change in ["runtime-key", "nonce", "selected-root", "connection-root", "source-key", "authority", "evidence", "settings"]
+        switchDefaultRetirementFixture()
+        selected = switchDefaultRetirementSelect()
+        m.outgoing = invalid
+        m.actorKey = ""
+        if change = "runtime-key" then m.actorKey = "not-retired"
+        if change = "nonce" then m.activeNonce = "00000000-0000-4000-8000-000000000099"
+        if change = "selected-root" then m.registry.values[userProfileStoreKey("slot-a")] = "{malformed"
+        if change = "connection-root" then m.registry.values["connectionsV1"] = ""
+        if change = "source-key" then m.registry.values[m.ownKeyName] = ""
+        if change = "authority" then m.verified.verifiedUser.user_level = 10
+        if change = "evidence" then m.decoded = dispatcharrSyncRosterDecode({rows: [], removed: []})
+        if change = "settings" then m.registry.values["settingsV1"] = "{malformed"
+        m.registry.flushes = 0
+        before = FormatJson(m.registry.values)
+        result = switchDefaultRetirementCleanup(selected)
+        check(not result.ok and m.registry.flushes = 0 and FormatJson(m.registry.values) = before, "phase-two retirement refuses changed " + change + " without deleting a successor or replacing unreadable data")
+    end for
+    for each changedGrant in [false, true]
+        switchDefaultRetirementFixture()
+        store = m.context.store
+        store.profiles[0] = setCanonicalPreference(store.profiles[0], "role", "child")
+        m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+        m.context.store = loadUserProfileStore(m.registry, "slot-a")
+        m.context.outgoing = invalid
+        m.context.unavailableChild = true
+        m.context.managementNonce = "00000000-0000-4000-8000-000000000093"
+        holder = m.context.store.profiles[2]
+        m.context.management = {slot: "slot-a", active: store.active, nonce: m.context.managementNonce, purpose: "manage-profiles", kind: "pin", id: holder.id, pinType: holder.pinType, pinHash: holder.pinHash, pinSalt: holder.pinSalt}
+        m.outgoing = invalid
+        m.actorKey = ""
+        selected = switchDefaultRetirementSelect()
+        check(selected.ok and selected.store.active = m.defaultId and selected.scope = invalid, "genuine unavailable Child selects actual default under current adult purpose without fabricating an outgoing scope")
+        if changedGrant then m.context.managementNonce = "00000000-0000-4000-8000-000000000099"
+        before = FormatJson(m.registry.values)
+        m.registry.flushes = 0
+        result = switchDefaultRetirementCleanup(selected)
+        if changedGrant
+            check(not result.ok and m.registry.flushes = 0 and FormatJson(m.registry.values) = before, "expired Child adult-purpose admission cannot delete holder data after default metadata selection")
+        else
+            check(result.ok and result.store.active = m.defaultId and not m.registry.exists(m.outgoingKey), "current actual no-session Child completes cleanup without an authenticated Child or default actor")
+        end if
+    end for
     switchRosterStoreFixture()
     check(switchRosterStoreAccess() and m.registry.flushes = 0, "request preflight validates current own admission without a write or fabricated target scope")
     for each fault in ["", "write", "flush", "rollback"]
@@ -197,6 +293,40 @@ sub main()
     end for
     print "ALL TESTS PASSED"
 end sub
+
+sub switchDefaultRetirementFixture()
+    switchRosterCleanupFixture()
+    store = m.context.store
+    store.profiles[0] = setCanonicalPreference(store.profiles[0], "isDefault", false)
+    store.profiles[2] = setCanonicalPreference(store.profiles[2], "isDefault", true)
+    store.profiles[2] = setCanonicalPreference(store.profiles[2], "pinType", "numbers")
+    store.profiles[2] = setCanonicalPreference(store.profiles[2], "pinHash", string(64, "e"))
+    store.profiles[2] = setCanonicalPreference(store.profiles[2], "pinSalt", string(32, "f"))
+    m.defaultId = store.profiles[2].id
+    m.outgoingKey = userProfileKeyName("slot-a", store.active)
+    m.outgoingBackoff = userProfilePinBackoffKey("slot-a", store.active)
+    m.registry.values[m.outgoingKey] = "synthetic-a"
+    m.registry.values[m.outgoingBackoff] = "outgoing-ledger"
+    m.registry.values["connKey_slot-a"] = "synthetic-default"
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    m.context.store = loadUserProfileStore(m.registry, "slot-a")
+    m.context.target = m.context.store.profiles[1]
+    m.settings = m.registry.read("settingsV1")
+    preferences = ParseJson(m.settings)
+    m.outgoingAccount = preferenceScope(connectionPreferenceIdentity(m.context.connection, "7"))
+    preferences.accounts[m.outgoingAccount] = {future: "outgoing"}
+    m.settings = FormatJson(preferences)
+    m.registry.values["settingsV1"] = m.settings
+    m.decoded = dispatcharrSyncRosterDecode({rows: [], removed: [["alice", 500]]})
+end sub
+
+function switchDefaultRetirementSelect() as object
+    return commitDispatcharrDefaultRetirementSelection(m.registry, m.context, m.verified, m.decoded, m.enabled, 600, m.activeNonce, m.outgoing, textValue(m.actorKey), m.memory)
+end function
+
+function switchDefaultRetirementCleanup(selected as object) as object
+    return commitDispatcharrDefaultRetirementCleanup(m.registry, m.context, selected, m.verified, m.decoded, m.enabled, 600, m.activeNonce, m.outgoing, textValue(m.actorKey), m.memory)
+end function
 
 sub switchRosterStoreFixture()
     entry = normalizeConnectionEntry({id: "slot-a", name: "Fixture", provider: "dispatcharr", url: "https://example.test", remember: true})

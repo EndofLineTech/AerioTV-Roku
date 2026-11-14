@@ -1,6 +1,104 @@
 ' Internal metadata-only switch admission. Actual auth/read node ownership and
 ' the incoming scrim belong to the controller; this never fabricates a target
 ' session, writes App Data, changes credentials, or performs tombstone cleanup.
+
+' Phase one of SYSTEM active removal. Unlike a chosen-profile switch this does
+' not require a default PIN or return an authenticated default scope. It selects
+' the existing default only; old holder data must survive until runtime teardown
+' and a separate phase-two cleanup boundary. Currently not wired to the Scene.
+function commitDispatcharrDefaultRetirementSelection(registry as object, context as object, verified as object, decoded as object, enabled as boolean, now as integer, activeNonce as string, activeOutgoing as dynamic, activeKey as string, memoryKeys as object) as object
+    denied = {ok: false, selected: false, recoveryRequired: false, reason: "stale-context"}
+    if type(context.connection) <> "roAssociativeArray" or type(context.store) <> "roAssociativeArray" or type(context.target) <> "roAssociativeArray" then return denied
+    if not dispatcharrAuthorityComparable(verified.verifiedUser) then return denied
+    if context.unavailableChild = true
+        if not dispatcharrSyncUnavailableChildRosterAccessCurrent(registry, context, verified, now, activeNonce, activeOutgoing, activeKey, memoryKeys) then return denied
+    else
+        if not dispatcharrSyncSwitchRosterAccessCurrent(registry, context, verified, now, activeNonce, activeOutgoing, memoryKeys) then return denied
+    end if
+    working = normalizeUserProfileStore(context.store, context.connection.id)
+    if working.readOnly = true then return denied
+    plan = dispatcharrSyncSwitchRosterContentPlan(context.connection, working, context.target.id, verified, decoded, enabled, now, true, true)
+    if not plan.ok or not plan.applied or plan.needsDefaultSwitch <> true then return denied
+    selected = normalizeUserProfileStore(context.store, context.connection.id)
+    defaultId = ""
+    for each profile in selected.profiles
+        if profile.isDefault then defaultId = profile.id
+    end for
+    if defaultId = "" or defaultId = selected.active or plan.store.active <> defaultId then return denied
+    selected = setCanonicalPreference(selected, "active", defaultId)
+    changes = {}
+    changes[userProfileStoreKey(context.connection.id)] = FormatJson(selected)
+    saved = userProfileRegistryTransaction(registry, changes)
+    if not saved.ok
+        denied.reason = "storage"
+        denied.recoveryRequired = saved.recoveryRequired
+        return denied
+    end if
+    return {ok: true, selected: true, recoveryRequired: false, store: selected, defaultId: defaultId, outgoingId: context.store.active, selectionRoot: changes[userProfileStoreKey(context.connection.id)], sourceRoster: FormatJson(context.store), sourceEvidence: FormatJson(decoded), sourceTargetId: context.target.id, sourceAuthority: dispatcharrAuthorizationSignature(verified.verifiedUser), connectionRoot: context.connectionRoot, connectionRootPresent: context.connectionRootPresent, nonce: context.nonce}
+end function
+
+' Phase two is intentionally NOT an authenticated-switch API. The default is
+' already selected, but it is not authenticated here. Require the ACTUAL absent
+' runtime actor/key after teardown before allowing old holder credential deletion.
+' A caller must publish returned roots and wipe removed memory leases afterward.
+function commitDispatcharrDefaultRetirementCleanup(registry as object, context as object, selection as object, verified as object, decoded as object, enabled as boolean, now as integer, activeNonce as string, activeOutgoing as dynamic, activeKey as string, memoryKeys as object) as object
+    denied = {ok: false, committed: false, recoveryRequired: false, reason: "stale-context"}
+    if activeOutgoing <> invalid or activeKey <> "" then return denied
+    if selection.ok <> true or selection.selected <> true then return denied
+    if userProfileLocalId(textValue(selection.nonce)) = "" then return denied
+    if selection.nonce <> activeNonce or selection.nonce <> context.nonce then return denied
+    if type(context.connection) <> "roAssociativeArray" or type(context.store) <> "roAssociativeArray" or type(context.target) <> "roAssociativeArray" then return denied
+    if selection.sourceRoster <> FormatJson(context.store) or selection.sourceEvidence <> FormatJson(decoded) or selection.sourceTargetId <> context.target.id then return denied
+    if selection.connectionRoot <> context.connectionRoot or selection.connectionRootPresent <> context.connectionRootPresent then return denied
+    if selection.connectionRoot <> registry.read("connectionsV1") or selection.connectionRootPresent <> registry.exists("connectionsV1") then return denied
+    if not dispatcharrAuthorityComparable(verified.verifiedUser) then return denied
+    if selection.sourceAuthority <> dispatcharrAuthorizationSignature(verified.verifiedUser) then return denied
+    expected = normalizeUserProfileStore(context.store, context.connection.id)
+    if expected.readOnly = true or expected.active <> selection.outgoingId then return denied
+    defaultId = ""
+    for each profile in expected.profiles
+        if profile.isDefault then defaultId = profile.id
+    end for
+    if defaultId = "" or defaultId <> selection.defaultId or defaultId = expected.active then return denied
+    expected = setCanonicalPreference(expected, "active", defaultId)
+    if FormatJson(expected) <> selection.selectionRoot or FormatJson(selection.store) <> selection.selectionRoot then return denied
+    if not registry.exists(userProfileStoreKey(context.connection.id)) then return denied
+    if registry.read(userProfileStoreKey(context.connection.id)) <> selection.selectionRoot then return denied
+    for each profile in context.store.profiles
+        if profile.id = context.store.active and profile.role = "child"
+            admin = userProfileLoadDeviceAdminPin(registry, context.connection.id)
+            if not admin.ok then return denied
+            if not userProfileManagementGrantMatches(context.store, admin.record, context.management, textValue(context.managementNonce)) then return denied
+        end if
+    end for
+    ' Resolve the original read owner's current own credential as a key lookup,
+    ' not an invented authenticated scope or a grant under the selected default.
+    source = normalizeUserProfileStore(context.store, context.connection.id)
+    source = setCanonicalPreference(source, "active", context.target.id)
+    credential = userProfileCredential(registry, context.connection, source, memoryKeys)
+    if not credential.ok then return denied
+    if credential.key <> context.key or credential.key <> verified.apiKey then return denied
+    if not requestGateAccessAllowed(context.connection.url, credential.key) then return denied
+    working = normalizeUserProfileStore(context.store, context.connection.id)
+    plan = dispatcharrSyncSwitchRosterContentPlan(context.connection, working, context.target.id, verified, decoded, enabled, now, true, true)
+    if not plan.ok or not plan.applied or plan.needsDefaultSwitch <> true or plan.store.active <> defaultId then return denied
+    prepared = dispatcharrSyncPrepareSwitchRosterCleanup(registry, context.connection, expected, plan)
+    if not prepared.ok
+        denied.recoveryRequired = prepared.recoveryRequired = true
+        return denied
+    end if
+    saved = userProfileRegistryTransaction(registry, prepared.changes)
+    if not saved.ok
+        denied.reason = "storage"
+        denied.recoveryRequired = saved.recoveryRequired
+        return denied
+    end if
+    plan.committed = true
+    plan.recoveryRequired = false
+    if type(prepared.preferenceStore) = "roAssociativeArray" then plan.preferenceStore = prepared.preferenceStore
+    return plan
+end function
+
 function commitDispatcharrSwitchRosterPull(registry as object, context as object, verified as object, decoded as object, enabled as boolean, now as integer, activeNonce as string, activeOutgoing as dynamic, memoryKeys as object) as object
     denied = {ok: false, applied: false, committed: false, recoveryRequired: false, reason: "stale-context", needsDefaultSwitch: false}
     if type(context.connection) <> "roAssociativeArray" or type(context.store) <> "roAssociativeArray" or type(context.target) <> "roAssociativeArray" then return denied
