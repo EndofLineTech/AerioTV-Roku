@@ -57,6 +57,7 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileFavoriteRetentionFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'GuideFavoriteRetentionProbeChecks')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileSwitchRecordingFixture')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncSwitchRosterProbeChecks')], check=True)
 
     def test_address_handler_probe_is_private_and_cannot_ship(self):
         spec = importlib.util.spec_from_file_location('address_probe', Path(__file__).with_name('test-profile-address-native.py'))

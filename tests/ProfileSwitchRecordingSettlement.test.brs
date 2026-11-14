@@ -85,7 +85,7 @@ sub switchRecordFixture()
     m.apiKey = "synthetic-b"
     m.page = "guide"
     m.global = {activeusersession: outgoing.sessionId, profilegateclosed: false, profileswitchpending: false}
-    m.profileSwitchContext = {nonce: "00000000-0000-4000-8000-000000000091", connection: connection, connectionRoot: m.registry.read("connectionsV1"), connectionRootPresent: true, store: m.userProfileStore, target: a, key: "synthetic-a", outgoing: outgoing, management: invalid, managementNonce: ""}
+    m.profileSwitchContext = {nonce: "00000000-0000-4000-8000-000000000091", connection: connection, connectionRoot: m.registry.read("connectionsV1"), connectionRootPresent: true, store: m.userProfileStore, target: a, key: "synthetic-a", outgoing: outgoing, outgoingProtection: FormatJson(m.userProfileStore.profiles[1]), management: invalid, managementNonce: ""}
     m.profileSwitchTask = invalid
     m.userProfileRecoveryRequired = false
     m.profileGateCover = {visible: false}

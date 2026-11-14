@@ -5,6 +5,7 @@ sub init()
 end sub
 
 sub readDispatcharrSync()
+    m.syncReadAuthority = invalid
     m.key = m.top.apiKey
     base = normalizeBaseUrl(m.top.baseUrl)
     result = {ok: false, state: "invalid", key: "", allowWrite: false}
@@ -17,6 +18,7 @@ sub readDispatcharrSync()
     if type(user.username) <> "String" and type(user.username) <> "roString" then finishDispatcharrSyncRead(result) : return
     if user.username = "" or m.top.username = "" then finishDispatcharrSyncRead({ok: false, state: "waiting", allowWrite: false}) : return
     if lcase(user.username) <> lcase(m.top.username) then finishDispatcharrSyncRead(result) : return
+    m.syncReadAuthority = {verifiedUser: dispatcharrVerifiedAuthority(user), verifiedBaseUrl: base, accountId: textValue(user.id), accountUsername: user.username}
     key = dispatcharrSyncUserKey(user.username)
     if key = "" then finishDispatcharrSyncRead({ok: false, state: "waiting", allowWrite: false}) : return
     listing = syncReadObject(base + "/api/accounts/users/me/app-data/", 65536)
@@ -69,8 +71,15 @@ function syncReadParse(text as string) as dynamic
 end function
 
 sub finishDispatcharrSyncRead(result as object)
+    if m.top.cancelRequested or not requestGateTaskSessionCurrent() then result = {ok: false, state: "unavailable", allowWrite: false}
     m.key = ""
     m.top.apiKey = ""
+    if result.ok = true and type(m.syncReadAuthority) = "roAssociativeArray"
+        for each field in ["verifiedUser", "verifiedBaseUrl", "accountId", "accountUsername"]
+            result[field] = m.syncReadAuthority[field]
+        end for
+    end if
+    m.syncReadAuthority = invalid
     result.allowWrite = false
     m.top.result = result
 end sub

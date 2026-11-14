@@ -37,7 +37,8 @@ sub switchRollbackFixture()
     m.registry.values["connectionsV1"] = FormatJson({schema: 1, selected: connection.id, entries: [connection]})
     m.registry.values[userProfileStoreKey(connection.id)] = FormatJson(store)
     m.registry.values["connKey_slot-a"] = "synthetic-a"
-    m.profileSwitchContext = {nonce: "staging-session", connection: connection, connectionRoot: m.registry.read("connectionsV1"), connectionRootPresent: true, store: loadUserProfileStore(m.registry, connection.id), outgoing: outgoing}
+    saved = loadUserProfileStore(m.registry, connection.id)
+    m.profileSwitchContext = {nonce: "staging-session", connection: connection, connectionRoot: m.registry.read("connectionsV1"), connectionRootPresent: true, store: saved, outgoing: outgoing, outgoingProtection: FormatJson(saved.profiles[0])}
     m.selectedConnectionId = "slot-a"
     m.global = {profilegateclosed: false, profileswitchpending: true, activeusersession: "staging-session"}
     m.profileGateCover = {visible: true}

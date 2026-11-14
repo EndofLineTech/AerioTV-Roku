@@ -22,6 +22,13 @@ sub main()
         check(m.registry.values[userProfileStoreKey("slot-a")] = before, "rollback never rewrites changed protection as a repair")
     end for
     rollbackProtectionFixture()
+    store = loadUserProfileStore(m.registry, "slot-a")
+    store.profiles[1].role = "child"
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    m.profileSwitchContext.store = loadUserProfileStore(m.registry, "slot-a")
+    rollbackUserProfileSwitch("Staged roster changed protection")
+    checkRollbackCovered("updating a working import roster cannot bless changed outgoing protection for rollback")
+    rollbackProtectionFixture()
     m.registry.values[userProfileKeyName("slot-a", m.fixtureOutgoing.profileId)] = ""
     rollbackUserProfileSwitch("Cancelled")
     checkRollbackCovered("deleted own key cannot borrow a default or cached key on rollback")
@@ -108,7 +115,7 @@ sub rollbackProtectionFixture()
     outgoing = userProfileSessionScope(entry, b.id, "8", "authority", "00000000-0000-4000-8000-000000000090")
     m.fixtureOutgoing = outgoing
     m.fixtureConnection = copyJson(entry)
-    m.profileSwitchContext = {nonce: "00000000-0000-4000-8000-000000000091", connection: entry, connectionRoot: m.registry.read("connectionsV1"), connectionRootPresent: true, store: m.userProfileStore, outgoing: outgoing}
+    m.profileSwitchContext = {nonce: "00000000-0000-4000-8000-000000000091", connection: entry, connectionRoot: m.registry.read("connectionsV1"), connectionRootPresent: true, store: m.userProfileStore, outgoing: outgoing, outgoingProtection: FormatJson(m.userProfileStore.profiles[1])}
     m.profileSwitchTask = invalid
     m.recordTask = invalid
     m.selectedConnectionId = entry.id

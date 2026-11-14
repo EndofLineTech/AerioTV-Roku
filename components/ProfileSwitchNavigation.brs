@@ -17,6 +17,7 @@ function beginUserProfileSwitch(targetId as string, unavailableChild = false as 
     store = loadUserProfileStore(m.registry, connection.id)
     if store.readOnly = true then return false
     childSource = false
+    outgoingProtection = ""
     if not unavailableChild
         if store.active <> m.activeUserScope.profileId then return false
     end if
@@ -25,6 +26,7 @@ function beginUserProfileSwitch(targetId as string, unavailableChild = false as 
             childSource = profile.role = "child"
             if not unavailableChild
                 if profile.userId.toStr() <> m.activeUserScope.accountId then return false
+                outgoingProtection = FormatJson(profile)
             end if
         end if
     end for
@@ -65,7 +67,7 @@ function beginUserProfileSwitch(targetId as string, unavailableChild = false as 
     if not credential.ok then return false
     if not requestGateAccessAllowed(connection.url, credential.key) then return false
     nonce = CreateObject("roDeviceInfo").getRandomUUID()
-    m.profileSwitchContext = {nonce: nonce, unavailableChild: unavailableChild, connection: connection, connectionRoot: m.registry.read("connectionsV1"), connectionRootPresent: m.registry.exists("connectionsV1"), store: store, target: target, key: credential.key, outgoing: m.activeUserScope, unlock: m.profileUnlockGrant, management: m.profileManagementGrant, managementNonce: textValue(m.profileManagementNonce)}
+    m.profileSwitchContext = {nonce: nonce, unavailableChild: unavailableChild, connection: connection, connectionRoot: m.registry.read("connectionsV1"), connectionRootPresent: m.registry.exists("connectionsV1"), store: store, target: target, key: credential.key, outgoing: m.activeUserScope, outgoingProtection: outgoingProtection, unlock: m.profileUnlockGrant, management: m.profileManagementGrant, managementNonce: textValue(m.profileManagementNonce)}
     if target.pinType <> "none"
         if beginProfilePinGate(target, "switch", nonce) then return true
         m.profileSwitchContext = invalid
@@ -322,6 +324,9 @@ function profileSwitchOutgoingProtectionCurrent(context as object) as boolean
         if profile.id = store.active then holder = profile
     end for
     if holder = invalid then return false
+    ' The working roster may later advance after a target-owned import. It is
+    ' never a replacement for the outgoing admission captured before staging.
+    if textValue(context.outgoingProtection) = "" or FormatJson(holder) <> context.outgoingProtection then return false
     if holder.addressHeld or textValue(holder.userId) <> context.outgoing.accountId then return false
     keyName = userProfileKeyName(entry.id, holder.id)
     if holder.isDefault then keyName = connectionRegistryKey(entry.id)

@@ -440,6 +440,36 @@ alone. This conservative refusal requires reopening for current own admission;
 it does not reset or rewrite protection to make rollback succeed. Host tests
 cover changed role, PIN, identity, address, key and Remember-off leases. Native
 qualification remains pending, separate from the passing host contracts.
+Outgoing protection is captured as an immutable value separate from the working
+roster: advancing a staged import can never bless a changed outgoing role/PIN
+as though it were the original admission.
+
+The next switch/roster boundary has a pure planning primitive in
+`source/DispatcharrSyncSwitchRoster.brs`. It binds a verified target identity and
+current address to both the incoming nonce and captured outgoing session, stages
+target-owned protection without changing the active local selection, and exposes
+changed target PIN/outgoing protection explicitly. It publishes no credentials,
+performs no storage or network operations, and is not wired into the controller
+yet. Child and Profiles-Off inputs do not apply the remote roster; verified
+upstream Admin facts still win. Pending outgoing roster edits and target or
+outgoing tombstones fail retained for explicit session/default-retirement work.
+Unknown users remain suggestions, not automatic profile additions.
+
+Controller integration must still verify the actual authentication/read nodes,
+atomically revalidate storage, apply protection before requesting a changed PIN
+or loading target content, and preserve that immutable outgoing rollback admission
+when updating the switch's working roster. The existing active-session roster
+commit must not be given a fabricated incoming scope. Unavailable-Child escape
+and outgoing sync-writer settlement require their own integration. Passing model
+tests are not switch, native, or peer interoperability acceptance.
+
+Successful own App Data reads now expose the read Task's latest whitelisted
+`/me/` authority, identity and current address for that future staging boundary.
+Arbitrary `/me/` credentials/cookies are not copied. Failed/cancelled reads carry
+no previous read's authority; transient proof is cleared at start and finish.
+The result remains read-only and has neither an API key nor a credential-verify
+phase. Existing controllers do not yet consume these facts for staged switching;
+their presence alone does not fix the ordering or authorize a roster commit.
 
 Private native cases qualify changed assignments/VOD revocation, foreign own
 identity, unchanged authority and transient failures. Two cases delay a real
