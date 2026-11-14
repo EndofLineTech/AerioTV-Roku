@@ -32,3 +32,16 @@ function userProfileChildAccessPlan(profile as dynamic, keyPresent as boolean, k
     signIn = (not keyPresent and not keyRejected) or (profile.isDefault and keyRejected)
     return {retry: retry, signIn: signIn, manage: true, setup: false}
 end function
+
+function userProfileChildRejectedPrompt(profile as dynamic, playlist as string, ownFormAllowed as boolean) as dynamic
+    if type(profile) <> "roAssociativeArray" then return invalid
+    if profile.role <> "child" or not userProfileBoolean(profile.isDefault) then return invalid
+    signIn = profile.isDefault and ownFormAllowed
+    message = "Dispatcharr no longer accepts the API key for " + playlist + ". It may have been changed on the server."
+    buttons = ["Not Now"]
+    if signIn
+        message += " Sign in with your Dispatcharr username and password to reconnect."
+        buttons.unshift("Sign In with Remote")
+    end if
+    return {title: "API key no longer valid", message: message, buttons: buttons, signIn: signIn}
+end function

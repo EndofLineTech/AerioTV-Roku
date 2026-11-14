@@ -250,6 +250,9 @@ sub closeUnavailableChildDialog()
     m.fixtureUnavailableClosed = true
 end sub
 
+sub closeChildRejectedKeyDialog()
+end sub
+
 sub resetConnectionRuntime()
     retireUserProfileOwnSignIn()
     m.activeUserScope = invalid

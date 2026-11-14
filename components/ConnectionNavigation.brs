@@ -406,6 +406,7 @@ sub changeProfiledConnectionUrl(entry as object, profiles as object, base as str
 end sub
 
 sub resetConnectionRuntime()
+    closeChildRejectedKeyDialog()
     m.childConnectionLoading = false
     m.profileRosterContext = invalid
     m.profileRosterGrant = invalid
@@ -503,7 +504,10 @@ sub requireConnectionRelogin(message as string)
             for each profile in profileStore.profiles
                 if profile.id = revoked.profileId then childHolder = profile.role = "child"
             end for
-            if removed and childHolder then m.childRejectedIdentity = entry.url + "|" + entry.id + "|" + revoked.profileId
+            if removed and childHolder
+                m.childRejectedIdentity = entry.url + "|" + entry.id + "|" + revoked.profileId
+                captureChildRejectedEvidence(entry, profileStore, revoked.profileId)
+            end if
             if type(m.profileSessionKeys) = "roAssociativeArray" and revoked.profileId <> ""
                 m.profileSessionKeys.delete(preferenceScope(entry.url + "|" + entry.id + "|" + revoked.profileId))
             end if

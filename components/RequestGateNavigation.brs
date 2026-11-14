@@ -119,6 +119,10 @@ sub onRequestGatePrompt(event as object)
     if binding.slot <> m.selectedConnectionId or binding.base <> m.baseUrl then return
     entry = connectionStoreEntry(m.connectionStore, binding.slot)
     if entry = invalid then return
+    if currentUserSettingsRole() = "child" or selectedUserProfileIsChild()
+        requireConnectionRelogin("The API key for " + textValue(binding.username) + " was rejected.")
+        return
+    end if
     message = "Dispatcharr no longer accepts the API key for " + entry.name + ". It may have been changed on the server. Sign in with your Dispatcharr username and password to reconnect."
     openConnectionDialog("API key no longer valid", message, [{title: "Not Now", action: "cancel"}])
 end sub

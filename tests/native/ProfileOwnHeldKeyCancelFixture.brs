@@ -19,8 +19,13 @@ sub onManagementProbeTick()
     else if phase = 2
         if m.capabilityTask <> invalid then return
         if OWN_HOLD_CHILD
-            if m.childUnavailableDialog = invalid then return
-            onUnavailableChildChoice(managementProbeEvent(m.childUnavailableDialog, 0))
+            if m.childRejectedDialog = invalid then return
+            if m.childRejectedDialog.buttons.count() <> 2
+                m.managementProbeClock.control = "stop"
+                print "[own-signin] "; FormatJson({kind: "result", passed: false, own_prompt: false})
+                return
+            end if
+            onChildRejectedKeyChoice(managementProbeEvent(m.childRejectedDialog, 0))
         else
             if m.profileRecoveryDialog = invalid then return
             onActiveUserProfileRecoveryChoice(managementProbeEvent(m.profileRecoveryDialog, 0))

@@ -32,7 +32,9 @@ def startup_probe_timer(source):
     return source.replace('sub init()', 'sub init()\n' + timer, 1)
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None):
+    if child_rejected:
+        child_available = child_rejected
     if child_retry:
         child_available = child_retry
     if assignment_refresh or child_escape or child_launch or child_available:
@@ -46,7 +48,7 @@ def build(output, normal, section, base, directions=False, switching=False, swit
                 body = body.replace(b'title=AerioTV\n', b'title=Aerio Profile Management Probe\n')
                 if directions:
                     body += b'\naeriotv_profile_directions_test=1\n'
-            if child_launch and name == 'source/Main.brs':
+            if (child_launch or child_rejected) and name == 'source/Main.brs':
                 target = b'                    screen.close()'
                 assert body.count(target) == 1
                 body = body.replace(target, b'                    print "[profile-management] "; FormatJson({kind: "result", exited: true})\n' + target, 1)
@@ -508,7 +510,9 @@ end sub
                     source = source.replace(flag, 'm.profileChildAccessReady = true', 1)
                     source = startup_probe_timer(source)
                     fixture_name = 'ProfileChildRetryFixture.brs' if child_retry else 'ProfileChildAvailableFixture.brs'
-                    fixture = (ROOT / 'tests/native' / fixture_name).read_text().replace('OWN_CHILD_ACCOUNT', '"7"' if child_index == 0 else '"8"').replace('OWN_CHILD_PIN', 'true' if pin else 'false')
+                    if child_rejected:
+                        fixture_name = 'ProfileChildRejectedFixture.brs'
+                    fixture = (ROOT / 'tests/native' / fixture_name).read_text().replace('OWN_CHILD_ACCOUNT', '"7"' if child_index == 0 else '"8"').replace('OWN_CHILD_PIN', 'true' if pin else 'false').replace('OWN_CHILD_DEFAULT', 'true' if child_index == 0 else 'false')
                     source = source.split('sub onManagementProbeTick()', 1)[0] + fixture
                 if default_filter:
                     source = source.replace('m.registry.write("connectionsV1", FormatJson({schema: 1, selected: "slot-a", entries: [entry]}))', '''entry.channelProfileIds = ["99", "100"]
@@ -536,7 +540,10 @@ def main():
     parser.add_argument('--child-launch', action='store_true', help='Cold protected held Child: own launch PIN, unavailable surface, then separate adult-purpose admission with zero provider requests')
     parser.add_argument('--child-available', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private readiness seam: qualify own Child auth/roster/lineup without enabling shipping Child activation')
     parser.add_argument('--child-retry', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private Child transient failure, own Retry and Back during delayed authentication, followed by own retry')
+    parser.add_argument('--child-rejected', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private actual Child rejection: exact cut prompt, permitted own form/dismissal, no stale replay, adult management and real Back exit')
     args = parser.parse_args()
+    if args.child_rejected and (args.child_available or args.child_retry or args.switch or args.child_launch or args.child_escape or args.cold_restore or args.child_settings or args.directions or args.assignment_refresh or args.default_filter):
+        parser.error('--child-rejected is a separate case')
     if args.child_retry:
         if args.child_available or args.switch or args.child_launch or args.child_escape or args.cold_restore or args.child_settings or args.directions or args.assignment_refresh or args.default_filter:
             parser.error('--child-retry is a separate case')
@@ -588,7 +595,11 @@ def main():
         def do_GET(self):
             key = self.headers.get('X-API-Key', '')
             user = 8 if key in ['synthetic-b', 'delayed-b'] else 7
-            hits.append({'user': user, 'path': self.path, 'rejected': key == 'rejected-synthetic-key', 'delayed': key in ['delayed-b', 'delayed-a']})
+            if args.child_rejected and fixture_state.get('child_rejected', False) and self.path == '/api/accounts/users/me/':
+                fixture_state['child_key_rejected'] = True
+            child_rejected = bool(args.child_rejected and fixture_state.get('child_key_rejected', False))
+            rejected = key == 'rejected-synthetic-key' or child_rejected
+            hits.append({'user': user, 'path': self.path, 'rejected': rejected, 'delayed': key in ['delayed-b', 'delayed-a']})
             if key in ['delayed-b', 'delayed-a'] and self.path == '/api/accounts/users/me/':
                 time.sleep(4)
             failure = False
@@ -621,8 +632,10 @@ def main():
                 value = [{'id': user, 'uuid': f'00000000-0000-4000-8000-{user:012d}', 'name': 'Synthetic ' + str(user), 'channel_number': user}]
                 if args.assignment_refresh and user == 8 and fixture_state['changed']:
                     value = [{'id': 80, 'uuid': '00000000-0000-4000-8000-000000000080', 'name': 'Synthetic reassigned', 'channel_number': 80}]
+            if child_rejected:
+                value = {'detail': 'Invalid API key'}
             body = json.dumps(value).encode()
-            self.send_response(503 if failure else (401 if key == 'rejected-synthetic-key' else 200))
+            self.send_response(503 if failure else (401 if rejected else 200))
             self.send_header('Content-Type', 'application/json')
             self.send_header('Content-Length', str(len(body)))
             self.end_headers()
@@ -636,7 +649,7 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -652,6 +665,11 @@ def main():
                     fixture_state['changed'] = True
                 if '"kind":"retry-ready"' in line:
                     fixture_state['child_retry_started'] = True
+                if '"kind":"revoke-ready"' in line:
+                    fixture_state['child_rejected'] = True
+                    fixture_state['child_rejection_boundary'] = len(hits)
+                if '"kind":"child-rejection-ready"' in line:
+                    fixture_state['child_unavailable_boundary'] = len(hits)
                 if '"kind":"child-unavailable"' in line:
                     fixture_state['child_request_boundary'] = len(hits)
                 if '"kind":"child-pin-ready"' in line:
@@ -666,6 +684,7 @@ def main():
                 if '"kind":"cancel-ready"' in line:
                     request = urllib.request.Request(f'http://{host}:8060/keypress/Back', data=b'', method='POST')
                     urllib.request.urlopen(request, timeout=10).close()
+                    report['back_count'] = report.get('back_count', 0) + 1
             stderr = process.stderr.read()
             return subprocess.CompletedProcess(command, process.wait(timeout=100), ''.join(output), stderr)
 
@@ -726,6 +745,16 @@ def main():
             expected = 7 if args.child_retry.startswith('default') else 8
             report['requests'] = hits
             report['passed'] = result.returncode == 0 and rows[-1].get('passed') and any(row.get('kind') == 'retry-cancelled' and row.get('passed') for row in rows) and all(hit['user'] == expected for hit in hits) and fixture_state.get('child_auth_attempts', 0) >= 3
+        if args.child_rejected:
+            expected = 7 if args.child_rejected.startswith('default') else 8
+            safe = [row for row in rows if row.get('kind') == 'rejection-safe']
+            boundary = fixture_state.get('child_unavailable_boundary')
+            rejected = [hit for hit in hits if hit['rejected']]
+            report['no_unavailable_requests'] = boundary is not None and not hits[boundary:]
+            report['requests'] = hits
+            report['passed'] = result.returncode == 0 and len(safe) == 1 and safe[0].get('passed') and rows[-1].get('exited') and bool(hits) and all(hit['user'] == expected for hit in hits) and bool(rejected) and rejected[0]['path'] == '/api/accounts/users/me/' and report['no_unavailable_requests'] and report.get('back_count') == (2 if args.child_rejected.startswith('default') else 1)
+            if args.child_rejected.endswith('-pin'):
+                report['passed'] = report['passed'] and report.get('pre_pin_requests') == []
         if not report['passed']:
             raise RuntimeError('Native management controller assertions failed')
     finally:
@@ -765,6 +794,8 @@ def main():
                 name = f'profile-child-available-{args.child_available}-native.json'
             if args.child_retry:
                 name = f'profile-child-retry-{args.child_retry}-native.json'
+            if args.child_rejected:
+                name = f'profile-child-rejected-prompt-{args.child_rejected}-native.json'
             (ROOT / 'out' / name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

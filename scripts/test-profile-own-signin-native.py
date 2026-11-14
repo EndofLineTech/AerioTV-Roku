@@ -24,7 +24,7 @@ def module(name):
     return loaded
 
 
-def build(output, normal, section, base, form=False, default_form=False, held=False, active_form=False, active_recheck=False, recheck_cancel=False, identity_change=False, child_form=None, same_key=False, hold_cancel=False, child_rejected=False, hold_timeout=False):
+def build(output, normal, section, base, form=False, default_form=False, held=False, active_form=False, active_recheck=False, recheck_cancel=False, identity_change=False, child_form=None, same_key=False, hold_cancel=False, child_rejected=False, hold_timeout=False, child_recheck=False):
     if active_recheck:
         active_form = True
     if held:
@@ -49,6 +49,8 @@ def build(output, normal, section, base, form=False, default_form=False, held=Fa
         fixture_name = 'ProfileChildOwnSignInFormFixture.brs'
     if hold_cancel or hold_timeout:
         fixture_name = 'ProfileOwnHeldKeyCancelFixture.brs'
+    if child_recheck:
+        fixture_name = 'ProfileChildRecheckFixture.brs'
     fixture = (ROOT / 'tests/native' / fixture_name).read_text()
     if same_key:
         recovered_key = 'synthetic-a' if default_form or child_form and child_form.startswith('default') else 'synthetic-b'
@@ -106,8 +108,14 @@ def main():
     parser.add_argument('--hold-cancel', action='store_true', help='Cancel while a private delayed broker acknowledgement is pending; stale proof must not lift hold or commit')
     parser.add_argument('--child-rejected', action='store_true', help='Default Child form variant: reject its actual own slot key before recovering with own credentials')
     parser.add_argument('--hold-timeout', action='store_true', help='Delay one private broker acknowledgement beyond the own-form deadline; refuse stale proof and retry without app restart')
+    parser.add_argument('--child-recheck', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private Child real-minute rejected own-key probe, still-covered Retry admission and fresh same-holder reload without password login')
     args = parser.parse_args()
-    if args.child_rejected and args.child_form not in ['default', 'default-pin']:
+    if args.child_recheck:
+        if args.child_form or args.default_form or args.held or args.active_form or args.active_recheck or args.identity_change or args.same_key or args.hold_cancel or args.hold_timeout or args.child_rejected:
+            parser.error('--child-recheck is a separate case')
+        args.child_form = args.child_recheck
+        args.child_rejected = True
+    if args.child_rejected and args.child_form not in ['default', 'default-pin'] and not args.child_recheck:
         parser.error('--child-rejected requires --child-form default or default-pin')
     if args.hold_cancel and not (args.same_key and args.active_form):
         parser.error('--hold-cancel requires --active-form --same-key')
@@ -188,7 +196,7 @@ def main():
             value = []
             if self.path == '/api/accounts/users/me/':
                 own_rejected = args.active_form and ((key == 'synthetic-b' and fixture_state['revoke_old']) or (key == 'synthetic-new-own-key' and fixture_state['revoke_new']))
-                own_rejected = own_rejected or args.child_rejected and key == 'synthetic-a' and fixture_state['revoke_old']
+                own_rejected = own_rejected or args.child_rejected and key == ('synthetic-a' if args.default_form else 'synthetic-b') and fixture_state['revoke_old']
                 if not scenario and own_rejected:
                     if args.identity_change:
                         hits[-1]['foreign_identity'] = True
@@ -235,12 +243,12 @@ def main():
     section = 'AerioOwnSignInProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-own-signin-probe.zip'
     cleaner = ROOT / 'out/profile-own-signin-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.form, args.default_form, args.held, args.active_form, args.active_recheck, args.recheck_cancel, args.identity_change, args.child_form, args.same_key, args.hold_cancel, args.child_rejected, args.hold_timeout)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.form, args.default_form, args.held, args.active_form, args.active_recheck, args.recheck_cancel, args.identity_change, args.child_form, args.same_key, args.hold_cancel, args.child_rejected, args.hold_timeout, bool(args.child_recheck))
     recovery.cleanup_package(cleaner, section)
     report = {'passed': False}
 
     def run(path, marker, prefix):
-        command = ['python3', 'scripts/run-native-probe.py', str(path), '--prefix', prefix, '--marker', marker, '--timeout', '110' if args.active_recheck and path == archive else '60']
+        command = ['python3', 'scripts/run-native-probe.py', str(path), '--prefix', prefix, '--marker', marker, '--timeout', '110' if (args.active_recheck or args.child_recheck) and path == archive else '60']
         if path != archive or not args.form:
             return subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=110)
         output = []
@@ -318,6 +326,17 @@ def main():
         if args.hold_timeout:
             waits = [row for row in rows if row.get('kind') == 'timeout-ready']
             report['passed'] = result.returncode == 0 and rows[-1].get('passed') and len(waits) == 1 and waits[0].get('passed') and [hit['scenario'] for hit in posts] == ['correct', 'correct'] and report.get('back_sent') is not True
+        if args.child_recheck:
+            boundary = fixture_state.get('recheck_boundary')
+            rejected = [hit for hit in hits if hit.get('rejected')]
+            after = hits[boundary:] if boundary is not None else []
+            paced = bool(rejected) and bool(after) and after[0]['path'] == '/api/accounts/users/me/' and after[0]['at'] >= rejected[0]['at'] + 60
+            ready = [row for row in rows if row.get('kind') == 'child-retry-ready']
+            own = all(not hit.get('default_key') for hit in hits) if not args.default_form else all(not hit.get('old_own_key') for hit in hits)
+            report['paced'] = paced
+            report['passed'] = result.returncode == 0 and rows[-1].get('passed') and paced and own and not posts and len(ready) == 1 and ready[0].get('covered') and ready[0].get('no_form')
+            if args.child_recheck.endswith('-pin'):
+                report['passed'] = report['passed'] and report.get('pre_pin_requests') == []
         if not report['passed']:
             raise RuntimeError('Native own-profile sign-in assertions failed')
     finally:
@@ -355,6 +374,8 @@ def main():
                         report_name = f'profile-child-same-key-{args.child_form}-native.json'
                     if args.hold_timeout:
                         report_name = f'profile-child-broker-timeout-{args.child_form}-native.json'
+                if args.child_recheck:
+                    report_name = f'profile-child-own-recheck-{args.child_recheck}-native.json'
             (ROOT / 'out' / report_name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

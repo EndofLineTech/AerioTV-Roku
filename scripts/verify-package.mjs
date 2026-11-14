@@ -23,7 +23,7 @@ export function assertPackageEntries(entries) {
   if (entries.includes('profile-management-probe.json')) throw new Error('Package contains synthetic profile management probe');
   if (entries.includes('profile-own-signin-probe.json')) throw new Error('Package contains synthetic own-profile sign-in probe');
   if (entries.includes('profile-address-probe.json') || entries.some(entry => /(^|\/)ProfileAddressFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic address transition probe');
-  if (entries.some(entry => /(^|\/)Profile(?:(?:Default|Active|Child)?OwnSignIn(?:Form)?|OwnRecheck|ColdRestore|AssignmentRefresh|Child(?:Escape|Launch|Available|Retry))Fixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic own-profile sign-in/restore/refresh/escape probe');
+  if (entries.some(entry => /(^|\/)Profile(?:(?:Default|Active|Child)?OwnSignIn(?:Form)?|OwnRecheck|ColdRestore|AssignmentRefresh|Child(?:Escape|Launch|Available|Retry|Rejected|Recheck))Fixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic own-profile sign-in/restore/refresh/escape probe');
   const probe = entries.find(entry => /(^|\/)(?:fixture-materials\.json|apply-cases\.json|profile-probe-config\.json|profile-wire-fixture\.json|profile-registry-fixtures\.json|profile-recovery-probe\.json|profile-settings-probe\.json|request-gate-probe\.json|RequestGateProbe[^/]*|UserProfile(?:Registry|Dialog|Model|Store|Avatar|Lifecycle|Forget|Navigation|PreferenceNavigation|Removal|Scope|ScopeStore)?Probe[^/]*|UserProfileDialogMain\.brs|UiAudit[^/]*|SetupReceiverProbe[^/]*|SetupReceiverFixtureEntropy\.brs|SetupApply(?:Probe|Fixture)[^/]*)$/i.test(entry));
   if (probe) throw new Error(`Package contains synthetic setup probe: ${probe}`);
   if (entries.some(entry => /(^|\/)DispatcharrSync(?:Key|Roster|Envelope|Merge|PullStore)Probe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic sync probe');
@@ -36,7 +36,7 @@ export function assertPackageEntries(entries) {
   if (entries.some(entry => /(^|\/)UserProfileAddressStoreProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic address storage probe');
   if (entries.some(entry => /(^|\/)UserProfileDefaultReplacementProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic default replacement probe');
   if (entries.some(entry => /(^|\/)UserProfileLiveDefaultProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic live default probe');
-  if (entries.some(entry => /(^|\/)UserProfileChild(?:Access|Activation)Probe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic Child access probe');
+  if (entries.some(entry => /(^|\/)UserProfileChild(?:Access|Activation|RejectedPrompt)Probe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic Child access probe');
   if (entries.some(entry => /(^|\/)SettingsChildProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic Child settings probe');
 }
 

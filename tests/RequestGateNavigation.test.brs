@@ -94,7 +94,41 @@ sub main()
     m.requestGateBinding = {slot: entry.id, base: entry.url, key: "synthetic-retired-key", hash: string(64, "a")}
     rememberHeldRequestGateBinding()
     check(m.requestGateBinding = invalid, "an unverified current holder cannot carry a previous raw-key binding across identity-error recovery")
+    m.fixtureCachedRole = "child"
+    m.fixtureSelectedChild = false
+    m.fixtureChildRecovery = false
+    m.fixtureGenericPrompt = false
+    m.connectionStore.entries[0].name = "Synthetic"
+    ticket = {id: "child-prompt", isSameNode: function(other as object) as boolean
+        return m.id = other.id
+    end function, unobserveField: sub(field as string)
+    end sub}
+    m.requestGatePrompt = ticket
+    m.requestGateBinding = {slot: entry.id, base: entry.url, username: "Kid"}
+    event = {node: ticket, getRoSGNode: function() as object
+        return m.node
+    end function, getData: function() as object
+        return {show: true}
+    end function}
+    onRequestGatePrompt(event)
+    check(m.fixtureChildRecovery and not m.fixtureGenericPrompt, "a verified Child's cached authority still enters covered recovery when fresh roster metadata becomes unreadable")
     print "ALL TESTS PASSED"
+end sub
+
+function currentUserSettingsRole() as string
+    return m.fixtureCachedRole
+end function
+
+function selectedUserProfileIsChild() as boolean
+    return m.fixtureSelectedChild
+end function
+
+sub requireConnectionRelogin(message as string)
+    m.fixtureChildRecovery = true
+end sub
+
+sub openConnectionDialog(title as string, message as string, choices as object)
+    m.fixtureGenericPrompt = true
 end sub
 
 sub check(passed as boolean, message as string)

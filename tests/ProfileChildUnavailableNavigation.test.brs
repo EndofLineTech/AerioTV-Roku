@@ -47,6 +47,9 @@ sub main()
     check(showUnavailableChildProfile() and m.childUnavailableDialog.buttons[0] = "Sign in to Dispatcharr", "default Child may recover its own refused slot login without exposing general setup")
     onUnavailableChildChoice(childUnavailableEvent(m.childUnavailableDialog, 0))
     check(m.fixtureOwnId = store.active and m.fixtureOwnChild, "default Child Sign In targets only its own saved identity")
+    store = setCanonicalPreference(store, "knownDefault", {userId: 77, username: "Alice"})
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    check(showUnavailableChildProfile() and m.childUnavailableDialog.buttons.count() = 1 and m.childUnavailableDialog.buttons[0] = "Manage Profiles", "conflicting known default identity never advertises an unavailable Child own form")
     print "ALL TESTS PASSED"
 end sub
 
@@ -123,6 +126,13 @@ end function
 sub openUserProfileManagement()
     m.fixtureManaged = true
 end sub
+
+sub closeChildRejectedKeyDialog()
+end sub
+
+function showChildRejectedKeyPrompt() as boolean
+    return false
+end function
 
 sub connectServer(skipRfi as boolean)
     m.fixtureRetried = skipRfi and m.apiKey = "synthetic-child-key" and not m.global.profilegateclosed and m.profileGateCover.visible

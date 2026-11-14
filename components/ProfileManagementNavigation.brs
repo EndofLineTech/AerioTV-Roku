@@ -2,6 +2,7 @@
 ' lifecycle; registry commits independently recheck the captured store/grant.
 sub openUserProfileManagement()
     if m.profileOwnSignInContext <> invalid then return
+    if m.childRejectedDialog <> invalid then return
     connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if connection = invalid or connection.provider <> "dispatcharr" then return
     if m.profilePinDialog <> invalid or m.adultPinDialog <> invalid then return

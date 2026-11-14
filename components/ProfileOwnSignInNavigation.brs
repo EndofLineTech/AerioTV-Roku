@@ -112,7 +112,10 @@ function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as
         end if
     end if
     retireProfileRequestBinding()
-    if childRecovery then closeUnavailableChildDialog()
+    if childRecovery
+        closeChildRejectedKeyDialog()
+        closeUnavailableChildDialog()
+    end if
     m.profileOwnSignInNonce = CreateObject("roDeviceInfo").getRandomUUID()
     m.profileOwnSignInContext = {nonce: m.profileOwnSignInNonce, activeRecovery: activeRecovery, childRecovery: childRecovery, connection: copyJson(entry), store: store, target: target, scope: copyJson(m.activeUserScope), page: m.page, guideActive: m.guide.active, covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, unlock: m.profileUnlockGrant, username: target.username, password: ""}
     m.profileOwnSignInContext.holds = holds

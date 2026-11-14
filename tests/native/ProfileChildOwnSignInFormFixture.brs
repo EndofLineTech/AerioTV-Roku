@@ -26,6 +26,13 @@ sub onManagementProbeTick()
             refreshCapabilities()
             return
         end if
+        if OWN_CHILD_REJECTED and m.childRejectedDialog <> invalid
+            expected = "Dispatcharr no longer accepts the API key for Synthetic. It may have been changed on the server. Sign in with your Dispatcharr username and password to reconnect."
+            m.childFormRejectedPrompt = m.childRejectedDialog.title = "API key no longer valid" and m.childRejectedDialog.message = expected and m.childRejectedDialog.buttons.count() = 2
+            onChildRejectedKeyChoice(managementProbeEvent(m.childRejectedDialog, 1))
+            m.childFormRejectedPrompt = m.childFormRejectedPrompt and m.childRejectedDialog = invalid and m.profileOwnSignInContext = invalid
+            return
+        end if
         if m.childUnavailableDialog = invalid then return
         rawDevice = strictJsonEncode(m.preferenceStore.device).text
         settingsBeforeReset = m.registry.read("settingsV1")
@@ -41,6 +48,7 @@ sub onManagementProbeTick()
         m.childFormStore = m.registry.read(userProfileStoreKey("slot-a"))
         m.childFormSettings = m.registry.read("settingsV1")
         m.childFormPassed = sparseReset and m.childUnavailableDialog.buttons.count() = 2 and m.childUnavailableDialog.buttons[0] = "Sign in to Dispatcharr" and m.activeUserScope = invalid and m.apiKey = ""
+        if OWN_CHILD_REJECTED then m.childFormPassed = m.childFormPassed and m.childFormRejectedPrompt = true
         otherName = "Synthetic7"
         if OWN_CHILD_DEFAULT then otherName = "Synthetic8"
         m.childFormPassed = m.childFormPassed and instr(1, m.childUnavailableDialog.title + m.childUnavailableDialog.message, otherName) = 0

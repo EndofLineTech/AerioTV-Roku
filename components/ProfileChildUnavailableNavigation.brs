@@ -56,13 +56,18 @@ function unavailableChildAccessContext() as dynamic
     if m.profileChildAccessReady <> true
         if target.isDefault or not target.addressHeld and not rejected then return invalid
     end if
-    return {entry: entry, store: store, target: target, plan: userProfileChildAccessPlan(target, present, rejected), credential: credential}
+    plan = userProfileChildAccessPlan(target, present, rejected)
+    if target.isDefault and plan.signIn
+        if not userProfileDefaultOwnIdentityMatches(entry, store, {id: target.userId, username: target.username}) then plan.signIn = false
+    end if
+    return {entry: entry, store: store, target: target, plan: plan, credential: credential, keyRejected: rejected}
 end function
 
 function showUnavailableChildProfile() as boolean
     access = unavailableChildAccessContext()
     if access = invalid then return false
     entry = access.entry
+    closeChildRejectedKeyDialog()
     closeUnavailableChildDialog()
     m.page = "profile-unavailable"
     m.screen.visible = false
@@ -96,6 +101,7 @@ function showUnavailableChildProfile() as boolean
     m.childUnavailableDialog = dialog
     m.top.dialog = dialog
     dialog.setFocus(true)
+    showChildRejectedKeyPrompt()
     return true
 end function
 

@@ -246,8 +246,8 @@ Four real normal-app private cases qualify default/non-default Child, each with
 and without an own PIN: own canonical App Data precedes the authorized lineup;
 settings, favorites and credentials remain owned; the received `profiles` row
 trying to rename/promote the Child stays unapplied; protected cases send zero
-pre-PIN requests. This is successful-path qualification, not shipping Child
-activation or completion of Retry, own-sign-in, failure/Back and release gates.
+pre-PIN requests. These are private qualification cases, not shipping Child
+activation or completion of every launch/switch/import/release gate.
 
 Private Child recovery now separates credential presence from request admission:
 a retained held key cannot look keyless, and deleting a refused non-default
@@ -270,14 +270,38 @@ non-default, with and without PIN) also exercise Back during delayed own loading
 return to the Child's unavailable surface, reject late restoration, and retry
 again without autoplay. Cancelled loading retires partial roster grants/context
 as well as its Task and session. Shipping Child activation remains disabled;
-complete rejected prompts, slow-probe continuation and public acceptance remain
-tracked separately.
+the private rejection/probe cases below extend this coverage, not public
+acceptance or completion of the epic.
+
+## Private Child rejected-key prompts
+
+The rejected-key prompt uses the protocol's exact cut body. A non-default Child
+gets only **Not Now**; an admitted default Child with an existing own-account
+form gets **Sign In with Remote**, then **Not Now**. A conflicting known default
+identity never advertises a form. The prompt is shown once per holder and hash
+hold generation, allowing a later same-key re-rejection to prompt again after a
+successful recovery. Evidence and the shown-generation ledger are memory-only.
+
+Every callback rechecks its exact native node, connection, roster/PIN bytes,
+current own access policy and rejection generation. Dialog replacement detaches
+the underlying unavailable node first. Not Now/Back returns to the Child
+surface; Remote opens only active-Child own recovery; stale nodes cannot open a
+form or dismiss a successor. Broker notices for a verified Child enter covered
+selected-holder recovery, even if fresh roster metadata has become unreadable,
+rather than displaying the generic slot prompt over its old authenticated UI.
+
+Four private normal-app401 cases cover default/non-default Child, with and
+without an own PIN: exact bodies/buttons, default own-form cancellation,
+non-default adult-PIN-only management/cancellation, stale-node refusal, unchanged
+roster/settings and credential isolation, zero requests once unavailable, no
+autoplay, and real Back exit. Protected cases send no pre-PIN requests.
 
 ## Rejected-own-key slow probes
 
 An unavailable non-default holder can retain its own rejected credential only
 in a Scene-owned memory binding, separate from authenticated session scope.
-The binding contains the current address, slot, local profile UUID, user ID,
+The default Child uses the same guarded recovery path. The binding contains the
+current address, slot, local profile UUID, user ID,
 username and a fresh probe-only nonce. Persisted holder/connection checks refuse
 address-held, removed, inactive or replaced identities. Nothing is persisted in
 App Data, settings or the roster to record a rejected-key hold.
@@ -287,14 +311,24 @@ content gate remains closed. It still needs the broker's scheduled probe permit
 and respects server parks. Generic Tasks, other endpoints and successor sessions
 have no exception. Own sign-in retires the old binding/probe before starting its
 credential lifecycle. A verified full-access own-key probe starts a fresh
-same-holder authentication/roster/reload without autoplay; Child continuation
-stays covered until the separate available-Child access work is complete.
+same-holder authentication/roster/reload without autoplay. A successful Child
+probe restores only its own Retry and stays covered with no authenticated scope;
+only explicit Retry starts fresh own authentication/roster/lineup loading.
 
 The private normal-app fixture verifies an actual sixty-second wait after one
 401, followed by the own `/me/` probe and fresh same-holder session, preserving
 the default key and the target's settings/data. It does not accelerate the broker
 clock. Broader rejected-key lifecycle and public Child/picker integration are
 not implied by this evidence.
+
+Two protected Child fixtures (default and non-default) also wait the real sixty
+seconds. After prompt dismissal, probe success keeps the content gate closed and
+the authenticated session empty, retires the binding/nonce, and exposes only own
+Retry.
+A stale rejected-prompt callback cannot open a password form. Explicit Retry
+then restores the same Child's keys/settings/data under a fresh own session,
+preserving the other holder's key with no password POST or autoplay. These runs
+do not accelerate the broker clock or enable public Child activation.
 
 A second real-minute fixture delays the admitted probe response and uses ECP
 Select to open the holder's native sign-in form while that response is in
