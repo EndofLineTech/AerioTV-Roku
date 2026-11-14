@@ -290,6 +290,13 @@ sub runProfileTaskFilterChecks()
     store.profiles[1] = setCanonicalPreference(store.profiles[1], "addressHeld", true)
     m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
     check(not configureUserProfileConnectionTask({}, entry, true), "an address-held selected holder cannot start a refresh Task")
+    resetProfileNavigation()
+    check(ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100), "default Child binding fixture establishes its own saved identity")
+    store = copyJson(m.userProfileStore)
+    store.profiles[0] = setCanonicalPreference(store.profiles[0], "role", "child")
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    task = {}
+    check(configureUserProfileConnectionTask(task, m.connectionStore.entries[0], false) and task.expectedUserId = "7" and task.expectedUsername = "Alice", "even initial default Child authentication binds ID and username before any own roster or lineup work")
 end sub
 
 sub runSetupFieldPolicyChecks()
@@ -326,6 +333,12 @@ sub runSetupFieldPolicyChecks()
     store.profiles[1] = setCanonicalPreference(store.profiles[1], "role", "child")
     m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
     check(selectedUserProfileIsChild() and not userProfileSetupFieldAllowed("connect") and not userProfileSetupFieldAllowed("key"), "persisted Child authority fences every general setup field, including direct forged edits")
+    m.profileChildAccessReady = true
+    privateGate = selectedUserProfileGate()
+    check(not privateGate.allowed and privateGate.reason = "child-key", "private ready Child cannot borrow the remembered default key")
+    m.registry.values[userProfileKeyName("slot-a", own.id)] = "synthetic-own-child"
+    check(selectedUserProfileGate().allowed, "private ready Child can authenticate using its own saved key")
+    m.profileChildAccessReady = false
     store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinType", "numbers")
     store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinSalt", string(32, "b"))
     store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinHash", string(64, "a"))
@@ -369,6 +382,7 @@ function profileResult() as object
 end function
 
 sub resetProfileNavigation()
+    m.profileChildAccessReady = false
     m.connectionStore = connectionStoreAdd(defaultConnectionStore(), "slot-a", "Synthetic")
     m.connectionStore = connectionStoreUpdate(m.connectionStore, "slot-a", {url: "https://example.test", accountId: "7"})
     m.selectedConnectionId = "slot-a"

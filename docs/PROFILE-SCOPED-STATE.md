@@ -227,6 +227,28 @@ adult admission before any other names appear. Real ECP Back from the returned
 unavailable screen exits Main. Fixtures use their own registry/cache, clean their
 data, and checksum-restore the exact preceding developer app.
 
+## Private available-Child qualification
+
+`m.profileChildAccessReady` remains **false** in normal application source.
+Only isolated probe packages enable it while Child recovery is incomplete.
+With that private readiness seam, startup requires the selected Child's own
+saved or profile-bound memory key, ignores Ask-at-launch for Child, and admits
+its own PIN before any network work. Even a default Child's initial verify-only
+Task binds the saved user ID and username before reading App Data or lineup.
+
+The busy route is a covered Child loading screen, not general setup and not a
+closed PIN gate. Incoming authentication, own roster read and full-lineup Tasks
+can finish while renderers and old UI remain fenced. The cover clears only after
+own scoped settings/session adoption. Failed partial activation retires the
+loading scope instead of exposing setup.
+
+Four real normal-app private cases qualify default/non-default Child, each with
+and without an own PIN: own canonical App Data precedes the authorized lineup;
+settings, favorites and credentials remain owned; the received `profiles` row
+trying to rename/promote the Child stays unapplied; protected cases send zero
+pre-PIN requests. This is successful-path qualification, not shipping Child
+activation or completion of Retry, own-sign-in, failure/Back and release gates.
+
 ## Rejected-own-key slow probes
 
 An unavailable non-default holder can retain its own rejected credential only

@@ -51,6 +51,7 @@ suites.unshift('ProfileAdultPinNavigation');
 suites.unshift('ProfileManagementNavigation');
 suites.unshift('UserProfileSwitch');
 suites.unshift('UserProfileChildAccess');
+suites.unshift('UserProfileChildActivation');
 suites.unshift('ProfileSwitchNavigation');
 suites.unshift('SettingsChildModel');
 suites.unshift('SettingsChildNavigation');
@@ -136,6 +137,7 @@ for (const suite of suites) {
     ...(suite === 'ProfileOwnSignInNavigation' ? ['components/ProfileOwnSignInNavigation.brs', 'components/SettingsNavigation.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/UserProfileScope.brs', 'source/UserProfileSwitch.brs', 'source/UserProfileOwnSignIn.brs', 'source/UserProfileAddressPolicy.brs', 'source/StrictJson.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'UserProfileSwitch' ? ['source/UserProfileSwitch.brs', 'source/UserProfileAddressPolicy.brs', 'source/UserProfileScope.brs', 'source/StrictJson.brs'] : []),
     ...(suite === 'UserProfileChildAccess' ? ['source/UserProfileChildAccess.brs', 'source/UserProfileStore.brs'] : []),
+    ...(suite === 'UserProfileChildActivation' ? ['source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'ProfileSwitchNavigation' ? ['components/ProfileSwitchNavigation.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'SettingsChildModel' ? ['source/SettingsModel.brs'] : []),
     ...(suite === 'SettingsChildNavigation' ? ['source/SettingsModel.brs', 'components/SettingsNavigation.brs'] : []),

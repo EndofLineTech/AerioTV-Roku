@@ -1,4 +1,7 @@
 sub init()
+    ' Remains false in shipping builds until Child own loading/recovery paths
+    ' and all required access/certification boundaries are qualified.
+    m.profileChildAccessReady = false
     m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false, profileownsigninpending: false, requestgaterecovery: ""})
     m.profileGateCover = m.top.findNode("profileGateCover")
     m.profileGateClock = m.top.findNode("profileGateClock")
@@ -261,6 +264,10 @@ sub init()
             return
         end if
     end if
+    if m.profileChildAccessReady = true and selectedUserProfileIsChild() and m.baseUrl <> "" and m.apiKey <> ""
+        connectServer(true)
+        return
+    end if
     m.profileGateCover.visible = false
     if welcome
         m.page = "welcome"
@@ -358,6 +365,8 @@ end sub
 
 sub drawSetup()
     if selectedUserProfileIsChild()
+        if drawChildProfileLoading() then return
+        if m.profileChildAccessReady = true and m.childConnectionLoading = true and m.busy <> true then resetConnectionRuntime()
         if showUnavailableChildProfile() then return
         m.page = "profile-unavailable"
         m.screen.visible = false
@@ -873,6 +882,11 @@ sub completeConnection(result as dynamic)
     m.screen.visible = false
     m.guide.visible = true
     m.guide.active = true
+    if m.childConnectionLoading = true
+        m.childConnectionLoading = false
+        m.profileGateCover.visible = false
+        m.global.profileswitchpending = false
+    end if
     signalStartupComplete()
     print "[startup] authorized lineup ms="; m.connectionElapsed.totalMilliseconds(); " channels="; result.channels.count()
     refreshCapabilities()

@@ -1,5 +1,23 @@
 ' The held/refused nondefault Child has no usable outgoing authentication.
 ' Other Child launch/keyless/default recovery paths remain fenced separately.
+function drawChildProfileLoading() as boolean
+    if m.profileChildAccessReady <> true or m.busy <> true or userProfileGateClosed() then return false
+    if not selectedUserProfileIsChild() then return false
+    m.childConnectionLoading = true
+    m.page = "profile-loading"
+    m.screen.visible = false
+    m.guide.active = false
+    m.guide.visible = false
+    m.profileGateCover.visible = true
+    ' Loading is not a PIN gate: incoming auth/roster/lineup Tasks may run,
+    ' while old views and all remote renderers remain behind the scrim.
+    m.global.profileswitchpending = true
+    m.statusLabel = m.top.findNode("profileGateMessage")
+    m.statusLabel.text = m.status
+    requestGateFenceRenderers(m.top)
+    return true
+end function
+
 function showUnavailableChildProfile() as boolean
     if m.userProfileRecoveryRequired = true or m.activeUserScope <> invalid or m.apiKey <> "" then return false
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)

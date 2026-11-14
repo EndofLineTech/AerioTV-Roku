@@ -206,7 +206,7 @@ def build(output, base_url, registry=False, model_store=False):
             package.writestr('source/SettingsChildProbeChecks.brs', settings_child_checks)
             package.write(ROOT / 'components/UserProfileNavigation.brs', 'source/UserProfileNavigation.brs')
             package.write(ROOT / 'components/UserProfilePreferenceNavigation.brs', 'source/UserProfilePreferenceNavigation.brs')
-            for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval', 'UserProfileScope', 'UserProfileScopeStore', 'UserProfilePreferenceNavigation', 'UserProfileAddressPolicy', 'UserProfileAddressStore', 'UserProfileDefaultReplacement', 'UserProfileLiveDefault']:
+            for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileChildActivation', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval', 'UserProfileScope', 'UserProfileScopeStore', 'UserProfilePreferenceNavigation', 'UserProfileAddressPolicy', 'UserProfileAddressStore', 'UserProfileDefaultReplacement', 'UserProfileLiveDefault']:
                 source = (ROOT / f'tests/{name}.test.brs').read_text().split('sub check(', 1)[0]
                 source = source.replace('sub main()', f'sub run{name}Checks()').replace('check(', 'profileAssert(')
                 source = source.replace('m.profilePreferenceDecoder = function(raw as string) as dynamic\n        return ParseJson(raw)\n    end function', 'm.profilePreferenceDecoder = invalid')
@@ -247,6 +247,7 @@ def build(output, base_url, registry=False, model_store=False):
             package.writestr('source/UserProfileStoreProbeChecks.brs', 'sub runUserProfileStoreChecks()\nend sub\nsub testProfileNativeStoreNames()\nend sub\n')
             package.writestr('source/UserProfileAvatarProbeChecks.brs', 'sub runUserProfileAvatarChecks()\nend sub\nsub testProfileNativeAvatar()\nend sub\n')
             package.writestr('source/UserProfileLifecycleProbeChecks.brs', 'sub runUserProfileLifecycleChecks()\nend sub\n')
+            package.writestr('source/UserProfileChildActivationProbeChecks.brs', 'sub runUserProfileChildActivationChecks()\nend sub\n')
             package.writestr('source/UserProfileForgetProbeChecks.brs', 'sub runUserProfileForgetChecks()\nend sub\n')
             package.writestr('source/UserProfileNavigationProbeChecks.brs', 'sub runUserProfileNavigationChecks()\nend sub\n')
             package.writestr('source/UserProfileRemovalProbeChecks.brs', 'sub runUserProfileRemovalChecks()\nend sub\n')

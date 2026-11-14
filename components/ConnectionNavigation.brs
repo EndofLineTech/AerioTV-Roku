@@ -406,6 +406,7 @@ sub changeProfiledConnectionUrl(entry as object, profiles as object, base as str
 end sub
 
 sub resetConnectionRuntime()
+    m.childConnectionLoading = false
     closeUnavailableChildDialog()
     m.setupEditContext = invalid
     m.setupEditNonce = ""

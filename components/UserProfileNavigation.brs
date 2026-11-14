@@ -47,7 +47,7 @@ function configureUserProfileConnectionTask(task as object, entry as object, bin
                 task.profileId = ""
                 task.channelProfileIds = []
             end if
-            if bindDefault or not profile.isDefault
+            if bindDefault or not profile.isDefault or profile.role = "child"
                 task.expectedUserId = profile.userId.toStr()
                 task.expectedUsername = profile.username
             end if
@@ -196,22 +196,28 @@ function selectedUserProfileGate() as object
     if entry = invalid then return {allowed: m.connectionStore.readOnly <> true, reason: ""}
     if entry.provider <> "dispatcharr" then return {allowed: true, reason: ""}
     m.userProfileStore = loadUserProfileStore(m.registry, entry.id)
+    childReady = m.profileChildAccessReady = true
     ownCredential = false
     for each profile in m.userProfileStore.profiles
-        if profile.id = m.userProfileStore.active and not profile.isDefault and not profile.addressHeld
-            if entry.remember then ownCredential = m.registry.read(userProfileKeyName(entry.id, profile.id)) <> ""
+        if profile.id = m.userProfileStore.active and not profile.addressHeld and (not profile.isDefault or (profile.role = "child" and childReady))
+            if entry.remember
+                keyName = userProfileKeyName(entry.id, profile.id)
+                if profile.isDefault then keyName = connectionRegistryKey(entry.id)
+                ownCredential = m.registry.read(keyName) <> ""
+                if profile.isDefault and entry.id = "legacy" and not ownCredential then ownCredential = m.registry.read("apiKey") <> ""
+            end if
             if type(m.profileSessionKeys) = "roAssociativeArray"
                 bucket = preferenceScope(entry.url + "|" + entry.id + "|" + profile.id)
                 if m.profileSessionKeys.doesExist(bucket) then ownCredential = textValue(m.profileSessionKeys[bucket]) <> ""
             end if
         end if
     end for
-    gate = userProfileStartupGate(m.userProfileStore, ownCredential)
+    gate = userProfileStartupGate(m.userProfileStore, ownCredential, childReady)
     if gate.reason = "pin"
         for each profile in m.userProfileStore.profiles
             if profile.id = m.userProfileStore.active
                 if userProfilePinGrantMatches(m.profileUnlockGrant, entry.id, profile)
-                    if profile.role = "child" then return {allowed: false, reason: "child"}
+                    if profile.role = "child" then return userProfileStartupGate(m.userProfileStore, ownCredential, childReady, true)
                     return {allowed: true, reason: ""}
                 end if
             end if

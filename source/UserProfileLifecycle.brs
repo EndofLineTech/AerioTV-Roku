@@ -88,7 +88,7 @@ end function
 
 ' Fail-closed interim activation boundary, replaced by the real PIN/picker
 ' controller only once mrr.8/.9 and the active credential resolver are present.
-function userProfileStartupGate(store as object, ownProfileCredential = false as boolean) as object
+function userProfileStartupGate(store as object, ownProfileCredential = false as boolean, childAccessReady = false as boolean, childPinGranted = false as boolean) as object
     if store.readOnly = true then return {allowed: false, reason: "recovery"}
     if store.profiles.count() = 0 then return {allowed: true, reason: ""}
     cleaned = normalizeUserProfileStore(store, store.playlistId)
@@ -98,9 +98,13 @@ function userProfileStartupGate(store as object, ownProfileCredential = false as
             ' Even a keyless/held Child must finish its own launch PIN before
             ' seeing unavailable controls. The controller retains the Child
             ' activation fence after that PIN; it is not an adult/default grant.
-            if profile.role = "child" and profile.pinType <> "none" then return {allowed: false, reason: "pin"}
+            if profile.role = "child" and profile.pinType <> "none" and not childPinGranted then return {allowed: false, reason: "pin"}
             if profile.addressHeld then return {allowed: false, reason: "address-held"}
-            if profile.role = "child" then return {allowed: false, reason: "child"}
+            if profile.role = "child"
+                if not childAccessReady then return {allowed: false, reason: "child"}
+                if not ownProfileCredential then return {allowed: false, reason: "child-key"}
+                return {allowed: true, reason: ""}
+            end if
             if not profile.isDefault and not ownProfileCredential then return {allowed: false, reason: "profileKey"}
             if profile.pinType <> "none" then return {allowed: false, reason: "pin"}
         end if
