@@ -18,6 +18,46 @@ function dispatcharrVerifiedAuthority(user as object) as object
     return result
 end function
 
+' Admission bindings compare only readable own authority. In particular, never
+' feed malformed String/Boolean flags to native BrightScript comparisons.
+function dispatcharrAuthorityComparable(user as dynamic) as boolean
+    if type(user) <> "roAssociativeArray" then return false
+    for each field in ["id", "user_level"]
+        kind = type(user[field])
+        if kind <> "Integer" and kind <> "roInt" and kind <> "roInteger" and kind <> "LongInteger" and kind <> "roLongInteger" then return false
+    end for
+    if user.id <= 0 or user.id > 9007199254740991& or user.user_level < 0 then return false
+    if GetInterface(user.username, "ifString") = invalid then return false
+    if user.username.trim() = "" then return false
+    for each field in ["is_staff", "is_superuser"]
+        value = user[field]
+        if value <> invalid
+            if type(value) <> "Boolean" and type(value) <> "roBoolean" then return false
+        end if
+    end for
+    if user.channel_profiles <> invalid
+        if type(user.channel_profiles) <> "roArray" then return false
+    end if
+    limit = user.stream_limit
+    if limit <> invalid
+        if GetInterface(limit, "ifString") = invalid and GetInterface(limit, "ifInt") = invalid and GetInterface(limit, "ifFloat") = invalid then return false
+    end if
+    properties = user.custom_properties
+    if properties <> invalid
+        if type(properties) <> "roAssociativeArray" then return false
+        for each field in ["catchup_enabled", "vod_movies_enabled", "vod_series_enabled", "hide_adult_content"]
+            value = properties[field]
+            if value <> invalid
+                if type(value) <> "Boolean" and type(value) <> "roBoolean" then return false
+            end if
+        end for
+        if properties.dvr_access <> invalid
+            if GetInterface(properties.dvr_access, "ifString") = invalid then return false
+        end if
+    end if
+    return true
+end function
+
 function dispatcharrAuthorizationSignature(user as dynamic) as string
     if type(user) <> "roAssociativeArray" then return ""
     ids = []

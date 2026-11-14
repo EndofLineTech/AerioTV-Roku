@@ -61,6 +61,7 @@ end function
 ' It is not account replacement, credential recovery, or a new default proof.
 function refreshActiveUserProfileAuthority(result as object, now as integer) as boolean
     if m.userProfileRecoveryRequired = true or now <= 0 then return false
+    if not dispatcharrAuthorityComparable(result.verifiedUser) then return false
     scope = m.activeUserScope
     if type(scope) <> "roAssociativeArray" then return false
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)

@@ -610,6 +610,23 @@ own read (`/me`, `/me`, list, canonical GET). This archive is offline-generated
 and syntax-checked, not native-qualified. Fixture credentials for the third
 holder are logged as user 9, never mislabeled as the default user.
 
+Own startup admission now checks authority continuity across authentication,
+successful own roster discovery and the final lineup verification. Changed or
+unreadable successful read authority fails covered before roster application;
+genuinely unavailable reads still retain known local protection. The one-shot
+lineup grant carries a sanitized authorization signature. Its Task compares the
+latest `/me/` before any channel/cache acquisition, and Scene independently checks
+the final result against that binding and the actual captured actor. A dedicated
+roster Task cannot be reinterpreted by queued generic connection polling.
+
+The private switch similarly binds its final lineup to its latest own-read
+authority. Malformed authority is refused before refresh metadata mutation.
+These checks neither change roster row/PIN/stamp precedence nor reject credentials,
+create broker holds, or authorize retries. Focused host suites and full verification
+pass (`out/mrr-authority-continuity-full-verify.log`); native authority-race,
+default-retirement and interoperability qualification remain outstanding. Existing
+offline fixture ZIPs predate these changes and must be regenerated before use.
+
 The earlier manual-refresh native cases (not this new switch/roster pipeline)
 qualify changed assignments/VOD revocation, foreign own
 identity, unchanged authority and transient failures. Two cases delay a real

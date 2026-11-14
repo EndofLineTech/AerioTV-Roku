@@ -369,6 +369,14 @@ sub runAuthorityRefreshChecks()
             check(not refreshActiveUserProfileAuthority(wrong, 102) and FormatJson(m.registry.values) = snapshot, "same-ID foreign username cannot refresh active profile authority")
             wrong = setCanonicalPreference(promoted, "verifiedBaseUrl", "https://old.test")
             check(not refreshActiveUserProfileAuthority(wrong, 102) and FormatJson(m.registry.values) = snapshot, "stale-address capability evidence cannot update role or trust")
+            for each malformed in ["staff", "permissions", "properties", "assignments"]
+                wrong = copyPreferenceValue(promoted)
+                if malformed = "staff" then wrong.verifiedUser.is_staff = "false"
+                if malformed = "permissions" then wrong.verifiedUser.custom_properties = {vod_movies_enabled: "false"}
+                if malformed = "properties" then wrong.verifiedUser.custom_properties = "bad"
+                if malformed = "assignments" then wrong.verifiedUser.channel_profiles = "bad"
+                check(not refreshActiveUserProfileAuthority(wrong, 102) and FormatJson(m.registry.values) = snapshot, "unreadable own " + malformed + " facts cannot stamp authority or reach mixed native signature comparisons")
+            end for
             demoted = copyJson(promoted)
             demoted.verifiedUser.user_level = 1
             check(not refreshActiveUserProfileAuthority(demoted, 100) and FormatJson(m.registry.values) = snapshot, "clock regression cannot stamp a server role change older than its current row")

@@ -13,6 +13,14 @@ function handleUserProfileSwitchRosterResult(result as object) as boolean
         return true
     end if
     if context.phase = "lineup"
+        expectedUser = invalid
+        if type(context.authentication) = "roAssociativeArray" then expectedUser = context.authentication.verifiedUser
+        matches = dispatcharrAuthorityComparable(expectedUser) and dispatcharrAuthorityComparable(result.verifiedUser)
+        if matches then matches = dispatcharrAuthorizationSignature(result.verifiedUser) = dispatcharrAuthorizationSignature(expectedUser)
+        if not matches
+            rollbackUserProfileSwitch("Profile permissions changed while verifying protection. Please retry.")
+            return true
+        end if
         proof = {ok: true, phase: "verified", apiKey: result.apiKey, accountId: result.accountId, accountUsername: result.accountUsername, verifiedBaseUrl: result.verifiedBaseUrl, verifiedUser: result.verifiedUser}
         if not userProfileSwitchRosterAccessCurrent(context, proof)
             rollbackUserProfileSwitch("Profile access changed before activation. Saved data was retained.")
@@ -74,7 +82,7 @@ sub finishUserProfileSwitchRosterRead(read as object)
     context = m.profileSwitchContext
     if context = invalid or type(context.authentication) <> "roAssociativeArray" then return
     valid = read.allowWrite = false and read.verifiedBaseUrl = context.connection.url and textValue(read.accountId) = context.target.userId.toStr() and lcase(textValue(read.accountUsername)) = lcase(context.target.username)
-    if type(read.verifiedUser) <> "roAssociativeArray" then valid = false
+    if not dispatcharrAuthorityComparable(read.verifiedUser) then valid = false
     if not valid
         rollbackUserProfileSwitch("Could not verify this profile's protection. Saved data was retained.")
         return
@@ -223,6 +231,10 @@ sub startUserProfileSwitchRosterLineup()
         rollbackUserProfileSwitch("Profile access changed. Please verify access again.")
         return
     end if
+    if not dispatcharrAuthorityComparable(context.authentication.verifiedUser)
+        rollbackUserProfileSwitch("Could not verify current profile permissions. Please retry.")
+        return
+    end if
     if context.target.pinType <> "none" and not userProfilePinGrantMatches(context.pin, context.connection.id, context.target)
         rollbackUserProfileSwitch("This profile needs its current PIN. Please retry.")
         return
@@ -238,6 +250,7 @@ sub startUserProfileSwitchRosterLineup()
     task.verifyOnly = false
     task.expectedUserId = context.target.userId.toStr()
     task.expectedUsername = context.target.username
+    task.expectedAuthorizationSignature = dispatcharrAuthorizationSignature(context.authentication.verifiedUser)
     if context.target.isDefault
         task.profileId = context.connection.profileId
         task.channelProfileIds = context.connection.channelProfileIds

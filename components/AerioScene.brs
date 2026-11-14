@@ -654,6 +654,7 @@ sub connectServer(skipRfi = false as boolean)
         return
     end if
     rosterReady = false
+    rosterGrant = m.profileRosterGrant
     if entry.provider = "dispatcharr" then rosterReady = consumeProfileRosterGrant(entry)
     if not rosterReady
         m.activeUserScope = invalid
@@ -696,6 +697,7 @@ sub connectServer(skipRfi = false as boolean)
     m.task.verifyOnly = not rosterReady
     tagTaskForCurrentUser(m.task)
     if rosterReady
+        m.task.expectedAuthorizationSignature = rosterGrant.authorizationSignature
         m.task.expectedUserId = m.activeUserScope.accountId
         for each profile in m.userProfileStore.profiles
             if profile.id = m.userProfileStore.active then m.task.expectedUsername = profile.username
@@ -755,6 +757,7 @@ end sub
 
 sub onConnectionTick()
     if not m.busy or m.task = invalid then return
+    if not profileRosterConnectionCallbackCurrent(m.task) then return
     ' Read terminal state as well as observing results: a task that exits without
     ' publishing must not strand the screen in its busy state.
     if m.task.state = "done" or m.task.state = "stop"
@@ -790,6 +793,9 @@ end sub
 
 sub completeConnection(result as dynamic)
     if userProfileGateClosed() then return
+    if m.task <> invalid
+        if not profileRosterConnectionCallbackCurrent(m.task) then return
+    end if
     if resolveProfileSetupCredential(result)
         if m.profileSetupCredentialHold <> invalid
             if m.task <> invalid
@@ -801,6 +807,7 @@ sub completeConnection(result as dynamic)
         end if
         return
     end if
+    if not acceptProfileRosterLineupAuthority(result, m.task) then return
     m.connectionClock.control = "stop"
     if m.task <> invalid
         m.task.unobserveField("result")

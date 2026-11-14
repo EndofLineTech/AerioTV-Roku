@@ -89,6 +89,24 @@ sub loadChannels()
         end if
         return
     end if
+    expectedAuthority = textValue(m.top.expectedAuthorizationSignature)
+    if m.top.verifyOnly <> true and expectedAuthority <> ""
+        if m.top.cancelRequested = true or not requestGateTaskSessionCurrent()
+            m.key = ""
+            m.top.apiKey = ""
+            m.top.password = ""
+            return
+        end if
+        matches = dispatcharrAuthorityComparable(user)
+        if matches then matches = dispatcharrAuthorizationSignature(user) = expectedAuthority
+        if not matches
+            m.key = ""
+            m.top.apiKey = ""
+            m.top.password = ""
+            m.top.result = {ok: false, protectionAuthorityChanged: true, relogin: false, message: "Profile access changed while verifying protection. Please verify again."}
+            return
+        end if
+    end if
     if m.top.verifyOnly = true
         if m.top.cancelRequested = true
             m.key = ""

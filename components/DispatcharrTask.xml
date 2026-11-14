@@ -6,6 +6,7 @@
     <field id="ownProfileSignIn" type="boolean" />
     <field id="expectedUserId" type="string" />
     <field id="expectedUsername" type="string" />
+    <field id="expectedAuthorizationSignature" type="string" />
     <field id="cacheEpoch" type="string" />
     <field id="baseUrl" type="string" />
     <field id="apiKey" type="string" />

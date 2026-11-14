@@ -258,6 +258,16 @@ sub main()
     onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
     onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
     check(m.registry.flushes = 0 and m.registry.read("settingsV1") = "{malformed" and m.activeUserScope = invalid and m.global.profilegateclosed and m.userProfileRecoveryRequired, "unreadable present preference root freezes cleanup/rollback admission so an outgoing save cannot overwrite it from stale memory")
+    switchRosterControllerFixture()
+    m.fixtureVerified.verifiedUser.user_level = 10
+    m.fixtureRead.verifiedUser.user_level = 10
+    m.fixtureRead.data.categories.profiles.data.rows = [[8, "bob", "Bob", "none", "", "", "child", 500]]
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+    check(m.fixtureLineups = 1 and m.profileSwitchTask.expectedAuthorizationSignature = dispatcharrAuthorizationSignature(m.fixtureRead.verifiedUser), "private lineup carries the latest own-read authority, not an unbound identity-only grant")
+    final = {ok: true, apiKey: "synthetic-b", accountId: "8", accountUsername: "bob", verifiedBaseUrl: "https://example.test", verifiedUser: {id: 8, username: "bob", user_level: 1}, channels: [], groups: [], scope: "own-lineup", generation: "own-generation"}
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, final))
+    check(m.fixtureCommitAttempts = 0 and m.profileSwitchContext = invalid and m.activeUserScope.profileId = m.fixtureOutgoing.profileId, "even an injected nominal final result cannot adopt protection decided under a different latest own authority")
     print "ALL TESTS PASSED"
 end sub
 
