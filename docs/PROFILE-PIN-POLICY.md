@@ -501,3 +501,28 @@ therefore refuse without writes while that key exists. Connecting an unrelated
 slot no longer deletes it. A verified owner-bound atomic migration/deletion is
 still required before this conservative fence can be lifted; do not remove the
 legacy value manually to make an edit succeed.
+
+## Inactive held-holder recovery
+
+`verifiedDefaultAtAddress` is typed local-only evidence (canonical URL plus
+default ID/name) recorded from the default's own successful URL-bound `/me/`.
+It is independent of frozen `knownDefault`/`addressChangeSnapshot`; a different
+new default is not evidence that this is the old server. Every actual URL edit
+retires this live proof, including same-origin path edits. Recovery uses it only
+when URL and current default record still match. Missing proof produces an
+explicitly unknown tag, never a fallback to the frozen comparison identity.
+
+An inactive held full-access non-default can now pass its own existing PIN and
+open the standard credential form. The mandatory changed-server explanation
+remains above the fields on errors; blank names use “this playlist”. Successful
+own username verification may migrate a recreated ID and saves the own key,
+data anchor and current-default tag while lifting only that holder's hold in one
+transaction. Only when no holders remain held is the snapshot removed, without
+rewriting the frozen baseline from that same own request. Wrong username/URL,
+cancellation and failed Flush preserve prior trust/key/data state.
+
+`scripts/test-profile-own-signin-native.py --held` qualifies actual numeric PIN,
+secured keyboard, four credential outcomes, retained explanation, other-holder
+hold preservation, own data migration, outgoing persistence and delayed-Back
+cancellation. Active and Child recovery, automatic activation and the public
+picker remain separate unfinished integration; this does not enable them.

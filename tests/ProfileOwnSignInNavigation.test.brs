@@ -1,5 +1,18 @@
 sub main()
     ownFormFixture()
+    m.userProfileStore.profiles[1] = setCanonicalPreference(m.userProfileStore.profiles[1], "addressHeld", true)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.userProfileStore)
+    snapshot = FormatJson(m.registry.values)
+    check(beginUserProfileOwnSignIn(m.fixtureTarget), "inactive held full-access profile can open its own sign-in form")
+    check(instr(1, m.profileOwnSignInDialog.message, "The server address for Synthetic changed. Sign in again to use this profile.") > 0, "held form displays the mandatory changed-server explanation above credentials")
+    showProfileOwnSignInForm("Dispatcharr did not accept that username or password.")
+    check(instr(1, m.profileOwnSignInDialog.message, "server address") > 0 and instr(1, m.profileOwnSignInDialog.message, "did not accept") > 0, "failed held attempts retain both the server-change explanation and error")
+    cancelUserProfileOwnSignIn()
+    check(FormatJson(m.registry.values) = snapshot and m.userProfileStore.profiles[1].addressHeld, "cancelled held recovery changes no trust or key bytes")
+    ' The connection model currently refuses blank stored names; render the
+    ' message helper directly rather than granting an invalid connection.
+    check(userProfileOwnSignInAddressMessage("") = "The server address for this playlist changed. Sign in again to use this profile.", "blank playlist names use the specified this-playlist explanation")
+    ownFormFixture()
     defaultId = m.userProfileStore.active
     m.userProfileStore.active = m.fixtureTarget
     m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.userProfileStore)

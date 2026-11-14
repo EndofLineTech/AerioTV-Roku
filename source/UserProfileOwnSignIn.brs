@@ -21,7 +21,12 @@ function userProfileOwnSignInPlan(connection as object, previous as object, targ
     if target.isDefault
         if store.active = targetId or not userProfileFullAccess(target.role) then return {ok: false, reason: "default-recovery-not-ready"}
     end if
-    if target.addressHeld then return {ok: false, reason: "address-recovery-not-ready"}
+    if target.addressHeld
+        if target.isDefault or store.active = targetId or not userProfileFullAccess(target.role) then return {ok: false, reason: "address-recovery-not-ready"}
+        if type(verified) <> "roAssociativeArray" then return denied
+        if type(verified.verifiedBaseUrl) <> "String" and type(verified.verifiedBaseUrl) <> "roString" then return denied
+        if normalizeBaseUrl(verified.verifiedBaseUrl) <> connection.url then return denied
+    end if
     if type(verified) <> "roAssociativeArray" then return denied
     if verified.ok <> true then return denied
     if type(verified.apiKey) <> "String" and type(verified.apiKey) <> "roString" then return {ok: false, reason: "api-access-required"}
@@ -52,6 +57,17 @@ function userProfileOwnSignInPlan(connection as object, previous as object, targ
         store.pendingRoster = true
     end if
     store.profiles[index] = target
+    if not target.isDefault
+        tagged = userProfileAddressOwnTagPlan(store, targetId, verified.verifiedUser, userProfileLiveDefaultAt(connection, store), true)
+        if not tagged.ok then return denied
+        store = tagged.store
+        target = store.profiles[index]
+        held = false
+        for each profile in store.profiles
+            if profile.addressHeld then held = true
+        end for
+        if not held then store.delete("addressChangeSnapshot")
+    end if
     store = normalizeUserProfileStore(store, connection.id)
     if store.readOnly = true then return denied
     return {ok: true, reason: "", store: store, target: target, oldIdentity: oldIdentity, newIdentity: connectionPreferenceIdentity(connection, target.userId.toStr())}

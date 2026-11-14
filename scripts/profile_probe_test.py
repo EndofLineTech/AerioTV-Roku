@@ -59,6 +59,14 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertIn('beginUserProfileOwnSignIn(target.id)', source)
                 self.assertIn('"cancel-ready"', source)
                 self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
+            probe.build(output, normal, 'SyntheticOwnSignInSection', 'http://127.0.0.1:1234', held=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('OWN_PROBE_HELD', source)
+                self.assertIn('m.ownProbeHeld = true', source)
+                self.assertIn('actual.profiles[2].addressHeld', source)
+                self.assertNotIn('"AerioTV"', source)
+                self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
             probe.build(output, normal, 'SyntheticOwnSignInSection', 'http://127.0.0.1:1234', form=True, default_form=True)
             with zipfile.ZipFile(output) as package:
                 source = package.read('components/AerioScene.brs').decode()
@@ -134,7 +142,7 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)
         script = script.replace('DispatcharrSyncKeyProbeChecks', 'DispatcharrSyncRosterProbeChecks')
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)
-        for name in ['DispatcharrSyncEnvelopeProbeChecks', 'DispatcharrSyncMergeProbeChecks', 'DispatcharrSyncPullStoreProbeChecks', 'UserProfilePinPolicyProbeChecks', 'UserProfileCredentialProbeChecks', 'UserProfileManagementPolicyProbeChecks', 'UserProfileSwitchProbeChecks', 'UserProfileOwnSignInProbeChecks', 'UserProfileAddressPolicyProbeChecks', 'UserProfileAddressStoreProbeChecks', 'UserProfileDefaultReplacementProbeChecks', 'UserProfileChildAccessProbeChecks', 'SettingsChildProbeChecks']:
+        for name in ['DispatcharrSyncEnvelopeProbeChecks', 'DispatcharrSyncMergeProbeChecks', 'DispatcharrSyncPullStoreProbeChecks', 'UserProfilePinPolicyProbeChecks', 'UserProfileCredentialProbeChecks', 'UserProfileManagementPolicyProbeChecks', 'UserProfileSwitchProbeChecks', 'UserProfileOwnSignInProbeChecks', 'UserProfileAddressPolicyProbeChecks', 'UserProfileAddressStoreProbeChecks', 'UserProfileDefaultReplacementProbeChecks', 'UserProfileLiveDefaultProbeChecks', 'UserProfileChildAccessProbeChecks', 'SettingsChildProbeChecks']:
             probe_script = script.replace('DispatcharrSyncRosterProbeChecks', name)
             subprocess.run(['node', '--input-type=module', '-e', probe_script], cwd=root, check=True, capture_output=True, text=True)
 

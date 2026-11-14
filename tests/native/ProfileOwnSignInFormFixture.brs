@@ -7,6 +7,8 @@ sub onManagementProbeTick()
         target = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Synthetic8", user_level: 1}, 1)
         target.isDefault = false
         target.order = 1
+        m.ownProbeHeld = OWN_PROBE_HELD
+        if m.ownProbeHeld then target.addressHeld = true
         ' Imported synthetic PIN material, never generated for owner storage.
         target.pinType = "numbers"
         target.pinSalt = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
@@ -19,6 +21,14 @@ sub onManagementProbeTick()
             return
         end if
         store = recorded.store
+        if m.ownProbeHeld
+            other = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000003", {id: 9, username: "Synthetic9", user_level: 1}, 1)
+            other.isDefault = false
+            other.addressHeld = true
+            other = setCanonicalPreference(other, "defaultIdentityTag", invalid)
+            store.profiles.push(other)
+            store = setCanonicalPreference(store, "addressChangeSnapshot", {userId: 7, username: "Synthetic7"})
+        end if
         m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
         entry = connectionStoreEntry(m.connectionStore, "slot-a")
         preferences = m.preferenceStore
@@ -38,6 +48,7 @@ sub onManagementProbeTick()
             print "[own-signin] "; FormatJson({kind: "result", passed: false, started: m.ownProbePassed, dialog_type: type(m.profileOwnSignInDialog)})
             return
         end if
+        if m.ownProbeHeld then m.ownProbePassed = m.ownProbePassed and instr(1, m.profileOwnSignInDialog.message, "changed. Sign in again to use this profile.") > 0
         m.managementProbePhase = 1
     else if phase = 1
         beforeForm = m.profileOwnSignInDialog
@@ -65,6 +76,7 @@ sub onManagementProbeTick()
         if scenario = "correct"
             actual = loadUserProfileStore(m.registry, "slot-a")
             passed = m.profileOwnSignInContext = invalid and actual.profiles[1].userId = 88
+            if m.ownProbeHeld then passed = passed and not actual.profiles[1].addressHeld and actual.profiles[2].addressHeld and actual.doesExist("addressChangeSnapshot") and actual.profiles[1]["defaultIdentityTag"]["userId"] = 7
             entry = connectionStoreEntry(m.connectionStore, "slot-a")
             oldKey = preferenceScope(connectionPreferenceIdentity(entry, "8"))
             newKey = preferenceScope(connectionPreferenceIdentity(entry, "88"))
@@ -77,7 +89,11 @@ sub onManagementProbeTick()
             passed = m.profileOwnSignInContext <> invalid and m.profileOwnSignInContext.password = "" and FormatJson(loadUserProfileStore(m.registry, "slot-a")) = FormatJson(m.ownProbeStore)
             expected = "Dispatcharr did not accept that username or password."
             if scenario = "no-api" then expected = "This account has no API key yet. Ask your Dispatcharr administrator to turn on API access for it."
-            passed = passed and m.profileOwnSignInDialog.message = expected
+            if m.ownProbeHeld
+                passed = passed and instr(1, m.profileOwnSignInDialog.message, expected) > 0 and instr(1, m.profileOwnSignInDialog.message, "changed. Sign in again to use this profile.") > 0
+            else
+                passed = passed and m.profileOwnSignInDialog.message = expected
+            end if
         end if
         m.ownProbePassed = m.ownProbePassed and passed
         print "[own-signin] "; FormatJson({kind: "case", scenario: scenario, passed: passed})

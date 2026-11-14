@@ -24,13 +24,18 @@ def module(name):
     return loaded
 
 
-def build(output, normal, section, base, form=False, default_form=False):
+def build(output, normal, section, base, form=False, default_form=False, held=False):
+    if held:
+        if default_form:
+            raise ValueError('Held fixture covers a non-default holder only')
+        form = True
     if default_form:
         form = True
     seeded = output.with_suffix('.seed.zip')
     module('management').build(seeded, normal, section, base)
     fixture_name = 'ProfileDefaultOwnSignInFormFixture.brs' if default_form else ('ProfileOwnSignInFormFixture.brs' if form else 'ProfileOwnSignInFixture.brs')
     fixture = (ROOT / 'tests/native' / fixture_name).read_text()
+    fixture = fixture.replace('OWN_PROBE_HELD', 'true' if held else 'false')
     if form:
         fixture = fixture.replace('OWN_PROBE_PIN_HASH', hashlib.sha256(bytes.fromhex('bb' * 16) + b'1234').hexdigest())
     with zipfile.ZipFile(seeded) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
@@ -49,7 +54,12 @@ def main():
     parser.add_argument('--restore', required=True)
     parser.add_argument('--form', action='store_true', help='Exercise actual native form/keyboards and delayed-request Back cancellation')
     parser.add_argument('--default-form', action='store_true', help='Switch to B then recover inactive default A through its actual form')
+    parser.add_argument('--held', action='store_true', help='Recover an inactive held holder; preserve another hold and show the changed-server message')
     args = parser.parse_args()
+    if args.held:
+        if args.default_form:
+            parser.error('--held cannot be combined with --default-form')
+        args.form = True
     if args.default_form:
         args.form = True
     host, password = os.environ['ROKU_HOST'], os.environ['ROKU_DEV_PASSWORD']
@@ -115,7 +125,7 @@ def main():
     section = 'AerioOwnSignInProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-own-signin-probe.zip'
     cleaner = ROOT / 'out/profile-own-signin-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.form, args.default_form)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.form, args.default_form, args.held)
     recovery.cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -160,6 +170,8 @@ def main():
             server.server_close()
             report['passed'] = report['passed'] and report.get('cleaned', False) and report['restored']
             report_name = 'profile-default-own-signin-form-native.json' if args.default_form else ('profile-own-signin-form-native.json' if args.form else 'profile-own-signin-native.json')
+            if args.held:
+                report_name = 'profile-held-own-signin-form-native.json'
             (ROOT / 'out' / report_name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

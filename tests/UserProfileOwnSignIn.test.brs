@@ -35,6 +35,23 @@ sub main()
     entry = normalizeConnectionEntry(entry)
     registry = ownSignInRegistry(entry, store)
     nonce = "00000000-0000-4000-8000-000000000090"
+    heldStore = copyJson(store)
+    heldStore.profiles[1] = setCanonicalPreference(heldStore.profiles[1], "addressHeld", true)
+    heldStore = setCanonicalPreference(heldStore, "knownDefault", {userId: 70, username: "OldDefault"})
+    heldStore = setCanonicalPreference(heldStore, "addressChangeSnapshot", {userId: 70, username: "OldDefault"})
+    heldStore = setCanonicalPreference(heldStore, "verifiedDefaultAtAddress", {url: entry.url, identity: {userId: 7, username: "Alice"}})
+    heldResult = setCanonicalPreference(result, "verifiedBaseUrl", entry.url)
+    for each failure in [false, true]
+        heldRegistry = ownSignInRegistry(entry, heldStore)
+        heldRegistry.failOnce = failure
+        beforeHeld = FormatJson(heldRegistry.values)
+        recovered = commitUserProfileOwnSignIn(heldRegistry, entry, heldStore, b.id, heldResult, 100, nonce, nonce)
+        if failure
+            check(not recovered.ok and FormatJson(heldRegistry.values) = beforeHeld, "failed held commit restores exact hold, live proof, frozen baseline, own key and data")
+        else
+            check(recovered.ok and not recovered.target.addressHeld and recovered.target["defaultIdentityTag"]["userId"] = 7 and recovered.store["knownDefault"]["userId"] = 70 and not recovered.store.doesExist("addressChangeSnapshot"), "held commit atomically saves its own key, migrated identity and current-address tag without rewriting the frozen baseline")
+        end if
+    end for
     saved = commitUserProfileOwnSignIn(registry, entry, store, b.id, result, 100, nonce, nonce)
     check(saved.ok and saved.preferencesMoved and registry.flushes = 1, "own identity, key and data migration commit in one Flush without runtime activation")
     check(saved.preferenceStore.accounts[preferenceScope(planned.newIdentity)].favoriteIds[0] = "bob-only", "recovery returns the new complete preference root so outgoing writes cannot resurrect the old scope")

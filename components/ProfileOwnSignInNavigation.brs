@@ -1,5 +1,5 @@
 ' Internal inactive-profile recovery only. Public picker, active/Child
-' and address-held recovery remain fenced until their transition rules land.
+' and Child recovery remain fenced until their transition rules land.
 function beginUserProfileOwnSignIn(targetId as string) as boolean
     if m.userProfileRecoveryRequired = true then return false
     if m.profileOwnSignInContext <> invalid or m.profileSwitchContext <> invalid then return false
@@ -18,7 +18,8 @@ function beginUserProfileOwnSignIn(targetId as string) as boolean
         if profile.id = targetId then target = profile
     end for
     if target = invalid then return false
-    if target.addressHeld or not userProfileFullAccess(target.role) then return false
+    if not userProfileFullAccess(target.role) then return false
+    if target.isDefault and target.addressHeld then return false
     if target.isDefault
         if not userProfileDefaultOwnIdentityMatches(entry, store, {id: target.userId, username: target.username}) then return false
     end if
@@ -79,6 +80,11 @@ sub showProfileOwnSignInForm(message = "" as string)
     context = m.profileOwnSignInContext
     dialog = newProfileOwnSignInDialog("form")
     dialog.title = "Sign in to Dispatcharr"
+    if context.target.addressHeld
+        explanation = userProfileOwnSignInAddressMessage(context.connection.name)
+        if message <> "" then explanation += chr(10) + chr(10) + message
+        message = explanation
+    end if
     dialog.message = message
     mask = ""
     if context.password <> "" then mask = "********"
@@ -91,6 +97,12 @@ sub showProfileOwnSignInForm(message = "" as string)
     m.top.dialog = dialog
     dialog.setFocus(true)
 end sub
+
+function userProfileOwnSignInAddressMessage(playlist as string) as string
+    playlist = playlist.trim()
+    if playlist = "" then playlist = "this playlist"
+    return "The server address for " + playlist + " changed. Sign in again to use this profile."
+end function
 
 function profileOwnSignInEventCurrent(event as object) as boolean
     if m.profileOwnSignInDialog = invalid then return false

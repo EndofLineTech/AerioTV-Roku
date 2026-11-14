@@ -5,7 +5,6 @@ function userProfileDefaultAddressCheck(connection as object, previous as object
     store = normalizeUserProfileStore(previous, connection.id)
     if store.readOnly = true or connection.provider <> "dispatcharr" then return {ok: false}
     unchanged = {ok: true, store: store}
-    if not store.doesExist("addressChangeSnapshot") then return unchanged
     if type(verified) <> "roAssociativeArray" then return unchanged
     if verified.ok <> true or type(verified.verifiedBaseUrl) <> "String" and type(verified.verifiedBaseUrl) <> "roString" then return unchanged
     if normalizeBaseUrl(verified.verifiedBaseUrl) <> connection.url then return unchanged
@@ -17,7 +16,11 @@ function userProfileDefaultAddressCheck(connection as object, previous as object
             ownDefault = userProfileAddressIdentityMatches(identity, {userId: profile.userId, username: profile.username})
         end if
     end for
-    if not ownDefault or not userProfileAddressIdentityMatches(identity, store["addressChangeSnapshot"]) then return unchanged
+    if not ownDefault then return unchanged
+    store = setCanonicalPreference(store, "verifiedDefaultAtAddress", {url: connection.url, identity: identity})
+    unchanged.store = store
+    if not store.doesExist("addressChangeSnapshot") then return unchanged
+    if not userProfileAddressIdentityMatches(identity, store["addressChangeSnapshot"]) then return unchanged
     checked = userProfileAddressCheckPlan(store, verified.verifiedUser)
     if not checked.ok then return checked
     for each profile in checked.store.profiles
@@ -25,6 +28,22 @@ function userProfileDefaultAddressCheck(connection as object, previous as object
     end for
     checked.store.delete("addressChangeSnapshot")
     return checked
+end function
+
+' Current-address evidence is separate from the comparison identity frozen by
+' outstanding holds. Never fall back to knownDefault when tagging own recovery.
+function userProfileLiveDefaultAt(connection as object, previous as object) as dynamic
+    store = normalizeUserProfileStore(previous, connection.id)
+    if store.readOnly = true or not store.doesExist("verifiedDefaultAtAddress") then return invalid
+    proof = store["verifiedDefaultAtAddress"]
+    if proof.url <> connection.url then return invalid
+    for each profile in store.profiles
+        if profile.isDefault
+            if not userProfileAddressIdentityMatches(proof.identity, {userId: profile.userId, username: profile.username}) then return invalid
+            return {id: proof.identity["userId"], username: proof.identity["username"]}
+        end if
+    end for
+    return invalid
 end function
 
 function userProfileAddressOrigin(url as string) as string
@@ -158,6 +177,7 @@ function userProfileAddressChangePlan(connection as object, previous as object, 
     end for
     origin = userProfileAddressOrigin(nextUrl)
     if origin = "" then return denied
+    if normalizeBaseUrl(nextUrl) <> connection.url then store.delete("verifiedDefaultAtAddress")
     for i = 0 to store.profiles.count() - 1
         profile = store.profiles[i]
         if not profile.doesExist("preferenceAnchor")

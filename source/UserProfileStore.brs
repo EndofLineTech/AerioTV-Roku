@@ -37,7 +37,7 @@ end function
 function normalizeUserProfileStore(raw as dynamic, slotId as string) as object
     failure = userProfileStoreRecovery(slotId)
     if userProfileStoreKey(slotId) = "" then return failure
-    raw = userProfileCanonicalFields(raw, ["schema", "playlistId", "active", "askAtLaunch", "profiles", "removed", "pendingRoster", "knownDefault", "addressChangeSnapshot"])
+    raw = userProfileCanonicalFields(raw, ["schema", "playlistId", "active", "askAtLaunch", "profiles", "removed", "pendingRoster", "knownDefault", "addressChangeSnapshot", "verifiedDefaultAtAddress"])
     if raw = invalid then return failure
     if not userProfileInteger(raw.schema) then return failure
     if raw.schema <> 1 then return failure
@@ -73,6 +73,16 @@ function normalizeUserProfileStore(raw as dynamic, slotId as string) as object
             result = setCanonicalPreference(result, field, identity)
         end if
     end for
+    if raw.doesExist("verifiedDefaultAtAddress")
+        proof = userProfileCanonicalFields(raw["verifiedDefaultAtAddress"], ["url", "identity"])
+        if proof = invalid then return failure
+        if type(proof.url) <> "String" and type(proof.url) <> "roString" then return failure
+        if len(proof.url) > 2048 or normalizeBaseUrl(proof.url) = "" then return failure
+        if normalizeBaseUrl(proof.url) <> proof.url then return failure
+        identity = normalizeUserProfileAddressIdentity(proof.identity)
+        if identity = invalid then return failure
+        result = setCanonicalPreference(result, "verifiedDefaultAtAddress", {url: proof.url, identity: identity})
+    end if
     if raw.doesExist("removed")
         removed = userProfileNormalizeTombstones(raw.removed)
         if removed = invalid then return failure

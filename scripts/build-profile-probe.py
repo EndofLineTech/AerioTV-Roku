@@ -206,7 +206,7 @@ def build(output, base_url, registry=False, model_store=False):
             package.writestr('source/SettingsChildProbeChecks.brs', settings_child_checks)
             package.write(ROOT / 'components/UserProfileNavigation.brs', 'source/UserProfileNavigation.brs')
             package.write(ROOT / 'components/UserProfilePreferenceNavigation.brs', 'source/UserProfilePreferenceNavigation.brs')
-            for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval', 'UserProfileScope', 'UserProfileScopeStore', 'UserProfilePreferenceNavigation', 'UserProfileAddressPolicy', 'UserProfileAddressStore', 'UserProfileDefaultReplacement']:
+            for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval', 'UserProfileScope', 'UserProfileScopeStore', 'UserProfilePreferenceNavigation', 'UserProfileAddressPolicy', 'UserProfileAddressStore', 'UserProfileDefaultReplacement', 'UserProfileLiveDefault']:
                 source = (ROOT / f'tests/{name}.test.brs').read_text().split('sub check(', 1)[0]
                 source = source.replace('sub main()', f'sub run{name}Checks()').replace('check(', 'profileAssert(')
                 source = source.replace('m.profilePreferenceDecoder = function(raw as string) as dynamic\n        return ParseJson(raw)\n    end function', 'm.profilePreferenceDecoder = invalid')
@@ -240,6 +240,7 @@ def build(output, base_url, registry=False, model_store=False):
             package.writestr('source/UserProfileAddressPolicyProbeChecks.brs', 'sub runUserProfileAddressPolicyChecks()\nend sub\n')
             package.writestr('source/UserProfileAddressStoreProbeChecks.brs', 'sub runUserProfileAddressStoreChecks()\nend sub\n')
             package.writestr('source/UserProfileDefaultReplacementProbeChecks.brs', 'sub runUserProfileDefaultReplacementChecks()\nend sub\n')
+            package.writestr('source/UserProfileLiveDefaultProbeChecks.brs', 'sub runUserProfileLiveDefaultChecks()\nend sub\n')
             package.writestr('source/UserProfileChildAccessProbeChecks.brs', 'sub runUserProfileChildAccessChecks()\nend sub\n')
             package.writestr('source/SettingsChildProbeChecks.brs', 'sub runSettingsChildModelChecks()\nend sub\n')
             package.writestr('source/UserProfileModelProbeChecks.brs', 'sub runUserProfileModelChecks()\nend sub\nsub testProfileNativeNames()\nend sub\n')
