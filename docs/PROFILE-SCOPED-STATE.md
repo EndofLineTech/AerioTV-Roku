@@ -226,3 +226,32 @@ completes the Child's own PIN before unavailable controls, then requires separat
 adult admission before any other names appear. Real ECP Back from the returned
 unavailable screen exits Main. Fixtures use their own registry/cache, clean their
 data, and checksum-restore the exact preceding developer app.
+
+## Rejected-own-key slow probes
+
+An unavailable non-default holder can retain its own rejected credential only
+in a Scene-owned memory binding, separate from authenticated session scope.
+The binding contains the current address, slot, local profile UUID, user ID,
+username and a fresh probe-only nonce. Persisted holder/connection checks refuse
+address-held, removed, inactive or replaced identities. Nothing is persisted in
+App Data, settings or the roster to record a rejected-key hold.
+
+Only `RequestGateRecheckTask`, under that exact nonce, can probe `/me/` while the
+content gate remains closed. It still needs the broker's scheduled probe permit
+and respects server parks. Generic Tasks, other endpoints and successor sessions
+have no exception. Own sign-in retires the old binding/probe before starting its
+credential lifecycle. A verified full-access own-key probe starts a fresh
+same-holder authentication/roster/reload without autoplay; Child continuation
+stays covered until the separate available-Child access work is complete.
+
+The private normal-app fixture verifies an actual sixty-second wait after one
+401, followed by the own `/me/` probe and fresh same-holder session, preserving
+the default key and the target's settings/data. It does not accelerate the broker
+clock. Broader rejected-key lifecycle and public Child/picker integration are
+not implied by this evidence.
+
+A second real-minute fixture delays the admitted probe response and uses ECP
+Select to open the holder's native sign-in form while that response is in
+flight. The old transport/binding is retired; after its late response, the
+unavailable holder remains covered with no authenticated scope, no restored
+credential and no change to the default key.

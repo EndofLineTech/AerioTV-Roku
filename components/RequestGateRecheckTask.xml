@@ -5,6 +5,7 @@
     <field id="apiKey" type="string" />
     <field id="accountId" type="string" />
     <field id="expectedUsername" type="string" />
+    <field id="recoveryNonce" type="string" />
     <field id="cancelRequested" type="boolean" />
     <field id="result" type="assocarray" alwaysNotify="true" />
   </interface>

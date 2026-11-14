@@ -13,6 +13,7 @@ class ProfileProbeTest(unittest.TestCase):
         script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt','source/ProfileChildEscapeFixture.brs']), /probe/);"
         subprocess.run(['node', '--input-type=module', '-e', script], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileChildLaunchFixture')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileOwnRecheckFixture')], check=True)
 
     def test_address_handler_probe_is_private_and_cannot_ship(self):
         spec = importlib.util.spec_from_file_location('address_probe', Path(__file__).with_name('test-profile-address-native.py'))
@@ -98,6 +99,20 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertIn('onActiveUserProfileRecoveryChoice', source)
                 self.assertIn('"revoke-new-ready"', source)
                 self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
+            probe.build(output, normal, 'SyntheticOwnRecheckSection', 'http://127.0.0.1:1234', form=True, active_recheck=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('"AerioTV"', source)
+                self.assertIn('"recheck-ready"', source)
+                self.assertIn('m.ownRecheckProfile', source)
+                self.assertNotIn('OWN_RECHECK_', source)
+                self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
+            probe.build(output, normal, 'SyntheticOwnRecheckCancelSection', 'http://127.0.0.1:1234', form=True, active_recheck=True, recheck_cancel=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('OWN_RECHECK_', source)
+                self.assertIn('m.ownRecheckCancelTicks', source)
+                self.assertNotIn('"AerioTV"', source)
         script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; for (const entry of ['profile-own-signin-probe.json','source/ProfileOwnSignInFixture.brs','source/ProfileOwnSignInFormFixture.brs','source/ProfileDefaultOwnSignInFormFixture.brs','source/ProfileActiveOwnSignInFixture.brs','source/ProfileColdRestoreFixture.brs','source/ProfileAssignmentRefreshFixture.brs']) assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt',entry]), /probe/);"
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)
 

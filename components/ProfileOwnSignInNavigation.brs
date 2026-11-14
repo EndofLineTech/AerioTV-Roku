@@ -94,6 +94,7 @@ function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as
     if target.isDefault
         if not userProfileDefaultOwnIdentityMatches(entry, store, {id: target.userId, username: target.username}) then return false
     end if
+    retireProfileRequestBinding()
     m.profileOwnSignInNonce = CreateObject("roDeviceInfo").getRandomUUID()
     m.profileOwnSignInContext = {nonce: m.profileOwnSignInNonce, activeRecovery: activeRecovery, connection: copyJson(entry), store: store, target: target, scope: copyJson(m.activeUserScope), page: m.page, guideActive: m.guide.active, covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, unlock: m.profileUnlockGrant, username: target.username, password: ""}
     m.global.profileownsigninpending = true

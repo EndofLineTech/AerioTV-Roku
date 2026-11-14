@@ -507,6 +507,13 @@ sub requireConnectionRelogin(message as string)
     resetConnectionRuntime()
     if not defaultHolder
         m.profileUnlockGrant = previousUnlock
+        if removed and entry <> invalid
+            recoveredBinding = unavailableRequestGateBinding(heldBinding, entry, profileStore, CreateObject("roDeviceInfo").getRandomUUID())
+            if recoveredBinding <> invalid
+                m.requestGateBinding = recoveredBinding
+                m.global.requestgaterecovery = recoveredBinding.recoveryNonce
+            end if
+        end if
         ' A refused non-default/Child cannot fall through the slot setup form
         ' or reload/delete connKey. Its own sign-in/access UI is separate work.
         m.userProfileStore = profileStore

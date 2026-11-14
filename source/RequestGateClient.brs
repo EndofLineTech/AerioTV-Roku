@@ -23,6 +23,7 @@ end function
 
 function requestGateTaskSessionCurrent() as boolean
     if m.top = invalid then return true
+    if requestGateRecoveryProbeTagged() then return requestGateRecoveryProbeCurrent()
     if type(m.top) = "roAssociativeArray"
         if not m.top.doesExist("aeriosession") then return true
     else
@@ -38,6 +39,36 @@ function requestGateTaskSessionCurrent() as boolean
     if type(captured) <> "String" and type(captured) <> "roString" then return false
     if type(current) <> "String" and type(current) <> "roString" then return false
     return captured <> "" and captured = current
+end function
+
+' A rejected holder has no authenticated session. Its sole transport exception
+' is the exact /me slow-probe Task under a separate, memory-only Scene nonce.
+' This does not open the global content/PIN gate or admit generic Tasks.
+function requestGateRecoveryProbeTagged() as boolean
+    if m.top = invalid then return false
+    if type(m.top) = "roAssociativeArray"
+        if not m.top.doesExist("recoveryNonce") then return false
+    else
+        if not m.top.hasField("recoveryNonce") then return false
+    end if
+    return textValue(m.top.recoveryNonce) <> ""
+end function
+
+function requestGateRecoveryProbeCurrent() as boolean
+    if not requestGateRecoveryProbeTagged() or m.global = invalid then return false
+    if type(m.top) = "roAssociativeArray"
+        if m.top.subtype = invalid then return false
+    end if
+    if m.top.subtype() <> "RequestGateRecheckTask" then return false
+    if type(m.global) = "roSGNode"
+        if not m.global.hasField("requestgaterecovery") then return false
+    end if
+    nonce = textValue(m.top.recoveryNonce)
+    if not CreateObject("roRegex", "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", "").isMatch(nonce) then return false
+    if nonce <> textValue(m.global.requestgaterecovery) then return false
+    if textValue(m.global.activeusersession) <> "" then return false
+    if requestGateProfileSwitching() or m.global.profileownsigninpending = true then return false
+    return true
 end function
 
 function requestGateProfileClosed() as boolean
@@ -110,6 +141,9 @@ end function
 function requestGateAcquire(url as string, key as string, probe = false as boolean) as object
     denied = {allowed: false, reason: "gate-unavailable", ticket: invalid}
     if not requestGateTaskSessionCurrent() then return {allowed: false, reason: "stale-session", ticket: invalid}
+    if requestGateRecoveryProbeTagged()
+        if not probe or url <> normalizeBaseUrl(m.top.baseUrl) + "/api/accounts/users/me/" then return {allowed: false, reason: "recovery-probe-only", ticket: invalid}
+    end if
     broker = requestGateBroker()
     if broker = invalid
         if requestGateMandatory() then return denied

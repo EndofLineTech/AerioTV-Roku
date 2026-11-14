@@ -1,5 +1,5 @@
 sub init()
-    m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false, profileownsigninpending: false})
+    m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false, profileownsigninpending: false, requestgaterecovery: ""})
     m.profileGateCover = m.top.findNode("profileGateCover")
     m.profileGateClock = m.top.findNode("profileGateClock")
     m.profileGateClock.observeField("fire", "onProfilePinTick")

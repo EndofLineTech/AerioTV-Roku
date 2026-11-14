@@ -39,6 +39,50 @@ sub main()
     check(currentRequestGateOwner(entry) = invalid, "missing scoped authority cannot create a default-account hold binding")
     m.scopedPreferencesRequired = false
     check(currentRequestGateOwner(entry).account = "7", "legacy default setup retains its explicit account expectation")
+    nonce = "00000000-0000-4000-8000-000000000091"
+    profileId = "00000000-0000-4000-8000-000000000002"
+    held = {slot: entry.id, base: entry.url, key: "synthetic-held-own", hash: string(64, "a"), account: "8", username: "Bob", profile: profileId, session: "retired-authenticated-session"}
+    store = {playlistId: entry.id, active: profileId, profiles: [{id: profileId, userId: 8, username: "BOB", role: "child", addressHeld: false}]}
+    recovered = unavailableRequestGateBinding(held, entry, store, nonce)
+    check(recovered <> invalid and recovered.recoveryNonce = nonce and recovered.profile = profileId and recovered.account = "8" and recovered.key = "synthetic-held-own" and not recovered.doesExist("session"), "same-holder recovery keeps an explicit memory-only probe binding without an authenticated outgoing session")
+    store.profiles[0].addressHeld = true
+    check(unavailableRequestGateBinding(held, entry, store, nonce) = invalid, "address-held Child never gains a rejected-key slow probe")
+    store.profiles[0].addressHeld = false
+    store.profiles[0].username = "OtherBob"
+    check(unavailableRequestGateBinding(held, entry, store, nonce) = invalid, "same user ID with another username cannot inherit a recovery probe")
+    store.profiles[0].username = "Bob"
+    held.base = "https://old.test"
+    check(unavailableRequestGateBinding(held, entry, store, nonce) = invalid, "changed-address holder cannot inherit an old credential probe")
+    held.base = entry.url
+    store.active = "other-profile"
+    check(unavailableRequestGateBinding(held, entry, store, nonce) = invalid, "inactive holder cannot keep a background probe after a switch")
+    store.active = profileId
+    check(unavailableRequestGateBinding(held, entry, store, "") = invalid, "recovery probe requires its own fresh lifecycle identifier")
+    m.global = {profilegateclosed: true, activeusersession: "", requestgaterecovery: nonce, profileswitchpending: false, profileownsigninpending: false}
+    m.top = {recoveryNonce: nonce, aeriosession: "retired-session", baseUrl: entry.url, subtype: function() as string
+        return "RequestGateRecheckTask"
+    end function}
+    check(requestGateTaskSessionCurrent() and requestGateRecoveryProbeCurrent(), "only the exact recovery probe can run behind a still-closed content gate without an authenticated session")
+    check(not requestGateAcquire(entry.url + "/api/channels/channels/", "synthetic-held-own", true).allowed, "recovery nonce never authorizes a lineup or other account request")
+    check(not requestGateAcquire(entry.url + "/api/accounts/users/me/", "synthetic-held-own", false).allowed, "recovery transport always requires the broker's slow-probe permit")
+    m.top.recoveryNonce = "00000000-0000-4000-8000-000000000092"
+    check(not requestGateTaskSessionCurrent(), "retired recovery nonce cannot reuse the closed-gate exception")
+    m.top.recoveryNonce = nonce
+    m.top.subtype = function() as string
+        return "DispatcharrTask"
+    end function
+    check(not requestGateTaskSessionCurrent(), "a generic authentication Task cannot claim the recovery-probe exception")
+    m.top.subtype = function() as string
+        return "RequestGateRecheckTask"
+    end function
+    m.global.profileswitchpending = true
+    check(not requestGateTaskSessionCurrent(), "switch staging retires the unavailable holder's in-flight recovery probe")
+    m.global.profileswitchpending = false
+    m.global.profileownsigninpending = true
+    check(not requestGateTaskSessionCurrent(), "own credential form lifecycle also retires the old recovery probe")
+    m.global.profileownsigninpending = false
+    m.global.activeusersession = "new-authenticated-session"
+    check(not requestGateTaskSessionCurrent(), "an authenticated successor session cannot inherit an unavailable-holder probe exception")
     print "ALL TESTS PASSED"
 end sub
 

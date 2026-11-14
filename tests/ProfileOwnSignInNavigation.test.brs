@@ -5,6 +5,7 @@ sub main()
     check(m.profileRecoveryDialog.title = "API key no longer valid" and m.profileRecoveryDialog.buttons.count() = 2, "own rejected-key prompt offers only Sign In with Remote and Not Now")
     onActiveUserProfileRecoveryChoice(ownFormEvent(m.profileRecoveryDialog, 0))
     check(m.profileOwnSignInContext <> invalid, "unavailable active nondefault can open its own form without a fabricated authenticated scope")
+    check(m.fixtureProbeRetired, "own sign-in retires any old rejected-key probe before creating a credential lifecycle")
     check(m.activeUserScope = invalid and m.profileGateCover.visible and m.global.profileownsigninpending and m.global.activeusersession = m.profileOwnSignInNonce, "active recovery keeps content covered and grants only a fresh credential-task lifecycle")
     onProfileOwnSignInClosed(ownFormEvent(m.profileOwnSignInDialog, 0))
     check(m.activeUserScope = invalid and m.global.profilegateclosed and m.profileGateCover.visible and m.global.activeusersession = "" and FormatJson(m.registry.values) = snapshot, "active form Cancel returns to the same unavailable holder without requests or writes")
@@ -154,6 +155,10 @@ sub resetConnectionRuntime()
     m.apiKey = ""
 end sub
 
+sub retireProfileRequestBinding()
+    m.fixtureProbeRetired = true
+end sub
+
 sub applySelectedConnection()
 end sub
 
@@ -196,6 +201,7 @@ sub ownFormFixture()
     m.profileOwnSignInTask = invalid
     m.profileSessionKeys = {}
     m.fixtureNotice = ""
+    m.fixtureProbeRetired = false
     m.pinRequested = false
     m.factorySequence = 0
     values = {}
