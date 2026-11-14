@@ -27,6 +27,16 @@ sub main()
         onUserProfileSwitchResult(rosterAdoptionEvent(readTask, m.readResult))
         check(m.registry.flushes = finalFlushes and m.activeUserScope.sessionId = nonce and m.resets = 1, "late own read cannot replay metadata or replace adopted runtime")
     end for
+    rosterAdoptionUnavailableFixture()
+    nonce = m.profileSwitchContext.nonce
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, m.verified))
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, m.readResult))
+    check(m.profilePinDialog <> invalid and m.activeUserScope = invalid and m.apiKey = "" and m.global.profilegateclosed, "real unavailable adoption first persists target PIN while keeping actual Child actor absent")
+    m.profilePinDialog.textEditBox.text = "1234"
+    onProfilePinSubmit(rosterAdoptionEvent(m.profilePinDialog, 0))
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, m.lineupResult))
+    check(m.resets = 1 and m.activeUserScope.accountId = "8" and m.activeUserScope.sessionId = nonce and m.guide.config.aeriosession = nonce and m.apiKey = "synthetic-b" and not m.global.profilegateclosed, "real unavailable-Child final commit adopts only authenticated target via separate no-session API")
+    check(loadUserProfileStore(m.registry, "slot-a").profiles[0].role = "child" and m.registry.read("connKey_slot-a") = "synthetic-a", "unavailable target adoption preserves original Child role and own/default key isolation")
     rosterAdoptionFixture(false)
     outgoing = m.activeUserScope
     onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, m.verified))
@@ -85,6 +95,9 @@ sub rosterAdoptionFixture(protected as boolean)
     m.accountIdentity = m.activeUserScope.preferenceIdentity
     m.serverAccountId = "7"
     m.apiKey = "synthetic-a"
+    m.fixtureSourceId = a.id
+    m.fixtureSourceKey = m.apiKey
+    m.fixtureSourceScope = m.activeUserScope
     m.profileSwitchRosterReady = true
     m.profileChildAccessReady = false
     m.profileSwitchContext = {phase: "authenticate", connection: entry, connectionRoot: m.registry.read("connectionsV1"), connectionRootPresent: true, store: m.userProfileStore, target: m.userProfileStore.profiles[1], key: "synthetic-b", outgoing: m.activeUserScope, outgoingProtection: FormatJson(m.userProfileStore.profiles[0]), nonce: "00000000-0000-4000-8000-000000000091", managementNonce: ""}
@@ -141,6 +154,25 @@ sub rosterAdoptionFixture(protected as boolean)
     m.userProfileRecoveryRequired = false
 end sub
 
+sub rosterAdoptionUnavailableFixture()
+    rosterAdoptionFixture(true)
+    store = m.profileSwitchContext.store
+    store.profiles[0] = setCanonicalPreference(store.profiles[0], "role", "child")
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    m.profileSwitchContext.store = loadUserProfileStore(m.registry, "slot-a")
+    m.profileSwitchContext.outgoing = invalid
+    m.profileSwitchContext.unavailableChild = true
+    m.profileSwitchContext.managementNonce = "00000000-0000-4000-8000-000000000093"
+    admin = {pinType: "numbers", pinHash: string(64, "e"), pinSalt: string(32, "f")}
+    m.registry.values[userProfileDeviceAdminKey("slot-a")] = FormatJson(admin)
+    m.profileSwitchContext.management = {slot: "slot-a", active: store.active, nonce: m.profileSwitchContext.managementNonce, purpose: "manage-profiles", kind: "pin", id: "device-admin", pinType: admin.pinType, pinHash: admin.pinHash, pinSalt: admin.pinSalt}
+    m.activeUserScope = invalid
+    m.apiKey = ""
+    m.page = "profile-unavailable"
+    m.fixtureSourceKey = ""
+    m.fixtureSourceScope = invalid
+end sub
+
 function rosterAdoptionNode(id as string) as object
     return {id: id, isSameNode: function(other as object) as boolean
         return m.id = other.id
@@ -159,7 +191,9 @@ function rosterAdoptionEvent(node as object, value as dynamic) as object
 end function
 
 sub resetConnectionRuntime()
-    check(loadUserProfileStore(m.registry, "slot-a").active <> m.activeUserScope.profileId and m.apiKey = "synthetic-a" and m.profileSwitchContext = invalid and m.profileGateCover.visible, "outgoing teardown is called only after committed active change while outgoing credentials and cover are still intact")
+    actorMatches = m.fixtureSourceScope = invalid and m.activeUserScope = invalid
+    if m.fixtureSourceScope <> invalid then actorMatches = userProfileSameSession(m.fixtureSourceScope, m.activeUserScope)
+    check(loadUserProfileStore(m.registry, "slot-a").active <> m.fixtureSourceId and actorMatches and m.apiKey = m.fixtureSourceKey and m.profileSwitchContext = invalid and m.profileGateCover.visible, "outgoing teardown is called only after committed active change while genuine preceding actor/key and cover are still intact")
     m.resets++
 end sub
 

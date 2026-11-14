@@ -114,6 +114,58 @@ sub main()
     pad.textEditBox.text = "7777"
     retireUserProfileSwitch()
     check(pad.close = true and pad.textEditBox.text = "" and m.profilePinDialog = invalid and m.profileGateClock.control = "stop" and m.global.profilegateclosed, "legacy switch retirement also wipes only its captured PIN prompt without releasing the gate")
+    switchRosterControllerUnavailableFixture()
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    check(m.fixtureReads = 1 and m.activeUserScope = invalid and m.apiKey = "", "unavailable Child target authentication reads own protection without fabricating an outgoing session")
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+    check(m.profilePinDialog <> invalid and m.activeUserScope = invalid and m.global.profilegateclosed and loadUserProfileStore(m.registry, "slot-a").active = m.fixtureOutgoing.profileId, "current Device Admin purpose permits imported target PIN gate while Child remains active and unauthenticated")
+    m.profilePinDialog.textEditBox.text = "1234"
+    onProfilePinSubmit(switchRosterControllerEvent(m.profilePinDialog, 0))
+    check(m.fixtureLineups = 1 and m.activeUserScope = invalid and m.apiKey = "" and m.profileGateCover.visible, "unavailable staged PIN admits only target lineup under incoming nonce, never a borrowed Child actor")
+    switchRosterControllerUnavailableFixture()
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+    onProfilePinClosed(switchRosterControllerEvent(m.profilePinDialog, true))
+    check(m.profileSwitchContext = invalid and m.activeUserScope = invalid and m.apiKey = "" and m.global.activeusersession = "" and m.global.profilegateclosed and m.page = "profile-unavailable", "cancelling unavailable imported PIN returns only to its scope-free Child surface")
+    for each grantOwner in ["own", "successor"]
+        switchRosterControllerUnavailableFixture()
+        store = m.profileSwitchContext.store
+        store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinType", "numbers")
+        store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinHash", string(64, "c"))
+        store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinSalt", string(32, "d"))
+        m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+        m.profileSwitchContext.store = loadUserProfileStore(m.registry, "slot-a")
+        target = m.profileSwitchContext.store.profiles[1]
+        m.profileSwitchContext.target = target
+        m.profileSwitchContext.management = {slot: "slot-a", active: store.active, nonce: m.profileSwitchContext.managementNonce, purpose: "manage-profiles", kind: "pin", id: target.id, pinType: target.pinType, pinHash: target.pinHash, pinSalt: target.pinSalt}
+        m.profileManagementNonce = m.profileSwitchContext.managementNonce
+        m.profileManagementGrant = {marker: grantOwner}
+        if grantOwner = "successor" then m.profileManagementNonce = "successor"
+        onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+        onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+        check(m.profileSwitchContext = invalid and m.profilePinDialog = invalid and m.fixtureLineups = 0 and m.activeUserScope = invalid and m.global.profilegateclosed and loadUserProfileStore(m.registry, "slot-a").profiles[1].pinHash = string(64, "a"), "changed imported adult-purpose material returns to unavailable Child BEFORE exposing target PIN/name, retaining imported protection")
+        if grantOwner = "own"
+            check(m.profileManagementGrant = invalid and m.profileManagementNonce = "", "expired owned management grant is retired without minting a replacement")
+        else
+            check(m.profileManagementGrant.marker = "successor" and m.profileManagementNonce = "successor", "retired escape cannot erase a different management lifecycle's grant")
+        end if
+    end for
+    switchRosterControllerUnavailableFixture()
+    m.apiKey = "successor-key"
+    nonce = m.profileSwitchContext.nonce
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, {ok: false}))
+    onUserProfileSwitchState(switchRosterControllerEvent(m.profileSwitchTask, "done"))
+    check(m.profileSwitchContext <> invalid and m.apiKey = "successor-key" and m.global.activeusersession = nonce and m.global.profileswitchpending and m.registry.flushes = 0, "late failure/state callbacks cannot roll back a no-session escape after its actual empty actor/key lifecycle has changed")
+    for each unavailable in [false, true]
+        if unavailable
+            switchRosterControllerUnavailableFixture()
+        else
+            switchRosterControllerFixture()
+        end if
+        m.registry.values[userProfileKeyName("slot-a", m.profileSwitchContext.target.id)] = ""
+        startUserProfileSwitchTask(m.profileSwitchContext.nonce)
+        check(m.fixtureReads = 0 and m.fixtureLineups = 0 and m.fixtureInitialSaves = 0 and m.profileSwitchContext = invalid, "lost current target key during initial PIN wait refuses BEFORE outgoing teardown or even the first own authentication request")
+    end for
     print "ALL TESTS PASSED"
 end sub
 
@@ -165,6 +217,7 @@ sub switchRosterControllerFixture()
     m.fixtureReads = 0
     m.fixtureLineups = 0
     m.fixturePinChecks = 0
+    m.fixtureInitialSaves = 0
     m.profileSwitchReadTaskFactory = function() as object
         m.fixtureReads++
         return switchRosterControllerNode("roster")
@@ -203,6 +256,32 @@ sub switchRosterControllerFixture()
     m.playingChannel = invalid
     m.userProfileRecoveryRequired = false
 end sub
+
+sub switchRosterControllerUnavailableFixture()
+    switchRosterControllerFixture()
+    store = m.userProfileStore
+    store.profiles[0] = setCanonicalPreference(store.profiles[0], "role", "child")
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    m.profileSwitchContext.store = loadUserProfileStore(m.registry, "slot-a")
+    m.profileSwitchContext.unavailableChild = true
+    m.profileSwitchContext.outgoing = invalid
+    m.profileSwitchContext.managementNonce = "00000000-0000-4000-8000-000000000093"
+    admin = {pinType: "numbers", pinHash: string(64, "e"), pinSalt: string(32, "f")}
+    m.registry.values[userProfileDeviceAdminKey("slot-a")] = FormatJson(admin)
+    m.profileSwitchContext.management = {slot: "slot-a", active: store.active, nonce: m.profileSwitchContext.managementNonce, purpose: "manage-profiles", kind: "pin", id: "device-admin", pinType: admin.pinType, pinHash: admin.pinHash, pinSalt: admin.pinSalt}
+    m.activeUserScope = invalid
+    m.apiKey = ""
+    m.page = "profile-unavailable"
+end sub
+
+function showUnavailableChildProfile() as boolean
+    return true
+end function
+
+function persistCurrentUserProfilePreferences() as boolean
+    m.fixtureInitialSaves++
+    return false
+end function
 
 function switchRosterControllerNode(id as string) as object
     return {id: id, cancelRequested: false, isSameNode: function(other as object) as boolean

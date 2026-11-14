@@ -14,12 +14,22 @@ function handleUserProfileSwitchRosterResult(result as object) as boolean
     end if
     if context.phase = "lineup"
         proof = {ok: true, phase: "verified", apiKey: result.apiKey, accountId: result.accountId, accountUsername: result.accountUsername, verifiedBaseUrl: result.verifiedBaseUrl, verifiedUser: result.verifiedUser}
-        if not dispatcharrSyncSwitchRosterAccessCurrent(m.registry, context, proof, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, userProfileSwitchRosterMemory(context))
+        if not userProfileSwitchRosterAccessCurrent(context, proof)
             rollbackUserProfileSwitch("Profile access changed before activation. Saved data was retained.")
             return true
         end if
     end if
     return false
+end function
+
+function userProfileSwitchRosterAccessCurrent(context as object, verified as object) as boolean
+    now = CreateObject("roDateTime").asSeconds()
+    memory = userProfileSwitchRosterMemory(context)
+    if context.unavailableChild = true
+        if m.page <> "profile-unavailable" then return false
+        return dispatcharrSyncUnavailableChildRosterAccessCurrent(m.registry, context, verified, now, m.global.activeusersession, m.activeUserScope, textValue(m.apiKey), memory)
+    end if
+    return dispatcharrSyncSwitchRosterAccessCurrent(m.registry, context, verified, now, m.global.activeusersession, m.activeUserScope, memory)
 end function
 
 function userProfileSwitchRosterMemory(context as object) as object
@@ -36,7 +46,7 @@ end function
 sub beginUserProfileSwitchRosterRead(verified as object)
     context = m.profileSwitchContext
     if context = invalid then return
-    if not dispatcharrSyncSwitchRosterAccessCurrent(m.registry, context, verified, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, userProfileSwitchRosterMemory(context))
+    if not userProfileSwitchRosterAccessCurrent(context, verified)
         rollbackUserProfileSwitch("Profile access changed. Please verify access again.")
         return
     end if
@@ -92,7 +102,12 @@ sub finishUserProfileSwitchRosterRead(read as object)
         rollbackUserProfileSwitch("Could not read profile protection. Please retry.")
         return
     end if
-    saved = commitDispatcharrSwitchRosterPull(m.registry, context, proof, decoded, apply, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, userProfileSwitchRosterMemory(context))
+    if context.unavailableChild = true
+        if m.page <> "profile-unavailable" then return
+        saved = commitDispatcharrUnavailableChildRosterPull(m.registry, context, proof, decoded, apply, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, textValue(m.apiKey), userProfileSwitchRosterMemory(context))
+    else
+        saved = commitDispatcharrSwitchRosterPull(m.registry, context, proof, decoded, apply, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, userProfileSwitchRosterMemory(context))
+    end if
     if not saved.ok
         m.userProfileRecoveryRequired = saved.recoveryRequired
         rollbackUserProfileSwitch("Could not safely stage profile protection. Saved data was retained.")
@@ -105,8 +120,21 @@ sub finishUserProfileSwitchRosterRead(read as object)
     context.rosterSuggestions = saved.suggestions
     m.userProfileStore = saved.store
     if saved.outgoingProtectionChanged
+        if context.unavailableChild = true then m.userProfileRecoveryRequired = true
         rollbackUserProfileSwitch("Outgoing profile access changed. Please verify access again.")
         return
+    end if
+    if context.unavailableChild = true
+        ' An imported adult-holder PIN/role may retire the purpose that admitted
+        ' this escape. Never disclose another PIN/name or mint a replacement grant.
+        if not userProfileSwitchRosterAccessCurrent(context, proof)
+            if textValue(m.profileManagementNonce) = textValue(context.managementNonce)
+                m.profileManagementGrant = invalid
+                m.profileManagementNonce = ""
+            end if
+            rollbackUserProfileSwitch("Profile management access changed. Please unlock management again.")
+            return
+        end if
     end if
     if context.target.role = "child" and m.profileChildAccessReady <> true
         rollbackUserProfileSwitch("Child profile access is not available yet. The previous profile was retained.")
@@ -144,7 +172,7 @@ sub startUserProfileSwitchRosterLineup()
     if context = invalid then return
     if m.global.profileswitchpending <> true then return
     if m.global.profilegateclosed and context.phase <> "pin" then return
-    if not dispatcharrSyncSwitchRosterAccessCurrent(m.registry, context, context.authentication, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, userProfileSwitchRosterMemory(context))
+    if not userProfileSwitchRosterAccessCurrent(context, context.authentication)
         rollbackUserProfileSwitch("Profile access changed. Please verify access again.")
         return
     end if

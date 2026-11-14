@@ -26,7 +26,7 @@ end function
 ' An unavailable Child has no outgoing authenticated session to borrow or
 ' fabricate. Its actual empty actor/key and current adult-purpose admission are
 ' separate inputs; storage/controller callers must freshly bind those inputs.
-' This pure plan is NOT wired to an unavailable-Child runtime caller yet.
+' Private controller/storage callers use this without inventing a Child scope.
 function dispatcharrSyncUnavailableChildRosterPlan(connection as object, previous as object, targetId as string, verified as object, decoded as object, enabled as boolean, now as integer, nonce as string, activeNonce as string, activeOutgoing as dynamic, activeKey as string, deviceAdmin as dynamic, management as dynamic, managementNonce as string) as object
     denied = {ok: false, applied: false, reason: "stale-context", store: previous, removed: [], suggestions: [], needsDefaultSwitch: false}
     if userProfileLocalId(nonce) = "" or nonce <> activeNonce then return denied

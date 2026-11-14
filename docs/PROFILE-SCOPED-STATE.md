@@ -467,11 +467,12 @@ to reuse the active-session roster API. Changed outgoing protection stays covere
 before another profile's PIN/name UI can appear. Original protection remains an
 immutable rollback admission even when the working roster advances.
 
-This path explicitly refuses unavailable-Child escape rather than inventing an
-outgoing session. Tombstone/default-retirement cleanup, outgoing sync-writer
+Unavailable-Child escape uses the separate actual no-session admission described
+below, never an invented outgoing session. Tombstone/default-retirement cleanup, outgoing sync-writer
 settlement, full Child-target integration and public activation remain unfinished.
-Host controller tests inject PIN verification and final commit refusal; they do
-not establish actual native PIN/lineup/adoption or peer interoperability acceptance.
+The defensive controller suite injects PIN verification and final commit refusal;
+separate host integration tests use the real final transaction. Neither establishes
+actual native PIN/lineup/adoption or peer interoperability acceptance.
 
 Successful own App Data reads now expose the read Task's latest whitelisted
 `/me/` authority, identity and current address for this staging boundary.
@@ -530,7 +531,7 @@ an obsolete value, then submits the imported value before target lineup/adoption
 This case has only been generated and syntax-checked, not executed on the Roku;
 its fixed synthetic salt is not a production entropy source.
 
-Unavailable-Child staging now has a separate **unwired** planning entry
+Private unavailable-Child staging now has a separate planning entry
 point. It requires the actual absent authenticated actor/empty runtime key, an
 incoming nonce and a current adult-purpose management grant; it never constructs
 an outgoing session to reuse authenticated switching. Target own proof, held-slot
@@ -541,8 +542,16 @@ write-free preflight recheck exact connection-root/roster, current Device Admin
 and adult grant, empty actor/key, nonce, target own credential and broker access.
 Host tests cover exact fault restoration, stale adult material after imported
 PIN changes, Remember-off own memory and authenticated-API no-scope refusal.
-Neither entry point has an unavailable-Child controller caller yet; the private
-runtime refusal remains. No native transaction or escape qualification is implied.
+The private controller now consumes these entry points for target own auth/read,
+stored-PIN admission and the existing separate no-session final commit. A changed
+adult-holder PIN/role retires its old management purpose before another target
+name/PIN is exposed; it never upgrades a grant automatically. Changed outgoing
+Child protection stays covered for recovery. Host controller/real-final-commit
+tests pass, but native transaction/escape qualification remains unexecuted.
+Result/error/state callbacks also require the actual preceding actor (or empty
+unavailable actor/key) before any effect. Initial current-key checks run after a
+PIN wait but before outgoing teardown or the first target authentication request.
+These are not public activation, outgoing sync-writer settlement or peer evidence.
 
 The earlier manual-refresh native cases (not this new switch/roster pipeline)
 qualify changed assignments/VOD revocation, foreign own

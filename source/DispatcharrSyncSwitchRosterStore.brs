@@ -18,7 +18,7 @@ end function
 
 ' Separate no-session boundary. The caller supplies the ACTUAL current actor/key;
 ' no outgoing scope is fabricated to pass authenticated-switch persistence.
-' Currently unwired: unavailable-Child controller staging still refuses.
+' Used only by the private staged unavailable-Child controller.
 function commitDispatcharrUnavailableChildRosterPull(registry as object, context as object, verified as object, decoded as object, enabled as boolean, now as integer, activeNonce as string, activeOutgoing as dynamic, activeKey as string, memoryKeys as object) as object
     denied = {ok: false, applied: false, committed: false, recoveryRequired: false, reason: "stale-context", needsDefaultSwitch: false}
     if type(context.connection) <> "roAssociativeArray" or type(context.store) <> "roAssociativeArray" or type(context.target) <> "roAssociativeArray" then return denied
@@ -80,7 +80,7 @@ function dispatcharrSyncSwitchRosterAccessCurrent(registry as object, context as
     if GetInterface(context.nonce, "ifString") = invalid then return false
     proof = dispatcharrSyncSwitchRosterPlan(context.connection, context.store, context.target.id, verified, {ok: true, rows: [], removed: []}, false, now, context.nonce, activeNonce, context.outgoing, activeOutgoing)
     if not proof.ok then return false
-    return dispatcharrSyncSwitchRosterStorageCurrent(registry, context, verified, memoryKeys)
+    return dispatcharrSyncSwitchRosterStorageCurrent(registry, context, verified.apiKey, memoryKeys)
 end function
 
 function dispatcharrSyncUnavailableChildRosterAccessCurrent(registry as object, context as object, verified as object, now as integer, activeNonce as string, activeOutgoing as dynamic, activeKey as string, memoryKeys as object) as boolean
@@ -91,12 +91,12 @@ function dispatcharrSyncUnavailableChildRosterAccessCurrent(registry as object, 
     if not admin.ok then return false
     proof = dispatcharrSyncUnavailableChildRosterPlan(context.connection, context.store, context.target.id, verified, {ok: true, rows: [], removed: []}, false, now, context.nonce, activeNonce, activeOutgoing, activeKey, admin.record, context.management, textValue(context.managementNonce))
     if not proof.ok then return false
-    return dispatcharrSyncSwitchRosterStorageCurrent(registry, context, verified, memoryKeys)
+    return dispatcharrSyncSwitchRosterStorageCurrent(registry, context, verified.apiKey, memoryKeys)
 end function
 
 ' Shared write-free current connection/roster/own-key checks. Admission remains
 ' the responsibility of the authenticated or no-session wrapper above.
-function dispatcharrSyncSwitchRosterStorageCurrent(registry as object, context as object, verified as object, memoryKeys as object) as boolean
+function dispatcharrSyncSwitchRosterStorageCurrent(registry as object, context as object, expectedKey as string, memoryKeys as object) as boolean
     if GetInterface(context.connectionRoot, "ifString") = invalid or GetInterface(context.nonce, "ifString") = invalid then return false
     if context.connectionRoot <> registry.read("connectionsV1") or context.connectionRootPresent <> registry.exists("connectionsV1") then return false
     connections = loadConnectionStore(registry)
@@ -112,7 +112,7 @@ function dispatcharrSyncSwitchRosterStorageCurrent(registry as object, context a
     if entry.remember then memory = {}
     credential = userProfileCredential(registry, entry, selected, memory)
     if not credential.ok or credential.profileId <> context.target.id then return false
-    if credential.key <> context.key or credential.key <> verified.apiKey then return false
+    if credential.key <> context.key or credential.key <> expectedKey then return false
     ' A missing remembered canonical key must not revive a legacy/cached value.
     if entry.remember
         if not registry.exists(credential.keyName) or registry.read(credential.keyName) <> credential.key then return false

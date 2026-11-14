@@ -164,6 +164,10 @@ function profileSwitchPinContextCurrent(pin as object) as boolean
     if not userProfilePinGrantMatches(material, context.connection.id, context.target) then return false
     if pin.continuation = "switch-roster"
         if m.profileSwitchRosterReady <> true or context.phase <> "pin" or m.global.profileswitchpending <> true then return false
+        if textValue(m.global.activeusersession) <> context.nonce then return false
+        if context.unavailableChild = true
+            return m.activeUserScope = invalid and textValue(m.apiKey) = "" and m.page = "profile-unavailable"
+        end if
         return textValue(m.global.activeusersession) = context.nonce and userProfileSameSession(context.outgoing, m.activeUserScope)
     end if
     if m.global.profileswitchpending = true then return false

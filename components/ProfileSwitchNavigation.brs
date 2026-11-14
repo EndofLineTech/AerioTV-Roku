@@ -33,7 +33,7 @@ function beginUserProfileSwitch(targetId as string, unavailableChild = false as 
     if unavailableChild and not childSource then return false
     if targetId = store.active then return true
     ' There is no writer yet: never discard an outgoing pending roster edit.
-    if store.pendingRoster = true and not unavailableChild then return false
+    if store.pendingRoster = true and (not unavailableChild or m.profileSwitchRosterReady = true) then return false
     target = invalid
     for each profile in store.profiles
         if profile.id = targetId then target = profile
@@ -96,10 +96,6 @@ sub startUserProfileSwitchTask(nonce as string)
     context = m.profileSwitchContext
     if context = invalid or context.nonce <> nonce then return
     if context.connection.id <> m.selectedConnectionId then return
-    if m.profileSwitchRosterReady = true and context.unavailableChild = true
-        rollbackUserProfileSwitch("Profile protection staging is not available for this escape yet.")
-        return
-    end if
     connections = loadConnectionStore(m.registry)
     currentEntry = connectionStoreEntry(connections, context.connection.id)
     if connections.readOnly = true or connections.selected <> context.connection.id or currentEntry = invalid
@@ -115,6 +111,15 @@ sub startUserProfileSwitchTask(nonce as string)
     if not userProfileManagementGrantMatches(currentStore, admin.record, context.management, context.managementNonce)
         rollbackUserProfileSwitch("Profile access changed. Please retry.")
         return
+    end if
+    if m.profileSwitchRosterReady = true
+        ' Re-resolve the own credential after any initial PIN wait, BEFORE
+        ' outgoing teardown or the first target request. This is key presence/
+        ' ownership only, not a fabricated verified-user proof or target scope.
+        if not dispatcharrSyncSwitchRosterStorageCurrent(m.registry, context, textValue(context.key), userProfileSwitchRosterMemory(context))
+            rollbackUserProfileSwitch("Profile access changed. Please verify access again.")
+            return
+        end if
     end if
     if context.unavailableChild = true
         if m.activeUserScope <> invalid or m.apiKey <> "" then return
@@ -172,6 +177,7 @@ end sub
 
 sub onUserProfileSwitchState(event as object)
     if not isCurrentTaskEvent(event, m.profileSwitchTask) then return
+    if not userProfileSwitchActorCurrent(m.profileSwitchContext) then return
     if event.getData() <> "done" and event.getData() <> "stop" then return
     if type(m.profileSwitchTask.result) = "roAssociativeArray" then return
     rollbackUserProfileSwitch("Could not load this profile. The previous profile was retained.")
@@ -181,6 +187,7 @@ sub onUserProfileSwitchResult(event as object)
     if not isCurrentTaskEvent(event, m.profileSwitchTask) then return
     context = m.profileSwitchContext
     if context = invalid or context.connection.id <> m.selectedConnectionId then return
+    if not userProfileSwitchActorCurrent(context) then return
     verified = event.getData()
     if type(verified) <> "roAssociativeArray" then rollbackUserProfileSwitch("Could not verify this profile.") : return
     if verified.ok <> true
@@ -241,6 +248,14 @@ sub onUserProfileSwitchResult(event as object)
     m.reminderClock.control = "start"
     ' Deliberately no configured mini-player auto-start on a profile switch.
 end sub
+
+function userProfileSwitchActorCurrent(context as dynamic) as boolean
+    if type(context) <> "roAssociativeArray" then return false
+    if context.unavailableChild = true
+        return m.activeUserScope = invalid and textValue(m.apiKey) = "" and m.page = "profile-unavailable"
+    end if
+    return userProfileSameSession(context.outgoing, m.activeUserScope)
+end function
 
 sub rollbackUserProfileSwitch(message as string)
     context = m.profileSwitchContext
