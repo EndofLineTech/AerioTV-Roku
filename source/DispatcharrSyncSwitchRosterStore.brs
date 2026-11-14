@@ -16,6 +16,74 @@ function commitDispatcharrSwitchRosterPull(registry as object, context as object
     return dispatcharrSyncCommitSwitchRosterMetadata(registry, context, plan)
 end function
 
+' Explicit inactive-only cleanup after the metadata-only path reports
+' cleanup-required. Active/target/default retirement is never authorized here.
+function commitDispatcharrSwitchRosterCleanup(registry as object, context as object, verified as object, decoded as object, enabled as boolean, now as integer, activeNonce as string, activeOutgoing as dynamic, activeKey as string, memoryKeys as object) as object
+    denied = {ok: false, applied: false, committed: false, recoveryRequired: false, reason: "stale-context", needsDefaultSwitch: false}
+    if type(context.connection) <> "roAssociativeArray" or type(context.store) <> "roAssociativeArray" or type(context.target) <> "roAssociativeArray" then return denied
+    if GetInterface(context.nonce, "ifString") = invalid then return denied
+    if context.unavailableChild = true
+        if not dispatcharrSyncUnavailableChildRosterAccessCurrent(registry, context, verified, now, activeNonce, activeOutgoing, activeKey, memoryKeys) then return denied
+        admin = userProfileLoadDeviceAdminPin(registry, context.connection.id)
+        if not admin.ok then return denied
+        plan = dispatcharrSyncUnavailableChildRosterPlan(context.connection, context.store, context.target.id, verified, decoded, enabled, now, context.nonce, activeNonce, activeOutgoing, activeKey, admin.record, context.management, textValue(context.managementNonce))
+    else
+        if not dispatcharrSyncSwitchRosterAccessCurrent(registry, context, verified, now, activeNonce, activeOutgoing, memoryKeys) then return denied
+        plan = dispatcharrSyncSwitchRosterPlan(context.connection, context.store, context.target.id, verified, decoded, enabled, now, context.nonce, activeNonce, context.outgoing, activeOutgoing)
+    end if
+    if not plan.ok
+        denied.reason = plan.reason
+        denied.needsDefaultSwitch = plan.needsDefaultSwitch
+        return denied
+    end if
+    if not plan.applied or plan.removed.count() = 0 then return denied
+    for each profile in plan.removed
+        if profile.isDefault or profile.id = context.store.active or profile.id = context.target.id then return denied
+    end for
+    prepared = dispatcharrSyncPrepareSwitchRosterCleanup(registry, context.connection, context.store, plan)
+    if not prepared.ok then return denied
+    saved = userProfileRegistryTransaction(registry, prepared.changes)
+    if not saved.ok
+        denied.reason = "storage"
+        denied.recoveryRequired = saved.recoveryRequired
+        return denied
+    end if
+    plan.committed = true
+    plan.recoveryRequired = false
+    return plan
+end function
+
+' Prepare only removed holders' keys, backoff and preference blobs. Remember
+' policy repair is deliberately NOT part of an incoming own-roster cleanup.
+function dispatcharrSyncPrepareSwitchRosterCleanup(registry as object, connection as object, previous as object, plan as object) as object
+    denied = {ok: false}
+    if plan.store.active <> previous.active then return denied
+    prepared = userProfileStoreChanges(registry, previous, plan.store, {}, true)
+    if not prepared.ok then return denied
+    for each profile in plan.removed
+        if profile.isDefault or profile.id = previous.active then return denied
+        pinHold = userProfilePinBackoffKey(connection.id, profile.id)
+        if registry.exists(pinHold) then prepared.changes[pinHold] = ""
+    end for
+    if registry.exists("settingsV1")
+        preferences = loadStrictPreferenceStore(registry)
+        if preferences.readOnly = true then return denied
+        if type(preferences) <> "roAssociativeArray" then return denied
+        if not userProfileInteger(preferences.schema) then return denied
+        if preferences.schema <> 1 or type(preferences.accounts) <> "roAssociativeArray" or type(preferences.device) <> "roAssociativeArray" then return denied
+        for each profile in plan.removed
+            identity = userProfilePreferenceIdentity(connection, profile)
+            if identity = "" then return denied
+            preferences.accounts.delete(preferenceScope(identity))
+        end for
+        encoded = strictJsonEncode(preferences)
+        if not encoded.ok then return denied
+        if preferenceByteBudget(encoded.text) > 24000 then return denied
+        prepared.changes["settingsV1"] = encoded.text
+    end if
+    return prepared
+end function
+
 ' Separate no-session boundary. The caller supplies the ACTUAL current actor/key;
 ' no outgoing scope is fabricated to pass authenticated-switch persistence.
 ' Used only by the private staged unavailable-Child controller.
@@ -80,6 +148,13 @@ function dispatcharrSyncSwitchRosterAccessCurrent(registry as object, context as
     if GetInterface(context.nonce, "ifString") = invalid then return false
     proof = dispatcharrSyncSwitchRosterPlan(context.connection, context.store, context.target.id, verified, {ok: true, rows: [], removed: []}, false, now, context.nonce, activeNonce, context.outgoing, activeOutgoing)
     if not proof.ok then return false
+    for each profile in context.store.profiles
+        if profile.id = context.store.active and profile.role = "child"
+            admin = userProfileLoadDeviceAdminPin(registry, context.connection.id)
+            if not admin.ok then return false
+            if not userProfileManagementGrantMatches(context.store, admin.record, context.management, textValue(context.managementNonce)) then return false
+        end if
+    end for
     return dispatcharrSyncSwitchRosterStorageCurrent(registry, context, verified.apiKey, memoryKeys)
 end function
 

@@ -45,6 +45,25 @@ sub main()
         onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
         check(m.fixtureLineups = 1 and m.registry.flushes = 0 and m.profilePinDialog = invalid and m.fixtureCommitAttempts = 0, "missing/legacy category keeps local protection without applying stray canonical data or migrating the wire")
     end for
+    switchRosterControllerUnavailableFixture()
+    m.activeUserScope = m.fixtureOutgoing
+    m.apiKey = "synthetic-a"
+    m.page = "guide"
+    m.profileSwitchContext.outgoing = m.activeUserScope
+    m.profileSwitchContext.unavailableChild = false
+    m.profileSwitchContext.outgoingProtection = FormatJson(m.profileSwitchContext.store.profiles[0])
+    store = m.profileSwitchContext.store
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinType", "numbers")
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinHash", string(64, "c"))
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinSalt", string(32, "d"))
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    m.profileSwitchContext.store = loadUserProfileStore(m.registry, "slot-a")
+    target = m.profileSwitchContext.store.profiles[1]
+    m.profileSwitchContext.target = target
+    m.profileSwitchContext.management = {slot: "slot-a", active: store.active, nonce: m.profileSwitchContext.managementNonce, purpose: "manage-profiles", kind: "pin", id: target.id, pinType: target.pinType, pinHash: target.pinHash, pinSalt: target.pinSalt}
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+    onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+    check(m.profileSwitchContext = invalid and m.profilePinDialog = invalid and m.fixtureLineups = 0 and m.activeUserScope.profileId = m.fixtureOutgoing.profileId and loadUserProfileStore(m.registry, "slot-a").profiles[0].role = "child", "authenticated Child also loses stale adult-purpose admission BEFORE target PIN/name exposure after imported holder material changes")
     switchRosterControllerFixture()
     onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
     m.fixtureRead.state = "missing"
@@ -166,6 +185,13 @@ sub main()
         startUserProfileSwitchTask(m.profileSwitchContext.nonce)
         check(m.fixtureReads = 0 and m.fixtureLineups = 0 and m.fixtureInitialSaves = 0 and m.profileSwitchContext = invalid, "lost current target key during initial PIN wait refuses BEFORE outgoing teardown or even the first own authentication request")
     end for
+    for each unavailable in [false, true]
+        switchRosterControllerInactiveFixture(unavailable)
+        onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureVerified))
+        onUserProfileSwitchResult(switchRosterControllerEvent(m.profileSwitchTask, m.fixtureRead))
+        check(m.profilePinDialog <> invalid and m.registry.flushes = 1 and m.fixtureLineups = 0 and not m.registry.exists(m.fixtureThirdKey) and not m.registry.exists(m.fixtureThirdBackoff), "explicit inactive cleanup atomically removes only tombstoned third holder before target stored-PIN admission")
+        check(not m.profileSessionKeys.doesExist(m.fixtureThirdBucket) and m.profileSessionKeys.foreign = "foreign-memory" and m.registry.read("connKey_slot-a") = "synthetic-a", "incoming cleanup retires only removed holder's current memory lease without touching default/foreign keys")
+    end for
     print "ALL TESTS PASSED"
 end sub
 
@@ -277,6 +303,32 @@ end sub
 function showUnavailableChildProfile() as boolean
     return true
 end function
+
+sub switchRosterControllerInactiveFixture(unavailable as boolean)
+    if unavailable
+        switchRosterControllerUnavailableFixture()
+    else
+        switchRosterControllerFixture()
+    end if
+    store = m.profileSwitchContext.store
+    third = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000003", {id: 9, username: "third", user_level: 1}, 1)
+    third = setCanonicalPreference(third, "isDefault", false)
+    store.profiles.push(third)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    m.profileSwitchContext.store = loadUserProfileStore(m.registry, "slot-a")
+    m.fixtureThirdKey = userProfileKeyName("slot-a", third.id)
+    m.fixtureThirdBackoff = userProfilePinBackoffKey("slot-a", third.id)
+    m.fixtureThirdBucket = preferenceScope(m.profileSwitchContext.connection.url + "|slot-a|" + third.id)
+    m.registry.values[m.fixtureThirdKey] = "synthetic-third"
+    m.registry.values[m.fixtureThirdBackoff] = "private-ledger"
+    m.registry.values["settingsV1"] = FormatJson(defaultPreferenceStore())
+    m.profilePreferenceDecoder = function(raw as string) as dynamic
+        return ParseJson(raw)
+    end function
+    m.profileSessionKeys = {foreign: "foreign-memory"}
+    m.profileSessionKeys[m.fixtureThirdBucket] = "synthetic-third"
+    m.fixtureRead.data.categories.profiles.data.removed = [["third", CreateObject("roDateTime").asSeconds()]]
+end sub
 
 function persistCurrentUserProfilePreferences() as boolean
     m.fixtureInitialSaves++

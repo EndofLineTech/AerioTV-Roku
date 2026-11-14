@@ -99,6 +99,63 @@ sub main()
     m.memory[m.ownKeyName] = "synthetic-b"
     result = unavailableSwitchRosterStoreCommit()
     check(result.ok and m.registry.read(m.ownKeyName) = "synthetic-b", "current caller-owned target memory lease can stage metadata without credential repair/deletion")
+    for each fault in ["", "write", "flush", "rollback"]
+        switchRosterCleanupFixture()
+        m.registry.fault = fault
+        before = FormatJson(m.registry.values)
+        result = switchRosterCleanupCommit()
+        if fault = ""
+            check(result.ok and result.committed and result.removed.count() = 1 and m.registry.flushes = 1 and result.store.active = m.context.store.active, "explicit inactive cleanup commits roster/removed key/backoff/preferences together without target activation")
+            check(not m.registry.exists(m.thirdKey) and not m.registry.exists(m.thirdBackoff) and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(m.ownKeyName) = "synthetic-b", "inactive cleanup removes only its own credential and local PIN ledger")
+            saved = ParseJson(m.registry.read("settingsV1"))
+            check(not saved.accounts.doesExist(m.thirdAccount) and saved.accounts[m.foreignAccount].future = "foreign" and saved.accounts[m.targetAccount].future = "target" and saved.futureRoot = "retain", "inactive cleanup prunes only the removed account blob and retains typed foreign/root extensions")
+        else
+            check(not result.ok and result.recoveryRequired = (fault = "rollback") and FormatJson(m.registry.values) = before, "inactive cleanup faults restore exact roster/settings/keys/backoff as one transaction")
+        end if
+    end for
+    for each change in ["settings", "key", "root", "nonce", "target-tombstone", "outgoing-tombstone"]
+        switchRosterCleanupFixture()
+        if change = "settings" then m.registry.values["settingsV1"] = "{malformed"
+        if change = "key" then m.registry.values[m.ownKeyName] = ""
+        if change = "root" then m.registry.values["connectionsV1"] = ""
+        if change = "nonce" then m.activeNonce = "00000000-0000-4000-8000-000000000099"
+        if change = "target-tombstone" then m.decoded = dispatcharrSyncRosterDecode({rows: [], removed: [["bob", 500]]})
+        if change = "outgoing-tombstone"
+            m.context.store.profiles[0] = setCanonicalPreference(m.context.store.profiles[0], "isDefault", false)
+            m.context.store.profiles[2] = setCanonicalPreference(m.context.store.profiles[2], "isDefault", true)
+            m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.context.store)
+            m.context.store = loadUserProfileStore(m.registry, "slot-a")
+            m.decoded = dispatcharrSyncRosterDecode({rows: [], removed: [["alice", 500]]})
+        end if
+        before = FormatJson(m.registry.values)
+        result = switchRosterCleanupCommit()
+        check(not result.ok and m.registry.flushes = 0 and FormatJson(m.registry.values) = before, "explicit inactive cleanup refuses changed " + change + " without deleting an actor or replacing unreadable data")
+    end for
+    for each unavailable in [false, true]
+        switchRosterCleanupFixture()
+        if unavailable
+            store = m.context.store
+            store.profiles[0] = setCanonicalPreference(store.profiles[0], "role", "child")
+            m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+            m.context.store = loadUserProfileStore(m.registry, "slot-a")
+            m.context.target = m.context.store.profiles[1]
+            m.context.outgoing = invalid
+            m.context.unavailableChild = true
+            m.outgoing = invalid
+            m.actorKey = ""
+            m.context.managementNonce = "00000000-0000-4000-8000-000000000093"
+            admin = {pinType: "numbers", pinHash: string(64, "e"), pinSalt: string(32, "f")}
+            m.registry.values[userProfileDeviceAdminKey("slot-a")] = FormatJson(admin)
+            m.context.management = {slot: "slot-a", active: store.active, nonce: m.context.managementNonce, purpose: "manage-profiles", kind: "pin", id: "device-admin", pinType: admin.pinType, pinHash: admin.pinHash, pinSalt: admin.pinSalt}
+        end if
+        m.context.connection.remember = false
+        m.registry.values["connectionsV1"] = FormatJson({schema: 1, selected: "slot-a", entries: [m.context.connection]})
+        m.context.connectionRoot = m.registry.read("connectionsV1")
+        check(not switchRosterCleanupCommit().ok and m.registry.flushes = 0, "explicit cleanup cannot use remembered target bytes after Remember-off")
+        m.memory[m.ownKeyName] = "synthetic-b"
+        result = switchRosterCleanupCommit()
+        check(result.ok and not m.registry.exists(m.thirdKey) and m.registry.read(m.ownKeyName) = "synthetic-b" and m.registry.read("connKey_slot-a") = "synthetic-a", "current own memory admits inactive cleanup without using it to repair or delete unrelated persisted credentials")
+    end for
     print "ALL TESTS PASSED"
 end sub
 
@@ -178,6 +235,37 @@ end function
 
 function unavailableSwitchRosterStoreCommit() as object
     return commitDispatcharrUnavailableChildRosterPull(m.registry, m.context, m.verified, m.decoded, m.enabled, 600, m.activeNonce, m.outgoing, m.actorKey, m.memory)
+end function
+
+sub switchRosterCleanupFixture()
+    switchRosterStoreFixture()
+    m.actorKey = "synthetic-a"
+    third = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000003", {id: 9, username: "third", user_level: 1}, 1)
+    third = setCanonicalPreference(third, "isDefault", false)
+    m.context.store.profiles.push(third)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.context.store)
+    m.context.store = loadUserProfileStore(m.registry, "slot-a")
+    m.thirdKey = userProfileKeyName("slot-a", third.id)
+    m.thirdBackoff = userProfilePinBackoffKey("slot-a", third.id)
+    m.registry.values[m.thirdKey] = "synthetic-third"
+    m.registry.values[m.thirdBackoff] = "private-ledger"
+    m.thirdAccount = preferenceScope(connectionPreferenceIdentity(m.context.connection, "9"))
+    m.foreignAccount = preferenceScope("https://other.test|9|slot-b")
+    m.targetAccount = preferenceScope(connectionPreferenceIdentity(m.context.connection, "8"))
+    settings = defaultPreferenceStore()
+    settings.accounts[m.thirdAccount] = {future: "removed"}
+    settings.accounts[m.foreignAccount] = {future: "foreign"}
+    settings.accounts[m.targetAccount] = {future: "target"}
+    settings.futureRoot = "retain"
+    m.registry.values["settingsV1"] = FormatJson(settings)
+    m.profilePreferenceDecoder = function(raw as string) as dynamic
+        return ParseJson(raw)
+    end function
+    m.decoded = dispatcharrSyncRosterDecode({rows: [], removed: [["third", 500]]})
+end sub
+
+function switchRosterCleanupCommit() as object
+    return commitDispatcharrSwitchRosterCleanup(m.registry, m.context, m.verified, m.decoded, true, 600, m.activeNonce, m.outgoing, textValue(m.actorKey), m.memory)
 end function
 
 function requestGateAccessAllowed(url as string, key as string) as boolean

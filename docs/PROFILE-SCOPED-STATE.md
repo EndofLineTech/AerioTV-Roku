@@ -490,8 +490,9 @@ the canonical persisted own key; Remember-off requires a current own memory map,
 not a stale persisted fallback. It never changes credentials or private settings.
 Write/flush faults restore captured metadata, with failed rollback flagged for
 recovery. Profiles-Off performs no normalization write. Any profile removal is
-refused as `cleanup-required` until explicit tombstone/default-retirement cleanup
-is integrated. The caller must still bind actual auth/read nodes, derive memory
+refused as `cleanup-required` by this metadata-only API; the private controller's
+separate inactive-only cleanup is described below. Target/outgoing tombstones
+still await default retirement. The caller must bind actual auth/read nodes, derive memory
 keys from the current slot/address/profile lease, and keep the incoming scrim up;
 this helper is not itself a target session or a public switching entry point.
 The same fresh binding/key checks are exposed as a write-free preflight for each
@@ -559,6 +560,19 @@ adult/target PIN cancellation, rejection, delayed Back and successful own-defaul
 escape checks. The report additionally requires target own roster discovery
 before target lineup after the unavailable boundary. The archive is generated and
 syntax-checked only; no staged unavailable-Child native result is claimed.
+
+The private controller separately handles **inactive, non-target** tombstones
+through explicit cleanup admission after the metadata-only path refuses them.
+Current target own proof and authenticated/no-session actor checks still apply.
+Roster, only removed holders' keys/backoff and their scoped preference blobs share
+one transaction; exact fault restoration is host-tested. It does not repair
+Remember policy or delete unrelated retained credentials, even with Remember off.
+Only removed holders' current address/slot/profile memory leases are retired.
+Active, target and default removals remain outside this API: active/target
+tombstones still require explicit default retirement, and defaults are retained.
+Authenticated Child actors now also revalidate adult-purpose material after any
+import/cleanup before another profile's PIN/name UI; no grant upgrades occur.
+This cleanup is host-qualified only, not a native or peer acceptance result.
 
 The earlier manual-refresh native cases (not this new switch/roster pipeline)
 qualify changed assignments/VOD revocation, foreign own

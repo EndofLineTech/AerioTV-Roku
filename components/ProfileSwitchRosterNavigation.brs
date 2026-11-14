@@ -108,6 +108,9 @@ sub finishUserProfileSwitchRosterRead(read as object)
     else
         saved = commitDispatcharrSwitchRosterPull(m.registry, context, proof, decoded, apply, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, userProfileSwitchRosterMemory(context))
     end if
+    if not saved.ok and saved.reason = "cleanup-required"
+        saved = commitDispatcharrSwitchRosterCleanup(m.registry, context, proof, decoded, apply, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, textValue(m.apiKey), userProfileSwitchRosterMemory(context))
+    end if
     if not saved.ok
         m.userProfileRecoveryRequired = saved.recoveryRequired
         rollbackUserProfileSwitch("Could not safely stage profile protection. Saved data was retained.")
@@ -119,22 +122,26 @@ sub finishUserProfileSwitchRosterRead(read as object)
     context.target = saved.target
     context.rosterSuggestions = saved.suggestions
     m.userProfileStore = saved.store
+    if type(saved.removed) = "roArray" and type(m.profileSessionKeys) = "roAssociativeArray"
+        for each removed in saved.removed
+            bucket = preferenceScope(context.connection.url + "|" + context.connection.id + "|" + removed.id)
+            m.profileSessionKeys.delete(bucket)
+        end for
+    end if
     if saved.outgoingProtectionChanged
         if context.unavailableChild = true then m.userProfileRecoveryRequired = true
         rollbackUserProfileSwitch("Outgoing profile access changed. Please verify access again.")
         return
     end if
-    if context.unavailableChild = true
-        ' An imported adult-holder PIN/role may retire the purpose that admitted
-        ' this escape. Never disclose another PIN/name or mint a replacement grant.
-        if not userProfileSwitchRosterAccessCurrent(context, proof)
-            if textValue(m.profileManagementNonce) = textValue(context.managementNonce)
-                m.profileManagementGrant = invalid
-                m.profileManagementNonce = ""
-            end if
-            rollbackUserProfileSwitch("Profile management access changed. Please unlock management again.")
-            return
+    ' Either authenticated or unavailable Child may lose its adult purpose to
+    ' imported holder changes/removals. Do not expose another PIN/name first.
+    if not userProfileSwitchRosterAccessCurrent(context, proof)
+        if textValue(context.managementNonce) <> "" and textValue(m.profileManagementNonce) = textValue(context.managementNonce)
+            m.profileManagementGrant = invalid
+            m.profileManagementNonce = ""
         end if
+        rollbackUserProfileSwitch("Profile management access changed. Please unlock management again.")
+        return
     end if
     if context.target.role = "child" and m.profileChildAccessReady <> true
         rollbackUserProfileSwitch("Child profile access is not available yet. The previous profile was retained.")
