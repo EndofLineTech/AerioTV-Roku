@@ -199,3 +199,30 @@ nonce, selected connection, persisted roster, field and current session. A late
 callback cannot change credentials after A → B → A or a replaced editor. Its
 connection snapshot uses the registry loader's normalized representation:
 native in-memory patch aliases are not a valid byte-comparison baseline.
+
+## Unavailable Child escape (partial integration)
+
+A held or refused non-default Child with no authenticated runtime can show a
+covered, generic error surface with only **Manage Profiles**. It discloses no
+other profile names before adult-purpose PIN admission. A protected Child still
+needs its own launch PIN before this surface; that PIN does not lift the Child
+activation fence. Keyless/default Child own sign-in and available-Child startup
+remain separate unfinished work, not enabled by this surface.
+
+After admission, management can switch to an available full-access holder.
+That holder's own PIN, own key, current-address verification and freshly loaded
+lineup are required. No outgoing authenticated Child scope is fabricated. The
+transaction preserves the Child's data, credentials, holds and pending roster
+mark. Target-PIN cancellation, target authentication failure and Back during a
+delayed request restore the unavailable Child, not setup or the adult guide.
+Connection/roster/adult-purpose evidence is rechecked before creating a target
+Task and again before commit. A successful switch adopts a fresh target session
+without autoplay. This is not completion of outgoing sync, public profile UI,
+Child own recovery, Directions certification or owner acceptance.
+
+Private normal-app native fixtures qualify both the unavailable escape flow and
+cold held/protected-Child launch. The latter sends zero provider requests,
+completes the Child's own PIN before unavailable controls, then requires separate
+adult admission before any other names appear. Real ECP Back from the returned
+unavailable screen exits Main. Fixtures use their own registry/cache, clean their
+data, and checksum-restore the exact preceding developer app.

@@ -326,6 +326,14 @@ sub runSetupFieldPolicyChecks()
     store.profiles[1] = setCanonicalPreference(store.profiles[1], "role", "child")
     m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
     check(selectedUserProfileIsChild() and not userProfileSetupFieldAllowed("connect") and not userProfileSetupFieldAllowed("key"), "persisted Child authority fences every general setup field, including direct forged edits")
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinType", "numbers")
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinSalt", string(32, "b"))
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinHash", string(64, "a"))
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    check(selectedUserProfileGate().reason = "pin", "protected Child unavailable surface is preceded by launch PIN admission")
+    m.profileUnlockGrant = {slot: "slot-a", id: own.id, pinType: "numbers", pinSalt: string(32, "b"), pinHash: string(64, "a")}
+    childGate = selectedUserProfileGate()
+    check(not childGate.allowed and childGate.reason = "child", "a Child launch PIN does not by itself lift the unfinished Child authentication/activation fence")
 end sub
 
 sub runAuthorityRefreshChecks()

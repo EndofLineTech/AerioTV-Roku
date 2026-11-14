@@ -172,6 +172,7 @@ for (const suite of suites) {
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileRosterNavigation.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileAdultPinNavigation.brs', 'components/ProfileManagementNavigation.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileSwitchNavigation.brs'] : []),
+    ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileChildUnavailableNavigation.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileOwnSignInNavigation.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/PhoneSetupNavigation.brs'] : []),
     ...(suite === 'ConnectionNavigation' ? ['components/ConnectionNavigation.brs'] : []),

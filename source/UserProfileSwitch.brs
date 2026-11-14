@@ -83,6 +83,30 @@ function commitUserProfileSwitch(registry as object, connection as object, previ
             if capturedScope.preferenceIdentity <> connectionPreferenceIdentity(connection, profile.userId.toStr()) then return denied
         end if
     end for
+    return commitVerifiedUserProfileSwitchState(registry, connection, previous, targetId, verified, targetPinGrant, managementGrant, managementNonce, capturedNonce, activeNonce)
+end function
+
+' An unavailable Child has no authenticated outgoing session to fabricate or
+' flush. Adult-purpose proof and the freshly authenticated target still apply;
+' outgoing dirty marks/data remain for that holder's next real session.
+function commitUnavailableChildProfileSwitch(registry as object, connection as object, previous as object, targetId as string, verified as object, targetPinGrant as dynamic, managementGrant as dynamic, managementNonce as string, capturedNonce as string, activeNonce as string) as object
+    denied = {ok: false, recoveryRequired: false, reason: "unavailable-child-context"}
+    before = normalizeUserProfileStore(previous, connection.id)
+    if before.readOnly = true then return denied
+    child = false
+    for each profile in before.profiles
+        if profile.id = before.active then child = profile.role = "child"
+    end for
+    if not child then return denied
+    if verified.verifiedBaseUrl <> connection.url then return denied
+    return commitVerifiedUserProfileSwitchState(registry, connection, previous, targetId, verified, targetPinGrant, managementGrant, managementNonce, capturedNonce, activeNonce)
+end function
+
+' Shared storage adoption after the authenticated-session OR unavailable-Child
+' caller boundary. The same target, PIN, adult grant, nonce and registry checks
+' govern both; this helper never clears an outgoing pending roster mark.
+function commitVerifiedUserProfileSwitchState(registry as object, connection as object, previous as object, targetId as string, verified as object, targetPinGrant as dynamic, managementGrant as dynamic, managementNonce as string, capturedNonce as string, activeNonce as string) as object
+    denied = {ok: false, recoveryRequired: false, reason: "stale-context"}
     connections = loadConnectionStore(registry)
     if connections.readOnly = true or connections.selected <> connection.id then return denied
     currentConnection = connectionStoreEntry(connections, connection.id)

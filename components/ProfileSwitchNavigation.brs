@@ -1,21 +1,37 @@
 ' Internal staged own-key switch controller. No picker/Settings entry enables
 ' this until outgoing sync, Child access and all handler fences are integrated.
-function beginUserProfileSwitch(targetId as string) as boolean
+function beginUserProfileSwitch(targetId as string, unavailableChild = false as boolean) as boolean
     if m.profileOwnSignInContext <> invalid then return false
     if m.profileSwitchContext <> invalid or m.profilePinDialog <> invalid or m.adultPinDialog <> invalid then return false
-    if m.activeUserScope = invalid or m.userProfileRecoveryRequired = true then return false
+    if m.userProfileRecoveryRequired = true then return false
+    if unavailableChild
+        if m.activeUserScope <> invalid or m.apiKey <> "" or m.page <> "profile-unavailable" or not userProfileGateClosed() then return false
+    else
+        if m.activeUserScope = invalid then return false
+    end if
     connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if connection = invalid or connection.provider <> "dispatcharr" then return false
-    if m.activeUserScope.playlistId <> connection.id or m.activeUserScope.preferenceIdentity <> connectionPreferenceIdentity(connection, m.activeUserScope.accountId) then return false
+    if not unavailableChild
+        if m.activeUserScope.playlistId <> connection.id or m.activeUserScope.preferenceIdentity <> connectionPreferenceIdentity(connection, m.activeUserScope.accountId) then return false
+    end if
     store = loadUserProfileStore(m.registry, connection.id)
     if store.readOnly = true then return false
-    if store.active <> m.activeUserScope.profileId then return false
+    childSource = false
+    if not unavailableChild
+        if store.active <> m.activeUserScope.profileId then return false
+    end if
     for each profile in store.profiles
-        if profile.id = store.active and profile.userId.toStr() <> m.activeUserScope.accountId then return false
+        if profile.id = store.active
+            childSource = profile.role = "child"
+            if not unavailableChild
+                if profile.userId.toStr() <> m.activeUserScope.accountId then return false
+            end if
+        end if
     end for
+    if unavailableChild and not childSource then return false
     if targetId = store.active then return true
     ' There is no writer yet: never discard an outgoing pending roster edit.
-    if store.pendingRoster = true then return false
+    if store.pendingRoster = true and not unavailableChild then return false
     target = invalid
     for each profile in store.profiles
         if profile.id = targetId then target = profile
@@ -32,8 +48,10 @@ function beginUserProfileSwitch(targetId as string) as boolean
     ' default profile recreated after Forget cannot inherit an old slot bucket.
     if type(m.profileSessionKeys) <> "roAssociativeArray" then m.profileSessionKeys = {}
     for each profile in store.profiles
-        if profile.id = store.active and profile.id = m.activeUserScope.profileId and profile.userId.toStr() = m.activeUserScope.accountId
-            if m.apiKey <> "" then m.profileSessionKeys[preferenceScope(connection.url + "|" + connection.id + "|" + profile.id)] = m.apiKey
+        if not unavailableChild
+            if profile.id = store.active and profile.id = m.activeUserScope.profileId and profile.userId.toStr() = m.activeUserScope.accountId
+                if m.apiKey <> "" then m.profileSessionKeys[preferenceScope(connection.url + "|" + connection.id + "|" + profile.id)] = m.apiKey
+            end if
         end if
     end for
     memory = {}
@@ -47,7 +65,7 @@ function beginUserProfileSwitch(targetId as string) as boolean
     if not credential.ok then return false
     if not requestGateAccessAllowed(connection.url, credential.key) then return false
     nonce = CreateObject("roDeviceInfo").getRandomUUID()
-    m.profileSwitchContext = {nonce: nonce, connection: connection, store: store, target: target, key: credential.key, outgoing: m.activeUserScope, unlock: m.profileUnlockGrant, management: m.profileManagementGrant, managementNonce: textValue(m.profileManagementNonce)}
+    m.profileSwitchContext = {nonce: nonce, unavailableChild: unavailableChild, connection: connection, store: store, target: target, key: credential.key, outgoing: m.activeUserScope, unlock: m.profileUnlockGrant, management: m.profileManagementGrant, managementNonce: textValue(m.profileManagementNonce)}
     if target.pinType <> "none"
         if beginProfilePinGate(target, "switch", nonce) then return true
         m.profileSwitchContext = invalid
@@ -75,10 +93,28 @@ end sub
 sub startUserProfileSwitchTask(nonce as string)
     context = m.profileSwitchContext
     if context = invalid or context.nonce <> nonce then return
-    if context.connection.id <> m.selectedConnectionId or not userProfileSameSession(context.outgoing, m.activeUserScope) then return
-    if not persistCurrentUserProfilePreferences()
-        rollbackUserProfileSwitch("Could not save the outgoing profile. Switch cancelled.")
+    if context.connection.id <> m.selectedConnectionId then return
+    connections = loadConnectionStore(m.registry)
+    currentEntry = connectionStoreEntry(connections, context.connection.id)
+    if connections.readOnly = true or connections.selected <> context.connection.id or currentEntry = invalid then return
+    currentStore = loadUserProfileStore(m.registry, context.connection.id)
+    admin = userProfileLoadDeviceAdminPin(m.registry, context.connection.id)
+    if FormatJson(currentEntry) <> FormatJson(normalizeConnectionEntry(context.connection)) or FormatJson(currentStore) <> FormatJson(context.store) or not admin.ok
+        rollbackUserProfileSwitch("Saved profiles changed. Please retry.")
         return
+    end if
+    if not userProfileManagementGrantMatches(currentStore, admin.record, context.management, context.managementNonce)
+        rollbackUserProfileSwitch("Profile access changed. Please retry.")
+        return
+    end if
+    if context.unavailableChild = true
+        if m.activeUserScope <> invalid or m.apiKey <> "" then return
+    else
+        if not userProfileSameSession(context.outgoing, m.activeUserScope) then return
+        if not persistCurrentUserProfilePreferences()
+            rollbackUserProfileSwitch("Could not save the outgoing profile. Switch cancelled.")
+            return
+        end if
     end if
     if m.playingChannel <> invalid then stopPlayback()
     resetMediaNavigation()
@@ -96,6 +132,7 @@ sub startUserProfileSwitchTask(nonce as string)
     ' scrim is distinct from a PIN gate: only the incoming tagged Task may work.
     m.global.activeusersession = nonce
     m.global.profileswitchpending = true
+    m.global.profilegateclosed = false
     requestGateFenceRenderers(m.top)
     task = CreateObject("roSGNode", "DispatcharrTask")
     tagTaskForCurrentUser(task)
@@ -133,7 +170,12 @@ sub onUserProfileSwitchResult(event as object)
         rollbackUserProfileSwitch(message)
         return
     end if
-    saved = commitUserProfileSwitch(m.registry, context.connection, context.store, context.target.id, verified, context.pin, context.management, context.managementNonce, context.nonce, m.global.activeusersession, context.outgoing, m.activeUserScope)
+    if context.unavailableChild = true
+        if m.activeUserScope <> invalid or m.apiKey <> "" then return
+        saved = commitUnavailableChildProfileSwitch(m.registry, context.connection, context.store, context.target.id, verified, context.pin, context.management, context.managementNonce, context.nonce, m.global.activeusersession)
+    else
+        saved = commitUserProfileSwitch(m.registry, context.connection, context.store, context.target.id, verified, context.pin, context.management, context.managementNonce, context.nonce, m.global.activeusersession, context.outgoing, m.activeUserScope)
+    end if
     if not saved.ok
         m.userProfileRecoveryRequired = saved.recoveryRequired
         rollbackUserProfileSwitch("Could not safely save the switch. The previous profile was retained.")
@@ -193,6 +235,18 @@ sub rollbackUserProfileSwitch(message as string)
         m.profileGateCover.visible = true
         m.guide.active = false
         m.top.findNode("profileGateMessage").text = "Saved profiles need recovery. Back exits AerioTV."
+        return
+    end if
+    if context.unavailableChild = true
+        m.activeUserScope = invalid
+        m.global.activeusersession = ""
+        m.global.profilegateclosed = true
+        m.profileGateCover.visible = true
+        m.guide.active = false
+        m.page = "profile-unavailable"
+        m.busy = false
+        m.profileUnlockGrant = context.unlock
+        showUnavailableChildProfile()
         return
     end if
     restored = userProfileSessionScope(context.connection, context.outgoing.profileId, context.outgoing.accountId, context.outgoing.authorizationGeneration, CreateObject("roDeviceInfo").getRandomUUID())

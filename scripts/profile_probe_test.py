@@ -9,6 +9,11 @@ import subprocess
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_child_escape_fixture_cannot_ship(self):
+        script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt','source/ProfileChildEscapeFixture.brs']), /probe/);"
+        subprocess.run(['node', '--input-type=module', '-e', script], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileChildLaunchFixture')], check=True)
+
     def test_address_handler_probe_is_private_and_cannot_ship(self):
         spec = importlib.util.spec_from_file_location('address_probe', Path(__file__).with_name('test-profile-address-native.py'))
         probe = importlib.util.module_from_spec(spec)
@@ -136,6 +141,21 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertNotIn('"AerioTV"', source)
                 self.assertIn('"assignment-ready"', source)
                 self.assertIn('refreshCapabilities()', source)
+                self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
+            probe.build(output, normal, 'SyntheticChildEscapeSection', 'http://127.0.0.1:1234', child_escape=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('"AerioTV"', source)
+                self.assertIn('prepareChildEscape', source)
+                self.assertIn('showUnavailableChildProfile()', source)
+                self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
+            probe.build(output, normal, 'SyntheticChildLaunchSection', 'http://127.0.0.1:1234', child_launch=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('"AerioTV"', source)
+                self.assertIn('"launch_pin"', source)
+                self.assertIn('ownHolder, "role", "child"', source)
+                self.assertIn('setCanonicalPreference(holders[holderIndex], "pinType"', source)
                 self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
         script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt','profile-management-probe.json']), /probe/);"
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)

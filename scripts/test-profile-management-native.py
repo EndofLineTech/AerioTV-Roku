@@ -17,8 +17,8 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False):
-    if assignment_refresh:
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False):
+    if assignment_refresh or child_escape or child_launch:
         cold_restore = 'remembered'
     with zipfile.ZipFile(normal) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
@@ -27,6 +27,10 @@ def build(output, normal, section, base, directions=False, switching=False, swit
                 body = body.replace(b'title=AerioTV\n', b'title=Aerio Profile Management Probe\n')
                 if directions:
                     body += b'\naeriotv_profile_directions_test=1\n'
+            if child_launch and name == 'source/Main.brs':
+                target = b'                    screen.close()'
+                assert body.count(target) == 1
+                body = body.replace(target, b'                    print "[profile-management] "; FormatJson({kind: "result", exited: true})\n' + target, 1)
             if name == 'source/MetadataCacheStore.brs':
                 assert body.count(b'"cachefs:/aeriotv-metadata-v1"') == 1
                 body = body.replace(b'"cachefs:/aeriotv-metadata-v1"', b'"tmp:/profile-management-cache"')
@@ -438,6 +442,38 @@ end sub
                     source = source.split('sub onManagementProbeTick()', 1)[0] + fixture
                 if assignment_refresh:
                     source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native/ProfileAssignmentRefreshFixture.brs').read_text()
+                if child_escape:
+                    source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native/ProfileChildEscapeFixture.brs').read_text()
+                if child_launch:
+                    source = source.replace('launchGate = selectedUserProfileGate()', 'launchGate = selectedUserProfileGate()\n        print "[profile-management] launch-gate="; launchGate.reason', 1)
+                    target = '    m.registry.write("userProfilesV1_slot-a", FormatJson('
+                    assert source.count(target) == 1
+                    source = source.replace(target, '''    ownHolder = setCanonicalPreference(ownHolder, "role", "child")
+    ownHolder = setCanonicalPreference(ownHolder, "addressHeld", true)
+    holders = [defaultHolder, ownHolder]
+    for holderIndex = 0 to holders.count() - 1
+        holder = setCanonicalPreference(holders[holderIndex], "pinType", "numbers")
+        holder = setCanonicalPreference(holder, "pinSalt", string(32, "b"))
+        holder = setCanonicalPreference(holder, "pinHash", userProfilePinHash(holder.pinSalt, "1234"))
+        holders[holderIndex] = holder
+    end for
+    defaultHolder = holders[0]
+    ownHolder = holders[1]
+''' + target, 1)
+                    timer = '''    m.managementProbeClock = m.top.createChild("Timer")
+    m.managementProbeClock.duration = 1
+    m.managementProbeClock.repeat = true
+    m.managementProbeClock.observeField("fire", "onManagementProbeTick")
+    m.managementProbePhase = 0
+    m.managementProbeClock.control = "start"
+'''
+                    target = '    welcome = connectionWelcomeNeeded(m.connectionStore)'
+                    if target in source:
+                        source = source.replace(target, timer + target, 1)
+                    else:
+                        assert source.count('sub init()') == 1
+                        source = source.replace('sub init()', 'sub init()\n' + timer, 1)
+                    source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native/ProfileChildLaunchFixture.brs').read_text()
                 if default_filter:
                     source = source.replace('m.registry.write("connectionsV1", FormatJson({schema: 1, selected: "slot-a", entries: [entry]}))', '''entry.channelProfileIds = ["99", "100"]
     m.registry.write("connectionsV1", FormatJson({schema: 1, selected: "slot-a", entries: [entry]}))''', 1)
@@ -460,7 +496,13 @@ def main():
     parser.add_argument('--cold-restore', choices=['remembered', 'keyless', 'held'], help='Launch a fresh process with a persisted nondefault selection; unavailable adults restore default')
     parser.add_argument('--default-filter', action='store_true', help='Give default A a two-Channel-Profile choice; nondefault B must never borrow either filter')
     parser.add_argument('--assignment-refresh', action='store_true', help='Qualify active-B assignment and VOD permission revocation through the real CapabilityTask callback and fresh own-session reload')
+    parser.add_argument('--child-escape', action='store_true', help='Qualify held Child adult admission, target PIN cancellation, rejected key, delayed Back and own target activation')
+    parser.add_argument('--child-launch', action='store_true', help='Cold protected held Child: own launch PIN, unavailable surface, then separate adult-purpose admission with zero provider requests')
     args = parser.parse_args()
+    if args.child_launch and (args.switch or args.cold_restore or args.child_settings or args.directions or args.default_filter or args.assignment_refresh or args.child_escape):
+        parser.error('--child-launch is a separate case')
+    if args.child_escape and (args.switch or args.cold_restore or args.child_settings or args.directions or args.default_filter or args.assignment_refresh):
+        parser.error('--child-escape is a separate case')
     if args.assignment_refresh and (args.switch or args.cold_restore or args.child_settings or args.directions or args.default_filter):
         parser.error('--assignment-refresh is a separate case')
     if args.default_filter and not args.switch:
@@ -503,8 +545,8 @@ def main():
         def do_GET(self):
             key = self.headers.get('X-API-Key', '')
             user = 8 if key in ['synthetic-b', 'delayed-b'] else 7
-            hits.append({'user': user, 'path': self.path, 'rejected': key == 'rejected-synthetic-key', 'delayed': key == 'delayed-b'})
-            if key == 'delayed-b' and self.path == '/api/accounts/users/me/':
+            hits.append({'user': user, 'path': self.path, 'rejected': key == 'rejected-synthetic-key', 'delayed': key in ['delayed-b', 'delayed-a']})
+            if key in ['delayed-b', 'delayed-a'] and self.path == '/api/accounts/users/me/':
                 time.sleep(4)
             value = []
             if self.path == '/api/accounts/users/me/':
@@ -535,7 +577,7 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -549,6 +591,8 @@ def main():
                 output.append(line)
                 if '"kind":"assignment-ready"' in line:
                     fixture_state['changed'] = True
+                if '"kind":"child-unavailable"' in line:
+                    fixture_state['child_request_boundary'] = len(hits)
                 if '"kind":"manage-ready"' in line:
                     captured = subprocess.run(['python3', 'scripts/capture-roku-screenshot.py', '--developer-mode', '--output', str(ROOT / 'out/profile-child-settings.jpg')], cwd=ROOT, capture_output=True, text=True, timeout=45)
                     report['screenshot'] = captured.returncode == 0
@@ -565,8 +609,12 @@ def main():
     try:
         result = run(archive, '"kind":"result"')
         print(result.stdout, end='', flush=True)
+        if result.returncode:
+            print(result.stderr, end='', flush=True)
         rows = [json.loads(line.split('[profile-management] ', 1)[1]) for line in result.stdout.splitlines() if '[profile-management] {' in line]
         report['events'] = rows
+        if args.child_escape:
+            report['requests'] = hits
         report['passed'] = result.returncode == 0 and len(rows) == 5 and rows[0].get('dialog') and rows[1].get('native') and rows[2].get('native') and rows[2].get('covered') and all(rows[4].get(key) for key in ['renamed', 'wrong', 'grant', 'learned', 'management', 'uncovered', 'preserved', 'no_unlock', 'cancelled'])
         if args.switch:
             rejected = [hit for hit in hits if hit['rejected']]
@@ -593,6 +641,15 @@ def main():
         if args.assignment_refresh:
             report['requests'] = hits
             report['passed'] = result.returncode == 0 and len(rows) == 2 and rows[0].get('own') and rows[1].get('passed') and bool(hits) and all(hit['user'] == 8 for hit in hits)
+        if args.child_escape:
+            rejected = [hit for hit in hits if hit['rejected']]
+            delayed = [hit for hit in hits if hit['delayed']]
+            boundary = fixture_state.get('child_request_boundary')
+            report['no_child_requests'] = boundary is not None and all(hit['user'] == 7 for hit in hits[boundary:])
+            report['passed'] = result.returncode == 0 and rows[-1].get('passed') and report['no_child_requests'] and len(rejected) == 1 and rejected[0]['path'] == '/api/accounts/users/me/' and len(delayed) == 1 and delayed[0]['path'] == '/api/accounts/users/me/'
+        if args.child_launch:
+            report['requests'] = hits
+            report['passed'] = result.returncode == 0 and len(rows) == 4 and rows[0].get('covered') and all(rows[1].get(key) for key in ['passed', 'covered', 'own_pin_then_adult', 'no_scope', 'no_autoplay']) and rows[-1].get('exited') and not hits
         if not report['passed']:
             raise RuntimeError('Native management controller assertions failed')
     finally:
@@ -624,6 +681,10 @@ def main():
                 name = name.replace('-native.json', '-default-filter-native.json')
             if args.assignment_refresh:
                 name = 'profile-assignment-refresh-native.json'
+            if args.child_escape:
+                name = 'profile-child-escape-native.json'
+            if args.child_launch:
+                name = 'profile-child-launch-native.json'
             (ROOT / 'out' / name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

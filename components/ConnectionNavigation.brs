@@ -406,6 +406,7 @@ sub changeProfiledConnectionUrl(entry as object, profiles as object, base as str
 end sub
 
 sub resetConnectionRuntime()
+    closeUnavailableChildDialog()
     m.setupEditContext = invalid
     m.setupEditNonce = ""
     retireUserProfileOwnSignIn()
@@ -479,6 +480,7 @@ sub resetConnectionRuntime()
 end sub
 
 sub requireConnectionRelogin(message as string)
+    previousUnlock = m.profileUnlockGrant
     rememberHeldRequestGateBinding()
     heldBinding = m.requestGateBinding
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
@@ -492,6 +494,9 @@ sub requireConnectionRelogin(message as string)
             removed = revoked.ok
             if revoked.recoveryRequired = true then m.userProfileRecoveryRequired = true
             defaultHolder = revoked.isDefault
+            if removed and not defaultHolder
+                m.childRejectedIdentity = entry.url + "|" + entry.id + "|" + revoked.profileId
+            end if
             if type(m.profileSessionKeys) = "roAssociativeArray" and revoked.profileId <> ""
                 m.profileSessionKeys.delete(preferenceScope(entry.url + "|" + entry.id + "|" + revoked.profileId))
             end if
@@ -501,6 +506,7 @@ sub requireConnectionRelogin(message as string)
     end if
     resetConnectionRuntime()
     if not defaultHolder
+        m.profileUnlockGrant = previousUnlock
         ' A refused non-default/Child cannot fall through the slot setup form
         ' or reload/delete connKey. Its own sign-in/access UI is separate work.
         m.userProfileStore = profileStore
@@ -508,6 +514,7 @@ sub requireConnectionRelogin(message as string)
         m.global.profilegateclosed = true
         m.profileGateCover.visible = true
         m.top.findNode("profileGateMessage").text = "Could not reach your Dispatcharr server. This profile needs its own sign-in. Back exits AerioTV."
+        if showUnavailableChildProfile() then return
         showActiveUserProfileRecoveryPrompt()
         return
     end if

@@ -156,6 +156,7 @@ sub onAdultProfilePinClosed(event as object)
     closeAdultProfilePinGate()
     m.profileManagementGrant = invalid
     m.profileManagementPending = invalid
+    if m.page = "profile-unavailable" then showUnavailableChildProfile()
 end sub
 
 sub closeAdultProfilePinGate()

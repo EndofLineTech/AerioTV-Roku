@@ -8,7 +8,18 @@ sub main()
     m.userProfileRecoveryRequired = true
     rollbackUserProfileSwitch("Registry rollback failed")
     check(m.profileGateCover.visible and m.global.profilegateclosed and not m.guide.active and m.activeUserScope = invalid and m.global.activeusersession = "", "failed registry rollback must stay covered, never revive potentially stale protection")
+    switchRollbackFixture()
+    m.profileSwitchContext.unavailableChild = true
+    m.profileSwitchContext.outgoing = invalid
+    m.activeUserScope = invalid
+    rollbackUserProfileSwitch("Target key rejected")
+    check(m.profileSwitchContext = invalid and m.activeUserScope = invalid and m.global.activeusersession = "" and m.global.profilegateclosed and m.profileGateCover.visible and not m.guide.active, "unavailable Child cancellation stays unavailable without fabricating an outgoing authenticated session")
+    check(m.page = "profile-unavailable" and not m.busy and not m.global.profileswitchpending and m.childSurfaceRestored, "unavailable escape failure restores only the Child surface, never default setup or guide")
     print "ALL TESTS PASSED"
+end sub
+
+sub showUnavailableChildProfile()
+    m.childSurfaceRestored = true
 end sub
 
 sub switchRollbackFixture()

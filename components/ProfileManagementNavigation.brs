@@ -71,6 +71,9 @@ sub showProfileManagementEditor(id as string)
             m.userProfileStore = store
             m.profileManagementTarget = id
             choices = [{title: "Rename", action: "name"}, {title: "Avatar", action: "avatar"}, {title: "Move earlier", action: "earlier"}, {title: "Move later", action: "later"}]
+            if m.page = "profile-unavailable" and m.activeUserScope = invalid and profile.id <> store.active and userProfileFullAccess(profile.role) and not profile.addressHeld
+                choices.unshift({title: "Switch to this profile", action: "switch-unavailable"})
+            end if
             if profile.userLevel < 10 then choices.push({title: "Role: " + profile.role, action: "role"})
             choices.push({title: "Back", action: "roster"})
             openProfileManagementChoices(profile.displayName, "Changes apply only to this connection's profile.", choices)
@@ -115,6 +118,7 @@ sub onProfileManagementChoice(event as object)
     if action = "done"
         m.profileManagementGrant = invalid
         m.profileManagementNonce = ""
+        if m.page = "profile-unavailable" then showUnavailableChildProfile()
         return
     end if
     if action = "edit" then showProfileManagementEditor(choice.id) : return
@@ -126,7 +130,9 @@ sub onProfileManagementChoice(event as object)
     end for
     if target = invalid then return
     m.userProfileStore = store
-    if action = "name"
+    if action = "switch-unavailable"
+        if not beginUserProfileSwitch(target.id, true) then showProfileManagementEditor(target.id)
+    else if action = "name"
         dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
         dialog.title = "Profile name"
         dialog.text = target.displayName
@@ -212,6 +218,7 @@ sub onProfileManagementClosed(event as object)
     closeProfileManagementDialog()
     m.profileManagementGrant = invalid
     m.profileManagementNonce = ""
+    if m.page = "profile-unavailable" then showUnavailableChildProfile()
 end sub
 
 sub closeProfileManagementDialog()

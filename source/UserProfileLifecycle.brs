@@ -95,6 +95,10 @@ function userProfileStartupGate(store as object, ownProfileCredential = false as
     if cleaned.readOnly = true then return {allowed: false, reason: "recovery"}
     for each profile in cleaned.profiles
         if profile.id = cleaned.active
+            ' Even a keyless/held Child must finish its own launch PIN before
+            ' seeing unavailable controls. The controller retains the Child
+            ' activation fence after that PIN; it is not an adult/default grant.
+            if profile.role = "child" and profile.pinType <> "none" then return {allowed: false, reason: "pin"}
             if profile.addressHeld then return {allowed: false, reason: "address-held"}
             if profile.role = "child" then return {allowed: false, reason: "child"}
             if not profile.isDefault and not ownProfileCredential then return {allowed: false, reason: "profileKey"}

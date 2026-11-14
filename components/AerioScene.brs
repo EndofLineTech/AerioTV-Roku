@@ -257,6 +257,7 @@ sub init()
         else if launchGate.reason = "child"
             m.global.profilegateclosed = true
             m.top.findNode("profileGateMessage").text = "Could not reach your Dispatcharr server. Protected profile access is required. Back exits AerioTV."
+            showUnavailableChildProfile()
             return
         end if
     end if
@@ -357,6 +358,7 @@ end sub
 
 sub drawSetup()
     if selectedUserProfileIsChild()
+        if showUnavailableChildProfile() then return
         m.page = "profile-unavailable"
         m.screen.visible = false
         m.guide.active = false

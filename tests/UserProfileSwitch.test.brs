@@ -80,6 +80,35 @@ sub main()
     committed = commitUserProfileSwitch(registry, connection, returning, a.id, defaultVerified, invalid, invalid, "", nextAttempt, nextAttempt, outgoingB, outgoingB)
     check(committed.ok and committed.store.doesExist("knownDefault") and committed.store["knownDefault"]["userId"] = 7, "returning to a verified default records its own identity in the atomic switch commit")
     check(committed.ok and committed.preferences.favoriteIds[0] = "outgoing-only" and not committed.preferenceStore.accounts.doesExist(preferenceScope("https://old.test|7|slot-a")), "default return reads its migrated original-address preferences instead of another user's blob or empty defaults")
+    childStore = copyJson(store)
+    childStore.active = b.id
+    childStore.profiles[1] = setCanonicalPreference(childStore.profiles[1], "role", "child")
+    childStore.profiles[0] = setCanonicalPreference(childStore.profiles[0], "pinType", "numbers")
+    childStore.profiles[0] = setCanonicalPreference(childStore.profiles[0], "pinHash", string(64, "c"))
+    childStore.profiles[0] = setCanonicalPreference(childStore.profiles[0], "pinSalt", string(32, "d"))
+    childStore.pendingRoster = true
+    targetPin = {slot: "slot-a", id: a.id, pinType: "numbers", pinHash: string(64, "c"), pinSalt: string(32, "d")}
+    adultExit = {slot: "slot-a", active: b.id, nonce: session, purpose: "manage-profiles", kind: "pin", id: a.id, pinType: "numbers", pinHash: string(64, "c"), pinSalt: string(32, "d")}
+    defaultProof = setCanonicalPreference(defaultVerified, "verifiedBaseUrl", connection.url)
+    for each failFlush in [false, true]
+        registry = switchRegistryFixture(connection, childStore)
+        before = FormatJson(registry.values)
+        registry.failOnce = failFlush
+        escaped = commitUnavailableChildProfileSwitch(registry, connection, childStore, a.id, defaultProof, targetPin, adultExit, session, nextAttempt, nextAttempt)
+        if failFlush
+            check(not escaped.ok and FormatJson(registry.values) = before, "failed unavailable-Child escape restores its exact selection, private data, PINs and keys")
+        else
+            check(escaped.ok and escaped.store.active = a.id and escaped.scope.sessionId = nextAttempt and escaped.scope.accountId = "7", "PIN-authorized unavailable Child can activate a freshly verified target without inventing an outgoing authenticated scope")
+            check(escaped.store.pendingRoster and escaped.store.profiles[1].role = "child" and registry.read("connKey_slot-a") = "default-key", "unavailable escape retains outgoing dirty work and Child protection; it does not clear pending sync or borrow its key")
+        end if
+    end for
+    registry = switchRegistryFixture(connection, childStore)
+    check(not commitUnavailableChildProfileSwitch(registry, connection, childStore, a.id, defaultProof, targetPin, invalid, session, nextAttempt, nextAttempt).ok and registry.flushes = 0, "a target PIN alone cannot bypass unavailable Child adult-purpose admission")
+    staleProof = setCanonicalPreference(defaultProof, "verifiedBaseUrl", "https://stale.test")
+    check(not commitUnavailableChildProfileSwitch(registry, connection, childStore, a.id, staleProof, targetPin, adultExit, session, nextAttempt, nextAttempt).ok and registry.flushes = 0, "foreign-address proof cannot authorize an unavailable escape")
+    check(not commitUnavailableChildProfileSwitch(registry, connection, childStore, a.id, defaultProof, targetPin, adultExit, session, nextAttempt, session).ok and registry.flushes = 0, "retired unavailable-Child switch nonce cannot activate a target")
+    check(not commitUnavailableChildProfileSwitch(registry, connection, store, a.id, defaultProof, targetPin, adultExit, session, nextAttempt, nextAttempt).ok and registry.flushes = 0, "unavailable-Child transaction is not an unauthenticated adult switch shortcut")
+    check(not commitUnavailableChildProfileSwitch(registry, connection, childStore, a.id, defaultProof, invalid, adultExit, session, nextAttempt, nextAttempt).ok and registry.flushes = 0, "adult-purpose admission alone never substitutes for the target's own PIN")
     print "ALL TESTS PASSED"
 end sub
 

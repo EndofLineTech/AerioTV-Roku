@@ -210,7 +210,10 @@ function selectedUserProfileGate() as object
     if gate.reason = "pin"
         for each profile in m.userProfileStore.profiles
             if profile.id = m.userProfileStore.active
-                if userProfilePinGrantMatches(m.profileUnlockGrant, entry.id, profile) then return {allowed: true, reason: ""}
+                if userProfilePinGrantMatches(m.profileUnlockGrant, entry.id, profile)
+                    if profile.role = "child" then return {allowed: false, reason: "child"}
+                    return {allowed: true, reason: ""}
+                end if
             end if
         end for
     end if
