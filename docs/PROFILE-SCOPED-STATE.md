@@ -681,6 +681,48 @@ succeeds. The verified content/settings calculation is shared only after those
 distinct admission wrappers. Host tests and the native primitive matrix pass;
 the system-default controller and normal-app automatic reload are still unwired.
 
+The new `ProfileDefaultRetirementNavigation.brs` controller now exercises these
+boundaries behind a separate shipping-off `m.profileDefaultRetirementReady` flag.
+It selects the real default, tears down the outgoing runtime, commits cleanup and
+wipes source Tasks/proofs, then starts a **fresh no-session default-own**
+authentication/read/bound-lineup lifecycle. Only the explicit system adoption API
+skips the default PIN; normal switch gates are unchanged. Own imported default
+PIN changes remain stored without inventing an unlock ticket. Missing-key and
+fenced-Child defaults stay selected/covered with no borrowed request, form or PIN;
+immediate recovery UI and wider Child/held/restart qualification remain unfinished.
+Errors/Back after retirement cannot roll back to the removed holder.
+
+`--switch --switch-roster --switch-active-retirement` passed on the Roku: genuine
+B was active when C's own canonical read tombstoned B; protected default A was
+then loaded through its own verification, roster and lineup without a PIN prompt.
+The ledger required C discovery-only and only A requests after that tombstone;
+B key/backoff/blob/memory cleanup, A/C/foreign retention and no autoplay passed.
+Fixture cleanup and exact owner-app restoration passed
+(`out/mrr-active-default-retirement-native.log`). Host controller tests also cover
+default PIN import, missing-key/Child refusal, final authority failure and stale
+successor-key callbacks. This is a private usable-default path, not complete
+public/default-recovery/restart or peer acceptance.
+
+The first subsequent native primitive rerun failed to resolve `strictJsonEncode`
+at Main line 20 despite the encoder being present and unchanged in the archive.
+The repeat matrix passed with zero failures; both runs restored the owner app.
+The failing archive/log are retained under `AerioTV-Roku-d43d`; no speculative
+production fix or broad reliability completion is claimed.
+The active-retirement native fixture now also covers `--active-default-mode
+missing|held|child`: each passed local default selection, old-holder cleanup and
+zero requests after the tombstone, with no default PIN/form or fabricated scope.
+The held case first establishes a real own-default `Invalid API key` refusal;
+its initial generic-401 fixture run was rejected by the request-ledger assertions,
+then the corrected key-rejection fixture passed. These are safe covered surfaces,
+not completed immediate recovery UI or authenticated default-Child loading.
+
+The two-phase flow still needs durable crash/restart recovery (`AerioTV-Roku-e4xa`):
+there is currently no persisted retirement intent if the process stops between
+default selection and cleanup. It must remain shipping-off until that boundary
+and the remaining recovery/sync/public gates qualify. Cancellation diagnostics now
+record foreground/screensaver state before Back and refuse to wake another app;
+the intermittent missing Scene key event remains tracked rather than assumed fixed.
+
 The earlier manual-refresh native cases (not this new switch/roster pipeline)
 qualify changed assignments/VOD revocation, foreign own
 identity, unchanged authority and transient failures. Two cases delay a real

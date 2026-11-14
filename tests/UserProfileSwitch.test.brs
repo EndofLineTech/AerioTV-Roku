@@ -119,7 +119,7 @@ sub main()
         registry = switchRegistryFixture(connection, selected)
         current = loadUserProfileStore(registry, connection.id)
         receipt = {committed: true, needsDefaultSwitch: true, store: current, removed: [b]}
-        context = {systemDefaultRetirement: true, nonce: nextAttempt, connection: connection, connectionRoot: registry.read("connectionsV1"), connectionRootPresent: true, store: current, storeRoot: registry.read(userProfileStoreKey(connection.id)), target: current.profiles[0], key: "default-key", retirement: receipt, retiredProfileId: b.id, authorizationSignature: dispatcharrAuthorizationSignature(defaultProof.verifiedUser)}
+        context = {systemDefaultRetirement: true, nonce: nextAttempt, connection: connection, connectionRoot: registry.read("connectionsV1"), connectionRootPresent: true, store: current, storeRoot: registry.read(userProfileStoreKey(connection.id)), target: current.profiles[0], key: "default-key", retirement: receipt, retirementStoreRoot: FormatJson(current), retiredProfileId: b.id, authorizationSignature: dispatcharrAuthorizationSignature(defaultProof.verifiedUser)}
         before = FormatJson(registry.values)
         registry.failOnce = failFlush
         result = commitSystemDefaultProfileSwitch(registry, context, defaultProof, nextAttempt, invalid, "", {})
@@ -130,15 +130,16 @@ sub main()
             check(result.store.profiles[0].pinHash = string(64, "e") and result.store.profiles[0].pinLength = 0 and registry.read("connKey_slot-a") = "default-key", "system default bypass neither learns/changes stored PIN nor borrows or replaces the default's own key")
         end if
     end for
-    for each change in ["purpose", "receipt", "removed", "active-actor", "runtime-key", "nonce", "root", "context-url", "roster", "key", "authority", "identity", "address"]
+    for each change in ["purpose", "receipt", "removed", "active-actor", "runtime-key", "nonce", "root", "context-url", "roster", "key", "key-memory", "authority", "identity", "address"]
         registry = switchRegistryFixture(connection, selected)
         current = loadUserProfileStore(registry, connection.id)
         receipt = {committed: true, needsDefaultSwitch: true, store: current, removed: [b]}
-        context = {systemDefaultRetirement: true, nonce: nextAttempt, connection: connection, connectionRoot: registry.read("connectionsV1"), connectionRootPresent: true, store: current, storeRoot: registry.read(userProfileStoreKey(connection.id)), target: current.profiles[0], key: "default-key", retirement: receipt, retiredProfileId: b.id, authorizationSignature: dispatcharrAuthorizationSignature(defaultProof.verifiedUser)}
+        context = {systemDefaultRetirement: true, nonce: nextAttempt, connection: connection, connectionRoot: registry.read("connectionsV1"), connectionRootPresent: true, store: current, storeRoot: registry.read(userProfileStoreKey(connection.id)), target: current.profiles[0], key: "default-key", retirement: receipt, retirementStoreRoot: FormatJson(current), retiredProfileId: b.id, authorizationSignature: dispatcharrAuthorizationSignature(defaultProof.verifiedUser)}
         actor = invalid
         runtimeKey = ""
         liveNonce = nextAttempt
         proof = copyPreferenceValue(defaultProof)
+        memory = {}
         if change = "purpose" then context.systemDefaultRetirement = false
         if change = "receipt" then context.retirement.committed = false
         if change = "removed" then context.retirement.removed = []
@@ -153,11 +154,15 @@ sub main()
         end if
         if change = "roster" then registry.values[userProfileStoreKey(connection.id)] = "{malformed"
         if change = "key" then registry.values["connKey_slot-a"] = "foreign-key"
+        if change = "key-memory"
+            registry.values.delete("connKey_slot-a")
+            memory["connKey_slot-a"] = "default-key"
+        end if
         if change = "authority" then proof.verifiedUser.user_level = 10
         if change = "identity" then proof.verifiedUser.id = 80
         if change = "address" then proof.verifiedBaseUrl = "https://foreign.test"
         before = FormatJson(registry.values)
-        result = commitSystemDefaultProfileSwitch(registry, context, proof, liveNonce, actor, runtimeKey, {})
+        result = commitSystemDefaultProfileSwitch(registry, context, proof, liveNonce, actor, runtimeKey, memory)
         check(not result.ok and registry.flushes = 0 and FormatJson(registry.values) = before, "system default adoption refuses changed " + change + " without bypassing actual actor/receipt/proof ownership")
     end for
     print "ALL TESTS PASSED"

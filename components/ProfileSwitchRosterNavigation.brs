@@ -119,6 +119,10 @@ sub finishUserProfileSwitchRosterRead(read as object)
     if not saved.ok and saved.reason = "cleanup-required"
         saved = commitDispatcharrSwitchRosterCleanup(m.registry, context, proof, decoded, apply, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, textValue(m.apiKey), userProfileSwitchRosterMemory(context))
     end if
+    if not saved.ok and saved.reason = "outgoing-removal" and m.profileDefaultRetirementReady = true
+        beginUserProfileDefaultRetirement(context, proof, decoded, apply)
+        return
+    end if
     if not saved.ok and saved.reason = "target-removed"
         retireTombstonedUserProfileSwitchTarget(context, proof, decoded, apply)
         return

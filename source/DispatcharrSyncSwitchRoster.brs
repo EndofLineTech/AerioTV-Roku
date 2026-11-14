@@ -90,6 +90,17 @@ function dispatcharrSyncSwitchRosterContentPlan(connection as object, store as o
     if not merged.ok then return denied
     targetRemoved = false
     outgoingRemoved = false
+    ' Actual actor retirement wins independently of roster ordering when both
+    ' the selected target and the outgoing holder have tombstones.
+    if not allowOutgoingRemoval
+        for each removed in merged.removed
+            if removed.id = originalOutgoing.id
+                denied.reason = "outgoing-removal"
+                denied.needsDefaultSwitch = true
+                return denied
+            end if
+        end for
+    end if
     for each removed in merged.removed
         if removed.id = target.id
             if not allowTargetRemoval

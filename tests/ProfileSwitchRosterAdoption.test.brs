@@ -1,6 +1,77 @@
 ' Real controller + metadata + final storage adoption. Native nodes, PIN digest
 ' and runtime resource teardown are seams; this is not native acceptance.
 sub main()
+    rosterAdoptionActiveRemovalFixture()
+    sourceContext = m.profileSwitchContext
+    sourceNonce = sourceContext.nonce
+    retired = m.activeUserScope
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, m.verified))
+    sourceRead = m.profileSwitchTask
+    onUserProfileSwitchResult(rosterAdoptionEvent(sourceRead, m.readResult))
+    check(m.resets = 1 and m.activeUserScope = invalid and m.apiKey = "" and m.profileGateCover.visible and m.profilePinDialog = invalid, "actual outgoing tombstone selects default and tears down old runtime before deleting its key or authenticating default")
+    check(m.profileSwitchContext <> invalid and m.profileSwitchContext.systemDefaultRetirement and m.profileSwitchContext.nonce <> sourceNonce and m.profileSwitchTask.verifyOnly, "automatic default owns a distinct no-session verification lifecycle, not a fabricated outgoing/default scope")
+    check(loadUserProfileStore(m.registry, "slot-a").active = m.defaultId and not m.registry.exists(userProfileKeyName("slot-a", retired.profileId)) and sourceContext.key = "" and sourceContext.authentication.apiKey = "" and sourceRead.apiKey = "", "old actor cleanup follows default selection/runtime retirement and wipes source controller/read credentials")
+    systemNonce = m.profileSwitchContext.nonce
+    defaultProof = {ok: true, phase: "verified", apiKey: "synthetic-c", accountId: "9", accountUsername: "carol", verifiedBaseUrl: "https://example.test", verifiedUser: {id: 9, username: "carol", user_level: 1}, authModeUsed: "authorization"}
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, defaultProof))
+    check(m.profileSwitchContext.phase = "roster" and m.profileSwitchTask.apiKey = "synthetic-c" and m.apiKey = "" and m.activeUserScope = invalid, "system default own protection read uses only real default own key while runtime is still unauthenticated")
+    ownRead = {ok: true, state: "missing", accountId: "9", accountUsername: "carol", verifiedBaseUrl: "https://example.test", verifiedUser: defaultProof.verifiedUser}
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, ownRead))
+    check(m.profileSwitchTask.verifyOnly = false and m.profileSwitchTask.expectedAuthorizationSignature = dispatcharrAuthorizationSignature(ownRead.verifiedUser) and m.profilePinDialog = invalid and m.activeUserScope = invalid, "system default skips PIN by explicit retirement purpose, then binds final own lineup without a PIN ticket or early authenticated scope")
+    finalDefault = {ok: true, apiKey: "synthetic-c", accountId: "9", accountUsername: "carol", verifiedBaseUrl: "https://example.test", verifiedUser: defaultProof.verifiedUser, channels: [], groups: [], generation: "default-own-generation", scope: "default-own-lineup", authModeUsed: "authorization"}
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, finalDefault))
+    check(m.activeUserScope.accountId = "9" and m.activeUserScope.sessionId = systemNonce and m.profileSwitchContext = invalid and m.resets = 2 and not m.profileGateCover.visible and not m.global.profilegateclosed, "actual automatic default completes own authenticated adoption only after source retirement and bound default lineup")
+    check(m.guide.config.apiKey = "synthetic-c" and m.accountPreferences.favoriteIds[0] = "99" and m.registry.read("connKey_slot-a") = "synthetic-c" and m.registry.read(userProfileKeyName("slot-a", sourceContext.target.id)) = "synthetic-b", "automatic default uses only its own data/key and retains unrelated target ownership")
+    for each unavailable in ["missing-key", "child"]
+        rosterAdoptionActiveRemovalFixture()
+        if unavailable = "missing-key"
+            m.registry.values.delete("connKey_slot-a")
+            m.profileSessionKeys = {}
+            m.profileSessionKeys[preferenceScope("https://example.test|slot-a|" + m.defaultId)] = "synthetic-c"
+        end if
+        if unavailable = "child"
+            store = m.profileSwitchContext.store
+            store.profiles[2] = setCanonicalPreference(store.profiles[2], "role", "child")
+            m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+            m.profileSwitchContext.store = loadUserProfileStore(m.registry, "slot-a")
+        end if
+        onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, m.verified))
+        onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, m.readResult))
+        check(loadUserProfileStore(m.registry, "slot-a").active = m.defaultId and m.activeUserScope = invalid and m.apiKey = "" and m.profileSwitchContext = invalid and m.profilePinDialog = invalid and m.lineups = 0 and m.global.profilegateclosed, "automatic default " + unavailable + " selects only real default behind cover, without a form/PIN, borrowed request or removed-actor revival")
+    end for
+    rosterAdoptionActiveRemovalFixture()
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, m.verified))
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, m.readResult))
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, defaultProof))
+    imported = copyPreferenceValue(ownRead)
+    imported.state = "ready"
+    imported.profilesState = "ready"
+    imported.data = {categories: {profiles: {data: {rows: [[9, "carol", "Carol", "numbers", string(64, "a"), string(32, "b"), "user", CreateObject("roDateTime").asSeconds()]]}}}}
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, imported))
+    check(m.profileSwitchContext.target.pinHash = string(64, "a") and m.profilePinDialog = invalid and m.profileSwitchTask.verifyOnly = false and m.activeUserScope = invalid, "system default imports its own changed stored PIN without manufacturing a verification grant or losing the explicit no-PIN system purpose")
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, finalDefault))
+    check(m.activeUserScope.accountId = "9" and not m.global.profilegateclosed and loadUserProfileStore(m.registry, "slot-a").profiles[1].pinHash = string(64, "a"), "changed default protection remains stored after real own adoption through the original retirement receipt")
+    rosterAdoptionActiveRemovalFixture()
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, m.verified))
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, m.readResult))
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, defaultProof))
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, ownRead))
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, {ok: false, protectionAuthorityChanged: true}))
+    check(m.activeUserScope = invalid and m.profileSwitchContext = invalid and m.global.profilegateclosed and loadUserProfileStore(m.registry, "slot-a").active = m.defaultId and m.registry.read("connKey_slot-a") = "synthetic-c", "default final-authority refusal cannot roll back to the removed outgoing holder or delete/borrow default credentials")
+    rosterAdoptionActiveRemovalFixture()
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, m.verified))
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, m.readResult))
+    systemContext = m.profileSwitchContext
+    m.apiKey = "successor-key"
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, {ok: false}))
+    check(m.profileSwitchContext <> invalid and m.apiKey = "successor-key" and m.global.activeusersession = systemContext.nonce and not m.global.profilegateclosed, "late system failure cannot wipe or cover an actual successor actor/key while its captured request nonce is still present")
+    rosterAdoptionActiveRemovalFixture()
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, m.verified))
+    onUserProfileSwitchResult(rosterAdoptionEvent(m.profileSwitchTask, m.readResult))
+    systemContext = m.profileSwitchContext
+    m.selectedConnectionId = "slot-b"
+    rollbackUserProfileSwitch("stale cancellation")
+    check(m.profileSwitchContext <> invalid and m.global.activeusersession = systemContext.nonce and not m.global.profilegateclosed, "retired system cancellation cannot close or cover a different selected connection even before its global request nonce changes")
     for each protected in [false, true]
         rosterAdoptionFixture(protected)
         outgoing = m.activeUserScope
@@ -49,7 +120,32 @@ sub main()
     print "ALL TESTS PASSED"
 end sub
 
+sub rosterAdoptionActiveRemovalFixture()
+    rosterAdoptionFixture(false)
+    m.profileDefaultRetirementReady = true
+    store = m.profileSwitchContext.store
+    store.profiles[0] = setCanonicalPreference(store.profiles[0], "isDefault", false)
+    third = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000003", {id: 9, username: "carol", user_level: 1}, 1)
+    third = setCanonicalPreference(third, "pinType", "numbers")
+    third = setCanonicalPreference(third, "pinHash", string(64, "e"))
+    third = setCanonicalPreference(third, "pinSalt", string(32, "f"))
+    store.profiles.push(third)
+    m.defaultId = third.id
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    m.registry.values[userProfileKeyName("slot-a", store.active)] = "synthetic-a"
+    m.registry.values["connKey_slot-a"] = "synthetic-c"
+    preferences = ParseJson(m.registry.read("settingsV1"))
+    preferences.accounts[preferenceScope(connectionPreferenceIdentity(m.profileSwitchContext.connection, "9"))] = {favoriteIds: ["99"]}
+    m.registry.values["settingsV1"] = FormatJson(preferences)
+    m.profileSwitchContext.store = loadUserProfileStore(m.registry, "slot-a")
+    m.profileSwitchContext.outgoingProtection = FormatJson(m.profileSwitchContext.store.profiles[0])
+    m.readResult.state = "ready"
+    m.readResult.profilesState = "ready"
+    m.readResult.data = {categories: {profiles: {data: {rows: [], removed: [["alice", CreateObject("roDateTime").asSeconds()]]}}}}
+end sub
+
 sub rosterAdoptionFixture(protected as boolean)
+    m.profileDefaultRetirementReady = false
     entry = normalizeConnectionEntry({id: "slot-a", name: "Fixture", provider: "dispatcharr", url: "https://example.test", remember: true})
     a = userProfileFromVerified(entry.id, "00000000-0000-4000-8000-000000000001", {id: 7, username: "alice", user_level: 1}, 1)
     b = userProfileFromVerified(entry.id, "00000000-0000-4000-8000-000000000002", {id: 8, username: "bob", user_level: 1}, 1)
@@ -195,6 +291,11 @@ sub resetConnectionRuntime()
     if m.fixtureSourceScope <> invalid then actorMatches = userProfileSameSession(m.fixtureSourceScope, m.activeUserScope)
     check(loadUserProfileStore(m.registry, "slot-a").active <> m.fixtureSourceId and actorMatches and m.apiKey = m.fixtureSourceKey and m.profileSwitchContext = invalid and m.profileGateCover.visible, "outgoing teardown is called only after committed active change while genuine preceding actor/key and cover are still intact")
     m.resets++
+    m.activeUserScope = invalid
+    m.apiKey = ""
+    m.global.activeusersession = ""
+    m.fixtureSourceScope = invalid
+    m.fixtureSourceKey = ""
 end sub
 
 sub applyDevicePreferences()

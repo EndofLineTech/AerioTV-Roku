@@ -5,7 +5,7 @@
 ' Phase one of SYSTEM active removal. Unlike a chosen-profile switch this does
 ' not require a default PIN or return an authenticated default scope. It selects
 ' the existing default only; old holder data must survive until runtime teardown
-' and a separate phase-two cleanup boundary. Currently not wired to the Scene.
+' and a separate phase-two cleanup boundary. Used by the private system controller.
 function commitDispatcharrDefaultRetirementSelection(registry as object, context as object, verified as object, decoded as object, enabled as boolean, now as integer, activeNonce as string, activeOutgoing as dynamic, activeKey as string, memoryKeys as object) as object
     denied = {ok: false, selected: false, recoveryRequired: false, reason: "stale-context"}
     if type(context.connection) <> "roAssociativeArray" or type(context.store) <> "roAssociativeArray" or type(context.target) <> "roAssociativeArray" then return denied
@@ -80,9 +80,14 @@ function commitDispatcharrDefaultRetirementCleanup(registry as object, context a
     ' not an invented authenticated scope or a grant under the selected default.
     source = normalizeUserProfileStore(context.store, context.connection.id)
     source = setCanonicalPreference(source, "active", context.target.id)
-    credential = userProfileCredential(registry, context.connection, source, memoryKeys)
+    memory = memoryKeys
+    if context.connection.remember then memory = {}
+    credential = userProfileCredential(registry, context.connection, source, memory)
     if not credential.ok then return denied
     if credential.key <> context.key or credential.key <> verified.apiKey then return denied
+    if context.connection.remember
+        if not registry.exists(credential.keyName) or registry.read(credential.keyName) <> credential.key then return denied
+    end if
     if not requestGateAccessAllowed(context.connection.url, credential.key) then return denied
     working = normalizeUserProfileStore(context.store, context.connection.id)
     plan = dispatcharrSyncSwitchRosterContentPlan(context.connection, working, context.target.id, verified, decoded, enabled, now, true, true)

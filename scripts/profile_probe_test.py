@@ -19,6 +19,7 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertIn('    m.profileSwitchRosterReady = false', scene)
         self.assertNotIn('\n    m.profileSwitchRosterReady = true', scene)
         self.assertIn('    m.profileChildAccessReady = false', scene)
+        self.assertIn('    m.profileDefaultRetirementReady = false', scene)
 
     def test_imported_switch_pin_wire_uses_raw_salt_v2_and_only_target_row(self):
         import hashlib
@@ -64,6 +65,19 @@ class ProfileProbeTest(unittest.TestCase):
             self.assertEqual(result['user_level'], 10 if call >= 3 else 1)
         self.assertEqual(user['user_level'], 1)
         self.assertEqual(probe.authority_race_user(state, {'id': 7, 'user_level': 1})['user_level'], 1)
+
+    def test_cancel_activity_reports_no_app_names_and_detects_screensaver(self):
+        spec = importlib.util.spec_from_file_location('management_activity_probe', Path(__file__).with_name('test-profile-management-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        for xml, expected in [
+            (b'<active-app><app id="dev">Private title</app></active-app>', {'dev_active': True, 'screensaver_active': False}),
+            (b'<active-app><app id="dev">Private title</app><screensaver id="42">Private saver</screensaver></active-app>', {'dev_active': True, 'screensaver_active': True}),
+        ]:
+            response = MagicMock()
+            response.__enter__.return_value.read.return_value = xml
+            with patch.object(probe.urllib.request, 'urlopen', return_value=response):
+                self.assertEqual(probe.management_probe_activity('127.0.0.1'), expected)
 
     def test_native_timeout_diagnostics_are_boolean_only(self):
         spec = importlib.util.spec_from_file_location('native_runner', Path(__file__).with_name('run-native-probe.py'))
@@ -113,6 +127,7 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncUnavailableChildRosterProbeChecks')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileTargetRetirementFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileAuthorityRaceFixture')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileActiveRetirementFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncSwitchRosterStoreProbeChecks')], check=True)
 
     def test_native_roster_storage_checks_keep_broker_seam_private(self):
@@ -174,7 +189,7 @@ class ProfileProbeTest(unittest.TestCase):
             normal = Path(tmp) / 'normal.zip'
             with zipfile.ZipFile(normal, 'w') as package:
                 package.writestr('manifest', 'title=AerioTV\n')
-                package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.profileSwitchRosterReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub\nfunction onKeyEvent(key as string, press as boolean) as boolean\nreturn false\nend function\n')
+                package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.profileSwitchRosterReady = false\nm.profileDefaultRetirementReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub\nfunction onKeyEvent(key as string, press as boolean) as boolean\nreturn false\nend function\n')
                 package.writestr('source/MetadataCacheStore.brs', 'return "cachefs:/aeriotv-metadata-v1"')
                 package.writestr('components/RequestGateTask.brs', '    else if action = "own-verified"\n')
             output = Path(tmp) / 'probe.zip'
@@ -318,7 +333,7 @@ class ProfileProbeTest(unittest.TestCase):
             normal = Path(tmp) / 'normal.zip'
             with zipfile.ZipFile(normal, 'w') as package:
                 package.writestr('manifest', 'title=AerioTV\n')
-                package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.profileSwitchRosterReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub\nfunction onKeyEvent(key as string, press as boolean) as boolean\nreturn false\nend function\n')
+                package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.profileSwitchRosterReady = false\nm.profileDefaultRetirementReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub\nfunction onKeyEvent(key as string, press as boolean) as boolean\nreturn false\nend function\n')
                 package.writestr('source/MetadataCacheStore.brs', 'return "cachefs:/aeriotv-metadata-v1"')
                 package.writestr('components/GuideView.xml', '<component name="GuideView"><interface></interface></component>')
                 package.writestr('components/GuideView.brs', 'sub init()\nend sub\n')
@@ -388,6 +403,23 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertNotIn('"AerioTV"', source)
             with self.assertRaises(ValueError):
                 probe.build(output, normal, 'SyntheticAuthorityRaceSection', 'http://127.0.0.1:1234', switching=True, switch_authority_race=True)
+            probe.build(output, normal, 'SyntheticActiveRetirementSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_active_retirement=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertIn('advanceProfileActiveRetirementProbe()', source)
+                self.assertIn('m.profileDefaultRetirementReady = true', source)
+                self.assertIn('active_retired:', source)
+                self.assertNotIn('"AerioTV"', source)
+            with self.assertRaises(ValueError):
+                probe.build(output, normal, 'SyntheticActiveRetirementSection', 'http://127.0.0.1:1234', switching=True, switch_active_retirement=True)
+            for mode in ['missing', 'held', 'child']:
+                probe.build(output, normal, 'SyntheticUnavailableDefaultSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_active_retirement=True, active_default_mode=mode)
+                with zipfile.ZipFile(output) as package:
+                    source = package.read('components/AerioScene.brs').decode()
+                    self.assertIn('m.switchProbeDefaultMode = "' + mode + '"', source)
+                    self.assertNotIn('ACTIVE_DEFAULT_MODE', source)
+            with self.assertRaises(ValueError):
+                probe.build(output, normal, 'SyntheticUnavailableDefaultSection', 'http://127.0.0.1:1234', active_default_mode='held')
             for mode in ['remembered', 'keyless', 'held']:
                 probe.build(output, normal, 'SyntheticColdSection', 'http://127.0.0.1:1234', cold_restore=mode)
                 with zipfile.ZipFile(output) as package:

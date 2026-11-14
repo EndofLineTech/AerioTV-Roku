@@ -52,7 +52,7 @@ sub main()
             check(not result.ok and result.recoveryRequired = (fault = "rollback") and FormatJson(m.registry.values) = before, "phase-two write/flush faults retain selected default and restore exact remaining private data without reviving old actor")
         end if
     end for
-    for each change in ["runtime-key", "nonce", "selected-root", "connection-root", "context-url", "source-key", "authority", "evidence", "settings"]
+    for each change in ["runtime-key", "nonce", "selected-root", "connection-root", "context-url", "source-key", "source-key-memory", "authority", "evidence", "settings"]
         switchDefaultRetirementFixture()
         selected = switchDefaultRetirementSelect()
         m.outgoing = invalid
@@ -66,6 +66,10 @@ sub main()
             m.verified.verifiedBaseUrl = "https://foreign.test"
         end if
         if change = "source-key" then m.registry.values[m.ownKeyName] = ""
+        if change = "source-key-memory"
+            m.registry.values.delete(m.ownKeyName)
+            m.memory[m.ownKeyName] = "synthetic-b"
+        end if
         if change = "authority" then m.verified.verifiedUser.user_level = 10
         if change = "evidence" then m.decoded = dispatcharrSyncRosterDecode({rows: [], removed: []})
         if change = "settings" then m.registry.values["settingsV1"] = "{malformed"

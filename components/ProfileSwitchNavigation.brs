@@ -180,6 +180,10 @@ sub onUserProfileSwitchState(event as object)
     if not userProfileSwitchActorCurrent(m.profileSwitchContext) then return
     if event.getData() <> "done" and event.getData() <> "stop" then return
     if type(m.profileSwitchTask.result) = "roAssociativeArray" then return
+    if m.profileSwitchContext.systemDefaultRetirement = true
+        stopSystemDefaultProfileSwitch("Could not verify the default profile's own access.")
+        return
+    end if
     rollbackUserProfileSwitch("Could not load this profile. The previous profile was retained.")
 end sub
 
@@ -189,6 +193,10 @@ sub onUserProfileSwitchResult(event as object)
     if context = invalid or context.connection.id <> m.selectedConnectionId then return
     if not userProfileSwitchActorCurrent(context) then return
     verified = event.getData()
+    if context.systemDefaultRetirement = true
+        if type(verified) <> "roAssociativeArray" then stopSystemDefaultProfileSwitch("Could not verify the default profile.") : return
+        if handleSystemDefaultProfileResult(verified) then return
+    end if
     if type(verified) <> "roAssociativeArray" then rollbackUserProfileSwitch("Could not verify this profile.") : return
     if verified.ok <> true
         message = "Could not switch profiles. The previous profile was retained."
@@ -196,8 +204,12 @@ sub onUserProfileSwitchResult(event as object)
         rollbackUserProfileSwitch(message)
         return
     end if
-    if handleUserProfileSwitchRosterResult(verified) then return
-    if context.unavailableChild = true
+    if context.systemDefaultRetirement <> true
+        if handleUserProfileSwitchRosterResult(verified) then return
+    end if
+    if context.systemDefaultRetirement = true
+        saved = commitSystemDefaultProfileSwitch(m.registry, context, verified, m.global.activeusersession, m.activeUserScope, textValue(m.apiKey), userProfileSwitchRosterMemory(context))
+    else if context.unavailableChild = true
         if m.activeUserScope <> invalid or m.apiKey <> "" then return
         saved = commitUnavailableChildProfileSwitch(m.registry, context.connection, context.store, context.target.id, verified, context.pin, context.management, context.managementNonce, context.nonce, m.global.activeusersession)
     else
@@ -251,6 +263,10 @@ end sub
 
 function userProfileSwitchActorCurrent(context as dynamic) as boolean
     if type(context) <> "roAssociativeArray" then return false
+    if context.connection.id <> m.selectedConnectionId then return false
+    if context.systemDefaultRetirement = true
+        return m.activeUserScope = invalid and textValue(m.apiKey) = "" and textValue(m.global.activeusersession) = context.nonce
+    end if
     if context.unavailableChild = true
         return m.activeUserScope = invalid and textValue(m.apiKey) = "" and m.page = "profile-unavailable"
     end if
@@ -260,6 +276,10 @@ end function
 sub rollbackUserProfileSwitch(message as string)
     context = m.profileSwitchContext
     if context = invalid then return
+    if context.systemDefaultRetirement = true
+        stopSystemDefaultProfileSwitch(message)
+        return
+    end if
     if context.connection.id <> m.selectedConnectionId then return
     if type(context.outgoing) = "roAssociativeArray" and type(m.activeUserScope) = "roAssociativeArray"
         if not userProfileSameSession(context.outgoing, m.activeUserScope) then return

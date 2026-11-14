@@ -234,7 +234,9 @@ function systemDefaultProfileAccessCurrent(registry as object, context as object
     receipt = context.retirement
     if type(receipt) <> "roAssociativeArray" then return false
     if receipt.committed <> true or receipt.needsDefaultSwitch <> true then return false
-    if FormatJson(receipt.store) <> FormatJson(context.store) or type(receipt.removed) <> "roArray" then return false
+    originRoot = textValue(context.retirementStoreRoot)
+    if originRoot = "" then return false
+    if FormatJson(receipt.store) <> originRoot or receipt.store.active <> context.target.id or type(receipt.removed) <> "roArray" then return false
     retired = false
     for each profile in receipt.removed
         if profile.isDefault or profile.id = context.target.id then return false
@@ -244,8 +246,58 @@ function systemDefaultProfileAccessCurrent(registry as object, context as object
         end for
     end for
     if not retired then return false
-    credential = userProfileCredential(registry, context.connection, actual, memoryKeys)
+    memory = memoryKeys
+    if context.connection.remember then memory = {}
+    credential = userProfileCredential(registry, context.connection, actual, memory)
     if not credential.ok then return false
     if credential.key <> context.key then return false
+    if context.connection.remember
+        if not registry.exists(credential.keyName) or registry.read(credential.keyName) <> credential.key then return false
+    end if
     return requestGateAccessAllowed(context.connection.url, credential.key)
+end function
+
+function systemDefaultProfileProofCurrent(context as object, proof as object) as boolean
+    if proof.ok <> true or proof.apiKey <> context.key or proof.verifiedBaseUrl <> context.connection.url then return false
+    if not dispatcharrAuthorityComparable(proof.verifiedUser) then return false
+    id = textValue(context.target.userId)
+    name = lcase(textValue(context.target.username))
+    return textValue(proof.accountId) = id and textValue(proof.verifiedUser.id) = id and lcase(textValue(proof.accountUsername)) = name and lcase(textValue(proof.verifiedUser.username)) = name
+end function
+
+' Own default read metadata under the explicit post-retirement no-session
+' boundary. Never invent a default scope to reuse active-own roster persistence.
+function commitSystemDefaultRosterPull(registry as object, context as object, proof as object, decoded as object, enabled as boolean, now as integer, activeNonce as string, activeScope as dynamic, activeKey as string, memoryKeys as object) as object
+    denied = {ok: false, recoveryRequired: false}
+    if not systemDefaultProfileAccessCurrent(registry, context, activeNonce, activeScope, activeKey, memoryKeys) then return denied
+    if not systemDefaultProfileProofCurrent(context, proof) then return denied
+    working = normalizeUserProfileStore(context.store, context.connection.id)
+    facts = userProfileFromVerified(context.connection.id, context.target.id, proof.verifiedUser, now)
+    if facts = invalid then return denied
+    for i = 0 to working.profiles.count() - 1
+        profile = working.profiles[i]
+        if profile.id = context.target.id
+            for each field in ["userLevel", "isStaff", "isSuperuser"]
+                profile = setCanonicalPreference(profile, field, facts[field])
+            end for
+            profile = setCanonicalPreference(profile, "role", userProfileResolveRole(facts.userLevel, profile.role))
+            working.profiles[i] = profile
+        end if
+    end for
+    plan = dispatcharrSyncRosterMerge(working, decoded, enabled, now)
+    if not plan.ok or plan.needsDefaultSwitch then return denied
+    if plan.removed.count() > 0
+        prepared = dispatcharrSyncPrepareSwitchRosterCleanup(registry, context.connection, context.store, plan)
+    else
+        prepared = userProfileStoreChanges(registry, context.store, plan.store, {}, true)
+    end if
+    if not prepared.ok
+        denied.recoveryRequired = prepared.recoveryRequired = true
+        return denied
+    end if
+    saved = userProfileRegistryTransaction(registry, prepared.changes)
+    if not saved.ok then return saved
+    plan.recoveryRequired = false
+    if type(prepared.preferenceStore) = "roAssociativeArray" then plan.preferenceStore = prepared.preferenceStore
+    return plan
 end function
