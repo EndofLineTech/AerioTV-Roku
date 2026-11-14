@@ -3,6 +3,13 @@ sub main()
         return ParseJson(raw)
     end function
     resetProfileNavigation()
+    check(ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100), "legacy replacement fixture establishes old holder")
+    m.registry.values["preferences"] = FormatJson({favoriteIds: ["old-private"]})
+    m.registry.values["accountIdentity"] = "https://example.test|7"
+    snapshot = FormatJson(m.registry.values)
+    check(not ensureConnectedUserProfile({phase: "verified", accountId: "7", accountUsername: "DifferentAlice", verifiedUser: {id: 7, username: "DifferentAlice", user_level: 1}}, "", 101), "same-ID replacement refuses while unscoped legacy personal data has no safe migrated owner")
+    check(FormatJson(m.registry.values) = snapshot, "legacy replacement refusal preserves all old private bytes and creates no empty canonical root")
+    resetProfileNavigation()
     check(selectedUserProfileGate().allowed, "absent roster permits verified legacy migration")
     check(userProfileConnectionSetupAllowed(), "absent roster retains first-time setup")
     m.userProfileRecoveryRequired = true
@@ -74,6 +81,46 @@ sub main()
     m.registry.failFlush = true
     check(not ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100), "failed migration does not authorize runtime")
     check(not m.registry.exists("userProfilesV1_slot-a"), "failed migration restores absence")
+    for each failReplacement in [false, true]
+        resetProfileNavigation()
+        ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100)
+        previousId = m.userProfileStore.active
+        staged = copyJson(m.userProfileStore)
+        staged.profiles[0] = setCanonicalPreference(staged.profiles[0], "preferenceAnchor", "https://old.test|7|slot-a")
+        b = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000003", {id: 8, username: "Bob", user_level: 1}, 1)
+        b.isDefault = false
+        b.addressHeld = true
+        staged.profiles.push(b)
+        staged = setCanonicalPreference(staged, "addressChangeSnapshot", {userId: 7, username: "Alice"})
+        m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(staged)
+        prefs = {schema: 1, device: {}, accounts: {}}
+        oldKey = preferenceScope("https://old.test|7|slot-a")
+        prefs.accounts[oldKey] = {startupBehavior: "mini", favoriteIds: ["alice-only"], recent: ["private-history"], futurePrivate: true, guide: {groupSort: "name", hiddenGroups: ["private-group"], startupGroup: "private-group"}, profileSettings: {themePreset: "forest"}}
+        prefs.accounts["foreign"] = {favoriteIds: ["foreign-only"]}
+        m.registry.values["settingsV1"] = FormatJson(prefs)
+        memoryKey = preferenceScope(m.connectionStore.entries[0].url + "|slot-a|" + previousId)
+        foreignMemory = preferenceScope("https://other.test|slot-b|" + previousId)
+        m.profileSessionKeys = {}
+        m.profileSessionKeys[memoryKey] = "synthetic-old-default"
+        m.profileSessionKeys[foreignMemory] = "synthetic-foreign"
+        snapshot = FormatJson(m.registry.values)
+        m.registry.failFlush = failReplacement
+        replaced = ensureConnectedUserProfile({phase: "verified", accountId: "70", accountUsername: "NewAlice", verifiedUser: {id: 70, username: "NewAlice", user_level: 1}}, "", 101)
+        if failReplacement
+            check(not replaced and FormatJson(m.registry.values) = snapshot, "failed default replacement restores the exact old identity, snapshot and private blobs")
+            check(m.profileSessionKeys[memoryKey] = "synthetic-old-default", "failed default replacement retains the old holder's memory credential")
+        else
+            check(replaced and m.userProfileStore.active = previousId and m.userProfileStore.profiles[0].userId = 70 and m.userProfileStore["knownDefault"]["userId"] = 7 and m.userProfileStore.profiles[1].addressHeld, "verified slot replacement keeps local default identity and frozen holds while rebuilding server identity")
+            loaded = ParseJson(m.registry.read("settingsV1"))
+            newKey = preferenceScope(connectionPreferenceIdentity(m.connectionStore.entries[0], "70"))
+            own = loaded.accounts[newKey]
+            check(own.favoriteIds.count() = 0 and own.recent.count() = 0 and not own.doesExist("futurePrivate") and own.guide.hiddenGroups.count() = 0 and own.profileSettings.themePreset = "forest" and own.startupBehavior = "mini", "a rebuilt default gets only the approved Copy settings and no old holder personal or unknown data")
+            check(loaded.accounts[oldKey].favoriteIds[0] = "alice-only" and loaded.accounts.foreign.favoriteIds[0] = "foreign-only", "replacement preserves old and foreign blobs instead of moving private data to the new holder")
+            check(not m.registry.exists("connKey_slot-a") and not m.profileSessionKeys.doesExist(memoryKey) and m.profileSessionKeys[foreignMemory] = "synthetic-foreign", "rebuilt default cannot inherit the old default's stored or memory key while another slot's key remains untouched")
+            lateSnapshot = FormatJson(m.registry.values)
+            check(not ensureConnectedUserProfile({accountId: "71", accountUsername: "Unexpected", verifiedUser: {id: 71, username: "Unexpected", user_level: 1}}, "", 102) and FormatJson(m.registry.values) = lateSnapshot, "a late full-lineup /me identity change cannot skip the new holder's early roster and protection read")
+        end if
+    end for
     resetProfileNavigation()
     m.connectionStore.entries[0].provider = "xtream"
     check(selectedUserProfileGate().allowed, "XC/M3U never acquire a profile gate")

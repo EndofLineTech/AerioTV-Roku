@@ -465,3 +465,39 @@ Flush, session/key retirement, default data migration, B's retained blob,
 URL-bound hold lifting, and no autoplay. The fixture fixes its timer to initialize
 only once across reconnects; it never touches the owner registry/cache, cleans
 its section and checksum-restores the exact owner app.
+
+## Verified slot/default identity replacement
+
+The slot's ordinary authentication path can now rebuild a different verified
+default account in place. This is explicit only during the authentication phase
+**before** the new account's early App Data/protection read. A changed identity
+in the later lineup result refuses and requires reconnect, so it cannot bypass
+the new holder's imported PIN/Child protection.
+
+Replacement keeps the local default UUID, existing PIN material/learned length
+and Child role unless verified server-admin authority overrides it. It rebuilds
+the user ID/name/default label and authority, clears avatar/order/claims/stamp,
+and emits no removal tombstone. Other holds and frozen default identity remain
+untouched. The previous default's saved/fallback and URL-bound memory key cannot
+be inherited by the new holder; full activation may persist the newly verified
+key later. Failed Flush retains the exact old metadata/data/credentials.
+
+The new default blob is built from the existing Copy allowlist, including the
+approved appearance/player settings. Favorites, history, progress, hidden data
+and unknown private extensions start empty. Old and foreign blobs remain
+untouched; a distinct occupied destination refuses rather than overwriting or
+guessing its lineage. This does not broaden the known-user-only inactive own
+form into an arbitrary-account form.
+
+`scripts/test-profile-address-native.py --replace-default` verifies that a
+different account at the second origin receives its own fresh session and empty
+personal data, keeps the local default ID unstamped, and cannot lift B's hold by
+comparing against the new user itself. The original same-server variant still
+checks own-data migration and matching-tag lift.
+
+Unscoped legacy `preferences` are not proof of ownership by the newly verified
+default, even when numeric IDs match. Replacement and profiled address edits
+therefore refuse without writes while that key exists. Connecting an unrelated
+slot no longer deletes it. A verified owner-bound atomic migration/deletion is
+still required before this conservative fence can be lifted; do not remove the
+legacy value manually to make an edit succeed.

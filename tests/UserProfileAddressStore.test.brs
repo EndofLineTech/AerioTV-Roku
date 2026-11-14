@@ -12,6 +12,10 @@ sub main()
     connections = {schema: 1, selected: entry.id, entries: [entry]}
     originalStore = FormatJson(store)
     originalConnections = FormatJson(connections)
+    registry = addressRegistry(connections, store, "")
+    registry.values["preferences"] = "unmigrated-private-legacy"
+    legacySnapshot = FormatJson(registry.values)
+    check(not commitUserProfileAddressChange(registry, connections, store, "https://new.test", scope, scope).ok and FormatJson(registry.values) = legacySnapshot, "address edits cannot strand unmigrated unscoped legacy preferences or erase their ownership evidence")
     for each fault in ["", "write", "flush", "rollback"]
         registry = addressRegistry(connections, store, fault)
         before = FormatJson(registry.values)

@@ -4,8 +4,10 @@ sub onManagementProbeTick()
     phase = m.managementProbePhase
     if phase = 0
         if m.activeUserScope = invalid or m.page <> "guide" then return
+        m.addressReplaceDefault = OWN_ADDRESS_REPLACE
         m.addressOldEntry = connectionStoreEntry(m.connectionStore, "slot-a")
         m.addressOldSession = currentUserSessionId()
+        m.addressOldProfile = m.activeUserScope.profileId
         m.accountPreferences.favoriteIds = ["default-private"]
         m.addressPassed = persistCurrentUserProfilePreferences()
         store = loadUserProfileStore(m.registry, "slot-a")
@@ -74,9 +76,23 @@ sub onManagementProbeTick()
         entry = connectionStoreEntry(m.connectionStore, "slot-a")
         preferences = ParseJson(m.registry.read("settingsV1"), "d")
         own = m.page = "guide" and m.activeUserScope <> invalid
-        if own then own = m.activeUserScope.accountId = "7" and currentUserSessionId() <> m.addressOldSession and m.accountPreferences.favoriteIds[0] = "default-private"
-        isolated = not preferences.accounts.doesExist(preferenceScope(connectionPreferenceIdentity(m.addressOldEntry, "7"))) and preferences.accounts[preferenceScope(connectionPreferenceIdentity(entry, "7"))].favoriteIds[0] = "default-private" and preferences.accounts[preferenceScope(connectionPreferenceIdentity(m.addressOldEntry, "8"))].favoriteIds[0] = "bob-private"
+        if own
+            if m.addressReplaceDefault
+                own = m.activeUserScope.accountId = "70" and currentUserSessionId() <> m.addressOldSession and m.accountPreferences.favoriteIds.count() = 0 and store.profiles[0].id = m.addressOldProfile and store.profiles[0].updatedAt = 0 and store.profiles[0].order = -1
+            else
+                own = m.activeUserScope.accountId = "7" and currentUserSessionId() <> m.addressOldSession and m.accountPreferences.favoriteIds[0] = "default-private"
+            end if
+        end if
+        if m.addressReplaceDefault
+            isolated = preferences.accounts[preferenceScope(connectionPreferenceIdentity(m.addressOldEntry, "7"))].favoriteIds[0] = "default-private" and preferences.accounts.doesExist(preferenceScope(connectionPreferenceIdentity(entry, "70")))
+            if isolated then isolated = preferences.accounts[preferenceScope(connectionPreferenceIdentity(entry, "70"))].favoriteIds.count() = 0
+        else
+            isolated = not preferences.accounts.doesExist(preferenceScope(connectionPreferenceIdentity(m.addressOldEntry, "7"))) and preferences.accounts[preferenceScope(connectionPreferenceIdentity(entry, "7"))].favoriteIds[0] = "default-private"
+        end if
+        isolated = isolated and preferences.accounts[preferenceScope(connectionPreferenceIdentity(m.addressOldEntry, "8"))].favoriteIds[0] = "bob-private"
         lifted = not store.profiles[1].addressHeld and not store.doesExist("addressChangeSnapshot") and store["knownDefault"]["userId"] = 7
-        print "[profile-address] "; FormatJson({kind: "result", passed: m.addressPassed and own and isolated and lifted and m.playingChannel = invalid, own: own, isolated: isolated, lifted: lifted, no_autoplay: m.playingChannel = invalid, status: m.status, page: m.page, closed: userProfileGateClosed(), pending: userProfileUiClosed(), recovery: m.userProfileRecoveryRequired = true})
+        holdsCorrect = lifted
+        if m.addressReplaceDefault then holdsCorrect = store.profiles[1].addressHeld and store.doesExist("addressChangeSnapshot") and store["knownDefault"]["userId"] = 7
+        print "[profile-address] "; FormatJson({kind: "result", passed: m.addressPassed and own and isolated and holdsCorrect and m.playingChannel = invalid, own: own, isolated: isolated, lifted: lifted, holds_correct: holdsCorrect, no_autoplay: m.playingChannel = invalid, status: m.status, page: m.page, closed: userProfileGateClosed(), pending: userProfileUiClosed(), recovery: m.userProfileRecoveryRequired = true})
     end if
 end sub

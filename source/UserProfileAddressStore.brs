@@ -4,6 +4,9 @@
 ' no public URL handler calls this until those transition rules are integrated.
 function commitUserProfileAddressChange(registry as object, connections as object, previous as object, nextUrl as string, captured as dynamic, active as dynamic) as object
     denied = {ok: false, recoveryRequired: false}
+    ' Do not retire the only URL/account ownership evidence for an unscoped
+    ' legacy value. Its verified migration must complete before an address edit.
+    if registry.exists("preferences") then return denied
     if not userProfileSameSession(captured, active) then return denied
     if connections.readOnly = true or previous.readOnly = true then return denied
     previous = normalizeUserProfileStore(previous, captured.playlistId)

@@ -22,10 +22,11 @@ def module(name):
     return loaded
 
 
-def build(output, normal, section, old_url, new_url):
+def build(output, normal, section, old_url, new_url, replacement=False):
     seed = output.with_suffix('.seed.zip')
     module('management').build(seed, normal, section, old_url)
     fixture = (ROOT / 'tests/native/ProfileAddressFixture.brs').read_text().replace('OWN_ADDRESS_NEW_URL', json.dumps(new_url))
+    fixture = fixture.replace('OWN_ADDRESS_REPLACE', 'true' if replacement else 'false')
     with zipfile.ZipFile(seed) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
@@ -40,6 +41,7 @@ def build(output, normal, section, old_url, new_url):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--restore', required=True)
+    parser.add_argument('--replace-default', action='store_true', help='New origin verifies a different default account; preserve holds and seed settings only')
     args = parser.parse_args()
     host, password = os.environ['ROKU_HOST'], os.environ['ROKU_DEV_PASSWORD']
     primitives, recovery = module('primitives'), module('recovery')
@@ -64,7 +66,8 @@ def main():
             if self.server.identity == 'new' and key != 'synthetic-new-default':
                 status, value = 401, {'detail': 'Invalid API key'}
             elif self.path == '/api/accounts/users/me/':
-                value = {'id': 7, 'username': 'Synthetic7', 'user_level': 1}
+                identity = 70 if args.replace_default and self.server.identity == 'new' else 7
+                value = {'id': identity, 'username': f'Synthetic{identity}', 'user_level': 1}
             elif self.path == '/api/accounts/users/me/app-data/':
                 value = {'apps': []}
             body = json.dumps(value).encode()
@@ -86,7 +89,7 @@ def main():
     section = 'AerioAddressProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-address-probe.zip'
     cleaner = ROOT / 'out/profile-address-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, *(f'http://{local}:{server.server_port}' for server in servers))
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, *(f'http://{local}:{server.server_port}' for server in servers), replacement=args.replace_default)
     recovery.cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -114,7 +117,8 @@ def main():
                 server.shutdown()
                 server.server_close()
             report['passed'] = report['passed'] and report.get('cleaned', False) and report['restored']
-            (ROOT / 'out/profile-address-handler-native.json').write_text(json.dumps(report, indent=2) + '\n')
+            report_name = 'profile-address-replacement-native.json' if args.replace_default else 'profile-address-handler-native.json'
+            (ROOT / 'out' / report_name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:
                 raise RuntimeError('Exact prior app restore failed')

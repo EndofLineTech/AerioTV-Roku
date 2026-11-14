@@ -233,7 +233,7 @@ end function
 
 ' Repeated migration does not re-ID, stamp, clear a PIN, change role or replace
 ' metadata. Default identity replacement is a different, gated lifecycle action.
-function userProfileEnsureDefault(store as object, verified as object) as dynamic
+function userProfileEnsureDefault(store as object, verified as object, replaceIdentity = false as boolean) as dynamic
     verified = normalizeUserProfileRecord(verified, store.playlistId)
     if verified = invalid then return invalid
     if store.readOnly = true or store.playlistId <> verified.playlistId then return invalid
@@ -248,17 +248,31 @@ function userProfileEnsureDefault(store as object, verified as object) as dynami
     end if
     cleaned = normalizeUserProfileStore(store, store.playlistId)
     if cleaned.readOnly = true then return invalid
-    for each profile in cleaned.profiles
+    for i = 0 to cleaned.profiles.count() - 1
+        profile = cleaned.profiles[i]
         if profile.isDefault
-            if profile.userId <> verified.userId or lcase(profile.username) <> lcase(verified.username) then return invalid
-            ' Server authority is live, not a once-only migration fact. Preserve
-            ' local identity/PIN/stamps, but never retain revoked admin rights.
-            for each field in ["userLevel", "isStaff", "isSuperuser"]
-                profile[field] = verified[field]
-            end for
-            profile["role"] = userProfileResolveRole(verified.userLevel, profile.role)
+            if profile.userId <> verified.userId or lcase(profile.username) <> lcase(verified.username)
+                if not replaceIdentity then return invalid
+                replacement = userProfileFromVerified(store.playlistId, profile.id, {id: verified.userId, username: verified.username, user_level: verified.userLevel, is_staff: verified.isStaff, is_superuser: verified.isSuperuser}, 0)
+                if replacement = invalid then return invalid
+                replacement = setCanonicalPreference(replacement, "createdAt", profile.createdAt)
+                replacement = setCanonicalPreference(replacement, "role", userProfileResolveRole(verified.userLevel, profile.role))
+                for each field in ["pinType", "pinHash", "pinSalt", "pinLength"]
+                    replacement = setCanonicalPreference(replacement, field, profile[field])
+                end for
+                cleaned.profiles[i] = replacement
+            else
+                ' Server authority is live, not a once-only migration fact.
+                ' Preserve local identity/PIN/stamps, never revoked admin rights.
+                for each field in ["userLevel", "isStaff", "isSuperuser"]
+                    profile[field] = verified[field]
+                end for
+                profile["role"] = userProfileResolveRole(verified.userLevel, profile.role)
+            end if
         end if
     end for
+    cleaned = normalizeUserProfileStore(cleaned, store.playlistId)
+    if cleaned.readOnly = true then return invalid
     return cleaned
 end function
 

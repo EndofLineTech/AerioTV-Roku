@@ -77,23 +77,57 @@ function ensureConnectedUserProfile(result as object, id = "" as string, now = 0
         m.status = "The server returned an incomplete profile identity. Saved profiles were not changed."
         return false
     end if
-    candidate = userProfileEnsureDefault(m.userProfileStore, verified)
+    previousDefault = invalid
+    replacing = false
+    for each profile in m.userProfileStore.profiles
+        if profile.isDefault
+            previousDefault = profile
+            replacing = profile.userId <> verified.userId or lcase(profile.username) <> lcase(verified.username)
+        end if
+    end for
+    ' Replacement belongs to authentication BEFORE the new holder's early
+    ' App Data/protection read. A later full-lineup identity change must restart
+    ' that sequence, never activate an account whose protection was not read.
+    if replacing and result.phase <> "verified"
+        m.status = "The account changed during sign-in. Reconnect to load this user's profile protection."
+        return false
+    end if
+    if replacing and m.registry.exists("preferences")
+        m.status = "Reconnect the previous account to migrate its legacy settings before replacing this default. Existing data was retained."
+        return false
+    end if
+    candidate = userProfileEnsureDefault(m.userProfileStore, verified, result.phase = "verified")
     if candidate = invalid
-        m.status = "This sign-in belongs to a different saved default profile. Existing profile protection was retained; use a separate connection or Forget this Roku's copy."
+        m.status = "Could not safely replace this default identity. Existing profiles and data were retained."
         return false
     end if
     oldIdentity = connectionPreferenceIdentity(entry, verified.userId.toStr())
     newIdentity = oldIdentity
+    if previousDefault <> invalid then oldIdentity = userProfilePreferenceIdentity(entry, previousDefault)
     for i = 0 to candidate.profiles.count() - 1
         if candidate.profiles[i].isDefault
-            oldIdentity = userProfilePreferenceIdentity(entry, candidate.profiles[i])
             candidate.profiles[i] = setCanonicalPreference(candidate.profiles[i], "preferenceAnchor", newIdentity)
         end if
     end for
     moved = {ok: true, moved: false}
-    if oldIdentity <> newIdentity and m.registry.exists("settingsV1")
-        moved = userProfilePreferenceMovePlan(loadStrictPreferenceStore(m.registry), oldIdentity, newIdentity)
-        if not moved.ok then return false
+    if m.registry.exists("settingsV1") and (oldIdentity <> newIdentity or replacing)
+        settings = loadStrictPreferenceStore(m.registry)
+        if settings.readOnly = true then return false
+        if replacing
+            oldKey = preferenceScope(oldIdentity)
+            newKey = preferenceScope(newIdentity)
+            ' A different existing destination has no proven lineage to this
+            ' rebuilt local holder. Never overwrite or adopt its personal data.
+            if oldKey <> newKey and settings.accounts.doesExist(newKey) then return false
+            seed = invalid
+            if settings.accounts.doesExist(oldKey) then seed = settings.accounts[oldKey]
+            nextSettings = copyPreferenceValue(settings)
+            nextSettings.accounts[newKey] = userProfileSeedAccountPreferences(seed)
+            moved = {ok: true, moved: true, store: nextSettings}
+        else
+            moved = userProfilePreferenceMovePlan(settings, oldIdentity, newIdentity)
+            if not moved.ok then return false
+        end if
     end if
     ' Record only from this default-owned /me/, never cleared slot metadata.
     ' A persisted change snapshot also freezes recording until its URL-bound
@@ -107,6 +141,12 @@ function ensureConnectedUserProfile(result as object, id = "" as string, now = 0
     if FormatJson(candidate) = FormatJson(m.userProfileStore) and not moved.moved then return true
     prepared = userProfileStoreChanges(m.registry, m.userProfileStore, candidate, {}, entry.remember)
     if not prepared.ok then return false
+    if replacing
+        ' Full activation may persist the newly verified key later. Until then,
+        ' a rebuilt default must not fall back to its previous holder's key.
+        prepared.changes[connectionRegistryKey(entry.id)] = ""
+        if entry.id = "legacy" then prepared.changes["apiKey"] = ""
+    end if
     if moved.moved
         encoded = strictJsonEncode(moved.store)
         if not encoded.ok then return false
@@ -120,6 +160,9 @@ function ensureConnectedUserProfile(result as object, id = "" as string, now = 0
         return false
     end if
     m.userProfileStore = candidate
+    if replacing and type(m.profileSessionKeys) = "roAssociativeArray"
+        m.profileSessionKeys.delete(preferenceScope(entry.url + "|" + entry.id + "|" + previousDefault.id))
+    end if
     if moved.moved then m.preferenceStore = moved.store
     return true
 end function

@@ -32,6 +32,7 @@ export function assertPackageEntries(entries) {
   if (entries.some(entry => /(^|\/)UserProfileOwnSignInProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic own-sign-in probe');
   if (entries.some(entry => /(^|\/)UserProfileAddressPolicyProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic address policy probe');
   if (entries.some(entry => /(^|\/)UserProfileAddressStoreProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic address storage probe');
+  if (entries.some(entry => /(^|\/)UserProfileDefaultReplacementProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic default replacement probe');
   if (entries.some(entry => /(^|\/)UserProfileChildAccessProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic Child access probe');
   if (entries.some(entry => /(^|\/)SettingsChildProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic Child settings probe');
 }

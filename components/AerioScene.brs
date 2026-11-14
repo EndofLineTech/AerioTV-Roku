@@ -819,7 +819,8 @@ sub completeConnection(result as dynamic)
     end if
     prefs = m.accountPreferences
     m.guide.historyAccount = m.accountIdentity
-    m.registry.delete("preferences")
+    ' Unscoped legacy data may belong to another slot. Retain it until its own
+    ' verified migration can remove it atomically with the canonical data write.
     if m.phoneCommittedId = connection.id
         m.phoneCommittedId = ""
     else
