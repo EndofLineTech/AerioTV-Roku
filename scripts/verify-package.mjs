@@ -13,6 +13,7 @@ export function assertPackageEntries(entries) {
   if (entries.some(entry => /(^|\/)ProfileFavoriteRetentionFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic favorite retention probe');
   if (entries.some(entry => /(^|\/)GuideFavoriteRetentionProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic favorite selection probe');
   if (entries.some(entry => /(^|\/)ProfileSwitchRecordingFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic switch recording probe');
+  if (entries.some(entry => /(^|\/)ProfileTargetRetirementFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic target retirement probe');
   if (!entries.includes('manifest')) throw new Error('Package must contain manifest at its root');
   for (const required of ['images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt']) {
     if (!entries.includes(required)) throw new Error(`Package is missing ${required}`);
@@ -32,7 +33,7 @@ export function assertPackageEntries(entries) {
   if (entries.some(entry => /(^|\/)Profile(?:(?:Default|Active|Child)?OwnSignIn(?:Form)?|OwnRecheck|ColdRestore|AssignmentRefresh|Child(?:Escape|Launch|Available|Retry|Rejected|Recheck))Fixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic own-profile sign-in/restore/refresh/escape probe');
   const probe = entries.find(entry => /(^|\/)(?:fixture-materials\.json|apply-cases\.json|profile-probe-config\.json|profile-wire-fixture\.json|profile-registry-fixtures\.json|profile-recovery-probe\.json|profile-settings-probe\.json|request-gate-probe\.json|RequestGateProbe[^/]*|UserProfile(?:Registry|Dialog|Model|Store|Avatar|Lifecycle|Forget|Navigation|PreferenceNavigation|Removal|Scope|ScopeStore)?Probe[^/]*|UserProfileDialogMain\.brs|UiAudit[^/]*|SetupReceiverProbe[^/]*|SetupReceiverFixtureEntropy\.brs|SetupApply(?:Probe|Fixture)[^/]*)$/i.test(entry));
   if (probe) throw new Error(`Package contains synthetic setup probe: ${probe}`);
-  if (entries.some(entry => /(^|\/)DispatcharrSync(?:Key|Roster|Envelope|Merge|PullStore|SwitchRoster)Probe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic sync probe');
+  if (entries.some(entry => /(^|\/)DispatcharrSync(?:Key|Roster|Envelope|Merge|PullStore|SwitchRoster|UnavailableChildRoster)Probe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic sync probe');
   if (entries.some(entry => /(^|\/)UserProfilePinPolicyProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic PIN policy probe');
   if (entries.some(entry => /(^|\/)UserProfileCredentialProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic credential probe');
   if (entries.some(entry => /(^|\/)UserProfileManagementPolicyProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic management policy probe');

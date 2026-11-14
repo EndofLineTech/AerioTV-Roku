@@ -43,6 +43,16 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertEqual(envelope['updatedAt'], '2026-11-14T12:00:00Z')
         self.assertNotIn('apiKey', json.dumps(envelope))
 
+    def test_third_holder_fixture_credentials_are_never_logged_as_default(self):
+        spec = importlib.util.spec_from_file_location('management_identity_probe', Path(__file__).with_name('test-profile-management-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        for key in ['synthetic-c', 'synthetic-third']:
+            self.assertEqual(probe.management_probe_user(key), 9)
+        for key in ['synthetic-b', 'delayed-b']:
+            self.assertEqual(probe.management_probe_user(key), 8)
+        self.assertEqual(probe.management_probe_user('synthetic-a'), 7)
+
     def test_native_timeout_diagnostics_are_boolean_only(self):
         spec = importlib.util.spec_from_file_location('native_runner', Path(__file__).with_name('run-native-probe.py'))
         probe = importlib.util.module_from_spec(spec)
@@ -88,6 +98,8 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'GuideFavoriteRetentionProbeChecks')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileSwitchRecordingFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncSwitchRosterProbeChecks')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncUnavailableChildRosterProbeChecks')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileTargetRetirementFixture')], check=True)
 
     def test_address_handler_probe_is_private_and_cannot_ship(self):
         spec = importlib.util.spec_from_file_location('address_probe', Path(__file__).with_name('test-profile-address-native.py'))
@@ -326,6 +338,16 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertNotIn('"AerioTV"', source)
             with self.assertRaises(ValueError):
                 probe.build(output, normal, 'SyntheticInactiveCleanupSection', 'http://127.0.0.1:1234', switching=True, switch_cleanup=True)
+            probe.build(output, normal, 'SyntheticTargetRetirementSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_target_retirement=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertIn('advanceProfileTargetRetirementProbe()', source)
+                self.assertIn('m.switchProbeTargetRetired', source)
+                self.assertIn('target_retired:', source)
+                self.assertIn('m.profileSwitchRosterReady = true', source)
+                self.assertNotIn('"AerioTV"', source)
+            with self.assertRaises(ValueError):
+                probe.build(output, normal, 'SyntheticTargetRetirementSection', 'http://127.0.0.1:1234', switching=True, switch_target_retirement=True)
             for mode in ['remembered', 'keyless', 'held']:
                 probe.build(output, normal, 'SyntheticColdSection', 'http://127.0.0.1:1234', cold_restore=mode)
                 with zipfile.ZipFile(output) as package:

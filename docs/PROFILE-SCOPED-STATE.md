@@ -601,6 +601,14 @@ covered with no deletion until explicit default retirement is implemented. This
 is current-controller containment, not restart/default-retirement acceptance.
 The target-retirement and rollback-root checks are host-only; native qualification
 remains outstanding and both shipping readiness flags remain false.
+`--switch --switch-roster --switch-target-retirement` prepares a private case
+that first genuinely adopts non-default B, then selects clean seeded C. C's own
+App Data tombstones C; generated checks require fresh B admission, unchanged
+different default A, C-only key/backoff/blob/memory cleanup, wiped captured C
+credentials and no C lineup. The report permits C only its authentication and
+own read (`/me`, `/me`, list, canonical GET). This archive is offline-generated
+and syntax-checked, not native-qualified. Fixture credentials for the third
+holder are logged as user 9, never mislabeled as the default user.
 
 The earlier manual-refresh native cases (not this new switch/roster pipeline)
 qualify changed assignments/VOD revocation, foreign own
