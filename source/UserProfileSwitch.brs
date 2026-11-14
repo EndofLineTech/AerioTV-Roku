@@ -43,6 +43,25 @@ function userProfileSwitchPlan(connection as object, previous as object, targetI
     if incoming.pinType <> "none"
         if not userProfilePinGrantMatches(targetPinGrant, connection.id, incoming) then return {ok: false, reason: "target-pin-required"}
     end if
+    return userProfileVerifiedSwitchContentPlan(connection, cleaned, targetId, verified, capturedNonce)
+end function
+
+' Shared verified identity/lineup calculation AFTER a chosen-profile or explicit
+' system-default admission wrapper. It grants no PIN/management or storage access.
+function userProfileVerifiedSwitchContentPlan(connection as object, previous as object, targetId as string, verified as dynamic, capturedNonce as string) as object
+    denied = {ok: false, reason: "stale-context"}
+    if userProfileLocalId(capturedNonce) = "" then return denied
+    cleaned = normalizeUserProfileStore(previous, connection.id)
+    if cleaned.readOnly = true then return denied
+    incoming = invalid
+    index = -1
+    for i = 0 to cleaned.profiles.count() - 1
+        if cleaned.profiles[i].id = targetId
+            incoming = cleaned.profiles[i]
+            index = i
+        end if
+    end for
+    if incoming = invalid or incoming.addressHeld then return denied
     if type(verified) <> "roAssociativeArray" then return denied
     if verified.ok <> true then return {ok: false, reason: "authentication-failed"}
     if type(verified.apiKey) <> "String" and type(verified.apiKey) <> "roString" then return denied
@@ -116,6 +135,12 @@ function commitVerifiedUserProfileSwitchState(registry as object, connection as 
     if not admin.ok then return {ok: false, recoveryRequired: true, reason: "pin-recovery"}
     planned = userProfileSwitchPlan(connection, previous, targetId, verified, targetPinGrant, admin.record, managementGrant, capturedNonce, activeNonce, managementNonce)
     if not planned.ok then return {ok: false, recoveryRequired: false, reason: planned.reason}
+    return commitPlannedUserProfileSwitchState(registry, connection, previous, targetId, verified, planned)
+end function
+
+' Storage/settings publication shared only AFTER separate admission wrappers.
+function commitPlannedUserProfileSwitchState(registry as object, connection as object, previous as object, targetId as string, verified as object, planned as object) as object
+    denied = {ok: false, recoveryRequired: false, reason: "stale-context"}
     oldPreferenceIdentity = userProfilePreferenceIdentity(connection, planned.target)
     planned.target = setCanonicalPreference(planned.target, "preferenceAnchor", planned.scope.preferenceIdentity)
     for i = 0 to planned.store.profiles.count() - 1
@@ -171,4 +196,56 @@ function commitVerifiedUserProfileSwitchState(registry as object, connection as 
         saved.device = settings.device
     end if
     return saved
+end function
+
+' A completed system retirement already selected the real default and removed
+' the old actor only after teardown. It has no outgoing authenticated scope or
+' PIN ticket to fabricate. Own default authentication and final authority binding
+' are still mandatory before a new default scope can be adopted.
+function commitSystemDefaultProfileSwitch(registry as object, context as object, verified as object, activeNonce as string, activeScope as dynamic, activeKey as string, memoryKeys as object) as object
+    denied = {ok: false, recoveryRequired: false, reason: "system-default-context"}
+    if not systemDefaultProfileAccessCurrent(registry, context, activeNonce, activeScope, activeKey, memoryKeys) then return denied
+    if verified.verifiedBaseUrl <> context.connection.url or verified.apiKey <> context.key then return denied
+    if not dispatcharrAuthorityComparable(verified.verifiedUser) then return denied
+    if textValue(context.authorizationSignature) = "" then return denied
+    if dispatcharrAuthorizationSignature(verified.verifiedUser) <> context.authorizationSignature then return denied
+    planned = userProfileVerifiedSwitchContentPlan(context.connection, context.store, context.target.id, verified, context.nonce)
+    if not planned.ok then return {ok: false, recoveryRequired: false, reason: planned.reason}
+    return commitPlannedUserProfileSwitchState(registry, context.connection, context.store, context.target.id, verified, planned)
+end function
+
+function systemDefaultProfileAccessCurrent(registry as object, context as object, activeNonce as string, activeScope as dynamic, activeKey as string, memoryKeys as object) as boolean
+    if context.systemDefaultRetirement <> true or activeScope <> invalid or activeKey <> "" then return false
+    if userProfileLocalId(textValue(context.nonce)) = "" or context.nonce <> activeNonce then return false
+    if type(context.connection) <> "roAssociativeArray" or type(context.store) <> "roAssociativeArray" or type(context.target) <> "roAssociativeArray" then return false
+    if context.connection.provider <> "dispatcharr" or context.connection.id <> context.store.playlistId then return false
+    if GetInterface(context.connectionRoot, "ifString") = invalid or GetInterface(context.storeRoot, "ifString") = invalid then return false
+    if context.connectionRoot <> registry.read("connectionsV1") or context.connectionRootPresent <> registry.exists("connectionsV1") then return false
+    connections = loadConnectionStore(registry)
+    if connections.readOnly = true or connections.selected <> context.connection.id then return false
+    entry = connectionStoreEntry(connections, context.connection.id)
+    if entry = invalid then return false
+    if FormatJson(entry) <> FormatJson(normalizeConnectionEntry(context.connection)) then return false
+    if not registry.exists(userProfileStoreKey(context.connection.id)) then return false
+    if context.storeRoot <> registry.read(userProfileStoreKey(context.connection.id)) then return false
+    actual = loadUserProfileStore(registry, context.connection.id)
+    if actual.readOnly = true or FormatJson(actual) <> FormatJson(context.store) then return false
+    if context.target.isDefault <> true or context.store.active <> context.target.id or context.target.addressHeld then return false
+    receipt = context.retirement
+    if type(receipt) <> "roAssociativeArray" then return false
+    if receipt.committed <> true or receipt.needsDefaultSwitch <> true then return false
+    if FormatJson(receipt.store) <> FormatJson(context.store) or type(receipt.removed) <> "roArray" then return false
+    retired = false
+    for each profile in receipt.removed
+        if profile.isDefault or profile.id = context.target.id then return false
+        if profile.id = textValue(context.retiredProfileId) then retired = true
+        for each current in actual.profiles
+            if current.id = profile.id then return false
+        end for
+    end for
+    if not retired then return false
+    credential = userProfileCredential(registry, context.connection, actual, memoryKeys)
+    if not credential.ok then return false
+    if credential.key <> context.key then return false
+    return requestGateAccessAllowed(context.connection.url, credential.key)
 end function

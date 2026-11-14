@@ -51,6 +51,11 @@ function commitDispatcharrDefaultRetirementCleanup(registry as object, context a
     if selection.sourceRoster <> FormatJson(context.store) or selection.sourceEvidence <> FormatJson(decoded) or selection.sourceTargetId <> context.target.id then return denied
     if selection.connectionRoot <> context.connectionRoot or selection.connectionRootPresent <> context.connectionRootPresent then return denied
     if selection.connectionRoot <> registry.read("connectionsV1") or selection.connectionRootPresent <> registry.exists("connectionsV1") then return denied
+    connections = loadConnectionStore(registry)
+    if connections.readOnly = true or connections.selected <> context.connection.id then return denied
+    entry = connectionStoreEntry(connections, context.connection.id)
+    if entry = invalid then return denied
+    if FormatJson(entry) <> FormatJson(normalizeConnectionEntry(context.connection)) then return denied
     if not dispatcharrAuthorityComparable(verified.verifiedUser) then return denied
     if selection.sourceAuthority <> dispatcharrAuthorizationSignature(verified.verifiedUser) then return denied
     expected = normalizeUserProfileStore(context.store, context.connection.id)

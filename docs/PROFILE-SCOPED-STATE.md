@@ -671,6 +671,15 @@ material is revalidated. Host and native primitive/store tests pass with a
 private broker-decision seam; this is not yet normal-app runtime teardown,
 default own authentication/reload, held-key/Child UI or restart acceptance.
 The Scene still uses the covered refusal until that integration qualifies.
+Separate system-default storage adoption now also requires the completed cleanup
+receipt, exact current default/root/own credential, a genuinely absent preceding
+actor/key, fresh nonce and bound default-own authority/lineup. Only this explicit
+system entry point skips the default PIN; normal chosen-profile switches retain
+their PIN/adult-purpose checks. No PIN ticket is fabricated, no PIN length is
+learned, and no default scope exists until its own proof/lineup transaction
+succeeds. The verified content/settings calculation is shared only after those
+distinct admission wrappers. Host tests and the native primitive matrix pass;
+the system-default controller and normal-app automatic reload are still unwired.
 
 The earlier manual-refresh native cases (not this new switch/roster pipeline)
 qualify changed assignments/VOD revocation, foreign own

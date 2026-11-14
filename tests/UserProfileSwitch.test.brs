@@ -109,6 +109,57 @@ sub main()
     check(not commitUnavailableChildProfileSwitch(registry, connection, childStore, a.id, defaultProof, targetPin, adultExit, session, nextAttempt, session).ok and registry.flushes = 0, "retired unavailable-Child switch nonce cannot activate a target")
     check(not commitUnavailableChildProfileSwitch(registry, connection, store, a.id, defaultProof, targetPin, adultExit, session, nextAttempt, nextAttempt).ok and registry.flushes = 0, "unavailable-Child transaction is not an unauthenticated adult switch shortcut")
     check(not commitUnavailableChildProfileSwitch(registry, connection, childStore, a.id, defaultProof, invalid, adultExit, session, nextAttempt, nextAttempt).ok and registry.flushes = 0, "adult-purpose admission alone never substitutes for the target's own PIN")
+    selected = defaultUserProfileStore(connection.id)
+    protectedDefault = setCanonicalPreference(a, "pinType", "numbers")
+    protectedDefault = setCanonicalPreference(protectedDefault, "pinHash", string(64, "e"))
+    protectedDefault = setCanonicalPreference(protectedDefault, "pinSalt", string(32, "f"))
+    selected.profiles = [protectedDefault]
+    selected.active = a.id
+    for each failFlush in [false, true]
+        registry = switchRegistryFixture(connection, selected)
+        current = loadUserProfileStore(registry, connection.id)
+        receipt = {committed: true, needsDefaultSwitch: true, store: current, removed: [b]}
+        context = {systemDefaultRetirement: true, nonce: nextAttempt, connection: connection, connectionRoot: registry.read("connectionsV1"), connectionRootPresent: true, store: current, storeRoot: registry.read(userProfileStoreKey(connection.id)), target: current.profiles[0], key: "default-key", retirement: receipt, retiredProfileId: b.id, authorizationSignature: dispatcharrAuthorizationSignature(defaultProof.verifiedUser)}
+        before = FormatJson(registry.values)
+        registry.failOnce = failFlush
+        result = commitSystemDefaultProfileSwitch(registry, context, defaultProof, nextAttempt, invalid, "", {})
+        if failFlush
+            check(not result.ok and FormatJson(registry.values) = before, "system default adoption Flush failure restores exact selected-default state without reviving removed actor")
+        else
+            check(result.ok and result.scope.profileId = a.id and result.scope.accountId = "7" and result.scope.sessionId = nextAttempt and result.preferences.favoriteIds[0] = "outgoing-only", "completed system retirement can adopt freshly authenticated real default without a fabricated PIN ticket or outgoing scope")
+            check(result.store.profiles[0].pinHash = string(64, "e") and result.store.profiles[0].pinLength = 0 and registry.read("connKey_slot-a") = "default-key", "system default bypass neither learns/changes stored PIN nor borrows or replaces the default's own key")
+        end if
+    end for
+    for each change in ["purpose", "receipt", "removed", "active-actor", "runtime-key", "nonce", "root", "context-url", "roster", "key", "authority", "identity", "address"]
+        registry = switchRegistryFixture(connection, selected)
+        current = loadUserProfileStore(registry, connection.id)
+        receipt = {committed: true, needsDefaultSwitch: true, store: current, removed: [b]}
+        context = {systemDefaultRetirement: true, nonce: nextAttempt, connection: connection, connectionRoot: registry.read("connectionsV1"), connectionRootPresent: true, store: current, storeRoot: registry.read(userProfileStoreKey(connection.id)), target: current.profiles[0], key: "default-key", retirement: receipt, retiredProfileId: b.id, authorizationSignature: dispatcharrAuthorizationSignature(defaultProof.verifiedUser)}
+        actor = invalid
+        runtimeKey = ""
+        liveNonce = nextAttempt
+        proof = copyPreferenceValue(defaultProof)
+        if change = "purpose" then context.systemDefaultRetirement = false
+        if change = "receipt" then context.retirement.committed = false
+        if change = "removed" then context.retirement.removed = []
+        if change = "active-actor" then actor = outgoingB
+        if change = "runtime-key" then runtimeKey = "old-key"
+        if change = "nonce" then liveNonce = session
+        if change = "root" then registry.values["connectionsV1"] = ""
+        if change = "context-url"
+            context.connection = copyPreferenceValue(connection)
+            context.connection.url = "https://foreign.test"
+            check(not systemDefaultProfileAccessCurrent(registry, context, liveNonce, actor, runtimeKey, {}), "system default request preflight cannot forward its own key to a URL different from the captured saved connection")
+        end if
+        if change = "roster" then registry.values[userProfileStoreKey(connection.id)] = "{malformed"
+        if change = "key" then registry.values["connKey_slot-a"] = "foreign-key"
+        if change = "authority" then proof.verifiedUser.user_level = 10
+        if change = "identity" then proof.verifiedUser.id = 80
+        if change = "address" then proof.verifiedBaseUrl = "https://foreign.test"
+        before = FormatJson(registry.values)
+        result = commitSystemDefaultProfileSwitch(registry, context, proof, liveNonce, actor, runtimeKey, {})
+        check(not result.ok and registry.flushes = 0 and FormatJson(registry.values) = before, "system default adoption refuses changed " + change + " without bypassing actual actor/receipt/proof ownership")
+    end for
     print "ALL TESTS PASSED"
 end sub
 
