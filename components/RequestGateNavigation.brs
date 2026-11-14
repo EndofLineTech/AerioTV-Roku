@@ -128,6 +128,7 @@ sub onRequestGatePrompt(event as object)
 end sub
 
 sub onRequestGateTick()
+    tickSubmittedRecordingSettlement()
     tickProfileSetupCredential()
     tickUserProfileOwnSignInHold()
     if m.requestGateBinding = invalid or m.requestGate = invalid then return

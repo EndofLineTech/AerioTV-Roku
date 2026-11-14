@@ -1005,6 +1005,8 @@ sub onCapabilities(event as object)
             changedAuthority = textValue(m.profileAuthorizationSignature) <> "" and nextAuthority <> m.profileAuthorizationSignature
             m.profileAuthorizationSignature = nextAuthority
             if changedAuthority
+                preserveSubmittedRecording()
+                cancelRecordFlow()
                 if not persistCurrentUserProfilePreferences()
                     m.userProfileRecoveryRequired = true
                     m.global.profilegateclosed = true
@@ -2563,6 +2565,7 @@ sub onLineupRefresh(event as object)
     result = event.getData()
     m.refreshTask.unobserveField("result")
     m.refreshTask = invalid
+    if handleManualProfileRefreshAuthority(result) then return
     if not result.ok
         showNotice("Channel refresh failed: " + result.message)
         return
@@ -2579,7 +2582,11 @@ sub onLineupRefresh(event as object)
     cancelPlaybackFailure()
     selected = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if selected = invalid then return
-    if not connectionHasProfileSelection(selected) then m.accountPreferences = reconcileWatchHistory(m.accountPreferences, result.channels)
+    history = {ok: true, changed: false}
+    if not connectionHasProfileSelection(selected)
+        history = lineupHistoryReconciliationPlan(m.accountPreferences, result.channels)
+        if history.ok then m.accountPreferences = history.preferences
+    end if
     removedPlaying = false
     if m.playingChannel <> invalid
         current = invalid
@@ -2601,8 +2608,10 @@ sub onLineupRefresh(event as object)
     m.guide.callFunc("applyRefreshedLineup", result)
     m.browser.callFunc("invalidateLogos")
     m.guide.recentIds = m.accountPreferences.recent
-    persistAccountPreferences()
+    ' A no-op refresh must not rewrite sparse raw device/other-profile roots.
+    if history.changed then persistAccountPreferences()
     showNotice("Channel lineup refreshed.")
+    if not history.ok then showNotice("Channel lineup refreshed. Conflicting saved history was retained.")
     if removedPlaying then showNotice("The playing channel is no longer in the authorized lineup; playback stopped.")
 end sub
 

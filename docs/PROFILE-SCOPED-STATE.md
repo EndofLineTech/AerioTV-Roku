@@ -392,3 +392,47 @@ before native replacement, preserving launch-PIN authority without an unintended
 close/exit event. Private eight-second-delay fixtures qualify full-access and
 PIN-protected default-Child timeout, unchanged data/hold, usable fresh form,
 stale-proof refusal and later successful retry without app restart or autoplay.
+
+## Manual authority refresh and submitted recording results
+
+Manual lineup refresh now handles refused/foreign own identity through the same
+selected-holder recovery boundary. A successful response revalidates live
+profile authority and its authorization signature. Changed authority saves the
+current own settings, closes unsubmitted recording forms, retires the old
+session/views, and reloads under a fresh own session without autoplay. If safe
+authority/settings persistence fails, content is covered rather than adopting
+the new result. Unchanged authority and transient failures retain the session.
+
+Submitted record-once Tasks have separate, exact-node operation observation
+before authority retirement. Their bounded result may settle after the old
+authenticated session retires, but it cannot adopt old data or authenticate any
+new request. Only an already-started recording POST may finish receiving its
+response under its existing lease; key holds and server parks still stop it.
+The exact submitted path remains Task-local, not in the redacted broker mailbox.
+New acquisition, GETs and retries remain session-bound. Pending settlement blocks
+another record-once submission; an unconfirmed/lost result is reported as
+uncertain, never as a confirmed server cancellation or an automatic retry.
+
+Generic outcome notices are bound to the original slot, local holder, numeric
+account, username and current-address preference identity, and remain hidden
+behind content/PIN gates or from another holder. The existing Scene tick bounds
+lost-result observation to 35 seconds. Periodic authority changes and own-login
+revocation also preserve submitted record observation before retirement.
+
+Private native cases qualify changed assignments/VOD revocation, foreign own
+identity, unchanged authority and transient failures. Two cases delay a real
+synthetic recording POST by twelve seconds: changed authority confirms once via
+operation-only observation after retirement; unchanged authority confirms via
+the normal callback under the same session. Each sends exactly one POST.
+
+A no-op refresh also preserves exact raw settings/roster bytes. History pruning
+copies only supported history fields, retaining favorites, sparse presentation
+maps, typed extensions and unknown future entries; conflicting case aliases
+fail retained. Internal guide rebinding no longer publishes a synthetic user
+preference edit, while explicit guide edits still save normally. Native shared
+checks include precise fractional extensions and case-sensitive dictionaries.
+
+These are private lifecycle checks, not visible-favorites or peer sync evidence:
+older storage-isolation fixtures use UUID-shaped sentinel favorites, whereas the
+corrected sync protocol uses integer Dispatcharr channel IDs. Lossless explicit
+Guide favorite edits and unavailable IDs remain tracked separately.

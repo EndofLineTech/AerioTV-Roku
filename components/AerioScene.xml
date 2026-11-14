@@ -36,6 +36,8 @@
   <script type="text/brightscript" uri="ProfileChildRejectedNavigation.brs" />
   <script type="text/brightscript" uri="ProfileOwnSignInNavigation.brs" />
   <script type="text/brightscript" uri="ProfileSetupCredentialNavigation.brs" />
+  <script type="text/brightscript" uri="ProfileRefreshNavigation.brs" />
+  <script type="text/brightscript" uri="DvrSettlementNavigation.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileSwitch.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileOwnSignIn.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileAddressPolicy.brs" />

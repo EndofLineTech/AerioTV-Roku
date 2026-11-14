@@ -51,6 +51,24 @@ sub main()
     end function})
     assertEqual(m.recordTask, invalid, "stale account cannot submit a recording")
     assertEqual(m.recordDialog.close, false, "stale account remains safely cancellable")
+    m.recordSettlementTask = {id: "already-submitted"}
+    m.recordIntent = {account: m.accountIdentity}
+    m.recordDialog.unobserveField = sub(field as string)
+    end sub
+    onRecordChoice({getRoSGNode: function() as object
+        return {id: "dialog"}
+    end function, getData: function() as integer
+        return 0
+    end function})
+    assertEqual(m.recordTask, invalid, "pending outgoing settlement refuses a duplicate record confirmation")
+    m.recordIntent = invalid
+    m.testRequest.scope = "test-scope"
+    onRecordRequested({getRoSGNode: function() as object
+        return {id: "guide"}
+    end function, getData: function() as object
+        return m.testRequest
+    end function})
+    assertEqual(m.recordIntent, invalid, "guide cannot reopen scheduling while a submitted operation is still settling")
     print "ALL TESTS PASSED"
 end sub
 

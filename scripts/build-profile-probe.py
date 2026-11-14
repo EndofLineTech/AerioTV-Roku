@@ -206,8 +206,10 @@ def build(output, base_url, registry=False, model_store=False):
             package.writestr('source/SettingsChildProbeChecks.brs', settings_child_checks)
             package.write(ROOT / 'components/UserProfileNavigation.brs', 'source/UserProfileNavigation.brs')
             package.write(ROOT / 'components/UserProfilePreferenceNavigation.brs', 'source/UserProfilePreferenceNavigation.brs')
-            for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileChildActivation', 'UserProfileChildOwnSignIn', 'UserProfileChildRejectedPrompt', 'RequestGateOwnCredential', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval', 'UserProfileScope', 'UserProfileScopeStore', 'UserProfilePreferenceNavigation', 'UserProfileAddressPolicy', 'UserProfileAddressStore', 'UserProfileDefaultReplacement', 'UserProfileLiveDefault']:
+            for name in ['UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileChildActivation', 'UserProfileChildOwnSignIn', 'UserProfileChildRejectedPrompt', 'RequestGateOwnCredential', 'LineupHistoryReconciliation', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval', 'UserProfileScope', 'UserProfileScopeStore', 'UserProfilePreferenceNavigation', 'UserProfileAddressPolicy', 'UserProfileAddressStore', 'UserProfileDefaultReplacement', 'UserProfileLiveDefault']:
                 source = (ROOT / f'tests/{name}.test.brs').read_text().split('sub check(', 1)[0]
+                if name == 'LineupHistoryReconciliation':
+                    source = source.replace(':12345}', ':12345.67890123456}')
                 source = source.replace('sub main()', f'sub run{name}Checks()').replace('check(', 'profileAssert(')
                 source = source.replace('m.profilePreferenceDecoder = function(raw as string) as dynamic\n        return ParseJson(raw)\n    end function', 'm.profilePreferenceDecoder = invalid')
                 if name == 'UserProfileForget':
@@ -240,6 +242,7 @@ def build(output, base_url, registry=False, model_store=False):
             package.writestr('source/UserProfileChildOwnSignInProbeChecks.brs', 'sub runUserProfileChildOwnSignInChecks()\nend sub\n')
             package.writestr('source/UserProfileChildRejectedPromptProbeChecks.brs', 'sub runUserProfileChildRejectedPromptChecks()\nend sub\n')
             package.writestr('source/RequestGateOwnCredentialProbeChecks.brs', 'sub runRequestGateOwnCredentialChecks()\nend sub\n')
+            package.writestr('source/LineupHistoryReconciliationProbeChecks.brs', 'sub runLineupHistoryReconciliationChecks()\nend sub\n')
             package.writestr('source/UserProfileAddressPolicyProbeChecks.brs', 'sub runUserProfileAddressPolicyChecks()\nend sub\n')
             package.writestr('source/UserProfileAddressStoreProbeChecks.brs', 'sub runUserProfileAddressStoreChecks()\nend sub\n')
             package.writestr('source/UserProfileDefaultReplacementProbeChecks.brs', 'sub runUserProfileDefaultReplacementChecks()\nend sub\n')

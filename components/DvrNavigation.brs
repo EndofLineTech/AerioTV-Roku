@@ -3,7 +3,7 @@
 sub onRecordRequested(event as object)
     if not userEventCurrent(event.getData()) then return
     if not m.guide.isSameNode(event.getRoSGNode()) or m.page <> "guide" then return
-    if m.capabilities.dvr <> "manage" or m.recordTask <> invalid or m.recordDialog <> invalid then return
+    if m.capabilities.dvr <> "manage" or m.recordTask <> invalid or m.recordSettlementTask <> invalid or m.recordDialog <> invalid then return
     if m.guide.config = invalid then return
     request = event.getData()
     if type(request) <> "roAssociativeArray" then return
@@ -18,7 +18,7 @@ end sub
 
 sub requestPlayerRecording()
     if m.page <> "player" or m.playingChannel = invalid or m.capabilities.dvr <> "manage" then return
-    if m.recordTask <> invalid or m.recordDialog <> invalid or m.guide.config = invalid then return
+    if m.recordTask <> invalid or m.recordSettlementTask <> invalid or m.recordDialog <> invalid or m.guide.config = invalid then return
     channel = m.guide.callFunc("channelByUuid", m.playingChannel.uuid)
     if channel = invalid then return
     info = m.guide.callFunc("cachedPlaybackInfo", channel, uiNow())
@@ -140,7 +140,7 @@ sub onRecordChoice(event as object)
         openRecordPicker(title, "Applies only to this recording.", options)
     else if choice.action = "confirm"
         closeRecordDialog()
-        if m.recordTask <> invalid then return
+        if m.recordTask <> invalid or m.recordSettlementTask <> invalid then return
         m.recordTask = CreateObject("roSGNode", "DvrRecordingTask")
         tagTaskForCurrentUser(m.recordTask)
         m.recordTask.baseUrl = m.baseUrl

@@ -202,8 +202,9 @@ end sub
 
 ' Nonblocking cancellation check for an already admitted Task transfer. The
 ' lease's own slow probe is exempt from its key hold, never from a server park.
+' Submitted recording settlement is receive-only; it admits no new request.
 function requestGatePermitActive(permit as object) as boolean
-    if not requestGateTaskSessionCurrent() then return false
+    if not requestGateTaskSessionCurrent() and not requestGateSubmittedScheduleWaiting(permit) then return false
     if not permit.allowed then return false
     if permit.ticket = invalid then return not requestGateMandatory()
     broker = requestGateBroker()
@@ -218,4 +219,20 @@ function requestGatePermitActive(permit as object) as boolean
     hash = permit.ticket.hash
     if hash <> "" and state.keys.doesExist(hash) and not permit.probe then return false
     return true
+end function
+
+' Receive-only settlement of one POST already started under a valid lease.
+' Acquire remains session-bound, so this cannot send or retry any old request.
+function requestGateSubmittedScheduleWaiting(permit as object) as boolean
+    if permit.submittedSchedule <> true or permit.allowed <> true or permit.ticket = invalid then return false
+    if m.top = invalid then return false
+    if type(m.top) = "roAssociativeArray"
+        if m.top.subtype = invalid then return false
+    end if
+    if m.top.subtype() <> "DvrRecordingTask" then return false
+    if m.top.action <> "schedule" or m.top.scheduleSubmitted <> true or m.top.cancelRequested = true then return false
+    if requestGateServer(permit.ticket.url) <> requestGateServer(m.top.baseUrl) then return false
+    ' Broker tickets deliberately redact non-probe paths. The exact submitted
+    ' URL stays only on this Task's already-started transfer, never the mailbox.
+    return permit.submittedScheduleUrl = normalizeBaseUrl(m.top.baseUrl) + "/api/channels/recordings/"
 end function

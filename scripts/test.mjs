@@ -62,6 +62,9 @@ suites.unshift('UserProfileOwnSignIn');
 suites.unshift('UserProfileChildOwnSignIn');
 suites.unshift('ProfileOwnSignInNavigation');
 suites.unshift('ProfileSetupCredentialNavigation');
+suites.unshift('ProfileRefreshNavigation', 'DvrSettlementNavigation', 'SubmittedRecordingPermit');
+suites.unshift('LineupHistoryReconciliation');
+suites.unshift('GuideRefreshPreferences');
 suites.unshift('ProfileChildUnavailableNavigation');
 suites.unshift('ProfileChildRejectedNavigation');
 suites.unshift('UserProfileAddressPolicy');
@@ -114,6 +117,9 @@ for (const suite of suites) {
     'source/HttpPolicy.brs',
     'source/RequestGateModel.brs', ...(suite === 'ProfileSetupCredentialNavigation' ? [] : ['source/RequestGateClient.brs']), 'source/RequestGateRenderer.brs',
     ...(['ProfileSetupCredentialNavigation', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['components/ProfileSetupCredentialNavigation.brs'] : []),
+    ...(['ProfileRefreshNavigation', 'PlayerLifecycle'].includes(suite) ? ['components/ProfileRefreshNavigation.brs'] : []),
+    ...(suite === 'GuideRefreshPreferences' ? ['components/GuideSettings.brs'] : []),
+    ...(['DvrSettlementNavigation', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['components/DvrSettlementNavigation.brs'] : []),
     ...(suite === 'ConnectionNavigation' ? ['components/RequestGateNavigation.brs'] : []),
     ...(suite === 'RequestGateNavigation' ? ['components/RequestGateNavigation.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'RequestGateTask' ? ['components/RequestGateTask.brs'] : []),
@@ -154,7 +160,7 @@ for (const suite of suites) {
     ...(suite === 'ProfileManagementNavigation' ? ['components/ProfileManagementNavigation.brs'] : []),
     ...(suite === 'HttpTransport' ? ['source/HttpTransport.brs'] : []),
     ...(suite === 'StrictJson' ? ['source/StrictJson.brs'] : []),
-    ...(['PreferenceModel', 'PlayerLifecycle', 'ConnectionNavigation', 'UserProfileNavigation', 'ProfileSetupFence', 'PhoneSetupNavigation', 'PhoneSetupAutoAdd'].includes(suite) ? ['source/StrictJson.brs'] : []),
+    ...(['PreferenceModel', 'LineupHistoryReconciliation', 'PlayerLifecycle', 'ConnectionNavigation', 'UserProfileNavigation', 'ProfileSetupFence', 'PhoneSetupNavigation', 'PhoneSetupAutoAdd'].includes(suite) ? ['source/StrictJson.brs'] : []),
     ...(suite === 'UserProfilePin' ? ['source/UserProfilePin.brs'] : []),
     ...(['UserProfileModel', 'UserProfileStore', 'UserProfileLifecycle', 'UserProfileForget', 'UserProfileNavigation', 'UserProfileRemoval'].includes(suite) ? ['source/UserProfileModel.brs'] : []),
     ...(suite === 'UserProfileAvatar' ? ['source/UserProfileAvatar.brs'] : []),

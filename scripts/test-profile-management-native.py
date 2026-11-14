@@ -32,7 +32,7 @@ def startup_probe_timer(source):
     return source.replace('sub init()', 'sub init()\n' + timer, 1)
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed'):
     if manual_refresh:
         assignment_refresh = True
     if child_rejected:
@@ -46,6 +46,14 @@ def build(output, normal, section, base, directions=False, switching=False, swit
     with zipfile.ZipFile(normal) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
+            if manual_recording and name == 'components/DvrSettlementNavigation.brs':
+                target = b'    showNotice(message)\n'
+                assert body.count(target) == 1
+                body = body.replace(target, b'    m.manualRecordingSettled = message = "Server recording scheduled. Open DVR to confirm its status."\n    print "[profile-management] "; FormatJson({kind: "record-settled", confirmed: m.manualRecordingSettled, operation_only: true, retired: currentUserSessionId() <> m.manualOldSession})\n' + target, 1)
+            if manual_recording and name == 'components/DvrNavigation.brs':
+                target = b'    result = event.getData()\n'
+                assert body.count(target) == 1
+                body = body.replace(target, target + b'    m.manualRecordingSettled = result.ok = true\n    print "[profile-management] "; FormatJson({kind: "record-settled", confirmed: m.manualRecordingSettled, operation_only: false, retired: currentUserSessionId() <> m.manualOldSession})\n', 1)
             if name == 'manifest':
                 body = body.replace(b'title=AerioTV\n', b'title=Aerio Profile Management Probe\n')
                 if directions:
@@ -465,7 +473,10 @@ end sub
                     source = source.split('sub onManagementProbeTick()', 1)[0] + fixture
                 if assignment_refresh:
                     fixture_name = 'ProfileManualRefreshFixture.brs' if manual_refresh else 'ProfileAssignmentRefreshFixture.brs'
-                    source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native' / fixture_name).read_text()
+                    fixture = (ROOT / 'tests/native' / fixture_name).read_text().replace('MANUAL_RECORDING', 'true' if manual_recording else 'false')
+                    for variant in ['identity', 'unchanged', 'transient']:
+                        fixture = fixture.replace('MANUAL_' + variant.upper(), 'true' if manual_mode == variant else 'false')
+                    source = source.split('sub onManagementProbeTick()', 1)[0] + fixture
                 if child_escape:
                     source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native/ProfileChildEscapeFixture.brs').read_text()
                 if child_launch:
@@ -540,12 +551,20 @@ def main():
     parser.add_argument('--default-filter', action='store_true', help='Give default A a two-Channel-Profile choice; nondefault B must never borrow either filter')
     parser.add_argument('--assignment-refresh', action='store_true', help='Qualify active-B assignment and VOD permission revocation through the real CapabilityTask callback and fresh own-session reload')
     parser.add_argument('--manual-refresh', action='store_true', help='Reproduce active-B assignment/VOD authority changes through manual lineup refresh instead of the periodic callback')
+    parser.add_argument('--manual-recording', action='store_true', help='Private manual-refresh variant: settle one real delayed synthetic recording POST across authority retirement')
+    parser.add_argument('--manual-mode', choices=['changed', 'unchanged', 'identity', 'transient'], default='changed', help='Private manual refresh authority/control outcome')
     parser.add_argument('--child-escape', action='store_true', help='Qualify held Child adult admission, target PIN cancellation, rejected key, delayed Back and own target activation')
     parser.add_argument('--child-launch', action='store_true', help='Cold protected held Child: own launch PIN, unavailable surface, then separate adult-purpose admission with zero provider requests')
     parser.add_argument('--child-available', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private readiness seam: qualify own Child auth/roster/lineup without enabling shipping Child activation')
     parser.add_argument('--child-retry', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private Child transient failure, own Retry and Back during delayed authentication, followed by own retry')
     parser.add_argument('--child-rejected', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private actual Child rejection: exact cut prompt, permitted own form/dismissal, no stale replay, adult management and real Back exit')
     args = parser.parse_args()
+    if args.manual_recording and not args.manual_refresh:
+        parser.error('--manual-recording requires --manual-refresh')
+    if args.manual_recording and args.manual_mode not in ['changed', 'unchanged']:
+        parser.error('--manual-recording supports changed or unchanged authority only')
+    if args.manual_mode != 'changed' and not args.manual_refresh:
+        parser.error('--manual-mode requires --manual-refresh')
     if args.manual_refresh:
         args.assignment_refresh = True
     if args.child_rejected and (args.child_available or args.child_retry or args.switch or args.child_launch or args.child_escape or args.cold_restore or args.child_settings or args.directions or args.assignment_refresh or args.default_filter):
@@ -598,6 +617,26 @@ def main():
         def log_message(self, *_args):
             pass
 
+        def do_POST(self):
+            body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', '0'))))
+            user = 8 if self.headers.get('X-API-Key') == 'synthetic-b' else 7
+            hits.append({'user': user, 'path': self.path, 'method': 'POST', 'rejected': False, 'delayed': True})
+            if not args.manual_recording or self.path != '/api/channels/recordings/':
+                self.send_error(404)
+                return
+            time.sleep(12)
+            value = dict(body, id=900, status='scheduled')
+            data = json.dumps(value).encode()
+            self.send_response(201)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            try:
+                self.wfile.write(data)
+                fixture_state['recording_replied'] = True
+            except (BrokenPipeError, ConnectionResetError):
+                fixture_state['recording_replied'] = False
+
         def do_GET(self):
             key = self.headers.get('X-API-Key', '')
             user = 8 if key in ['synthetic-b', 'delayed-b'] else 7
@@ -609,6 +648,8 @@ def main():
             if key in ['delayed-b', 'delayed-a'] and self.path == '/api/accounts/users/me/':
                 time.sleep(4)
             failure = False
+            if args.manual_refresh and args.manual_mode == 'transient' and fixture_state['changed'] and self.path == '/api/accounts/users/me/':
+                failure = True
             if args.child_retry and self.path == '/api/accounts/users/me/':
                 fixture_state['child_auth_attempts'] = fixture_state.get('child_auth_attempts', 0) + 1
                 attempt = fixture_state['child_auth_attempts']
@@ -622,8 +663,12 @@ def main():
                 if failure:
                     value = {'detail': 'Synthetic server unavailable'}
                 if args.assignment_refresh and user == 8:
-                    value['channel_profiles'] = [2 if fixture_state['changed'] else 1]
-                    value['custom_properties'] = {'vod_movies_enabled': not fixture_state['changed']}
+                    changed = fixture_state['changed'] and args.manual_mode != 'unchanged'
+                    value['channel_profiles'] = [2 if changed else 1]
+                    value['custom_properties'] = {'vod_movies_enabled': not changed}
+                    if args.manual_refresh and args.manual_mode == 'identity' and changed:
+                        value['id'] = 80
+                        value['username'] = 'DifferentUser'
             if self.path == '/api/accounts/users/me/app-data/':
                 value = {'apps': []}
                 if args.child_available:
@@ -636,7 +681,7 @@ def main():
                 value = [{'id': 99, 'name': 'Synthetic default first', 'channels': [7]}, {'id': 100, 'name': 'Synthetic default second', 'channels': [7]}]
             if self.path.split('?', 1)[0] in ['/api/channels/channels/', '/api/channels/channels/summary/']:
                 value = [{'id': user, 'uuid': f'00000000-0000-4000-8000-{user:012d}', 'name': 'Synthetic ' + str(user), 'channel_number': user}]
-                if args.assignment_refresh and user == 8 and fixture_state['changed']:
+                if args.assignment_refresh and user == 8 and fixture_state['changed'] and args.manual_mode != 'unchanged':
                     value = [{'id': 80, 'uuid': '00000000-0000-4000-8000-000000000080', 'name': 'Synthetic reassigned', 'channel_number': 80}]
             if child_rejected:
                 value = {'detail': 'Invalid API key'}
@@ -655,7 +700,7 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -729,6 +774,12 @@ def main():
         if args.assignment_refresh:
             report['requests'] = hits
             report['passed'] = result.returncode == 0 and len(rows) == 2 and rows[0].get('own') and rows[1].get('passed') and bool(hits) and all(hit['user'] == 8 for hit in hits)
+            if args.manual_recording:
+                posts = [hit for hit in hits if hit.get('method') == 'POST']
+                report['recording_replied'] = fixture_state.get('recording_replied')
+                changed = args.manual_mode == 'changed'
+                settled = [row for row in rows if row.get('kind') == 'record-settled']
+                report['passed'] = result.returncode == 0 and rows[-1].get('passed') and len(settled) == 1 and settled[0].get('confirmed') and settled[0].get('operation_only') is changed and settled[0].get('retired') is changed and len(posts) == 1 and fixture_state.get('recording_replied') is True and all(hit['user'] == 8 for hit in hits)
         if args.child_escape:
             rejected = [hit for hit in hits if hit['rejected']]
             delayed = [hit for hit in hits if hit['delayed']]
@@ -793,7 +844,9 @@ def main():
             if args.assignment_refresh:
                 name = 'profile-assignment-refresh-native.json'
                 if args.manual_refresh:
-                    name = 'profile-manual-refresh-native.json'
+                    name = f'profile-manual-refresh-{args.manual_mode}-native.json'
+                    if args.manual_recording:
+                        name = f'profile-manual-recording-refresh-{args.manual_mode}-native.json'
             if args.child_escape:
                 name = 'profile-child-escape-native.json'
             if args.child_launch:

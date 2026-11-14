@@ -468,3 +468,69 @@ function previousWatched(preferences as object, requestedUuid as string) as stri
     if preferences.lastWatched <> requestedUuid and preferences.lastWatched <> "" then return preferences.lastWatched
     return preferences.previous
 end function
+
+' Refresh may prune known history, not normalize unrelated raw preference data.
+' A no-op keeps the exact caller object; changed fields copy typed extensions.
+function lineupHistoryReconciliationPlan(preferences as object, channels as object) as object
+    denied = {ok: false, changed: false, preferences: preferences}
+    allowed = {}
+    for each channel in channels
+        allowed[channel.uuid] = true
+    end for
+    result = preferences
+    changed = false
+    for each field in ["recent", "reminders", "aacChannels", "lastWatched", "previous"]
+        matches = 0
+        value = invalid
+        for each key in preferences.keys()
+            if lcase(key) = lcase(field)
+                matches++
+                value = preferences[key]
+            end if
+        end for
+        if matches > 1 then return denied
+        replace = false
+        retained = value
+        if field = "lastWatched" or field = "previous"
+            if GetInterface(value, "ifString") <> invalid
+                if value <> "" and not allowed.doesExist(value)
+                    retained = ""
+                    replace = true
+                end if
+            end if
+        else if type(value) = "roArray"
+            retained = []
+            for each item in value
+                id = ""
+                if field = "reminders"
+                    id = lineupReminderChannel(item)
+                else if GetInterface(item, "ifString") <> invalid
+                    id = item
+                end if
+                ' Unknown/future entries remain untouched rather than being
+                ' discarded as a side effect of current runtime normalization.
+                if id = "" or allowed.doesExist(id) then retained.push(item)
+            end for
+            replace = retained.count() <> value.count()
+        end if
+        if replace
+            result = setCanonicalPreference(result, field, copyPreferenceValue(retained))
+            changed = true
+        end if
+    end for
+    return {ok: true, changed: changed, preferences: result}
+end function
+
+function lineupReminderChannel(entry as dynamic) as string
+    if type(entry) <> "roAssociativeArray" then return ""
+    id = ""
+    count = 0
+    for each field in entry.keys()
+        if lcase(field) = "channeluuid"
+            count++
+            if GetInterface(entry[field], "ifString") <> invalid then id = entry[field]
+        end if
+    end for
+    if count <> 1 then return ""
+    return id
+end function

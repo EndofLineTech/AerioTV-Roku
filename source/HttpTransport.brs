@@ -69,6 +69,18 @@ function httpTransferPermitted(url as string, body as dynamic, bearer as string,
     end if
     clock = CreateObject("roTimespan")
     clock.mark()
+    ' requestJson's body-bearing default method is an implicit POST, too.
+    if started and payload.hasBody and (method = "POST" or method = "GET") and permit.ticket <> invalid
+        if type(m.top) = "roSGNode"
+            if m.top.subtype() = "DvrRecordingTask"
+                if m.top.action = "schedule" and url = normalizeBaseUrl(m.top.baseUrl) + "/api/channels/recordings/"
+                    m.top.scheduleSubmitted = true
+                    permit.submittedSchedule = true
+                    permit.submittedScheduleUrl = url
+                end if
+            end if
+        end if
+    end if
     if not started then result.error = "network"
     while started and clock.totalMilliseconds() < timeoutMs
         if not requestGatePermitActive(permit)

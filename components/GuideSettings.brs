@@ -62,7 +62,7 @@ sub onNavigatorClosed()
         m.top.setFocus(true)
     end if
 end sub
-sub rebuildGuideGroups()
+sub rebuildGuideGroups(persist = true as boolean)
     old = m.groups[m.groupIndex].id
     m.groups = organizedGroups(m.serverGroups, m.collections, m.settings, false, m.channels)
     m.groupIndex = 0
@@ -70,7 +70,7 @@ sub rebuildGuideGroups()
         if m.groups[i].id = old then m.groupIndex = i
     end for
     filterLineup()
-    savePreferences()
+    if persist then savePreferences()
     drawGuide()
     scheduleLoad()
 end sub
@@ -127,7 +127,7 @@ sub applyRefreshedLineup(data as object)
     m.detailCache = {}
     m.detailOrder = []
     loadMappings(true)
-    rebuildGuideGroups()
+    rebuildGuideGroups(false)
     if m.top.active then onActive()
     if m.top.playbackChannel <> invalid then onPlaybackChannel()
 end sub

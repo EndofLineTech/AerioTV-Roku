@@ -487,6 +487,7 @@ sub resetConnectionRuntime()
 end sub
 
 sub requireConnectionRelogin(message as string)
+    preserveSubmittedRecording()
     previousUnlock = m.profileUnlockGrant
     rememberHeldRequestGateBinding()
     heldBinding = m.requestGateBinding

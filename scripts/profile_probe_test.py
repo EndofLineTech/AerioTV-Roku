@@ -26,6 +26,7 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileChildRecheckFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileDefaultSetupRecoveryFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileManualRefreshFixture')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'LineupHistoryReconciliationProbeChecks')], check=True)
 
     def test_address_handler_probe_is_private_and_cannot_ship(self):
         spec = importlib.util.spec_from_file_location('address_probe', Path(__file__).with_name('test-profile-address-native.py'))
@@ -216,6 +217,8 @@ class ProfileProbeTest(unittest.TestCase):
                 package.writestr('manifest', 'title=AerioTV\n')
                 package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub')
                 package.writestr('source/MetadataCacheStore.brs', 'return "cachefs:/aeriotv-metadata-v1"')
+                for name in ['components/DvrSettlementNavigation.brs', 'components/DvrNavigation.brs', 'components/DvrRecordingTask.brs', 'source/HttpTransport.brs']:
+                    package.writestr(name, (root / name).read_text())
             output = Path(tmp) / 'probe.zip'
             probe.build(output, normal, 'SyntheticManagementSection', 'http://127.0.0.1:1234')
             with zipfile.ZipFile(output) as package:
@@ -253,6 +256,15 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertIn('refreshChannelLineup()', source)
                 self.assertIn('m.manualOldSession', source)
                 self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
+                self.assertNotIn('MANUAL_', source)
+            for mode in ['changed', 'unchanged', 'identity', 'transient']:
+                probe.build(output, normal, 'SyntheticManualVariantSection', 'http://127.0.0.1:1234', manual_refresh=True, manual_mode=mode, manual_recording=mode in ['changed', 'unchanged'])
+                with zipfile.ZipFile(output) as package:
+                    source = package.read('components/AerioScene.brs').decode()
+                    self.assertNotIn('MANUAL_', source)
+                    self.assertNotIn('"AerioTV"', source)
+                    if mode in ['changed', 'unchanged']:
+                        self.assertIn('m.manualRecordingSettled', package.read('components/DvrSettlementNavigation.brs').decode())
             probe.build(output, normal, 'SyntheticChildEscapeSection', 'http://127.0.0.1:1234', child_escape=True)
             with zipfile.ZipFile(output) as package:
                 source = package.read('components/AerioScene.brs').decode()
