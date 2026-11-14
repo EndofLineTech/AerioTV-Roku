@@ -57,7 +57,9 @@ suites.unshift('SettingsChildModel');
 suites.unshift('SettingsChildNavigation');
 suites.unshift('ProfileSetupFence');
 suites.unshift('UserProfileOwnSignIn');
+suites.unshift('UserProfileChildOwnSignIn');
 suites.unshift('ProfileOwnSignInNavigation');
+suites.unshift('ProfileChildUnavailableNavigation');
 suites.unshift('UserProfileAddressPolicy');
 suites.unshift('UserProfileAddressStore');
 suites.unshift('UserProfileDefaultReplacement');
@@ -127,16 +129,17 @@ for (const suite of suites) {
     ...(suite === 'UserProfileRuntime' ? ['source/UserProfileRuntime.brs'] : []),
     ...(['UserProfileCredential', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/UserProfileCredential.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs'] : []),
     ...(suite === 'UserProfileCredential' ? ['source/ConnectionStoreModel.brs'] : []),
-    ...(['UserProfileManagementPolicy', 'ProfileAdultPinNavigation', 'ProfileManagementNavigation', 'UserProfileSwitch', 'UserProfileOwnSignIn'].includes(suite) ? ['source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
-    ...(suite === 'UserProfileOwnSignIn' ? ['source/UserProfileOwnSignIn.brs', 'source/UserProfileAddressPolicy.brs', 'source/StrictJson.brs'] : []),
+    ...(['UserProfileManagementPolicy', 'ProfileAdultPinNavigation', 'ProfileManagementNavigation', 'UserProfileSwitch', 'UserProfileOwnSignIn', 'UserProfileChildOwnSignIn'].includes(suite) ? ['source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(['UserProfileOwnSignIn', 'UserProfileChildOwnSignIn'].includes(suite) ? ['source/UserProfileOwnSignIn.brs', 'source/UserProfileAddressPolicy.brs', 'source/StrictJson.brs'] : []),
     ...(suite === 'UserProfileAddressPolicy' ? ['source/UserProfileAddressPolicy.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'UserProfileAddressStore' ? ['source/UserProfileAddressStore.brs', 'source/UserProfileAddressPolicy.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'UserProfileDefaultReplacement' ? ['source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'UserProfileLiveDefault' ? ['source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs', 'source/UserProfileAddressPolicy.brs', 'source/UserProfileOwnSignIn.brs'] : []),
     ...(suite === 'UserProfileNavigation' ? ['source/UserProfileScope.brs'] : []),
     ...(suite === 'ProfileOwnSignInNavigation' ? ['components/ProfileOwnSignInNavigation.brs', 'components/SettingsNavigation.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/UserProfileScope.brs', 'source/UserProfileSwitch.brs', 'source/UserProfileOwnSignIn.brs', 'source/UserProfileAddressPolicy.brs', 'source/StrictJson.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(suite === 'ProfileChildUnavailableNavigation' ? ['components/ProfileChildUnavailableNavigation.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/UserProfileCredential.brs', 'source/UserProfileChildAccess.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'UserProfileSwitch' ? ['source/UserProfileSwitch.brs', 'source/UserProfileAddressPolicy.brs', 'source/UserProfileScope.brs', 'source/StrictJson.brs'] : []),
-    ...(suite === 'UserProfileChildAccess' ? ['source/UserProfileChildAccess.brs', 'source/UserProfileStore.brs'] : []),
+    ...(suite === 'UserProfileChildAccess' ? ['source/UserProfileChildAccess.brs', 'source/UserProfileStore.brs', 'source/UserProfileModel.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'UserProfileChildActivation' ? ['source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'ProfileSwitchNavigation' ? ['components/ProfileSwitchNavigation.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'SettingsChildModel' ? ['source/SettingsModel.brs'] : []),
@@ -175,6 +178,7 @@ for (const suite of suites) {
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileAdultPinNavigation.brs', 'components/ProfileManagementNavigation.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileSwitchNavigation.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileChildUnavailableNavigation.brs'] : []),
+    ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/UserProfileChildAccess.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileOwnSignInNavigation.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/PhoneSetupNavigation.brs'] : []),
     ...(suite === 'ConnectionNavigation' ? ['components/ConnectionNavigation.brs'] : []),

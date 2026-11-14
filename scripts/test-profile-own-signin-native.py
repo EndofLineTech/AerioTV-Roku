@@ -24,7 +24,7 @@ def module(name):
     return loaded
 
 
-def build(output, normal, section, base, form=False, default_form=False, held=False, active_form=False, active_recheck=False, recheck_cancel=False, identity_change=False):
+def build(output, normal, section, base, form=False, default_form=False, held=False, active_form=False, active_recheck=False, recheck_cancel=False, identity_change=False, child_form=None, same_key=False):
     if active_recheck:
         active_form = True
     if held:
@@ -34,16 +34,28 @@ def build(output, normal, section, base, form=False, default_form=False, held=Fa
     if default_form:
         form = True
     seeded = output.with_suffix('.seed.zip')
-    module('management').build(seeded, normal, section, base, cold_restore='remembered' if active_form else None)
+    child_mode = None
+    if child_form:
+        child_mode = 'default' if child_form.startswith('default') else 'own'
+        if child_form.endswith('-pin'):
+            child_mode += '-pin'
+    module('management').build(seeded, normal, section, base, cold_restore='remembered' if active_form else None, child_available=child_mode)
     fixture_name = 'ProfileDefaultOwnSignInFormFixture.brs' if default_form else ('ProfileOwnSignInFormFixture.brs' if form else 'ProfileOwnSignInFixture.brs')
     if active_form:
         fixture_name = 'ProfileActiveOwnSignInFixture.brs'
     if active_recheck:
         fixture_name = 'ProfileOwnRecheckFixture.brs'
+    if child_form:
+        fixture_name = 'ProfileChildOwnSignInFormFixture.brs'
     fixture = (ROOT / 'tests/native' / fixture_name).read_text()
+    if same_key:
+        fixture = fixture.replace('synthetic-new-own-key', 'synthetic-b')
     fixture = fixture.replace('OWN_PROBE_HELD', 'true' if held else 'false')
     fixture = fixture.replace('OWN_RECHECK_CANCEL', 'true' if recheck_cancel else 'false')
     fixture = fixture.replace('OWN_ACTIVE_CONNECT', 'true' if identity_change else 'false')
+    fixture = fixture.replace('OWN_CHILD_DEFAULT', 'true' if child_form and child_form.startswith('default') else 'false')
+    fixture = fixture.replace('OWN_CHILD_PIN', 'true' if child_form and child_form.endswith('-pin') else 'false')
+    fixture = fixture.replace('OWN_CHILD_HELD', 'true' if child_form == 'held-keyless' else 'false')
     if form:
         fixture = fixture.replace('OWN_PROBE_PIN_HASH', hashlib.sha256(bytes.fromhex('bb' * 16) + b'1234').hexdigest())
     with zipfile.ZipFile(seeded) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
@@ -52,6 +64,14 @@ def build(output, normal, section, base, form=False, default_form=False, held=Fa
             if name == 'components/AerioScene.brs':
                 source = body.decode()
                 assert source.count('sub onManagementProbeTick()') == 1
+                if child_form:
+                    retire = '    m.registry.delete("connKey_slot-a")\n' if child_form.startswith('default') else '    m.registry.delete(userProfileKeyName("slot-a", "00000000-0000-4000-8000-000000000002"))\n'
+                    if child_form == 'held-keyless':
+                        retire += '''    childStore = loadUserProfileStore(m.registry, "slot-a")
+    childStore.profiles[1] = setCanonicalPreference(childStore.profiles[1], "addressHeld", true)
+    m.registry.write(userProfileStoreKey("slot-a"), FormatJson(childStore))
+'''
+                    source = source.replace('    m.registry.flush()', retire + '    m.registry.flush()', 1)
                 body = (source.split('sub onManagementProbeTick()', 1)[0] + fixture).encode()
             package.writestr(name, body)
         package.writestr('profile-own-signin-probe.json', '{"synthetic":true}')
@@ -67,7 +87,16 @@ def main():
     parser.add_argument('--active-recheck', action='store_true', help='Real one-minute own rejected-key probe behind closed content gates, then a fresh own-session reload')
     parser.add_argument('--recheck-cancel', action='store_true', help='Open the own native sign-in form while its scheduled real /me probe is in flight; reject late restoration')
     parser.add_argument('--identity-change', action='store_true', help='Return a 200 foreign-username /me during a PIN-admitted own reconnect, then qualify the same own recovery form')
+    parser.add_argument('--child-form', choices=['own', 'own-pin', 'default', 'default-pin', 'held-keyless'], help='Private keyless Child own login, actual credential failures, delayed Back and fresh own-session activation')
+    parser.add_argument('--same-key', action='store_true', help='Active own-form variant: password recovery returns the same previously rejected key hash')
     args = parser.parse_args()
+    if args.same_key and (not args.active_form or args.active_recheck or args.identity_change or args.child_form or args.default_form or args.held):
+        parser.error('--same-key requires a separate --active-form case')
+    if args.child_form:
+        if args.default_form or args.held or args.active_form or args.active_recheck or args.identity_change:
+            parser.error('--child-form is a separate case')
+        args.form = True
+        args.default_form = args.child_form.startswith('default')
     if args.identity_change:
         if args.default_form or args.held or args.active_recheck:
             parser.error('--identity-change is separate from default/held/recheck')
@@ -122,13 +151,16 @@ def main():
             elif scenario == 'rejected':
                 self.reply(401, {'detail': 'Synthetic refused login'})
             else:
+                if args.same_key and scenario == 'correct':
+                    fixture_state['revoke_old'] = False
+                    fixture_state['same_key_adopted'] = True
                 self.reply(200, {'access': 'fixture-' + scenario})
 
         def do_GET(self):
             bearer = self.headers.get('Authorization', '').removeprefix('Bearer ')
             scenario = bearer.removeprefix('fixture-') if bearer.startswith('fixture-') else ''
             key = self.headers.get('X-API-Key', '')
-            hits.append({'method': 'GET', 'path': self.path, 'scenario': scenario, 'no_api_key': not key, 'default_key': key == 'synthetic-a', 'old_own_key': key == 'synthetic-b', 'new_own_key': key == 'synthetic-new-own-key', 'at': int(time.time())})
+            hits.append({'method': 'GET', 'path': self.path, 'scenario': scenario, 'no_api_key': not key, 'default_key': key == 'synthetic-a', 'old_own_key': key == 'synthetic-b', 'new_own_key': key == 'synthetic-new-own-key' or (args.same_key and key == 'synthetic-b' and fixture_state.get('same_key_adopted', False)), 'at': int(time.time())})
             value = []
             if self.path == '/api/accounts/users/me/':
                 if args.active_form and not scenario and ((key == 'synthetic-b' and fixture_state['revoke_old']) or (key == 'synthetic-new-own-key' and fixture_state['revoke_new'])):
@@ -144,14 +176,18 @@ def main():
                     request = urllib.request.Request(f'http://{host}:8060/keypress/Select', data=b'', method='POST')
                     urllib.request.urlopen(request, timeout=10).close()
                     time.sleep(4)
-                holder = 8 if (args.default_form or args.active_form) and key == 'synthetic-b' else 7
-                if args.active_form and key == 'synthetic-new-own-key':
+                holder = 8 if (args.default_form or args.active_form or args.child_form) and key == 'synthetic-b' else 7
+                if (args.active_form or args.child_form and not args.default_form) and key == 'synthetic-new-own-key':
+                    holder = 88
+                if args.same_key and key == 'synthetic-b' and fixture_state.get('same_key_adopted', False):
                     holder = 88
                 value = {'id': (7 if args.default_form else 88) if scenario else holder, 'username': ('Synthetic7' if args.default_form else 'Synthetic8') if scenario else f'Synthetic{holder}', 'user_level': 1}
-                if args.active_form and holder == 88:
+                if (args.active_form or args.child_form) and holder == 88:
                     value['username'] = 'Synthetic8'
                 if scenario:
                     value['api_key'] = None if scenario == 'no-api' else 'synthetic-new-own-key'
+                    if args.same_key and scenario != 'no-api':
+                        value['api_key'] = 'synthetic-b'
                     if scenario == 'name':
                         value['username'] = 'DifferentUser'
                     if scenario == 'id':
@@ -161,6 +197,11 @@ def main():
                         value['api_key'] = 'synthetic-must-not-save'
             elif self.path == '/api/accounts/users/me/app-data/':
                 value = {'apps': []}
+            if args.child_form and self.path.split('?', 1)[0] == '/api/channels/profiles/':
+                value = [{'id': 99, 'name': 'Synthetic first', 'channels': [7]}, {'id': 100, 'name': 'Synthetic second', 'channels': [7]}]
+            if args.child_form and self.path.split('?', 1)[0] in ['/api/channels/channels/', '/api/channels/channels/summary/']:
+                content = 7 if args.default_form else 8
+                value = [{'id': content, 'uuid': f'00000000-0000-4000-8000-{content:012d}', 'name': 'Synthetic own channel', 'channel_number': content}]
             self.reply(200, value)
 
     server = ThreadingHTTPServer((local, 0), Fixture)
@@ -168,7 +209,7 @@ def main():
     section = 'AerioOwnSignInProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-own-signin-probe.zip'
     cleaner = ROOT / 'out/profile-own-signin-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.form, args.default_form, args.held, args.active_form, args.active_recheck, args.recheck_cancel, args.identity_change)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.form, args.default_form, args.held, args.active_form, args.active_recheck, args.recheck_cancel, args.identity_change, args.child_form, args.same_key)
     recovery.cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -184,12 +225,20 @@ def main():
                     fixture_state['revoke_old'] = True
                 if '"kind":"revoke-new-ready"' in line:
                     fixture_state['revoke_new'] = True
+                    if args.same_key:
+                        fixture_state['revoke_old'] = True
                 if '"kind":"recheck-ready"' in line:
                     fixture_state['revoke_old'] = False
                     fixture_state['recheck_boundary'] = len(hits)
+                if '"kind":"child-pin-ready"' in line:
+                    report['pre_pin_requests'] = list(hits)
+                if '"kind":"child-form-ready"' in line:
+                    report['pre_form_requests'] = list(hits)
                 if '"kind":"cancel-ready"' in line:
                     request = urllib.request.Request(f'http://{host}:8060/keypress/Back', data=b'', method='POST')
-                    urllib.request.urlopen(request, timeout=10).close()
+                    with urllib.request.urlopen(request, timeout=10) as response:
+                        report['back_sent'] = response.status == 200
+                        report['back_at'] = time.monotonic()
             stderr = process.stderr.read()
             return subprocess.CompletedProcess(command, process.wait(timeout=110), ''.join(output), stderr)
 
@@ -226,6 +275,13 @@ def main():
             report['passed'] = result.returncode == 0 and rows[-1].get('passed') and rows[-1].get('default_preserved') and paced and not posts and all(not hit.get('default_key') for hit in hits)
             if args.recheck_cancel:
                 report['passed'] = report['passed'] and fixture_state.get('probe_cancelled', False) and len(later) == 1 and rows[-1].get('own_key_absent') and rows[-1].get('protected') and rows[-1].get('retired')
+        if args.child_form:
+            cancelled = [row for row in rows if row.get('kind') == 'cancelled']
+            expected_posts = expected_cases[:-1] + ['delayed', 'correct']
+            report['passed'] = result.returncode == 0 and rows[-1].get('passed') and [row.get('scenario') for row in cases] == expected_cases and all(row.get('passed') for row in cases) and len(cancelled) == 1 and cancelled[0].get('passed') and report.get('pre_form_requests') == [] and [hit['scenario'] for hit in posts] == expected_posts and all(hit['no_api_key'] and hit['username_ok'] for hit in posts) and all(hit['no_api_key'] or hit.get('new_own_key') for hit in hits)
+            report['passed'] = report['passed'] and report.get('back_sent') is True and rows[-1].get('runtime_defaults') is True
+            if args.child_form.endswith('-pin'):
+                report['passed'] = report['passed'] and report.get('pre_pin_requests') == []
         if not report['passed']:
             raise RuntimeError('Native own-profile sign-in assertions failed')
     finally:
@@ -245,10 +301,14 @@ def main():
                 report_name = 'profile-active-own-signin-form-native.json'
                 if args.identity_change:
                     report_name = 'profile-active-identity-recovery-native.json'
+                if args.same_key:
+                    report_name = 'profile-active-same-key-recovery-native.json'
             if args.active_recheck:
                 report_name = 'profile-active-own-recheck-native.json'
                 if args.recheck_cancel:
                     report_name = 'profile-active-own-recheck-cancel-native.json'
+            if args.child_form:
+                report_name = f'profile-child-own-form-{args.child_form}-native.json'
             (ROOT / 'out' / report_name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

@@ -2608,6 +2608,10 @@ sub closeMessage(event as object)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    if m.childConnectionLoading = true
+        if press and key = "back" then failConnection("Connection cancelled.")
+        return true
+    end if
     if m.profileSwitchContext <> invalid and m.profileSwitchTask <> invalid
         if press and key = "back" then rollbackUserProfileSwitch("Switch cancelled. The previous profile was retained.")
         return true

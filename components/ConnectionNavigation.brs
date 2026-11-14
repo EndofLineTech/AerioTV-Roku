@@ -407,6 +407,8 @@ end sub
 
 sub resetConnectionRuntime()
     m.childConnectionLoading = false
+    m.profileRosterContext = invalid
+    m.profileRosterGrant = invalid
     closeUnavailableChildDialog()
     m.setupEditContext = invalid
     m.setupEditNonce = ""
@@ -461,7 +463,9 @@ sub resetConnectionRuntime()
     m.activeUserScope = invalid
     m.scopedPreferencesRequired = false
     m.global.activeusersession = ""
-    m.devicePreferences = copyJson(m.preferenceStore.device)
+    ' Strict persisted device roots may be sparse after identity migration.
+    ' Expand only the runtime view; never fill or rewrite the owner's raw root.
+    m.devicePreferences = normalizeDevicePreferences(m.preferenceStore.device)
     applyDevicePreferences()
     m.serverAccountId = ""
     m.hlsAvailable = false
@@ -487,6 +491,7 @@ sub requireConnectionRelogin(message as string)
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     removed = true
     defaultHolder = true
+    childHolder = false
     profileStore = invalid
     if entry <> invalid
         if entry.provider = "dispatcharr"
@@ -495,9 +500,10 @@ sub requireConnectionRelogin(message as string)
             removed = revoked.ok
             if revoked.recoveryRequired = true then m.userProfileRecoveryRequired = true
             defaultHolder = revoked.isDefault
-            if removed and not defaultHolder
-                m.childRejectedIdentity = entry.url + "|" + entry.id + "|" + revoked.profileId
-            end if
+            for each profile in profileStore.profiles
+                if profile.id = revoked.profileId then childHolder = profile.role = "child"
+            end for
+            if removed and childHolder then m.childRejectedIdentity = entry.url + "|" + entry.id + "|" + revoked.profileId
             if type(m.profileSessionKeys) = "roAssociativeArray" and revoked.profileId <> ""
                 m.profileSessionKeys.delete(preferenceScope(entry.url + "|" + entry.id + "|" + revoked.profileId))
             end if
@@ -528,7 +534,13 @@ sub requireConnectionRelogin(message as string)
     end if
     applySelectedConnection()
     ' This is the same rejected default holder, not a profile/slot transition.
-    if heldBinding <> invalid
+    if childHolder and removed and entry <> invalid
+        recoveredBinding = unavailableRequestGateBinding(heldBinding, entry, profileStore, CreateObject("roDeviceInfo").getRandomUUID())
+        if recoveredBinding <> invalid
+            m.requestGateBinding = recoveredBinding
+            m.global.requestgaterecovery = recoveredBinding.recoveryNonce
+        end if
+    else if heldBinding <> invalid and not childHolder
         if entry <> invalid
             if heldBinding.slot = entry.id and heldBinding.base = entry.url then m.requestGateBinding = heldBinding
         end if

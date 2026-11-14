@@ -249,6 +249,30 @@ trying to rename/promote the Child stays unapplied; protected cases send zero
 pre-PIN requests. This is successful-path qualification, not shipping Child
 activation or completion of Retry, own-sign-in, failure/Back and release gates.
 
+Private Child recovery now separates credential presence from request admission:
+a retained held key cannot look keyless, and deleting a refused non-default
+Child key cannot enable Sign In. The unavailable controller revalidates the
+exact dialog, connection, roster, current own-key presence and rejection state
+before Retry, own Sign In or adult-gated management. Default Child recovery is
+limited to the existing own user ID and username; non-default Child recovery
+may migrate a recreated matching username, retaining its local identity/role.
+Own-password forms use a credential-only lifecycle, not an authenticated scope,
+and reuse only a matching real launch-PIN grant. Cancellation restores the
+unavailable Child and leaves saved credentials/settings unchanged.
+
+Five private normal-app own-form cases qualify non-default/default Child with
+and without a PIN plus held-keyless recovery, including actual failed password,
+foreign identity, no API access, delayed Back and successful own-session reload.
+Runtime reset normalizes sparse device maps only for its runtime view, avoiding
+the missing-timeout crash after recreated-ID settings migration without filling
+the raw persisted root. Four private transient-failure/Retry cases (default and
+non-default, with and without PIN) also exercise Back during delayed own loading,
+return to the Child's unavailable surface, reject late restoration, and retry
+again without autoplay. Cancelled loading retires partial roster grants/context
+as well as its Task and session. Shipping Child activation remains disabled;
+complete rejected prompts, slow-probe continuation and public acceptance remain
+tracked separately.
+
 ## Rejected-own-key slow probes
 
 An unavailable non-default holder can retain its own rejected credential only

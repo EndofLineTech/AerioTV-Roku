@@ -1,4 +1,23 @@
 sub main()
+    childOwnFormFixture(false)
+    beforeChild = FormatJson(m.registry.values)
+    check(beginUserProfileOwnSignIn(m.fixtureTarget, true, true), "private active keyless Child opens only its admitted own form")
+    check(m.activeUserScope = invalid and m.profileGateCover.visible and m.global.profileownsigninpending, "Child own form has only a credential lifecycle behind the cover")
+    cancelUserProfileOwnSignIn()
+    check(m.fixtureChildSurfaceRestored and m.global.profilegateclosed and m.global.activeusersession = "" and FormatJson(m.registry.values) = beforeChild, "Child form Cancel returns to its unavailable surface with unchanged data and no authenticated scope")
+    childOwnFormFixture(false)
+    m.fixtureChildSignInAllowed = false
+    check(not beginUserProfileOwnSignIn(m.fixtureTarget, true, true), "rejected/held-key-present Child policy cannot be bypassed by directly opening its own form")
+    childOwnFormFixture(true)
+    m.childRejectedIdentity = "https://old.test|slot-a|" + m.fixtureTarget
+    check(beginUserProfileOwnSignIn(m.fixtureTarget, true, true), "private default Child may recover only its own active saved account")
+    m.profileOwnSignInContext.password = "synthetic-child-password"
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 2))
+    task = m.profileOwnSignInTask
+    check(task.expectedUsername = "Alice" and task.expectedUserId = "7" and task.apiKey = "", "default Child credential Task binds own username and existing ID without a saved key")
+    onProfileOwnSignInResult(ownFormEvent(task, {ok: true, verifiedBaseUrl: "https://example.test", apiKey: "synthetic-recovered-active", verifiedUser: {id: 7, username: "ALICE", user_level: 1}}))
+    check(m.fixtureActiveReconnect and m.userProfileStore.profiles[0].role = "child" and m.registry.read("connKey_slot-a") = "synthetic-recovered-active" and m.activeUserScope = invalid, "default Child recovery stores its own slot key then begins fresh own authentication without changing role or fabricating scope")
+    check(m.childRejectedIdentity = "", "successful own credentials clear only this holder's old rejected-identity marker")
     activeOwnFormFixture()
     snapshot = FormatJson(m.registry.values)
     check(showActiveUserProfileRecoveryPrompt(), "unavailable full-access holder exposes its own recovery prompt, not default setup")
@@ -148,6 +167,29 @@ sub activeOwnFormFixture()
     m.fixtureActiveReconnect = false
 end sub
 
+sub childOwnFormFixture(defaultChild as boolean)
+    activeOwnFormFixture()
+    m.page = "profile-unavailable"
+    m.profileChildAccessReady = true
+    index = 1
+    if defaultChild then index = 0
+    m.fixtureTarget = m.userProfileStore.profiles[index].id
+    m.userProfileStore.active = m.fixtureTarget
+    m.userProfileStore.profiles[index] = setCanonicalPreference(m.userProfileStore.profiles[index], "role", "child")
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.userProfileStore)
+    m.fixtureChildSignInAllowed = true
+    m.fixtureChildSurfaceRestored = false
+end sub
+
+function unavailableChildAccessContext() as dynamic
+    return {target: {id: m.fixtureTarget}, plan: {signIn: m.fixtureChildSignInAllowed}}
+end function
+
+function showUnavailableChildProfile() as boolean
+    m.fixtureChildSurfaceRestored = true
+    return true
+end function
+
 sub resetConnectionRuntime()
     retireUserProfileOwnSignIn()
     m.activeUserScope = invalid
@@ -201,6 +243,7 @@ sub ownFormFixture()
     m.profileOwnSignInTask = invalid
     m.profileSessionKeys = {}
     m.fixtureNotice = ""
+    m.profileChildAccessReady = false
     m.fixtureProbeRetired = false
     m.pinRequested = false
     m.factorySequence = 0

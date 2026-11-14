@@ -60,13 +60,16 @@ sub closeActiveUserProfileRecoveryPrompt()
     m.profileRecoveryNonce = ""
 end sub
 
-function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as boolean) as boolean
+function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as boolean, childRecovery = false as boolean) as boolean
     if m.userProfileRecoveryRequired = true then return false
+    if childRecovery and (not activeRecovery or m.profileChildAccessReady <> true) then return false
     if m.profileOwnSignInContext <> invalid or m.profileSwitchContext <> invalid then return false
     if m.profilePinDialog <> invalid or m.adultPinDialog <> invalid then return false
     if m.playingChannel <> invalid then return false
     if activeRecovery
-        if m.activeUserScope <> invalid or not userProfileGateClosed() or m.apiKey <> "" or m.page <> "setup" then return false
+        recoveryPage = "setup"
+        if childRecovery then recoveryPage = "profile-unavailable"
+        if m.activeUserScope <> invalid or not userProfileGateClosed() or m.apiKey <> "" or m.page <> recoveryPage then return false
     else
         if userProfileGateClosed() then return false
         role = currentUserSettingsRole()
@@ -88,15 +91,22 @@ function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as
         if profile.id = targetId then target = profile
     end for
     if target = invalid then return false
-    if not userProfileFullAccess(target.role) then return false
-    if activeRecovery and (target.isDefault or target.addressHeld) then return false
+    if childRecovery
+        if target.role <> "child" then return false
+        access = unavailableChildAccessContext()
+        if access = invalid then return false
+        if access.target.id <> targetId or not access.plan.signIn then return false
+    else
+        if not userProfileFullAccess(target.role) then return false
+        if activeRecovery and (target.isDefault or target.addressHeld) then return false
+    end if
     if target.isDefault and target.addressHeld then return false
     if target.isDefault
         if not userProfileDefaultOwnIdentityMatches(entry, store, {id: target.userId, username: target.username}) then return false
     end if
     retireProfileRequestBinding()
     m.profileOwnSignInNonce = CreateObject("roDeviceInfo").getRandomUUID()
-    m.profileOwnSignInContext = {nonce: m.profileOwnSignInNonce, activeRecovery: activeRecovery, connection: copyJson(entry), store: store, target: target, scope: copyJson(m.activeUserScope), page: m.page, guideActive: m.guide.active, covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, unlock: m.profileUnlockGrant, username: target.username, password: ""}
+    m.profileOwnSignInContext = {nonce: m.profileOwnSignInNonce, activeRecovery: activeRecovery, childRecovery: childRecovery, connection: copyJson(entry), store: store, target: target, scope: copyJson(m.activeUserScope), page: m.page, guideActive: m.guide.active, covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, unlock: m.profileUnlockGrant, username: target.username, password: ""}
     m.global.profileownsigninpending = true
     if activeRecovery
         ' This nonce authorizes only the credential Task. No authenticated
@@ -108,9 +118,13 @@ function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as
     end if
     m.guide.active = false
     if target.pinType <> "none"
-        if beginProfilePinGate(target, "own-signin", m.profileOwnSignInNonce) then return true
-        cancelUserProfileOwnSignIn()
-        return false
+        if childRecovery and userProfilePinGrantMatches(m.profileUnlockGrant, entry.id, target)
+            m.profileOwnSignInContext.pin = m.profileUnlockGrant
+        else
+            if beginProfilePinGate(target, "own-signin", m.profileOwnSignInNonce) then return true
+            cancelUserProfileOwnSignIn()
+            return false
+        end if
     end if
     showProfileOwnSignInForm()
     return m.profileOwnSignInDialog <> invalid
@@ -121,6 +135,7 @@ function profileOwnSignInContextCurrent() as boolean
     context = m.profileOwnSignInContext
     if type(context) <> "roAssociativeArray" then return false
     if context.nonce <> m.profileOwnSignInNonce or context.connection.id <> m.selectedConnectionId or context.page <> m.page then return false
+    if context.childRecovery = true and m.profileChildAccessReady <> true then return false
     if context.activeRecovery = true
         if m.activeUserScope <> invalid or m.apiKey <> "" or currentUserSessionId() <> context.nonce then return false
     else
@@ -293,7 +308,7 @@ sub onProfileOwnSignInResult(event as object)
         showProfileOwnSignInForm("Dispatcharr did not accept that username or password.")
         return
     end if
-    saved = commitUserProfileOwnSignIn(m.registry, context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.nonce, m.profileOwnSignInNonce)
+    saved = commitUserProfileOwnSignIn(m.registry, context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.nonce, m.profileOwnSignInNonce, context.childRecovery = true)
     if not saved.ok
         result.apiKey = ""
         if saved.recoveryRequired = true
@@ -316,6 +331,8 @@ sub onProfileOwnSignInResult(event as object)
     m.profileSessionKeys[preferenceScope(context.connection.url + "|" + context.connection.id + "|" + context.target.id)] = result.apiKey
     result.apiKey = ""
     m.userProfileStore = saved.store
+    markerSuffix = "|" + context.connection.id + "|" + context.target.id
+    if right(textValue(m.childRejectedIdentity), len(markerSuffix)) = markerSuffix then m.childRejectedIdentity = ""
     if type(saved.preferenceStore) = "roAssociativeArray" then m.preferenceStore = saved.preferenceStore
     if context.activeRecovery = true
         key = m.profileSessionKeys[preferenceScope(context.connection.url + "|" + context.connection.id + "|" + context.target.id)]
@@ -418,6 +435,7 @@ sub cancelUserProfileOwnSignIn()
             m.global.profilegateclosed = true
             m.profileGateCover.visible = true
             m.profileUnlockGrant = context.unlock
+            if context.childRecovery = true then showUnavailableChildProfile()
         end if
         return
     end if

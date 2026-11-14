@@ -27,6 +27,7 @@
   <script type="text/brightscript" uri="pkg:/source/UserProfilePinPolicy.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileRuntime.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileCredential.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileChildAccess.brs" />
   <script type="text/brightscript" uri="ProfilePinNavigation.brs" />
   <script type="text/brightscript" uri="ProfileAdultPinNavigation.brs" />
   <script type="text/brightscript" uri="ProfileManagementNavigation.brs" />

@@ -16,6 +16,9 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileOwnRecheckFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileChildAvailableFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'UserProfileChildActivationProbeChecks')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'UserProfileChildOwnSignInProbeChecks')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileChildOwnSignInFormFixture')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileChildRetryFixture')], check=True)
 
     def test_address_handler_probe_is_private_and_cannot_ship(self):
         spec = importlib.util.spec_from_file_location('address_probe', Path(__file__).with_name('test-profile-address-native.py'))
@@ -60,7 +63,7 @@ class ProfileProbeTest(unittest.TestCase):
             normal = Path(tmp) / 'normal.zip'
             with zipfile.ZipFile(normal, 'w') as package:
                 package.writestr('manifest', 'title=AerioTV\n')
-                package.writestr('components/AerioScene.brs', 'sub init()\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub')
+                package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub')
                 package.writestr('source/MetadataCacheStore.brs', 'return "cachefs:/aeriotv-metadata-v1"')
             output = Path(tmp) / 'probe.zip'
             probe.build(output, normal, 'SyntheticOwnSignInSection', 'http://127.0.0.1:1234')
@@ -121,6 +124,21 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertNotIn('OWN_ACTIVE_CONNECT', source)
                 self.assertIn('bound_identity_recovery', source)
                 self.assertNotIn('"AerioTV"', source)
+            probe.build(output, normal, 'SyntheticSameOwnKeySection', 'http://127.0.0.1:1234', form=True, active_form=True, same_key=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertNotIn('synthetic-new-own-key', source)
+                self.assertIn('synthetic-b', source)
+                self.assertNotIn('"AerioTV"', source)
+            for mode in ['own', 'own-pin', 'default', 'default-pin', 'held-keyless']:
+                probe.build(output, normal, 'SyntheticChildOwnSection', 'http://127.0.0.1:1234', form=True, child_form=mode)
+                with zipfile.ZipFile(output) as package:
+                    source = package.read('components/AerioScene.brs').decode()
+                    self.assertNotIn('OWN_CHILD_', source)
+                    self.assertNotIn('"AerioTV"', source)
+                    self.assertIn('m.profileChildAccessReady = true', source)
+                    self.assertIn('submitChildOwnPassword', source)
+                    self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
         script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; for (const entry of ['profile-own-signin-probe.json','source/ProfileOwnSignInFixture.brs','source/ProfileOwnSignInFormFixture.brs','source/ProfileDefaultOwnSignInFormFixture.brs','source/ProfileActiveOwnSignInFixture.brs','source/ProfileColdRestoreFixture.brs','source/ProfileAssignmentRefreshFixture.brs']) assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt',entry]), /probe/);"
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)
 
@@ -189,6 +207,12 @@ class ProfileProbeTest(unittest.TestCase):
                     self.assertNotIn('"AerioTV"', source)
                     self.assertIn('child_available', source)
                     self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
+                probe.build(output, normal, 'SyntheticChildRetrySection', 'http://127.0.0.1:1234', child_retry=mode)
+                with zipfile.ZipFile(output) as package:
+                    source = package.read('components/AerioScene.brs').decode()
+                    self.assertIn('childRetryUnavailable', source)
+                    self.assertNotIn('OWN_CHILD_', source)
+                    self.assertNotIn('"AerioTV"', source)
         script = "import {assertPackageEntries} from './scripts/verify-package.mjs'; import assert from 'node:assert/strict'; assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml','images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt','profile-management-probe.json']), /probe/);"
         subprocess.run(['node', '--input-type=module', '-e', script], cwd=root, check=True, capture_output=True, text=True)
 

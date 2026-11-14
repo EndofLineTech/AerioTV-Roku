@@ -188,6 +188,7 @@ sub onRequestGateRecheck(event as object)
             end for
             if child
                 m.childRejectedIdentity = ""
+                showUnavailableChildProfile()
                 showNotice("Dispatcharr accepts this profile's API key again.")
                 return
             end if
