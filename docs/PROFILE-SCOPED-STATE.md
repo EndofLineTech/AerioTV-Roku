@@ -552,6 +552,13 @@ Result/error/state callbacks also require the actual preceding actor (or empty
 unavailable actor/key) before any effect. Initial current-key checks run after a
 PIN wait but before outgoing teardown or the first target authentication request.
 These are not public activation, outgoing sync-writer settlement or peer evidence.
+`--child-escape --switch-roster` prepares a separate private normal-app case for
+that staged path. It starts with a clean synthetic roster, explicitly proves a
+pending-edit switch refusal without changing those bytes, then retains the older
+adult/target PIN cancellation, rejection, delayed Back and successful own-default
+escape checks. The report additionally requires target own roster discovery
+before target lineup after the unavailable boundary. The archive is generated and
+syntax-checked only; no staged unavailable-Child native result is claimed.
 
 The earlier manual-refresh native cases (not this new switch/roster pipeline)
 qualify changed assignments/VOD revocation, foreign own

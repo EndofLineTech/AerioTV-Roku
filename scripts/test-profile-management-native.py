@@ -44,8 +44,8 @@ def startup_probe_timer(source):
 
 
 def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False):
-    if switch_roster and not switching:
-        raise ValueError('Private early-roster mode requires the switch fixture')
+    if switch_roster and (not (switching or child_escape) or (switching and child_escape)):
+        raise ValueError('Private early-roster mode requires either switch or Child escape fixture')
     if switch_import_pin and (not switching or not switch_roster or any([switch_pin, cancel_pin, reject_active, remember_off, reconnect, child_settings, cold_restore, default_filter, assignment_refresh, child_escape, child_launch, child_available, child_retry, child_rejected, manual_refresh, manual_recording, favorite_retention, switch_recording, directions])):
         raise ValueError('Imported PIN fixture requires only --switch --switch-roster')
     recording_probe = bool(manual_recording or switch_recording)
@@ -554,6 +554,27 @@ end sub
 ''' + target, 1)
                 if child_escape:
                     source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native/ProfileChildEscapeFixture.brs').read_text()
+                    if switch_roster:
+                        source = source.replace('setCanonicalPreference(store, "pendingRoster", true)', 'setCanonicalPreference(store, "pendingRoster", false)', 1)
+                        source = source.replace('preserved = store.pendingRoster and', 'preserved = not store.pendingRoster and', 1)
+                        target = '''    onProfileManagementChoice(managementProbeEvent(m.profileManagementDialog, 0))
+    return generic and'''
+                        assert source.count(target) == 1
+                        source = source.replace(target, '''    if m.childEscapePendingChecked <> true
+        m.childEscapePendingChecked = true
+        original = m.registry.read(userProfileStoreKey("slot-a"))
+        pending = loadUserProfileStore(m.registry, "slot-a")
+        pending = setCanonicalPreference(pending, "pendingRoster", true)
+        pendingText = FormatJson(pending)
+        m.registry.write(userProfileStoreKey("slot-a"), pendingText)
+        m.registry.flush()
+        started = beginUserProfileSwitch(pending.profiles[0].id, true)
+        m.childEscapePendingRefused = not started and m.profileSwitchContext = invalid and m.profilePinDialog = invalid and m.activeUserScope = invalid and m.apiKey = "" and m.global.profilegateclosed and m.registry.read(userProfileStoreKey("slot-a")) = pendingText
+        m.registry.write(userProfileStoreKey("slot-a"), original)
+        m.registry.flush()
+    end if
+''' + target, 1)
+                        source = source.replace('passed: m.childEscapePassed and own', 'pending_refused: m.childEscapePendingRefused = true, passed: m.childEscapePassed and m.childEscapePendingRefused = true and own', 1)
                 if child_launch:
                     source = source.replace('launchGate = selectedUserProfileGate()', 'launchGate = selectedUserProfileGate()\n        print "[profile-management] launch-gate="; launchGate.reason', 1)
                     target = '    m.registry.write("userProfilesV1_slot-a", FormatJson('
@@ -620,7 +641,7 @@ def main():
     parser.add_argument('--restore', required=True)
     parser.add_argument('--directions', action='store_true', help='Exercise numeric-to-Directions adult-type selection under developer opt-in')
     parser.add_argument('--switch', action='store_true', help='Exercise internal same-slot A/B/A and rejected-key rollback without enabling the public picker')
-    parser.add_argument('--switch-roster', action='store_true', help='With --switch, opt in ONLY this synthetic package to staged target authentication/own roster read before lineup; no public flag change')
+    parser.add_argument('--switch-roster', action='store_true', help='With --switch or --child-escape, opt in ONLY this synthetic package to staged target authentication/own roster read before lineup; no public flag change')
     parser.add_argument('--switch-import-pin', action='store_true', help='Only with --switch --switch-roster: import a previously absent target numeric PIN, reject the old value and admit its real stored v2 value')
     parser.add_argument('--reconnect', action='store_true', help='With --switch, reconnect B through early roster read and full activation before returning to A')
     parser.add_argument('--switch-pin', action='store_true', help='With --switch, require the real stored numeric target PIN before each switch')
@@ -642,8 +663,8 @@ def main():
     parser.add_argument('--child-retry', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private Child transient failure, own Retry and Back during delayed authentication, followed by own retry')
     parser.add_argument('--child-rejected', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private actual Child rejection: exact cut prompt, permitted own form/dismissal, no stale replay, adult management and real Back exit')
     args = parser.parse_args()
-    if args.switch_roster and not args.switch:
-        parser.error('--switch-roster requires --switch')
+    if args.switch_roster and not (args.switch or args.child_escape):
+        parser.error('--switch-roster requires --switch or --child-escape')
     if args.switch_import_pin and (not args.switch or not args.switch_roster or any([args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.reconnect, args.child_settings, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.favorite_retention, args.switch_recording, args.directions])):
         parser.error('--switch-import-pin requires only --switch --switch-roster')
     if args.switch_recording and any([args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.reconnect, args.cold_restore, args.child_settings, args.directions, args.default_filter, args.assignment_refresh, args.manual_refresh, args.manual_recording, args.favorite_retention, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected]):
@@ -915,6 +936,12 @@ def main():
             boundary = fixture_state.get('child_request_boundary')
             report['no_child_requests'] = boundary is not None and all(hit['user'] == 7 for hit in hits[boundary:])
             report['passed'] = result.returncode == 0 and rows[-1].get('passed') and report['no_child_requests'] and len(rejected) == 1 and rejected[0]['path'] == '/api/accounts/users/me/' and len(delayed) == 1 and delayed[0]['path'] == '/api/accounts/users/me/'
+            if args.switch_roster:
+                after = hits[boundary:] if boundary is not None else []
+                own_roster = next((index for index, hit in enumerate(after) if hit['user'] == 7 and hit['path'] == '/api/accounts/users/me/app-data/'), -1)
+                own_lineup = next((index for index, hit in enumerate(after) if hit['user'] == 7 and hit['path'].startswith('/api/channels/channels/summary/')), -1)
+                report['own_roster_before_lineup'] = own_roster >= 0 and own_lineup > own_roster
+                report['passed'] = report['passed'] and report['own_roster_before_lineup'] and rows[-1].get('pending_refused', False)
         if args.child_launch:
             report['requests'] = hits
             report['passed'] = result.returncode == 0 and len(rows) == 4 and rows[0].get('covered') and all(rows[1].get(key) for key in ['passed', 'covered', 'own_pin_then_adult', 'no_scope', 'no_autoplay']) and rows[-1].get('exited') and not hits

@@ -363,6 +363,15 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertIn('prepareChildEscape', source)
                 self.assertIn('showUnavailableChildProfile()', source)
                 self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
+                self.assertIn('preserved = store.pendingRoster and', source)
+            probe.build(output, normal, 'SyntheticChildEscapeRosterSection', 'http://127.0.0.1:1234', child_escape=True, switch_roster=True)
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                self.assertIn('m.profileSwitchRosterReady = true', source)
+                self.assertIn('preserved = not store.pendingRoster and', source)
+                self.assertIn('m.childEscapePendingRefused', source)
+                self.assertIn('setCanonicalPreference(store, "pendingRoster", false)', source)
+                self.assertNotIn('"AerioTV"', source)
             probe.build(output, normal, 'SyntheticChildLaunchSection', 'http://127.0.0.1:1234', child_launch=True)
             with zipfile.ZipFile(output) as package:
                 source = package.read('components/AerioScene.brs').decode()
