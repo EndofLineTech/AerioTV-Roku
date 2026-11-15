@@ -469,6 +469,29 @@ sub main()
     assertEqual(m.hlsSession.apiKey, "current-key", "owner key retained across later connection changes")
     assertEqual(m.video.control, "play", "native player starts only after owned session is captured")
     assertEqual(m.video.content.url, "https://example.test/proxy/hls/opaque_1234567890abcdefghijklmnop/index.m3u8", "native Video reuses minted capability instead of opening another client")
+    m.profileSetupCredentialContext = invalid
+    m.childConnectionLoading = false
+    m.selectedConnectionId = "slot-sync"
+    m.activeUserScope = invalid
+    m.userProfileRecoveryRequired = true
+    m.profileSwitchContext = {connection: {id: "slot-sync"}, outgoing: invalid}
+    m.profileSwitchTask = invalid
+    m.profileSyncContext = {flushNonce: "sync-request"}
+    m.global = {profilegateclosed: true, profilesyncflush: "sync-request"}
+    m.profileGateCover = {visible: true}
+    m.top.exitRequested = false
+    m.top.findNode = function(id as string) as object
+        return {text: ""}
+    end function
+    flushTask = {apiKey: "synthetic-own"
+        unobserveField: sub(field as string)
+        end sub
+    }
+    m.profileSyncWriteTask = flushTask
+    assertEqual(onKeyEvent("back", true), true, "Back during fenced outgoing flush is handled as switch cancellation")
+    assertEqual(m.top.exitRequested, false, "outgoing flush Back must not fall through to protected-launch app exit")
+    assertEqual(m.profileSyncWriteTask, invalid, "outgoing flush cancellation retires its actual Task")
+    assertEqual(flushTask.apiKey, "", "cancelled outgoing flush clears captured own credentials")
     print "ALL TESTS PASSED"
 end sub
 

@@ -2654,7 +2654,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         if press and key = "back" then failConnection("Connection cancelled.")
         return true
     end if
-    if m.profileSwitchContext <> invalid and m.profileSwitchTask <> invalid
+    if m.profileSwitchContext <> invalid and (m.profileSwitchTask <> invalid or m.profileSyncWriteTask <> invalid)
         if press and key = "back" then rollbackUserProfileSwitch("Switch cancelled. The previous profile was retained.")
         return true
     end if

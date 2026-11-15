@@ -1,7 +1,7 @@
 ' Private synthetic HTTP only; run after actual B adoption in the normal app.
 sub advanceProfileSyncWriterProbe()
     m.writerProbeMode = PROFILE_WRITER_MODE
-    if m.writerProbeMode = "flush"
+    if m.writerProbeMode <> "direct"
         advanceProfileSyncFlushProbe()
         return
     end if
@@ -104,6 +104,9 @@ sub advanceProfileSyncFlushProbe()
         return
     end if
     if m.profileSwitchContext <> invalid then return
+    if m.writerFlushTask <> invalid
+        if type(m.writerFlushTask.result) <> "roAssociativeArray" then return
+    end if
     m.managementProbeClock.control = "stop"
     entry = connectionStoreEntry(m.connectionStore, "slot-a")
     store = loadUserProfileStore(m.registry, "slot-a")
@@ -112,5 +115,15 @@ sub advanceProfileSyncFlushProbe()
     if passed then passed = m.activeUserScope.accountId = "7" and m.activeUserScope.profileId = m.writerFlushTarget and m.activeUserScope.sessionId <> m.writerFlushSource.sessionId and m.apiKey = "synthetic-a" and m.guide.callFunc("profileSwitchProbeLineup") = "7"
     passed = passed and not store.pendingRoster and ack.ok and ack.stamp > 0 and m.profileSyncWriteTask = invalid and m.profileSyncContext = invalid and m.writerFlushTask <> invalid
     if passed then passed = m.writerFlushTask.apiKey = "" and m.writerFlushTask.result.scope.accountId = "8" and userProfileSameSession(m.writerFlushTask.result.scope, m.writerFlushSource)
-    print "[profile-management] "; FormatJson({kind: "result", writer: passed, flush: passed})
+    failed = m.writerProbeMode = "flush-failed" or m.writerProbeMode = "flush-cancel"
+    if failed
+        passed = m.activeUserScope <> invalid and m.writerFlushTask <> invalid
+        if passed then passed = m.activeUserScope.accountId = "8" and m.activeUserScope.profileId = m.writerFlushSource.profileId and m.activeUserScope.sessionId <> m.writerFlushSource.sessionId and m.apiKey = "synthetic-b" and store.pendingRoster and not m.registry.exists(userProfileSyncAckKey("slot-a")) and m.profileSyncWriteTask = invalid and m.profileSyncContext = invalid and not m.global.profilegateclosed and not m.profileGateCover.visible
+        if passed then passed = m.writerFlushTask.result.ok <> true and m.writerFlushTask.result.submitted = true and m.writerFlushTask.apiKey = "" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", store.active)) = "synthetic-b"
+    end if
+    state = "invalid"
+    if m.writerFlushTask <> invalid
+        if type(m.writerFlushTask.result) = "roAssociativeArray" then state = textValue(m.writerFlushTask.result.state)
+    end if
+    print "[profile-management] "; FormatJson({kind: "result", writer: passed, flush: passed, pending_retained: failed and passed, writer_state: state})
 end sub

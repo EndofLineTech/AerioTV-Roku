@@ -148,5 +148,21 @@ Both cleaned disposable state and restored the exact owner app.
 Sync device identity is a per-install UUID persisted once in
 `dispatcharrSyncDeviceV1`, not a PIN salt or cryptographic entropy approval.
 Invalid existing identity is not overwritten; failed writes restore absence.
-Native failed/cancelled flush and broader local-plan publication/category/schedule
+Native failed/submitted-cancelled flush now also pass. A synthetic failed PUT
+keeps B selected, dirty and credential-owned without any A request or retry.
+Real ECP Back during a submitted delayed PUT was observed by Scene; B returns
+with a fresh scope, the writer key is wiped, no acknowledgement lands and no A
+request follows (`out/mrr-sync-flush-cancel-timed-native.log`). The fixture requires
+the key event, not merely eventual rollback. Initial no-key-event failures and
+their reports remain retained; one later run measured a 77 ms ECP send, which is
+not a root-cause finding for the intermittent delivery issue `667m`.
+
+Actual Scene routing initially recognized only the incoming Task, so Back during
+a flush could fall through to protected-launch app exit. A tests-first Scene
+regression fixed this independent routing gap (`AerioTV-Roku-cfzm`); do not conflate
+it with missing key delivery. Final success and failed PUT native regressions
+passed (`out/mrr-sync-flush-success-final-native.log`,
+`out/mrr-sync-flush-failed-final-native.log`), as did full verification
+`out/mrr-sync-flush-failure-cancel-final-verify.log`. Every run cleaned and restored
+the exact owner app. Broader local-plan publication/category/schedule and public
 qualification remain unfinished, so all shipping readiness flags stay false.
