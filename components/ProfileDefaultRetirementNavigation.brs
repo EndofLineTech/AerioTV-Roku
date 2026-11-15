@@ -8,6 +8,24 @@ sub beginUserProfileDefaultRetirement(context as object, proof as object, decode
         rollbackUserProfileSwitch("Could not safely select the default profile. Saved data was retained.")
         return
     end if
+    finishUserProfileDefaultRetirement(context, selected, proof, decoded, apply, memory)
+end sub
+
+' A writer receipt belongs to the ACTUAL outgoing holder, not the chosen target.
+' Keep its admission distinct; no synthetic target proof or scope is constructed.
+function beginOwnSyncDefaultRetirement(chosen as object, receipt as object, memory as object) as boolean
+    if m.profileDefaultRetirementReady <> true then return false
+    context = {ownRetirement: true, nonce: CreateObject("roDeviceInfo").getRandomUUID(), connection: chosen.connection, store: chosen.store, key: m.apiKey, receipt: receipt, authorizationSignature: m.profileAuthorizationSignature}
+    selected = commitDispatcharrOwnRetirementSelection(m.registry, context.connection, context.store, receipt, m.activeUserScope, textValue(m.apiKey), memory, textValue(context.authorizationSignature), m.profileRosterEnabled <> false, CreateObject("roDateTime").asSeconds(), context.nonce)
+    if not selected.ok then return false
+    chosen.key = ""
+    chosen.pin = invalid
+    if type(chosen.authentication) = "roAssociativeArray" then chosen.authentication.apiKey = ""
+    finishUserProfileDefaultRetirement(context, selected, invalid, invalid, m.profileRosterEnabled <> false, memory)
+    return true
+end function
+
+sub finishUserProfileDefaultRetirement(context as object, selected as object, proof as dynamic, decoded as dynamic, apply as boolean, memory as object)
     preserveSubmittedRecording()
     if m.profileSwitchTask <> invalid then m.profileSwitchTask.apiKey = ""
     closeUserProfileSwitchTask()
@@ -25,11 +43,15 @@ sub beginUserProfileDefaultRetirement(context as object, proof as object, decode
     if type(m.profileSessionKeys) = "roAssociativeArray"
         m.profileSessionKeys.delete(preferenceScope(context.connection.url + "|" + context.connection.id + "|" + selected.outgoingId))
     end if
-    saved = commitDispatcharrDefaultRetirementCleanup(m.registry, context, selected, proof, decoded, apply, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, textValue(m.apiKey), memory)
+    if context.ownRetirement = true
+        saved = commitDispatcharrOwnRetirementCleanup(m.registry, context.connection, context.store, selected, context.receipt, m.activeUserScope, textValue(m.apiKey), memory, textValue(context.authorizationSignature), apply, CreateObject("roDateTime").asSeconds(), m.global.activeusersession)
+    else
+        saved = commitDispatcharrDefaultRetirementCleanup(m.registry, context, selected, proof, decoded, apply, CreateObject("roDateTime").asSeconds(), m.global.activeusersession, m.activeUserScope, textValue(m.apiKey), memory)
+    end if
     context.key = ""
     context.pin = invalid
     if type(context.authentication) = "roAssociativeArray" then context.authentication.apiKey = ""
-    proof.apiKey = ""
+    if type(proof) = "roAssociativeArray" then proof.apiKey = ""
     if not saved.ok
         m.global.activeusersession = ""
         m.global.profileswitchpending = false

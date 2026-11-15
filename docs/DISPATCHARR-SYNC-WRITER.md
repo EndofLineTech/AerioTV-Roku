@@ -214,6 +214,27 @@ old PIN with zero requests. Evidence:
 state and restored the exact owner app. Full verification passed at
 `out/mrr-retirement-retained-protection-pre-native-verify.log`.
 
-Active-own tombstones from writer receipts still need their distinct actual-own
-retirement admission/integration; generic read publication refuses that removal.
-General category sync/scheduling and public acceptance are not established.
+Active-own tombstones now use distinct actual-own admission. A matching current
+own read receipt selects the real default with a credential/PIN-free durable
+intent. After actual runtime teardown, exact source/selected/journal roots and
+the original own credential digest admit live cleanup. Only that live boundary
+returns the explicit system transition receipt; cold recovery still returns no
+adoption receipt or PIN bypass. The shared controller then independently
+authenticates, reads and loads the default. Generic read publication continues
+to refuse active removal rather than silently authorizing it.
+
+Host own-selection/cleanup faults, stale scope/authority/key/root/nonce,
+Profiles-Off, live/cold and controller-routing tests passed. Native
+`--writer-mode flush-own-retirement` passed
+(`out/mrr-sync-own-retirement-native.log`): B me/list/key GET, no PUT, removed B
+key/backoff/account ownership, imported default PIN retained, then independent
+A-own authentication/read/lineup. Pending roster intent remains and no write
+acknowledgement lands. Expanded native primitives and the original staged-C
+system retirement regression passed
+(`out/mrr-sync-own-retirement-primitives-native.log`,
+`out/mrr-sync-own-retirement-staged-regression-native.log`), with exact owner
+restoration and disposable cleanup. Full verification passed at
+`out/mrr-sync-own-retirement-pre-native-verify.log`.
+
+General category sync/scheduling and public recovery/Child/admin/onboarding and
+acceptance are not established; shipping readiness flags remain false.

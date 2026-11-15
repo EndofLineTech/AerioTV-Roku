@@ -94,7 +94,7 @@ def startup_probe_timer(source):
 
 
 def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False, switch_authority_race=False, switch_active_retirement=False, active_default_mode='usable', switch_writer=False, writer_mode='direct'):
-    if writer_mode not in ['direct', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin'] or (writer_mode != 'direct' and not switch_writer):
+    if writer_mode not in ['direct', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'] or (writer_mode != 'direct' and not switch_writer):
         raise ValueError('Writer mode requires the private writer fixture')
     if switch_writer and (not switching or not switch_roster or any([directions, switch_pin, cancel_pin, reject_active, remember_off, child_settings, reconnect, cold_restore, default_filter, assignment_refresh, child_escape, child_launch, child_available, child_retry, child_rejected, manual_refresh, manual_recording, favorite_retention, switch_recording, switch_import_pin, switch_cleanup, switch_target_retirement, switch_authority_race, switch_active_retirement]) or active_default_mode != 'usable'):
         raise ValueError('Writer fixture requires only --switch --switch-roster')
@@ -817,6 +817,9 @@ end sub
                     if writer_mode != 'direct':
                         assert source.count('m.profileSyncWriterReady = false') == 1
                         source = source.replace('m.profileSyncWriterReady = false', 'm.profileSyncWriterReady = true', 1)
+                    if writer_mode == 'flush-own-retirement':
+                        assert source.count('m.profileDefaultRetirementReady = false') == 1
+                        source = source.replace('m.profileDefaultRetirementReady = false', 'm.profileDefaultRetirementReady = true', 1)
                 body = source.replace('OWN_RECONNECT_PROBE', 'true' if reconnect else 'false').encode()
             package.writestr(name, body)
         package.writestr('profile-management-probe.json', json.dumps({'synthetic': True}))
@@ -834,7 +837,7 @@ def main():
     parser.add_argument('--switch-authority-race', action='store_true', help='Only with --switch --switch-roster: change target authority on final me and require rollback with zero target lineup requests')
     parser.add_argument('--switch-active-retirement', action='store_true', help='Only with --switch --switch-roster: C own roster removes actual B, requiring default A own system adoption without its PIN')
     parser.add_argument('--switch-writer', action='store_true', help='Only with --switch --switch-roster: private own-B canonical re-read and checked-string PUT')
-    parser.add_argument('--writer-mode', choices=['direct', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin'], default='direct', help='Private writer fixture: direct Task, outgoing flush, imported PIN or failure/cancellation/authority refusal')
+    parser.add_argument('--writer-mode', choices=['direct', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'], default='direct', help='Private writer fixture: direct Task, outgoing flush, own retirement, imported PIN or failure/cancellation/authority refusal')
     parser.add_argument('--active-default-mode', choices=['usable', 'missing', 'held', 'child', 'cold', 'simultaneous', 'import-pin', 'import-child'], default='usable', help='Only with --switch-active-retirement: default own credential/access state')
     parser.add_argument('--reconnect', action='store_true', help='With --switch, reconnect B through early roster read and full activation before returning to A')
     parser.add_argument('--switch-pin', action='store_true', help='With --switch, require the real stored numeric target PIN before each switch')
@@ -1064,6 +1067,10 @@ def main():
                     stamp = fixture_state.setdefault('writer_import_stamp', int(time.time()))
                     salt = '0123456789abcdef0123456789abcdef'
                     value['categories']['profiles']['data']['rows'] = [[7, 'Synthetic7', 'Synthetic7', 'numbers', hashlib.sha256(bytes.fromhex(salt) + b'5678').hexdigest(), salt, 'user', stamp, {}, 0]]
+                if args.writer_mode == 'flush-own-retirement' and fixture_state.get('writer_started', False):
+                    salt = '0123456789abcdef0123456789abcdef'
+                    value['categories']['profiles']['data']['rows'] = [[7, 'Synthetic7', 'Protected default', 'numbers', hashlib.sha256(bytes.fromhex(salt) + b'5678').hexdigest(), salt, 'user', int(time.time()), {}, 0]]
+                    value['categories']['profiles']['data']['removed'] = [['synthetic8', int(time.time())]]
             if args.child_available and self.path == f'/api/accounts/users/me/app-data/synthetic{user}.aeriotv/':
                 stamp = '2026-11-14T12:00:00Z'
                 value = {'schemaVersion': 3, 'deviceId': 'synthetic-phone', 'platform': 'android', 'appVersion': '1', 'updatedAt': stamp,
@@ -1217,10 +1224,12 @@ def main():
             after = hits[report.get('writer_request_boundary', len(hits)):]
             expected = [('GET', '/api/accounts/users/me/'), ('GET', '/api/accounts/users/me/app-data/'), ('GET', '/api/accounts/users/me/app-data/synthetic8.aeriotv/'), ('PUT', '/api/accounts/users/me/app-data/synthetic8.aeriotv/')]
             report['writer_own_request_order'] = [(hit.get('method', 'GET'), hit['path']) for hit in after] == expected and all(hit['user'] == 8 for hit in after)
-            if args.writer_mode in ['flush', 'flush-import-pin']:
+            if args.writer_mode in ['flush', 'flush-import-pin', 'flush-own-retirement']:
                 prefix = expected
                 if args.writer_mode == 'flush-import-pin':
                     prefix = expected[:3] + expected
+                if args.writer_mode == 'flush-own-retirement':
+                    prefix = expected[:3]
                 incoming = after[len(prefix):]
                 roster = next((i for i, hit in enumerate(incoming) if hit['path'] == '/api/accounts/users/me/app-data/'), -1)
                 lineup = next((i for i, hit in enumerate(incoming) if hit['path'].startswith('/api/channels/channels/summary/')), -1)
@@ -1233,6 +1242,8 @@ def main():
             report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('writer', False) and report['writer_own_request_order'] and report['writer_body_ok']
             if args.writer_mode == 'flush-authority':
                 report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('writer', False) and report['writer_own_request_order'] and rows[-1].get('authority_covered', False)
+            if args.writer_mode == 'flush-own-retirement':
+                report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('own_retired', False) and report['writer_own_request_order'] and not any(hit.get('method') == 'PUT' for hit in after)
             if args.writer_mode != 'direct':
                 report['passed'] = report['passed'] and report.get('writer_target_pin_ready', False) and report.get('writer_pre_pin_requests') == [] and report.get('writer_source_admitted', False) and rows[-1].get('flush', False)
             if args.writer_mode == 'flush-import-pin':

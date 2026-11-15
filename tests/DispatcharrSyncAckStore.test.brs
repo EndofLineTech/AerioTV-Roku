@@ -1,4 +1,50 @@
 sub main()
+    for each fault in ["write", "flush", "rollback"]
+        syncOwnRetirementFixture()
+        before = FormatJson(m.registry.values)
+        m.registry.fault = fault
+        selected = commitDispatcharrOwnRetirementSelection(m.registry, m.connection, m.store, m.receipt, m.scope, m.key, {}, m.profileAuthorizationSignature, true, 600, m.retirementNonce)
+        check(not selected.ok and FormatJson(m.registry.values) = before and selected.recoveryRequired = (fault = "rollback"), "own selection faults retain original actor storage and all private ownership")
+        syncOwnRetirementFixture()
+        selected = commitDispatcharrOwnRetirementSelection(m.registry, m.connection, m.store, m.receipt, m.scope, m.key, {}, m.profileAuthorizationSignature, true, 600, m.retirementNonce)
+        before = FormatJson(m.registry.values)
+        m.registry.failed = false
+        m.registry.fault = fault
+        result = commitDispatcharrOwnRetirementCleanup(m.registry, m.connection, m.store, selected, m.receipt, invalid, "", {}, m.profileAuthorizationSignature, true, 700, m.retirementNonce)
+        check(not result.ok and FormatJson(m.registry.values) = before and result.recoveryRequired = (fault = "rollback"), "own cleanup faults preserve exact selected protection and fenced intent")
+    end for
+    for each change in ["scope", "authority", "key", "root", "nonce", "profiles-off"]
+        syncOwnRetirementFixture()
+        before = FormatJson(m.registry.values)
+        scope = m.scope
+        authority = m.profileAuthorizationSignature
+        enabled = true
+        nonce = m.retirementNonce
+        if change = "scope" then scope = setCanonicalPreference(scope, "sessionId", m.retirementNonce)
+        if change = "authority" then authority = "successor"
+        if change = "key" then m.key = "successor"
+        if change = "root" then m.receipt.storeRoot += " "
+        if change = "nonce" then nonce = m.scope.sessionId
+        if change = "profiles-off" then enabled = false
+        selected = commitDispatcharrOwnRetirementSelection(m.registry, m.connection, m.store, m.receipt, scope, m.key, {}, authority, enabled, 600, nonce)
+        check(not selected.ok and FormatJson(m.registry.values) = before, "own retirement refuses stale admission: " + change)
+    end for
+    for each cold in [false, true]
+        syncOwnRetirementFixture()
+        selected = commitDispatcharrOwnRetirementSelection(m.registry, m.connection, m.store, m.receipt, m.scope, m.key, {}, m.profileAuthorizationSignature, true, 600, m.retirementNonce)
+        check(selected.ok and selected.store.active = m.store.profiles[1].id and m.registry.exists(m.retirementSourceKey) and selected.scope = invalid, "actual-own receipt selects real default before deleting source ownership, without staged target scope")
+        before = FormatJson(m.registry.values)
+        denied = commitDispatcharrOwnRetirementCleanup(m.registry, m.connection, m.store, selected, m.receipt, m.scope, m.key, {}, m.profileAuthorizationSignature, true, 700, m.retirementNonce)
+        check(not denied.ok and FormatJson(m.registry.values) = before, "actual-own cleanup cannot run while source runtime remains authenticated")
+        if cold
+            result = resumeUserProfileRetirement(m.registry, m.connection, invalid, "")
+            check(result.ok and result.committed <> true, "cold own retirement grants no system-adoption receipt")
+        else
+            result = commitDispatcharrOwnRetirementCleanup(m.registry, m.connection, m.store, selected, m.receipt, invalid, "", {}, m.profileAuthorizationSignature, true, 700, m.retirementNonce)
+            check(result.ok and result.committed and result.needsDefaultSwitch, "explicit live actual-own retirement returns its bounded system transition receipt")
+        end if
+        check(result.ok and not m.registry.exists(m.retirementSourceKey) and result.store.active = m.store.profiles[1].id and result.store.pendingRoster and not m.registry.exists(userProfileSyncAckKey("slot-a")), "own tombstone cleans removed source without a PUT acknowledgement or dirty-state loss")
+    end for
     for each fault in ["", "write", "flush", "rollback"]
         syncAckFixture()
         m.registry.fault = fault
@@ -107,7 +153,27 @@ sub main()
     onOutgoingUserProfileSyncResult(syncFlushEvent(sourceTask, m.receipt))
     check(m.flushResumes = 0 and m.flushRollbacks = 0 and m.apiKey = "successor-key" and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "stale flush callback cannot clear dirty state, wipe successor key or resume an incoming request")
     closeOutgoingUserProfileSync()
+    syncOwnRetirementFixture()
+    m.profileSwitchContext.store = m.store
+    m.profileSwitchContext.target = m.store.profiles[1]
+    m.receipt.profileData.removed[0][1] = CreateObject("roDateTime").asSeconds()
+    before = FormatJson(m.registry.values)
+    settleOutgoingUserProfileSyncRead(m.profileSwitchContext, m.receipt)
+    check(m.ownRetirementRequests = 1 and m.flushResumes = 0 and m.flushRollbacks = 0 and FormatJson(m.registry.values) = before, "active-own tombstone dispatches distinct own retirement rather than staging a chosen-target proof")
     print "ALL TESTS PASSED"
+end sub
+
+sub syncOwnRetirementFixture()
+    syncFlushFixture()
+    m.store.profiles[0] = setCanonicalPreference(m.store.profiles[0], "isDefault", false)
+    m.store.profiles[1] = setCanonicalPreference(m.store.profiles[1], "isDefault", true)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.store)
+    m.retirementSourceKey = userProfileKeyName("slot-a", m.store.active)
+    m.registry.values[m.retirementSourceKey] = m.key
+    m.registry.values["connKey_slot-a"] = "target-own-key"
+    m.receipt = syncFlushReadReceipt({rows: [[8, "Bob", "Protected default", "numbers", string(64, "e"), string(32, "f"), "user", 550]], removed: [["alice", 500]]})
+    m.receipt.storeRoot = m.registry.values[userProfileStoreKey("slot-a")]
+    m.retirementNonce = "00000000-0000-4000-8000-000000000095"
 end sub
 
 sub syncFlushFixture()
@@ -124,6 +190,7 @@ sub syncFlushFixture()
     m.syncSourceStopped = false
     m.syncSourceFenced = false
     m.syncPinPrompts = 0
+    m.ownRetirementRequests = 0
     m.profilePinDialog = invalid
     m.profileSyncAppVersion = "1"
     m.profileSyncNonceFactory = function() as string
@@ -158,6 +225,13 @@ sub syncFlushFixture()
         }
     end function
 end sub
+
+function beginOwnSyncDefaultRetirement(context as object, receipt as object, memory as object) as boolean
+    if not userProfileSameSession(receipt.scope, m.activeUserScope) then return false
+    if receipt.scope.profileId = context.target.id then return false
+    m.ownRetirementRequests++
+    return true
+end function
 
 function syncFlushReadReceipt(data as object) as object
     receipt = copyPreferenceValue(m.receipt)

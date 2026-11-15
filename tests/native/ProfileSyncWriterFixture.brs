@@ -75,6 +75,7 @@ sub advanceProfileSyncFlushProbe()
         end for
         store = setCanonicalPreference(store, "pendingRoster", true)
         m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
+        if m.writerProbeMode = "flush-own-retirement" then m.registry.write(userProfilePinBackoffKey("slot-a", store.active), FormatJson({failures: 1, round: 0, until: 0}))
         m.registry.flush()
         m.userProfileStore = loadUserProfileStore(m.registry, "slot-a")
         return
@@ -156,9 +157,21 @@ sub advanceProfileSyncFlushProbe()
         passed = m.activeUserScope = invalid and m.apiKey = "" and store.pendingRoster and not m.registry.exists(userProfileSyncAckKey("slot-a")) and m.global.profilegateclosed and m.profileGateCover.visible and m.userProfileRecoveryRequired and m.profileSyncWriteTask = invalid
         if passed then passed = m.writerFlushTask.result.ok <> true and m.writerFlushTask.result.state = "authority" and m.writerFlushTask.result.submitted <> true and m.writerFlushTask.apiKey = "" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", store.active)) = "synthetic-b"
     end if
+    ownRetired = m.writerProbeMode = "flush-own-retirement"
+    if ownRetired
+        sourceId = m.writerFlushSource.profileId
+        preferences = ParseJson(m.registry.read("settingsV1"), "d")
+        passed = m.activeUserScope <> invalid
+        if passed then passed = m.activeUserScope.accountId = "7" and m.activeUserScope.sessionId <> m.writerFlushSource.sessionId and m.apiKey = "synthetic-a" and m.guide.callFunc("profileSwitchProbeLineup") = "7" and not m.global.profilegateclosed and not m.profileGateCover.visible
+        passed = passed and store.profiles.count() = 1 and store.pendingRoster and not m.registry.exists(userProfileSyncAckKey("slot-a")) and not m.registry.exists(userProfileKeyName("slot-a", sourceId)) and not m.registry.exists(userProfilePinBackoffKey("slot-a", sourceId)) and not m.registry.exists(userProfileRetirementKey("slot-a")) and not preferences.accounts.doesExist(preferenceScope(connectionPreferenceIdentity(entry, "8"))) and m.registry.read("connKey_slot-a") = "synthetic-a"
+        if passed then passed = m.writerFlushTask.result.state = "local-commit" and m.writerFlushTask.result.submitted = false and m.writerFlushTask.apiKey = "" and userProfileSameSession(m.writerFlushTask.result.scope, m.writerFlushSource) and m.profilePinDialog = invalid
+        for each profile in store.profiles
+            if profile.isDefault then passed = passed and profile.pinHash = userProfilePinHash(profile.pinSalt, "5678") and profile.pinLength = 0
+        end for
+    end if
     state = "invalid"
     if m.writerFlushTask <> invalid
         if type(m.writerFlushTask.result) = "roAssociativeArray" then state = textValue(m.writerFlushTask.result.state)
     end if
-    print "[profile-management] "; FormatJson({kind: "result", writer: passed, flush: passed, pending_retained: failed and passed, authority_covered: authority and passed, writer_state: state})
+    print "[profile-management] "; FormatJson({kind: "result", writer: passed, flush: passed, pending_retained: failed and passed, authority_covered: authority and passed, own_retired: ownRetired and passed, writer_state: state})
 end sub

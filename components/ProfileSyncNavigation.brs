@@ -152,6 +152,9 @@ sub settleOutgoingUserProfileSyncRead(context as object, receipt as object)
     end if
     saved = commitDispatcharrSyncRosterRead(m.registry, context.connection, context.store, receipt, m.activeUserScope, m.apiKey, memory, textValue(m.profileAuthorizationSignature), m.profileRosterEnabled <> false, CreateObject("roDateTime").asSeconds())
     if not saved.ok
+        if saved.needsDefaultSwitch = true
+            if beginOwnSyncDefaultRetirement(context, receipt, memory) then return
+        end if
         coverOutgoingUserProfileSyncRead(context, "Could not safely settle current profiles. Saved edits were retained.")
         return
     end if
