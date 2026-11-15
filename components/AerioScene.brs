@@ -6,6 +6,7 @@ sub init()
     m.profileDefaultRetirementReady = false
     m.profileSyncWriterReady = false
     m.profileSyncSchedulingReady = false
+    m.profileSyncControlsReady = false
     m.top.observeField("networkLinkEvent", "onProfileSyncNetworkLink")
     m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false, profileownsigninpending: false, profileownsigninnonce: "", requestgaterecovery: "", profilesyncflush: ""})
     m.profileGateCover = m.top.findNode("profileGateCover")
@@ -195,6 +196,7 @@ sub init()
     m.guide.observeField("searchVodSelection", "onUnifiedSearchVodSelection")
     m.guide.observeField("devicePreference", "onDevicePreference")
     m.registry = CreateObject("roRegistrySection", "AerioTV")
+    applyDispatcharrSyncChoices()
     m.preferenceStore = loadPreferenceStore(m.registry, true)
     m.devicePreferences = m.preferenceStore.device
     m.global.addFields({clockFormat: "24", clockPreference: m.devicePreferences.clockFormat})

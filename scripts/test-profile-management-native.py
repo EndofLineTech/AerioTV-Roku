@@ -94,7 +94,7 @@ def startup_probe_timer(source):
 
 
 def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False, switch_authority_race=False, switch_active_retirement=False, active_default_mode='usable', switch_writer=False, writer_mode='direct'):
-    if writer_mode not in ['direct', 'unchanged', 'schedule', 'schedule-too-large', 'schedule-signin', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'] or (writer_mode != 'direct' and not switch_writer):
+    if writer_mode not in ['direct', 'controls', 'controls-restore', 'unchanged', 'schedule', 'schedule-too-large', 'schedule-signin', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'] or (writer_mode != 'direct' and not switch_writer):
         raise ValueError('Writer mode requires the private writer fixture')
     if switch_writer and (not switching or not switch_roster or any([directions, switch_pin, cancel_pin, reject_active, remember_off, child_settings, reconnect, cold_restore, default_filter, assignment_refresh, child_escape, child_launch, child_available, child_retry, child_rejected, manual_refresh, manual_recording, favorite_retention, switch_recording, switch_import_pin, switch_cleanup, switch_target_retirement, switch_authority_race, switch_active_retirement]) or active_default_mode != 'usable'):
         raise ValueError('Writer fixture requires only --switch --switch-roster')
@@ -820,6 +820,18 @@ end sub
                     if writer_mode == 'flush-own-retirement':
                         assert source.count('m.profileDefaultRetirementReady = false') == 1
                         source = source.replace('m.profileDefaultRetirementReady = false', 'm.profileDefaultRetirementReady = true', 1)
+                    if writer_mode == 'controls-restore':
+                        bootstrap = f'''m.registry = CreateObject("roRegistrySection", "{section}")'''
+                        source = source.replace(bootstrap, bootstrap + '''
+    m.syncControlsColdBoot = m.registry.read("syncSettingsProbeRestore") = "1"
+    if not m.syncControlsColdBoot''', 1)
+                        source = source.replace('    m.registry.flush()\n', '    m.registry.flush()\n    end if\n', 1)
+                        source = source.replace('sub onManagementProbeTick()\n', '''sub onManagementProbeTick()
+    if m.syncControlsColdBoot
+        runProfileSyncControlsColdProbe()
+        return
+    end if
+''', 1)
                 body = source.replace('OWN_RECONNECT_PROBE', 'true' if reconnect else 'false').encode()
             package.writestr(name, body)
         package.writestr('profile-management-probe.json', json.dumps({'synthetic': True}))
@@ -837,7 +849,7 @@ def main():
     parser.add_argument('--switch-authority-race', action='store_true', help='Only with --switch --switch-roster: change target authority on final me and require rollback with zero target lineup requests')
     parser.add_argument('--switch-active-retirement', action='store_true', help='Only with --switch --switch-roster: C own roster removes actual B, requiring default A own system adoption without its PIN')
     parser.add_argument('--switch-writer', action='store_true', help='Only with --switch --switch-roster: private own-B canonical re-read and checked-string PUT')
-    parser.add_argument('--writer-mode', choices=['direct', 'unchanged', 'schedule', 'schedule-too-large', 'schedule-signin', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'], default='direct', help='Private writer fixture: scheduled/direct/unchanged, canonical creation/refusal, outgoing flush, own retirement, imported PIN or refusal')
+    parser.add_argument('--writer-mode', choices=['direct', 'controls', 'controls-restore', 'unchanged', 'schedule', 'schedule-too-large', 'schedule-signin', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'], default='direct', help='Private writer fixture: explicit controls/cold restore, scheduled/direct/unchanged, canonical creation/refusal, outgoing flush, own retirement, imported PIN or refusal')
     parser.add_argument('--active-default-mode', choices=['usable', 'missing', 'held', 'child', 'cold', 'simultaneous', 'import-pin', 'import-child'], default='usable', help='Only with --switch-active-retirement: default own credential/access state')
     parser.add_argument('--reconnect', action='store_true', help='With --switch, reconnect B through early roster read and full activation before returning to A')
     parser.add_argument('--switch-pin', action='store_true', help='With --switch, require the real stored numeric target PIN before each switch')
@@ -1089,6 +1101,8 @@ def main():
                     value['categories']['profiles']['data']['removed'] = [['synthetic8', int(time.time())]]
                 if args.writer_mode == 'unchanged' and 'writer_saved_value' in fixture_state:
                     value = fixture_state['writer_saved_value']
+                if args.writer_mode == 'controls-restore' and fixture_state.get('controls_relaunch_started', False):
+                    value['categories']['profiles']['data']['rows'] = [[8, 'Synthetic8', 'Must stay unapplied', 'numbers', 'a' * 64, 'b' * 32, 'child', int(time.time()), {}, 0]]
             if args.child_available and self.path == f'/api/accounts/users/me/app-data/synthetic{user}.aeriotv/':
                 stamp = '2026-11-14T12:00:00Z'
                 value = {'schemaVersion': 3, 'deviceId': 'synthetic-phone', 'platform': 'android', 'appVersion': '1', 'updatedAt': stamp,
@@ -1129,18 +1143,54 @@ def main():
     report = {'passed': False}
 
     def run(path, marker, prefix='[profile-management]'):
-        command = ['python3', 'scripts/run-native-probe.py', str(path), '--prefix', prefix, '--marker', marker, '--timeout', '45']
+        command = ['python3', 'scripts/run-native-probe.py', str(path), '--prefix', prefix, '--marker', marker, '--timeout', '75' if args.writer_mode.startswith('controls') else '45']
         if path != archive:
             return subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=100)
         output = []
         with subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as process:
             for line in process.stdout:
                 output.append(line)
+                report['partial_probe_output'] = ''.join(output)
                 if '"kind":"writer-ready"' in line and 'writer_request_boundary' not in report:
                     report['writer_request_boundary'] = len(hits)
                     fixture_state['writer_started'] = True
                 if '"kind":"schedule-dirty"' in line:
                     fixture_state['schedule_dirty_at'] = time.monotonic()
+                if '"kind":"controls-relaunch-ready"' in line:
+                    row = json.loads(line.split('[profile-management] ', 1)[1])
+                    report['controls_cold_ready'] = row.get('ready', False)
+                    report['controls_cold_boundary'] = len(hits)
+                    if not report['controls_cold_ready']:
+                        raise RuntimeError('Cold sync-controls checkpoint did not retain the intended choices')
+                    fixture_state['controls_relaunch_started'] = True
+                    report['controls_cold_relaunched'] = launch_profile_probe_after_exit(host)
+                if any('"kind":"' + kind + '"' in line for kind in ['controls-ready', 'controls-enabled', 'controls-profiles-off', 'controls-restored', 'controls-disable-ready']):
+                    row = json.loads(line.split('[profile-management] ', 1)[1])
+                    report.setdefault('controls_events', []).append(row)
+                    if row['kind'] != 'controls-disable-ready':
+                        report.setdefault('controls_pre_close_requests', []).append(hits[report['writer_request_boundary']:].copy())
+                    if row['kind'] == 'controls-ready':
+                        captured = subprocess.run(['python3', 'scripts/capture-roku-screenshot.py', '--developer-mode', '--output', str(ROOT / 'out/profile-sync-controls.jpg')], cwd=ROOT, capture_output=True, text=True, timeout=45)
+                        report['controls_screenshot'] = captured.returncode == 0
+                    keys = ['Select']
+                    if row['kind'] in ['controls-enabled', 'controls-profiles-off']:
+                        keys = ['Down', 'Select']
+                    if args.writer_mode == 'controls-restore' and row['kind'] == 'controls-profiles-off':
+                        keys = []
+                    if row['kind'] == 'controls-restored':
+                        keys = ['Back']
+                    for key in keys:
+                        request = urllib.request.Request(f'http://{host}:8060/keypress/{key}', data=b'', method='POST')
+                        started = time.monotonic()
+                        attempt = {'key': key, 'activity': management_probe_activity(host)}
+                        try:
+                            with urllib.request.urlopen(request, timeout=2) as response:
+                                attempt['status'] = response.status
+                                report.setdefault('controls_key_statuses', []).append(response.status)
+                        except (OSError, urllib.error.HTTPError) as error:
+                            attempt['error'] = type(error).__name__
+                        attempt['elapsed_ms'] = round((time.monotonic() - started) * 1000)
+                        report.setdefault('controls_key_attempts', []).append(attempt)
                 if '"kind":"writer-target-pin-ready"' in line:
                     report['writer_pre_pin_requests'] = hits[report['writer_request_boundary']:].copy()
                     report['writer_target_pin_ready'] = json.loads(line.split('[profile-management] ', 1)[1]).get('ready', False)
@@ -1208,7 +1258,7 @@ def main():
         report['switch_key_events'] = [row for row in rows if row.get('kind') == 'switch-key']
         report['switch_guide_key_events'] = [row for row in rows if row.get('kind') == 'switch-guide-key']
         report['default_rejection_ready'] = any(row.get('kind') == 'active-default-reject-ready' for row in rows)
-        rows = [row for row in rows if row.get('kind') not in ['switch-key', 'switch-guide-key', 'active-default-reject-ready', 'retirement-crash-ready', 'retirement-cold-pin-ready', 'retirement-cold-old-pin-refused', 'writer-ready', 'schedule-dirty', 'writer-target-pin-ready', 'writer-flush-started', 'writer-imported-pin-ready', 'writer-import-old-refused']]
+        rows = [row for row in rows if not row.get('kind', '').startswith('controls-') and row.get('kind') not in ['switch-key', 'switch-guide-key', 'active-default-reject-ready', 'retirement-crash-ready', 'retirement-cold-pin-ready', 'retirement-cold-old-pin-refused', 'writer-ready', 'schedule-dirty', 'writer-target-pin-ready', 'writer-flush-started', 'writer-imported-pin-ready', 'writer-import-old-refused']]
         report['events'] = rows
         if args.child_escape:
             report['requests'] = hits
@@ -1289,7 +1339,18 @@ def main():
                 sequence = expected + expected[:3] * 2
                 report['writer_own_request_order'] = [(hit.get('method', 'GET'), hit['path']) for hit in after] == sequence and all(hit['user'] == 8 for hit in after)
                 report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('writer', False) and report['writer_own_request_order'] and report['writer_body_ok']
-            if args.writer_mode not in ['direct', 'unchanged'] and not args.writer_mode.startswith(('create', 'schedule')):
+            if args.writer_mode == 'controls':
+                report['writer_own_request_order'] = [(hit.get('method', 'GET'), hit['path']) for hit in after] == expected[:3] and all(hit['user'] == 8 for hit in after)
+                events = report.get('controls_events', [])
+                report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('controls', False) and report['writer_own_request_order'] and len(events) == 5 and all(row.get('ready', row.get('valid', False)) for row in events) and report.get('controls_pre_close_requests') == [[], [], [], []] and report.get('controls_key_statuses') == [200] * 7 and report.get('controls_screenshot', False)
+            if args.writer_mode == 'controls-restore':
+                cold = hits[report.get('controls_cold_boundary', len(hits)):]
+                own_roster = next((i for i, hit in enumerate(cold) if hit['path'] == '/api/accounts/users/me/app-data/synthetic8.aeriotv/'), -1)
+                own_lineup = next((i for i, hit in enumerate(cold) if hit['path'].startswith('/api/channels/channels/summary/')), -1)
+                report['writer_own_request_order'] = bool(cold) and all(hit['user'] == 8 and hit.get('method', 'GET') == 'GET' for hit in cold) and own_roster >= 0 and own_lineup > own_roster
+                events = report.get('controls_events', [])
+                report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('cold_restored', False) and report['writer_own_request_order'] and report.get('controls_cold_ready', False) and report.get('controls_cold_relaunched', False) and len(events) == 3 and all(row.get('ready', row.get('valid', False)) for row in events) and report.get('controls_pre_close_requests') == [[], [], []] and report.get('controls_key_statuses') == [200] * 3 and report.get('controls_screenshot', False)
+            if args.writer_mode not in ['direct', 'unchanged'] and not args.writer_mode.startswith(('create', 'schedule', 'controls')):
                 report['passed'] = report['passed'] and report.get('writer_target_pin_ready', False) and report.get('writer_pre_pin_requests') == [] and report.get('writer_source_admitted', False) and rows[-1].get('flush', False)
             if args.writer_mode == 'flush-import-pin':
                 before_pin = report.get('writer_before_import_pin', [])

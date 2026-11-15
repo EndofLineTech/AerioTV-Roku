@@ -643,6 +643,7 @@ sub openConnectionManager()
     if m.selectedConnectionId <> ""
         choices.push({title: "Rename selected connection", action: "rename"})
         choices.push({title: "Request identity and header settings", action: "advanced"})
+        if dispatcharrSyncControlsAllowed() then choices.push({title: "Dispatcharr Sync (this Roku)", action: "syncControls"})
         choices.push({title: "Move selected up", action: "move", direction: -1})
         choices.push({title: "Move selected down", action: "move", direction: 1})
         choices.push({title: "Forget selected connection", action: "forget"})
@@ -777,6 +778,7 @@ sub openConnectionDialog(title as string, message as string, choices as object)
 end sub
 
 sub closeConnectionDialog()
+    m.profileSyncSettingsContext = invalid
     if m.connectionDialog = invalid then return
     m.connectionDialog.unobserveField("buttonSelected")
     m.connectionDialog.unobserveField("wasClosed")
@@ -796,6 +798,7 @@ sub onConnectionChoice(event as object)
     index = event.getData()
     if index < 0 or index >= m.connectionChoices.count() then return
     choice = m.connectionChoices[index]
+    syncContext = m.profileSyncSettingsContext
     closeConnectionDialog()
     if choice.action = "select"
         switchSavedConnection(choice.id)
@@ -815,6 +818,12 @@ sub onConnectionChoice(event as object)
         openConnectionRename()
     else if choice.action = "advanced"
         openConnectionAdvanced()
+    else if choice.action = "syncControls"
+        openDispatcharrSyncControls()
+    else if choice.action = "syncEnabled"
+        toggleDispatcharrSyncControls(syncContext, "enabled", choice.value)
+    else if choice.action = "syncProfiles"
+        toggleDispatcharrSyncControls(syncContext, "profiles", choice.value)
     else if choice.action = "editAgent"
         openConnectionAgentEditor()
     else if choice.action = "resetAgent"

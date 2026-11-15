@@ -37,6 +37,8 @@
   <script type="text/brightscript" uri="ProfileDefaultRetirementNavigation.brs" />
   <script type="text/brightscript" uri="ProfileSyncNavigation.brs" />
   <script type="text/brightscript" uri="ProfileSyncSessionNavigation.brs" />
+  <script type="text/brightscript" uri="ProfileSyncSettingsNavigation.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncSettingsStore.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncSchedule.brs" />
   <script type="text/brightscript" uri="ProfileChildUnavailableNavigation.brs" />
   <script type="text/brightscript" uri="ProfileChildRejectedNavigation.brs" />

@@ -1,5 +1,10 @@
 sub main()
     syncScheduledFixture()
+    m.profileSyncEnabled = false
+    m.profileSyncClock = {control: "stop"}
+    activateProfileSyncScheduling()
+    check(m.profileSyncClock.control = "stop", "explicit sync opt-out must not restart the scheduler timer after controls reopen")
+    syncScheduledFixture()
     onProfileSyncScheduleTick()
     oldTask = m.profileScheduledSyncTask
     onProfileSyncNetworkLink(syncFlushEvent(m.top, {linked: false, returned: false, sequence: 1}))
@@ -252,6 +257,7 @@ sub syncScheduledFixture()
     m.profileSyncSchedule = invalid
     m.profileScheduledSyncTask = invalid
     m.profileScheduledSyncContext = invalid
+    m.profileSyncSettingsContext = invalid
     m.profileSyncLinkKnown = false
     m.profileSyncLinkUp = false
     m.profileSyncNetworkSequence = 0

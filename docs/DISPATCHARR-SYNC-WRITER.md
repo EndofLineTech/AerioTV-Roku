@@ -379,3 +379,8 @@ the injected downstream path, NOT a physical disconnect/reconnect: no device
 network settings were changed. Full verify passed at
 `out/mrr-sync-network-events-pre-native-verify.log`. Every run cleaned disposable
 data and restored the exact owner app.
+
+Private explicit device-wide Sync/Profiles controls, exact-root persistence,
+real remote interaction and cold restore are now qualified separately in
+[DISPATCHARR-SYNC-CONTROLS.md](DISPATCHARR-SYNC-CONTROLS.md). This does not enable
+shipping readiness or establish general category/public acceptance.

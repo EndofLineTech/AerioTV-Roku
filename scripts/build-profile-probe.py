@@ -105,6 +105,13 @@ def build(output, base_url, registry=False, model_store=False):
         package.write(ROOT / 'source/DispatcharrSyncSchedule.brs', 'source/DispatcharrSyncSchedule.brs')
         package.write(ROOT / 'source/DispatcharrSyncPolicy.brs', 'source/DispatcharrSyncPolicy.brs')
         package.write(ROOT / 'source/NetworkStatus.brs', 'source/NetworkStatus.brs')
+        settings_source = (ROOT / 'source/DispatcharrSyncSettingsStore.brs').read_text().replace('requestGateCredentialHash(', 'syncSettingsFixtureHash(').replace('requestGateAccessAllowed(', 'syncSettingsFixtureAccess(')
+        package.writestr('source/DispatcharrSyncSettingsStore.brs', settings_source)
+        settings_ui = (ROOT / 'components/ProfileSyncSettingsNavigation.brs').read_text().replace('requestGateCredentialHash(', 'syncSettingsFixtureHash(')
+        settings_stubs = {'openConnectionDialog': 'syncSettingsFixtureDialog', 'showNotice': 'syncSettingsFixtureNotice', 'closeScheduledProfileSync': 'syncSettingsFixtureClose', 'activateProfileSyncScheduling': 'syncSettingsFixtureActivate', 'coverScheduledProfileSync': 'syncSettingsFixtureCover'}
+        for old, new in settings_stubs.items():
+            settings_ui = settings_ui.replace(old + '(', new + '(')
+        package.writestr('source/ProfileSyncSettingsNavigation.brs', settings_ui)
         ack_source = (ROOT / 'source/DispatcharrSyncAckStore.brs').read_text().replace('requestGateCredentialHash(', 'syncAckFixtureHash(').replace('requestGateAccessAllowed(', 'syncAckFixtureAccessAllowed(')
         package.writestr('source/DispatcharrSyncAckStore.brs', ack_source)
         package.write(ROOT / 'components/ProfileSyncNavigation.brs', 'source/ProfileSyncNavigation.brs')
@@ -124,6 +131,14 @@ def build(output, base_url, registry=False, model_store=False):
         for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'RequestGateClient', 'RequestGateModel', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileCleanup', 'UserProfileScope', 'UserProfileScopeStore', 'PreferenceModel', 'ConnectionStoreModel', 'RemoteMapModel', 'GuideSettingsModel', 'ReminderModel']:
             package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
         if model_store:
+            settings_checks = (ROOT / 'tests/DispatcharrSyncSettingsStore.test.brs').read_text().split('sub check(', 1)[0]
+            settings_checks = settings_checks.replace('sub main()', 'sub runDispatcharrSyncSettingsStoreChecks()').replace('check(', 'profileAssert(').replace('m.nativeSyncSettings = false', 'm.nativeSyncSettings = true')
+            settings_checks = settings_checks.replace('requestGateCredentialHash(', 'syncSettingsFixtureHash(').replace('requestGateAccessAllowed(', 'syncSettingsFixtureAccess(')
+            settings_checks = settings_checks.replace('m.profilePreferenceDecoder = function(raw as string) as dynamic\n        return ParseJson(raw)\n    end function', 'm.profilePreferenceDecoder = invalid')
+            settings_checks = settings_checks.replace('m.strictJsonFloatingText = function(value as dynamic) as string\n        return FormatJson(value)\n    end function', 'm.strictJsonFloatingText = invalid')
+            for old, new in settings_stubs.items():
+                settings_checks = settings_checks.replace(old + '(', new + '(')
+            package.writestr('source/DispatcharrSyncSettingsStoreProbeChecks.brs', settings_checks)
             network_checks = (ROOT / 'tests/NetworkStatus.test.brs').read_text().split('sub check(', 1)[0]
             network_checks = network_checks.replace('sub main()', 'sub runNetworkStatusChecks()').replace('check(', 'profileAssert(')
             package.writestr('source/NetworkStatusProbeChecks.brs', network_checks)
@@ -273,6 +288,7 @@ def build(output, base_url, registry=False, model_store=False):
     print "ALL TESTS PASSED"''')
                 package.writestr(f'source/{name}ProbeChecks.brs', source)
         else:
+            package.writestr('source/DispatcharrSyncSettingsStoreProbeChecks.brs', 'sub runDispatcharrSyncSettingsStoreChecks()\nend sub\nfunction syncSettingsFixtureHash(key as string) as string\nreturn ""\nend function\nfunction syncSettingsFixtureAccess(url as string, key as string) as boolean\nreturn false\nend function\n' + '\n'.join('sub ' + name + '(a = invalid as dynamic, b = invalid as dynamic, c = invalid as dynamic)\nend sub' for name in settings_stubs.values()))
             package.writestr('source/NetworkStatusProbeChecks.brs', 'sub runNetworkStatusChecks()\nend sub\n')
             package.writestr('source/DispatcharrSyncPolicyProbeChecks.brs', 'sub runDispatcharrSyncPolicyChecks()\nend sub\n')
             package.writestr('source/DispatcharrSyncScheduleProbeChecks.brs', 'sub runDispatcharrSyncScheduleChecks()\nend sub\n')

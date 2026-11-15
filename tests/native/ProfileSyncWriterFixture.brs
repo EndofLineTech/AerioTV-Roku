@@ -1,6 +1,10 @@
 ' Private synthetic HTTP only; run after actual B adoption in the normal app.
 sub advanceProfileSyncWriterProbe()
     m.writerProbeMode = PROFILE_WRITER_MODE
+    if left(m.writerProbeMode, 8) = "controls"
+        advanceProfileSyncControlsProbe()
+        return
+    end if
     if left(m.writerProbeMode, 8) = "schedule"
         advanceProfileSyncScheduleProbe()
         return
@@ -89,6 +93,107 @@ sub advanceProfileSyncWriterProbe()
         return
     end if
     print "[profile-management] "; FormatJson({kind: "result", writer: passed, passed: passed, writer_state: textValue(result.state), submitted: result.submitted = true})
+end sub
+
+sub advanceProfileSyncControlsProbe()
+    if m.writerControlsQuiet <> true
+        m.writerControlsQuiet = true
+        m.guide.active = false
+        m.writerControlsScope = m.activeUserScope
+        m.writerControlsRoster = m.registry.read(userProfileStoreKey("slot-a"))
+        m.writerControlsAccounts = FormatJson(loadStrictPreferenceStore(m.registry).accounts)
+        m.profileSyncControlsReady = true
+        m.profileSyncSchedulingReady = true
+        return
+    end if
+    if m.writerControlsBoundary <> true
+        m.writerControlsBoundary = true
+        print "[profile-management] "; FormatJson({kind: "writer-ready"})
+        return
+    end if
+    if m.writerControlsOpened <> true
+        m.writerControlsOpened = true
+        showConnection()
+        openConnectionManager()
+        index = -1
+        for i = 0 to m.connectionChoices.count() - 1
+            if m.connectionChoices[i].action = "syncControls" then index = i
+        end for
+        if index >= 0 then onConnectionChoice(managementProbeEvent(m.connectionDialog, index))
+        ready = index >= 0 and m.profileSyncSettingsContext <> invalid and m.connectionChoices[0].value = true and not loadDispatcharrSyncSettings(m.registry).enabled
+        print "[profile-management] "; FormatJson({kind: "controls-ready", ready: ready})
+        return
+    end if
+    settings = loadDispatcharrSyncSettings(m.registry)
+    if m.writerControlsEnabled <> true
+        if not settings.enabled then return
+        m.writerControlsEnabled = true
+        valid = m.profileSyncEnabled and m.profileSyncSettingsContext <> invalid and m.profileScheduledSyncTask = invalid and m.registry.read(userProfileStoreKey("slot-a")) = m.writerControlsRoster
+        print "[profile-management] "; FormatJson({kind: "controls-enabled", valid: valid})
+        return
+    end if
+    if m.writerControlsProfilesOff <> true
+        if settings.profiles then return
+        m.writerControlsProfilesOff = true
+        valid = settings.enabled and not m.profileRosterEnabled and m.profileScheduledSyncTask = invalid and m.registry.read(userProfileStoreKey("slot-a")) = m.writerControlsRoster
+        print "[profile-management] "; FormatJson({kind: "controls-profiles-off", valid: valid})
+        return
+    end if
+    if m.writerProbeMode = "controls-restore"
+        if m.writerControlsRelaunch <> true
+            m.writerControlsRelaunch = true
+            store = loadUserProfileStore(m.registry, "slot-a")
+            store = setCanonicalPreference(store, "pendingRoster", true)
+            m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
+            m.registry.write("syncSettingsProbeRestore", "1")
+            m.registry.write("syncSettingsProbeOldSession", m.activeUserScope.sessionId)
+            m.registry.flush()
+            closeConnectionDialog()
+            m.managementProbeClock.control = "stop"
+            ready = settings.enabled and not settings.profiles and not m.profileRosterEnabled and m.profileScheduledSyncTask = invalid
+            print "[profile-management] "; FormatJson({kind: "controls-relaunch-ready", ready: ready})
+            m.top.exitRequested = true
+        end if
+        return
+    end if
+    if m.writerControlsRestored <> true
+        if not settings.profiles then return
+        m.writerControlsRestored = true
+        valid = settings.enabled and m.profileRosterEnabled and m.profileScheduledSyncTask = invalid and m.profileSyncSettingsContext <> invalid
+        print "[profile-management] "; FormatJson({kind: "controls-restored", valid: valid})
+        return
+    end if
+    if m.writerControlsRead <> true
+        if m.connectionDialog <> invalid or m.profileScheduledSyncTask <> invalid then return
+        if m.profileSyncSchedule = invalid then return
+        if m.profileSyncSchedule.flight <> invalid or m.profileSyncSchedule.sequence < 1 then return
+        m.writerControlsRead = true
+        openDispatcharrSyncControls()
+        ready = m.profileSyncSettingsContext <> invalid and m.connectionChoices[0].value = false
+        print "[profile-management] "; FormatJson({kind: "controls-disable-ready", ready: ready})
+        return
+    end if
+    if settings.enabled then return
+    m.managementProbeClock.control = "stop"
+    closeConnectionDialog()
+    store = loadUserProfileStore(m.registry, "slot-a")
+    passed = settings.ok and not m.profileSyncEnabled and settings.profiles and m.profileScheduledSyncTask = invalid and m.profileSyncClock.control = "stop" and not store.pendingRoster and not m.registry.exists(userProfileSyncAckKey("slot-a")) and userProfileSameSession(m.writerControlsScope, m.activeUserScope) and m.apiKey = "synthetic-b" and m.registry.read("connKey_slot-a") = "synthetic-a" and FormatJson(settings.store.accounts) = m.writerControlsAccounts
+    print "[profile-management] "; FormatJson({kind: "result", writer: passed, controls: passed, timer_control: m.profileSyncClock.control, accounts_retained: FormatJson(settings.store.accounts) = m.writerControlsAccounts})
+end sub
+
+sub runProfileSyncControlsColdProbe()
+    if m.page <> "guide" or m.busy then return
+    m.managementProbeClock.control = "stop"
+    settings = loadDispatcharrSyncSettings(m.registry)
+    store = loadUserProfileStore(m.registry, "slot-a")
+    entry = connectionStoreEntry(m.connectionStore, "slot-a")
+    passed = settings.ok and settings.enabled and not settings.profiles and m.profileSyncEnabled and not m.profileRosterEnabled and store.pendingRoster and not m.registry.exists(userProfileSyncAckKey("slot-a")) and m.profileScheduledSyncTask = invalid
+    passed = passed and m.activeUserScope <> invalid
+    if passed then passed = m.activeUserScope.accountId = "8" and m.apiKey = "synthetic-b" and m.activeUserScope.sessionId <> m.registry.read("syncSettingsProbeOldSession") and m.registry.read("connKey_slot-a") = "synthetic-a" and m.guide.callFunc("profileSwitchProbeLineup") = "8" and m.accountPreferences.favoriteIds[0] = "8"
+    for each profile in store.profiles
+        if profile.id = store.active then passed = passed and profile.role = "user" and profile.pinType = "none"
+    end for
+    print "[profile-management] "; FormatJson({kind: "result", writer: passed, controls: passed, cold_restored: passed})
 end sub
 
 sub advanceProfileSyncScheduleProbe()

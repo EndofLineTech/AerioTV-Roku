@@ -2,6 +2,7 @@
 ' receipt stores independently recheck exact roots, actor, credential and broker.
 sub activateProfileSyncScheduling()
     if m.profileSyncSchedulingReady <> true or m.profileSyncWriterReady <> true then return
+    if m.profileSyncEnabled <> true or m.profileRosterEnabled = false then return
     if m.profileSyncClock = invalid
         m.profileSyncClock = m.top.createChild("Timer")
         m.profileSyncClock.duration = 1
@@ -22,6 +23,7 @@ function scheduledProfileSyncAllowed() as boolean
     if m.userProfileRecoveryRequired = true or m.profileRosterEnabled = false or m.busy = true then return false
     if m.profileSyncLinkKnown = true and m.profileSyncLinkUp <> true then return false
     if m.profileSwitchContext <> invalid or m.profileOwnSignInContext <> invalid or m.profileSyncWriteTask <> invalid then return false
+    if m.profileSyncSettingsContext <> invalid then return false
     if m.profilePinDialog <> invalid or m.adultPinDialog <> invalid or m.profileManagementDialog <> invalid then return false
     if userProfileGateClosed() or m.activeUserScope = invalid or textValue(m.apiKey) = "" then return false
     if textValue(m.global.activeusersession) <> textValue(m.activeUserScope.sessionId) then return false
