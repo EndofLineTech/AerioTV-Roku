@@ -736,6 +736,10 @@ newer re-adds, orphan cleanup and retained shared ownership. Shipping remains of
 pending the remaining recovery/sync/public gates. Cancellation diagnostics now
 record foreground/screensaver state before Back and refuse to wake another app;
 the intermittent missing Scene key event remains tracked rather than assumed fixed.
+Further private Guide-key telemetry reproduced the failure while foregrounded
+with no screensaver/dialog and Guide inactive: neither Guide nor Scene observed
+the Back event (`out/mrr-switch-guide-key-failure-native.json`). The immediate
+repeat passed. No production fix or delivery/focus root cause is inferred.
 
 The private `--active-default-mode simultaneous` native case also passes
 (`out/mrr-simultaneous-retirement-native.log`): C's own read tombstones both

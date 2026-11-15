@@ -169,6 +169,15 @@ end function
             if (switching or assignment_refresh or child_available) and name == 'components/GuideView.xml':
                 body = body.replace(b'</interface>', b'<function name="profileSwitchProbeLineup" /></interface>', 1)
             if (switching or assignment_refresh or child_available) and name == 'components/GuideView.brs':
+                if switch_roster:
+                    source = body.decode()
+                    target = 'function onKeyEvent(key as string, press as boolean) as boolean\n'
+                    assert source.count(target) == 1
+                    source = source.replace(target, target + '''    if m.global.profileswitchpending = true and press
+        print "[profile-management] "; FormatJson({kind: "switch-guide-key", key: key, active: m.top.active, has_picker: m.picker <> invalid, mini_active: m.top.miniActive, pending_tune: m.top.pendingTune})
+    end if
+''', 1)
+                    body = source.encode()
                 body += b'''\nfunction profileSwitchProbeLineup() as string
     if type(m.channels) <> "roArray" then return ""
     if m.channels.count() = 0 then return ""
@@ -752,7 +761,7 @@ end sub
         print "[profile-management] "; FormatJson({kind: "switch-key", key: key, scene_focus: m.top.isInFocusChain(), guide_focus: m.guide.isInFocusChain(), has_task: m.profileSwitchTask <> invalid})
     end if
 ''', 1)
-                    source = source.replace('kind: "cancel-ready", covered: m.profileGateCover.visible', 'kind: "cancel-ready", scene_owns_focus: m.top.hasFocus(), scene_focus: m.top.isInFocusChain(), guide_focus: m.guide.isInFocusChain(), has_dialog: m.top.dialog <> invalid, covered: m.profileGateCover.visible')
+                    source = source.replace('kind: "cancel-ready", covered: m.profileGateCover.visible', 'kind: "cancel-ready", guide_active: m.guide.active, scene_owns_focus: m.top.hasFocus(), scene_focus: m.top.isInFocusChain(), guide_focus: m.guide.isInFocusChain(), has_dialog: m.top.dialog <> invalid, covered: m.profileGateCover.visible')
                 if switch_authority_race:
                     source = source.split('sub onManagementProbeTick()', 1)[0] + (ROOT / 'tests/native/ProfileAuthorityRaceFixture.brs').read_text()
                 if switch_active_retirement:
@@ -1066,8 +1075,9 @@ def main():
             print(result.stderr, end='', flush=True)
         rows = [json.loads(line.split('[profile-management] ', 1)[1]) for line in result.stdout.splitlines() if '[profile-management] {' in line]
         report['switch_key_events'] = [row for row in rows if row.get('kind') == 'switch-key']
+        report['switch_guide_key_events'] = [row for row in rows if row.get('kind') == 'switch-guide-key']
         report['default_rejection_ready'] = any(row.get('kind') == 'active-default-reject-ready' for row in rows)
-        rows = [row for row in rows if row.get('kind') not in ['switch-key', 'active-default-reject-ready', 'retirement-crash-ready', 'retirement-cold-pin-ready']]
+        rows = [row for row in rows if row.get('kind') not in ['switch-key', 'switch-guide-key', 'active-default-reject-ready', 'retirement-crash-ready', 'retirement-cold-pin-ready']]
         report['events'] = rows
         if args.child_escape:
             report['requests'] = hits

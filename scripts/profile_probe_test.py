@@ -357,7 +357,7 @@ class ProfileProbeTest(unittest.TestCase):
                 package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.profileSwitchRosterReady = false\nm.profileDefaultRetirementReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub\nfunction onKeyEvent(key as string, press as boolean) as boolean\nreturn false\nend function\n')
                 package.writestr('source/MetadataCacheStore.brs', 'return "cachefs:/aeriotv-metadata-v1"')
                 package.writestr('components/GuideView.xml', '<component name="GuideView"><interface></interface></component>')
-                package.writestr('components/GuideView.brs', 'sub init()\nend sub\n')
+                package.writestr('components/GuideView.brs', 'sub init()\nend sub\nfunction onKeyEvent(key as string, press as boolean) as boolean\nreturn false\nend function\n')
                 for name in ['components/DvrSettlementNavigation.brs', 'components/DvrNavigation.brs', 'components/DvrRecordingTask.brs', 'components/ProfileDefaultRetirementNavigation.brs', 'source/HttpTransport.brs']:
                     package.writestr(name, (root / name).read_text())
             output = Path(tmp) / 'probe.zip'
@@ -379,6 +379,7 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertIn('m.profileSwitchRosterReady = true', source)
                 self.assertIn('kind: "switch-key"', source)
                 self.assertIn('scene_focus: m.top.isInFocusChain()', source)
+                self.assertIn('kind: "switch-guide-key"', package.read('components/GuideView.brs').decode())
                 self.assertNotIn('m.profileSwitchRosterReady = false', source)
                 self.assertNotIn('"AerioTV"', source)
             with self.assertRaises(ValueError):
