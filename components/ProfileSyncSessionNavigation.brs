@@ -108,6 +108,7 @@ function startScheduledProfileSync(store as object, ticket as object, push as bo
     task.storeRoot = m.registry.read(userProfileStoreKey(entry.id))
     task.profilesEnabled = true
     task.pullOnly = not push
+    task.creationBlocked = m.profileSyncSchedule.creationBlocked = true
     task.expectedAuthorizationSignature = m.profileAuthorizationSignature
     task.deviceId = device.id
     task.appVersion = version
@@ -159,7 +160,7 @@ sub finishScheduledProfileSync(result as dynamic)
     else if result.state = "local-commit"
         saved = commitDispatcharrSyncRosterRead(m.registry, context.connection, context.store, result, m.activeUserScope, m.apiKey, memory, m.profileAuthorizationSignature, true, CreateObject("roDateTime").asSeconds())
     end if
-    m.profileSyncSchedule = dispatcharrSyncScheduleComplete(m.profileSyncSchedule, context.ticket, saved.ok = true, profileSyncSchedulingNow())
+    m.profileSyncSchedule = dispatcharrSyncScheduleComplete(m.profileSyncSchedule, context.ticket, saved.ok = true, profileSyncSchedulingNow(), textValue(result.state))
     if saved.needsDefaultSwitch = true
         if beginOwnSyncDefaultRetirement(context, result, memory) then return
         coverScheduledProfileSync()
@@ -171,7 +172,7 @@ sub finishScheduledProfileSync(result as dynamic)
     end if
     if not saved.ok then return
     currentRoot = m.registry.read(userProfileStoreKey(context.connection.id))
-    m.profileSyncSchedule = dispatcharrSyncScheduleDirty(m.profileSyncSchedule, m.activeUserScope, requestGateCredentialHash(currentRoot), saved.store.pendingRoster = true, profileSyncSchedulingNow())
+    m.profileSyncSchedule = dispatcharrSyncScheduleDirty(m.profileSyncSchedule, m.activeUserScope, requestGateCredentialHash(currentRoot), saved.store.pendingRoster = true, profileSyncSchedulingNow(), false)
     m.userProfileStore = saved.store
     if type(saved.preferenceStore) = "roAssociativeArray" then m.preferenceStore = saved.preferenceStore
     if type(saved.suggestions) = "roArray" then m.profileRosterSuggestions = saved.suggestions

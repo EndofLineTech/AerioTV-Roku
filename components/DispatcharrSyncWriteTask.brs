@@ -14,7 +14,7 @@ sub writeDispatcharrSync()
     m.writerRegistry = m.syncWriterRegistry
     if m.writerRegistry = invalid then m.writerRegistry = CreateObject("roRegistrySection", "AerioTV")
     if not syncWriterAccessCurrent() then finishDispatcharrSyncWrite({ok: false, state: "stale-context"}) : return
-    me = syncWriterReadObject(m.top.baseUrl + "/api/accounts/users/me/", 65536)
+    me = syncWriterReadObject(m.top.baseUrl + "/api/accounts/users/me/", 65536, false, "me")
     if not me.ok then finishDispatcharrSyncWrite(me) : return
     profile = m.writerProfile
     user = me.data
@@ -30,7 +30,7 @@ sub writeDispatcharrSync()
     end if
     key = dispatcharrSyncUserKey(user.username)
     m.writerOwnKey = key
-    listing = syncWriterReadObject(m.top.baseUrl + "/api/accounts/users/me/app-data/", 65536)
+    listing = syncWriterReadObject(m.top.baseUrl + "/api/accounts/users/me/app-data/", 65536, false, "list")
     if not listing.ok then finishDispatcharrSyncWrite(listing) : return
     discovery = dispatcharrSyncReadPlan(key, listing.data)
     ' Legacy-only discovery stays read-only. A fresh typed key-not-found response
@@ -39,6 +39,10 @@ sub writeDispatcharrSync()
     url = m.top.baseUrl + "/api/accounts/users/me/app-data/" + key + "/"
     latest = syncWriterReadObject(url, 131072, discovery.legacy.count() = 0)
     if not latest.ok then finishDispatcharrSyncWrite(latest) : return
+    if latest.state = "missing" and m.top.creationBlocked = true and m.top.pullOnly <> true
+        finishDispatcharrSyncWrite({ok: false, state: "storage-full", phase: "create-blocked", submitted: false})
+        return
+    end if
     if latest.state = "missing" then latest.data = syncWriterMissingEnvelope()
     if m.top.pullOnly = true
         finishDispatcharrSyncWrite(syncWriterLocalReadReceipt(latest.data, user))
@@ -68,7 +72,7 @@ sub writeDispatcharrSync()
         return
     end if
     if response.error <> "" or response.status <> 200
-        finishDispatcharrSyncWrite({ok: false, state: "pending", submitted: true})
+        finishDispatcharrSyncWrite(syncWriterResponseFailure("put", response))
         return
     end if
     finishDispatcharrSyncWrite({ok: true, state: "written", submitted: true, maximumSentStamp: prepared.maximumSentStamp, storeRoot: m.top.storeRoot, connectionRoot: m.top.connectionRoot, credentialHash: requestGateCredentialHash(m.key), scope: m.top.userScope})
@@ -128,13 +132,13 @@ function syncWriterLocalReadReceipt(value as object, user as object) as object
     return {ok: false, state: "local-commit", submitted: false, readStatus: 200, profileData: data, authorizationSignature: dispatcharrAuthorizationSignature(user), storeRoot: m.top.storeRoot, connectionRoot: m.top.connectionRoot, credentialHash: requestGateCredentialHash(m.key), scope: m.top.userScope}
 end function
 
-function syncWriterReadObject(url as string, maxBytes as integer, allowMissing = false as boolean) as object
+function syncWriterReadObject(url as string, maxBytes as integer, allowMissing = false as boolean, phase = "key" as string) as object
     denied = {ok: false, state: "unavailable"}
     if not syncWriterAccessCurrent() then return denied
     response = httpTransferOnce(url, invalid, "", 10000, maxBytes)
     if not syncWriterAccessCurrent() then return denied
-    if response.error <> "" then return denied
-    if response.status <> 200 and (response.status <> 404 or not allowMissing) then return denied
+    if response.error <> "" then return syncWriterResponseFailure(phase, response)
+    if response.status <> 200 and (response.status <> 404 or not allowMissing) then return syncWriterResponseFailure(phase, response)
     if not CreateObject("roRegex", "^\s*\{", "").isMatch(response.body) then return denied
     value = invalid
     if m.syncJsonParser <> invalid
@@ -149,6 +153,22 @@ function syncWriterReadObject(url as string, maxBytes as integer, allowMissing =
         return {ok: true, state: "missing"}
     end if
     return {ok: true, data: value}
+end function
+
+function syncWriterResponseFailure(phase as string, response as object) as object
+    code = ""
+    if CreateObject("roRegex", "^\s*\{", "").isMatch(response.body)
+        value = invalid
+        if m.syncJsonParser <> invalid
+            value = m.syncJsonParser(response.body)
+        else
+            value = ParseJson(response.body, "d")
+        end if
+        if type(value) = "roAssociativeArray"
+            if GetInterface(value["code"], "ifString") <> invalid then code = value["code"]
+        end if
+    end if
+    return dispatcharrSyncFailure(phase, response.status, code, textValue(response.error))
 end function
 
 ' Used only AFTER this own session's successful no-legacy list and typed 404.

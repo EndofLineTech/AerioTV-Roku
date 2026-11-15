@@ -1,7 +1,7 @@
 ' Private synthetic HTTP only; run after actual B adoption in the normal app.
 sub advanceProfileSyncWriterProbe()
     m.writerProbeMode = PROFILE_WRITER_MODE
-    if m.writerProbeMode = "schedule"
+    if left(m.writerProbeMode, 8) = "schedule"
         advanceProfileSyncScheduleProbe()
         return
     end if
@@ -114,6 +114,16 @@ sub advanceProfileSyncScheduleProbe()
     if m.profileSyncSchedule = invalid then return
     if m.profileSyncSchedule.flight <> invalid then return
     if m.profileSyncSchedule.sequence < 1 then return
+    if m.writerProbeMode = "schedule-signin"
+        if m.writerScheduleQuietTicks = invalid then m.writerScheduleQuietTicks = 0
+        m.writerScheduleQuietTicks++
+        if m.writerScheduleQuietTicks < 3 then return
+        m.profileSyncClock.control = "stop"
+        m.managementProbeClock.control = "stop"
+        passed = m.profileSyncSchedule.pause = "signin-required" and m.profileSyncSchedule.sequence = 1 and userProfileSameSession(m.writerScheduleScope, m.activeUserScope) and m.apiKey = "synthetic-b" and not m.registry.exists(userProfileSyncAckKey("slot-a"))
+        print "[profile-management] "; FormatJson({kind: "result", writer: passed, scheduled: passed})
+        return
+    end if
     if m.writerScheduleDirty <> true
         m.writerScheduleDirty = true
         store = loadUserProfileStore(m.registry, "slot-a")
@@ -134,6 +144,24 @@ sub advanceProfileSyncScheduleProbe()
         return
     end if
     store = loadUserProfileStore(m.registry, "slot-a")
+    if m.writerProbeMode = "schedule-too-large"
+        if m.profileSyncSchedule.sequence < 2 then return
+        if m.profileSyncSchedule.pause <> "too-large" then return
+        if m.writerScheduleNetwork <> true
+            m.writerScheduleNetwork = true
+            requestScheduledProfileSync("network-return")
+            return
+        end if
+        if m.profileSyncSchedule.sequence < 3 then return
+        if m.writerScheduleQuietTicks = invalid then m.writerScheduleQuietTicks = 0
+        m.writerScheduleQuietTicks++
+        if m.writerScheduleQuietTicks < 3 then return
+        m.profileSyncClock.control = "stop"
+        m.managementProbeClock.control = "stop"
+        passed = m.profileSyncSchedule.sequence = 3 and m.profileSyncSchedule.writeBlockedRoot <> "" and store.pendingRoster and userProfileSameSession(m.writerScheduleScope, m.activeUserScope) and m.apiKey = "synthetic-b" and not m.registry.exists(userProfileSyncAckKey("slot-a"))
+        print "[profile-management] "; FormatJson({kind: "result", writer: passed, scheduled: passed})
+        return
+    end if
     if store.pendingRoster or m.profileSyncSchedule.sequence < 2 then return
     if m.writerSchedulePicker <> true
         m.writerSchedulePicker = true

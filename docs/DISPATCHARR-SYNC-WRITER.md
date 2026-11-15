@@ -265,7 +265,8 @@ not implicitly approved by canonical creation support.
 `DispatcharrSyncSchedule.brs` now models session-start pulls, one-second dirty
 debounce, playlist-wide thirty-second picker throttling with one two-second
 re-read, fifteen-minute cadence and explicit network-return requests. There is
-one in-flight operation; failures wait at least sixty seconds and broker parks
+one in-flight operation; network failures back off thirty seconds, two minutes,
+then ten minutes, and broker parks
 still gate every request. Old-scope queues/completions cannot affect a successor.
 Queue state holds scope and a digest of roster bytes, never raw credentials or
 roster/PIN material. Durable pending intent remains in the roster store.
@@ -321,3 +322,32 @@ scheduled-session regression and full verification passed
 `out/mrr-sync-unchanged-schedule-regression-native.log`,
 `out/mrr-sync-unchanged-final-verify.log`). All device runs cleaned disposable data
 and restored the exact owner app.
+
+## Endpoint failures and bounded pauses
+
+`DispatcharrSyncPolicy.brs` returns sanitized phase/status classifications without
+arbitrary response JSON, headers, credentials or URLs. Username 401/403 ends the
+attempt quietly; list/PUT 401/403 records a memory-only sign-in pause until a good
+later discovery. A key-GET failure is not that pause. The scheduler uses corrected
+schema backoff of thirty seconds, two minutes, then ten minutes for network/server
+failures. Authorization pauses wait for regular cadence; actual shared 429 parks
+and specific rejected-key holds remain enforced below this policy on every call.
+
+Typed `409 max_apps` blocks new canonical creation for this sync session, not
+updates to a canonical that exists. Typed 413 stops repeated writes of the same
+dirty snapshot; regular or explicitly requested pulls remain read-only, and
+imported metadata does not count as a new local edit that unblocks writing.
+The next real local mutation may prepare a fresh checked body. Safe category trim
+steps and public error/status UI remain unfinished; no unknown data is discarded
+to make a rejected body fit.
+
+Host endpoint/capacity/backoff/blocked-root tests passed. Actual native 413 followed
+by a read-only network-return pull sent exactly one PUT and retained dirty state;
+generic list403 paused after me/list with no key GET or PUT
+(`out/mrr-sync-error-too-large-native.log`,
+`out/mrr-sync-error-signin-native.log`). Native model arithmetic covers backoff
+and pause expiry; the short native refusal runs are not real fifteen-minute wait
+claims. Final full verification and expanded native matrix passed
+(`out/mrr-sync-error-policy-final-verify.log`,
+`out/mrr-sync-error-policy-final-primitives-native.log`). All runs cleaned fixture
+data and restored the exact owner app. Shipping flags remain false.

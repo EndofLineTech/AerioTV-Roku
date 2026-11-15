@@ -11,6 +11,7 @@
     <field id="storeRoot" type="string" />
     <field id="profilesEnabled" type="boolean" />
     <field id="pullOnly" type="boolean" />
+    <field id="creationBlocked" type="boolean" />
     <field id="expectedAuthorizationSignature" type="string" />
     <field id="deviceId" type="string" />
     <field id="appVersion" type="string" />
@@ -20,6 +21,7 @@
   </interface>
   <script type="text/brightscript" uri="DispatcharrSyncWriteTask.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncKey.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncPolicy.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncRoster.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncEnvelope.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncMerge.brs" />

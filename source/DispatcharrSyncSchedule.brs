@@ -15,10 +15,10 @@ function dispatcharrSyncScheduleBind(previous as dynamic, scope as dynamic, now 
         slots = copyPreferenceValue(previous.pickerSlots)
         sequence = previous.sequence
     end if
-    return {scope: captured, pickerSlots: slots, sequence: sequence, dueAt: now, rereadAt: 0, periodicAt: now + 900, dirtyAt: 0, dirtyRoot: "", pending: false, retryAt: 0, flight: invalid}
+    return {scope: captured, pickerSlots: slots, sequence: sequence, dueAt: now, rereadAt: 0, periodicAt: now + 900, dirtyAt: 0, dirtyRoot: "", pending: false, retryAt: 0, failures: 0, pause: "", writeBlockedRoot: "", creationBlocked: false, flight: invalid}
 end function
 
-function dispatcharrSyncScheduleDirty(previous as object, scope as dynamic, root as string, pending as boolean, now as integer) as object
+function dispatcharrSyncScheduleDirty(previous as object, scope as dynamic, root as string, pending as boolean, now as integer, localChange = true as boolean) as object
     if not userProfileSameSession(previous.scope, scope) or now <= 0 then return previous
     state = copyPreferenceValue(previous)
     state.pending = pending
@@ -26,6 +26,10 @@ function dispatcharrSyncScheduleDirty(previous as object, scope as dynamic, root
         state.dirtyAt = 0
     else if root <> state.dirtyRoot
         state.dirtyAt = now + 1
+        if localChange
+            state.writeBlockedRoot = ""
+            if state.pause = "too-large" then state.pause = ""
+        end if
     end if
     state.dirtyRoot = root
     return state
@@ -60,10 +64,10 @@ function dispatcharrSyncScheduleTake(previous as object, scope as dynamic, now a
     if previous.flight <> invalid or now < previous.retryAt then return denied
     due = previous.dueAt > 0 and now >= previous.dueAt
     due = due or (previous.rereadAt > 0 and now >= previous.rereadAt) or now >= previous.periodicAt
-    due = due or (previous.pending and previous.dirtyAt > 0 and now >= previous.dirtyAt)
+    due = due or (previous.pending and previous.writeBlockedRoot = "" and previous.dirtyAt > 0 and now >= previous.dirtyAt)
     if not due then return denied
     state = copyPreferenceValue(previous)
-    push = state.pending and (state.dirtyAt = 0 or now >= state.dirtyAt)
+    push = state.pending and state.writeBlockedRoot = "" and (state.dirtyAt = 0 or now >= state.dirtyAt)
     if state.dueAt > 0 and now >= state.dueAt then state.dueAt = 0
     if state.rereadAt > 0 and now >= state.rereadAt then state.rereadAt = 0
     if push then state.dirtyAt = 0
@@ -73,16 +77,36 @@ function dispatcharrSyncScheduleTake(previous as object, scope as dynamic, now a
     return {run: true, push: push, state: state, ticket: state.flight}
 end function
 
-function dispatcharrSyncScheduleComplete(previous as object, ticket as dynamic, ok as boolean, now as integer) as object
+function dispatcharrSyncScheduleComplete(previous as object, ticket as dynamic, ok as boolean, now as integer, failure = "retry" as string) as object
     if previous.flight = invalid or type(ticket) <> "roAssociativeArray" or now <= 0 then return previous
     if not userProfileSameSession(previous.scope, ticket.scope) then return previous
     if FormatJson(previous.flight) <> FormatJson(ticket) then return previous
     state = copyPreferenceValue(previous)
     state.flight = invalid
     state.retryAt = 0
+    state.pause = ""
     if not ok
-        state.retryAt = now + 60
+        state.failures++
+        delay = 30
+        if state.failures = 2 then delay = 120
+        if state.failures >= 3 then delay = 600
+        if failure = "signin-required" or failure = "authorization-unavailable" or failure = "storage-full"
+            state.pause = failure
+            delay = 900
+        end if
+        if failure = "storage-full" then state.creationBlocked = true
+        if failure = "too-large"
+            state.pause = failure
+            state.writeBlockedRoot = state.dirtyRoot
+            state.dirtyAt = 0
+            state.dueAt = 0
+            return state
+        end if
+        state.retryAt = now + delay
         state.dueAt = state.retryAt
+    else
+        state.failures = 0
+        if state.writeBlockedRoot <> "" then state.pause = "too-large"
     end if
     return state
 end function
