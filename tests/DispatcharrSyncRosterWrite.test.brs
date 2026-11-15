@@ -19,8 +19,56 @@ sub main()
     check(not dispatcharrSyncRosterWriteBase({rows: []}, [["local", 1.5]], 500).ok, "malformed local removal intent cannot be silently dropped")
     result = dispatcharrSyncRosterWriteBase({rows: [[8, "Bob", string(60, "x")]]}, [], 500)
     check(len(result.rows[0][2]) = 40, "rebuilt remote display names obey the forty-byte wire limit")
+    store = rosterWriteLocalFixture()
+    remote = {rows: [[7, "Alice", "Remote Alice", "none", "", "", "user", 200, {}, 0, {future: "retain"}], [9, "Carol", "Carol", "none", "", "", "user", 250]]}
+    result = dispatcharrSyncProfilesWritePlan(store, remote, true, 500, 0, 400)
+    check(result.ok and not result.allowWrite and result.data.rows.count() = 3 and result.localPlan.store.profiles[0].updatedAt = 200, "writer plans through existing newer-row merge while retaining remote-only users and their own stamps")
+    check(result.data.rows[0][2] = "Remote Alice" and result.data.rows[0][7] = 200 and result.data.rows[0][10].future = "retain", "local merged row carries server stamp and future same-ID tail rather than restamping to now")
+    result = dispatcharrSyncProfilesWritePlan(store, remote, true, 500, 200, 400)
+    check(result.ok and result.data.rows.count() = 2 and result.localPlan.store.profiles.count() = 2, "acknowledged old local user missing from a nonempty newer server roster stays local but is not resurrected remotely")
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "updatedAt", 450)
+    result = dispatcharrSyncProfilesWritePlan(store, remote, true, 500, 200, 400)
+    check(result.ok and result.data.rows.count() = 3 and result.data.rows[2][7] = 450, "genuine unsent newer local edit survives stale-device suppression without replacing its stored timestamp")
+    store = rosterWriteLocalFixture()
+    result = dispatcharrSyncProfilesWritePlan(store, {rows: [], removed: [["bob", 300]]}, true, 500, 0, 400)
+    check(not result.ok and result.reason = "cleanup-required" and result.localPlan.removed.count() = 1, "writer cannot emit a tombstoned local holder until real local runtime/key/blob cleanup is committed")
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "updatedAt", 450)
+    result = dispatcharrSyncProfilesWritePlan(store, {rows: [], removed: [["bob", 300]]}, true, 500, 0, 400)
+    check(result.ok and result.data.rows.count() = 2 and result.data.removed.count() = 0, "a newer intentional local re-add clears the old server tombstone before emitting its own row")
+    store = rosterWriteLocalFixture()
+    result = dispatcharrSyncProfilesWritePlan(store, {rows: [], removed: [["alice", 300]]}, true, 500, 0, 400)
+    check(result.ok and result.localPlan.store.profiles.count() = 2 and result.data.rows.count() = 1 and result.data.rows[0][1] = "Bob", "covered default stays local but is not blindly re-sent as an unstamped intentional re-add")
+    check(not dispatcharrSyncProfilesWritePlan(store, remote, false, 500, 0, 400).ok, "Profiles-Off never rebuilds the roster")
+    store.active = store.profiles[1].id
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "role", "child")
+    check(not dispatcharrSyncProfilesWritePlan(store, remote, true, 500, 0, 400).ok, "Child never rebuilds profiles even when a pending local edit exists")
+    store = rosterWriteLocalFixture()
+    remote = {rows: [[7, "Alice", "Remote Alice", "none", "", "", "user", 200, {futureAvatar: {keep: true}}, 0]]}
+    result = dispatcharrSyncProfilesWritePlan(store, remote, true, 500, 0, 400)
+    check(result.ok and result.data.rows[0][8].futureAvatar.keep, "unclaimed local avatar retains the exact future server avatar descriptor rather than normalizer-stripped data")
+    store = rosterWriteLocalFixture()
+    store.profiles[0] = setCanonicalPreference(store.profiles[0], "order", 2)
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "order", 0)
+    result = dispatcharrSyncProfilesWritePlan(store, {rows: []}, true, 500, 0, 0)
+    check(result.ok and result.data.rows[0][1] = "Bob" and result.data.rows[0][9] = 0 and result.data.rows[1][1] = "Alice" and result.data.rows[1][9] = 1, "writer uses the actual sorted visible list index rather than backing-array insertion order")
+    store = rosterWriteLocalFixture()
+    remote = {rows: [[7, "Alice", "Alice", "none", "", "", "child", 200]]}
+    result = dispatcharrSyncProfilesWritePlan(store, remote, true, 500, 0, 400)
+    check(not result.ok and result.reason = "protection-changed" and result.localPlan.store.profiles[0].role = "child", "a newly imported active Child role blocks writing and returns the real protection plan for controller settlement")
     print "ALL TESTS PASSED"
 end sub
+
+function rosterWriteLocalFixture() as object
+    store = defaultUserProfileStore("slot-a")
+    a = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000001", {id: 7, username: "Alice", user_level: 1}, 1)
+    b = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Bob", user_level: 1}, 1)
+    b = setCanonicalPreference(b, "isDefault", false)
+    a = setCanonicalPreference(a, "updatedAt", 100)
+    b = setCanonicalPreference(b, "updatedAt", 100)
+    store.profiles = [a, b]
+    store.active = a.id
+    return store
+end function
 
 sub check(passed as boolean, message as string)
     if not passed then print "FAIL: "; message : stop

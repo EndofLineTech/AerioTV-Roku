@@ -56,3 +56,20 @@ This stage does not merge local profile edits, apply stale-device acknowledgemen
 rules or authorize HTTP; `allowWrite` remains false. Host and native shared matrix
 pass (`out/mrr-sync-roster-write-base-native.log`, exact owner restore). Full
 verification: `out/mrr-sync-roster-write-base-full-verify.log`.
+
+The subsequent private `dispatcharrSyncProfilesWritePlan` now plans local edits
+through the existing read-side merge, preserves stored row stamps and same-ID
+future tails, retains unclaimed future server avatar descriptors, and writes the
+actual sorted visible index. It suppresses acknowledged stale local rows missing
+from a nonempty newer server roster without deleting those local profiles. Newer
+intentional local re-adds clear older tombstones. A covered default stays local
+but is not blindly emitted as a new unstamped re-add. Local removals return
+`cleanup-required`; a newly imported active Child role returns
+`protection-changed`. Both require controller settlement, not an HTTP write.
+
+The plan returns `allowWrite: false` and its local merge plan separately. There is
+still no production caller, persisted acknowledgement/session integration,
+legacy/absent-key creation, outgoing flush or PUT Task. Full host verification
+and the expanded native matrix pass after the imported-Child regression:
+`out/mrr-sync-profiles-write-plan-final-verify.log` and
+`out/mrr-sync-profiles-write-plan-final-native.log` (exact owner app restored).
