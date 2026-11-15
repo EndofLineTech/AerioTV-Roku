@@ -268,6 +268,7 @@ sub onUserProfileSwitchResult(event as object)
     m.capabilityClock.control = "start"
     m.reminderClock.control = "start"
     ' Deliberately no configured mini-player auto-start on a profile switch.
+    activateProfileSyncScheduling()
 end sub
 
 function userProfileSwitchActorCurrent(context as dynamic) as boolean

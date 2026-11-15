@@ -89,6 +89,7 @@ suites.push('DispatcharrSyncWriteTask');
 suites.push('DispatcharrSyncAckStore');
 suites.push('DispatcharrSyncSchedule');
 suites.push('DispatcharrSyncPolicy');
+suites.push('NetworkStatus');
 for (const suite of suites) {
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
@@ -153,6 +154,7 @@ for (const suite of suites) {
     ...(suite === 'DispatcharrSyncWriteTask' ? ['components/DispatcharrSyncWriteTask.brs', 'source/DispatcharrSyncPolicy.brs', 'source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/DispatcharrSyncEnvelope.brs', 'source/UserProfileScope.brs', 'source/UserProfileCredential.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/ConnectionStoreModel.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs'] : []),
     ...(suite === 'DispatcharrSyncSchedule' ? ['source/DispatcharrSyncSchedule.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'DispatcharrSyncPolicy' ? ['source/DispatcharrSyncPolicy.brs'] : []),
+    ...(suite === 'NetworkStatus' ? ['source/NetworkStatus.brs'] : []),
     ...(suite === 'DispatcharrSyncAckStore' ? ['source/DispatcharrSyncAckStore.brs', 'source/DispatcharrSyncSchedule.brs', 'components/ProfileSyncSessionNavigation.brs', 'components/ProfileSyncNavigation.brs', 'source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/DispatcharrSyncMerge.brs', 'source/DispatcharrSyncPullStore.brs', 'source/DispatcharrSyncSwitchRosterStore.brs', 'source/UserProfileRetirement.brs', 'source/UserProfileScope.brs', 'source/UserProfileCredential.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/ConnectionStoreModel.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/StrictJson.brs'] : []),
     ...(suite === 'UserProfilePinPolicy' ? ['source/UserProfilePinPolicy.brs', 'source/UserProfilePin.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'ProfilePinNavigation' ? ['source/UserProfilePin.brs', 'source/UserProfileScope.brs', 'components/ProfilePinNavigation.brs'] : []),

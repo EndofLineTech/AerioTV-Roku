@@ -20,6 +20,7 @@ end function
 function scheduledProfileSyncAllowed() as boolean
     if m.profileSyncSchedulingReady <> true or m.profileSyncWriterReady <> true or m.profileSyncEnabled <> true then return false
     if m.userProfileRecoveryRequired = true or m.profileRosterEnabled = false or m.busy = true then return false
+    if m.profileSyncLinkKnown = true and m.profileSyncLinkUp <> true then return false
     if m.profileSwitchContext <> invalid or m.profileOwnSignInContext <> invalid or m.profileSyncWriteTask <> invalid then return false
     if m.profilePinDialog <> invalid or m.adultPinDialog <> invalid or m.profileManagementDialog <> invalid then return false
     if userProfileGateClosed() or m.activeUserScope = invalid or textValue(m.apiKey) = "" then return false
@@ -42,6 +43,31 @@ function scheduledProfileSyncAllowed() as boolean
     if not userProfileSameSession(expected, m.activeUserScope) then return false
     return requestGateAccessAllowed(entry.url, m.apiKey)
 end function
+
+sub onProfileSyncNetworkLink(event as object)
+    node = event.getRoSGNode()
+    if node = invalid then return
+    if not m.top.isSameNode(node) then return
+    data = event.getData()
+    if type(data) <> "roAssociativeArray" then return
+    if not userProfileBoolean(data.linked) or not userProfileBoolean(data.returned) then return
+    if not userProfileInteger(data.sequence) then return
+    if data.sequence <= 0 then return
+    if userProfileInteger(m.profileSyncNetworkSequence)
+        if data.sequence <= m.profileSyncNetworkSequence then return
+    end if
+    m.profileSyncNetworkSequence = data.sequence
+    m.profileSyncLinkKnown = true
+    m.profileSyncLinkUp = data.linked
+    if not data.linked
+        if m.profileScheduledSyncContext <> invalid and m.profileSyncSchedule <> invalid
+            m.profileSyncSchedule = dispatcharrSyncScheduleComplete(m.profileSyncSchedule, m.profileScheduledSyncContext.ticket, false, profileSyncSchedulingNow())
+        end if
+        closeScheduledProfileSync()
+        return
+    end if
+    if data.returned then requestScheduledProfileSync("network-return")
+end sub
 
 sub onProfileSyncScheduleTick()
     if not scheduledProfileSyncAllowed()

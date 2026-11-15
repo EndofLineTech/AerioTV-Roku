@@ -39,6 +39,7 @@ function dispatcharrSyncScheduleRequest(previous as object, scope as dynamic, ev
     if not userProfileSameSession(previous.scope, scope) or now <= 0 then return previous
     if event <> "picker" and event <> "network-return" then return previous
     state = copyPreferenceValue(previous)
+    if event = "network-return" and state.pause = "" then state.retryAt = 0
     if event = "picker"
         found = false
         for each slot in state.pickerSlots

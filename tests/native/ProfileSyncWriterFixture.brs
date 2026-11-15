@@ -148,8 +148,16 @@ sub advanceProfileSyncScheduleProbe()
         if m.profileSyncSchedule.sequence < 2 then return
         if m.profileSyncSchedule.pause <> "too-large" then return
         if m.writerScheduleNetwork <> true
+            if m.writerScheduleLinkDown <> true
+                m.writerScheduleLinkDown = true
+                m.writerScheduleLinkSequence = 1
+                if userProfileInteger(m.profileSyncNetworkSequence) then m.writerScheduleLinkSequence = m.profileSyncNetworkSequence + 1
+                m.top.networkLinkEvent = {linked: false, returned: false, sequence: m.writerScheduleLinkSequence}
+                return
+            end if
+            m.writerScheduleLinkLossObserved = m.profileSyncLinkKnown = true and m.profileSyncLinkUp = false and m.profileScheduledSyncTask = invalid
             m.writerScheduleNetwork = true
-            requestScheduledProfileSync("network-return")
+            m.top.networkLinkEvent = {linked: true, returned: true, sequence: m.writerScheduleLinkSequence + 1}
             return
         end if
         if m.profileSyncSchedule.sequence < 3 then return
@@ -158,7 +166,7 @@ sub advanceProfileSyncScheduleProbe()
         if m.writerScheduleQuietTicks < 3 then return
         m.profileSyncClock.control = "stop"
         m.managementProbeClock.control = "stop"
-        passed = m.profileSyncSchedule.sequence = 3 and m.profileSyncSchedule.writeBlockedRoot <> "" and store.pendingRoster and userProfileSameSession(m.writerScheduleScope, m.activeUserScope) and m.apiKey = "synthetic-b" and not m.registry.exists(userProfileSyncAckKey("slot-a"))
+        passed = m.profileSyncSchedule.sequence = 3 and m.profileSyncSchedule.writeBlockedRoot <> "" and store.pendingRoster and userProfileSameSession(m.writerScheduleScope, m.activeUserScope) and m.apiKey = "synthetic-b" and not m.registry.exists(userProfileSyncAckKey("slot-a")) and m.writerScheduleLinkLossObserved = true and m.profileSyncLinkUp = true
         print "[profile-management] "; FormatJson({kind: "result", writer: passed, scheduled: passed})
         return
     end if
@@ -171,8 +179,16 @@ sub advanceProfileSyncScheduleProbe()
     end if
     if m.profileSyncSchedule.sequence < 4 then return
     if m.writerScheduleNetwork <> true
+        if m.writerScheduleLinkDown <> true
+            m.writerScheduleLinkDown = true
+            m.writerScheduleLinkSequence = 1
+            if userProfileInteger(m.profileSyncNetworkSequence) then m.writerScheduleLinkSequence = m.profileSyncNetworkSequence + 1
+            m.top.networkLinkEvent = {linked: false, returned: false, sequence: m.writerScheduleLinkSequence}
+            return
+        end if
+        m.writerScheduleLinkLossObserved = m.profileSyncLinkKnown = true and m.profileSyncLinkUp = false and m.profileScheduledSyncTask = invalid
         m.writerScheduleNetwork = true
-        requestScheduledProfileSync("network-return")
+        m.top.networkLinkEvent = {linked: true, returned: true, sequence: m.writerScheduleLinkSequence + 1}
         return
     end if
     if m.profileSyncSchedule.sequence < 5 then return
@@ -180,7 +196,7 @@ sub advanceProfileSyncScheduleProbe()
     m.managementProbeClock.control = "stop"
     entry = connectionStoreEntry(m.connectionStore, "slot-a")
     ack = loadDispatcharrSyncRosterAck(m.registry, entry)
-    passed = ack.ok and ack.stamp > 0 and not store.pendingRoster and userProfileSameSession(m.writerScheduleScope, m.activeUserScope) and m.apiKey = "synthetic-b" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.profileScheduledSyncTask = invalid
+    passed = ack.ok and ack.stamp > 0 and not store.pendingRoster and userProfileSameSession(m.writerScheduleScope, m.activeUserScope) and m.apiKey = "synthetic-b" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.profileScheduledSyncTask = invalid and m.writerScheduleLinkLossObserved = true and m.profileSyncLinkUp = true
     for each profile in store.profiles
         if profile.id = store.active then passed = passed and profile.displayName = "Scheduled synthetic B"
     end for

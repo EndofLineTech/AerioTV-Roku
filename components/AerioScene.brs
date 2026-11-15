@@ -6,6 +6,7 @@ sub init()
     m.profileDefaultRetirementReady = false
     m.profileSyncWriterReady = false
     m.profileSyncSchedulingReady = false
+    m.top.observeField("networkLinkEvent", "onProfileSyncNetworkLink")
     m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false, profileownsigninpending: false, profileownsigninnonce: "", requestgaterecovery: "", profilesyncflush: ""})
     m.profileGateCover = m.top.findNode("profileGateCover")
     m.profileGateClock = m.top.findNode("profileGateClock")
@@ -926,6 +927,7 @@ sub completeConnection(result as dynamic)
     if m.accountPreferences.whatsNewVersion <> version then showNotice("What's New in " + version + ". Open Settings > About > What's New.")
     if m.profileRefreshReload <> true then startConfiguredMiniPlayback(result.channels)
     m.profileRefreshReload = false
+    activateProfileSyncScheduling()
 end sub
 
 sub startConfiguredMiniPlayback(channels as object)

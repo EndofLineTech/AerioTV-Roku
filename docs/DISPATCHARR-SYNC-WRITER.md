@@ -278,8 +278,9 @@ refusals cover the source; active-own tombstones use explicit own retirement.
 Scheduled work refuses closed PIN/Child/switch gates and cancels on reset.
 Switch/flush admission refuses an already scheduled operation rather than racing
 two writers. A separate shipping-off `m.profileSyncSchedulingReady` and explicit
-device-wide opt-in are both required. Public startup/picker/opt-in controls and
-native link-status event subscription are not connected by this private fixture.
+device-wide opt-in are both required. Public picker/opt-in controls remain
+unfinished; startup/switch and native link-status hooks are now connected behind
+the shipping-off flags as described below.
 
 Tests-first host timing/controller/race checks passed. Actual native Timer/HTTP
 qualification passed at `out/mrr-sync-session-scheduler-final-native.log`: initial
@@ -351,3 +352,30 @@ claims. Final full verification and expanded native matrix passed
 (`out/mrr-sync-error-policy-final-verify.log`,
 `out/mrr-sync-error-policy-final-primitives-native.log`). All runs cleaned fixture
 data and restored the exact owner app. Shipping flags remain false.
+
+## Startup, switch and network events
+
+Successful own lineup adoption and chosen/system profile adoption now activate
+the guarded scheduler. All shipping flags remain false, and no device-wide sync
+opt-in is inferred. `Main.brs` subscribes to `roDeviceInfo.EnableLinkStatusEvent`
+on the existing message port even when memory-monitor notifications are available.
+Only a typed link-status change crosses to Scene; memory/device details and
+network identifiers do not. Repeated/stale events cannot generate repeated pulls.
+Link loss retires scheduled transport while preserving dirty intent; confirmed
+return queues only the current adopted holder's own discovery, still subject to
+PIN/Child/address/rejected-key/park and sign-in-pause fences.
+
+SDK references: Roku's
+[ifDeviceInfo](https://developer.roku.com/docs/references/brightscript/interfaces/ifdeviceinfo.md)
+and [roDeviceInfoEvent](https://developer.roku.com/docs/references/brightscript/events/rodeviceinfoevent.md).
+Native SDK subscription/typed observation and model/controller tests passed
+(`out/mrr-sync-network-events-primitives-native.log`). Native normal-app Timer/HTTP
+tests injected offline/online Scene field events and verified actual callback
+delivery, offline refusal, source-scope retention and own fresh discovery
+(`out/mrr-sync-network-events-native.log`), including the oversize read-only case
+and outgoing-flush regression (`out/mrr-sync-network-events-oversize-native.log`,
+`out/mrr-sync-network-events-flush-native.log`). This proves SDK subscription plus
+the injected downstream path, NOT a physical disconnect/reconnect: no device
+network settings were changed. Full verify passed at
+`out/mrr-sync-network-events-pre-native-verify.log`. Every run cleaned disposable
+data and restored the exact owner app.

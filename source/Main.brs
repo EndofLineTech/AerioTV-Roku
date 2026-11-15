@@ -8,6 +8,10 @@ sub Main(args as dynamic)
     input.setMessagePort(port)
     memoryMonitor = CreateObject("roAppMemoryMonitor")
     deviceInfo = CreateObject("roDeviceInfo")
+    deviceInfo.setMessagePort(port)
+    deviceInfo.EnableLinkStatusEvent(true)
+    linkStatus = deviceInfo.GetLinkStatus()
+    linkSequence = 0
     memoryEventsEnabled = false
     if memoryMonitor <> invalid
         memoryMonitor.setMessagePort(port)
@@ -16,7 +20,6 @@ sub Main(args as dynamic)
         memoryEventsEnabled = memoryMonitor.EnableMemoryWarningEvent(true)
     end if
     if not memoryEventsEnabled
-        deviceInfo.setMessagePort(port)
         deviceInfo.EnableLowGeneralMemoryEvent(true)
     end if
     screen.show()
@@ -41,6 +44,12 @@ sub Main(args as dynamic)
             end if
         else if type(event) = "roDeviceInfoEvent"
             info = event.getInfo()
+            link = networkLinkTransition(linkStatus, info)
+            if link.changed
+                linkStatus = link.linked
+                linkSequence++
+                scene.networkLinkEvent = {linked: linkStatus, returned: link.returned, sequence: linkSequence}
+            end if
             if type(info) = "roAssociativeArray"
                 if info.generalMemoryLevel = "low" or info.generalMemoryLevel = "critical" then scene.memoryPressure = info.generalMemoryLevel
             end if

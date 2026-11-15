@@ -104,6 +104,7 @@ def build(output, base_url, registry=False, model_store=False):
         package.write(ROOT / 'source/DispatcharrSyncRosterWrite.brs', 'source/DispatcharrSyncRosterWrite.brs')
         package.write(ROOT / 'source/DispatcharrSyncSchedule.brs', 'source/DispatcharrSyncSchedule.brs')
         package.write(ROOT / 'source/DispatcharrSyncPolicy.brs', 'source/DispatcharrSyncPolicy.brs')
+        package.write(ROOT / 'source/NetworkStatus.brs', 'source/NetworkStatus.brs')
         ack_source = (ROOT / 'source/DispatcharrSyncAckStore.brs').read_text().replace('requestGateCredentialHash(', 'syncAckFixtureHash(').replace('requestGateAccessAllowed(', 'syncAckFixtureAccessAllowed(')
         package.writestr('source/DispatcharrSyncAckStore.brs', ack_source)
         package.write(ROOT / 'components/ProfileSyncNavigation.brs', 'source/ProfileSyncNavigation.brs')
@@ -123,6 +124,9 @@ def build(output, base_url, registry=False, model_store=False):
         for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'RequestGateClient', 'RequestGateModel', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileCleanup', 'UserProfileScope', 'UserProfileScopeStore', 'PreferenceModel', 'ConnectionStoreModel', 'RemoteMapModel', 'GuideSettingsModel', 'ReminderModel']:
             package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
         if model_store:
+            network_checks = (ROOT / 'tests/NetworkStatus.test.brs').read_text().split('sub check(', 1)[0]
+            network_checks = network_checks.replace('sub main()', 'sub runNetworkStatusChecks()').replace('check(', 'profileAssert(')
+            package.writestr('source/NetworkStatusProbeChecks.brs', network_checks)
             policy_checks = (ROOT / 'tests/DispatcharrSyncPolicy.test.brs').read_text().split('sub check(', 1)[0]
             policy_checks = policy_checks.replace('sub main()', 'sub runDispatcharrSyncPolicyChecks()').replace('check(', 'profileAssert(')
             package.writestr('source/DispatcharrSyncPolicyProbeChecks.brs', policy_checks)
@@ -269,6 +273,7 @@ def build(output, base_url, registry=False, model_store=False):
     print "ALL TESTS PASSED"''')
                 package.writestr(f'source/{name}ProbeChecks.brs', source)
         else:
+            package.writestr('source/NetworkStatusProbeChecks.brs', 'sub runNetworkStatusChecks()\nend sub\n')
             package.writestr('source/DispatcharrSyncPolicyProbeChecks.brs', 'sub runDispatcharrSyncPolicyChecks()\nend sub\n')
             package.writestr('source/DispatcharrSyncScheduleProbeChecks.brs', 'sub runDispatcharrSyncScheduleChecks()\nend sub\n')
             package.writestr('source/DispatcharrSyncAckStoreProbeChecks.brs', 'sub runDispatcharrSyncAckStoreChecks()\nend sub\nfunction syncAckFixtureHash(key as string) as string\nreturn ""\nend function\nfunction syncAckFixtureAccessAllowed(url as string, key as string) as boolean\nreturn false\nend function\n')

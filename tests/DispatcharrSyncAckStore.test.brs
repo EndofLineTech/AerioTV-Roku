@@ -1,4 +1,18 @@
 sub main()
+    syncScheduledFixture()
+    onProfileSyncScheduleTick()
+    oldTask = m.profileScheduledSyncTask
+    onProfileSyncNetworkLink(syncFlushEvent(m.top, {linked: false, returned: false, sequence: 1}))
+    check(m.profileScheduledSyncTask = invalid and oldTask.apiKey = "" and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "real Scene link-loss handling retires scheduled transport without clearing durable dirty intent")
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask = invalid, "known disconnected link admits no scheduled request")
+    onProfileSyncNetworkLink(syncFlushEvent(m.top, {linked: true, returned: true, sequence: 2}))
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask <> invalid and m.profileScheduledSyncTask.aeriosession = m.scope.sessionId, "link return re-admits only current adopted holder's discovery")
+    sequence = m.profileSyncNetworkSequence
+    onProfileSyncNetworkLink(syncFlushEvent(m.top, {linked: false, returned: false, sequence: 1}))
+    check(m.profileSyncNetworkSequence = sequence and m.profileSyncLinkUp, "stale link event cannot undo a newer observed network state")
+    closeScheduledProfileSync()
     syncAckFixture()
     m.receipt.state = "unchanged"
     m.receipt.submitted = false
@@ -238,6 +252,13 @@ sub syncScheduledFixture()
     m.profileSyncSchedule = invalid
     m.profileScheduledSyncTask = invalid
     m.profileScheduledSyncContext = invalid
+    m.profileSyncLinkKnown = false
+    m.profileSyncLinkUp = false
+    m.profileSyncNetworkSequence = 0
+    m.top.token = "scene"
+    m.top.isSameNode = function(other as object) as boolean
+        return m.token = other.token
+    end function
     m.syncTestNow = 100
     m.profileSyncScheduleNow = function() as integer
         return m.syncTestNow
