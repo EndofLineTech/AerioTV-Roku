@@ -89,8 +89,28 @@ storage/receipt cases: `out/mrr-startup-selection-adoption-native.log`; full
 verification: `out/mrr-startup-selection-adoption-verify.log`. These exercise
 the real storage APIs with a fake registry on native Roku, **not** a completed
 normal-app startup authentication/import/controller flow. Actual Task callback
-binding, retained-protection publication, changed-PIN re-read and runtime
-adoption still require implementation and qualification.
+binding, changed-PIN re-read and runtime adoption still require implementation
+and qualification.
+
+Retained protection publication is now implemented separately in
+`commitUserProfileStartupRosterPull`. It rechecks the actual absent actor/key,
+original target PIN and current own read before importing metadata. Newly
+imported PINs are durable before continuation; an old grant produces no receipt.
+Local pending intent and local tombstones are not acknowledged by this read.
+
+Because no runtime actor exists in this boundary, received removals atomically
+clean only removed holders' keys, backoff and scoped preference blobs. Removing
+the restored holder selects the retained default and returns **no authenticated
+scope or adoption receipt**; an ordinary default launch gate is still required.
+This is not the live-switch retirement shortcut. Corrupt present preferences,
+stale actors/read nonces/PINs and injected Flush failure preserve exact storage.
+
+Tests-first red: `out/mrr-startup-selection-publication-red.log`; native shared
+storage qualification: `out/mrr-startup-selection-publication-native.log`
+(zero failures, exact app restored); full verification:
+`out/mrr-startup-selection-publication-verify.log` (0.3.100, 351 files).
+The current read/PIN/adoption APIs are not yet wired to actual normal-app Task
+callbacks or the launch UI; public/runtime acceptance remains unfinished.
 
 ## Ordering/palette correction
 

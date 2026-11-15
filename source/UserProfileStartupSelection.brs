@@ -89,3 +89,113 @@ function commitUserProfileStartupSelection(registry as object, context as object
     if not planned.ok then return {ok: false, recoveryRequired: false, reason: planned.reason}
     return commitPlannedUserProfileSwitchState(registry, context.connection, context.store, context.target.id, verified, planned)
 end function
+
+' Retained protection publication BEFORE startup adoption. Unlike a live switch,
+' there is no authenticated actor to tear down or flush. Exact absent actor/key
+' admission therefore permits atomic removed-holder cleanup in this transaction.
+' The returned context/receipt is memory-only and must replace the captured one
+' only after success. A changed PIN needs a real new PIN and another readNonce.
+function commitUserProfileStartupRosterPull(registry as object, context as object, read as object, readNonce as string, enabled as boolean, now as integer, activeNonce as string, activeScope as dynamic, activeKey as string, memoryKeys as object) as object
+    denied = {ok: false, recoveryRequired: false, reason: "startup-roster-context"}
+    if now <= 0 then return denied
+    if not userProfileStartupSelectionCurrent(registry, context, activeNonce, activeScope, activeKey, memoryKeys, true) then return denied
+    if userProfileStartupProtectionReceipt(context, read, readNonce) = invalid then return denied
+    working = normalizeUserProfileStore(context.store, context.connection.id)
+    facts = userProfileFromVerified(context.connection.id, context.target.id, read.verifiedUser, now)
+    if facts = invalid then return denied
+    for i = 0 to working.profiles.count() - 1
+        profile = working.profiles[i]
+        if profile.id = context.target.id
+            role = userProfileResolveRole(facts.userLevel, profile.role)
+            if role <> profile.role
+                if now <= profile.updatedAt then return denied
+                profile = setCanonicalPreference(profile, "updatedAt", now)
+                working = setCanonicalPreference(working, "pendingRoster", true)
+            end if
+            for each field in ["userLevel", "isStaff", "isSuperuser"]
+                profile = setCanonicalPreference(profile, field, facts[field])
+            end for
+            profile = setCanonicalPreference(profile, "role", role)
+            working.profiles[i] = profile
+        end if
+    end for
+    if context.target.isDefault
+        checked = userProfileDefaultAddressCheck(context.connection, working, read)
+        if not checked.ok then return denied
+        recorded = userProfileRecordDefaultIdentity(checked.store, working.doesExist("addressChangeSnapshot"))
+        if not recorded.ok then return denied
+        working = recorded.store
+    end if
+    plan = {ok: true, store: working, removed: [], suggestions: []}
+    if read.state = "ready" and read.profilesState = "ready"
+        decoded = dispatcharrSyncRosterDecode(read.data["categories"]["profiles"]["data"])
+        if not decoded.ok then return denied
+        ' The reader's role controls import, not the restored selection's role.
+        staging = setCanonicalPreference(working, "active", context.target.id)
+        plan = dispatcharrSyncRosterMerge(staging, decoded, enabled, now)
+        if not plan.ok then return denied
+    end if
+    sourceRemoved = false
+    targetRemoved = false
+    for each profile in plan.removed
+        if profile.isDefault then return denied
+        if profile.id = context.store.active then sourceRemoved = true
+        if profile.id = context.target.id then targetRemoved = true
+    end for
+    selectedId = context.store.active
+    if sourceRemoved
+        for each profile in plan.store.profiles
+            if profile.isDefault then selectedId = profile.id
+        end for
+    end if
+    candidate = setCanonicalPreference(plan.store, "active", selectedId)
+    candidate = setCanonicalPreference(candidate, "pendingRoster", context.store.pendingRoster or candidate.pendingRoster)
+    ' A read may learn protection, not acknowledge the captured writer's local
+    ' tombstones or pending intent. Those require its actual write settlement.
+    candidate = setCanonicalPreference(candidate, "removed", context.store.removed)
+    candidate = normalizeUserProfileStore(candidate, context.connection.id)
+    if candidate.readOnly = true then return denied
+    prepared = userProfileStoreChanges(registry, context.store, candidate, {}, true)
+    if not prepared.ok then return denied
+    for each profile in plan.removed
+        holdKey = userProfilePinBackoffKey(context.connection.id, profile.id)
+        if registry.exists(holdKey) then prepared.changes[holdKey] = ""
+    end for
+    if plan.removed.count() > 0 and registry.exists("settingsV1")
+        preferences = loadStrictPreferenceStore(registry)
+        if preferences.readOnly = true then return denied
+        if not userProfileInteger(preferences.schema) then return denied
+        if preferences.schema <> 1 or type(preferences.accounts) <> "roAssociativeArray" or type(preferences.device) <> "roAssociativeArray" then return denied
+        for each profile in plan.removed
+            identity = userProfilePreferenceIdentity(context.connection, profile)
+            if identity = "" then return denied
+            preferences.accounts.delete(preferenceScope(identity))
+        end for
+        encoded = strictJsonEncode(preferences)
+        if not encoded.ok then return denied
+        if preferenceByteBudget(encoded.text) > 24000 then return denied
+        prepared.changes["settingsV1"] = encoded.text
+    end if
+    saved = userProfileRegistryTransaction(registry, prepared.changes)
+    if not saved.ok then return saved
+    target = invalid
+    sourceChild = false
+    for each profile in candidate.profiles
+        if profile.id = context.target.id then target = profile
+        if profile.id = candidate.active then sourceChild = profile.role = "child"
+    end for
+    result = {ok: true, recoveryRequired: false, store: candidate, target: target, removed: plan.removed, suggestions: plan.suggestions, targetRemoved: targetRemoved, sourceRemoved: sourceRemoved, sourceChild: sourceChild, requiresPin: false, protectionReceipt: invalid}
+    if target = invalid then return result
+    nextContext = copyPreferenceValue(context)
+    nextContext.store = candidate
+    nextContext.storeRoot = registry.read(userProfileStoreKey(context.connection.id))
+    nextContext.target = target
+    nextContext.protectionReceipt = invalid
+    result.context = nextContext
+    if target.pinType <> "none" then result.requiresPin = not userProfilePinGrantMatches(context.pin, context.connection.id, target)
+    if not sourceRemoved and not result.requiresPin and not sourceChild and userProfileFullAccess(target.role)
+        result.protectionReceipt = userProfileStartupProtectionReceipt(nextContext, read, readNonce)
+        result.context.protectionReceipt = result.protectionReceipt
+    end if
+    return result
+end function

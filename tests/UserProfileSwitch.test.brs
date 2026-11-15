@@ -269,6 +269,45 @@ sub main()
         if change = "changed-pin" then context.target = setCanonicalPreference(context.target, "pinHash", string(64, "c"))
         check(userProfileStartupProtectionReceipt(context, read, readNonce) = invalid, "startup protection receipt cannot be fabricated from " + change)
     end for
+    for each mode in ["pin", "flush", "retire", "actor", "stale-read", "missing-pin", "retire-corrupt"]
+        startup = startupSelectionFixture(connection, a, b, nextAttempt)
+        context = startup.context
+        registry = startup.registry
+        context.readNonce = "00000000-0000-4000-8000-000000000097"
+        rows = [[8, "bob", "Imported Bob", "numbers", string(64, "c"), string(32, "d"), "user", 200, {}, 0]]
+        removed = []
+        if mode = "retire" or mode = "retire-corrupt"
+            context.store = setCanonicalPreference(context.store, "active", b.id)
+            registry.write(userProfileStoreKey("slot-a"), FormatJson(context.store))
+            context.storeRoot = registry.read(userProfileStoreKey("slot-a"))
+            rows = []
+            removed = [["bob", 300, 8]]
+        end if
+        read = {ok: true, state: "ready", profilesState: "ready", verifiedUser: {id: 8, username: "bob", user_level: 1}, verifiedBaseUrl: connection.url, accountId: "8", accountUsername: "bob", data: {categories: {profiles: {data: {rows: rows, removed: removed}}}}}
+        registry.write(userProfilePinBackoffKey("slot-a", b.id), "private-backoff")
+        registry.failOnce = mode = "flush"
+        actor = invalid
+        readNonce = context.readNonce
+        if mode = "actor" then actor = outgoing
+        if mode = "stale-read" then readNonce = session
+        if mode = "missing-pin" then context.pin = invalid
+        if mode = "retire-corrupt" then registry.write("settingsV1", "not-json")
+        before = FormatJson(registry.values)
+        published = commitUserProfileStartupRosterPull(registry, context, read, readNonce, true, 400, nextAttempt, actor, "", {})
+        if mode = "flush"
+            check(not published.ok and FormatJson(registry.values) = before, "startup fresh protection Flush failure restores exact original roots, keys and settings")
+        else if mode = "actor" or mode = "stale-read" or mode = "missing-pin" or mode = "retire-corrupt"
+            check(not published.ok and registry.flushes = 0 and FormatJson(registry.values) = before, "startup publication refuses invalid " + mode + " before any write")
+        else if mode = "pin"
+            check(published.ok and published.store.active = a.id and published.target.pinHash = string(64, "c") and published.requiresPin and published.protectionReceipt = invalid, "startup imported PIN is durable before continuation and cannot mint an old-PIN receipt")
+            check(published.store.pendingRoster and registry.read("connKey_slot-a") = "default-key" and registry.read(userProfileKeyName("slot-a", b.id)) = "bob-own-key" and registry.read(userProfilePinBackoffKey("slot-a", b.id)) = "private-backoff", "read publication retains pending source edits, both own keys and target backoff")
+        else
+            check(published.ok and published.targetRemoved and published.sourceRemoved and published.store.active = a.id and published.protectionReceipt = invalid and published.scope = invalid, "no-runtime startup retirement selects retained default without creating an adoption receipt or fabricated scope")
+            check(not registry.exists(userProfileKeyName("slot-a", b.id)) and not registry.exists(userProfilePinBackoffKey("slot-a", b.id)) and registry.read("connKey_slot-a") = "default-key", "actual absent actor permits own retired key/backoff cleanup, never default key deletion")
+            prefs = ParseJson(registry.read("settingsV1"))
+            check(not prefs.accounts.doesExist(preferenceScope(connectionPreferenceIdentity(connection, "8"))) and prefs.accounts.doesExist(preferenceScope(connectionPreferenceIdentity(connection, "7"))), "startup retirement removes only retired holder's scoped blob")
+        end if
+    end for
     print "ALL TESTS PASSED"
 end sub
 
