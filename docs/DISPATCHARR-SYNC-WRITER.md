@@ -19,8 +19,8 @@ precision parser handles the wire value.
 The result contains the exact checked string and UTF-8 byte count, but deliberately
 returns `allowWrite: false`. It does **not** prove session ownership, a correct
 profiles row/tombstone merge, fresh GET/list evidence, legacy migration safety,
-request-gate admission or current credentials. There is no production caller or
-PUT Task yet. Creation of an absent canonical key is not supported by this gate.
+request-gate admission or current credentials. No production caller enables this
+path. Creation of an absent canonical key is not supported by this gate.
 
 Host tests cannot establish wire-case/number correctness because the interpreter
 lowercases keys. The native private probe removes the host parser seam and runs
@@ -69,7 +69,7 @@ but is not blindly emitted as a new unstamped re-add. Local removals return
 
 The plan returns `allowWrite: false` and its local merge plan separately. There is
 still no production caller, persisted acknowledgement/session integration,
-legacy/absent-key creation, outgoing flush or PUT Task. Full host verification
+legacy/absent-key creation or outgoing flush. Full host verification
 and the expanded native matrix pass after the imported-Child regression:
 `out/mrr-sync-profiles-write-plan-final-verify.log` and
 `out/mrr-sync-profiles-write-plan-final-native.log` (exact owner app restored).
@@ -84,3 +84,34 @@ Native tests-first assembly passed with unknown extras/categories, binary64,
 case-distinct keys and no original mutation:
 `out/mrr-sync-profiles-assembly-green-native.log`; full verification passed at
 `out/mrr-sync-profiles-assembly-full-verify.log`. Exact owner restore succeeded.
+
+## Private actual HTTP writer
+
+`components/DispatcharrSyncWriteTask.brs` now implements existing-canonical own
+`/me` → list → key GET → one checked-string PUT. Every request rechecks the
+actual adopted request nonce, selected connection/profile and exact saved roots,
+current own canonical/session key, full-access role, address holds and broker.
+Fresh `/me` must match the expected identity and authorization signature.
+Local protection/cleanup changes return a local plan instead of sending; missing
+canonical/legacy migration stays read-only. Failure/cancel/late success never
+retries immediately or clears durable dirty state. Task credentials are wiped.
+
+The Task's `m.syncWriterReady` remains **false in shipping**. Only the private
+fixture clone enables it and rewrites its registry section to the disposable
+fixture. Host tests cover stale roots/keys/session, Child/Profiles-Off, held keys,
+wrong identity/authority, local-commit needs, cancel, failed PUT and late success.
+
+`--switch --switch-roster --switch-writer` passed on Roku under an actually
+adopted B session (`out/mrr-sync-write-task-quiesced-native.log`): only B's
+me/list/key/PUT calls occurred in the writer interval, with checked content type,
+UTF-8 length, exact key case, integer/double/emoji/future-field preservation and
+both local roster rows. The first strict ledger run failed because live Guide
+EPG requests overlapped; the fixture now quiesces Guide rather than weakening
+the ledger. Its earlier failure report is preserved. Exact owner restore and
+disposable cleanup passed on both runs. Full verification passed at
+`out/mrr-sync-write-task-final-verify.log` (338 files).
+
+Acknowledgement persistence, local-plan publication, scheduling and outgoing
+flush/session settlement remain required before this Task can be enabled by the
+real UI. The native fixture explicitly proves the pending mark is still present;
+it is not an integrated successful dirty-state acknowledgement yet.

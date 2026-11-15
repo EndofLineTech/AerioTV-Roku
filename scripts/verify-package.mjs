@@ -17,6 +17,7 @@ export function assertPackageEntries(entries) {
   if (entries.some(entry => /(^|\/)ProfileAuthorityRaceFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic authority race probe');
   if (entries.some(entry => /(^|\/)ProfileActiveRetirementFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic active retirement probe');
   if (entries.some(entry => /(^|\/)ProfileRetirementColdFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic retirement cold probe');
+  if (entries.some(entry => /(^|\/)ProfileSyncWriterFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic sync writer probe');
   if (!entries.includes('manifest')) throw new Error('Package must contain manifest at its root');
   for (const required of ['images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt']) {
     if (!entries.includes(required)) throw new Error(`Package is missing ${required}`);

@@ -20,6 +20,8 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertNotIn('\n    m.profileSwitchRosterReady = true', scene)
         self.assertIn('    m.profileChildAccessReady = false', scene)
         self.assertIn('    m.profileDefaultRetirementReady = false', scene)
+        writer = (root / 'components/DispatcharrSyncWriteTask.brs').read_text()
+        self.assertIn('    m.syncWriterReady = false', writer)
 
     def test_imported_switch_pin_wire_uses_raw_salt_v2_and_only_target_row(self):
         import hashlib
@@ -143,6 +145,7 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileAuthorityRaceFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileActiveRetirementFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileRetirementColdFixture')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileSyncWriterFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncSwitchRosterStoreProbeChecks')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncWriteBodyProbeChecks')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncRosterWriteProbeChecks')], check=True)
@@ -360,6 +363,7 @@ class ProfileProbeTest(unittest.TestCase):
                 package.writestr('components/GuideView.brs', 'sub init()\nend sub\nfunction onKeyEvent(key as string, press as boolean) as boolean\nreturn false\nend function\n')
                 for name in ['components/DvrSettlementNavigation.brs', 'components/DvrNavigation.brs', 'components/DvrRecordingTask.brs', 'components/ProfileDefaultRetirementNavigation.brs', 'source/HttpTransport.brs']:
                     package.writestr(name, (root / name).read_text())
+                package.writestr('components/DispatcharrSyncWriteTask.brs', (root / 'components/DispatcharrSyncWriteTask.brs').read_text())
             output = Path(tmp) / 'probe.zip'
             probe.build(output, normal, 'SyntheticManagementSection', 'http://127.0.0.1:1234')
             with zipfile.ZipFile(output) as package:
@@ -434,6 +438,12 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertNotIn('"AerioTV"', source)
             with self.assertRaises(ValueError):
                 probe.build(output, normal, 'SyntheticActiveRetirementSection', 'http://127.0.0.1:1234', switching=True, switch_active_retirement=True)
+            probe.build(output, normal, 'SyntheticWriterSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_writer=True)
+            with zipfile.ZipFile(output) as package:
+                self.assertIn('advanceProfileSyncWriterProbe()', package.read('components/AerioScene.brs').decode())
+                writer = package.read('components/DispatcharrSyncWriteTask.brs').decode()
+                self.assertIn('m.syncWriterReady = true', writer)
+                self.assertNotIn('"AerioTV"', writer)
             for mode in ['missing', 'held', 'child', 'simultaneous']:
                 probe.build(output, normal, 'SyntheticUnavailableDefaultSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_active_retirement=True, active_default_mode=mode)
                 with zipfile.ZipFile(output) as package:

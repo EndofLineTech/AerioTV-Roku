@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="DispatcharrSyncWriteTask" extends="Task">
+  <interface>
+    <field id="baseUrl" type="string" />
+    <field id="apiKey" type="string" />
+    <field id="authMode" type="string" />
+    <field id="userScope" type="assocarray" />
+    <field id="aeriosession" type="string" />
+    <field id="connectionRoot" type="string" />
+    <field id="storeRoot" type="string" />
+    <field id="profilesEnabled" type="boolean" />
+    <field id="expectedAuthorizationSignature" type="string" />
+    <field id="deviceId" type="string" />
+    <field id="appVersion" type="string" />
+    <field id="acknowledgedStamp" type="longinteger" />
+    <field id="cancelRequested" type="boolean" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="DispatcharrSyncWriteTask.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncKey.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncRoster.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncEnvelope.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncMerge.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncRosterWrite.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncWriteBody.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileStore.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileLifecycle.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileCredential.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileScope.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfilePin.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileAvatar.brs" />
+  <script type="text/brightscript" uri="pkg:/source/ConnectionStoreModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RemoteMapModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideSettingsModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/StrictJson.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
+</component>

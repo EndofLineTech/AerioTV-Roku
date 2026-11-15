@@ -85,6 +85,7 @@ suites.unshift('StartupBeaconModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
 suites.push('DispatcharrSyncWriteBody');
 suites.push('DispatcharrSyncRosterWrite');
+suites.push('DispatcharrSyncWriteTask');
 for (const suite of suites) {
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
@@ -126,7 +127,7 @@ for (const suite of suites) {
     'source/ReminderModel.brs',
     ...(['TmdbTask', 'VodShelfTask', 'VodSeriesTask', 'XtreamTask', 'XtreamVodTask', 'ConnectionAuthTask'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
     'source/HttpPolicy.brs',
-    'source/RequestGateModel.brs', ...(['ProfileSetupCredentialNavigation', 'ProfileSwitchRollbackProtection', 'DispatcharrSyncSwitchRosterStore'].includes(suite) ? [] : ['source/RequestGateClient.brs']), ...(['ProfileSwitchRollbackProtection', 'DispatcharrSyncSwitchRosterStore'].includes(suite) ? [] : ['source/RequestGateRenderer.brs']),
+    'source/RequestGateModel.brs', ...(['ProfileSetupCredentialNavigation', 'ProfileSwitchRollbackProtection', 'DispatcharrSyncSwitchRosterStore', 'DispatcharrSyncWriteTask'].includes(suite) ? [] : ['source/RequestGateClient.brs']), ...(['ProfileSwitchRollbackProtection', 'DispatcharrSyncSwitchRosterStore'].includes(suite) ? [] : ['source/RequestGateRenderer.brs']),
     ...(['ProfileSetupCredentialNavigation', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['components/ProfileSetupCredentialNavigation.brs'] : []),
     ...(['ProfileRefreshNavigation', 'PlayerLifecycle'].includes(suite) ? ['components/ProfileRefreshNavigation.brs'] : []),
     ...(suite === 'GuideRefreshPreferences' ? ['components/GuideSettings.brs'] : []),
@@ -146,6 +147,7 @@ for (const suite of suites) {
     ...(suite === 'DispatcharrSyncPullStore' ? ['source/DispatcharrSyncPullStore.brs', 'source/UserProfileScope.brs', 'source/StrictJson.brs'] : []),
     ...(suite === 'DispatcharrSyncWriteBody' ? ['source/DispatcharrSyncWriteBody.brs', 'source/DispatcharrSyncEnvelope.brs', 'source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/StrictJson.brs'] : []),
     ...(suite === 'DispatcharrSyncRosterWrite' ? ['source/DispatcharrSyncRosterWrite.brs', 'source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/DispatcharrSyncMerge.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/ConnectionStoreModel.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/StrictJson.brs'] : []),
+    ...(suite === 'DispatcharrSyncWriteTask' ? ['components/DispatcharrSyncWriteTask.brs', 'source/DispatcharrSyncKey.brs', 'source/UserProfileScope.brs', 'source/UserProfileCredential.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/ConnectionStoreModel.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs'] : []),
     ...(suite === 'UserProfilePinPolicy' ? ['source/UserProfilePinPolicy.brs', 'source/UserProfilePin.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'ProfilePinNavigation' ? ['source/UserProfilePin.brs', 'source/UserProfileScope.brs', 'components/ProfilePinNavigation.brs'] : []),
     ...(suite === 'DirectionsPinPad' ? ['components/DirectionsPinPad.brs'] : []),
