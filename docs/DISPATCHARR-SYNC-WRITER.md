@@ -41,3 +41,18 @@ data without dropping remote rows/tails, bind the actual outgoing own session,
 preserve dirty state on failure/hold/cancellation, and send the checked string
 unchanged through the existing checked-JSON transport. Legacy/absent-key rules,
 queue settlement, category mappings and peer interoperability remain unfinished.
+
+## Remote roster write base
+
+`source/DispatcharrSyncRosterWrite.brs` now provides the first pure roster-writing
+stage. It preserves server users absent locally and future row tails/avatar
+members, selects newest duplicate user IDs, supplies typed legacy row defaults,
+unions local/remote username tombstones while retaining known server IDs, expires
+ninety-day removals and lets newer remote re-adds clear old tombstones. Malformed
+local removal intent or an unpreservable remote PIN refuses rebuilding rather
+than silently clearing protection. Remote display names are UTF-8 bounded.
+
+This stage does not merge local profile edits, apply stale-device acknowledgement
+rules or authorize HTTP; `allowWrite` remains false. Host and native shared matrix
+pass (`out/mrr-sync-roster-write-base-native.log`, exact owner restore). Full
+verification: `out/mrr-sync-roster-write-base-full-verify.log`.

@@ -84,6 +84,7 @@ suites.unshift('UserProfileStore');
 suites.unshift('StartupBeaconModel');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
 suites.push('DispatcharrSyncWriteBody');
+suites.push('DispatcharrSyncRosterWrite');
 for (const suite of suites) {
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
@@ -144,6 +145,7 @@ for (const suite of suites) {
     ...(['DispatcharrSyncMerge', 'DispatcharrSyncPullStore'].includes(suite) ? ['source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/DispatcharrSyncMerge.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'DispatcharrSyncPullStore' ? ['source/DispatcharrSyncPullStore.brs', 'source/UserProfileScope.brs', 'source/StrictJson.brs'] : []),
     ...(suite === 'DispatcharrSyncWriteBody' ? ['source/DispatcharrSyncWriteBody.brs', 'source/DispatcharrSyncEnvelope.brs', 'source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/StrictJson.brs'] : []),
+    ...(suite === 'DispatcharrSyncRosterWrite' ? ['source/DispatcharrSyncRosterWrite.brs', 'source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/UserProfileModel.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/StrictJson.brs'] : []),
     ...(suite === 'UserProfilePinPolicy' ? ['source/UserProfilePinPolicy.brs', 'source/UserProfilePin.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'ProfilePinNavigation' ? ['source/UserProfilePin.brs', 'source/UserProfileScope.brs', 'components/ProfilePinNavigation.brs'] : []),
     ...(suite === 'DirectionsPinPad' ? ['components/DirectionsPinPad.brs'] : []),

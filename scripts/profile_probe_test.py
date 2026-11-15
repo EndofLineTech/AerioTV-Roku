@@ -145,6 +145,7 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileRetirementColdFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncSwitchRosterStoreProbeChecks')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncWriteBodyProbeChecks')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncRosterWriteProbeChecks')], check=True)
 
     def test_native_roster_storage_checks_keep_broker_seam_private(self):
         spec = importlib.util.spec_from_file_location('native_store_probe', Path(__file__).with_name('build-profile-probe.py'))
