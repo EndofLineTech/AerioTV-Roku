@@ -23,6 +23,7 @@ suites.unshift('UserProfilePin');
 suites.unshift('UserProfileModel');
 suites.unshift('UserProfileAvatar');
 suites.unshift('UserProfileLifecycle');
+suites.unshift('UserProfilePicker');
 suites.unshift('UserProfileForget');
 suites.unshift('UserProfileNavigation');
 suites.unshift('UserProfileRemoval');
@@ -96,6 +97,7 @@ for (const suite of suites) {
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
     ...(suite === 'LaunchModel' ? ['source/LaunchModel.brs'] : []),
+    ...(suite === 'UserProfilePicker' ? ['source/UserProfilePicker.brs', 'source/UserProfilePickerInput.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'PillListItem' ? ['components/AerioPillListItem.brs'] : []),
     ...(suite === 'GuideEmptyState' ? ['components/GuideView.brs'] : []),
     ...(suite === 'UiAuditLibraryData' ? ['tests/native/UiAuditLibraryData.brs', 'tests/native/UiAuditGuideData.brs'] : []),

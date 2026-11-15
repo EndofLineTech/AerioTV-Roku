@@ -120,6 +120,8 @@ def build(output, base_url, registry=False, model_store=False):
         package.write(ROOT / 'source/UserProfilePinPolicy.brs', 'source/UserProfilePinPolicy.brs')
         package.write(ROOT / 'source/UserProfileCredential.brs', 'source/UserProfileCredential.brs')
         package.write(ROOT / 'source/UserProfileManagementPolicy.brs', 'source/UserProfileManagementPolicy.brs')
+        package.write(ROOT / 'source/UserProfilePicker.brs', 'source/UserProfilePicker.brs')
+        package.write(ROOT / 'source/UserProfilePickerInput.brs', 'source/UserProfilePickerInput.brs')
         package.write(ROOT / 'source/UserProfileSwitch.brs', 'source/UserProfileSwitch.brs')
         package.write(ROOT / 'source/UserProfileOwnSignIn.brs', 'source/UserProfileOwnSignIn.brs')
         package.write(ROOT / 'source/UserProfileAddressPolicy.brs', 'source/UserProfileAddressPolicy.brs')
@@ -131,6 +133,9 @@ def build(output, base_url, registry=False, model_store=False):
         for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'RequestGateClient', 'RequestGateModel', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileCleanup', 'UserProfileScope', 'UserProfileScopeStore', 'PreferenceModel', 'ConnectionStoreModel', 'RemoteMapModel', 'GuideSettingsModel', 'ReminderModel']:
             package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
         if model_store:
+            picker_checks = (ROOT / 'tests/UserProfilePicker.test.brs').read_text().split('sub check(', 1)[0]
+            picker_checks = picker_checks.replace('sub main()', 'sub runUserProfilePickerChecks()').replace('check(', 'profileAssert(')
+            package.writestr('source/UserProfilePickerProbeChecks.brs', picker_checks)
             settings_checks = (ROOT / 'tests/DispatcharrSyncSettingsStore.test.brs').read_text().split('sub check(', 1)[0]
             settings_checks = settings_checks.replace('sub main()', 'sub runDispatcharrSyncSettingsStoreChecks()').replace('check(', 'profileAssert(').replace('m.nativeSyncSettings = false', 'm.nativeSyncSettings = true')
             settings_checks = settings_checks.replace('requestGateCredentialHash(', 'syncSettingsFixtureHash(').replace('requestGateAccessAllowed(', 'syncSettingsFixtureAccess(')

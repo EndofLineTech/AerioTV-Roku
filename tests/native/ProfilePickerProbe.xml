@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ProfilePickerProbe" extends="Scene">
+  <script type="text/brightscript" uri="pkg:/source/UserProfilePickerInput.brs" />
+  <script type="text/brightscript" uri="ProfilePickerProbeScene.brs" />
+  <children>
+    <UserProfilePicker id="picker" />
+    <Timer id="ready" duration="0.4" repeat="false" />
+  </children>
+</component>

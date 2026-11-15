@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="UserProfilePicker" extends="Group">
+  <interface>
+    <field id="model" type="assocarray" onChange="onPickerModel" />
+    <field id="intent" type="assocarray" alwaysNotify="true" />
+    <field id="message" type="string" onChange="onPickerMessage" />
+    <field id="busy" type="boolean" value="false" />
+    <field id="focusIndex" type="integer" value="0" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/UserProfileAvatar.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfilePickerInput.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
+  <script type="text/brightscript" uri="UserProfilePicker.brs" />
+  <children>
+    <Rectangle width="1920" height="1080" color="0x0B1220FF" />
+    <Label translation="[160,100]" width="1600" height="90" text="Who is watching?" font="font:LargeSystemFont" />
+    <Group id="tiles" translation="[160,240]" />
+    <Label id="messageLabel" translation="[160,900]" width="1600" height="70" color="0xFFD49AFF" wrap="true" font="font:MediumSystemFont" />
+    <Label translation="[160,990]" width="1600" height="45" text="OK  Choose     Hold OK  Move profile     Back  Return / Exit" color="0xBDD0E0FF" font="font:SmallSystemFont" />
+    <Timer id="holdTimer" duration="0.65" repeat="false" />
+  </children>
+</component>
