@@ -128,7 +128,7 @@ for (const suite of suites) {
     'source/ReminderModel.brs',
     ...(['TmdbTask', 'VodShelfTask', 'VodSeriesTask', 'XtreamTask', 'XtreamVodTask', 'ConnectionAuthTask'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
     'source/HttpPolicy.brs',
-    'source/RequestGateModel.brs', ...(['ProfileSetupCredentialNavigation', 'ProfileSwitchRollbackProtection', 'DispatcharrSyncSwitchRosterStore', 'DispatcharrSyncWriteTask', 'DispatcharrSyncAckStore'].includes(suite) ? [] : ['source/RequestGateClient.brs']), ...(['ProfileSwitchRollbackProtection', 'DispatcharrSyncSwitchRosterStore'].includes(suite) ? [] : ['source/RequestGateRenderer.brs']),
+    'source/RequestGateModel.brs', ...(['ProfileSetupCredentialNavigation', 'ProfileSwitchRollbackProtection', 'DispatcharrSyncSwitchRosterStore', 'DispatcharrSyncWriteTask', 'DispatcharrSyncAckStore'].includes(suite) ? [] : ['source/RequestGateClient.brs']), ...(['ProfileSwitchRollbackProtection', 'DispatcharrSyncSwitchRosterStore', 'DispatcharrSyncAckStore'].includes(suite) ? [] : ['source/RequestGateRenderer.brs']),
     ...(['ProfileSetupCredentialNavigation', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['components/ProfileSetupCredentialNavigation.brs'] : []),
     ...(['ProfileRefreshNavigation', 'PlayerLifecycle'].includes(suite) ? ['components/ProfileRefreshNavigation.brs'] : []),
     ...(suite === 'GuideRefreshPreferences' ? ['components/GuideSettings.brs'] : []),

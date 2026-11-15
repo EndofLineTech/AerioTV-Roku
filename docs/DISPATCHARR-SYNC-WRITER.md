@@ -166,3 +166,15 @@ passed (`out/mrr-sync-flush-success-final-native.log`,
 `out/mrr-sync-flush-failure-cancel-final-verify.log`. Every run cleaned and restored
 the exact owner app. Broader local-plan publication/category/schedule and public
 qualification remain unfinished, so all shipping readiness flags stay false.
+
+Fresh outgoing authority/binding refusal is distinct from a transient failed PUT.
+It now stops source playback if present, fences native renderers and stays covered
+with no active runtime scope/key; it cannot roll back to old permissions. Stored
+credentials and pending metadata remain intact for proper own recovery. The
+native source-B level change case required only B's `/me`, with no App Data/PUT
+or A request (`out/mrr-sync-flush-authority-fenced-native.log`). Host tests assert
+playback-stop/fence calls; this is not native video-plane acceptance. Full verify
+and the native state/fault matrix passed
+(`out/mrr-sync-flush-authority-final-verify.log`,
+`out/mrr-sync-flush-authority-primitives-native.log`). Immediate role reload and
+own-login recovery UX remain separate work, not implied by this fail-closed fix.

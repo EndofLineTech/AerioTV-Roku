@@ -121,9 +121,14 @@ sub advanceProfileSyncFlushProbe()
         if passed then passed = m.activeUserScope.accountId = "8" and m.activeUserScope.profileId = m.writerFlushSource.profileId and m.activeUserScope.sessionId <> m.writerFlushSource.sessionId and m.apiKey = "synthetic-b" and store.pendingRoster and not m.registry.exists(userProfileSyncAckKey("slot-a")) and m.profileSyncWriteTask = invalid and m.profileSyncContext = invalid and not m.global.profilegateclosed and not m.profileGateCover.visible
         if passed then passed = m.writerFlushTask.result.ok <> true and m.writerFlushTask.result.submitted = true and m.writerFlushTask.apiKey = "" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", store.active)) = "synthetic-b"
     end if
+    authority = m.writerProbeMode = "flush-authority"
+    if authority
+        passed = m.activeUserScope = invalid and m.apiKey = "" and store.pendingRoster and not m.registry.exists(userProfileSyncAckKey("slot-a")) and m.global.profilegateclosed and m.profileGateCover.visible and m.userProfileRecoveryRequired and m.profileSyncWriteTask = invalid
+        if passed then passed = m.writerFlushTask.result.ok <> true and m.writerFlushTask.result.state = "authority" and m.writerFlushTask.result.submitted <> true and m.writerFlushTask.apiKey = "" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", store.active)) = "synthetic-b"
+    end if
     state = "invalid"
     if m.writerFlushTask <> invalid
         if type(m.writerFlushTask.result) = "roAssociativeArray" then state = textValue(m.writerFlushTask.result.state)
     end if
-    print "[profile-management] "; FormatJson({kind: "result", writer: passed, flush: passed, pending_retained: failed and passed, writer_state: state})
+    print "[profile-management] "; FormatJson({kind: "result", writer: passed, flush: passed, pending_retained: failed and passed, authority_covered: authority and passed, writer_state: state})
 end sub

@@ -64,6 +64,12 @@ sub main()
     onOutgoingUserProfileSyncResult(syncFlushEvent(m.profileSyncWriteTask, {ok: false, state: "pending", submitted: true}))
     check(m.flushResumes = 0 and m.flushRollbacks = 1 and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "failed outgoing write retains dirty data and cannot start incoming authentication")
     syncFlushFixture()
+    m.playingChannel = {uuid: "owned-source"}
+    check(beginOutgoingUserProfileSync(m.profileSwitchContext), "authority refusal fixture starts")
+    onOutgoingUserProfileSyncResult(syncFlushEvent(m.profileSyncWriteTask, {ok: false, state: "authority", submitted: false}))
+    check(m.flushResumes = 0 and m.flushRollbacks = 1 and m.userProfileRecoveryRequired and m.apiKey = "" and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "fresh outgoing authority mismatch cannot restore content under the previous authorization")
+    check(m.syncSourceStopped and m.syncSourceFenced, "changed outgoing authority stops source playback and fences native renderers rather than only covering old permissions")
+    syncFlushFixture()
     check(beginOutgoingUserProfileSync(m.profileSwitchContext), "stale flush fixture starts")
     sourceTask = m.profileSyncWriteTask
     m.global.activeusersession = "00000000-0000-4000-8000-000000000092"
@@ -83,6 +89,10 @@ sub syncFlushFixture()
     m.registry.values["dispatcharrSyncDeviceV1"] = "00000000-0000-4000-8000-000000000080"
     m.receipt.storeRoot = m.registry.values[userProfileStoreKey("slot-a")]
     m.profileSyncWriterReady = true
+    m.userProfileRecoveryRequired = false
+    m.playingChannel = invalid
+    m.syncSourceStopped = false
+    m.syncSourceFenced = false
     m.profileSyncAppVersion = "1"
     m.profileSyncNonceFactory = function() as string
         return "00000000-0000-4000-8000-000000000093"
@@ -138,6 +148,15 @@ end sub
 
 sub rollbackUserProfileSwitch(message as string)
     m.flushRollbacks++
+end sub
+
+sub stopPlayback()
+    m.syncSourceStopped = true
+    m.playingChannel = invalid
+end sub
+
+sub requestGateFenceRenderers(root as object)
+    m.syncSourceFenced = true
 end sub
 
 sub syncAckFixture()

@@ -1,6 +1,7 @@
 ' Outgoing roster flush keeps the REAL adopted source session until its own
 ' write/ack settles. The incoming nonce and credentials are not transport scope.
 function beginOutgoingUserProfileSync(context as object) as boolean
+    if m.userProfileRecoveryRequired = true then return false
     if m.profileSyncWriterReady <> true or context.unavailableChild = true then return false
     if m.profileSyncWriteTask <> invalid or m.profileSyncContext <> invalid then return false
     if context.connection.id <> m.selectedConnectionId or not userProfileSwitchActorCurrent(context) then return false
@@ -92,7 +93,12 @@ sub onOutgoingUserProfileSyncResult(event as object)
         return
     end if
     if result.ok <> true
-        if type(result.localPlan) = "roAssociativeArray" then m.userProfileRecoveryRequired = true
+        changedAuthority = result.state = "authority" or result.state = "identity"
+        if type(result.localPlan) = "roAssociativeArray" or changedAuthority
+            m.userProfileRecoveryRequired = true
+            if m.playingChannel <> invalid then stopPlayback()
+            requestGateFenceRenderers(m.top)
+        end if
         rollbackUserProfileSwitch("Could not safely settle outgoing changes. Saved edits were retained.")
         if m.userProfileRecoveryRequired = true then m.apiKey = ""
         return
