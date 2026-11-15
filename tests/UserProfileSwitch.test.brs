@@ -165,8 +165,77 @@ sub main()
         result = commitSystemDefaultProfileSwitch(registry, context, proof, liveNonce, actor, runtimeKey, memory)
         check(not result.ok and registry.flushes = 0 and FormatJson(registry.values) = before, "system default adoption refuses changed " + change + " without bypassing actual actor/receipt/proof ownership")
     end for
+    ' Startup selection has no outgoing authenticated scope/key. It must never
+    ' borrow the unavailable-Child or post-retirement admission wrappers.
+    for each change in ["none", "actor", "runtime-key", "nonce", "purpose", "connection-root", "connection-url", "roster-root", "target", "child-source", "child-target", "ask-off", "key", "memory-borrow", "pin", "pin-material"]
+        startup = startupSelectionFixture(connection, a, b, nextAttempt)
+        registry = startup.registry
+        context = startup.context
+        actor = invalid
+        runtimeKey = ""
+        nonce = nextAttempt
+        memory = {}
+        if change = "actor" then actor = outgoing
+        if change = "runtime-key" then runtimeKey = "default-key"
+        if change = "nonce" then nonce = session
+        if change = "purpose" then context.purpose = "unavailable-child"
+        if change = "connection-root" then registry.write("connectionsV1", registry.read("connectionsV1") + " ")
+        if change = "connection-url" then context.connection.url = "https://foreign.test"
+        if change = "roster-root" then registry.write(userProfileStoreKey("slot-a"), registry.read(userProfileStoreKey("slot-a")) + " ")
+        if change = "target" then context.target = context.store.profiles[0]
+        if change = "child-source"
+            context.store.profiles[0] = setCanonicalPreference(context.store.profiles[0], "role", "child")
+            registry.write(userProfileStoreKey("slot-a"), FormatJson(context.store))
+            context.storeRoot = registry.read(userProfileStoreKey("slot-a"))
+        end if
+        if change = "child-target"
+            context.store.profiles[1] = setCanonicalPreference(context.store.profiles[1], "role", "child")
+            context.target = context.store.profiles[1]
+            registry.write(userProfileStoreKey("slot-a"), FormatJson(context.store))
+            context.storeRoot = registry.read(userProfileStoreKey("slot-a"))
+        end if
+        if change = "ask-off"
+            context.store = setCanonicalPreference(context.store, "askAtLaunch", false)
+            registry.write(userProfileStoreKey("slot-a"), FormatJson(context.store))
+            context.storeRoot = registry.read(userProfileStoreKey("slot-a"))
+        end if
+        if change = "key" then registry.write(userProfileKeyName("slot-a", b.id), "foreign-key")
+        if change = "memory-borrow"
+            registry.delete(userProfileKeyName("slot-a", b.id))
+            memory[userProfileKeyName("slot-a", b.id)] = "bob-own-key"
+        end if
+        if change = "pin" then context.pin = invalid
+        if change = "pin-material" then context.pin.pinHash = string(64, "f")
+        before = FormatJson(registry.values)
+        allowed = userProfileStartupSelectionCurrent(registry, context, nonce, actor, runtimeKey, memory, true)
+        check(allowed = (change = "none"), "startup no-actor preflight independently checks " + change)
+        check(registry.flushes = 0 and FormatJson(registry.values) = before, "startup preflight never changes active selection, settings, keys or dirty marks")
+    end for
+    startup = startupSelectionFixture(connection, a, b, nextAttempt)
+    context = startup.context
+    context.pin = invalid
+    check(userProfileStartupSelectionCurrent(startup.registry, context, nextAttempt, invalid, "", {}, false), "PIN form admission resolves only the target's own key without granting transport")
     print "ALL TESTS PASSED"
 end sub
+
+function startupSelectionFixture(connection as object, a as object, b as object, nonce as string) as object
+    store = defaultUserProfileStore(connection.id)
+    source = setCanonicalPreference(copyJson(a), "role", "user")
+    target = setCanonicalPreference(copyJson(b), "role", "user")
+    target = setCanonicalPreference(target, "pinType", "numbers")
+    target = setCanonicalPreference(target, "pinHash", string(64, "a"))
+    target = setCanonicalPreference(target, "pinSalt", string(32, "b"))
+    target = setCanonicalPreference(target, "addressHeld", false)
+    store.profiles = [source, target]
+    store.active = source.id
+    store = setCanonicalPreference(store, "askAtLaunch", true)
+    store = normalizeUserProfileStore(store, connection.id)
+    registry = switchRegistryFixture(connection, store)
+    registry.write(userProfileKeyName(connection.id, target.id), "bob-own-key")
+    pin = {slot: connection.id, id: target.id, pinType: target.pinType, pinHash: target.pinHash, pinSalt: target.pinSalt}
+    context = {purpose: "startup-picker", nonce: nonce, connection: copyJson(connection), connectionRootPresent: true, connectionRoot: registry.read("connectionsV1"), store: store, storeRoot: registry.read(userProfileStoreKey(connection.id)), target: store.profiles[1], key: "bob-own-key", pin: pin}
+    return {registry: registry, context: context}
+end function
 
 function switchRegistryFixture(connection as object, store as object) as object
     values = {}

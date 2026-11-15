@@ -46,3 +46,27 @@ unavailable-Child/adult grant. Target authentication, fresh protection import,
 PIN changes while waiting, keyless/held own forms, rollback, deep-link closure,
 beacons and heavy-work fencing still require normal-app native qualification.
 This checkpoint does not complete `AerioTV-Roku-mrr.9` or the epic.
+
+## Startup-selection preflight
+
+`UserProfileStartupSelection.brs` now supplies a distinct, read-only preflight.
+It requires an absent runtime actor and empty runtime key, the startup-picker
+purpose/fresh UUID, exact captured connection and roster roots, current selected
+Dispatcharr slot, Ask On/multiple holders, full-access restored holder and exact
+target record. It resolves only that target's own credential, ignores a memory
+override when Remember is On, and rechecks shared broker admission. Transport
+admission additionally requires the target's exact PIN grant. An explicit
+pre-PIN check is only for pad admission, not permission to send requests.
+
+Child targets remain refused at this boundary until their picker continuation
+is qualified. This preflight does not authenticate, read/import a roster, flush,
+change the active holder, publish settings, create an authenticated scope or
+enable application routing.
+
+Tests-first red: `out/mrr-startup-selection-preflight-red.log`. Host, shared
+native (`out/mrr-startup-selection-preflight-native.log`) and full verification
+(`out/mrr-startup-selection-preflight-verify.log`) pass stale actor/key/nonce,
+changed URL/root/target, Child source/target, Ask Off, missing/replaced own key,
+Remember-On memory borrowing and missing/changed PIN refusal. All cases prove
+zero Flush and exact storage preservation. Normal-app authentication/import/
+adoption and own-form integration remain next, not inferred from these tests.
