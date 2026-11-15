@@ -94,11 +94,11 @@ def startup_probe_timer(source):
 
 
 def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False, switch_authority_race=False, switch_active_retirement=False, active_default_mode='usable', switch_writer=False, writer_mode='direct'):
-    if writer_mode not in ['direct', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority'] or (writer_mode != 'direct' and not switch_writer):
+    if writer_mode not in ['direct', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin'] or (writer_mode != 'direct' and not switch_writer):
         raise ValueError('Writer mode requires the private writer fixture')
     if switch_writer and (not switching or not switch_roster or any([directions, switch_pin, cancel_pin, reject_active, remember_off, child_settings, reconnect, cold_restore, default_filter, assignment_refresh, child_escape, child_launch, child_available, child_retry, child_rejected, manual_refresh, manual_recording, favorite_retention, switch_recording, switch_import_pin, switch_cleanup, switch_target_retirement, switch_authority_race, switch_active_retirement]) or active_default_mode != 'usable'):
         raise ValueError('Writer fixture requires only --switch --switch-roster')
-    if active_default_mode not in ['usable', 'missing', 'held', 'child', 'cold', 'simultaneous'] or (active_default_mode != 'usable' and not switch_active_retirement):
+    if active_default_mode not in ['usable', 'missing', 'held', 'child', 'cold', 'simultaneous', 'import-pin', 'import-child'] or (active_default_mode != 'usable' and not switch_active_retirement):
         raise ValueError('Active default mode requires the active retirement fixture')
     if switch_roster and (not (switching or child_escape) or (switching and child_escape)):
         raise ValueError('Private early-roster mode requires either switch or Child escape fixture')
@@ -834,8 +834,8 @@ def main():
     parser.add_argument('--switch-authority-race', action='store_true', help='Only with --switch --switch-roster: change target authority on final me and require rollback with zero target lineup requests')
     parser.add_argument('--switch-active-retirement', action='store_true', help='Only with --switch --switch-roster: C own roster removes actual B, requiring default A own system adoption without its PIN')
     parser.add_argument('--switch-writer', action='store_true', help='Only with --switch --switch-roster: private own-B canonical re-read and checked-string PUT')
-    parser.add_argument('--writer-mode', choices=['direct', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority'], default='direct', help='Private writer fixture: direct Task, outgoing switch flush or failure/cancellation/authority refusal')
-    parser.add_argument('--active-default-mode', choices=['usable', 'missing', 'held', 'child', 'cold', 'simultaneous'], default='usable', help='Only with --switch-active-retirement: default own credential/access state')
+    parser.add_argument('--writer-mode', choices=['direct', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin'], default='direct', help='Private writer fixture: direct Task, outgoing flush, imported PIN or failure/cancellation/authority refusal')
+    parser.add_argument('--active-default-mode', choices=['usable', 'missing', 'held', 'child', 'cold', 'simultaneous', 'import-pin', 'import-child'], default='usable', help='Only with --switch-active-retirement: default own credential/access state')
     parser.add_argument('--reconnect', action='store_true', help='With --switch, reconnect B through early roster read and full activation before returning to A')
     parser.add_argument('--switch-pin', action='store_true', help='With --switch, require the real stored numeric target PIN before each switch')
     parser.add_argument('--cancel-pin', action='store_true', help='With --switch-pin, cancel the final target PIN before any request is sent')
@@ -944,7 +944,12 @@ def main():
                 future = value['categories']['FutureCategory']['data']
                 roster = value['categories']['profiles']['data']
                 valid = args.switch_writer and user == 8 and self.path == '/api/accounts/users/me/app-data/synthetic8.aeriotv/' and self.headers.get('Content-Type', '').startswith('application/json') and length == len(raw) and value['schemaVersion'] == 3 and value['platform'] == 'roku' and value['FutureEnvelope'] == 1794675600000 and type(future['KeepDouble']) is float and future['KeepDouble'] == 1.0 and future['Precision'] == 1.3 and future['Emoji'] == '😀' and roster['FutureRoster'] == {'Case': 1, 'case': 2} and {row[0] for row in roster['rows']} == {7, 8}
-            except (ValueError, KeyError, TypeError):
+                valid = valid and type(value['schemaVersion']) is int and len(value['updatedAt']) == 20 and value['updatedAt'].endswith('Z') and all(type(row[0]) is int and type(row[7]) is int and type(row[9]) is int for row in roster['rows'])
+                if args.writer_mode == 'flush-import-pin':
+                    target = next(row for row in roster['rows'] if row[0] == 7)
+                    salt = '0123456789abcdef0123456789abcdef'
+                    valid = valid and target[3:6] == ['numbers', hashlib.sha256(bytes.fromhex(salt) + b'5678').hexdigest(), salt]
+            except (ValueError, KeyError, TypeError, StopIteration, IndexError):
                 pass
             fixture_state['writer_body_ok'] = valid
             if valid and args.writer_mode == 'flush-cancel':
@@ -1049,8 +1054,16 @@ def main():
                 if args.active_default_mode == 'simultaneous':
                     rows = value['categories']['profiles']['data']['removed']
                     rows.append(['synthetic9', rows[0][1]])
+                if args.active_default_mode in ['cold', 'import-pin', 'import-child']:
+                    salt = '0123456789abcdef0123456789abcdef'
+                    role = 'child' if args.active_default_mode == 'import-child' else 'user'
+                    value['categories']['profiles']['data']['rows'] = [[7, 'Synthetic7', 'Protected default', 'numbers', hashlib.sha256(bytes.fromhex(salt) + b'5678').hexdigest(), salt, role, int(time.time()), {}, 0]]
             if args.switch_writer and user == 8 and self.path == '/api/accounts/users/me/app-data/synthetic8.aeriotv/':
                 value = {'schemaVersion': 3, 'deviceId': 'synthetic-phone', 'platform': 'android', 'appVersion': '1', 'updatedAt': '2026-11-14T17:00:00Z', 'categories': {'profiles': {'updatedAt': '2026-11-14T17:00:00Z', 'data': {'rows': [], 'FutureRoster': {'Case': 1, 'case': 2}}}, 'FutureCategory': {'updatedAt': '2026-11-14T17:00:00Z', 'data': {'KeepDouble': 1.0, 'Precision': 1.3, 'Emoji': '😀'}}}, 'FutureEnvelope': 1794675600000}
+                if args.writer_mode == 'flush-import-pin' and fixture_state.get('writer_started', False):
+                    stamp = fixture_state.setdefault('writer_import_stamp', int(time.time()))
+                    salt = '0123456789abcdef0123456789abcdef'
+                    value['categories']['profiles']['data']['rows'] = [[7, 'Synthetic7', 'Synthetic7', 'numbers', hashlib.sha256(bytes.fromhex(salt) + b'5678').hexdigest(), salt, 'user', stamp, {}, 0]]
             if args.child_available and self.path == f'/api/accounts/users/me/app-data/synthetic{user}.aeriotv/':
                 stamp = '2026-11-14T12:00:00Z'
                 value = {'schemaVersion': 3, 'deviceId': 'synthetic-phone', 'platform': 'android', 'appVersion': '1', 'updatedAt': stamp,
@@ -1100,6 +1113,12 @@ def main():
                     report['writer_target_pin_ready'] = json.loads(line.split('[profile-management] ', 1)[1]).get('ready', False)
                 if '"kind":"writer-flush-started"' in line:
                     report['writer_source_admitted'] = json.loads(line.split('[profile-management] ', 1)[1]).get('admitted', False)
+                if '"kind":"writer-imported-pin-ready"' in line:
+                    report['writer_import_pin_ready'] = json.loads(line.split('[profile-management] ', 1)[1]).get('ready', False)
+                    report['writer_before_import_pin'] = hits[report['writer_request_boundary']:].copy()
+                if '"kind":"writer-import-old-refused"' in line:
+                    report['writer_import_old_refused'] = json.loads(line.split('[profile-management] ', 1)[1]).get('refused', False)
+                    report['writer_after_old_import_pin'] = hits[report['writer_request_boundary']:].copy()
                 if '"kind":"retirement-crash-ready"' in line:
                     checkpoint = json.loads(line.split('[profile-management] ', 1)[1])
                     report['cold_checkpoint'] = checkpoint
@@ -1109,6 +1128,9 @@ def main():
                     report['cold_relaunched'] = launch_profile_probe_after_exit(host)
                 if '"kind":"retirement-cold-pin-ready"' in line:
                     report['cold_pre_pin_requests'] = hits[report['cold_request_boundary']:].copy()
+                if '"kind":"retirement-cold-old-pin-refused"' in line:
+                    report['cold_old_pin_refused'] = json.loads(line.split('[profile-management] ', 1)[1]).get('refused', False)
+                    report['cold_old_pin_requests'] = hits[report['cold_request_boundary']:].copy()
                 if '"kind":"assignment-ready"' in line:
                     fixture_state['changed'] = True
                 if '"kind":"active-default-reject-ready"' in line:
@@ -1153,7 +1175,7 @@ def main():
         report['switch_key_events'] = [row for row in rows if row.get('kind') == 'switch-key']
         report['switch_guide_key_events'] = [row for row in rows if row.get('kind') == 'switch-guide-key']
         report['default_rejection_ready'] = any(row.get('kind') == 'active-default-reject-ready' for row in rows)
-        rows = [row for row in rows if row.get('kind') not in ['switch-key', 'switch-guide-key', 'active-default-reject-ready', 'retirement-crash-ready', 'retirement-cold-pin-ready', 'writer-ready', 'writer-target-pin-ready', 'writer-flush-started']]
+        rows = [row for row in rows if row.get('kind') not in ['switch-key', 'switch-guide-key', 'active-default-reject-ready', 'retirement-crash-ready', 'retirement-cold-pin-ready', 'retirement-cold-old-pin-refused', 'writer-ready', 'writer-target-pin-ready', 'writer-flush-started', 'writer-imported-pin-ready', 'writer-import-old-refused']]
         report['events'] = rows
         if args.child_escape:
             report['requests'] = hits
@@ -1195,11 +1217,14 @@ def main():
             after = hits[report.get('writer_request_boundary', len(hits)):]
             expected = [('GET', '/api/accounts/users/me/'), ('GET', '/api/accounts/users/me/app-data/'), ('GET', '/api/accounts/users/me/app-data/synthetic8.aeriotv/'), ('PUT', '/api/accounts/users/me/app-data/synthetic8.aeriotv/')]
             report['writer_own_request_order'] = [(hit.get('method', 'GET'), hit['path']) for hit in after] == expected and all(hit['user'] == 8 for hit in after)
-            if args.writer_mode == 'flush':
-                incoming = after[4:]
+            if args.writer_mode in ['flush', 'flush-import-pin']:
+                prefix = expected
+                if args.writer_mode == 'flush-import-pin':
+                    prefix = expected[:3] + expected
+                incoming = after[len(prefix):]
                 roster = next((i for i, hit in enumerate(incoming) if hit['path'] == '/api/accounts/users/me/app-data/'), -1)
                 lineup = next((i for i, hit in enumerate(incoming) if hit['path'].startswith('/api/channels/channels/summary/')), -1)
-                report['writer_own_request_order'] = [(hit.get('method', 'GET'), hit['path']) for hit in after[:4]] == expected and all(hit['user'] == 8 for hit in after[:4]) and bool(incoming) and all(hit['user'] == 7 for hit in incoming) and roster >= 0 and lineup > roster
+                report['writer_own_request_order'] = [(hit.get('method', 'GET'), hit['path']) for hit in after[:len(prefix)]] == prefix and all(hit['user'] == 8 for hit in after[:len(prefix)]) and bool(incoming) and all(hit['user'] == 7 for hit in incoming) and roster >= 0 and lineup > roster
             if args.writer_mode in ['flush-failed', 'flush-cancel']:
                 report['writer_own_request_order'] = [(hit.get('method', 'GET'), hit['path']) for hit in after[:4]] == expected and all(hit['user'] == 8 for hit in after) and all(hit['path'].startswith('/api/epg/grid/?') and hit.get('method', 'GET') == 'GET' for hit in after[4:])
             if args.writer_mode == 'flush-authority':
@@ -1210,6 +1235,9 @@ def main():
                 report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('writer', False) and report['writer_own_request_order'] and rows[-1].get('authority_covered', False)
             if args.writer_mode != 'direct':
                 report['passed'] = report['passed'] and report.get('writer_target_pin_ready', False) and report.get('writer_pre_pin_requests') == [] and report.get('writer_source_admitted', False) and rows[-1].get('flush', False)
+            if args.writer_mode == 'flush-import-pin':
+                before_pin = report.get('writer_before_import_pin', [])
+                report['passed'] = report['passed'] and report.get('writer_import_pin_ready', False) and report.get('writer_import_old_refused', False) and report.get('writer_after_old_import_pin') == before_pin and [(hit.get('method', 'GET'), hit['path']) for hit in before_pin] == expected[:3] and all(hit['user'] == 8 for hit in before_pin)
             if args.writer_mode in ['flush-failed', 'flush-cancel']:
                 report['passed'] = report['passed'] and rows[-1].get('pending_retained', False)
             if args.writer_mode == 'flush-cancel':
@@ -1227,12 +1255,12 @@ def main():
             own_roster = next((index for index, hit in enumerate(after) if hit['user'] == 7 and hit['path'] == '/api/accounts/users/me/app-data/'), -1)
             own_lineup = next((index for index, hit in enumerate(after) if hit['user'] == 7 and hit['path'].startswith('/api/channels/channels/summary/')), -1)
             default_requests_ok = own_roster >= 0 and own_lineup > own_roster and all(hit['user'] == 7 for hit in after)
-            if args.active_default_mode not in ['usable', 'cold', 'simultaneous']:
+            if args.active_default_mode not in ['usable', 'cold', 'simultaneous', 'import-pin']:
                 default_requests_ok = not after
             report['system_default_request_order'] = source_paths == ['/api/accounts/users/me/', '/api/accounts/users/me/', '/api/accounts/users/me/app-data/', '/api/accounts/users/me/app-data/synthetic9.aeriotv/'] and boundary >= 0 and default_requests_ok
             report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('active_retired', False) and report['system_default_request_order']
             if args.active_default_mode == 'cold':
-                report['passed'] = report['passed'] and report.get('cold_relaunched', False) and report.get('cold_pre_pin_requests') == [] and rows[-1].get('cold_recovered', False)
+                report['passed'] = report['passed'] and report.get('cold_relaunched', False) and report.get('cold_pre_pin_requests') == [] and report.get('cold_old_pin_refused', False) and report.get('cold_old_pin_requests') == [] and rows[-1].get('cold_recovered', False)
             if args.active_default_mode == 'held':
                 refused = [hit for hit in hits if hit['rejected']]
                 report['passed'] = report['passed'] and report['default_rejection_ready'] and len(refused) == 1 and refused[0]['user'] == 7 and refused[0]['path'] == '/api/accounts/users/me/'

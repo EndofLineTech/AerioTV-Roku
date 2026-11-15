@@ -53,6 +53,26 @@ sub main()
     m.registry.values[userProfileSyncAckKey("slot-a")] = "{""schema"":1,""playlistId"":""slot-a"",""baseUrl"":""https://example.test"",""maximumSentStamp"":200}"
     result = commitDispatcharrSyncRosterAck(m.registry, m.connection, m.store, m.receipt, m.scope, m.key, {})
     check(result.ok and loadDispatcharrSyncRosterAck(m.registry, m.connection).stamp = 200, "late lower highwater cannot regress an existing successful acknowledgement")
+    syncAckFixture()
+    m.receipt.ok = false
+    m.receipt.state = "local-commit"
+    m.receipt.submitted = false
+    m.receipt.readStatus = 200
+    m.receipt.authorizationSignature = "bound-own-authority"
+    m.receipt.profileData = {rows: [[7, "Alice", "Remote name", "none", "", "", "user", 200]]}
+    result = commitDispatcharrSyncRosterRead(m.registry, m.connection, m.store, m.receipt, m.scope, m.key, {}, "bound-own-authority", true, 500)
+    check(result.ok and result.store.profiles[0].displayName = "Remote name" and result.store.pendingRoster and not m.registry.exists(userProfileSyncAckKey("slot-a")), "fresh own read publishes newer metadata without acknowledging or clearing outgoing dirty state")
+    before = FormatJson(m.registry.values)
+    check(not commitDispatcharrSyncRosterRead(m.registry, m.connection, m.store, m.receipt, m.scope, m.key, {}, "bound-own-authority", true, 500).ok and FormatJson(m.registry.values) = before, "read receipt cannot replay after its exact saved snapshot advanced")
+    syncAckFixture()
+    m.receipt.ok = false
+    m.receipt.state = "local-commit"
+    m.receipt.submitted = false
+    m.receipt.readStatus = 200
+    m.receipt.authorizationSignature = "old-own-authority"
+    m.receipt.profileData = {rows: []}
+    before = FormatJson(m.registry.values)
+    check(not commitDispatcharrSyncRosterRead(m.registry, m.connection, m.store, m.receipt, m.scope, m.key, {}, "new-own-authority", true, 500).ok and FormatJson(m.registry.values) = before, "read publication requires the actual current own authority signature, not just matching user IDs")
     syncFlushFixture()
     check(beginOutgoingUserProfileSync(m.profileSwitchContext), "private flush starts under the actual outgoing adopted session")
     check(m.profileSyncWriteTask.apiKey = "synthetic-own" and m.profileSyncWriteTask.aeriosession = m.scope.sessionId and m.global.activeusersession = m.scope.sessionId and m.profileSwitchContext.key = "target-own-key", "outgoing flush never uses target credentials or retires its actual source nonce early")
@@ -69,6 +89,16 @@ sub main()
     onOutgoingUserProfileSyncResult(syncFlushEvent(m.profileSyncWriteTask, {ok: false, state: "authority", submitted: false}))
     check(m.flushResumes = 0 and m.flushRollbacks = 1 and m.userProfileRecoveryRequired and m.apiKey = "" and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "fresh outgoing authority mismatch cannot restore content under the previous authorization")
     check(m.syncSourceStopped and m.syncSourceFenced, "changed outgoing authority stops source playback and fences native renderers rather than only covering old permissions")
+    syncFlushFixture()
+    check(beginOutgoingUserProfileSync(m.profileSwitchContext), "metadata read settlement fixture starts")
+    readReceipt = syncFlushReadReceipt({rows: [[8, "Bob", "Remote Bob", "none", "", "", "user", 200]]})
+    onOutgoingUserProfileSyncResult(syncFlushEvent(m.profileSyncWriteTask, readReceipt))
+    check(m.flushResumes = 1 and m.profileSwitchContext.store.profiles[1].displayName = "Remote Bob" and m.profileSwitchContext.store.pendingRoster and m.profileSwitchContext.syncReadSettlements = 1, "read publication resumes bounded fresh outgoing staging without acknowledging metadata as written")
+    syncFlushFixture()
+    check(beginOutgoingUserProfileSync(m.profileSwitchContext), "new target protection fixture starts")
+    readReceipt = syncFlushReadReceipt({rows: [[8, "Bob", "Bob", "numbers", string(64, "a"), string(32, "b"), "user", 200]]})
+    onOutgoingUserProfileSyncResult(syncFlushEvent(m.profileSyncWriteTask, readReceipt))
+    check(m.flushResumes = 0 and m.syncPinPrompts = 1 and m.profileSwitchContext.pin = invalid and m.profileSwitchContext.target.pinType = "numbers" and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "newly imported target PIN invalidates any old one-shot ticket and prompts before fresh outgoing continuation")
     syncFlushFixture()
     check(beginOutgoingUserProfileSync(m.profileSwitchContext), "stale flush fixture starts")
     sourceTask = m.profileSyncWriteTask
@@ -93,6 +123,8 @@ sub syncFlushFixture()
     m.playingChannel = invalid
     m.syncSourceStopped = false
     m.syncSourceFenced = false
+    m.syncPinPrompts = 0
+    m.profilePinDialog = invalid
     m.profileSyncAppVersion = "1"
     m.profileSyncNonceFactory = function() as string
         return "00000000-0000-4000-8000-000000000093"
@@ -126,6 +158,22 @@ sub syncFlushFixture()
         }
     end function
 end sub
+
+function syncFlushReadReceipt(data as object) as object
+    receipt = copyPreferenceValue(m.receipt)
+    receipt.ok = false
+    receipt.state = "local-commit"
+    receipt.submitted = false
+    receipt.readStatus = 200
+    receipt.authorizationSignature = m.profileAuthorizationSignature
+    receipt.profileData = data
+    return receipt
+end function
+
+function beginProfilePinGate(profile as object, continuation as string, resume = invalid as dynamic) as boolean
+    m.syncPinPrompts++
+    return true
+end function
 
 function syncFlushEvent(node as object, data as object) as object
     return {node: node, data: data

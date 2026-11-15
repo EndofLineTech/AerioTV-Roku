@@ -1,4 +1,45 @@
 sub main()
+    for each cold in [false, true]
+        switchDefaultRetirementFixture()
+        retained = m.context.store.profiles[2]
+        m.decoded = dispatcharrSyncRosterDecode({rows: [[retained.userId, retained.username, "New protected default", "numbers", string(64, "a"), string(32, "b"), "child", 550]], removed: [["alice", 500]]})
+        selected = switchDefaultRetirementSelect()
+        check(selected.ok, "combined removal and retained protection update selects default")
+        selectedDefault = invalid
+        for each profile in selected.store.profiles
+            if profile.isDefault then selectedDefault = profile
+        end for
+        check(selectedDefault.role = "child" and selectedDefault.pinHash = string(64, "a") and selectedDefault.displayName = "New protected default", "phase-one durable selection preserves freshly imported retained protection before teardown")
+        check(FormatJson(selected.store.profiles[0]) = FormatJson(m.context.store.profiles[0]) and m.registry.exists(m.outgoingKey) and m.registry.read("settingsV1") = m.settings, "phase-one preserves removed record and private ownership unchanged")
+        m.outgoing = invalid
+        m.actorKey = ""
+        if cold
+            result = resumeUserProfileRetirement(m.registry, m.context.connection, invalid, "")
+        else
+            result = commitDispatcharrDefaultRetirementCleanup(m.registry, m.context, selected, m.verified, m.decoded, m.enabled, 700, m.activeNonce, invalid, "", m.memory)
+        end if
+        check(result.ok, "live delayed or cold retirement finishes with retained protection")
+        for each profile in result.store.profiles
+            if profile.isDefault then check(profile.role = "child" and profile.pinHash = string(64, "a") and profile.displayName = "New protected default", "cleanup cannot revert the already committed default protection")
+        end for
+        check(result.scope = invalid and result.pin = invalid and result.apiKey = invalid, "retained protection publication grants no default session or PIN bypass")
+    end for
+    switchDefaultRetirementFixture()
+    retained = m.context.store.profiles[2]
+    retained = setCanonicalPreference(retained, "displayName", "Locally claimed default")
+    retained = setCanonicalPreference(retained, "updatedAt", 540)
+    m.context.store.profiles[2] = retained
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.context.store)
+    m.decoded = dispatcharrSyncRosterDecode({rows: [[retained.userId, retained.username, retained.username, "none", "", "", "user", 550]], removed: [["alice", 500]]})
+    selected = switchDefaultRetirementSelect()
+    check(selected.ok and selected.plannedAt = 600, "selection binds stripped-row repair to its original planning time")
+    m.outgoing = invalid
+    m.actorKey = ""
+    result = commitDispatcharrDefaultRetirementCleanup(m.registry, m.context, selected, m.verified, m.decoded, m.enabled, 700, m.activeNonce, invalid, "", m.memory)
+    check(result.ok and result.store.pendingRoster, "delayed cleanup preserves pending repair rather than re-planning at a later second")
+    for each profile in result.store.profiles
+        if profile.isDefault then check(profile.updatedAt = 600 and profile.displayName = "Locally claimed default", "retained repair timestamp remains the exact selected snapshot")
+    end for
     for each fault in ["", "write", "flush", "rollback"]
         switchDefaultRetirementFixture()
         m.registry.fault = fault
@@ -128,7 +169,7 @@ sub main()
             check(not result.ok and result.recoveryRequired = (fault = "rollback") and FormatJson(m.registry.values) = before, "phase-two write/flush faults retain selected default and restore exact remaining private data without reviving old actor")
         end if
     end for
-    for each change in ["runtime-key", "nonce", "selected-root", "connection-root", "context-url", "source-key", "source-key-memory", "authority", "evidence", "settings"]
+    for each change in ["runtime-key", "nonce", "selected-root", "connection-root", "context-url", "source-key", "source-key-memory", "authority", "evidence", "settings", "missing-time", "future-time", "object-time"]
         switchDefaultRetirementFixture()
         selected = switchDefaultRetirementSelect()
         m.outgoing = invalid
@@ -149,6 +190,9 @@ sub main()
         if change = "authority" then m.verified.verifiedUser.user_level = 10
         if change = "evidence" then m.decoded = dispatcharrSyncRosterDecode({rows: [], removed: []})
         if change = "settings" then m.registry.values["settingsV1"] = "{malformed"
+        if change = "missing-time" then selected.delete("plannedAt")
+        if change = "future-time" then selected.plannedAt = 601
+        if change = "object-time" then selected.plannedAt = {}
         m.registry.flushes = 0
         before = FormatJson(m.registry.values)
         result = switchDefaultRetirementCleanup(selected)

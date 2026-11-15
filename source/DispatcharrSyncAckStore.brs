@@ -43,6 +43,38 @@ end function
 function commitDispatcharrSyncRosterAck(registry as object, connection as object, previous as object, receipt as object, activeScope as dynamic, activeKey as string, memoryKeys as object) as object
     denied = {ok: false, recoveryRequired: false}
     if receipt.ok <> true or receipt.submitted <> true or receipt.state <> "written" then return denied
+    access = dispatcharrSyncOwnReceiptAccess(registry, connection, previous, receipt, activeScope, activeKey, memoryKeys)
+    if not access.ok then return denied
+    actual = access.store
+    entry = access.connection
+    if not userProfileInteger(receipt.maximumSentStamp) then return denied
+    if receipt.maximumSentStamp < 0 or receipt.maximumSentStamp > 9007199254740991& then return denied
+    old = loadDispatcharrSyncRosterAck(registry, entry)
+    if not old.ok then return denied
+    stamp = receipt.maximumSentStamp
+    if old.stamp > stamp then stamp = old.stamp
+    staged = setCanonicalPreference(actual, "pendingRoster", false)
+    prepared = userProfileStoreChanges(registry, actual, staged, {}, true)
+    if not prepared.ok then return denied
+    ack = ParseJson("{}")
+    ack["schema"] = 1
+    ack["playlistId"] = entry.id
+    ack["baseUrl"] = entry.url
+    ack["maximumSentStamp"] = stamp
+    encoded = strictJsonEncode(ack)
+    if not encoded.ok then return denied
+    prepared.changes[userProfileSyncAckKey(entry.id)] = encoded.text
+    saved = userProfileRegistryTransaction(registry, prepared.changes)
+    if not saved.ok then return saved
+    saved.store = normalizeUserProfileStore(staged, entry.id)
+    saved.acknowledgedStamp = stamp
+    return saved
+end function
+
+' Shared current-own-storage proof; neither read publication nor successful PUT
+' acknowledgement may substitute a target/default scope or cached credential.
+function dispatcharrSyncOwnReceiptAccess(registry as object, connection as object, previous as object, receipt as object, activeScope as dynamic, activeKey as string, memoryKeys as object) as object
+    denied = {ok: false}
     if not userProfileSameSession(receipt.scope, activeScope) then return denied
     if connection.provider <> "dispatcharr" or previous.playlistId <> connection.id then return denied
     if GetInterface(receipt.connectionRoot, "ifString") = invalid or GetInterface(receipt.storeRoot, "ifString") = invalid then return denied
@@ -76,26 +108,31 @@ function commitDispatcharrSyncRosterAck(registry as object, connection as object
         if not registry.exists(credential.keyName) or registry.read(credential.keyName) <> activeKey then return denied
     end if
     if not requestGateAccessAllowed(entry.url, activeKey) then return denied
-    if not userProfileInteger(receipt.maximumSentStamp) then return denied
-    if receipt.maximumSentStamp < 0 or receipt.maximumSentStamp > 9007199254740991& then return denied
-    old = loadDispatcharrSyncRosterAck(registry, entry)
-    if not old.ok then return denied
-    stamp = receipt.maximumSentStamp
-    if old.stamp > stamp then stamp = old.stamp
-    staged = setCanonicalPreference(actual, "pendingRoster", false)
-    prepared = userProfileStoreChanges(registry, actual, staged, {}, true)
-    if not prepared.ok then return denied
-    ack = ParseJson("{}")
-    ack["schema"] = 1
-    ack["playlistId"] = entry.id
-    ack["baseUrl"] = entry.url
-    ack["maximumSentStamp"] = stamp
-    encoded = strictJsonEncode(ack)
-    if not encoded.ok then return denied
-    prepared.changes[userProfileSyncAckKey(entry.id)] = encoded.text
-    saved = userProfileRegistryTransaction(registry, prepared.changes)
-    if not saved.ok then return saved
-    saved.store = normalizeUserProfileStore(staged, entry.id)
-    saved.acknowledgedStamp = stamp
+    return {ok: true, store: actual, connection: entry}
+end function
+
+' A fresh successful GET may import protection/metadata before a separate fresh
+' re-read and PUT. It never clears dirty intent or manufactures a 200 write ack.
+function commitDispatcharrSyncRosterRead(registry as object, connection as object, previous as object, receipt as object, activeScope as dynamic, activeKey as string, memoryKeys as object, authorizationSignature as string, enabled as boolean, now as integer) as object
+    denied = {ok: false, recoveryRequired: false}
+    if receipt.state <> "local-commit" or not enabled or now <= 0 then return denied
+    if not userProfileBoolean(receipt.ok) or not userProfileBoolean(receipt.submitted) then return denied
+    if receipt.ok or receipt.submitted then return denied
+    if not userProfileInteger(receipt.readStatus) then return denied
+    if receipt.readStatus <> 200 then return denied
+    if authorizationSignature = "" or GetInterface(receipt.authorizationSignature, "ifString") = invalid then return denied
+    if receipt.authorizationSignature <> authorizationSignature then return denied
+    access = dispatcharrSyncOwnReceiptAccess(registry, connection, previous, receipt, activeScope, activeKey, memoryKeys)
+    if not access.ok then return denied
+    decoded = dispatcharrSyncRosterDecode(receipt.profileData)
+    if not decoded.ok then return denied
+    plan = dispatcharrSyncRosterMerge(access.store, decoded, enabled, now)
+    if not plan.ok then return denied
+    saved = commitDispatcharrRosterPull(registry, access.connection, access.store, decoded, enabled, now, receipt.scope, activeScope)
+    if saved.ok
+        saved.readCommitted = true
+        saved.removed = plan.removed
+        if registry.exists("settingsV1") then saved.preferenceStore = saved.preferences
+    end if
     return saved
 end function

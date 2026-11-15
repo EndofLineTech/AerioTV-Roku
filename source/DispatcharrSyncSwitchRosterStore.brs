@@ -19,12 +19,13 @@ function commitDispatcharrDefaultRetirementSelection(registry as object, context
     if working.readOnly = true then return denied
     plan = dispatcharrSyncSwitchRosterContentPlan(context.connection, working, context.target.id, verified, decoded, enabled, now, true, true)
     if not plan.ok or not plan.applied or plan.needsDefaultSwitch <> true then return denied
-    selected = normalizeUserProfileStore(context.store, context.connection.id)
+    selected = dispatcharrSyncDefaultRetirementSelectedStore(context.store, plan)
+    if selected = invalid then return denied
     defaultId = ""
     for each profile in selected.profiles
         if profile.isDefault then defaultId = profile.id
     end for
-    if defaultId = "" or defaultId = selected.active or plan.store.active <> defaultId then return denied
+    if defaultId = "" or defaultId = context.store.active or plan.store.active <> defaultId then return denied
     selected = setCanonicalPreference(selected, "active", defaultId)
     selected = setCanonicalPreference(selected, "retirementPending", true)
     journal = userProfilePrepareRetirementJournal(context.connection, context.store, decoded, plan, context.nonce)
@@ -39,7 +40,32 @@ function commitDispatcharrDefaultRetirementSelection(registry as object, context
         denied.recoveryRequired = saved.recoveryRequired
         return denied
     end if
-    return {ok: true, selected: true, recoveryRequired: false, store: selected, defaultId: defaultId, outgoingId: context.store.active, journalRoot: journal.root, selectionRoot: changes[userProfileStoreKey(context.connection.id)], sourceRoster: FormatJson(context.store), sourceEvidence: FormatJson(decoded), sourceTargetId: context.target.id, sourceAuthority: dispatcharrAuthorizationSignature(verified.verifiedUser), connectionRoot: context.connectionRoot, connectionRootPresent: context.connectionRootPresent, nonce: context.nonce}
+    return {ok: true, selected: true, recoveryRequired: false, store: selected, defaultId: defaultId, outgoingId: context.store.active, plannedAt: now, journalRoot: journal.root, selectionRoot: changes[userProfileStoreKey(context.connection.id)], sourceRoster: FormatJson(context.store), sourceEvidence: FormatJson(decoded), sourceTargetId: context.target.id, sourceAuthority: dispatcharrAuthorizationSignature(verified.verifiedUser), connectionRoot: context.connectionRoot, connectionRootPresent: context.connectionRootPresent, nonce: context.nonce}
+end function
+
+' Publish retained protection at selection, but keep each removed record exact
+' until runtime teardown. Both phases reconstruct this same original-time root.
+function dispatcharrSyncDefaultRetirementSelectedStore(previous as object, plan as object) as dynamic
+    if not plan.ok or not plan.applied or plan.needsDefaultSwitch <> true then return invalid
+    selected = normalizeUserProfileStore(plan.store, previous.playlistId)
+    if selected.readOnly = true then return invalid
+    profiles = []
+    for each original in previous.profiles
+        matched = invalid
+        for each retained in selected.profiles
+            if retained.id = original.id then matched = retained
+        end for
+        if matched = invalid
+            for each removed in plan.removed
+                if removed.id = original.id then matched = original
+            end for
+        end if
+        if matched = invalid then return invalid
+        profiles.push(matched)
+    end for
+    selected = setCanonicalPreference(selected, "profiles", profiles)
+    selected = setCanonicalPreference(selected, "retirementPending", true)
+    return normalizeUserProfileStore(selected, previous.playlistId)
 end function
 
 ' Phase two is intentionally NOT an authenticated-switch API. The default is
@@ -63,13 +89,18 @@ function commitDispatcharrDefaultRetirementCleanup(registry as object, context a
     if FormatJson(entry) <> FormatJson(normalizeConnectionEntry(context.connection)) then return denied
     if not dispatcharrAuthorityComparable(verified.verifiedUser) then return denied
     if selection.sourceAuthority <> dispatcharrAuthorizationSignature(verified.verifiedUser) then return denied
-    expected = normalizeUserProfileStore(context.store, context.connection.id)
-    if expected.readOnly = true or expected.active <> selection.outgoingId then return denied
+    if not userProfileInteger(selection.plannedAt) then return denied
+    if selection.plannedAt <= 0 or selection.plannedAt > now then return denied
+    working = normalizeUserProfileStore(context.store, context.connection.id)
+    if working.readOnly = true or working.active <> selection.outgoingId then return denied
+    plan = dispatcharrSyncSwitchRosterContentPlan(context.connection, working, context.target.id, verified, decoded, enabled, selection.plannedAt, true, true)
+    expected = dispatcharrSyncDefaultRetirementSelectedStore(context.store, plan)
+    if expected = invalid then return denied
     defaultId = ""
     for each profile in expected.profiles
         if profile.isDefault then defaultId = profile.id
     end for
-    if defaultId = "" or defaultId <> selection.defaultId or defaultId = expected.active then return denied
+    if defaultId = "" or defaultId <> selection.defaultId or defaultId = selection.outgoingId or plan.store.active <> defaultId then return denied
     expected = setCanonicalPreference(expected, "active", defaultId)
     expected = setCanonicalPreference(expected, "retirementPending", true)
     if FormatJson(expected) <> selection.selectionRoot or FormatJson(selection.store) <> selection.selectionRoot then return denied
@@ -102,8 +133,6 @@ function commitDispatcharrDefaultRetirementCleanup(registry as object, context a
         if not registry.exists(credential.keyName) or registry.read(credential.keyName) <> credential.key then return denied
     end if
     if not requestGateAccessAllowed(context.connection.url, credential.key) then return denied
-    working = normalizeUserProfileStore(context.store, context.connection.id)
-    plan = dispatcharrSyncSwitchRosterContentPlan(context.connection, working, context.target.id, verified, decoded, enabled, now, true, true)
     if not plan.ok or not plan.applied or plan.needsDefaultSwitch <> true or plan.store.active <> defaultId then return denied
     prepared = dispatcharrSyncPrepareSwitchRosterCleanup(registry, context.connection, expected, plan, selection.journalRoot)
     if not prepared.ok

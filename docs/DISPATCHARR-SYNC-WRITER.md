@@ -178,3 +178,42 @@ and the native state/fault matrix passed
 (`out/mrr-sync-flush-authority-final-verify.log`,
 `out/mrr-sync-flush-authority-primitives-native.log`). Immediate role reload and
 own-login recovery UX remain separate work, not implied by this fail-closed fix.
+
+## Fresh read publication and retained protection
+
+The private writer now returns a typed own-read receipt when local metadata must
+settle before PUT. `commitDispatcharrSyncRosterRead` checks the exact roots,
+current own scope/key digest and authorization signature, then imports metadata
+without clearing pending intent or writing acknowledgement highwater. The
+controller bounds settlement to two attempts and requires a fresh source read
+after publication. A changed target PIN invalidates the old ticket and prompts
+again; it cannot reuse a checked body from before the local transaction.
+
+Native imported-PIN qualification passed with stricter integer/wire assertions
+and distinct first/second flush nonces
+(`out/mrr-sync-read-import-pin-resumed-native.log`): original target PIN, B-own
+read importing a new PIN, old PIN refused, new PIN accepted, fresh B read/PUT/ack,
+then A-own adoption. Full verification passed at
+`out/mrr-sync-read-publication-resumed-verify.log`.
+
+`AerioTV-Roku-ago9` exposed a separate retirement crash gap with a failing test:
+phase one selected from old metadata, postponing retained protection until
+cleanup. Selection now durably publishes merged retained metadata while keeping
+removed records, keys, backoff and blobs unchanged until runtime teardown.
+Cleanup reconstructs the same root at selection's original `plannedAt`, including
+time-sensitive stripped-row repair; later seconds cannot change that snapshot.
+The durable journal remains credential/PIN-grant-free and cold recovery grants
+no system-adoption receipt.
+
+Host live/cold, delayed repair, stale/time/root and existing fault/re-add cases
+passed. Native live imported PIN and Child cases passed, as did an actual
+separate-process cold restart requiring the newly imported PIN and refusing the
+old PIN with zero requests. Evidence:
+`out/mrr-retirement-retained-{pin,child,cold}-native.log` and
+`out/mrr-retirement-retained-primitives-native.log`. Every run cleaned disposable
+state and restored the exact owner app. Full verification passed at
+`out/mrr-retirement-retained-protection-pre-native-verify.log`.
+
+Active-own tombstones from writer receipts still need their distinct actual-own
+retirement admission/integration; generic read publication refuses that removal.
+General category sync/scheduling and public acceptance are not established.

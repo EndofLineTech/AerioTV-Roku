@@ -92,6 +92,10 @@ sub onOutgoingUserProfileSyncResult(event as object)
         rollbackUserProfileSwitch("Could not save outgoing changes. They remain pending.")
         return
     end if
+    if result.state = "local-commit"
+        settleOutgoingUserProfileSyncRead(context, result)
+        return
+    end if
     if result.ok <> true
         changedAuthority = result.state = "authority" or result.state = "identity"
         if type(result.localPlan) = "roAssociativeArray" or changedAuthority
@@ -126,6 +130,83 @@ sub onOutgoingUserProfileSyncResult(event as object)
     end for
     context.syncFlushed = true
     startUserProfileSwitchTask(context.nonce)
+end sub
+
+sub settleOutgoingUserProfileSyncRead(context as object, receipt as object)
+    count = 0
+    if userProfileInteger(context.syncReadSettlements) then count = context.syncReadSettlements
+    if count >= 2
+        coverOutgoingUserProfileSyncRead(context, "Profiles kept changing while saving. Saved edits were retained.")
+        return
+    end if
+    context.syncReadSettlements = count + 1
+    memory = {}
+    if not context.connection.remember
+        for each profile in context.store.profiles
+            if profile.id = context.store.active
+                name = userProfileKeyName(context.connection.id, profile.id)
+                if profile.isDefault then name = connectionRegistryKey(context.connection.id)
+                memory[name] = m.apiKey
+            end if
+        end for
+    end if
+    saved = commitDispatcharrSyncRosterRead(m.registry, context.connection, context.store, receipt, m.activeUserScope, m.apiKey, memory, textValue(m.profileAuthorizationSignature), m.profileRosterEnabled <> false, CreateObject("roDateTime").asSeconds())
+    if not saved.ok
+        coverOutgoingUserProfileSyncRead(context, "Could not safely settle current profiles. Saved edits were retained.")
+        return
+    end if
+    m.userProfileStore = saved.store
+    context.store = saved.store
+    if type(saved.preferenceStore) = "roAssociativeArray" then m.preferenceStore = saved.preferenceStore
+    if type(m.profileSessionKeys) = "roAssociativeArray"
+        for each removed in saved.removed
+            m.profileSessionKeys.delete(preferenceScope(context.connection.url + "|" + context.connection.id + "|" + removed.id))
+        end for
+    end if
+    own = invalid
+    target = invalid
+    for each profile in saved.store.profiles
+        if profile.id = saved.store.active then own = profile
+        if profile.id = context.target.id then target = profile
+    end for
+    if own = invalid
+        coverOutgoingUserProfileSyncRead(context, "Current profile access changed. Saved data was retained.")
+        return
+    end if
+    if not userProfileFullAccess(own.role)
+        coverOutgoingUserProfileSyncRead(context, "Current profile protection changed. Please verify access again.")
+        return
+    end if
+    if target = invalid
+        context.key = ""
+        context.pin = invalid
+        rollbackUserProfileSwitch("The selected profile was removed by sync. Saved edits were retained.")
+        return
+    end if
+    context.target = target
+    context.phase = ""
+    if target.pinType <> "none"
+        if not userProfilePinGrantMatches(context.pin, context.connection.id, target)
+            context.pin = invalid
+            if beginProfilePinGate(target, "switch", context.nonce) then return
+            coverOutgoingUserProfileSyncRead(context, "Could not verify the selected profile's current PIN.")
+            return
+        end if
+    end if
+    ' Fresh source GET is mandatory again; the prior checked body/read result is
+    ' not replayed after a local metadata or PIN transaction changed its snapshot.
+    startUserProfileSwitchTask(context.nonce)
+end sub
+
+sub coverOutgoingUserProfileSyncRead(context as object, message as string)
+    if not userProfileSwitchActorCurrent(context) then return
+    m.userProfileRecoveryRequired = true
+    if m.playingChannel <> invalid then stopPlayback()
+    requestGateFenceRenderers(m.top)
+    context.key = ""
+    context.pin = invalid
+    rollbackUserProfileSwitch(message)
+    m.apiKey = ""
 end sub
 
 sub onOutgoingUserProfileSyncState(event as object)

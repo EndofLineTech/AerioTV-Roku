@@ -40,9 +40,16 @@ sub writeDispatcharrSync()
     latest = syncWriterReadObject(url, 131072)
     if not latest.ok then finishDispatcharrSyncWrite(latest) : return
     prepared = dispatcharrSyncPrepareProfilesWrite(latest.data, m.writerStore, m.top.profilesEnabled, CreateObject("roDateTime").asSeconds(), m.top.acknowledgedStamp, m.top.deviceId, m.top.appVersion)
-    if not prepared.ok then finishDispatcharrSyncWrite(prepared) : return
+    if not prepared.ok
+        if type(prepared.localPlan) = "roAssociativeArray"
+            finishDispatcharrSyncWrite(syncWriterLocalReadReceipt(latest.data, user))
+        else
+            finishDispatcharrSyncWrite(prepared)
+        end if
+        return
+    end if
     if prepared.needsLocalCommit = true
-        finishDispatcharrSyncWrite({ok: false, state: "local-commit", localPlan: prepared.localPlan})
+        finishDispatcharrSyncWrite(syncWriterLocalReadReceipt(latest.data, user))
         return
     end if
     if not syncWriterAccessCurrent() then finishDispatcharrSyncWrite({ok: false, state: "stale-context"}) : return
@@ -99,6 +106,16 @@ function syncWriterAccessCurrent() as boolean
     m.writerStore = store
     m.writerProfile = target
     return true
+end function
+
+function syncWriterLocalReadReceipt(value as object, user as object) as object
+    denied = {ok: false, state: "invalid", submitted: false}
+    if not syncWriterAccessCurrent() then return denied
+    read = dispatcharrSyncEnvelopeRead(value)
+    if not read.ok or read.malformedCategories.count() > 0 then return denied
+    data = {rows: []}
+    if read.profilesState = "ready" then data = value["categories"]["profiles"]["data"]
+    return {ok: false, state: "local-commit", submitted: false, readStatus: 200, profileData: data, authorizationSignature: dispatcharrAuthorizationSignature(user), storeRoot: m.top.storeRoot, connectionRoot: m.top.connectionRoot, credentialHash: requestGateCredentialHash(m.key), scope: m.top.userScope}
 end function
 
 function syncWriterReadObject(url as string, maxBytes as integer) as object

@@ -3,6 +3,9 @@ sub runProfileRetirementColdProbe()
     if m.retirementColdPinReady <> true
         retiredId = "00000000-0000-4000-8000-000000000002"
         ready = store.readOnly <> true and store.profiles.count() = 2 and not m.registry.exists(userProfileRetirementKey("slot-a")) and not m.registry.exists(userProfileKeyName("slot-a", retiredId)) and not m.registry.exists(userProfilePinBackoffKey("slot-a", retiredId)) and m.activeUserScope = invalid and m.profilePinDialog <> invalid and m.global.profilegateclosed
+        for each profile in store.profiles
+            if profile.isDefault then ready = ready and profile.pinHash = userProfilePinHash(profile.pinSalt, "5678") and profile.displayName = "Protected default"
+        end for
         if not ready
             m.managementProbeClock.control = "stop"
             print "[profile-management] "; FormatJson({kind: "result", active_retired: false, cold_recovered: false})
@@ -12,9 +15,16 @@ sub runProfileRetirementColdProbe()
         print "[profile-management] "; FormatJson({kind: "retirement-cold-pin-ready", ready: ready})
         return
     end if
+    if m.retirementColdOldRefused <> true
+        m.profilePinDialog.textEditBox.text = "1234"
+        onProfilePinSubmit(managementProbeEvent(m.profilePinDialog, 0))
+        m.retirementColdOldRefused = m.profilePinDialog <> invalid and m.activeUserScope = invalid and m.global.profilegateclosed
+        print "[profile-management] "; FormatJson({kind: "retirement-cold-old-pin-refused", refused: m.retirementColdOldRefused})
+        return
+    end if
     if m.retirementColdPinSubmitted <> true
         m.retirementColdPinSubmitted = true
-        m.profilePinDialog.textEditBox.text = "1234"
+        m.profilePinDialog.textEditBox.text = "5678"
         onProfilePinSubmit(managementProbeEvent(m.profilePinDialog, 0))
         return
     end if
@@ -26,7 +36,7 @@ sub runProfileRetirementColdProbe()
     cleaned = not preferences.accounts.doesExist(preferenceScope(connectionPreferenceIdentity(entry, "8"))) and not m.preferenceStore.accounts.doesExist(preferenceScope(connectionPreferenceIdentity(entry, "8"))) and preferences.accounts[preferenceScope("https://foreign.test|99|slot-b")].future = "retain"
     pin = false
     for each profile in store.profiles
-        if profile.isDefault then pin = profile.pinType = "numbers" and profile.pinLength = 4
+        if profile.isDefault then pin = profile.pinType = "numbers" and profile.pinLength = 4 and profile.pinHash = userProfilePinHash(profile.pinSalt, "5678") and m.retirementColdOldRefused = true
     end for
     passed = own and cleaned and pin and m.profilePinDialog = invalid and not m.global.profilegateclosed and not m.profileGateCover.visible and m.playingChannel = invalid and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", "00000000-0000-4000-8000-000000000003")) = "synthetic-c"
     print "[profile-management] "; FormatJson({kind: "result", active_retired: passed, cold_recovered: passed})

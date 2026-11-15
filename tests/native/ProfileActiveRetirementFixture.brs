@@ -80,12 +80,16 @@ sub advanceProfileActiveRetirementProbe()
     defaultPin = false
     for each profile in store.profiles
         if profile.isDefault then defaultPin = profile.pinType = "numbers" and profile.pinHash = userProfilePinHash(profile.pinSalt, "1234") and profile.pinLength = m.switchProbeExpectedPinLength
+        if profile.isDefault and (m.switchProbeDefaultMode = "import-pin" or m.switchProbeDefaultMode = "import-child")
+            defaultPin = profile.pinType = "numbers" and profile.pinHash = userProfilePinHash(profile.pinSalt, "5678") and profile.pinLength = 0 and profile.displayName = "Protected default"
+            if m.switchProbeDefaultMode = "import-child" then defaultPin = defaultPin and profile.role = "child"
+        end if
     end for
     wiped = m.switchProbeActiveContext.key = "" and m.switchProbeActiveContext.authentication.apiKey = ""
     keyPreserved = m.registry.read("connKey_slot-a") = "synthetic-a"
     if m.switchProbeDefaultMode = "missing" then keyPreserved = not m.registry.exists("connKey_slot-a")
     surface = own and not m.global.profilegateclosed and not m.profileGateCover.visible
-    if m.switchProbeDefaultMode <> "usable" and m.switchProbeDefaultMode <> "simultaneous" then surface = store.active = m.switchProbeDefault and m.activeUserScope = invalid and m.apiKey = "" and m.global.activeusersession = "" and m.global.profilegateclosed and m.profileGateCover.visible
+    if m.switchProbeDefaultMode <> "usable" and m.switchProbeDefaultMode <> "simultaneous" and m.switchProbeDefaultMode <> "import-pin" then surface = store.active = m.switchProbeDefault and m.activeUserScope = invalid and m.apiKey = "" and m.global.activeusersession = "" and m.global.profilegateclosed and m.profileGateCover.visible
     passed = m.switchProbeB and m.switchProbeActiveAdmitted and surface and cleaned and defaultPin and wiped and keyPreserved and m.profilePinDialog = invalid and m.playingChannel = invalid and targetPreserved
     print "[profile-management] "; FormatJson({kind: "result", active_retired: passed, passed: passed})
 end sub

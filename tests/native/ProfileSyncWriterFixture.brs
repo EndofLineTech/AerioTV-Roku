@@ -99,9 +99,32 @@ sub advanceProfileSyncFlushProbe()
         m.profilePinDialog.textEditBox.text = "1234"
         onProfilePinSubmit(managementProbeEvent(m.profilePinDialog, 0))
         m.writerFlushTask = m.profileSyncWriteTask
+        m.writerInitialFlushTask = m.writerFlushTask
         admitted = m.writerFlushTask <> invalid and m.profileSwitchTask = invalid and userProfileSameSession(m.writerFlushSource, m.activeUserScope) and m.global.activeusersession = m.writerFlushSource.sessionId
         print "[profile-management] "; FormatJson({kind: "writer-flush-started", admitted: admitted})
         return
+    end if
+    if m.writerProbeMode = "flush-import-pin" and m.profilePinDialog <> invalid
+        if m.writerImportedPinReady <> true
+            m.writerImportedPinReady = true
+            ready = m.profileSyncWriteTask = invalid and m.profileSwitchTask = invalid and userProfileSameSession(m.writerFlushSource, m.activeUserScope) and m.profileSwitchContext.target.pinType = "numbers" and m.profileSwitchContext.pin = invalid
+            print "[profile-management] "; FormatJson({kind: "writer-imported-pin-ready", ready: ready})
+            return
+        end if
+        if m.writerImportedOldRefused <> true
+            m.profilePinDialog.textEditBox.text = "1234"
+            onProfilePinSubmit(managementProbeEvent(m.profilePinDialog, 0))
+            m.writerImportedOldRefused = m.profilePinDialog <> invalid and m.profileSyncWriteTask = invalid and m.profileSwitchTask = invalid
+            print "[profile-management] "; FormatJson({kind: "writer-import-old-refused", refused: m.writerImportedOldRefused})
+            return
+        end if
+        if m.writerImportedPinSubmitted <> true
+            m.writerImportedPinSubmitted = true
+            m.profilePinDialog.textEditBox.text = "5678"
+            onProfilePinSubmit(managementProbeEvent(m.profilePinDialog, 0))
+            m.writerFlushTask = m.profileSyncWriteTask
+            return
+        end if
     end if
     if m.profileSwitchContext <> invalid then return
     if m.writerFlushTask <> invalid
@@ -115,6 +138,13 @@ sub advanceProfileSyncFlushProbe()
     if passed then passed = m.activeUserScope.accountId = "7" and m.activeUserScope.profileId = m.writerFlushTarget and m.activeUserScope.sessionId <> m.writerFlushSource.sessionId and m.apiKey = "synthetic-a" and m.guide.callFunc("profileSwitchProbeLineup") = "7"
     passed = passed and not store.pendingRoster and ack.ok and ack.stamp > 0 and m.profileSyncWriteTask = invalid and m.profileSyncContext = invalid and m.writerFlushTask <> invalid
     if passed then passed = m.writerFlushTask.apiKey = "" and m.writerFlushTask.result.scope.accountId = "8" and userProfileSameSession(m.writerFlushTask.result.scope, m.writerFlushSource)
+    if m.writerProbeMode = "flush-import-pin"
+        passed = passed and m.writerImportedPinReady = true and m.writerImportedOldRefused = true and m.writerImportedPinSubmitted = true
+        if passed then passed = m.writerInitialFlushTask.apiKey = "" and m.writerInitialFlushTask.result.state = "local-commit" and m.writerInitialFlushTask.flushNonce <> m.writerFlushTask.flushNonce and m.writerFlushTask.flushNonce <> m.writerFlushSource.sessionId
+        for each profile in store.profiles
+            if profile.isDefault then passed = passed and profile.pinHash = userProfilePinHash(profile.pinSalt, "5678") and profile.pinLength = 4
+        end for
+    end if
     failed = m.writerProbeMode = "flush-failed" or m.writerProbeMode = "flush-cancel"
     if failed
         passed = m.activeUserScope <> invalid and m.writerFlushTask <> invalid

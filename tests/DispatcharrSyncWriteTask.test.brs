@@ -19,6 +19,7 @@ sub main()
         end if
         if scenario = "disabled" or scenario = "stale" or scenario = "child" or scenario = "profiles-off" or scenario = "held" or scenario = "key-changed" then check(m.calls.count() = 0, "failed admission sends no request: " + scenario)
         if scenario = "identity" or scenario = "authority" then check(m.calls.count() = 1, "wrong identity/authority cannot reach App Data discovery")
+        if scenario = "local-commit" then check(m.top.result.state = "local-commit" and m.top.result.readStatus = 200 and m.top.result.submitted = false and userProfileSameSession(m.top.result.scope, m.top.userScope), "read receipt stays bound to its actual own source and is not a write acknowledgement")
     end for
     print "ALL TESTS PASSED"
 end sub
@@ -89,6 +90,7 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
         if m.scenario = "missing" then apps = []
         response.body = FormatJson({apps: apps})
     else
+        response.body = "{""schemaVersion"":3,""deviceId"":""fixture"",""platform"":""android"",""appVersion"":""1"",""updatedAt"":""2026-11-14T17:00:00Z"",""categories"":{""profiles"":{""updatedAt"":""2026-11-14T17:00:00Z"",""data"":{""rows"":[]}}}}"
         if m.scenario = "get-failed" then response.status = 500
         if m.scenario = "root-race" then m.syncWriterRegistry.values[userProfileStoreKey("slot-a")] = "changed-after-read"
         if m.scenario = "cancel" then m.top.cancelRequested = true
