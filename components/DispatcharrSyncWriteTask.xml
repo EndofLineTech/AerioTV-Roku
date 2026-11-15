@@ -6,6 +6,7 @@
     <field id="authMode" type="string" />
     <field id="userScope" type="assocarray" />
     <field id="aeriosession" type="string" />
+    <field id="flushNonce" type="string" />
     <field id="connectionRoot" type="string" />
     <field id="storeRoot" type="string" />
     <field id="profilesEnabled" type="boolean" />

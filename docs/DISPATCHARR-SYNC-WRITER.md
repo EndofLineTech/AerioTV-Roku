@@ -125,3 +125,28 @@ proving pending clears only after its own successful PUT and the highwater lands
 `out/mrr-sync-ack-store-primitives-native.log` passed with exact owner restoration.
 Local-plan publication, scheduling and outgoing flush/session settlement remain
 required before the Task can be enabled by the real UI.
+
+## Private outgoing roster flush
+
+`ProfileSyncNavigation.brs` now connects a pending outgoing roster to a chosen
+switch, behind shipping-off `m.profileSyncWriterReady`. The actual target PIN
+must pass first. The writer keeps the original adopted outgoing scope/nonce/key;
+its dedicated fresh flush nonce is only a memory-only request exception behind
+the still-closed content fence. It cannot address content or another App Data
+key. Ordinary old-user Tasks remain blocked. Acknowledgement refreshes the switch
+snapshot; only then may incoming staging retire the outgoing nonce.
+
+The initial native integration correctly refused to run behind the existing PIN
+fence. It was not fixed by reopening that fence globally. The explicit writer
+subtype/nonce/actual-source-session exception was added and separately tested.
+The private real-PIN → B-own me/list/key/PUT/ack → A-own auth/read/lineup path passed
+(`out/mrr-sync-flush-gated-native.log`), including zero pre-PIN requests, unchanged
+source scope during flush and fresh incoming adoption afterward. The expanded
+native state/fault matrix also passed (`out/mrr-sync-flush-primitives-native.log`).
+Both cleaned disposable state and restored the exact owner app.
+
+Sync device identity is a per-install UUID persisted once in
+`dispatcharrSyncDeviceV1`, not a PIN salt or cryptographic entropy approval.
+Invalid existing identity is not overwritten; failed writes restore absence.
+Native failed/cancelled flush and broader local-plan publication/category/schedule
+qualification remain unfinished, so all shipping readiness flags stay false.

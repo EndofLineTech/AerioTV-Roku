@@ -4,7 +4,8 @@ sub init()
     m.profileChildAccessReady = false
     m.profileSwitchRosterReady = false
     m.profileDefaultRetirementReady = false
-    m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false, profileownsigninpending: false, profileownsigninnonce: "", requestgaterecovery: ""})
+    m.profileSyncWriterReady = false
+    m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false, profileownsigninpending: false, profileownsigninnonce: "", requestgaterecovery: "", profilesyncflush: ""})
     m.profileGateCover = m.top.findNode("profileGateCover")
     m.profileGateClock = m.top.findNode("profileGateClock")
     m.profileGateClock.observeField("fire", "onProfilePinTick")

@@ -29,6 +29,7 @@ sub writeDispatcharrSync()
         return
     end if
     key = dispatcharrSyncUserKey(user.username)
+    m.writerOwnKey = key
     listing = syncWriterReadObject(m.top.baseUrl + "/api/accounts/users/me/app-data/", 65536)
     if not listing.ok then finishDispatcharrSyncWrite(listing) : return
     discovery = dispatcharrSyncReadPlan(key, listing.data)
@@ -126,6 +127,7 @@ sub finishDispatcharrSyncWrite(result as object)
     m.top.apiKey = ""
     m.writerStore = invalid
     m.writerProfile = invalid
+    m.writerOwnKey = ""
     m.writerRegistry = invalid
     m.requestMode = invalid
     m.top.result = result

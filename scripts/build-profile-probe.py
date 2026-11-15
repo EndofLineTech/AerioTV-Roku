@@ -104,6 +104,8 @@ def build(output, base_url, registry=False, model_store=False):
         package.write(ROOT / 'source/DispatcharrSyncRosterWrite.brs', 'source/DispatcharrSyncRosterWrite.brs')
         ack_source = (ROOT / 'source/DispatcharrSyncAckStore.brs').read_text().replace('requestGateCredentialHash(', 'syncAckFixtureHash(').replace('requestGateAccessAllowed(', 'syncAckFixtureAccessAllowed(')
         package.writestr('source/DispatcharrSyncAckStore.brs', ack_source)
+        package.write(ROOT / 'components/ProfileSyncNavigation.brs', 'source/ProfileSyncNavigation.brs')
+        package.write(ROOT / 'source/TaskSupport.brs', 'source/TaskSupport.brs')
         package.write(ROOT / 'source/UserProfilePinPolicy.brs', 'source/UserProfilePinPolicy.brs')
         package.write(ROOT / 'source/UserProfileCredential.brs', 'source/UserProfileCredential.brs')
         package.write(ROOT / 'source/UserProfileManagementPolicy.brs', 'source/UserProfileManagementPolicy.brs')

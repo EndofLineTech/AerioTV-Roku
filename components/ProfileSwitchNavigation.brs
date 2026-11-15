@@ -32,8 +32,11 @@ function beginUserProfileSwitch(targetId as string, unavailableChild = false as 
     end for
     if unavailableChild and not childSource then return false
     if targetId = store.active then return true
-    ' There is no writer yet: never discard an outgoing pending roster edit.
-    if store.pendingRoster = true and (not unavailableChild or m.profileSwitchRosterReady = true) then return false
+    ' The shipping boundary still refuses pending edits; private writer staging
+    ' may settle them under the actual outgoing session AFTER the target PIN.
+    if store.pendingRoster = true and (not unavailableChild or m.profileSwitchRosterReady = true)
+        if m.profileSyncWriterReady <> true or unavailableChild then return false
+    end if
     target = invalid
     for each profile in store.profiles
         if profile.id = targetId then target = profile
@@ -125,6 +128,11 @@ sub startUserProfileSwitchTask(nonce as string)
         if m.activeUserScope <> invalid or m.apiKey <> "" then return
     else
         if not userProfileSameSession(context.outgoing, m.activeUserScope) then return
+        if currentStore.pendingRoster = true
+            if context.phase = "flush" then return
+            if not beginOutgoingUserProfileSync(context) then rollbackUserProfileSwitch("Could not safely flush outgoing changes. Saved edits were retained.")
+            return
+        end if
         if not persistCurrentUserProfilePreferences()
             rollbackUserProfileSwitch("Could not save the outgoing profile. Switch cancelled.")
             return
@@ -287,6 +295,7 @@ sub rollbackUserProfileSwitch(message as string)
     if type(context.outgoing) = "roAssociativeArray"
         if userProfileSameSession(context.outgoing, m.activeUserScope) then preserveSubmittedRecording()
     end if
+    closeOutgoingUserProfileSync()
     closeUserProfileSwitchTask()
     m.profileSwitchContext = invalid
     m.global.profileswitchpending = false
@@ -387,6 +396,7 @@ function profileSwitchOutgoingProtectionCurrent(context as object) as boolean
 end function
 
 sub retireUserProfileSwitch()
+    closeOutgoingUserProfileSync()
     context = m.profileSwitchContext
     pinContext = m.profilePinContext
     if context <> invalid and pinContext <> invalid and m.profilePinDialog <> invalid

@@ -93,7 +93,9 @@ def startup_probe_timer(source):
     return source.replace('sub init()', 'sub init()\n' + timer, 1)
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False, switch_authority_race=False, switch_active_retirement=False, active_default_mode='usable', switch_writer=False):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False, switch_authority_race=False, switch_active_retirement=False, active_default_mode='usable', switch_writer=False, writer_mode='direct'):
+    if writer_mode not in ['direct', 'flush'] or (writer_mode != 'direct' and not switch_writer):
+        raise ValueError('Writer mode requires the private writer fixture')
     if switch_writer and (not switching or not switch_roster or any([directions, switch_pin, cancel_pin, reject_active, remember_off, child_settings, reconnect, cold_restore, default_filter, assignment_refresh, child_escape, child_launch, child_available, child_retry, child_rejected, manual_refresh, manual_recording, favorite_retention, switch_recording, switch_import_pin, switch_cleanup, switch_target_retirement, switch_authority_race, switch_active_retirement]) or active_default_mode != 'usable'):
         raise ValueError('Writer fixture requires only --switch --switch-roster')
     if active_default_mode not in ['usable', 'missing', 'held', 'child', 'cold', 'simultaneous'] or (active_default_mode != 'usable' and not switch_active_retirement):
@@ -811,7 +813,10 @@ end sub
         advanceProfileSyncWriterProbe()
         m.managementProbePhase--
 ''' + source[end:]
-                    source += '\n' + (ROOT / 'tests/native/ProfileSyncWriterFixture.brs').read_text()
+                    source += '\n' + (ROOT / 'tests/native/ProfileSyncWriterFixture.brs').read_text().replace('PROFILE_WRITER_MODE', json.dumps(writer_mode))
+                    if writer_mode == 'flush':
+                        assert source.count('m.profileSyncWriterReady = false') == 1
+                        source = source.replace('m.profileSyncWriterReady = false', 'm.profileSyncWriterReady = true', 1)
                 body = source.replace('OWN_RECONNECT_PROBE', 'true' if reconnect else 'false').encode()
             package.writestr(name, body)
         package.writestr('profile-management-probe.json', json.dumps({'synthetic': True}))
@@ -829,6 +834,7 @@ def main():
     parser.add_argument('--switch-authority-race', action='store_true', help='Only with --switch --switch-roster: change target authority on final me and require rollback with zero target lineup requests')
     parser.add_argument('--switch-active-retirement', action='store_true', help='Only with --switch --switch-roster: C own roster removes actual B, requiring default A own system adoption without its PIN')
     parser.add_argument('--switch-writer', action='store_true', help='Only with --switch --switch-roster: private own-B canonical re-read and checked-string PUT')
+    parser.add_argument('--writer-mode', choices=['direct', 'flush'], default='direct', help='Private writer fixture: direct Task or actual target-PIN then outgoing flush and incoming adoption')
     parser.add_argument('--active-default-mode', choices=['usable', 'missing', 'held', 'child', 'cold', 'simultaneous'], default='usable', help='Only with --switch-active-retirement: default own credential/access state')
     parser.add_argument('--reconnect', action='store_true', help='With --switch, reconnect B through early roster read and full activation before returning to A')
     parser.add_argument('--switch-pin', action='store_true', help='With --switch, require the real stored numeric target PIN before each switch')
@@ -1054,7 +1060,7 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode, args.favorite_retention, args.switch_recording, args.switch_roster, args.switch_import_pin, args.switch_inactive_cleanup, args.switch_target_retirement, args.switch_authority_race, args.switch_active_retirement, args.active_default_mode, args.switch_writer)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode, args.favorite_retention, args.switch_recording, args.switch_roster, args.switch_import_pin, args.switch_inactive_cleanup, args.switch_target_retirement, args.switch_authority_race, args.switch_active_retirement, args.active_default_mode, args.switch_writer, args.writer_mode)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False}
 
@@ -1068,6 +1074,11 @@ def main():
                 output.append(line)
                 if '"kind":"writer-ready"' in line:
                     report['writer_request_boundary'] = len(hits)
+                if '"kind":"writer-target-pin-ready"' in line:
+                    report['writer_pre_pin_requests'] = hits[report['writer_request_boundary']:].copy()
+                    report['writer_target_pin_ready'] = json.loads(line.split('[profile-management] ', 1)[1]).get('ready', False)
+                if '"kind":"writer-flush-started"' in line:
+                    report['writer_source_admitted'] = json.loads(line.split('[profile-management] ', 1)[1]).get('admitted', False)
                 if '"kind":"retirement-crash-ready"' in line:
                     checkpoint = json.loads(line.split('[profile-management] ', 1)[1])
                     report['cold_checkpoint'] = checkpoint
@@ -1121,7 +1132,7 @@ def main():
         report['switch_key_events'] = [row for row in rows if row.get('kind') == 'switch-key']
         report['switch_guide_key_events'] = [row for row in rows if row.get('kind') == 'switch-guide-key']
         report['default_rejection_ready'] = any(row.get('kind') == 'active-default-reject-ready' for row in rows)
-        rows = [row for row in rows if row.get('kind') not in ['switch-key', 'switch-guide-key', 'active-default-reject-ready', 'retirement-crash-ready', 'retirement-cold-pin-ready', 'writer-ready']]
+        rows = [row for row in rows if row.get('kind') not in ['switch-key', 'switch-guide-key', 'active-default-reject-ready', 'retirement-crash-ready', 'retirement-cold-pin-ready', 'writer-ready', 'writer-target-pin-ready', 'writer-flush-started']]
         report['events'] = rows
         if args.child_escape:
             report['requests'] = hits
@@ -1163,8 +1174,15 @@ def main():
             after = hits[report.get('writer_request_boundary', len(hits)):]
             expected = [('GET', '/api/accounts/users/me/'), ('GET', '/api/accounts/users/me/app-data/'), ('GET', '/api/accounts/users/me/app-data/synthetic8.aeriotv/'), ('PUT', '/api/accounts/users/me/app-data/synthetic8.aeriotv/')]
             report['writer_own_request_order'] = [(hit.get('method', 'GET'), hit['path']) for hit in after] == expected and all(hit['user'] == 8 for hit in after)
+            if args.writer_mode == 'flush':
+                incoming = after[4:]
+                roster = next((i for i, hit in enumerate(incoming) if hit['path'] == '/api/accounts/users/me/app-data/'), -1)
+                lineup = next((i for i, hit in enumerate(incoming) if hit['path'].startswith('/api/channels/channels/summary/')), -1)
+                report['writer_own_request_order'] = [(hit.get('method', 'GET'), hit['path']) for hit in after[:4]] == expected and all(hit['user'] == 8 for hit in after[:4]) and bool(incoming) and all(hit['user'] == 7 for hit in incoming) and roster >= 0 and lineup > roster
             report['writer_body_ok'] = fixture_state.get('writer_body_ok', False)
             report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('writer', False) and report['writer_own_request_order'] and report['writer_body_ok']
+            if args.writer_mode == 'flush':
+                report['passed'] = report['passed'] and report.get('writer_target_pin_ready', False) and report.get('writer_pre_pin_requests') == [] and report.get('writer_source_admitted', False) and rows[-1].get('flush', False)
         if args.switch_active_retirement:
             source_paths = [hit['path'] for hit in hits if hit['user'] == 9]
             boundary = next((index for index, hit in enumerate(hits) if hit['user'] == 9 and hit['path'] == '/api/accounts/users/me/app-data/synthetic9.aeriotv/'), -1)
@@ -1317,7 +1335,7 @@ def main():
             if args.switch_active_retirement:
                 name = name.replace('-native.json', f'-active-retirement-{args.active_default_mode}-native.json')
             if args.switch_writer:
-                name = name.replace('-native.json', '-writer-native.json')
+                name = name.replace('-native.json', f'-writer-{args.writer_mode}-native.json')
             (ROOT / 'out' / name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

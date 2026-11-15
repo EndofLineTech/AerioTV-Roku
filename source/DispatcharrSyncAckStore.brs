@@ -1,5 +1,22 @@
 ' Local roster write highwater only. Never a credential, PIN grant, wire
 ' category, active selection or permission to replay a previously checked body.
+function ensureDispatcharrSyncDeviceIdentity(registry as object, candidate as string) as object
+    denied = {ok: false, recoveryRequired: false, id: ""}
+    key = "dispatcharrSyncDeviceV1"
+    if registry.exists(key)
+        existing = registry.read(key)
+        if userProfileLocalId(existing) = "" then return {ok: false, recoveryRequired: true, id: ""}
+        return {ok: true, recoveryRequired: false, id: existing}
+    end if
+    id = userProfileLocalId(candidate)
+    if id = "" then return denied
+    changes = {}
+    changes[key] = id
+    saved = userProfileRegistryTransaction(registry, changes)
+    if not saved.ok then return saved
+    return {ok: true, recoveryRequired: false, id: id}
+end function
+
 function loadDispatcharrSyncRosterAck(registry as object, connection as object) as object
     denied = {ok: false, stamp: 0}
     key = userProfileSyncAckKey(connection.id)

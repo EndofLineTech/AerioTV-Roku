@@ -24,6 +24,7 @@ end function
 function requestGateTaskSessionCurrent() as boolean
     if m.top = invalid then return true
     if requestGateRecoveryProbeTagged() then return requestGateRecoveryProbeCurrent()
+    if requestGateSyncFlushTagged() then return requestGateSyncFlushCurrent()
     if type(m.top) = "roAssociativeArray"
         if not m.top.doesExist("aeriosession") then return true
     else
@@ -39,6 +40,38 @@ function requestGateTaskSessionCurrent() as boolean
     if type(captured) <> "String" and type(captured) <> "roString" then return false
     if type(current) <> "String" and type(current) <> "roString" then return false
     return captured <> "" and captured = current
+end function
+
+function requestGateSyncFlushTagged() as boolean
+    if m.top = invalid then return false
+    if type(m.top) = "roAssociativeArray"
+        if not m.top.doesExist("flushNonce") then return false
+    else
+        if not m.top.hasField("flushNonce") then return false
+    end if
+    return textValue(m.top.flushNonce) <> ""
+end function
+
+' Explicit outgoing writer exception behind a still-closed PIN/switch cover.
+' It retains the ACTUAL adopted source scope, never the incoming/flush nonce as
+' an authenticated session, and admits no content or generic authentication Task.
+function requestGateSyncFlushCurrent() as boolean
+    if not requestGateSyncFlushTagged() or m.global = invalid then return false
+    if type(m.top) = "roAssociativeArray"
+        if m.top.subtype = invalid then return false
+    end if
+    if m.top.subtype() <> "DispatcharrSyncWriteTask" then return false
+    if type(m.global) = "roSGNode"
+        if not m.global.hasField("profilesyncflush") then return false
+    end if
+    nonce = textValue(m.top.flushNonce)
+    if not CreateObject("roRegex", "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", "").isMatch(nonce) then return false
+    if nonce <> textValue(m.global.profilesyncflush) or not requestGateProfileClosed() then return false
+    if requestGateProfileSwitching() or m.global.profileownsigninpending = true then return false
+    if type(m.top.userScope) <> "roAssociativeArray" then return false
+    captured = textValue(m.top.aeriosession)
+    if captured = "" or captured <> textValue(m.global.activeusersession) then return false
+    return captured = textValue(m.top.userScope["sessionId"])
 end function
 
 ' A rejected holder has no authenticated session. Its sole transport exception
@@ -143,6 +176,13 @@ function requestGateAcquire(url as string, key as string, probe = false as boole
     if not requestGateTaskSessionCurrent() then return {allowed: false, reason: "stale-session", ticket: invalid}
     if requestGateRecoveryProbeTagged()
         if not probe or url <> normalizeBaseUrl(m.top.baseUrl) + "/api/accounts/users/me/" then return {allowed: false, reason: "recovery-probe-only", ticket: invalid}
+    end if
+    if requestGateSyncFlushTagged()
+        base = normalizeBaseUrl(m.top.baseUrl) + "/api/accounts/users/me/"
+        own = textValue(m.writerOwnKey)
+        allowed = url = base or url = base + "app-data/"
+        if own <> "" then allowed = allowed or url = base + "app-data/" + own + "/"
+        if probe or not allowed then return {allowed: false, reason: "sync-flush-only", ticket: invalid}
     end if
     broker = requestGateBroker()
     if broker = invalid

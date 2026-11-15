@@ -3,6 +3,23 @@ sub main()
         syncAckFixture()
         m.registry.fault = fault
         before = FormatJson(m.registry.values)
+        result = ensureDispatcharrSyncDeviceIdentity(m.registry, "00000000-0000-4000-8000-000000000080")
+        if fault = ""
+            again = ensureDispatcharrSyncDeviceIdentity(m.registry, "00000000-0000-4000-8000-000000000081")
+            check(result.ok and again.id = result.id and m.registry.flushes = 1, "sync install identity persists once and is reused across sessions without regeneration")
+        else
+            check(not result.ok and result.recoveryRequired = (fault = "rollback") and FormatJson(m.registry.values) = before, "failed identity creation restores exact missing record and leaves dirty metadata intact")
+        end if
+    end for
+    syncAckFixture()
+    check(not ensureDispatcharrSyncDeviceIdentity(m.registry, "not-a-uuid").ok and m.registry.flushes = 0, "invalid install identity cannot become a wire device ID")
+    m.registry.values["dispatcharrSyncDeviceV1"] = "opaque-existing-value"
+    before = FormatJson(m.registry.values)
+    check(not ensureDispatcharrSyncDeviceIdentity(m.registry, "00000000-0000-4000-8000-000000000080").ok and FormatJson(m.registry.values) = before, "opaque present identity fails closed rather than being overwritten as absent")
+    for each fault in ["", "write", "flush", "rollback"]
+        syncAckFixture()
+        m.registry.fault = fault
+        before = FormatJson(m.registry.values)
         result = commitDispatcharrSyncRosterAck(m.registry, m.connection, m.store, m.receipt, m.scope, m.key, {})
         if fault = ""
             check(result.ok and not result.store.pendingRoster and m.registry.flushes = 1, "successful own 200 clears pending and stores highwater in one atomic transaction")
@@ -36,7 +53,91 @@ sub main()
     m.registry.values[userProfileSyncAckKey("slot-a")] = "{""schema"":1,""playlistId"":""slot-a"",""baseUrl"":""https://example.test"",""maximumSentStamp"":200}"
     result = commitDispatcharrSyncRosterAck(m.registry, m.connection, m.store, m.receipt, m.scope, m.key, {})
     check(result.ok and loadDispatcharrSyncRosterAck(m.registry, m.connection).stamp = 200, "late lower highwater cannot regress an existing successful acknowledgement")
+    syncFlushFixture()
+    check(beginOutgoingUserProfileSync(m.profileSwitchContext), "private flush starts under the actual outgoing adopted session")
+    check(m.profileSyncWriteTask.apiKey = "synthetic-own" and m.profileSyncWriteTask.aeriosession = m.scope.sessionId and m.global.activeusersession = m.scope.sessionId and m.profileSwitchContext.key = "target-own-key", "outgoing flush never uses target credentials or retires its actual source nonce early")
+    sourceTask = m.profileSyncWriteTask
+    onOutgoingUserProfileSyncResult(syncFlushEvent(sourceTask, m.receipt))
+    check(m.flushResumes = 1 and m.profileSyncWriteTask = invalid and sourceTask.apiKey = "" and not m.profileSwitchContext.store.pendingRoster and not loadUserProfileStore(m.registry, "slot-a").pendingRoster, "only own matching acknowledgement publishes the clean switch snapshot and resumes incoming staging")
+    syncFlushFixture()
+    check(beginOutgoingUserProfileSync(m.profileSwitchContext), "failed flush fixture starts")
+    onOutgoingUserProfileSyncResult(syncFlushEvent(m.profileSyncWriteTask, {ok: false, state: "pending", submitted: true}))
+    check(m.flushResumes = 0 and m.flushRollbacks = 1 and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "failed outgoing write retains dirty data and cannot start incoming authentication")
+    syncFlushFixture()
+    check(beginOutgoingUserProfileSync(m.profileSwitchContext), "stale flush fixture starts")
+    sourceTask = m.profileSyncWriteTask
+    m.global.activeusersession = "00000000-0000-4000-8000-000000000092"
+    m.apiKey = "successor-key"
+    onOutgoingUserProfileSyncResult(syncFlushEvent(sourceTask, m.receipt))
+    check(m.flushResumes = 0 and m.flushRollbacks = 0 and m.apiKey = "successor-key" and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "stale flush callback cannot clear dirty state, wipe successor key or resume an incoming request")
+    closeOutgoingUserProfileSync()
     print "ALL TESTS PASSED"
+end sub
+
+sub syncFlushFixture()
+    syncAckFixture()
+    b = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Bob", user_level: 1}, 1)
+    b = setCanonicalPreference(b, "isDefault", false)
+    m.store.profiles.push(b)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.store)
+    m.registry.values["dispatcharrSyncDeviceV1"] = "00000000-0000-4000-8000-000000000080"
+    m.receipt.storeRoot = m.registry.values[userProfileStoreKey("slot-a")]
+    m.profileSyncWriterReady = true
+    m.profileSyncAppVersion = "1"
+    m.profileSyncNonceFactory = function() as string
+        return "00000000-0000-4000-8000-000000000093"
+    end function
+    m.profileSyncWriteTask = invalid
+    m.profileSyncContext = invalid
+    m.activeUserScope = m.scope
+    m.apiKey = m.key
+    m.selectedConnectionId = "slot-a"
+    m.profileAuthorizationSignature = dispatcharrAuthorizationSignature({id: 7, username: "Alice", user_level: 1})
+    m.global = {activeusersession: m.scope.sessionId, profilegateclosed: false}
+    m.profileSwitchContext = {nonce: "00000000-0000-4000-8000-000000000091", outgoing: m.scope, connection: m.connection, store: m.store, target: b, key: "target-own-key"}
+    m.profileGateCover = {visible: false}
+    m.guide = {active: true}
+    m.top = {message: {}
+        findNode: function(id as string) as object
+            return m.message
+        end function
+    }
+    m.flushResumes = 0
+    m.flushRollbacks = 0
+    m.profileSyncWriteTaskFactory = function() as object
+        return {apiKey: "", token: "outgoing-task", result: invalid
+            observeField: sub(field as string, callback as string)
+            end sub
+            unobserveField: sub(field as string)
+            end sub
+            isSameNode: function(other as object) as boolean
+                return m.token = other.token
+            end function
+        }
+    end function
+end sub
+
+function syncFlushEvent(node as object, data as object) as object
+    return {node: node, data: data
+        getRoSGNode: function() as object
+            return m.node
+        end function
+        getData: function() as object
+            return m.data
+        end function
+    }
+end function
+
+function userProfileSwitchActorCurrent(context as object) as boolean
+    return userProfileSameSession(context.outgoing, m.activeUserScope)
+end function
+
+sub startUserProfileSwitchTask(nonce as string)
+    m.flushResumes++
+end sub
+
+sub rollbackUserProfileSwitch(message as string)
+    m.flushRollbacks++
 end sub
 
 sub syncAckFixture()

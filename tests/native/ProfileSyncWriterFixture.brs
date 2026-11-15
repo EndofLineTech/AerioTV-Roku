@@ -1,5 +1,10 @@
 ' Private synthetic HTTP only; run after actual B adoption in the normal app.
 sub advanceProfileSyncWriterProbe()
+    m.writerProbeMode = PROFILE_WRITER_MODE
+    if m.writerProbeMode = "flush"
+        advanceProfileSyncFlushProbe()
+        return
+    end if
     if m.writerProbeTask = invalid
         m.guide.active = false
         store = loadUserProfileStore(m.registry, "slot-a")
@@ -50,4 +55,62 @@ sub advanceProfileSyncWriterProbe()
         end if
     end if
     print "[profile-management] "; FormatJson({kind: "result", writer: passed, passed: passed})
+end sub
+
+sub advanceProfileSyncFlushProbe()
+    if m.writerFlushSeeded <> true
+        m.writerFlushSeeded = true
+        m.guide.active = false
+        m.writerFlushSource = m.activeUserScope
+        store = loadUserProfileStore(m.registry, "slot-a")
+        for i = 0 to store.profiles.count() - 1
+            profile = store.profiles[i]
+            if profile.isDefault
+                profile = setCanonicalPreference(profile, "pinType", "numbers")
+                profile = setCanonicalPreference(profile, "pinSalt", string(32, "e"))
+                profile = setCanonicalPreference(profile, "pinHash", userProfilePinHash(profile.pinSalt, "1234"))
+                store.profiles[i] = profile
+                m.writerFlushTarget = profile.id
+            end if
+        end for
+        store = setCanonicalPreference(store, "pendingRoster", true)
+        m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
+        m.registry.flush()
+        m.userProfileStore = loadUserProfileStore(m.registry, "slot-a")
+        return
+    end if
+    if m.writerFlushQuiet <> true
+        m.writerFlushQuiet = true
+        print "[profile-management] "; FormatJson({kind: "writer-ready"})
+        return
+    end if
+    if m.writerFlushStarted <> true
+        m.writerFlushStarted = beginUserProfileSwitch(m.writerFlushTarget)
+        ready = m.writerFlushStarted and m.profilePinDialog <> invalid and m.profileSyncWriteTask = invalid and userProfileSameSession(m.writerFlushSource, m.activeUserScope)
+        print "[profile-management] "; FormatJson({kind: "writer-target-pin-ready", ready: ready})
+        if not ready
+            m.managementProbeClock.control = "stop"
+            print "[profile-management] "; FormatJson({kind: "result", writer: false})
+        end if
+        return
+    end if
+    if m.writerFlushPinSubmitted <> true
+        m.writerFlushPinSubmitted = true
+        m.profilePinDialog.textEditBox.text = "1234"
+        onProfilePinSubmit(managementProbeEvent(m.profilePinDialog, 0))
+        m.writerFlushTask = m.profileSyncWriteTask
+        admitted = m.writerFlushTask <> invalid and m.profileSwitchTask = invalid and userProfileSameSession(m.writerFlushSource, m.activeUserScope) and m.global.activeusersession = m.writerFlushSource.sessionId
+        print "[profile-management] "; FormatJson({kind: "writer-flush-started", admitted: admitted})
+        return
+    end if
+    if m.profileSwitchContext <> invalid then return
+    m.managementProbeClock.control = "stop"
+    entry = connectionStoreEntry(m.connectionStore, "slot-a")
+    store = loadUserProfileStore(m.registry, "slot-a")
+    ack = loadDispatcharrSyncRosterAck(m.registry, entry)
+    passed = m.activeUserScope <> invalid
+    if passed then passed = m.activeUserScope.accountId = "7" and m.activeUserScope.profileId = m.writerFlushTarget and m.activeUserScope.sessionId <> m.writerFlushSource.sessionId and m.apiKey = "synthetic-a" and m.guide.callFunc("profileSwitchProbeLineup") = "7"
+    passed = passed and not store.pendingRoster and ack.ok and ack.stamp > 0 and m.profileSyncWriteTask = invalid and m.profileSyncContext = invalid and m.writerFlushTask <> invalid
+    if passed then passed = m.writerFlushTask.apiKey = "" and m.writerFlushTask.result.scope.accountId = "8" and userProfileSameSession(m.writerFlushTask.result.scope, m.writerFlushSource)
+    print "[profile-management] "; FormatJson({kind: "result", writer: passed, flush: passed})
 end sub

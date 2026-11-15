@@ -20,6 +20,7 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertNotIn('\n    m.profileSwitchRosterReady = true', scene)
         self.assertIn('    m.profileChildAccessReady = false', scene)
         self.assertIn('    m.profileDefaultRetirementReady = false', scene)
+        self.assertIn('    m.profileSyncWriterReady = false', scene)
         writer = (root / 'components/DispatcharrSyncWriteTask.brs').read_text()
         self.assertIn('    m.syncWriterReady = false', writer)
 
@@ -358,7 +359,7 @@ class ProfileProbeTest(unittest.TestCase):
             normal = Path(tmp) / 'normal.zip'
             with zipfile.ZipFile(normal, 'w') as package:
                 package.writestr('manifest', 'title=AerioTV\n')
-                package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.profileSwitchRosterReady = false\nm.profileDefaultRetirementReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub\nfunction onKeyEvent(key as string, press as boolean) as boolean\nreturn false\nend function\n')
+                package.writestr('components/AerioScene.brs', 'sub init()\nm.profileChildAccessReady = false\nm.profileSwitchRosterReady = false\nm.profileDefaultRetirementReady = false\nm.profileSyncWriterReady = false\nm.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.guide.config = {\n}\nend sub\nfunction onKeyEvent(key as string, press as boolean) as boolean\nreturn false\nend function\n')
                 package.writestr('source/MetadataCacheStore.brs', 'return "cachefs:/aeriotv-metadata-v1"')
                 package.writestr('components/GuideView.xml', '<component name="GuideView"><interface></interface></component>')
                 package.writestr('components/GuideView.brs', 'sub init()\nend sub\nfunction onKeyEvent(key as string, press as boolean) as boolean\nreturn false\nend function\n')
@@ -445,6 +446,12 @@ class ProfileProbeTest(unittest.TestCase):
                 writer = package.read('components/DispatcharrSyncWriteTask.brs').decode()
                 self.assertIn('m.syncWriterReady = true', writer)
                 self.assertNotIn('"AerioTV"', writer)
+            probe.build(output, normal, 'SyntheticFlushSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_writer=True, writer_mode='flush')
+            with zipfile.ZipFile(output) as package:
+                scene = package.read('components/AerioScene.brs').decode()
+                self.assertIn('m.profileSyncWriterReady = true', scene)
+                self.assertIn('m.writerProbeMode = "flush"', scene)
+                self.assertNotIn('PROFILE_WRITER_MODE', scene)
             for mode in ['missing', 'held', 'child', 'simultaneous']:
                 probe.build(output, normal, 'SyntheticUnavailableDefaultSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_active_retirement=True, active_default_mode=mode)
                 with zipfile.ZipFile(output) as package:

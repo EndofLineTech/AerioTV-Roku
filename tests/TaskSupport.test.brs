@@ -67,6 +67,28 @@ sub main()
     assertEqual(userEventCurrent(userViewEvent({action: "connection"}, "session-a-3")), false, "credential form fences outgoing UI events without relabeling its user's Task session")
     assertEqual(requestGateTaskSessionCurrent(), true, "credential verification Task remains admitted while ordinary UI actions are fenced")
     m.global.profileownsigninpending = false
+    m.global.profilegateclosed = true
+    m.global.activeusersession = "00000000-0000-4000-8000-000000000090"
+    m.global.profilesyncflush = "00000000-0000-4000-8000-000000000093"
+    m.top = {aeriosession: m.global.activeusersession, flushNonce: m.global.profilesyncflush, userScope: {sessionId: m.global.activeusersession}, baseUrl: "https://example.test", kind: "DispatcharrSyncWriteTask"
+        subtype: function() as string
+            return m.kind
+        end function
+    }
+    assertEqual(requestGateTaskSessionCurrent(), true, "only explicitly registered writer keeps the actual outgoing adopted nonce behind the PIN fence")
+    m.writerOwnKey = "alice.aeriotv"
+    assertEqual(requestGateAcquire("https://example.test/api/channels/channels/", "synthetic-own").allowed, false, "outgoing flush exception cannot fetch content")
+    assertEqual(requestGateAcquire("https://example.test/api/accounts/users/me/app-data/other.aeriotv/", "synthetic-own").allowed, false, "flush exception cannot address another key")
+    m.top.kind = "DispatcharrTask"
+    assertEqual(requestGateTaskSessionCurrent(), false, "ordinary Tasks cannot claim the outgoing-flush exception")
+    m.top.kind = "DispatcharrSyncWriteTask"
+    m.global.profileswitchpending = true
+    assertEqual(requestGateTaskSessionCurrent(), false, "incoming staging retires the outgoing write exception")
+    m.global.profileswitchpending = false
+    m.global.profilesyncflush = ""
+    assertEqual(requestGateTaskSessionCurrent(), false, "cleared flush nonce fences a late outgoing request")
+    m.top = {aeriosession: m.global.activeusersession}
+    assertEqual(requestGateTaskSessionCurrent(), false, "ordinary old user Tasks remain blocked throughout outgoing flush")
     print "ALL TESTS PASSED"
 end sub
 
