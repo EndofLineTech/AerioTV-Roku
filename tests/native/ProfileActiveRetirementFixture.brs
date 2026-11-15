@@ -71,6 +71,12 @@ sub advanceProfileActiveRetirementProbe()
     foreignAccount = preferenceScope("https://foreign.test|99|slot-b")
     removedBucket = preferenceScope(entry.url + "|slot-a|" + m.switchProbeRemovedId)
     cleaned = store.profiles.count() = 2 and store.removed.count() = 0 and not m.registry.exists(userProfileKeyName("slot-a", m.switchProbeRemovedId)) and not m.registry.exists(userProfilePinBackoffKey("slot-a", m.switchProbeRemovedId)) and not preferences.accounts.doesExist(removedAccount) and not m.preferenceStore.accounts.doesExist(removedAccount) and not m.profileSessionKeys.doesExist(removedBucket) and preferences.accounts[foreignAccount].future = "retain"
+    targetPreserved = m.registry.read(userProfileKeyName("slot-a", "00000000-0000-4000-8000-000000000003")) = "synthetic-c"
+    if m.switchProbeDefaultMode = "simultaneous"
+        sourceAccount = preferenceScope(connectionPreferenceIdentity(entry, "9"))
+        cleaned = store.profiles.count() = 1 and store.removed.count() = 0 and not m.registry.exists(userProfileKeyName("slot-a", m.switchProbeRemovedId)) and not m.registry.exists(userProfilePinBackoffKey("slot-a", m.switchProbeRemovedId)) and not preferences.accounts.doesExist(removedAccount) and not preferences.accounts.doesExist(sourceAccount) and not m.preferenceStore.accounts.doesExist(sourceAccount) and not m.preferenceStore.accounts.doesExist(removedAccount) and not m.profileSessionKeys.doesExist(removedBucket) and preferences.accounts[foreignAccount].future = "retain"
+        targetPreserved = not m.registry.exists(userProfileKeyName("slot-a", "00000000-0000-4000-8000-000000000003"))
+    end if
     defaultPin = false
     for each profile in store.profiles
         if profile.isDefault then defaultPin = profile.pinType = "numbers" and profile.pinHash = userProfilePinHash(profile.pinSalt, "1234") and profile.pinLength = m.switchProbeExpectedPinLength
@@ -79,7 +85,7 @@ sub advanceProfileActiveRetirementProbe()
     keyPreserved = m.registry.read("connKey_slot-a") = "synthetic-a"
     if m.switchProbeDefaultMode = "missing" then keyPreserved = not m.registry.exists("connKey_slot-a")
     surface = own and not m.global.profilegateclosed and not m.profileGateCover.visible
-    if m.switchProbeDefaultMode <> "usable" then surface = store.active = m.switchProbeDefault and m.activeUserScope = invalid and m.apiKey = "" and m.global.activeusersession = "" and m.global.profilegateclosed and m.profileGateCover.visible
-    passed = m.switchProbeB and m.switchProbeActiveAdmitted and surface and cleaned and defaultPin and wiped and keyPreserved and m.profilePinDialog = invalid and m.playingChannel = invalid and m.registry.read(userProfileKeyName("slot-a", "00000000-0000-4000-8000-000000000003")) = "synthetic-c"
+    if m.switchProbeDefaultMode <> "usable" and m.switchProbeDefaultMode <> "simultaneous" then surface = store.active = m.switchProbeDefault and m.activeUserScope = invalid and m.apiKey = "" and m.global.activeusersession = "" and m.global.profilegateclosed and m.profileGateCover.visible
+    passed = m.switchProbeB and m.switchProbeActiveAdmitted and surface and cleaned and defaultPin and wiped and keyPreserved and m.profilePinDialog = invalid and m.playingChannel = invalid and targetPreserved
     print "[profile-management] "; FormatJson({kind: "result", active_retired: passed, passed: passed})
 end sub

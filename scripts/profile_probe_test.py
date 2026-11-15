@@ -427,7 +427,7 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertNotIn('"AerioTV"', source)
             with self.assertRaises(ValueError):
                 probe.build(output, normal, 'SyntheticActiveRetirementSection', 'http://127.0.0.1:1234', switching=True, switch_active_retirement=True)
-            for mode in ['missing', 'held', 'child']:
+            for mode in ['missing', 'held', 'child', 'simultaneous']:
                 probe.build(output, normal, 'SyntheticUnavailableDefaultSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_active_retirement=True, active_default_mode=mode)
                 with zipfile.ZipFile(output) as package:
                     source = package.read('components/AerioScene.brs').decode()

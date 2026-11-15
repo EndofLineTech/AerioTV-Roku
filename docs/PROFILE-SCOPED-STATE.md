@@ -737,6 +737,12 @@ pending the remaining recovery/sync/public gates. Cancellation diagnostics now
 record foreground/screensaver state before Back and refuse to wake another app;
 the intermittent missing Scene key event remains tracked rather than assumed fixed.
 
+The private `--active-default-mode simultaneous` native case also passes
+(`out/mrr-simultaneous-retirement-native.log`): C's own read tombstones both
+active B and unadopted C. Both holders' keys and preference blobs are removed;
+the real default A independently authenticates/reads/loads with no PIN prompt or
+C lineup. Foreign ownership remains, disposable cleanup and exact restore pass.
+
 The earlier manual-refresh native cases (not this new switch/roster pipeline)
 qualify changed assignments/VOD revocation, foreign own
 identity, unchanged authority and transient failures. Two cases delay a real

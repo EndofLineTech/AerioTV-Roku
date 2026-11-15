@@ -94,7 +94,7 @@ def startup_probe_timer(source):
 
 
 def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False, switch_authority_race=False, switch_active_retirement=False, active_default_mode='usable'):
-    if active_default_mode not in ['usable', 'missing', 'held', 'child', 'cold'] or (active_default_mode != 'usable' and not switch_active_retirement):
+    if active_default_mode not in ['usable', 'missing', 'held', 'child', 'cold', 'simultaneous'] or (active_default_mode != 'usable' and not switch_active_retirement):
         raise ValueError('Active default mode requires the active retirement fixture')
     if switch_roster and (not (switching or child_escape) or (switching and child_escape)):
         raise ValueError('Private early-roster mode requires either switch or Child escape fixture')
@@ -802,7 +802,7 @@ def main():
     parser.add_argument('--switch-target-retirement', action='store_true', help='Only with --switch --switch-roster: non-default B selects C, whose own tombstone retires C without adopting C or the different default A')
     parser.add_argument('--switch-authority-race', action='store_true', help='Only with --switch --switch-roster: change target authority on final me and require rollback with zero target lineup requests')
     parser.add_argument('--switch-active-retirement', action='store_true', help='Only with --switch --switch-roster: C own roster removes actual B, requiring default A own system adoption without its PIN')
-    parser.add_argument('--active-default-mode', choices=['usable', 'missing', 'held', 'child', 'cold'], default='usable', help='Only with --switch-active-retirement: default own credential/access state')
+    parser.add_argument('--active-default-mode', choices=['usable', 'missing', 'held', 'child', 'cold', 'simultaneous'], default='usable', help='Only with --switch-active-retirement: default own credential/access state')
     parser.add_argument('--reconnect', action='store_true', help='With --switch, reconnect B through early roster read and full activation before returning to A')
     parser.add_argument('--switch-pin', action='store_true', help='With --switch, require the real stored numeric target PIN before each switch')
     parser.add_argument('--cancel-pin', action='store_true', help='With --switch-pin, cancel the final target PIN before any request is sent')
@@ -971,6 +971,9 @@ def main():
                 value = switch_inactive_cleanup_envelope()
             if args.switch_active_retirement and user == 9 and self.path == '/api/accounts/users/me/app-data/synthetic9.aeriotv/':
                 value = switch_inactive_cleanup_envelope('synthetic8')
+                if args.active_default_mode == 'simultaneous':
+                    rows = value['categories']['profiles']['data']['removed']
+                    rows.append(['synthetic9', rows[0][1]])
             if args.child_available and self.path == f'/api/accounts/users/me/app-data/synthetic{user}.aeriotv/':
                 stamp = '2026-11-14T12:00:00Z'
                 value = {'schemaVersion': 3, 'deviceId': 'synthetic-phone', 'platform': 'android', 'appVersion': '1', 'updatedAt': stamp,
@@ -1109,7 +1112,7 @@ def main():
             own_roster = next((index for index, hit in enumerate(after) if hit['user'] == 7 and hit['path'] == '/api/accounts/users/me/app-data/'), -1)
             own_lineup = next((index for index, hit in enumerate(after) if hit['user'] == 7 and hit['path'].startswith('/api/channels/channels/summary/')), -1)
             default_requests_ok = own_roster >= 0 and own_lineup > own_roster and all(hit['user'] == 7 for hit in after)
-            if args.active_default_mode not in ['usable', 'cold']:
+            if args.active_default_mode not in ['usable', 'cold', 'simultaneous']:
                 default_requests_ok = not after
             report['system_default_request_order'] = source_paths == ['/api/accounts/users/me/', '/api/accounts/users/me/', '/api/accounts/users/me/app-data/', '/api/accounts/users/me/app-data/synthetic9.aeriotv/'] and boundary >= 0 and default_requests_ok
             report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('active_retired', False) and report['system_default_request_order']
