@@ -93,6 +93,7 @@ def build(output, base_url, registry=False, model_store=False):
         package.write(ROOT / 'source/DispatcharrSyncEnvelope.brs', 'source/DispatcharrSyncEnvelope.brs')
         package.write(ROOT / 'source/DispatcharrSyncMerge.brs', 'source/DispatcharrSyncMerge.brs')
         package.write(ROOT / 'source/DispatcharrSyncSwitchRoster.brs', 'source/DispatcharrSyncSwitchRoster.brs')
+        package.write(ROOT / 'source/UserProfileRetirement.brs', 'source/UserProfileRetirement.brs')
         # The storage suite isolates broker decisions, not HTTP: keep this seam
         # in the private archive only, never in production application source.
         storage_source = (ROOT / 'source/DispatcharrSyncSwitchRosterStore.brs').read_text()

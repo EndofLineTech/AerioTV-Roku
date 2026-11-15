@@ -6,12 +6,87 @@ sub main()
         result = switchDefaultRetirementSelect()
         if fault = ""
             check(result.ok and result.selected and result.store.active = m.defaultId and result.scope = invalid and result.apiKey = invalid and result.pin = invalid, "system retirement selects actual default without authenticating it or inventing a PIN grant")
+            journalKey = userProfileRetirementKey("slot-a")
+            journal = ParseJson(m.registry.read(journalKey))
+            check(journal.schema = 1 and journal.defaultId = m.defaultId and journal.removed.count() = 1 and journal.removed[0].id = m.context.store.active and journal.removed[0].removedAt = 500, "phase-one selection persists bounded matched retirement evidence in the same transaction")
+            check(instr(1, m.registry.read(journalKey), "synthetic-a") = 0 and instr(1, m.registry.read(journalKey), string(64, "e")) = 0 and journal.apiKey = invalid and journal.scope = invalid, "durable retirement journal contains neither holder credentials/PIN material nor an authenticated scope")
+            check(loadUserProfileStore(m.registry, "slot-a").readOnly = true, "present retirement intent fences ordinary roster access until cleanup or covered recovery")
+            check(ParseJson(m.registry.read(userProfileStoreKey("slot-a"))).retirementPending = true, "selected roster carries an internal pending fence so older strict V1 readers also fail closed across the crash gap")
             check(result.store.profiles.count() = 3 and m.registry.exists(m.outgoingKey) and m.registry.exists(m.outgoingBackoff) and m.registry.read("settingsV1") = m.settings and m.registry.read("connKey_slot-a") = "synthetic-default", "default selection precedes deletion and retains old holder key/backoff/blob until runtime retirement")
             check(m.registry.flushes = 1 and m.outgoing.profileId <> result.store.active, "selection is one metadata transaction while captured outgoing admission remains explicit")
         else
             check(not result.ok and result.recoveryRequired = (fault = "rollback") and FormatJson(m.registry.values) = before, "failed system default selection restores exact metadata without touching any credentials or settings")
         end if
     end for
+    for each fault in ["", "write", "flush", "rollback"]
+        switchDefaultRetirementFixture()
+        selected = switchDefaultRetirementSelect()
+        connection = m.context.connection
+        m.context = invalid
+        m.verified = invalid
+        m.outgoing = invalid
+        m.actorKey = ""
+        m.memory = {}
+        m.registry.values.delete(m.ownKeyName)
+        m.registry.flushes = 0
+        m.registry.fault = fault
+        before = FormatJson(m.registry.values)
+        result = resumeUserProfileRetirement(m.registry, connection, invalid, "")
+        if fault = ""
+            check(result.ok and result.applied and result.store.active = m.defaultId and not m.registry.exists(m.outgoingKey) and not m.registry.exists(m.outgoingBackoff) and not m.registry.exists(userProfileRetirementKey("slot-a")), "cold recovery completes committed deletion intent without live source proof/key/nonce or any invented authenticated actor")
+            check(not result.preferenceStore.accounts.doesExist(m.outgoingAccount) and result.preferenceStore.accounts[m.foreignAccount].future = "foreign" and m.registry.read("connKey_slot-a") = "synthetic-default" and result.scope = invalid and result.apiKey = invalid, "cold recovery prunes only committed removed ownership and returns no default authentication or borrowed credentials")
+        else
+            check(not result.ok and result.recoveryRequired = (fault = "rollback") and FormatJson(m.registry.values) = before and loadUserProfileStore(m.registry, "slot-a").readOnly = true, "cold recovery faults restore exact selected-default/journal/holder data and retain the ordinary roster fence")
+        end if
+    end for
+    for each change in ["actor", "runtime-key", "empty-journal", "missing-journal", "future-journal", "schema-object", "playlist-object", "credential-field", "default", "address", "settings", "roster"]
+        switchDefaultRetirementFixture()
+        selected = switchDefaultRetirementSelect()
+        connection = m.context.connection
+        actor = invalid
+        key = ""
+        journalKey = userProfileRetirementKey("slot-a")
+        journal = ParseJson(m.registry.read(journalKey))
+        if change = "actor" then actor = m.outgoing
+        if change = "runtime-key" then key = "not-retired"
+        if change = "empty-journal" then m.registry.values[journalKey] = ""
+        if change = "missing-journal" then m.registry.values.delete(journalKey)
+        if change = "future-journal" then journal = setCanonicalPreference(journal, "schema", 2)
+        if change = "schema-object" then journal = setCanonicalPreference(journal, "schema", {})
+        if change = "playlist-object" then journal = setCanonicalPreference(journal, "playlistId", {})
+        if change = "credential-field" then journal = setCanonicalPreference(journal, "apiKey", "must-not-be-used")
+        if change = "default" then journal = setCanonicalPreference(journal, "defaultId", m.context.store.active)
+        if change = "address" then journal = setCanonicalPreference(journal, "baseUrl", "https://foreign.test")
+        if change = "settings" then m.registry.values["settingsV1"] = "{malformed"
+        if change = "roster" then m.registry.values[userProfileStoreKey("slot-a")] = "{malformed"
+        if change = "future-journal" or change = "schema-object" or change = "playlist-object" or change = "credential-field" or change = "default" or change = "address" then m.registry.values[journalKey] = FormatJson(journal)
+        m.registry.flushes = 0
+        before = FormatJson(m.registry.values)
+        result = resumeUserProfileRetirement(m.registry, connection, actor, key)
+        check(not result.ok and m.registry.flushes = 0 and FormatJson(m.registry.values) = before and loadUserProfileStore(m.registry, "slot-a").readOnly = true, "cold recovery refuses " + change + " without deleting unknown ownership or treating a present journal as absent")
+    end for
+    switchDefaultRetirementFixture()
+    selected = switchDefaultRetirementSelect()
+    current = loadUserProfileStoreForRetirement(m.registry, "slot-a")
+    current.profiles[0] = setCanonicalPreference(current.profiles[0], "updatedAt", 501)
+    current = setCanonicalPreference(current, "pendingRoster", true)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(current)
+    result = resumeUserProfileRetirement(m.registry, m.context.connection, invalid, "")
+    check(result.ok and result.store.profiles.count() = 3 and result.store.pendingRoster and m.registry.read(m.outgoingKey) = "synthetic-a" and m.registry.exists(m.outgoingBackoff) and not m.registry.exists(userProfileRetirementKey("slot-a")), "a newer intentional re-add wins over old durable intent without deleting its key/backoff/blob or pending edit")
+    switchDefaultRetirementFixture()
+    selected = switchDefaultRetirementSelect()
+    current = loadUserProfileStoreForRetirement(m.registry, "slot-a")
+    kept = [current.profiles[1], current.profiles[2]]
+    replacement = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000004", {id: 7, username: "alice", user_level: 1}, 1)
+    replacement = setCanonicalPreference(replacement, "isDefault", false)
+    replacement = setCanonicalPreference(replacement, "updatedAt", 501)
+    kept.push(replacement)
+    current = setCanonicalPreference(current, "profiles", kept)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(current)
+    newKey = userProfileKeyName("slot-a", replacement.id)
+    m.registry.values[newKey] = "new-own-key"
+    result = resumeUserProfileRetirement(m.registry, m.context.connection, invalid, "")
+    check(result.ok and not m.registry.exists(m.outgoingKey) and not m.registry.exists(m.outgoingBackoff) and m.registry.read(newKey) = "new-own-key" and result.preferenceStore.accounts.doesExist(m.outgoingAccount), "orphan cleanup removes only old journal-named key/backoff while a newer different local profile retains its owned account blob")
     for each change in ["key", "root", "nonce", "actor", "profiles-off", "target-only", "newer-readd", "held-source", "pending"]
         switchDefaultRetirementFixture()
         if change = "key" then m.registry.values[m.ownKeyName] = ""
@@ -47,6 +122,7 @@ sub main()
         result = switchDefaultRetirementCleanup(selected)
         if fault = ""
             check(result.ok and result.committed and result.store.active = m.defaultId and not m.registry.exists(m.outgoingKey) and not m.registry.exists(m.outgoingBackoff), "phase-two cleanup removes old key/backoff only AFTER default selection and actual runtime retirement")
+            check(not m.registry.exists(userProfileRetirementKey("slot-a")) and loadUserProfileStore(m.registry, "slot-a").readOnly <> true, "successful phase-two cleanup removes the durable journal atomically with holder cleanup and unlocks only the cleaned roster")
             check(not result.preferenceStore.accounts.doesExist(m.outgoingAccount) and result.preferenceStore.accounts[m.foreignAccount].future = "foreign" and m.registry.read("connKey_slot-a") = "synthetic-default" and m.registry.read(m.ownKeyName) = "synthetic-b", "default retirement cleans only removed blobs and retains default, source and foreign ownership")
         else
             check(not result.ok and result.recoveryRequired = (fault = "rollback") and FormatJson(m.registry.values) = before, "phase-two write/flush faults retain selected default and restore exact remaining private data without reviving old actor")

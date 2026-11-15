@@ -10,6 +10,11 @@ function userProfileStoreKey(slotId as string) as string
     return "userProfilesV1_" + slotId
 end function
 
+function userProfileRetirementKey(slotId as string) as string
+    if connectionRegistryKey(slotId) = "" then return ""
+    return "profileRetirementV1_" + slotId
+end function
+
 function userProfilePinBackoffKey(slotId as string, holder as string) as string
     if connectionRegistryKey(slotId) = "" then return ""
     if holder <> "device-admin" and userProfileLocalId(holder) = "" then return ""
@@ -37,7 +42,7 @@ end function
 function normalizeUserProfileStore(raw as dynamic, slotId as string) as object
     failure = userProfileStoreRecovery(slotId)
     if userProfileStoreKey(slotId) = "" then return failure
-    raw = userProfileCanonicalFields(raw, ["schema", "playlistId", "active", "askAtLaunch", "profiles", "removed", "pendingRoster", "knownDefault", "addressChangeSnapshot", "verifiedDefaultAtAddress"])
+    raw = userProfileCanonicalFields(raw, ["schema", "playlistId", "active", "askAtLaunch", "profiles", "removed", "pendingRoster", "knownDefault", "addressChangeSnapshot", "verifiedDefaultAtAddress", "retirementPending"])
     if raw = invalid then return failure
     if not userProfileInteger(raw.schema) then return failure
     if raw.schema <> 1 then return failure
@@ -66,6 +71,11 @@ function normalizeUserProfileStore(raw as dynamic, slotId as string) as object
     if defaults <> 1 or not ids.doesExist(active) then return failure
     result.active = active
     result.askAtLaunch = raw.askAtLaunch
+    if raw.doesExist("retirementPending")
+        if not userProfileBoolean(raw.retirementPending) then return failure
+        if raw.retirementPending <> true then return failure
+        result = setCanonicalPreference(result, "retirementPending", true)
+    end if
     for each field in ["knownDefault", "addressChangeSnapshot"]
         if raw.doesExist(field)
             identity = normalizeUserProfileAddressIdentity(raw[field])
@@ -233,6 +243,17 @@ function normalizeUserProfileRecord(raw as dynamic, slotId as string) as dynamic
 end function
 
 function loadUserProfileStore(registry as object, slotId as string) as object
+    pending = userProfileRetirementKey(slotId)
+    if pending = "" then return userProfileStoreRecovery(slotId)
+    ' A present journal, even empty/corrupt, fences ordinary readers/writers.
+    ' Only explicit no-session retirement recovery may read the underlying root.
+    if registry.exists(pending) then return userProfileStoreRecovery(slotId)
+    store = loadUserProfileStoreForRetirement(registry, slotId)
+    if store.retirementPending = true then return userProfileStoreRecovery(slotId)
+    return store
+end function
+
+function loadUserProfileStoreForRetirement(registry as object, slotId as string) as object
     key = userProfileStoreKey(slotId)
     if key = "" then return userProfileStoreRecovery(slotId)
     if not registry.exists(key) then return defaultUserProfileStore(slotId)
@@ -297,7 +318,7 @@ end function
 
 ' Validated transaction preparation, also used when scoped preference cleanup
 ' must be committed in the very same Flush as a profile/key removal.
-function userProfileStoreChanges(registry as object, previous as object, staged as object, keys as object, remember as boolean) as object
+function userProfileStoreChanges(registry as object, previous as object, staged as object, keys as object, remember as boolean, retirementRoot = invalid as dynamic) as object
     failure = {ok: false, recoveryRequired: false}
     if previous.readOnly = true or staged.readOnly = true then return failure
     slotId = previous.playlistId
@@ -308,6 +329,13 @@ function userProfileStoreChanges(registry as object, previous as object, staged 
     if previous.profiles.count() > 0 then before = normalizeUserProfileStore(previous, slotId)
     if before.readOnly = true then return failure
     actual = loadUserProfileStore(registry, slotId)
+    if retirementRoot <> invalid
+        if GetInterface(retirementRoot, "ifString") = invalid then return failure
+        pending = userProfileRetirementKey(slotId)
+        if retirementRoot = "" or not registry.exists(pending) then return failure
+        if registry.read(pending) <> retirementRoot then return failure
+        actual = loadUserProfileStoreForRetirement(registry, slotId)
+    end if
     if actual.readOnly = true or FormatJson(actual) <> FormatJson(before) then return failure
     cleaned = normalizeUserProfileStore(staged, slotId)
     if cleaned.readOnly = true then return failure

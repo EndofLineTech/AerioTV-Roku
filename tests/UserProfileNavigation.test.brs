@@ -7,6 +7,7 @@ sub main()
     runProfileTaskFilterChecks()
     runSetupFieldPolicyChecks()
     runAuthorityRefreshChecks()
+    runRetirementLaunchRecoveryChecks()
     authority = {id: 7, username: "Alice", user_level: 1, channel_profiles: [2, 5], custom_properties: {vod_movies_enabled: true}, api_key: "synthetic-never-copy", password: "synthetic-never-copy"}
     safeAuthority = dispatcharrVerifiedAuthority(authority)
     check(not safeAuthority.doesExist("api_key") and not safeAuthority.doesExist("password") and safeAuthority.channel_profiles.count() = 2, "authority snapshots copy only identity/assignment/permission facts, never credentials")
@@ -347,6 +348,51 @@ sub runSetupFieldPolicyChecks()
     m.profileUnlockGrant = {slot: "slot-a", id: own.id, pinType: "numbers", pinSalt: string(32, "b"), pinHash: string(64, "a")}
     childGate = selectedUserProfileGate()
     check(not childGate.allowed and childGate.reason = "child", "a Child launch PIN does not by itself lift the unfinished Child authentication/activation fence")
+end sub
+
+sub runRetirementLaunchRecoveryChecks()
+    m.profilePreferenceDecoder = function(raw as string) as dynamic
+        return ParseJson(raw)
+    end function
+    for each corrupt in [false, true]
+        resetProfileNavigation()
+        entry = m.connectionStore.entries[0]
+        a = userProfileFromVerified(entry.id, "00000000-0000-4000-8000-000000000001", {id: 7, username: "alice", user_level: 1}, 1)
+        a = setCanonicalPreference(a, "pinType", "numbers")
+        a = setCanonicalPreference(a, "pinHash", string(64, "a"))
+        a = setCanonicalPreference(a, "pinSalt", string(32, "b"))
+        b = userProfileFromVerified(entry.id, "00000000-0000-4000-8000-000000000002", {id: 8, username: "bob", user_level: 1}, 1)
+        b = setCanonicalPreference(b, "isDefault", false)
+        store = defaultUserProfileStore(entry.id)
+        store.active = a.id
+        store.profiles = [a, b]
+        store = setCanonicalPreference(store, "retirementPending", true)
+        m.registry.values["connectionsV1"] = FormatJson(m.connectionStore)
+        m.registry.values[userProfileStoreKey(entry.id)] = FormatJson(store)
+        bobKey = userProfileKeyName(entry.id, b.id)
+        m.registry.values[bobKey] = "bob-own-key"
+        journal = {schema: 1, playlistId: entry.id, baseUrl: entry.url, defaultId: a.id, defaultUserId: 7, defaultUsername: "alice", intentId: "00000000-0000-4000-8000-000000000090", removed: [{id: b.id, userId: 8, username: "bob", removedAt: 500, preferenceIdentity: connectionPreferenceIdentity(entry, "8")}]}
+        journalKey = userProfileRetirementKey(entry.id)
+        m.registry.values[journalKey] = FormatJson(journal)
+        if corrupt then m.registry.values[journalKey] = "{malformed"
+        preferences = defaultPreferenceStore()
+        bobAccount = preferenceScope(connectionPreferenceIdentity(entry, "8"))
+        preferences.accounts[bobAccount] = {favoriteIds: ["8"]}
+        m.registry.values["settingsV1"] = FormatJson(preferences)
+        m.preferenceStore = preferences
+        m.activeUserScope = invalid
+        m.apiKey = ""
+        m.profileUnlockGrant = invalid
+        if not corrupt then m.profileUnlockGrant = {slot: entry.id, id: a.id, pinType: a.pinType, pinHash: a.pinHash, pinSalt: a.pinSalt}
+        before = FormatJson(m.registry.values)
+        ready = prepareUserProfileLaunchRestore(entry)
+        if corrupt
+            check(not ready and m.userProfileRecoveryRequired and FormatJson(m.registry.values) = before and m.apiKey = "", "present corrupt retirement journal blocks startup without replacing roots or loading the slot key")
+        else
+            check(ready and not m.registry.exists(journalKey) and not m.registry.exists(bobKey) and not m.preferenceStore.accounts.doesExist(bobAccount), "startup finishes durable retirement before exposing the roster and publishes only the cleaned preference root")
+            check(m.activeUserScope = invalid and m.apiKey = "" and m.profileUnlockGrant = invalid and selectedUserProfileGate().reason = "pin", "cold retirement recovery creates no default authentication or system PIN bypass; ordinary protected launch still requires PIN")
+        end if
+    end for
 end sub
 
 sub runAuthorityRefreshChecks()

@@ -716,10 +716,24 @@ its initial generic-401 fixture run was rejected by the request-ledger assertion
 then the corrected key-rejection fixture passed. These are safe covered surfaces,
 not completed immediate recovery UI or authenticated default-Child loading.
 
-The two-phase flow still needs durable crash/restart recovery (`AerioTV-Roku-e4xa`):
-there is currently no persisted retirement intent if the process stops between
-default selection and cleanup. It must remain shipping-off until that boundary
-and the remaining recovery/sync/public gates qualify. Cancellation diagnostics now
+The two-phase flow now persists a bounded, credential/PIN-free local retirement
+journal atomically with default selection and a `retirementPending` root fence.
+Ordinary readers refuse pending/corrupt intent; cleanup removes both fences in
+the same transaction as eligible owned data. Startup resumes the committed local
+intent before credential loading, preserving newer re-adds and shared account
+ownership, then requires the ordinary default launch PIN (no system bypass).
+Whole-slot Forget removes only its own journal, including an opaque one.
+
+Actual separate-process qualification passed (`out/mrr-retirement-cold-native.log`):
+the private first process exits after committed selection, proving the journal,
+reader fence and retained old key. The harness observes process exit without
+waking a screensaver, then explicitly relaunches the same installed app/registry.
+Startup deletes old ownership before any provider request, requires default A's
+real numeric PIN, and adopts A through its own read/lineup with a fresh session.
+Disposable data cleanup and exact owner-app restoration passed. Host tests cover
+storage faults, malformed/future journals, missing intent with a pending root,
+newer re-adds, orphan cleanup and retained shared ownership. Shipping remains off
+pending the remaining recovery/sync/public gates. Cancellation diagnostics now
 record foreground/screensaver state before Back and refuse to wake another app;
 the intermittent missing Scene key event remains tracked rather than assumed fixed.
 

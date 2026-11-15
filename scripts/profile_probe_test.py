@@ -79,6 +79,20 @@ class ProfileProbeTest(unittest.TestCase):
             with patch.object(probe.urllib.request, 'urlopen', return_value=response):
                 self.assertEqual(probe.management_probe_activity('127.0.0.1'), expected)
 
+    def test_retirement_cold_launch_waits_for_exit_and_never_wakes_saver(self):
+        spec = importlib.util.spec_from_file_location('management_cold_probe', Path(__file__).with_name('test-profile-management-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        with patch.object(probe, 'management_probe_activity', side_effect=[{'dev_active': True, 'screensaver_active': False}, {'dev_active': False, 'screensaver_active': False}]), patch.object(probe.time, 'sleep'), patch.object(probe.urllib.request, 'urlopen') as send:
+            self.assertTrue(probe.launch_profile_probe_after_exit('127.0.0.1'))
+            request = send.call_args.args[0]
+            self.assertEqual(request.full_url, 'http://127.0.0.1:8060/launch/dev')
+            self.assertEqual(request.get_method(), 'POST')
+        with patch.object(probe, 'management_probe_activity', return_value={'dev_active': False, 'screensaver_active': True}), patch.object(probe.urllib.request, 'urlopen') as send:
+            with self.assertRaises(RuntimeError):
+                probe.launch_profile_probe_after_exit('127.0.0.1')
+            send.assert_not_called()
+
     def test_native_timeout_diagnostics_are_boolean_only(self):
         spec = importlib.util.spec_from_file_location('native_runner', Path(__file__).with_name('run-native-probe.py'))
         probe = importlib.util.module_from_spec(spec)
@@ -128,6 +142,7 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileTargetRetirementFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileAuthorityRaceFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileActiveRetirementFixture')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileRetirementColdFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncSwitchRosterStoreProbeChecks')], check=True)
 
     def test_native_roster_storage_checks_keep_broker_seam_private(self):
@@ -337,7 +352,7 @@ class ProfileProbeTest(unittest.TestCase):
                 package.writestr('source/MetadataCacheStore.brs', 'return "cachefs:/aeriotv-metadata-v1"')
                 package.writestr('components/GuideView.xml', '<component name="GuideView"><interface></interface></component>')
                 package.writestr('components/GuideView.brs', 'sub init()\nend sub\n')
-                for name in ['components/DvrSettlementNavigation.brs', 'components/DvrNavigation.brs', 'components/DvrRecordingTask.brs', 'source/HttpTransport.brs']:
+                for name in ['components/DvrSettlementNavigation.brs', 'components/DvrNavigation.brs', 'components/DvrRecordingTask.brs', 'components/ProfileDefaultRetirementNavigation.brs', 'source/HttpTransport.brs']:
                     package.writestr(name, (root / name).read_text())
             output = Path(tmp) / 'probe.zip'
             probe.build(output, normal, 'SyntheticManagementSection', 'http://127.0.0.1:1234')
@@ -420,6 +435,16 @@ class ProfileProbeTest(unittest.TestCase):
                     self.assertNotIn('ACTIVE_DEFAULT_MODE', source)
             with self.assertRaises(ValueError):
                 probe.build(output, normal, 'SyntheticUnavailableDefaultSection', 'http://127.0.0.1:1234', active_default_mode='held')
+            probe.build(output, normal, 'SyntheticColdRetirementSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_active_retirement=True, active_default_mode='cold')
+            with zipfile.ZipFile(output) as package:
+                source = package.read('components/AerioScene.brs').decode()
+                retirement = package.read('components/ProfileDefaultRetirementNavigation.brs').decode()
+                self.assertIn('m.retirementColdBoot = m.registry.exists(', source)
+                self.assertIn('if not m.retirementColdBoot', source)
+                self.assertIn('retirement-cold-pin-ready', source)
+                self.assertIn('retirement-crash-ready', retirement)
+                self.assertIn('m.top.exitRequested = true', retirement)
+                self.assertNotIn('"AerioTV"', source)
             for mode in ['remembered', 'keyless', 'held']:
                 probe.build(output, normal, 'SyntheticColdSection', 'http://127.0.0.1:1234', cold_restore=mode)
                 with zipfile.ZipFile(output) as package:

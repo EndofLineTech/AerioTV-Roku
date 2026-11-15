@@ -15,6 +15,7 @@ sub main()
             check(not registry.exists("userProfilesV1_slot-a") and not registry.exists("connKey_slot-a") and not registry.exists(userProfileKeyPrefix("slot-a") + "orphan"), "Forget cleans a corrupt slot roster plus all owned keys")
             check(registry.read("connKey_slot-b") = "other-slot-key" and registry.read(userProfileKeyPrefix("slot-b") + "orphan") = "other-profile-key", "Forget cannot delete another slot's keys")
             check(not registry.exists(userProfileDeviceAdminKey("slot-a")) and not registry.exists(userProfilePinBackoffKey("slot-a", "device-admin")), "Forget clears its reserved Device Admin record and ledger atomically")
+            check(not registry.exists(userProfileRetirementKey("slot-a")) and registry.read(userProfileRetirementKey("slot-b")) = "other-pending-retirement", "explicit whole-slot Forget removes only its owned retirement journal, even if opaque, and retains another slot's pending intent")
             check(registry.read(userProfileDeviceAdminKey("slot-b")) = "other-admin-record" and registry.read(userProfilePinBackoffKey("slot-b", "device-admin")) = "other-admin-ledger", "Forget preserves another slot's Device Admin authority")
             check(result.preferences.accounts.count() = 1 and result.preferences.accounts[preferenceScope("https://example.test|7|slot-b")].favoriteIds[0] = "other", "Forget cleans every own user scope, preserves other slot preferences")
             check(result.connections.entries.count() = 1 and result.connections.selected = "slot-b", "Forgotten connection removed without creating tombstones")
@@ -53,6 +54,8 @@ function forgetRegistry() as object
     values[userProfileDeviceAdminKey("slot-b")] = "other-admin-record"
     values[userProfilePinBackoffKey("slot-a", "device-admin")] = "own-admin-ledger"
     values[userProfilePinBackoffKey("slot-b", "device-admin")] = "other-admin-ledger"
+    values[userProfileRetirementKey("slot-a")] = "own-pending-retirement"
+    values[userProfileRetirementKey("slot-b")] = "other-pending-retirement"
     return {values: values, flushes: 0, failure: ""
         exists: function(key as string) as boolean
             return m.values.doesExist(key)

@@ -3,6 +3,23 @@
 function prepareUserProfileLaunchRestore(entry as dynamic) as boolean
     if entry = invalid then return true
     if entry.provider <> "dispatcharr" then return true
+    if m.registry.exists(userProfileRetirementKey(entry.id))
+        recovered = resumeUserProfileRetirement(m.registry, entry, m.activeUserScope, textValue(m.apiKey))
+        if not recovered.ok
+            m.userProfileRecoveryRequired = true
+            return false
+        end if
+        if recovered.applied = true
+            m.userProfileStore = recovered.store
+            m.profileUnlockGrant = invalid
+            if type(recovered.preferenceStore) = "roAssociativeArray" then m.preferenceStore = recovered.preferenceStore
+            if type(m.profileSessionKeys) = "roAssociativeArray"
+                for each removed in recovered.removed
+                    m.profileSessionKeys.delete(preferenceScope(entry.url + "|" + entry.id + "|" + removed.id))
+                end for
+            end if
+        end if
+    end if
     store = loadUserProfileStore(m.registry, entry.id)
     if store.readOnly = true then return false
     if store.profiles.count() = 0 then return true

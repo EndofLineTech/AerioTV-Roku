@@ -27,6 +27,20 @@ def management_probe_activity(host):
             'screensaver_active': root.find('screensaver') is not None}
 
 
+def launch_profile_probe_after_exit(host):
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        activity = management_probe_activity(host)
+        if activity['screensaver_active']:
+            raise RuntimeError('Cold probe cannot wake an active screensaver')
+        if not activity['dev_active']:
+            request = urllib.request.Request(f'http://{host}:8060/launch/dev', data=b'', method='POST')
+            with urllib.request.urlopen(request, timeout=5):
+                return True
+        time.sleep(0.1)
+    raise RuntimeError('Cold probe did not observe the preceding dev process exit')
+
+
 def management_probe_user(key):
     if key in ['synthetic-b', 'delayed-b']:
         return 8
@@ -80,7 +94,7 @@ def startup_probe_timer(source):
 
 
 def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False, switch_authority_race=False, switch_active_retirement=False, active_default_mode='usable'):
-    if active_default_mode not in ['usable', 'missing', 'held', 'child'] or (active_default_mode != 'usable' and not switch_active_retirement):
+    if active_default_mode not in ['usable', 'missing', 'held', 'child', 'cold'] or (active_default_mode != 'usable' and not switch_active_retirement):
         raise ValueError('Active default mode requires the active retirement fixture')
     if switch_roster and (not (switching or child_escape) or (switching and child_escape)):
         raise ValueError('Private early-roster mode requires either switch or Child escape fixture')
@@ -108,6 +122,15 @@ def build(output, normal, section, base, directions=False, switching=False, swit
     with zipfile.ZipFile(normal) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
+            if active_default_mode == 'cold' and name == 'components/ProfileDefaultRetirementNavigation.brs':
+                target = '    preserveSubmittedRecording()'
+                source = body.decode()
+                assert source.count(target) == 1
+                body = source.replace(target, '''    print "[profile-management] "; FormatJson({kind: "retirement-crash-ready", journal: m.registry.exists(userProfileRetirementKey(context.connection.id)), fenced: loadUserProfileStore(m.registry, context.connection.id).readOnly, retained: m.registry.exists(userProfileKeyName(context.connection.id, selected.outgoingId))})
+    m.managementProbeClock.control = "stop"
+    m.top.exitRequested = true
+    return
+''' + target, 1).encode()
             if recording_probe and name == 'components/DvrSettlementNavigation.brs':
                 target = b'    showNotice(message)\n'
                 assert body.count(target) == 1
@@ -745,6 +768,24 @@ end sub
         m.managementProbePhase--
 ''' + source[end:]
                     source += '\n' + (ROOT / 'tests/native/ProfileActiveRetirementFixture.brs').read_text().replace('ACTIVE_DEFAULT_MODE', json.dumps(active_default_mode))
+                    if active_default_mode == 'cold':
+                        bootstrap = f'''m.registry = CreateObject("roRegistrySection", "{section}")'''
+                        source = source.replace(bootstrap, bootstrap + '''
+    m.retirementColdBoot = m.registry.exists(userProfileRetirementKey("slot-a"))
+    if m.retirementColdBoot
+        m.retirementColdIntentId = ParseJson(m.registry.read(userProfileRetirementKey("slot-a"))).intentId
+    end if
+    if not m.retirementColdBoot''', 1)
+                        source = source.replace('    m.registry.flush()\n', '    m.registry.flush()\n    end if\n', 1)
+                        source = startup_probe_timer(source)
+                        source = source.replace('sub onManagementProbeTick()\n', '''sub onManagementProbeTick()
+    if m.retirementColdBoot
+        runProfileRetirementColdProbe()
+        return
+    end if
+    if m.page <> "guide" or m.busy then return
+''', 1)
+                        source += '\n' + (ROOT / 'tests/native/ProfileRetirementColdFixture.brs').read_text()
                 body = source.replace('OWN_RECONNECT_PROBE', 'true' if reconnect else 'false').encode()
             package.writestr(name, body)
         package.writestr('profile-management-probe.json', json.dumps({'synthetic': True}))
@@ -761,7 +802,7 @@ def main():
     parser.add_argument('--switch-target-retirement', action='store_true', help='Only with --switch --switch-roster: non-default B selects C, whose own tombstone retires C without adopting C or the different default A')
     parser.add_argument('--switch-authority-race', action='store_true', help='Only with --switch --switch-roster: change target authority on final me and require rollback with zero target lineup requests')
     parser.add_argument('--switch-active-retirement', action='store_true', help='Only with --switch --switch-roster: C own roster removes actual B, requiring default A own system adoption without its PIN')
-    parser.add_argument('--active-default-mode', choices=['usable', 'missing', 'held', 'child'], default='usable', help='Only with --switch-active-retirement: default own credential/access state')
+    parser.add_argument('--active-default-mode', choices=['usable', 'missing', 'held', 'child', 'cold'], default='usable', help='Only with --switch-active-retirement: default own credential/access state')
     parser.add_argument('--reconnect', action='store_true', help='With --switch, reconnect B through early roster read and full activation before returning to A')
     parser.add_argument('--switch-pin', action='store_true', help='With --switch, require the real stored numeric target PIN before each switch')
     parser.add_argument('--cancel-pin', action='store_true', help='With --switch-pin, cancel the final target PIN before any request is sent')
@@ -971,6 +1012,15 @@ def main():
         with subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as process:
             for line in process.stdout:
                 output.append(line)
+                if '"kind":"retirement-crash-ready"' in line:
+                    checkpoint = json.loads(line.split('[profile-management] ', 1)[1])
+                    report['cold_checkpoint'] = checkpoint
+                    report['cold_request_boundary'] = len(hits)
+                    if not all(checkpoint.get(key) for key in ['journal', 'fenced', 'retained']):
+                        raise RuntimeError('Cold retirement checkpoint did not retain fenced committed intent')
+                    report['cold_relaunched'] = launch_profile_probe_after_exit(host)
+                if '"kind":"retirement-cold-pin-ready"' in line:
+                    report['cold_pre_pin_requests'] = hits[report['cold_request_boundary']:].copy()
                 if '"kind":"assignment-ready"' in line:
                     fixture_state['changed'] = True
                 if '"kind":"active-default-reject-ready"' in line:
@@ -1014,7 +1064,7 @@ def main():
         rows = [json.loads(line.split('[profile-management] ', 1)[1]) for line in result.stdout.splitlines() if '[profile-management] {' in line]
         report['switch_key_events'] = [row for row in rows if row.get('kind') == 'switch-key']
         report['default_rejection_ready'] = any(row.get('kind') == 'active-default-reject-ready' for row in rows)
-        rows = [row for row in rows if row.get('kind') not in ['switch-key', 'active-default-reject-ready']]
+        rows = [row for row in rows if row.get('kind') not in ['switch-key', 'active-default-reject-ready', 'retirement-crash-ready', 'retirement-cold-pin-ready']]
         report['events'] = rows
         if args.child_escape:
             report['requests'] = hits
@@ -1059,10 +1109,12 @@ def main():
             own_roster = next((index for index, hit in enumerate(after) if hit['user'] == 7 and hit['path'] == '/api/accounts/users/me/app-data/'), -1)
             own_lineup = next((index for index, hit in enumerate(after) if hit['user'] == 7 and hit['path'].startswith('/api/channels/channels/summary/')), -1)
             default_requests_ok = own_roster >= 0 and own_lineup > own_roster and all(hit['user'] == 7 for hit in after)
-            if args.active_default_mode != 'usable':
+            if args.active_default_mode not in ['usable', 'cold']:
                 default_requests_ok = not after
             report['system_default_request_order'] = source_paths == ['/api/accounts/users/me/', '/api/accounts/users/me/', '/api/accounts/users/me/app-data/', '/api/accounts/users/me/app-data/synthetic9.aeriotv/'] and boundary >= 0 and default_requests_ok
             report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('active_retired', False) and report['system_default_request_order']
+            if args.active_default_mode == 'cold':
+                report['passed'] = report['passed'] and report.get('cold_relaunched', False) and report.get('cold_pre_pin_requests') == [] and rows[-1].get('cold_recovered', False)
             if args.active_default_mode == 'held':
                 refused = [hit for hit in hits if hit['rejected']]
                 report['passed'] = report['passed'] and report['default_rejection_ready'] and len(refused) == 1 and refused[0]['user'] == 7 and refused[0]['path'] == '/api/accounts/users/me/'
