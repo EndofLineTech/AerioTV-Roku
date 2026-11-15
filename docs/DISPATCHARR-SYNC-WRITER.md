@@ -238,3 +238,24 @@ restoration and disposable cleanup. Full verification passed at
 
 General category sync/scheduling and public recovery/Child/admin/onboarding and
 acceptance are not established; shipping readiness flags remain false.
+
+## Absent canonical creation
+
+The private writer can now create its own canonical key only after a successful
+same-session list with no legacy keys and an immediately preceding canonical GET
+returning typed Dispatcharr `404 {"code":"key_not_found"}`. A generic/proxy 404,
+failed GET/list, or legacy-only discovery cannot authorize an empty replacement.
+A canonical that disappears while stranded legacy keys remain also refuses;
+legacy keys are never written or deleted. If a peer creates the canonical between
+list and GET, the returned value is merged rather than replaced with an empty base.
+The fresh schema-3 envelope contains only explicitly owned profiles metadata and
+passes the same checked-body/native precision gate before PUT.
+
+Host creation/race/listed-missing/proxy/legacy tests passed. Actual native create
+and acknowledgement passed (`out/mrr-sync-create-canonical-native.log`); legacy-only
+and proxy-404 refusals retained exact pending roots and sent no PUT
+(`out/mrr-sync-create-legacy-refusal-native.log`,
+`out/mrr-sync-create-proxy404-refusal-native.log`). Every run cleaned and restored
+the owner app. Full verification passed at
+`out/mrr-sync-create-canonical-final-verify.log`. Legacy migration remains read-only,
+not implicitly approved by canonical creation support.

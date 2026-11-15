@@ -1,4 +1,4 @@
-' Private existing-canonical profiles writer. Shipping opt-in remains off until
+' Private own-canonical profiles writer. Shipping opt-in remains off until
 ' Scene dirty/ack/protection settlement and native request-ledger tests qualify.
 sub init()
     m.top.functionName = "writeDispatcharrSync"
@@ -33,12 +33,13 @@ sub writeDispatcharrSync()
     listing = syncWriterReadObject(m.top.baseUrl + "/api/accounts/users/me/app-data/", 65536)
     if not listing.ok then finishDispatcharrSyncWrite(listing) : return
     discovery = dispatcharrSyncReadPlan(key, listing.data)
-    ' Missing canonical and legacy migration remain read-only, never empty-base
-    ' creation. A listed canonical is independent of stranded legacy keys.
-    if discovery.state <> "canonical" then finishDispatcharrSyncWrite({ok: false, state: discovery.state}) : return
+    ' Legacy-only discovery stays read-only. A fresh typed key-not-found response
+    ' may start a new canonical only when this same list proves NO legacy keys.
+    if discovery.state <> "canonical" and discovery.state <> "missing" then finishDispatcharrSyncWrite({ok: false, state: discovery.state}) : return
     url = m.top.baseUrl + "/api/accounts/users/me/app-data/" + key + "/"
-    latest = syncWriterReadObject(url, 131072)
+    latest = syncWriterReadObject(url, 131072, discovery.legacy.count() = 0)
     if not latest.ok then finishDispatcharrSyncWrite(latest) : return
+    if latest.state = "missing" then latest.data = syncWriterMissingEnvelope()
     prepared = dispatcharrSyncPrepareProfilesWrite(latest.data, m.writerStore, m.top.profilesEnabled, CreateObject("roDateTime").asSeconds(), m.top.acknowledgedStamp, m.top.deviceId, m.top.appVersion)
     if not prepared.ok
         if type(prepared.localPlan) = "roAssociativeArray"
@@ -118,12 +119,13 @@ function syncWriterLocalReadReceipt(value as object, user as object) as object
     return {ok: false, state: "local-commit", submitted: false, readStatus: 200, profileData: data, authorizationSignature: dispatcharrAuthorizationSignature(user), storeRoot: m.top.storeRoot, connectionRoot: m.top.connectionRoot, credentialHash: requestGateCredentialHash(m.key), scope: m.top.userScope}
 end function
 
-function syncWriterReadObject(url as string, maxBytes as integer) as object
+function syncWriterReadObject(url as string, maxBytes as integer, allowMissing = false as boolean) as object
     denied = {ok: false, state: "unavailable"}
     if not syncWriterAccessCurrent() then return denied
     response = httpTransferOnce(url, invalid, "", 10000, maxBytes)
     if not syncWriterAccessCurrent() then return denied
-    if response.error <> "" or response.status <> 200 then return denied
+    if response.error <> "" then return denied
+    if response.status <> 200 and (response.status <> 404 or not allowMissing) then return denied
     if not CreateObject("roRegex", "^\s*\{", "").isMatch(response.body) then return denied
     value = invalid
     if m.syncJsonParser <> invalid
@@ -132,7 +134,26 @@ function syncWriterReadObject(url as string, maxBytes as integer) as object
         value = ParseJson(response.body, "d")
     end if
     if type(value) <> "roAssociativeArray" then return denied
+    if response.status = 404
+        if GetInterface(value["code"], "ifString") = invalid then return denied
+        if value["code"] <> "key_not_found" then return denied
+        return {ok: true, state: "missing"}
+    end if
     return {ok: true, data: value}
+end function
+
+' Used only AFTER this own session's successful no-legacy list and typed 404.
+' Never substitutes for an unreadable registry root, failed GET or legacy data.
+function syncWriterMissingEnvelope() as object
+    clock = CreateObject("roDateTime")
+    value = ParseJson("{}")
+    value["schemaVersion"] = 3
+    value["deviceId"] = m.top.deviceId
+    value["platform"] = "roku"
+    value["appVersion"] = m.top.appVersion
+    value["updatedAt"] = left(clock.toISOString(), 19) + "Z"
+    value["categories"] = ParseJson("{}")
+    return value
 end function
 
 sub finishDispatcharrSyncWrite(result as object)

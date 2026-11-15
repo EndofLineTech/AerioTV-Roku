@@ -1,7 +1,7 @@
 ' Private synthetic HTTP only; run after actual B adoption in the normal app.
 sub advanceProfileSyncWriterProbe()
     m.writerProbeMode = PROFILE_WRITER_MODE
-    if m.writerProbeMode <> "direct"
+    if m.writerProbeMode <> "direct" and left(m.writerProbeMode, 6) <> "create"
         advanceProfileSyncFlushProbe()
         return
     end if
@@ -44,7 +44,13 @@ sub advanceProfileSyncWriterProbe()
     result = m.writerProbeTask.result
     store = loadUserProfileStore(m.registry, "slot-a")
     passed = result.ok = true and result.submitted = true and result.state = "written" and m.writerProbeTask.apiKey = "" and m.activeUserScope.accountId = "8" and userProfileSameSession(m.activeUserScope, result.scope) and store.pendingRoster and m.registry.read(userProfileStoreKey("slot-a")) = m.writerProbeBefore and m.apiKey = "synthetic-b" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", store.active)) = "synthetic-b"
-    if passed
+    refused = m.writerProbeMode = "create-legacy" or m.writerProbeMode = "create-proxy404"
+    if refused
+        passed = not result.ok and result.submitted <> true and m.writerProbeTask.apiKey = "" and store.pendingRoster and m.registry.read(userProfileStoreKey("slot-a")) = m.writerProbeBefore and not m.registry.exists(userProfileSyncAckKey("slot-a")) and m.apiKey = "synthetic-b" and m.activeUserScope.accountId = "8" and m.registry.read("connKey_slot-a") = "synthetic-a"
+        if m.writerProbeMode = "create-legacy" then passed = passed and result.state = "legacy"
+        if m.writerProbeMode = "create-proxy404" then passed = passed and result.state = "unavailable"
+    end if
+    if passed and not refused
         entry = connectionStoreEntry(m.connectionStore, "slot-a")
         acknowledged = commitDispatcharrSyncRosterAck(m.registry, entry, store, result, m.activeUserScope, m.apiKey, {})
         passed = acknowledged.ok

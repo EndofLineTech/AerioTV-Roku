@@ -94,7 +94,7 @@ def startup_probe_timer(source):
 
 
 def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False, switch_authority_race=False, switch_active_retirement=False, active_default_mode='usable', switch_writer=False, writer_mode='direct'):
-    if writer_mode not in ['direct', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'] or (writer_mode != 'direct' and not switch_writer):
+    if writer_mode not in ['direct', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'] or (writer_mode != 'direct' and not switch_writer):
         raise ValueError('Writer mode requires the private writer fixture')
     if switch_writer and (not switching or not switch_roster or any([directions, switch_pin, cancel_pin, reject_active, remember_off, child_settings, reconnect, cold_restore, default_filter, assignment_refresh, child_escape, child_launch, child_available, child_retry, child_rejected, manual_refresh, manual_recording, favorite_retention, switch_recording, switch_import_pin, switch_cleanup, switch_target_retirement, switch_authority_race, switch_active_retirement]) or active_default_mode != 'usable'):
         raise ValueError('Writer fixture requires only --switch --switch-roster')
@@ -837,7 +837,7 @@ def main():
     parser.add_argument('--switch-authority-race', action='store_true', help='Only with --switch --switch-roster: change target authority on final me and require rollback with zero target lineup requests')
     parser.add_argument('--switch-active-retirement', action='store_true', help='Only with --switch --switch-roster: C own roster removes actual B, requiring default A own system adoption without its PIN')
     parser.add_argument('--switch-writer', action='store_true', help='Only with --switch --switch-roster: private own-B canonical re-read and checked-string PUT')
-    parser.add_argument('--writer-mode', choices=['direct', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'], default='direct', help='Private writer fixture: direct Task, outgoing flush, own retirement, imported PIN or failure/cancellation/authority refusal')
+    parser.add_argument('--writer-mode', choices=['direct', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'], default='direct', help='Private writer fixture: direct Task, canonical creation/refusal, outgoing flush, own retirement, imported PIN or refusal')
     parser.add_argument('--active-default-mode', choices=['usable', 'missing', 'held', 'child', 'cold', 'simultaneous', 'import-pin', 'import-child'], default='usable', help='Only with --switch-active-retirement: default own credential/access state')
     parser.add_argument('--reconnect', action='store_true', help='With --switch, reconnect B through early roster read and full activation before returning to A')
     parser.add_argument('--switch-pin', action='store_true', help='With --switch, require the real stored numeric target PIN before each switch')
@@ -944,9 +944,13 @@ def main():
             valid = False
             try:
                 value = json.loads(raw)
-                future = value['categories']['FutureCategory']['data']
+                future = value['categories'].get('FutureCategory', {}).get('data', {})
                 roster = value['categories']['profiles']['data']
-                valid = args.switch_writer and user == 8 and self.path == '/api/accounts/users/me/app-data/synthetic8.aeriotv/' and self.headers.get('Content-Type', '').startswith('application/json') and length == len(raw) and value['schemaVersion'] == 3 and value['platform'] == 'roku' and value['FutureEnvelope'] == 1794675600000 and type(future['KeepDouble']) is float and future['KeepDouble'] == 1.0 and future['Precision'] == 1.3 and future['Emoji'] == '😀' and roster['FutureRoster'] == {'Case': 1, 'case': 2} and {row[0] for row in roster['rows']} == {7, 8}
+                valid = args.switch_writer and user == 8 and self.path == '/api/accounts/users/me/app-data/synthetic8.aeriotv/' and self.headers.get('Content-Type', '').startswith('application/json') and length == len(raw) and value['schemaVersion'] == 3 and value['platform'] == 'roku' and {row[0] for row in roster['rows']} == {7, 8}
+                if args.writer_mode == 'create':
+                    valid = valid and set(value) == {'schemaVersion', 'deviceId', 'platform', 'appVersion', 'updatedAt', 'categories'} and set(value['categories']) == {'profiles'} and 'FutureRoster' not in roster
+                else:
+                    valid = valid and value['FutureEnvelope'] == 1794675600000 and type(future['KeepDouble']) is float and future['KeepDouble'] == 1.0 and future['Precision'] == 1.3 and future['Emoji'] == '😀' and roster['FutureRoster'] == {'Case': 1, 'case': 2}
                 valid = valid and type(value['schemaVersion']) is int and len(value['updatedAt']) == 20 and value['updatedAt'].endswith('Z') and all(type(row[0]) is int and type(row[7]) is int and type(row[9]) is int for row in roster['rows'])
                 if args.writer_mode == 'flush-import-pin':
                     target = next(row for row in roster['rows'] if row[0] == 7)
@@ -1042,8 +1046,10 @@ def main():
                     value.setdefault('custom_properties', {})['dvr_access'] = 'manage'
             if self.path == '/api/accounts/users/me/app-data/':
                 value = {'apps': []}
-                if args.switch_writer and user == 8:
+                if args.switch_writer and user == 8 and not args.writer_mode.startswith('create'):
                     value = {'apps': [{'key': 'synthetic8.aeriotv', 'bytes': 100}]}
+                if args.switch_writer and user == 8 and args.writer_mode == 'create-legacy':
+                    value = {'apps': [{'key': 'app.molinete.aerio', 'bytes': 100}]}
                 if args.child_available or ((args.switch_import_pin or args.switch_inactive_cleanup) and user == 8) or ((args.switch_target_retirement or args.switch_active_retirement) and user == 9):
                     value = {'apps': [{'key': f'synthetic{user}.aeriotv', 'bytes': 600}]}
             if args.switch_import_pin and user == 8 and self.path == '/api/accounts/users/me/app-data/synthetic8.aeriotv/':
@@ -1085,8 +1091,11 @@ def main():
                     value = [{'id': 80, 'uuid': '00000000-0000-4000-8000-000000000080', 'name': 'Synthetic reassigned', 'channel_number': 80}]
             if child_rejected or (args.switch_active_retirement and args.active_default_mode == 'held' and rejected):
                 value = {'detail': 'Invalid API key'}
+            missing = args.switch_writer and args.writer_mode.startswith('create') and user == 8 and self.path == '/api/accounts/users/me/app-data/synthetic8.aeriotv/'
+            if missing:
+                value = {'detail': 'Proxy page not found'} if args.writer_mode == 'create-proxy404' else {'code': 'key_not_found'}
             body = json.dumps(value).encode()
-            self.send_response(503 if failure else (401 if rejected else 200))
+            self.send_response(503 if failure else (401 if rejected else (404 if missing else 200)))
             self.send_header('Content-Type', 'application/json')
             self.send_header('Content-Length', str(len(body)))
             self.end_headers()
@@ -1244,7 +1253,11 @@ def main():
                 report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('writer', False) and report['writer_own_request_order'] and rows[-1].get('authority_covered', False)
             if args.writer_mode == 'flush-own-retirement':
                 report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('own_retired', False) and report['writer_own_request_order'] and not any(hit.get('method') == 'PUT' for hit in after)
-            if args.writer_mode != 'direct':
+            if args.writer_mode in ['create-legacy', 'create-proxy404']:
+                expected_reads = expected[:2] if args.writer_mode == 'create-legacy' else expected[:3]
+                report['writer_own_request_order'] = [(hit.get('method', 'GET'), hit['path']) for hit in after] == expected_reads and all(hit['user'] == 8 for hit in after)
+                report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('writer', False) and report['writer_own_request_order'] and not any(hit.get('method') == 'PUT' for hit in after)
+            if args.writer_mode != 'direct' and not args.writer_mode.startswith('create'):
                 report['passed'] = report['passed'] and report.get('writer_target_pin_ready', False) and report.get('writer_pre_pin_requests') == [] and report.get('writer_source_admitted', False) and rows[-1].get('flush', False)
             if args.writer_mode == 'flush-import-pin':
                 before_pin = report.get('writer_before_import_pin', [])

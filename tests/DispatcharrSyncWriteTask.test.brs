@@ -1,5 +1,5 @@
 sub main()
-    for each scenario in ["write", "disabled", "stale", "child", "profiles-off", "held", "key-changed", "identity", "authority", "legacy", "missing", "get-failed", "local-commit", "root-race", "cancel", "put-failed", "late-success"]
+    for each scenario in ["write", "disabled", "stale", "child", "profiles-off", "held", "key-changed", "identity", "authority", "legacy", "missing", "missing404", "listed404", "proxy404", "legacy-listed404", "get-failed", "local-commit", "root-race", "cancel", "put-failed", "late-success"]
         syncWriterFixture(scenario)
         writeDispatcharrSync()
         check(m.key = "" and m.top.apiKey = "", "writer clears Task credentials on every terminal path: " + scenario)
@@ -8,7 +8,7 @@ sub main()
             if call.method = "PUT" then puts++
             check(instr(1, call.url, "app.molinete") = 0 and instr(1, call.url, "/users/7/") = 0, "writer never targets legacy or another account path")
         end for
-        if scenario = "write"
+        if scenario = "write" or scenario = "missing" or scenario = "missing404" or scenario = "listed404"
             check(m.top.result.ok and m.top.result.submitted and puts = 1 and m.calls.count() = 4, "own fresh me/list/key precede one exact checked-string PUT")
         else if scenario = "late-success"
             check(not m.top.result.ok and m.top.result.submitted and puts = 1, "late successful PUT cannot acknowledge a successor session")
@@ -87,10 +87,13 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
     else if right(url, 9) = "app-data/"
         apps = [{key: "alice.aeriotv", bytes: 100}]
         if m.scenario = "legacy" then apps = [{key: "app.molinete.aerio", bytes: 100}]
-        if m.scenario = "missing" then apps = []
+        if m.scenario = "missing" or m.scenario = "missing404" or m.scenario = "proxy404" then apps = []
+        if m.scenario = "legacy-listed404" then apps.push({key: "app.molinete.aerio", bytes: 100})
         response.body = FormatJson({apps: apps})
     else
         response.body = "{""schemaVersion"":3,""deviceId"":""fixture"",""platform"":""android"",""appVersion"":""1"",""updatedAt"":""2026-11-14T17:00:00Z"",""categories"":{""profiles"":{""updatedAt"":""2026-11-14T17:00:00Z"",""data"":{""rows"":[]}}}}"
+        if m.scenario = "missing404" or m.scenario = "listed404" or m.scenario = "legacy-listed404" then response.status = 404 : response.body = "{""code"":""key_not_found""}"
+        if m.scenario = "proxy404" then response.status = 404 : response.body = "<html>Not found</html>"
         if m.scenario = "get-failed" then response.status = 500
         if m.scenario = "root-race" then m.syncWriterRegistry.values[userProfileStoreKey("slot-a")] = "changed-after-read"
         if m.scenario = "cancel" then m.top.cancelRequested = true
