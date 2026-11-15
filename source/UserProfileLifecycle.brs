@@ -86,15 +86,27 @@ function userProfileRemovalPlan(store as object, id as string, now as integer, r
     return {ok: true, needsDefaultSwitch: false, pushRequired: not localOnly, store: cleaned, removedProfile: found}
 end function
 
-' Fail-closed interim activation boundary, replaced by the real PIN/picker
-' controller only once mrr.8/.9 and the active credential resolver are present.
-function userProfileStartupGate(store as object, ownProfileCredential = false as boolean, childAccessReady = false as boolean, childPinGranted = false as boolean) as object
+' Selection state only suppresses the picker, never identity/PIN/Child gates.
+' The Scene must bind actual closure/deep-link events before passing it. Until
+' that controller is integrated, absent readiness preserves the shipping fence.
+function userProfileStartupGate(store as object, ownProfileCredential = false as boolean, childAccessReady = false as boolean, childPinGranted = false as boolean, selection = invalid as dynamic) as object
     if store.readOnly = true then return {allowed: false, reason: "recovery"}
     if store.profiles.count() = 0 then return {allowed: true, reason: ""}
     cleaned = normalizeUserProfileStore(store, store.playlistId)
     if cleaned.readOnly = true then return {allowed: false, reason: "recovery"}
+    pickerFirst = false
+    pickerResolved = false
+    deepLink = false
+    if type(selection) = "roAssociativeArray"
+        pickerFirst = userProfileTrue(selection.ready)
+        if pickerFirst
+            pickerResolved = userProfileTrue(selection.resolved)
+            deepLink = userProfileTrue(selection.deepLink)
+        end if
+    end if
     for each profile in cleaned.profiles
         if profile.id = cleaned.active
+            if pickerFirst and userProfileFullAccess(profile.role) and cleaned.askAtLaunch and cleaned.profiles.count() > 1 and not pickerResolved and not deepLink then return {allowed: false, reason: "picker"}
             ' Even a keyless/held Child must finish its own launch PIN before
             ' seeing unavailable controls. The controller retains the Child
             ' activation fence after that PIN; it is not an adult/default grant.
@@ -109,6 +121,6 @@ function userProfileStartupGate(store as object, ownProfileCredential = false as
             if profile.pinType <> "none" then return {allowed: false, reason: "pin"}
         end if
     end for
-    if cleaned.askAtLaunch and cleaned.profiles.count() > 1 then return {allowed: false, reason: "picker"}
+    if cleaned.askAtLaunch and cleaned.profiles.count() > 1 and not pickerResolved and not deepLink then return {allowed: false, reason: "picker"}
     return {allowed: true, reason: ""}
 end function

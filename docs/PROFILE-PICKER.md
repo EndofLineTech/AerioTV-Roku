@@ -136,3 +136,15 @@ intent, with all ECP responses 200:
 `out/mrr-picker-busy-back-verify.log`. Earlier transport and reached-busy
 failures remain separate; the direct-handler red establishes the guard defect
 without treating HTTP acknowledgement alone as app event delivery.
+
+The startup gate now accepts a typed, private selection-state object. With
+explicit readiness, an unresolved adult Ask launch chooses the picker before
+the restored holder's PIN/key gate. Actual resolved selection or a deep link
+suppresses only that picker, never PIN/own-key/Child protection. Malformed or
+absent readiness preserves the existing shipping behavior; malformed closure
+does not suppress selection. No Scene caller supplies readiness yet.
+
+Tests-first red: `out/mrr-startup-picker-order-red.log`. Final full verification:
+`out/mrr-startup-picker-order-final-verify.log`; shared native policy suite:
+`out/mrr-startup-picker-order-final-native.log`. These are policy tests, not
+runtime deep-link/beacon acceptance.
