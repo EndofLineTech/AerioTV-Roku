@@ -70,3 +70,24 @@ changed URL/root/target, Child source/target, Ask Off, missing/replaced own key,
 Remember-On memory borrowing and missing/changed PIN refusal. All cases prove
 zero Flush and exact storage preservation. Normal-app authentication/import/
 adoption and own-form integration remain next, not inferred from these tests.
+
+The separate storage adoption API is now tested too. Its memory-only protection
+receipt binds the actual current read lifecycle, own identity/authority, key,
+retained roster root and exact target PIN record. Missing/legacy/valid canonical
+reads can produce a receipt; failed, unknown, malformed Profiles, foreign-user
+or stale reads cannot. Changed target protection invalidates the receipt and
+requires the controller to retire that read and issue a new one.
+
+`commitUserProfileStartupSelection` independently rechecks the no-actor preflight,
+PIN and receipt against the full verified own-user lineup. It then reuses only
+the shared content/settings transaction mechanics, not another flow's admission.
+The active target, own settings and fresh scope publish together in one Flush;
+pending edits and the default key remain. Failure restores exact prior storage.
+
+Tests-first red: `out/mrr-startup-selection-adoption-red.log`; native shared
+storage/receipt cases: `out/mrr-startup-selection-adoption-native.log`; full
+verification: `out/mrr-startup-selection-adoption-verify.log`. These exercise
+the real storage APIs with a fake registry on native Roku, **not** a completed
+normal-app startup authentication/import/controller flow. Actual Task callback
+binding, retained-protection publication, changed-PIN re-read and runtime
+adoption still require implementation and qualification.

@@ -215,6 +215,60 @@ sub main()
     context = startup.context
     context.pin = invalid
     check(userProfileStartupSelectionCurrent(startup.registry, context, nextAttempt, invalid, "", {}, false), "PIN form admission resolves only the target's own key without granting transport")
+    for each change in ["none", "flush", "missing-read", "read-nonce", "read-root", "read-key", "read-pin", "read-authority", "proof-url", "proof-identity", "proof-key", "proof-authority", "actor", "runtime-key", "pin"]
+        startup = startupSelectionFixture(connection, a, b, nextAttempt)
+        registry = startup.registry
+        context = startup.context
+        context.readNonce = "00000000-0000-4000-8000-000000000097"
+        read = {ok: true, state: "missing", verifiedUser: {id: 8, username: "bob", user_level: 1}, verifiedBaseUrl: connection.url, accountId: "8", accountUsername: "bob"}
+        context.protectionReceipt = userProfileStartupProtectionReceipt(context, read, context.readNonce)
+        proof = {ok: true, apiKey: "bob-own-key", verifiedUser: {id: 8, username: "bob", user_level: 1}, verifiedBaseUrl: connection.url, accountId: "8", accountUsername: "bob", channels: [], groups: [], generation: "startup-generation"}
+        actor = invalid
+        runtimeKey = ""
+        if change = "flush" then registry.failOnce = true
+        if change = "missing-read" then context.protectionReceipt = invalid
+        if change = "read-nonce" then context.readNonce = session
+        if change = "read-root" then context.protectionReceipt.storeRoot = "different"
+        if change = "read-key" then context.protectionReceipt.key = "foreign-key"
+        if change = "read-pin" then context.protectionReceipt.target = "old-pin-record"
+        if change = "read-authority" then context.protectionReceipt.authorizationSignature = "old-authority"
+        if change = "proof-url" then proof.verifiedBaseUrl = "https://foreign.test"
+        if change = "proof-identity" then proof.verifiedUser.id = 7
+        if change = "proof-key" then proof.apiKey = "default-key"
+        if change = "proof-authority" then proof.verifiedUser.user_level = 10
+        if change = "actor" then actor = outgoing
+        if change = "runtime-key" then runtimeKey = "default-key"
+        if change = "pin" then context.pin = invalid
+        before = FormatJson(registry.values)
+        result = commitUserProfileStartupSelection(registry, context, proof, nextAttempt, actor, runtimeKey, {})
+        if change = "none"
+            check(result.ok and result.scope.profileId = b.id and result.scope.accountId = "8" and result.scope.sessionId = nextAttempt and result.store.active = b.id, "startup adoption creates only the independently verified target scope")
+            check(registry.flushes = 1 and registry.read("connKey_slot-a") = "default-key" and result.preferences.profileSettings.themePreset = "forest" and result.store.pendingRoster, "startup selection/settings/own key use one Flush without borrowing source appearance/key or clearing pending intent")
+        else
+            check(not result.ok and FormatJson(registry.values) = before, "startup adoption refuses " + change + " with exact prior storage retained")
+            if change <> "flush" then check(registry.flushes = 0, "invalid startup receipt never starts a transaction")
+        end if
+    end for
+    for each change in ["failure", "foreign-url", "foreign-user", "foreign-name", "stale-read", "unknown-state", "invalid-profiles", "missing-pin", "changed-pin"]
+        startup = startupSelectionFixture(connection, a, b, nextAttempt)
+        context = startup.context
+        context.readNonce = "00000000-0000-4000-8000-000000000097"
+        read = {ok: true, state: "missing", verifiedUser: {id: 8, username: "bob", user_level: 1}, verifiedBaseUrl: connection.url, accountId: "8", accountUsername: "bob"}
+        readNonce = context.readNonce
+        if change = "failure" then read.ok = false
+        if change = "foreign-url" then read.verifiedBaseUrl = "https://foreign.test"
+        if change = "foreign-user" then read.verifiedUser.id = 7
+        if change = "foreign-name" then read.accountUsername = "another"
+        if change = "stale-read" then readNonce = session
+        if change = "unknown-state" then read.state = "future"
+        if change = "invalid-profiles"
+            read.state = "ready"
+            read.profilesState = "invalid"
+        end if
+        if change = "missing-pin" then context.pin = invalid
+        if change = "changed-pin" then context.target = setCanonicalPreference(context.target, "pinHash", string(64, "c"))
+        check(userProfileStartupProtectionReceipt(context, read, readNonce) = invalid, "startup protection receipt cannot be fabricated from " + change)
+    end for
     print "ALL TESTS PASSED"
 end sub
 
@@ -229,6 +283,7 @@ function startupSelectionFixture(connection as object, a as object, b as object,
     store.profiles = [source, target]
     store.active = source.id
     store = setCanonicalPreference(store, "askAtLaunch", true)
+    store = setCanonicalPreference(store, "pendingRoster", true)
     store = normalizeUserProfileStore(store, connection.id)
     registry = switchRegistryFixture(connection, store)
     registry.write(userProfileKeyName(connection.id, target.id), "bob-own-key")
