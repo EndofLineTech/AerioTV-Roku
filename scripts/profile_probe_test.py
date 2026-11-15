@@ -144,6 +144,7 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileActiveRetirementFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'ProfileRetirementColdFixture')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncSwitchRosterStoreProbeChecks')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncWriteBodyProbeChecks')], check=True)
 
     def test_native_roster_storage_checks_keep_broker_seam_private(self):
         spec = importlib.util.spec_from_file_location('native_store_probe', Path(__file__).with_name('build-profile-probe.py'))
@@ -160,6 +161,10 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertNotIn('function requestGateAccessAllowed(', checks)
                 self.assertIn('switchRosterStoreFixtureAccessAllowed(', storage)
                 self.assertIn('m.profilePreferenceDecoder = invalid', checks)
+                write_checks = package.read('source/DispatcharrSyncWriteBodyProbeChecks.brs').decode()
+                self.assertIn('m.syncWriteHostInterpreter = false', write_checks)
+                self.assertIn('m.syncWriteParser = invalid', write_checks)
+                self.assertNotIn('return ParseJson(raw)', write_checks)
 
     def test_address_handler_probe_is_private_and_cannot_ship(self):
         spec = importlib.util.spec_from_file_location('address_probe', Path(__file__).with_name('test-profile-address-native.py'))

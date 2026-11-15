@@ -100,6 +100,7 @@ def build(output, base_url, registry=False, model_store=False):
         storage_source = storage_source.replace('requestGateAccessAllowed(', 'switchRosterStoreFixtureAccessAllowed(')
         package.writestr('source/DispatcharrSyncSwitchRosterStore.brs', storage_source)
         package.write(ROOT / 'source/DispatcharrSyncPullStore.brs', 'source/DispatcharrSyncPullStore.brs')
+        package.write(ROOT / 'source/DispatcharrSyncWriteBody.brs', 'source/DispatcharrSyncWriteBody.brs')
         package.write(ROOT / 'source/UserProfilePinPolicy.brs', 'source/UserProfilePinPolicy.brs')
         package.write(ROOT / 'source/UserProfileCredential.brs', 'source/UserProfileCredential.brs')
         package.write(ROOT / 'source/UserProfileManagementPolicy.brs', 'source/UserProfileManagementPolicy.brs')
@@ -114,6 +115,11 @@ def build(output, base_url, registry=False, model_store=False):
         for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'RequestGateClient', 'RequestGateModel', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileCleanup', 'UserProfileScope', 'UserProfileScopeStore', 'PreferenceModel', 'ConnectionStoreModel', 'RemoteMapModel', 'GuideSettingsModel', 'ReminderModel']:
             package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
         if model_store:
+            write_checks = (ROOT / 'tests/DispatcharrSyncWriteBody.test.brs').read_text().split('sub check(', 1)[0]
+            write_checks = write_checks.replace('sub main()', 'sub runDispatcharrSyncWriteBodyChecks()').replace('check(', 'profileAssert(')
+            write_checks = write_checks.replace('m.syncWriteHostInterpreter = true', 'm.syncWriteHostInterpreter = false')
+            write_checks = write_checks.replace('m.syncWriteParser = function(raw as string) as dynamic\n        return ParseJson(raw)\n    end function', 'm.syncWriteParser = invalid')
+            package.writestr('source/DispatcharrSyncWriteBodyProbeChecks.brs', write_checks)
             storage_checks = (ROOT / 'tests/DispatcharrSyncSwitchRosterStore.test.brs').read_text().split('sub check(', 1)[0]
             storage_checks = storage_checks.replace('sub main()', 'sub runDispatcharrSyncSwitchRosterStoreChecks()').replace('check(', 'profileAssert(')
             storage_checks = storage_checks.replace('requestGateAccessAllowed(', 'switchRosterStoreFixtureAccessAllowed(')
@@ -241,6 +247,7 @@ def build(output, base_url, registry=False, model_store=False):
     print "ALL TESTS PASSED"''')
                 package.writestr(f'source/{name}ProbeChecks.brs', source)
         else:
+            package.writestr('source/DispatcharrSyncWriteBodyProbeChecks.brs', 'sub runDispatcharrSyncWriteBodyChecks()\nend sub\n')
             package.writestr('source/DispatcharrSyncSwitchRosterStoreProbeChecks.brs', 'sub runDispatcharrSyncSwitchRosterStoreChecks()\nend sub\nfunction switchRosterStoreFixtureAccessAllowed(url as string, key as string) as boolean\nreturn false\nend function\n')
             package.writestr('source/DispatcharrSyncKeyProbeChecks.brs', 'sub runDispatcharrSyncKeyChecks()\nend sub\n')
             package.writestr('source/DispatcharrSyncRosterProbeChecks.brs', 'sub runDispatcharrSyncRosterChecks()\nend sub\n')
