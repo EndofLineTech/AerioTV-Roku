@@ -7,6 +7,13 @@ function userProfileAvatarColors() as object
     return ["teal", "blue", "orange", "ember", "green", "purple", "slate", "sea"]
 end function
 
+function userProfileAvatarHex(color as string) as string
+    colors = {teal: "1AC4D8", blue: "3B82F6", orange: "FB923C", ember: "C2410C", green: "22C55E", purple: "8B5CF6", slate: "94A3B8", sea: "2B7A86"}
+    colors.setModeCaseSensitive()
+    if not colors.doesExist(color) then return ""
+    return colors[color]
+end function
+
 function userProfileNormalizeAvatar(raw as dynamic) as object
     icon = "initial"
     color = ""

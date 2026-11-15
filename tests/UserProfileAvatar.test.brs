@@ -16,6 +16,12 @@ sub main()
     check(userProfileAvatarInitial(" " + chr(9), "sam") = "S", "blank name falls back to username")
     check(userProfileAvatarInitial("", "") = "?", "blank names use question mark")
     check(userProfileAvatarIcons().count() = 13 and userProfileAvatarIcons()[0] = "initial" and userProfileAvatarIcons()[12] = "movie", "interoperable icon catalog order")
+    colors = userProfileAvatarColors()
+    hexes = ["1AC4D8", "3B82F6", "FB923C", "C2410C", "22C55E", "8B5CF6", "94A3B8", "2B7A86"]
+    for i = 0 to colors.count() - 1
+        check(userProfileAvatarHex(colors[i]) = hexes[i], "shared avatar palette has exact protocol hex")
+    end for
+    check(userProfileAvatarHex("future") = "" and userProfileAvatarHex("Teal") = "", "unknown or case-mismatched color has no invented override")
     print "ALL TESTS PASSED"
 end sub
 

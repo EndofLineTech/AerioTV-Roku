@@ -22,7 +22,7 @@ function userProfilePickerPlan(store as object, purpose as string, provider as s
     plan.show = true
     plan.back = "close"
     if purpose = "launch" then plan.back = "exit"
-    for each profile in cleaned.profiles
+    for each profile in userProfileSorted(cleaned.profiles)
         current = profile.id = cleaned.active
         if current then plan.focus = plan.tiles.count()
         plan.tiles.push({kind: "profile", id: profile.id, name: profile.displayName, username: profile.username, avatar: userProfileNormalizeAvatar(profile.avatar), locked: profile.pinType <> "none", current: current})

@@ -44,9 +44,12 @@ sub drawPickerTiles()
             colorName = ""
             if type(tile.avatar.color) = "String" or type(tile.avatar.color) = "roString" then colorName = tile.avatar.color
             if colorName = "" then colorName = userProfileAvatarColor(tile.username)
-            colors = {teal: "0x4FD1C5FF", blue: "0x3182CEFF", orange: "0xF6AD55FF", ember: "0xC05621FF", green: "0x68D391FF", purple: "0x805AD5FF", slate: "0xA0AEC0FF", sea: "0x2C7A7BFF"}
-            avatarColor = colors[colorName]
-            if avatarColor = invalid then avatarColor = colors.teal
+            avatarHex = userProfileAvatarHex(colorName)
+            if avatarHex = ""
+                colorName = userProfileAvatarColor(tile.username)
+                avatarHex = userProfileAvatarHex(colorName)
+            end if
+            avatarColor = "0x" + avatarHex + "FF"
             uiSurface(group, 137, 25, 96, 96, 48, avatarColor)
             ink = "0x" + userProfileAvatarInk(colorName) + "FF"
             if tile.locked

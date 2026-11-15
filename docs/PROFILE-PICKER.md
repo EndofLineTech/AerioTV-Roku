@@ -91,3 +91,18 @@ the real storage APIs with a fake registry on native Roku, **not** a completed
 normal-app startup authentication/import/controller flow. Actual Task callback
 binding, retained-protection publication, changed-PIN re-read and runtime
 adoption still require implementation and qualification.
+
+## Ordering/palette correction
+
+Integration audit found that the first private component used a sample palette
+and the plan used raw stored-array order. `AerioTV-Roku-9hcs` corrects both:
+the plan now uses existing `userProfileSorted` (moved order, default/creation
+tie-breaks and stable insertion), and the component uses the exact eight-color
+hex lookup in `UserProfileAvatar.brs`, with the existing contrast-ink policy.
+Tests-first failures are preserved in `out/mrr-picker-order-palette-red.log`
+and `out/mrr-picker-palette-red.log`. Shared native model checks and full
+verification pass. Real ECP UI requalification passes in
+`out/mrr-picker-order-palette-ui-repeat-native.log`; the updated screenshot
+was inspected. The preceding run's Select timeout is retained separately in
+`out/mrr-picker-order-palette-ui-native.json`; exact restoration succeeded on
+both. No intermittent delivery root cause or public startup completion is claimed.
