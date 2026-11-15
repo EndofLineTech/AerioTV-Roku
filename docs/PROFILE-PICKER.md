@@ -126,3 +126,13 @@ verification pass. Real ECP UI requalification passes in
 was inspected. The preceding run's Select timeout is retained separately in
 `out/mrr-picker-order-palette-ui-native.json`; exact restoration succeeded on
 both. No intermittent delivery root cause or public startup completion is claimed.
+
+Busy loading now fences new selections but still dispatches Back to its owner
+(`AerioTV-Roku-ce25`). Tests-first direct `onKeyEvent` failure is retained at
+`out/mrr-picker-busy-back-handler-red.log`. The expanded native fixture
+deliberately sets busy before real Back; it now receives the expected final
+intent, with all ECP responses 200:
+`out/mrr-picker-busy-back-qualified-native.log`. Full verification:
+`out/mrr-picker-busy-back-verify.log`. Earlier transport and reached-busy
+failures remain separate; the direct-handler red establishes the guard defect
+without treating HTTP acknowledgement alone as app event delivery.

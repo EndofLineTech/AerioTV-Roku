@@ -98,6 +98,14 @@ end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if key <> "OK" and key <> "back" and key <> "left" and key <> "right" and key <> "up" and key <> "down" then return false
+    ' Loading fences new selections, never the parent's launch-exit/switcher-
+    ' cancel path. Do not leave a held OK armed across that cancellation.
+    if key = "back" and press
+        m.holdTimer.control = "stop"
+        m.input = userProfilePickerInput(m.input, key, press)
+        emitPickerIntent()
+        return true
+    end if
     if m.top.busy or m.input.count = 0 then return true
     wasArmed = m.input.armed
     m.input = userProfilePickerInput(m.input, key, press)

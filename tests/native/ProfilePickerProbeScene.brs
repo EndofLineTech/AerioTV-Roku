@@ -33,6 +33,7 @@ sub onProbeIntent(event as object)
         m.model.tiles.push({kind: "manage", name: "Manage Profiles"})
         m.picker.model = m.model
     end if
+    if m.step = 3 then m.picker.busy = true
     m.step++
     if m.step = 5 then print "[picker-probe] "; FormatJson({kind: "complete", passed: not m.failed})
 end sub
