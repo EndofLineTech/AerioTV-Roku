@@ -10,6 +10,7 @@
     <field id="connectionRoot" type="string" />
     <field id="storeRoot" type="string" />
     <field id="profilesEnabled" type="boolean" />
+    <field id="pullOnly" type="boolean" />
     <field id="expectedAuthorizationSignature" type="string" />
     <field id="deviceId" type="string" />
     <field id="appVersion" type="string" />

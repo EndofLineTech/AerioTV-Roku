@@ -5,6 +5,7 @@ sub init()
     m.profileSwitchRosterReady = false
     m.profileDefaultRetirementReady = false
     m.profileSyncWriterReady = false
+    m.profileSyncSchedulingReady = false
     m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false, profileownsigninpending: false, profileownsigninnonce: "", requestgaterecovery: "", profilesyncflush: ""})
     m.profileGateCover = m.top.findNode("profileGateCover")
     m.profileGateClock = m.top.findNode("profileGateClock")

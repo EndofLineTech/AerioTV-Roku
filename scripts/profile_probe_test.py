@@ -21,6 +21,7 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertIn('    m.profileChildAccessReady = false', scene)
         self.assertIn('    m.profileDefaultRetirementReady = false', scene)
         self.assertIn('    m.profileSyncWriterReady = false', scene)
+        self.assertIn('    m.profileSyncSchedulingReady = false', scene)
         writer = (root / 'components/DispatcharrSyncWriteTask.brs').read_text()
         self.assertIn('    m.syncWriterReady = false', writer)
 
@@ -151,6 +152,7 @@ class ProfileProbeTest(unittest.TestCase):
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncWriteBodyProbeChecks')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncRosterWriteProbeChecks')], check=True)
         subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncAckStoreProbeChecks')], check=True)
+        subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileChildEscapeFixture', 'DispatcharrSyncScheduleProbeChecks')], check=True)
 
     def test_native_roster_storage_checks_keep_broker_seam_private(self):
         spec = importlib.util.spec_from_file_location('native_store_probe', Path(__file__).with_name('build-profile-probe.py'))
@@ -452,7 +454,7 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertIn('m.profileSyncWriterReady = true', scene)
                 self.assertIn('m.writerProbeMode = "flush"', scene)
                 self.assertNotIn('PROFILE_WRITER_MODE', scene)
-            for mode in ['create', 'create-legacy', 'create-proxy404', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement']:
+            for mode in ['schedule', 'create', 'create-legacy', 'create-proxy404', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement']:
                 probe.build(output, normal, 'SyntheticFlushFailureSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_writer=True, writer_mode=mode)
                 with zipfile.ZipFile(output) as package:
                     self.assertIn('m.writerProbeMode = "' + mode + '"', package.read('components/AerioScene.brs').decode())

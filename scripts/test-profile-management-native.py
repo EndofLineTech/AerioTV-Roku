@@ -94,7 +94,7 @@ def startup_probe_timer(source):
 
 
 def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False, switch_authority_race=False, switch_active_retirement=False, active_default_mode='usable', switch_writer=False, writer_mode='direct'):
-    if writer_mode not in ['direct', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'] or (writer_mode != 'direct' and not switch_writer):
+    if writer_mode not in ['direct', 'schedule', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'] or (writer_mode != 'direct' and not switch_writer):
         raise ValueError('Writer mode requires the private writer fixture')
     if switch_writer and (not switching or not switch_roster or any([directions, switch_pin, cancel_pin, reject_active, remember_off, child_settings, reconnect, cold_restore, default_filter, assignment_refresh, child_escape, child_launch, child_available, child_retry, child_rejected, manual_refresh, manual_recording, favorite_retention, switch_recording, switch_import_pin, switch_cleanup, switch_target_retirement, switch_authority_race, switch_active_retirement]) or active_default_mode != 'usable'):
         raise ValueError('Writer fixture requires only --switch --switch-roster')
@@ -837,7 +837,7 @@ def main():
     parser.add_argument('--switch-authority-race', action='store_true', help='Only with --switch --switch-roster: change target authority on final me and require rollback with zero target lineup requests')
     parser.add_argument('--switch-active-retirement', action='store_true', help='Only with --switch --switch-roster: C own roster removes actual B, requiring default A own system adoption without its PIN')
     parser.add_argument('--switch-writer', action='store_true', help='Only with --switch --switch-roster: private own-B canonical re-read and checked-string PUT')
-    parser.add_argument('--writer-mode', choices=['direct', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'], default='direct', help='Private writer fixture: direct Task, canonical creation/refusal, outgoing flush, own retirement, imported PIN or refusal')
+    parser.add_argument('--writer-mode', choices=['direct', 'schedule', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'], default='direct', help='Private writer fixture: scheduled or direct Task, canonical creation/refusal, outgoing flush, own retirement, imported PIN or refusal')
     parser.add_argument('--active-default-mode', choices=['usable', 'missing', 'held', 'child', 'cold', 'simultaneous', 'import-pin', 'import-child'], default='usable', help='Only with --switch-active-retirement: default own credential/access state')
     parser.add_argument('--reconnect', action='store_true', help='With --switch, reconnect B through early roster read and full activation before returning to A')
     parser.add_argument('--switch-pin', action='store_true', help='With --switch, require the real stored numeric target PIN before each switch')
@@ -952,6 +952,9 @@ def main():
                 else:
                     valid = valid and value['FutureEnvelope'] == 1794675600000 and type(future['KeepDouble']) is float and future['KeepDouble'] == 1.0 and future['Precision'] == 1.3 and future['Emoji'] == '😀' and roster['FutureRoster'] == {'Case': 1, 'case': 2}
                 valid = valid and type(value['schemaVersion']) is int and len(value['updatedAt']) == 20 and value['updatedAt'].endswith('Z') and all(type(row[0]) is int and type(row[7]) is int and type(row[9]) is int for row in roster['rows'])
+                if args.writer_mode == 'schedule':
+                    valid = valid and next(row for row in roster['rows'] if row[0] == 8)[2] == 'Scheduled synthetic B'
+                    fixture_state['schedule_put_at'] = time.monotonic()
                 if args.writer_mode == 'flush-import-pin':
                     target = next(row for row in roster['rows'] if row[0] == 7)
                     salt = '0123456789abcdef0123456789abcdef'
@@ -1124,6 +1127,8 @@ def main():
                 if '"kind":"writer-ready"' in line:
                     report['writer_request_boundary'] = len(hits)
                     fixture_state['writer_started'] = True
+                if '"kind":"schedule-dirty"' in line:
+                    fixture_state['schedule_dirty_at'] = time.monotonic()
                 if '"kind":"writer-target-pin-ready"' in line:
                     report['writer_pre_pin_requests'] = hits[report['writer_request_boundary']:].copy()
                     report['writer_target_pin_ready'] = json.loads(line.split('[profile-management] ', 1)[1]).get('ready', False)
@@ -1191,7 +1196,7 @@ def main():
         report['switch_key_events'] = [row for row in rows if row.get('kind') == 'switch-key']
         report['switch_guide_key_events'] = [row for row in rows if row.get('kind') == 'switch-guide-key']
         report['default_rejection_ready'] = any(row.get('kind') == 'active-default-reject-ready' for row in rows)
-        rows = [row for row in rows if row.get('kind') not in ['switch-key', 'switch-guide-key', 'active-default-reject-ready', 'retirement-crash-ready', 'retirement-cold-pin-ready', 'retirement-cold-old-pin-refused', 'writer-ready', 'writer-target-pin-ready', 'writer-flush-started', 'writer-imported-pin-ready', 'writer-import-old-refused']]
+        rows = [row for row in rows if row.get('kind') not in ['switch-key', 'switch-guide-key', 'active-default-reject-ready', 'retirement-crash-ready', 'retirement-cold-pin-ready', 'retirement-cold-old-pin-refused', 'writer-ready', 'schedule-dirty', 'writer-target-pin-ready', 'writer-flush-started', 'writer-imported-pin-ready', 'writer-import-old-refused']]
         report['events'] = rows
         if args.child_escape:
             report['requests'] = hits
@@ -1257,7 +1262,13 @@ def main():
                 expected_reads = expected[:2] if args.writer_mode == 'create-legacy' else expected[:3]
                 report['writer_own_request_order'] = [(hit.get('method', 'GET'), hit['path']) for hit in after] == expected_reads and all(hit['user'] == 8 for hit in after)
                 report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('writer', False) and report['writer_own_request_order'] and not any(hit.get('method') == 'PUT' for hit in after)
-            if args.writer_mode != 'direct' and not args.writer_mode.startswith('create'):
+            if args.writer_mode == 'schedule':
+                sequence = expected[:3] + expected + expected[:3] * 3
+                report['writer_own_request_order'] = [(hit.get('method', 'GET'), hit['path']) for hit in after] == sequence and all(hit['user'] == 8 for hit in after)
+                elapsed = fixture_state.get('schedule_put_at', 0) - fixture_state.get('schedule_dirty_at', 0)
+                report['schedule_dirty_to_put_seconds'] = elapsed
+                report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('scheduled', False) and report['writer_own_request_order'] and report['writer_body_ok'] and elapsed >= 1
+            if args.writer_mode not in ['direct', 'schedule'] and not args.writer_mode.startswith('create'):
                 report['passed'] = report['passed'] and report.get('writer_target_pin_ready', False) and report.get('writer_pre_pin_requests') == [] and report.get('writer_source_admitted', False) and rows[-1].get('flush', False)
             if args.writer_mode == 'flush-import-pin':
                 before_pin = report.get('writer_before_import_pin', [])

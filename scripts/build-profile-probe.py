@@ -102,9 +102,11 @@ def build(output, base_url, registry=False, model_store=False):
         package.write(ROOT / 'source/DispatcharrSyncPullStore.brs', 'source/DispatcharrSyncPullStore.brs')
         package.write(ROOT / 'source/DispatcharrSyncWriteBody.brs', 'source/DispatcharrSyncWriteBody.brs')
         package.write(ROOT / 'source/DispatcharrSyncRosterWrite.brs', 'source/DispatcharrSyncRosterWrite.brs')
+        package.write(ROOT / 'source/DispatcharrSyncSchedule.brs', 'source/DispatcharrSyncSchedule.brs')
         ack_source = (ROOT / 'source/DispatcharrSyncAckStore.brs').read_text().replace('requestGateCredentialHash(', 'syncAckFixtureHash(').replace('requestGateAccessAllowed(', 'syncAckFixtureAccessAllowed(')
         package.writestr('source/DispatcharrSyncAckStore.brs', ack_source)
         package.write(ROOT / 'components/ProfileSyncNavigation.brs', 'source/ProfileSyncNavigation.brs')
+        package.write(ROOT / 'components/ProfileSyncSessionNavigation.brs', 'source/ProfileSyncSessionNavigation.brs')
         package.write(ROOT / 'source/TaskSupport.brs', 'source/TaskSupport.brs')
         package.write(ROOT / 'source/UserProfilePinPolicy.brs', 'source/UserProfilePinPolicy.brs')
         package.write(ROOT / 'source/UserProfileCredential.brs', 'source/UserProfileCredential.brs')
@@ -120,6 +122,9 @@ def build(output, base_url, registry=False, model_store=False):
         for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'RequestGateClient', 'RequestGateModel', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileCleanup', 'UserProfileScope', 'UserProfileScopeStore', 'PreferenceModel', 'ConnectionStoreModel', 'RemoteMapModel', 'GuideSettingsModel', 'ReminderModel']:
             package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
         if model_store:
+            schedule_checks = (ROOT / 'tests/DispatcharrSyncSchedule.test.brs').read_text().split('sub check(', 1)[0]
+            schedule_checks = schedule_checks.replace('sub main()', 'sub runDispatcharrSyncScheduleChecks()').replace('check(', 'profileAssert(')
+            package.writestr('source/DispatcharrSyncScheduleProbeChecks.brs', schedule_checks)
             ack_checks = (ROOT / 'tests/DispatcharrSyncAckStore.test.brs').read_text().split('sub check(', 1)[0]
             ack_checks = ack_checks.replace('sub main()', 'sub runDispatcharrSyncAckStoreChecks()').replace('check(', 'profileAssert(')
             ack_checks = ack_checks.replace('requestGateCredentialHash(', 'syncAckFixtureHash(').replace('requestGateAccessAllowed(', 'syncAckFixtureAccessAllowed(')
@@ -260,6 +265,7 @@ def build(output, base_url, registry=False, model_store=False):
     print "ALL TESTS PASSED"''')
                 package.writestr(f'source/{name}ProbeChecks.brs', source)
         else:
+            package.writestr('source/DispatcharrSyncScheduleProbeChecks.brs', 'sub runDispatcharrSyncScheduleChecks()\nend sub\n')
             package.writestr('source/DispatcharrSyncAckStoreProbeChecks.brs', 'sub runDispatcharrSyncAckStoreChecks()\nend sub\nfunction syncAckFixtureHash(key as string) as string\nreturn ""\nend function\nfunction syncAckFixtureAccessAllowed(url as string, key as string) as boolean\nreturn false\nend function\n')
             package.writestr('source/DispatcharrSyncRosterWriteProbeChecks.brs', 'sub runDispatcharrSyncRosterWriteChecks()\nend sub\n')
             package.writestr('source/DispatcharrSyncWriteBodyProbeChecks.brs', 'sub runDispatcharrSyncWriteBodyChecks()\nend sub\n')

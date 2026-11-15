@@ -259,3 +259,43 @@ and proxy-404 refusals retained exact pending roots and sent no PUT
 the owner app. Full verification passed at
 `out/mrr-sync-create-canonical-final-verify.log`. Legacy migration remains read-only,
 not implicitly approved by canonical creation support.
+
+## Private scheduled sessions
+
+`DispatcharrSyncSchedule.brs` now models session-start pulls, one-second dirty
+debounce, playlist-wide thirty-second picker throttling with one two-second
+re-read, fifteen-minute cadence and explicit network-return requests. There is
+one in-flight operation; failures wait at least sixty seconds and broker parks
+still gate every request. Old-scope queues/completions cannot affect a successor.
+Queue state holds scope and a digest of roster bytes, never raw credentials or
+roster/PIN material. Durable pending intent remains in the roster store.
+
+`ProfileSyncSessionNavigation.brs` connects that model to actual own Tasks and
+receipt publication/acknowledgement. Pull-only Tasks never PUT, even if dirty;
+clean read publication does not invent pending intent. Authority/protection
+refusals cover the source; active-own tombstones use explicit own retirement.
+Scheduled work refuses closed PIN/Child/switch gates and cancels on reset.
+Switch/flush admission refuses an already scheduled operation rather than racing
+two writers. A separate shipping-off `m.profileSyncSchedulingReady` and explicit
+device-wide opt-in are both required. Public startup/picker/opt-in controls and
+native link-status event subscription are not connected by this private fixture.
+
+Tests-first host timing/controller/race checks passed. Actual native Timer/HTTP
+qualification passed at `out/mrr-sync-session-scheduler-final-native.log`: initial
+B-own pull, debounced own PUT/ack, picker pull plus one re-read (duplicate picker
+request suppressed), then explicit network-return pull, all under unchanged B's
+scope and with unknown-category/wire preservation. The earlier native run measured
+1.72 seconds from dirty marker to PUT. Fifteen-minute timing and thirty-second
+expiry are native model arithmetic assertions, not claims of a real fifteen-minute
+foreground soak or physical network-link transition.
+
+Native model qualification exposed delayed observation of a normalized read root;
+the controller now publishes its new digest to the debounce model immediately.
+A separate fixture scope built from literal keys lost case on canonical clone;
+the fixture now uses precise JSON session fields. Both earlier failing logs are
+retained. Final expanded native matrix, outgoing-flush regression and full verify
+passed (`out/mrr-sync-session-scheduler-qualified-primitives-native.log`,
+`out/mrr-sync-session-scheduler-flush-regression-native.log`,
+`out/mrr-sync-session-scheduler-final-verify.log`). All runs restored the exact owner
+app and cleaned disposable state. Public integration, broader categories and
+acceptance remain open; no shipping flags were enabled.

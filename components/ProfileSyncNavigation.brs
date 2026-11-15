@@ -4,6 +4,7 @@ function beginOutgoingUserProfileSync(context as object) as boolean
     if m.userProfileRecoveryRequired = true then return false
     if m.profileSyncWriterReady <> true or context.unavailableChild = true then return false
     if m.profileSyncWriteTask <> invalid or m.profileSyncContext <> invalid then return false
+    if m.profileScheduledSyncTask <> invalid then return false
     if context.connection.id <> m.selectedConnectionId or not userProfileSwitchActorCurrent(context) then return false
     if m.activeUserScope = invalid or textValue(m.apiKey) = "" then return false
     if textValue(m.global.activeusersession) <> textValue(m.activeUserScope.sessionId) then return false
@@ -224,6 +225,7 @@ sub onOutgoingUserProfileSyncState(event as object)
 end sub
 
 sub closeOutgoingUserProfileSync()
+    closeScheduledProfileSync()
     context = m.profileSyncContext
     if context <> invalid and m.global <> invalid
         if textValue(m.global.profilesyncflush) = textValue(context.flushNonce) then m.global.profilesyncflush = ""

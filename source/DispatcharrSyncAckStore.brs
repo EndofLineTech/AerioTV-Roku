@@ -73,7 +73,7 @@ end function
 
 ' Shared current-own-storage proof; neither read publication nor successful PUT
 ' acknowledgement may substitute a target/default scope or cached credential.
-function dispatcharrSyncOwnReceiptAccess(registry as object, connection as object, previous as object, receipt as object, activeScope as dynamic, activeKey as string, memoryKeys as object) as object
+function dispatcharrSyncOwnReceiptAccess(registry as object, connection as object, previous as object, receipt as object, activeScope as dynamic, activeKey as string, memoryKeys as object, requirePending = true as boolean) as object
     denied = {ok: false}
     if not userProfileSameSession(receipt.scope, activeScope) then return denied
     if connection.provider <> "dispatcharr" or previous.playlistId <> connection.id then return denied
@@ -86,7 +86,8 @@ function dispatcharrSyncOwnReceiptAccess(registry as object, connection as objec
     if entry = invalid then return denied
     if FormatJson(entry) <> FormatJson(normalizeConnectionEntry(connection)) then return denied
     actual = loadUserProfileStore(registry, connection.id)
-    if actual.readOnly = true or previous.readOnly = true or actual.pendingRoster <> true then return denied
+    if actual.readOnly = true or previous.readOnly = true then return denied
+    if requirePending and actual.pendingRoster <> true then return denied
     if FormatJson(actual) <> FormatJson(normalizeUserProfileStore(previous, connection.id)) then return denied
     target = invalid
     for each profile in actual.profiles
@@ -138,7 +139,7 @@ function dispatcharrSyncOwnReadAccess(registry as object, connection as object, 
     if receipt.readStatus <> 200 then return denied
     if authorizationSignature = "" or GetInterface(receipt.authorizationSignature, "ifString") = invalid then return denied
     if receipt.authorizationSignature <> authorizationSignature then return denied
-    access = dispatcharrSyncOwnReceiptAccess(registry, connection, previous, receipt, activeScope, activeKey, memoryKeys)
+    access = dispatcharrSyncOwnReceiptAccess(registry, connection, previous, receipt, activeScope, activeKey, memoryKeys, false)
     if not access.ok then return denied
     decoded = dispatcharrSyncRosterDecode(receipt.profileData)
     if not decoded.ok then return denied

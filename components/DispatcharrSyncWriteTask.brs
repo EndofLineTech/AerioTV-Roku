@@ -40,6 +40,10 @@ sub writeDispatcharrSync()
     latest = syncWriterReadObject(url, 131072, discovery.legacy.count() = 0)
     if not latest.ok then finishDispatcharrSyncWrite(latest) : return
     if latest.state = "missing" then latest.data = syncWriterMissingEnvelope()
+    if m.top.pullOnly = true
+        finishDispatcharrSyncWrite(syncWriterLocalReadReceipt(latest.data, user))
+        return
+    end if
     prepared = dispatcharrSyncPrepareProfilesWrite(latest.data, m.writerStore, m.top.profilesEnabled, CreateObject("roDateTime").asSeconds(), m.top.acknowledgedStamp, m.top.deviceId, m.top.appVersion)
     if not prepared.ok
         if type(prepared.localPlan) = "roAssociativeArray"
@@ -83,7 +87,8 @@ function syncWriterAccessCurrent() as boolean
     if entry.provider <> "dispatcharr" or entry.url <> m.top.baseUrl then return false
     if m.writerRegistry.read(userProfileStoreKey(entry.id)) <> m.top.storeRoot then return false
     store = loadUserProfileStore(m.writerRegistry, entry.id)
-    if store.readOnly = true or store.active <> scope.profileId or store.pendingRoster <> true then return false
+    if store.readOnly = true or store.active <> scope.profileId then return false
+    if store.pendingRoster <> true and m.top.pullOnly <> true then return false
     target = invalid
     for each profile in store.profiles
         if profile.addressHeld then return false

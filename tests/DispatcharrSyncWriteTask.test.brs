@@ -1,5 +1,5 @@
 sub main()
-    for each scenario in ["write", "disabled", "stale", "child", "profiles-off", "held", "key-changed", "identity", "authority", "legacy", "missing", "missing404", "listed404", "proxy404", "legacy-listed404", "get-failed", "local-commit", "root-race", "cancel", "put-failed", "late-success"]
+    for each scenario in ["write", "pull-clean", "pull-dirty", "disabled", "stale", "child", "profiles-off", "held", "key-changed", "identity", "authority", "legacy", "missing", "missing404", "listed404", "proxy404", "legacy-listed404", "get-failed", "local-commit", "root-race", "cancel", "put-failed", "late-success"]
         syncWriterFixture(scenario)
         writeDispatcharrSync()
         check(m.key = "" and m.top.apiKey = "", "writer clears Task credentials on every terminal path: " + scenario)
@@ -20,6 +20,7 @@ sub main()
         if scenario = "disabled" or scenario = "stale" or scenario = "child" or scenario = "profiles-off" or scenario = "held" or scenario = "key-changed" then check(m.calls.count() = 0, "failed admission sends no request: " + scenario)
         if scenario = "identity" or scenario = "authority" then check(m.calls.count() = 1, "wrong identity/authority cannot reach App Data discovery")
         if scenario = "local-commit" then check(m.top.result.state = "local-commit" and m.top.result.readStatus = 200 and m.top.result.submitted = false and userProfileSameSession(m.top.result.scope, m.top.userScope), "read receipt stays bound to its actual own source and is not a write acknowledgement")
+        if scenario = "pull-clean" or scenario = "pull-dirty" then check(m.top.result.state = "local-commit" and m.calls.count() = 3 and not m.top.result.submitted, "read-only schedule uses fresh own me/list/key and cannot PUT even when dirty")
     end for
     print "ALL TESTS PASSED"
 end sub
@@ -40,6 +41,7 @@ sub syncWriterFixture(scenario as string)
     store.profiles = [profile]
     store.active = profile.id
     store.pendingRoster = true
+    if scenario = "pull-clean" then store.pendingRoster = false
     values = {connectionsV1: FormatJson(connections)}
     values[userProfileStoreKey("slot-a")] = FormatJson(store)
     values["connKey_slot-a"] = "synthetic-own"
@@ -56,6 +58,7 @@ sub syncWriterFixture(scenario as string)
     scope = userProfileSessionScope(entry, profile.id, 7, "own-generation", "00000000-0000-4000-8000-000000000090")
     m.global = {activeusersession: scope.sessionId, profilegateclosed: false}
     m.top = {baseUrl: entry.url, apiKey: "synthetic-own", authMode: "x-api-key", userScope: scope, aeriosession: scope.sessionId, storeRoot: values[userProfileStoreKey("slot-a")], connectionRoot: values.connectionsV1, profilesEnabled: scenario <> "profiles-off", expectedAuthorizationSignature: dispatcharrAuthorizationSignature({id: 7, username: "Alice", user_level: 1}), deviceId: "synthetic-device", appVersion: "1", acknowledgedStamp: 0, cancelRequested: false}
+    m.top.pullOnly = scenario = "pull-clean" or scenario = "pull-dirty"
     if scenario = "stale" then m.global.activeusersession = "00000000-0000-4000-8000-000000000091"
 end sub
 

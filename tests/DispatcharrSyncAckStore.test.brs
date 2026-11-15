@@ -1,4 +1,43 @@
 sub main()
+    syncScheduledFixture()
+    onProfileSyncScheduleTick()
+    task = m.profileScheduledSyncTask
+    check(task <> invalid and task.pullOnly and task.apiKey = m.key and task.aeriosession = m.scope.sessionId, "scheduled session start reads under actual adopted source, without prematurely flushing dirty data")
+    onScheduledProfileSyncResult(syncFlushEvent(task, syncFlushReadReceipt({rows: []})))
+    check(m.profileScheduledSyncTask = invalid and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "scheduled own read retains pending intent until debounced write")
+    m.syncTestNow = 101
+    onProfileSyncScheduleTick()
+    task = m.profileScheduledSyncTask
+    check(task <> invalid and task.pullOnly = false, "one-second durable dirty debounce launches own writer")
+    m.receipt.storeRoot = task.storeRoot
+    onScheduledProfileSyncResult(syncFlushEvent(task, m.receipt))
+    check(m.profileScheduledSyncTask = invalid and not loadUserProfileStore(m.registry, "slot-a").pendingRoster and task.apiKey = "", "scheduled successful own PUT uses real atomic acknowledgement and wipes Task key")
+    m.syncTestNow = 102
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask = invalid, "clean acknowledged snapshot does not produce a write loop")
+    syncScheduledFixture()
+    m.profileSyncEnabled = false
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask = invalid, "device-wide opt-in is required even behind private scheduler readiness")
+    syncScheduledFixture()
+    m.global.profilegateclosed = true
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask = invalid, "scheduled tasks cannot use the outgoing-flush closed-gate exception")
+    syncScheduledFixture()
+    onProfileSyncScheduleTick()
+    task = m.profileScheduledSyncTask
+    m.activeUserScope = setCanonicalPreference(m.scope, "sessionId", "00000000-0000-4000-8000-000000000096")
+    m.global.activeusersession = m.activeUserScope.sessionId
+    onScheduledProfileSyncResult(syncFlushEvent(task, m.receipt))
+    check(loadUserProfileStore(m.registry, "slot-a").pendingRoster and m.registry.exists(userProfileSyncAckKey("slot-a")) = false, "late scheduled completion cannot clear dirty data after scope replacement")
+    closeScheduledProfileSync()
+    syncFlushFixture()
+    m.store = setCanonicalPreference(m.store, "pendingRoster", false)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.store)
+    receipt = syncFlushReadReceipt({rows: [[8, "Bob", "Clean imported name", "none", "", "", "user", 200]]})
+    receipt.storeRoot = m.registry.values[userProfileStoreKey("slot-a")]
+    saved = commitDispatcharrSyncRosterRead(m.registry, m.connection, m.store, receipt, m.scope, m.key, {}, m.profileAuthorizationSignature, true, 600)
+    check(saved.ok and not saved.store.pendingRoster and saved.store.profiles[1].displayName = "Clean imported name", "scheduled read imports metadata without requiring or inventing dirty intent")
     for each fault in ["write", "flush", "rollback"]
         syncOwnRetirementFixture()
         before = FormatJson(m.registry.values)
@@ -120,6 +159,9 @@ sub main()
     before = FormatJson(m.registry.values)
     check(not commitDispatcharrSyncRosterRead(m.registry, m.connection, m.store, m.receipt, m.scope, m.key, {}, "new-own-authority", true, 500).ok and FormatJson(m.registry.values) = before, "read publication requires the actual current own authority signature, not just matching user IDs")
     syncFlushFixture()
+    m.profileScheduledSyncTask = {}
+    check(not beginOutgoingUserProfileSync(m.profileSwitchContext), "outgoing flush cannot race an already scheduled own operation")
+    m.profileScheduledSyncTask = invalid
     check(beginOutgoingUserProfileSync(m.profileSwitchContext), "private flush starts under the actual outgoing adopted session")
     check(m.profileSyncWriteTask.apiKey = "synthetic-own" and m.profileSyncWriteTask.aeriosession = m.scope.sessionId and m.global.activeusersession = m.scope.sessionId and m.profileSwitchContext.key = "target-own-key", "outgoing flush never uses target credentials or retires its actual source nonce early")
     sourceTask = m.profileSyncWriteTask
@@ -161,6 +203,21 @@ sub main()
     settleOutgoingUserProfileSyncRead(m.profileSwitchContext, m.receipt)
     check(m.ownRetirementRequests = 1 and m.flushResumes = 0 and m.flushRollbacks = 0 and FormatJson(m.registry.values) = before, "active-own tombstone dispatches distinct own retirement rather than staging a chosen-target proof")
     print "ALL TESTS PASSED"
+end sub
+
+sub syncScheduledFixture()
+    syncFlushFixture()
+    m.profileSwitchContext = invalid
+    m.profileSyncSchedulingReady = true
+    m.profileSyncEnabled = true
+    m.profileSyncSchedule = invalid
+    m.profileScheduledSyncTask = invalid
+    m.profileScheduledSyncContext = invalid
+    m.syncTestNow = 100
+    m.profileSyncScheduleNow = function() as integer
+        return m.syncTestNow
+    end function
+    m.profileScheduledSyncTaskFactory = m.profileSyncWriteTaskFactory
 end sub
 
 sub syncOwnRetirementFixture()

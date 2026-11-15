@@ -1,6 +1,10 @@
 ' Private synthetic HTTP only; run after actual B adoption in the normal app.
 sub advanceProfileSyncWriterProbe()
     m.writerProbeMode = PROFILE_WRITER_MODE
+    if m.writerProbeMode = "schedule"
+        advanceProfileSyncScheduleProbe()
+        return
+    end if
     if m.writerProbeMode <> "direct" and left(m.writerProbeMode, 6) <> "create"
         advanceProfileSyncFlushProbe()
         return
@@ -61,6 +65,74 @@ sub advanceProfileSyncWriterProbe()
         end if
     end if
     print "[profile-management] "; FormatJson({kind: "result", writer: passed, passed: passed})
+end sub
+
+sub advanceProfileSyncScheduleProbe()
+    if m.writerScheduleQuiet <> true
+        m.writerScheduleQuiet = true
+        m.guide.active = false
+        m.writerScheduleScope = m.activeUserScope
+        return
+    end if
+    if m.writerScheduleReady <> true
+        m.writerScheduleReady = true
+        print "[profile-management] "; FormatJson({kind: "writer-ready"})
+        return
+    end if
+    if m.writerScheduleStarted <> true
+        m.writerScheduleStarted = true
+        m.profileSyncSchedulingReady = true
+        m.profileSyncEnabled = true
+        activateProfileSyncScheduling()
+        return
+    end if
+    if m.profileScheduledSyncTask <> invalid then return
+    if m.profileSyncSchedule = invalid then return
+    if m.profileSyncSchedule.flight <> invalid then return
+    if m.profileSyncSchedule.sequence < 1 then return
+    if m.writerScheduleDirty <> true
+        m.writerScheduleDirty = true
+        store = loadUserProfileStore(m.registry, "slot-a")
+        for i = 0 to store.profiles.count() - 1
+            profile = store.profiles[i]
+            if profile.id = store.active
+                profile = setCanonicalPreference(profile, "displayName", "Scheduled synthetic B")
+                profile = setCanonicalPreference(profile, "displayNameClaimed", true)
+                profile = setCanonicalPreference(profile, "updatedAt", CreateObject("roDateTime").asSeconds())
+                store.profiles[i] = profile
+            end if
+        end for
+        store = setCanonicalPreference(store, "pendingRoster", true)
+        m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
+        m.registry.flush()
+        m.userProfileStore = loadUserProfileStore(m.registry, "slot-a")
+        print "[profile-management] "; FormatJson({kind: "schedule-dirty"})
+        return
+    end if
+    store = loadUserProfileStore(m.registry, "slot-a")
+    if store.pendingRoster or m.profileSyncSchedule.sequence < 2 then return
+    if m.writerSchedulePicker <> true
+        m.writerSchedulePicker = true
+        requestScheduledProfileSync("picker")
+        requestScheduledProfileSync("picker")
+        return
+    end if
+    if m.profileSyncSchedule.sequence < 4 then return
+    if m.writerScheduleNetwork <> true
+        m.writerScheduleNetwork = true
+        requestScheduledProfileSync("network-return")
+        return
+    end if
+    if m.profileSyncSchedule.sequence < 5 then return
+    m.profileSyncClock.control = "stop"
+    m.managementProbeClock.control = "stop"
+    entry = connectionStoreEntry(m.connectionStore, "slot-a")
+    ack = loadDispatcharrSyncRosterAck(m.registry, entry)
+    passed = ack.ok and ack.stamp > 0 and not store.pendingRoster and userProfileSameSession(m.writerScheduleScope, m.activeUserScope) and m.apiKey = "synthetic-b" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.profileScheduledSyncTask = invalid
+    for each profile in store.profiles
+        if profile.id = store.active then passed = passed and profile.displayName = "Scheduled synthetic B"
+    end for
+    print "[profile-management] "; FormatJson({kind: "result", writer: passed, scheduled: passed})
 end sub
 
 sub advanceProfileSyncFlushProbe()
