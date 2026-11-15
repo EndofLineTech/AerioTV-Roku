@@ -15,6 +15,11 @@ function userProfileRetirementKey(slotId as string) as string
     return "profileRetirementV1_" + slotId
 end function
 
+function userProfileSyncAckKey(slotId as string) as string
+    if connectionRegistryKey(slotId) = "" then return ""
+    return "syncProfilesAckV1_" + slotId
+end function
+
 function userProfilePinBackoffKey(slotId as string, holder as string) as string
     if connectionRegistryKey(slotId) = "" then return ""
     if holder <> "device-admin" and userProfileLocalId(holder) = "" then return ""

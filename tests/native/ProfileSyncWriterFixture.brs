@@ -39,5 +39,15 @@ sub advanceProfileSyncWriterProbe()
     result = m.writerProbeTask.result
     store = loadUserProfileStore(m.registry, "slot-a")
     passed = result.ok = true and result.submitted = true and result.state = "written" and m.writerProbeTask.apiKey = "" and m.activeUserScope.accountId = "8" and userProfileSameSession(m.activeUserScope, result.scope) and store.pendingRoster and m.registry.read(userProfileStoreKey("slot-a")) = m.writerProbeBefore and m.apiKey = "synthetic-b" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", store.active)) = "synthetic-b"
+    if passed
+        entry = connectionStoreEntry(m.connectionStore, "slot-a")
+        acknowledged = commitDispatcharrSyncRosterAck(m.registry, entry, store, result, m.activeUserScope, m.apiKey, {})
+        passed = acknowledged.ok
+        if passed
+            m.userProfileStore = acknowledged.store
+            ack = loadDispatcharrSyncRosterAck(m.registry, entry)
+            passed = not loadUserProfileStore(m.registry, "slot-a").pendingRoster and ack.ok and ack.stamp = result.maximumSentStamp
+        end if
+    end if
     print "[profile-management] "; FormatJson({kind: "result", writer: passed, passed: passed})
 end sub

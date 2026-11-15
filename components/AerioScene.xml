@@ -55,6 +55,7 @@
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncSwitchRosterStore.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileStore.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileRetirement.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncAckStore.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileLifecycle.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileCleanup.brs" />
   <script type="text/brightscript" uri="UserProfileNavigation.brs" />

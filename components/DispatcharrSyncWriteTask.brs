@@ -54,7 +54,7 @@ sub writeDispatcharrSync()
         finishDispatcharrSyncWrite({ok: false, state: "pending", submitted: true})
         return
     end if
-    finishDispatcharrSyncWrite({ok: true, state: "written", submitted: true, maximumSentStamp: prepared.maximumSentStamp, storeRoot: m.top.storeRoot, scope: m.top.userScope})
+    finishDispatcharrSyncWrite({ok: true, state: "written", submitted: true, maximumSentStamp: prepared.maximumSentStamp, storeRoot: m.top.storeRoot, connectionRoot: m.top.connectionRoot, credentialHash: requestGateCredentialHash(m.key), scope: m.top.userScope})
 end sub
 
 ' Every request rechecks exact saved roots, actual selected holder, own key,

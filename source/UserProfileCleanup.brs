@@ -42,6 +42,8 @@ function forgetUserProfileConnection(registry as object, connections as object, 
     changes[userProfileStoreKey(slotId)] = ""
     pendingRetirement = userProfileRetirementKey(slotId)
     if registry.exists(pendingRetirement) then changes[pendingRetirement] = ""
+    syncAck = userProfileSyncAckKey(slotId)
+    if registry.exists(syncAck) then changes[syncAck] = ""
     for each key in registry.getKeyList()
         if left(key, len(prefix)) = prefix then changes[key] = ""
         if left(key, len("pinHold_" + slotId + "_")) = "pinHold_" + slotId + "_" then changes[key] = ""

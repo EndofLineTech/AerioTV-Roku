@@ -16,6 +16,7 @@ sub main()
             check(registry.read("connKey_slot-b") = "other-slot-key" and registry.read(userProfileKeyPrefix("slot-b") + "orphan") = "other-profile-key", "Forget cannot delete another slot's keys")
             check(not registry.exists(userProfileDeviceAdminKey("slot-a")) and not registry.exists(userProfilePinBackoffKey("slot-a", "device-admin")), "Forget clears its reserved Device Admin record and ledger atomically")
             check(not registry.exists(userProfileRetirementKey("slot-a")) and registry.read(userProfileRetirementKey("slot-b")) = "other-pending-retirement", "explicit whole-slot Forget removes only its owned retirement journal, even if opaque, and retains another slot's pending intent")
+            check(not registry.exists(userProfileSyncAckKey("slot-a")) and registry.read(userProfileSyncAckKey("slot-b")) = "other-sync-ack", "whole-slot Forget removes only its own sync acknowledgement metadata")
             check(registry.read(userProfileDeviceAdminKey("slot-b")) = "other-admin-record" and registry.read(userProfilePinBackoffKey("slot-b", "device-admin")) = "other-admin-ledger", "Forget preserves another slot's Device Admin authority")
             check(result.preferences.accounts.count() = 1 and result.preferences.accounts[preferenceScope("https://example.test|7|slot-b")].favoriteIds[0] = "other", "Forget cleans every own user scope, preserves other slot preferences")
             check(result.connections.entries.count() = 1 and result.connections.selected = "slot-b", "Forgotten connection removed without creating tombstones")
@@ -56,6 +57,8 @@ function forgetRegistry() as object
     values[userProfilePinBackoffKey("slot-b", "device-admin")] = "other-admin-ledger"
     values[userProfileRetirementKey("slot-a")] = "own-pending-retirement"
     values[userProfileRetirementKey("slot-b")] = "other-pending-retirement"
+    values[userProfileSyncAckKey("slot-a")] = "own-sync-ack"
+    values[userProfileSyncAckKey("slot-b")] = "other-sync-ack"
     return {values: values, flushes: 0, failure: ""
         exists: function(key as string) as boolean
             return m.values.doesExist(key)

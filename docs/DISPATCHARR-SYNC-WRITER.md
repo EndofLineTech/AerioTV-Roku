@@ -111,7 +111,17 @@ the ledger. Its earlier failure report is preserved. Exact owner restore and
 disposable cleanup passed on both runs. Full verification passed at
 `out/mrr-sync-write-task-final-verify.log` (338 files).
 
-Acknowledgement persistence, local-plan publication, scheduling and outgoing
-flush/session settlement remain required before this Task can be enabled by the
-real UI. The native fixture explicitly proves the pending mark is still present;
-it is not an integrated successful dirty-state acknowledgement yet.
+`source/DispatcharrSyncAckStore.brs` now commits matching successful receipts:
+the exact original connection/roster roots, still-current actual scope and own
+credential digest must match. Dirty clearing and a bounded, credential-free
+per-slot highwater record are one registry transaction. Newer edits, changed
+keys/holds/generations or stale receipts retain pending state; write/Flush faults
+restore exact bytes. Opaque/future acknowledgement records are not overwritten.
+Whole-slot Forget removes only the slot's acknowledgement metadata.
+
+The private native writer fixture now also publishes this real acknowledgement,
+proving pending clears only after its own successful PUT and the highwater lands.
+`out/mrr-sync-write-ack-native.log` and the expanded fault/stale primitive matrix
+`out/mrr-sync-ack-store-primitives-native.log` passed with exact owner restoration.
+Local-plan publication, scheduling and outgoing flush/session settlement remain
+required before the Task can be enabled by the real UI.

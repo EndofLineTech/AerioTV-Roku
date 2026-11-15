@@ -66,6 +66,10 @@ function requestGateTaskSessionCurrent() as boolean
     return taskUserSessionCurrent(m.top)
 end function
 
+function requestGateCredentialHash(key as string) as string
+    return string(64, "a")
+end function
+
 function httpTransferOnce(url as string, body as dynamic, bearer as string, timeoutMs as integer, maxBytes as integer, method = "GET" as string, checked = invalid as dynamic) as object
     m.calls.push({url: url, method: method})
     check(body = invalid and bearer = "" and m.key = "synthetic-own", "writer uses only its own key and never object-reserializes PUT data")
