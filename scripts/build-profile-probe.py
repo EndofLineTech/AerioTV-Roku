@@ -118,6 +118,7 @@ def build(output, base_url, registry=False, model_store=False):
         if model_store:
             roster_write_checks = (ROOT / 'tests/DispatcharrSyncRosterWrite.test.brs').read_text().split('sub check(', 1)[0]
             roster_write_checks = roster_write_checks.replace('sub main()', 'sub runDispatcharrSyncRosterWriteChecks()').replace('check(', 'profileAssert(')
+            roster_write_checks = roster_write_checks.replace('m.rosterWriteHostInterpreter = true', 'm.rosterWriteHostInterpreter = false')
             package.writestr('source/DispatcharrSyncRosterWriteProbeChecks.brs', roster_write_checks)
             write_checks = (ROOT / 'tests/DispatcharrSyncWriteBody.test.brs').read_text().split('sub check(', 1)[0]
             write_checks = write_checks.replace('sub main()', 'sub runDispatcharrSyncWriteBodyChecks()').replace('check(', 'profileAssert(')

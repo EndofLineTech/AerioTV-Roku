@@ -1,4 +1,5 @@
 sub main()
+    m.rosterWriteHostInterpreter = true
     data = {rows: [[7, "Alice"], [8, "Bob", "Bob Name", "none", "", "", "user", 100, {}, 2, {future: [true, invalid]}], [8, "Bob", "Newest", "none", "", "", "user", 200, {}, 1, {future: "new"}]], removed: [["OLD", 10], ["gone", 300, 9], ["bad", "invalid"]]}
     snapshot = strictJsonEncode(data).text
     result = dispatcharrSyncRosterWriteBase(data, [["GONE", 400], ["local", 250]], 500)
@@ -55,6 +56,17 @@ sub main()
     remote = {rows: [[7, "Alice", "Alice", "none", "", "", "child", 200]]}
     result = dispatcharrSyncProfilesWritePlan(store, remote, true, 500, 0, 400)
     check(not result.ok and result.reason = "protection-changed" and result.localPlan.store.profiles[0].role = "child", "a newly imported active Child role blocks writing and returns the real protection plan for controller settlement")
+    if not m.rosterWriteHostInterpreter
+        store = rosterWriteLocalFixture()
+        original = ParseJson("{""schemaVersion"":3,""deviceId"":""phone"",""platform"":""android"",""appVersion"":""1"",""updatedAt"":""2026-11-14T17:00:00Z"",""categories"":{""profiles"":{""updatedAt"":""2026-11-14T17:00:00Z"",""data"":{""rows"":[[7,""Alice"",""Remote Alice"",""none"","""","""",""user"",200,{},0,{""FutureTail"":1.3}]],""FutureRoster"":{""Case"":1,""case"":2}},""extra"":{""Keep"":true}},""FutureCategory"":{""updatedAt"":""2026-11-14T16:00:00Z"",""data"":{""FutureSetting"":1.0}}},""FutureEnvelope"":1794675600000}", "d")
+        before = strictJsonEncode(original).text
+        result = dispatcharrSyncPrepareProfilesWrite(original, store, true, 1794676000, 0, "roku-device", "1")
+        check(result.ok and result.body <> "" and not result.allowWrite and result.localPlan.store.profiles[0].updatedAt = 200, "native assembly connects typed roster merge to the exact checked body without granting transport/session authority")
+        parsed = ParseJson(result.body, "d")
+        check(parsed["platform"] = "roku" and parsed["deviceId"] = "roku-device" and parsed["categories"]["profiles"]["deviceId"] = "roku-device", "rebuilt envelope and category carry actual writer device metadata")
+        check(dispatcharrSyncWireEqual(parsed["categories"]["FutureCategory"], original["categories"]["FutureCategory"]) and parsed["categories"]["profiles"]["extra"]["Keep"] and dispatcharrSyncWireEqual(parsed["categories"]["profiles"]["data"]["FutureRoster"], original["categories"]["profiles"]["data"]["FutureRoster"]), "native assembly retains unknown envelope/category/data and exact typed future members")
+        check(strictJsonEncode(original).text = before, "native assembly never edits the latest provider value in place")
+    end if
     print "ALL TESTS PASSED"
 end sub
 

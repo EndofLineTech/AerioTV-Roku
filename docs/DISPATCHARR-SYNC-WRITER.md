@@ -73,3 +73,14 @@ legacy/absent-key creation, outgoing flush or PUT Task. Full host verification
 and the expanded native matrix pass after the imported-Child regression:
 `out/mrr-sync-profiles-write-plan-final-verify.log` and
 `out/mrr-sync-profiles-write-plan-final-native.log` (exact owner app restored).
+
+`dispatcharrSyncPrepareProfilesWrite` now connects the existing-canonical envelope,
+roster merge and checked-body stages. It precision-clones rather than mutating the
+fresh value, updates only writer metadata and the rebuilt profiles data, and
+returns `needsLocalCommit` with the local plan. It still returns `allowWrite:
+false`; fresh own-session GET/list/credential admission, local protection/cleanup
+commit and acknowledgement/flush integration must precede any actual PUT.
+Native tests-first assembly passed with unknown extras/categories, binary64,
+case-distinct keys and no original mutation:
+`out/mrr-sync-profiles-assembly-green-native.log`; full verification passed at
+`out/mrr-sync-profiles-assembly-full-verify.log`. Exact owner restore succeeded.

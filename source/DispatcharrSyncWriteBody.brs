@@ -143,3 +143,50 @@ function dispatcharrSyncWriteByteCount(value as string) as integer
     bytes.fromAsciiString(value)
     return bytes.count()
 end function
+
+' Existing canonical-key preparation only. No absent-key creation, legacy
+' migration or session/credential authority is inferred from this pure result.
+function dispatcharrSyncPrepareProfilesWrite(original as dynamic, store as object, enabled as boolean, now as integer, acknowledgedStamp as dynamic, deviceId as string, appVersion as string) as object
+    denied = {ok: false, allowWrite: false, body: "", reason: "invalid"}
+    read = dispatcharrSyncEnvelopeRead(original)
+    if not read.ok then return denied
+    if read.malformedCategories.count() > 0 or deviceId = "" or appVersion = "" or now <= 0 then return denied
+    data = {rows: []}
+    categoryStamp = 0&
+    if read.profilesState = "ready"
+        data = original["categories"]["profiles"]["data"]
+        categoryStamp = dispatcharrSyncIsoEpoch(original["categories"]["profiles"]["updatedAt"])
+    end if
+    plan = dispatcharrSyncProfilesWritePlan(store, data, enabled, now, acknowledgedStamp, categoryStamp)
+    if not plan.ok then return plan
+    encoded = strictJsonEncode(original)
+    if not encoded.ok then return denied
+    candidate = invalid
+    if m.syncWriteParser <> invalid
+        candidate = m.syncWriteParser(encoded.text)
+    else
+        candidate = ParseJson(encoded.text, "d")
+    end if
+    if not dispatcharrSyncWireEqual(original, candidate) then return denied
+    clock = CreateObject("roDateTime")
+    clock.fromSeconds(now)
+    stamp = left(clock.toISOString(), 19) + "Z"
+    if not dispatcharrSyncWriteIso(stamp) then return denied
+    category = candidate["categories"]["profiles"]
+    if category = invalid then category = ParseJson("{}")
+    category["data"] = plan.data
+    category["updatedAt"] = stamp
+    category["deviceId"] = deviceId
+    candidate["categories"]["profiles"] = category
+    candidate["updatedAt"] = stamp
+    candidate["deviceId"] = deviceId
+    candidate["platform"] = "roku"
+    candidate["appVersion"] = appVersion
+    checked = dispatcharrSyncCheckedWriteBody(original, candidate, ["profiles"])
+    if not checked.ok then return checked
+    checked.localPlan = plan.localPlan
+    checked.maximumSentStamp = plan.maximumSentStamp
+    cleaned = normalizeUserProfileStore(store, store.playlistId)
+    checked.needsLocalCommit = FormatJson(cleaned) <> FormatJson(plan.localPlan.store)
+    return checked
+end function
