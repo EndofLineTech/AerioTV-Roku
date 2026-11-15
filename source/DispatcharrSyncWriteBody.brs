@@ -186,6 +186,8 @@ function dispatcharrSyncPrepareProfilesWrite(original as dynamic, store as objec
     if not checked.ok then return checked
     checked.localPlan = plan.localPlan
     checked.maximumSentStamp = plan.maximumSentStamp
+    checked.unchanged = false
+    if read.profilesState = "ready" then checked.unchanged = dispatcharrSyncWireEqual(original["categories"]["profiles"]["data"], plan.data)
     cleaned = normalizeUserProfileStore(store, store.playlistId)
     checked.needsLocalCommit = FormatJson(cleaned) <> FormatJson(plan.localPlan.store)
     return checked

@@ -299,3 +299,25 @@ passed (`out/mrr-sync-session-scheduler-qualified-primitives-native.log`,
 `out/mrr-sync-session-scheduler-final-verify.log`). All runs restored the exact owner
 app and cleaned disposable state. Public integration, broader categories and
 acceptance remain open; no shipping flags were enabled.
+
+## Unchanged acknowledgement
+
+After fresh own discovery/GET and any required local metadata settlement, exact
+typed equality of intended and server `profiles.data` now suppresses a redundant
+PUT. The Task returns `state=unchanged`, `submitted=false`, `readStatus=200`,
+with the same scope/root/key-digest proof. That distinct receipt can atomically
+clear only its exact pending snapshot and retain monotonic highwater; a missing
+key, invalid GET, stale root or fake submitted flag cannot acknowledge unchanged.
+Local-plan publication still precedes this check and requires another fresh read.
+
+Host Task/store/outgoing-controller tests and native exact typed preparation tests
+passed. Actual HTTP qualification (`out/mrr-sync-unchanged-settled-native.log`)
+performed one original PUT/ack, published the next read's necessary local metadata,
+then freshly re-read and acknowledged unchanged with no second PUT. The earlier
+fixture expected immediate equality and correctly received `local-commit`; those
+failed logs remain retained, not counted as unchanged success. Final native matrix,
+scheduled-session regression and full verification passed
+(`out/mrr-sync-unchanged-final-primitives-native.log`,
+`out/mrr-sync-unchanged-schedule-regression-native.log`,
+`out/mrr-sync-unchanged-final-verify.log`). All device runs cleaned disposable data
+and restored the exact owner app.

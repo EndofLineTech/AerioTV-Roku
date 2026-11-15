@@ -454,7 +454,7 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertIn('m.profileSyncWriterReady = true', scene)
                 self.assertIn('m.writerProbeMode = "flush"', scene)
                 self.assertNotIn('PROFILE_WRITER_MODE', scene)
-            for mode in ['schedule', 'create', 'create-legacy', 'create-proxy404', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement']:
+            for mode in ['unchanged', 'schedule', 'create', 'create-legacy', 'create-proxy404', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement']:
                 probe.build(output, normal, 'SyntheticFlushFailureSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_writer=True, writer_mode=mode)
                 with zipfile.ZipFile(output) as package:
                     self.assertIn('m.writerProbeMode = "' + mode + '"', package.read('components/AerioScene.brs').decode())

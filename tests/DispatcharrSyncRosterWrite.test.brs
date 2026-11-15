@@ -66,6 +66,8 @@ sub main()
         check(parsed["platform"] = "roku" and parsed["deviceId"] = "roku-device" and parsed["categories"]["profiles"]["deviceId"] = "roku-device", "rebuilt envelope and category carry actual writer device metadata")
         check(dispatcharrSyncWireEqual(parsed["categories"]["FutureCategory"], original["categories"]["FutureCategory"]) and parsed["categories"]["profiles"]["extra"]["Keep"] and dispatcharrSyncWireEqual(parsed["categories"]["profiles"]["data"]["FutureRoster"], original["categories"]["profiles"]["data"]["FutureRoster"]), "native assembly retains unknown envelope/category/data and exact typed future members")
         check(strictJsonEncode(original).text = before, "native assembly never edits the latest provider value in place")
+        repeated = dispatcharrSyncPrepareProfilesWrite(parsed, result.localPlan.store, true, 1794676100, result.maximumSentStamp, "roku-device", "1")
+        check(repeated.ok and repeated.unchanged and not repeated.needsLocalCommit, "native exact typed unchanged profiles data may acknowledge without rebuilding server timestamps")
     end if
     print "ALL TESTS PASSED"
 end sub

@@ -1,5 +1,5 @@
 sub main()
-    for each scenario in ["write", "pull-clean", "pull-dirty", "disabled", "stale", "child", "profiles-off", "held", "key-changed", "identity", "authority", "legacy", "missing", "missing404", "listed404", "proxy404", "legacy-listed404", "get-failed", "local-commit", "root-race", "cancel", "put-failed", "late-success"]
+    for each scenario in ["write", "unchanged", "pull-clean", "pull-dirty", "disabled", "stale", "child", "profiles-off", "held", "key-changed", "identity", "authority", "legacy", "missing", "missing404", "listed404", "proxy404", "legacy-listed404", "get-failed", "local-commit", "root-race", "cancel", "put-failed", "late-success"]
         syncWriterFixture(scenario)
         writeDispatcharrSync()
         check(m.key = "" and m.top.apiKey = "", "writer clears Task credentials on every terminal path: " + scenario)
@@ -14,6 +14,8 @@ sub main()
             check(not m.top.result.ok and m.top.result.submitted and puts = 1, "late successful PUT cannot acknowledge a successor session")
         else if scenario = "put-failed"
             check(not m.top.result.ok and m.top.result.submitted and puts = 1, "failed PUT stays pending without an immediate retry")
+        else if scenario = "unchanged"
+            check(m.top.result.ok and m.top.result.state = "unchanged" and not m.top.result.submitted and m.top.result.readStatus = 200 and puts = 0 and m.calls.count() = 3, "unchanged fresh own data acknowledges without a redundant PUT")
         else
             check(not m.top.result.ok and puts = 0, "unsafe writer scenario sends no PUT: " + scenario)
         end if
@@ -105,7 +107,7 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
 end function
 
 function dispatcharrSyncPrepareProfilesWrite(original as dynamic, store as object, enabled as boolean, now as integer, acknowledgedStamp as dynamic, deviceId as string, appVersion as string) as object
-    return {ok: true, allowWrite: false, body: "{""schemaVersion"":3,""synthetic"":true}", localPlan: {store: store}, needsLocalCommit: m.scenario = "local-commit", maximumSentStamp: 100}
+    return {ok: true, allowWrite: false, body: "{""schemaVersion"":3,""synthetic"":true}", localPlan: {store: store}, needsLocalCommit: m.scenario = "local-commit", unchanged: m.scenario = "unchanged", maximumSentStamp: 100}
 end function
 
 sub check(passed as boolean, message as string)

@@ -5,7 +5,7 @@ sub advanceProfileSyncWriterProbe()
         advanceProfileSyncScheduleProbe()
         return
     end if
-    if m.writerProbeMode <> "direct" and left(m.writerProbeMode, 6) <> "create"
+    if m.writerProbeMode <> "direct" and m.writerProbeMode <> "unchanged" and left(m.writerProbeMode, 6) <> "create"
         advanceProfileSyncFlushProbe()
         return
     end if
@@ -47,7 +47,23 @@ sub advanceProfileSyncWriterProbe()
     m.managementProbeClock.control = "stop"
     result = m.writerProbeTask.result
     store = loadUserProfileStore(m.registry, "slot-a")
+    if m.writerProbeMode = "unchanged" and m.writerFirstAcknowledged = true and result.state = "local-commit" and m.writerUnchangedReadPublished <> true
+        entry = connectionStoreEntry(m.connectionStore, "slot-a")
+        published = commitDispatcharrSyncRosterRead(m.registry, entry, store, result, m.activeUserScope, m.apiKey, {}, m.profileAuthorizationSignature, true, CreateObject("roDateTime").asSeconds())
+        if published.ok
+            m.writerUnchangedReadPublished = true
+            m.userProfileStore = published.store
+            m.writerProbeTask = invalid
+            m.writerProbeStarted = false
+            m.writerProbeQuiesced = false
+            m.managementProbeClock.control = "start"
+            return
+        end if
+    end if
     passed = result.ok = true and result.submitted = true and result.state = "written" and m.writerProbeTask.apiKey = "" and m.activeUserScope.accountId = "8" and userProfileSameSession(m.activeUserScope, result.scope) and store.pendingRoster and m.registry.read(userProfileStoreKey("slot-a")) = m.writerProbeBefore and m.apiKey = "synthetic-b" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", store.active)) = "synthetic-b"
+    if m.writerProbeMode = "unchanged" and m.writerFirstAcknowledged = true
+        passed = result.ok = true and result.submitted = false and result.state = "unchanged" and result.readStatus = 200 and store.pendingRoster and m.writerProbeTask.apiKey = "" and userProfileSameSession(m.activeUserScope, result.scope) and m.registry.read(userProfileStoreKey("slot-a")) = m.writerProbeBefore and m.apiKey = "synthetic-b" and m.writerUnchangedReadPublished = true
+    end if
     refused = m.writerProbeMode = "create-legacy" or m.writerProbeMode = "create-proxy404"
     if refused
         passed = not result.ok and result.submitted <> true and m.writerProbeTask.apiKey = "" and store.pendingRoster and m.registry.read(userProfileStoreKey("slot-a")) = m.writerProbeBefore and not m.registry.exists(userProfileSyncAckKey("slot-a")) and m.apiKey = "synthetic-b" and m.activeUserScope.accountId = "8" and m.registry.read("connKey_slot-a") = "synthetic-a"
@@ -64,7 +80,15 @@ sub advanceProfileSyncWriterProbe()
             passed = not loadUserProfileStore(m.registry, "slot-a").pendingRoster and ack.ok and ack.stamp = result.maximumSentStamp
         end if
     end if
-    print "[profile-management] "; FormatJson({kind: "result", writer: passed, passed: passed})
+    if passed and m.writerProbeMode = "unchanged" and m.writerFirstAcknowledged <> true
+        m.writerFirstAcknowledged = true
+        m.writerProbeTask = invalid
+        m.writerProbeStarted = false
+        m.writerProbeQuiesced = false
+        m.managementProbeClock.control = "start"
+        return
+    end if
+    print "[profile-management] "; FormatJson({kind: "result", writer: passed, passed: passed, writer_state: textValue(result.state), submitted: result.submitted = true})
 end sub
 
 sub advanceProfileSyncScheduleProbe()

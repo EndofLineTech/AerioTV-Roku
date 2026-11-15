@@ -37,12 +37,23 @@ function loadDispatcharrSyncRosterAck(registry as object, connection as object) 
     return {ok: true, stamp: ack.maximumSentStamp}
 end function
 
-' Only the actual still-current writer's successful 200 may clear the exact
+' Only the actual still-current writer's successful PUT or exact unchanged GET
+' acknowledgement may clear the exact
 ' captured dirty snapshot. New edits, successors and changed credentials retain
 ' pending data, even when an older PUT happened to succeed on the server.
 function commitDispatcharrSyncRosterAck(registry as object, connection as object, previous as object, receipt as object, activeScope as dynamic, activeKey as string, memoryKeys as object) as object
     denied = {ok: false, recoveryRequired: false}
-    if receipt.ok <> true or receipt.submitted <> true or receipt.state <> "written" then return denied
+    if receipt.ok <> true then return denied
+    if receipt.state = "written"
+        if receipt.submitted <> true then return denied
+    else if receipt.state = "unchanged"
+        if not userProfileBoolean(receipt.submitted) then return denied
+        if receipt.submitted then return denied
+        if not userProfileInteger(receipt.readStatus) then return denied
+        if receipt.readStatus <> 200 then return denied
+    else
+        return denied
+    end if
     access = dispatcharrSyncOwnReceiptAccess(registry, connection, previous, receipt, activeScope, activeKey, memoryKeys)
     if not access.ok then return denied
     actual = access.store

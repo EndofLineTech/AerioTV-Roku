@@ -1,4 +1,22 @@
 sub main()
+    syncAckFixture()
+    m.receipt.state = "unchanged"
+    m.receipt.submitted = false
+    m.receipt.readStatus = 200
+    saved = commitDispatcharrSyncRosterAck(m.registry, m.connection, m.store, m.receipt, m.scope, m.key, {})
+    check(saved.ok and not saved.store.pendingRoster, "fresh matching unchanged GET acknowledgement clears exact pending snapshot without inventing a submitted PUT")
+    for each change in ["status", "submitted", "root"]
+        syncAckFixture()
+        m.receipt.state = "unchanged"
+        m.receipt.submitted = false
+        m.receipt.readStatus = 200
+        if change = "status" then m.receipt.readStatus = 404
+        if change = "submitted" then m.receipt.submitted = true
+        if change = "root" then m.receipt.storeRoot += " "
+        before = FormatJson(m.registry.values)
+        saved = commitDispatcharrSyncRosterAck(m.registry, m.connection, m.store, m.receipt, m.scope, m.key, {})
+        check(not saved.ok and FormatJson(m.registry.values) = before, "unchanged acknowledgement refuses invalid " + change)
+    end for
     syncScheduledFixture()
     onProfileSyncScheduleTick()
     task = m.profileScheduledSyncTask
@@ -167,6 +185,13 @@ sub main()
     sourceTask = m.profileSyncWriteTask
     onOutgoingUserProfileSyncResult(syncFlushEvent(sourceTask, m.receipt))
     check(m.flushResumes = 1 and m.profileSyncWriteTask = invalid and sourceTask.apiKey = "" and not m.profileSwitchContext.store.pendingRoster and not loadUserProfileStore(m.registry, "slot-a").pendingRoster, "only own matching acknowledgement publishes the clean switch snapshot and resumes incoming staging")
+    syncFlushFixture()
+    check(beginOutgoingUserProfileSync(m.profileSwitchContext), "unchanged outgoing flush fixture starts")
+    m.receipt.state = "unchanged"
+    m.receipt.submitted = false
+    m.receipt.readStatus = 200
+    onOutgoingUserProfileSyncResult(syncFlushEvent(m.profileSyncWriteTask, m.receipt))
+    check(m.flushResumes = 1 and not loadUserProfileStore(m.registry, "slot-a").pendingRoster, "unchanged own GET acknowledgement may settle outgoing dirty intent without a fabricated PUT")
     syncFlushFixture()
     check(beginOutgoingUserProfileSync(m.profileSwitchContext), "failed flush fixture starts")
     onOutgoingUserProfileSyncResult(syncFlushEvent(m.profileSyncWriteTask, {ok: false, state: "pending", submitted: true}))

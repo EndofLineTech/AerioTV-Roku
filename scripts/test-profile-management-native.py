@@ -94,7 +94,7 @@ def startup_probe_timer(source):
 
 
 def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False, switch_authority_race=False, switch_active_retirement=False, active_default_mode='usable', switch_writer=False, writer_mode='direct'):
-    if writer_mode not in ['direct', 'schedule', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'] or (writer_mode != 'direct' and not switch_writer):
+    if writer_mode not in ['direct', 'unchanged', 'schedule', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'] or (writer_mode != 'direct' and not switch_writer):
         raise ValueError('Writer mode requires the private writer fixture')
     if switch_writer and (not switching or not switch_roster or any([directions, switch_pin, cancel_pin, reject_active, remember_off, child_settings, reconnect, cold_restore, default_filter, assignment_refresh, child_escape, child_launch, child_available, child_retry, child_rejected, manual_refresh, manual_recording, favorite_retention, switch_recording, switch_import_pin, switch_cleanup, switch_target_retirement, switch_authority_race, switch_active_retirement]) or active_default_mode != 'usable'):
         raise ValueError('Writer fixture requires only --switch --switch-roster')
@@ -837,7 +837,7 @@ def main():
     parser.add_argument('--switch-authority-race', action='store_true', help='Only with --switch --switch-roster: change target authority on final me and require rollback with zero target lineup requests')
     parser.add_argument('--switch-active-retirement', action='store_true', help='Only with --switch --switch-roster: C own roster removes actual B, requiring default A own system adoption without its PIN')
     parser.add_argument('--switch-writer', action='store_true', help='Only with --switch --switch-roster: private own-B canonical re-read and checked-string PUT')
-    parser.add_argument('--writer-mode', choices=['direct', 'schedule', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'], default='direct', help='Private writer fixture: scheduled or direct Task, canonical creation/refusal, outgoing flush, own retirement, imported PIN or refusal')
+    parser.add_argument('--writer-mode', choices=['direct', 'unchanged', 'schedule', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'], default='direct', help='Private writer fixture: scheduled/direct/unchanged, canonical creation/refusal, outgoing flush, own retirement, imported PIN or refusal')
     parser.add_argument('--active-default-mode', choices=['usable', 'missing', 'held', 'child', 'cold', 'simultaneous', 'import-pin', 'import-child'], default='usable', help='Only with --switch-active-retirement: default own credential/access state')
     parser.add_argument('--reconnect', action='store_true', help='With --switch, reconnect B through early roster read and full activation before returning to A')
     parser.add_argument('--switch-pin', action='store_true', help='With --switch, require the real stored numeric target PIN before each switch')
@@ -962,6 +962,8 @@ def main():
             except (ValueError, KeyError, TypeError, StopIteration, IndexError):
                 pass
             fixture_state['writer_body_ok'] = valid
+            if valid and args.writer_mode == 'unchanged':
+                fixture_state['writer_saved_value'] = value
             if valid and args.writer_mode == 'flush-cancel':
                 cancel_started = time.monotonic()
                 activity = management_probe_activity(host)
@@ -1080,6 +1082,8 @@ def main():
                     salt = '0123456789abcdef0123456789abcdef'
                     value['categories']['profiles']['data']['rows'] = [[7, 'Synthetic7', 'Protected default', 'numbers', hashlib.sha256(bytes.fromhex(salt) + b'5678').hexdigest(), salt, 'user', int(time.time()), {}, 0]]
                     value['categories']['profiles']['data']['removed'] = [['synthetic8', int(time.time())]]
+                if args.writer_mode == 'unchanged' and 'writer_saved_value' in fixture_state:
+                    value = fixture_state['writer_saved_value']
             if args.child_available and self.path == f'/api/accounts/users/me/app-data/synthetic{user}.aeriotv/':
                 stamp = '2026-11-14T12:00:00Z'
                 value = {'schemaVersion': 3, 'deviceId': 'synthetic-phone', 'platform': 'android', 'appVersion': '1', 'updatedAt': stamp,
@@ -1124,7 +1128,7 @@ def main():
         with subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as process:
             for line in process.stdout:
                 output.append(line)
-                if '"kind":"writer-ready"' in line:
+                if '"kind":"writer-ready"' in line and 'writer_request_boundary' not in report:
                     report['writer_request_boundary'] = len(hits)
                     fixture_state['writer_started'] = True
                 if '"kind":"schedule-dirty"' in line:
@@ -1268,7 +1272,11 @@ def main():
                 elapsed = fixture_state.get('schedule_put_at', 0) - fixture_state.get('schedule_dirty_at', 0)
                 report['schedule_dirty_to_put_seconds'] = elapsed
                 report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('scheduled', False) and report['writer_own_request_order'] and report['writer_body_ok'] and elapsed >= 1
-            if args.writer_mode not in ['direct', 'schedule'] and not args.writer_mode.startswith('create'):
+            if args.writer_mode == 'unchanged':
+                sequence = expected + expected[:3] * 2
+                report['writer_own_request_order'] = [(hit.get('method', 'GET'), hit['path']) for hit in after] == sequence and all(hit['user'] == 8 for hit in after)
+                report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('writer', False) and report['writer_own_request_order'] and report['writer_body_ok']
+            if args.writer_mode not in ['direct', 'unchanged', 'schedule'] and not args.writer_mode.startswith('create'):
                 report['passed'] = report['passed'] and report.get('writer_target_pin_ready', False) and report.get('writer_pre_pin_requests') == [] and report.get('writer_source_admitted', False) and rows[-1].get('flush', False)
             if args.writer_mode == 'flush-import-pin':
                 before_pin = report.get('writer_before_import_pin', [])
