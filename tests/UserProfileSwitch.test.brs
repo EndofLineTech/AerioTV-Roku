@@ -308,6 +308,18 @@ sub main()
             check(not prefs.accounts.doesExist(preferenceScope(connectionPreferenceIdentity(connection, "8"))) and prefs.accounts.doesExist(preferenceScope(connectionPreferenceIdentity(connection, "7"))), "startup retirement removes only retired holder's scoped blob")
         end if
     end for
+    startup = startupSelectionFixture(connection, a, b, nextAttempt)
+    context = startup.context
+    registry = startup.registry
+    context.store.profiles[1] = setCanonicalPreference(context.store.profiles[1], "pinLength", 4)
+    context.target = context.store.profiles[1]
+    registry.write(userProfileStoreKey("slot-a"), FormatJson(context.store))
+    context.storeRoot = registry.read(userProfileStoreKey("slot-a"))
+    context.readNonce = "00000000-0000-4000-8000-000000000097"
+    read = {ok: true, state: "missing", verifiedUser: {id: 8, username: "bob", user_level: 1}, verifiedBaseUrl: connection.url, accountId: "8", accountUsername: "bob"}
+    published = commitUserProfileStartupRosterPull(registry, context, read, context.readNonce, true, 400, nextAttempt, invalid, "", {})
+    check(published.ok and not published.requiresPin and published.protectionReceipt <> invalid, "native same-PIN publication preserves actual verified grant instead of changing its map semantics")
+    check(userProfileStartupSelectionCurrent(registry, published.context, nextAttempt, invalid, "", {}, true), "learned-length post-read context retains the same actual PIN admission")
     print "ALL TESTS PASSED"
 end sub
 

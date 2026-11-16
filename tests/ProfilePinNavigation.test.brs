@@ -102,7 +102,36 @@ sub main()
     beginProfilePinGate(profile, "switch", "unavailable-child-attempt")
     onProfilePinClosed(event)
     check(m.switchRollbacks = 2 and m.activeUserScope = invalid and m.global.activeusersession = "" and m.global.profilegateclosed, "actual unavailable-Child cancellation needs no fabricated outgoing authenticated scope")
+    m.top.exitRequested = false
+    m.top.signalBeacon = sub(name as string)
+    end sub
+    m.startupDialogOpen = true
+    m.startupPinCurrent = true
+    beginProfilePinGate(profile, "startup-selection", "startup-attempt")
+    m.profilePinDialog.textEditBox.text = "1234"
+    onProfilePinSubmit(event)
+    check(m.startupPinResumed = true and m.startupPinCovered = true and m.global.profilegateclosed and m.profileGateCover.visible and m.startupDialogOpen, "startup PIN leaves cover/dialog timing with its own no-actor protection-read continuation")
+    m.startupPinCurrent = false
+    beginProfilePinGate(profile, "startup-selection", "retired-startup-attempt")
+    m.profileUnlockGrant = {marker: "startup-successor"}
+    m.profilePinDialog.textEditBox.text = "1234"
+    before = m.submissions
+    onProfilePinSubmit(event)
+    check(m.submissions = before and m.profileUnlockGrant.marker = "startup-successor", "retired startup PIN cannot verify or replace successor authority")
+    m.global.profilegateclosed = false
+    m.profileGateCover.visible = false
+    onProfilePinClosed(event)
+    check(not m.top.exitRequested and not m.global.profilegateclosed and not m.profileGateCover.visible, "stale startup close cannot exit or cover a successor lifecycle")
     print "ALL TESTS PASSED"
+end sub
+
+function startupProfilePinContextCurrent(context as object) as boolean
+    return m.startupPinCurrent = true
+end function
+
+sub onStartupProfilePin(nonce as string)
+    m.startupPinResumed = true
+    m.startupPinCovered = m.global.profilegateclosed and m.profileGateCover.visible
 end sub
 
 sub pinSwitchOwner(profile as object, nonce as string)

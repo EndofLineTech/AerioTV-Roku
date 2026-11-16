@@ -23,8 +23,34 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertIn('    m.profileSyncWriterReady = false', scene)
         self.assertIn('    m.profileSyncSchedulingReady = false', scene)
         self.assertIn('    m.profileSyncControlsReady = false', scene)
+        self.assertIn('    m.profilePickerReady = false', scene)
+        self.assertNotIn('\n    m.profilePickerReady = true', scene)
         writer = (root / 'components/DispatcharrSyncWriteTask.brs').read_text()
         self.assertIn('    m.syncWriterReady = false', writer)
+
+    def test_private_startup_picker_archive_uses_only_disposable_registry_cache(self):
+        root = Path(__file__).resolve().parent.parent
+        spec = importlib.util.spec_from_file_location('startup_picker_probe', Path(__file__).with_name('test-profile-picker-launch-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        names = ['manifest', 'components/AerioScene.brs', 'components/ProfilePickerNavigation.brs',
+                 'components/GuideView.xml', 'components/GuideView.brs', 'source/MetadataCacheStore.brs']
+        with tempfile.TemporaryDirectory() as folder:
+            normal = Path(folder) / 'normal.zip'
+            with zipfile.ZipFile(normal, 'w') as package:
+                for name in names:
+                    package.write(root / name, name)
+            for mode in ['plain', 'pin', 'import-pin']:
+                target = Path(folder) / f'{mode}.zip'
+                probe.build(target, normal, 'DisposablePicker', 'http://fixture.test', mode)
+                with zipfile.ZipFile(target) as package:
+                    scene = package.read('components/AerioScene.brs').decode()
+                    self.assertNotIn('CreateObject("roRegistrySection", "AerioTV")', scene)
+                    self.assertIn('CreateObject("roRegistrySection", "DisposablePicker")', scene)
+                    self.assertIn(f'seedProfilePickerLaunchProbe("http://fixture.test", "{mode}")', scene)
+                    self.assertIn('m.profilePickerReady = true', scene)
+                    self.assertIn('if beginUserProfileLaunchPicker(false) then return', scene)
+                    self.assertNotIn('"cachefs:/aeriotv-metadata-v1"', package.read('source/MetadataCacheStore.brs').decode())
 
     def test_imported_switch_pin_wire_uses_raw_salt_v2_and_only_target_row(self):
         import hashlib

@@ -232,6 +232,12 @@ sub onUserProfileSwitchResult(event as object)
     closeUserProfileSwitchTask()
     ' Release outgoing owned resources before replacing its credentials.
     m.profileSwitchContext = invalid
+    adoptCompletedUserProfileState(context, saved, verified)
+end sub
+
+' Runtime publication only AFTER a caller's distinct storage admission succeeds.
+' This helper grants no switching/startup/PIN authority on its own.
+sub adoptCompletedUserProfileState(context as object, saved as object, verified as object)
     resetConnectionRuntime()
     m.userProfileStore = saved.store
     if type(context.rosterSuggestions) = "roArray" then m.profileRosterSuggestions = context.rosterSuggestions

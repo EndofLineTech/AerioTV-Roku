@@ -187,6 +187,10 @@ function commitUserProfileStartupRosterPull(registry as object, context as objec
     result = {ok: true, recoveryRequired: false, store: candidate, target: target, removed: plan.removed, suggestions: plan.suggestions, targetRemoved: targetRemoved, sourceRemoved: sourceRemoved, sourceChild: sourceChild, requiresPin: false, protectionReceipt: invalid}
     if target = invalid then return result
     nextContext = copyPreferenceValue(context)
+    ' A native verified grant is an opaque case-insensitive runtime proof, not
+    ' settings JSON. Deep-copying its literal keys into a case-sensitive AA
+    ' changes bracket lookup semantics and must not replace the actual grant.
+    nextContext.pin = context.pin
     nextContext.store = candidate
     nextContext.storeRoot = registry.read(userProfileStoreKey(context.connection.id))
     nextContext.target = target

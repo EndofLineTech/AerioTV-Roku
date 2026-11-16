@@ -1,8 +1,10 @@
 # Profile picker implementation boundary
 
-`UserProfilePicker` is a private, compiled full-screen component, not yet
-connected to application startup or a public top-bar action. It grants no
-authentication, PIN, management, or credential authority.
+`UserProfilePicker` and its staged Scene controller are private:
+`m.profilePickerReady` remains false. Synthetic normal-app fixtures invoke the
+controller before the legacy startup gates; shipping init does not, and there
+is no public top-bar action. The component itself grants no authentication,
+PIN, management, or credential authority.
 
 `source/UserProfilePicker.brs` calculates ordered presentation from a validated
 roster. Child, single-profile, other-provider and deep-link launch cases return
@@ -13,8 +15,8 @@ no stored choices were changed here.
 
 The component displays initial/color avatar fallbacks, wrapped names, a native
 shape lock badge, current caption in switcher mode and four-column focus.
-Catalog avatar artwork, appearance/text-scale variants and parent admissions
-remain unfinished. `UserProfilePickerInput.brs` defers short OK until release,
+Catalog avatar artwork, appearance/text-scale variants and complete parent
+admissions remain unfinished. `UserProfilePickerInput.brs` defers short OK until release,
 emits one hold intent and consumes that release, preventing an accidental switch
 after reorder. Parent handlers must independently recheck node identity, lifecycle,
 current roots, role, target PIN and own credentials before acting on any intent.
@@ -40,11 +42,12 @@ exact preceding app. The first run's Select delivery timeout remains preserved
 in `out/mrr-picker-ui-first-native.json`; later passing delivery does not explain
 or resolve `AerioTV-Roku-667m`.
 
-The next integration must use a distinct startup-selection boundary with no
-authenticated outgoing actor/key, not a fabricated chosen-switch scope or
-unavailable-Child/adult grant. Target authentication, fresh protection import,
-PIN changes while waiting, keyless/held own forms, rollback, deep-link closure,
-beacons and heavy-work fencing still require normal-app native qualification.
+The integration uses a distinct startup-selection boundary with no authenticated
+outgoing actor/key, not a fabricated chosen-switch scope or unavailable-Child/
+adult grant. Cached-own-key target authentication, protection import and changed
+PIN continuation now have native controller evidence below. Complete automatic
+startup routing, own forms, cancellation/failure/deep-link lifecycle and
+certification-ready beacon acceptance remain unfinished.
 This checkpoint does not complete `AerioTV-Roku-mrr.9` or the epic.
 
 ## Startup-selection preflight
@@ -68,8 +71,8 @@ native (`out/mrr-startup-selection-preflight-native.log`) and full verification
 (`out/mrr-startup-selection-preflight-verify.log`) pass stale actor/key/nonce,
 changed URL/root/target, Child source/target, Ask Off, missing/replaced own key,
 Remember-On memory borrowing and missing/changed PIN refusal. All cases prove
-zero Flush and exact storage preservation. Normal-app authentication/import/
-adoption and own-form integration remain next, not inferred from these tests.
+zero Flush and exact storage preservation. These preflight tests alone do not
+establish runtime or own-form acceptance; see the separate controller evidence.
 
 The separate storage adoption API is now tested too. Its memory-only protection
 receipt binds the actual current read lifecycle, own identity/authority, key,
@@ -87,10 +90,8 @@ pending edits and the default key remain. Failure restores exact prior storage.
 Tests-first red: `out/mrr-startup-selection-adoption-red.log`; native shared
 storage/receipt cases: `out/mrr-startup-selection-adoption-native.log`; full
 verification: `out/mrr-startup-selection-adoption-verify.log`. These exercise
-the real storage APIs with a fake registry on native Roku, **not** a completed
-normal-app startup authentication/import/controller flow. Actual Task callback
-binding, changed-PIN re-read and runtime adoption still require implementation
-and qualification.
+the real storage APIs with a fake registry on native Roku, not the normal-app
+controller. The latter now has separate bounded evidence below.
 
 Retained protection publication is now implemented separately in
 `commitUserProfileStartupRosterPull`. It rechecks the actual absent actor/key,
@@ -109,8 +110,8 @@ Tests-first red: `out/mrr-startup-selection-publication-red.log`; native shared
 storage qualification: `out/mrr-startup-selection-publication-native.log`
 (zero failures, exact app restored); full verification:
 `out/mrr-startup-selection-publication-verify.log` (0.3.100, 351 files).
-The current read/PIN/adoption APIs are not yet wired to actual normal-app Task
-callbacks or the launch UI; public/runtime acceptance remains unfinished.
+The API removal/default-selection cases here remain storage-suite evidence;
+normal-app removal/recovery acceptance is not inferred.
 
 ## Ordering/palette correction
 
@@ -148,3 +149,58 @@ Tests-first red: `out/mrr-startup-picker-order-red.log`. Final full verification
 `out/mrr-startup-picker-order-final-verify.log`; shared native policy suite:
 `out/mrr-startup-picker-order-final-native.log`. These are policy tests, not
 runtime deep-link/beacon acceptance.
+
+## Private normal-app controller
+
+`components/ProfilePickerNavigation.brs` owns the picker node, selected
+connection/root, distinct incoming UUID and actual authentication/read/load
+Tasks. There is no outgoing authenticated actor or runtime key to fabricate.
+Stored selection/settings are not adopted before full verified content and the
+atomic startup adoption API succeed. The existing switch controller now shares
+only the post-commit runtime publication helper.
+
+Native normal-app qualification using a disposable registry and isolated HTTP:
+
+- Unprotected cached-own-key selection:
+  `out/mrr-picker-launch-plain-repeat-qualified-native.log`.
+- Protected restored default and protected target: the picker precedes the
+  default's PIN; choosing B verifies B's real native PIN before **any** provider
+  request: `out/mrr-picker-launch-pin-qualified-native.log`.
+- Fresh import changes B's PIN after initial verification. Protection is durable,
+  another real PIN is required, then a new own read with a distinct read UUID
+  precedes full load: `out/mrr-picker-launch-import-pin-qualified-native.log`.
+
+PIN fixtures submit wrong/correct text through the actual native dialog,
+Scene callback, SHA verifier and registry/backoff path, never fabricated grants.
+They use a private ECP-input handshake to trigger those submissions, not physical
+remote digit entry. Wrong PINs stay covered; no heavy provider work precedes
+the required verification/read. Initial selection uses actual ECP Right/Select.
+
+All three cases show zero pre-selection requests, no runtime actor/key during
+authentication/read/load, own B `/me`/App Data before own lineup, fresh B scope,
+B guide/favorites/appearance, retained source data/default key/pending intent
+and no autoplay or fabricated PUT acknowledgement. Final app state closes the
+startup dialog; this is not Dashboard/certification beacon acceptance.
+Screenshots were inspected. Existing chosen-switch/writer regression also
+passes: `out/mrr-picker-shared-adoption-switch-native.log`.
+
+The protected run first exposed `AerioTV-Roku-mbvu`: deep-copying an opaque
+case-insensitive native PIN grant as settings JSON changed its map semantics.
+Native same-PIN/learned-length publication tests reproduced the failure
+(`out/mrr-picker-pin-grant-copy-red-native.log`). Publication now retains the
+actual immutable verified grant, not a replacement. Shared native green:
+`out/mrr-picker-pin-grant-copy-fixed-native.log`; actual protected/imported PIN
+continuations pass without the temporary publication/failure diagnostic hooks.
+Final full verification: `out/mrr-picker-controller-qualified-verify.log`
+(0.3.100, 352 files).
+
+Every isolated run, including failures, cleaned its disposable registry and
+checksum-restored the exact owner app. New first-key timeouts remain preserved
+under `667m`; passing repeats do not resolve them.
+
+Still unfinished: deferred startup/deep-link routing after `screen.show`,
+actual cancel/reject/default/removal and stale-callback matrices, own keyless/
+held forms, Child selection, Add/Manage/reorder, default-on Ask migration,
+top-bar switcher and full public acceptance. Current private handlers refuse
+unsupported own-form/Child/management choices without requests. Shipping readiness
+must stay false until those integrations and independent approval gates are met.

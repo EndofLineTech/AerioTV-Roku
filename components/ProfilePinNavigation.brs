@@ -59,6 +59,11 @@ sub onProfilePinSubmit(event as object)
     context = m.profilePinContext
     if context.slot <> m.selectedConnectionId then return
     switching = context.continuation = "switch" or context.continuation = "switch-roster"
+    startupSelection = context.continuation = "startup-selection"
+    if startupSelection and not startupProfilePinContextCurrent(context)
+        m.profilePinDialog.textEditBox.text = ""
+        return
+    end if
     if switching and not profileSwitchPinContextCurrent(context)
         m.profilePinDialog.textEditBox.text = ""
         return
@@ -107,16 +112,17 @@ sub onProfilePinSubmit(event as object)
     m.profileGateClock.control = "stop"
     ' The switch continuation owns unblocking after current protection checks
     ' and incoming nonce retirement. Do not briefly resume old authenticated Tasks.
-    if not switching
+    if not switching and not startupSelection
         m.global.profilegateclosed = false
         m.profileGateCover.visible = false
     end if
-    if m.startupDialogOpen = true then completeStartupDialog()
+    if m.startupDialogOpen = true and not startupSelection then completeStartupDialog()
     if context.continuation = "connect" then connectServer(true)
     if context.continuation = "complete" then completeConnection(context.resume)
     if context.continuation = "switch" then onUserProfileSwitchPin(context.resume)
     if context.continuation = "switch-roster" then onUserProfileSwitchRosterPin(context.resume)
     if context.continuation = "own-signin" then onUserProfileOwnSignInPin(context.resume)
+    if startupSelection then onStartupProfilePin(context.resume)
 end sub
 
 sub onProfilePinClosed(event as object)
@@ -124,8 +130,10 @@ sub onProfilePinClosed(event as object)
     if not m.profilePinDialog.isSameNode(event.getRoSGNode()) then return
     context = m.profilePinContext
     staleSwitch = false
+    staleStartup = false
     if context <> invalid
         if context.continuation = "switch" or context.continuation = "switch-roster" then staleSwitch = not profileSwitchPinContextCurrent(context)
+        if context.continuation = "startup-selection" then staleStartup = not startupProfilePinContextCurrent(context)
     end if
     m.profilePinDialog.unobserveField("buttonSelected")
     m.profilePinDialog.unobserveField("wasClosed")
@@ -136,7 +144,7 @@ sub onProfilePinClosed(event as object)
     end if
     m.profilePinDialog = invalid
     m.profilePinContext = invalid
-    if staleSwitch then return
+    if staleSwitch or staleStartup then return
     m.profileGateClock.control = "stop"
     m.profileGateCover.visible = true
     m.global.profilegateclosed = true

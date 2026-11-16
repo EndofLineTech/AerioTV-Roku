@@ -7,6 +7,7 @@ sub init()
     m.profileSyncWriterReady = false
     m.profileSyncSchedulingReady = false
     m.profileSyncControlsReady = false
+    m.profilePickerReady = false
     m.top.observeField("networkLinkEvent", "onProfileSyncNetworkLink")
     m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false, profileownsigninpending: false, profileownsigninnonce: "", requestgaterecovery: "", profilesyncflush: ""})
     m.profileGateCover = m.top.findNode("profileGateCover")
@@ -2651,6 +2652,14 @@ sub closeMessage(event as object)
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    if m.profileStartupSelectionContext <> invalid
+        if press and key = "back"
+            cancelStartupProfileTask()
+            closeUserProfileLaunchPicker()
+            m.top.exitRequested = true
+        end if
+        return true
+    end if
     if m.profileSetupCredentialContext <> invalid
         if press and key = "back" then failConnection("Connection cancelled.")
         return true
