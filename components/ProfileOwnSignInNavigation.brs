@@ -156,6 +156,11 @@ function profileOwnSignInContextCurrent() as boolean
     if context.nonce <> m.profileOwnSignInNonce or context.connection.id <> m.selectedConnectionId or context.page <> m.page then return false
     if textValue(m.global.profileownsigninnonce) <> context.nonce or m.global.profileownsigninpending <> true then return false
     if context.childRecovery = true and m.profileChildAccessReady <> true then return false
+    if context.adding = true
+        if m.profileBaselineReady <> true or not requestGateAccessAllowed(context.connection.url, textValue(m.apiKey)) then return false
+        settings = loadDispatcharrSyncSettings(m.registry)
+        if not settings.ok or settings.enabled then return false
+    end if
     if context.startupRecovery = true
         if m.profilePickerReady <> true or m.profilePicker = invalid or m.profilePickerContext = invalid then return false
         if m.page <> "profile-picker" or m.activeUserScope <> invalid or m.apiKey <> "" or currentUserSessionId() <> context.nonce then return false
@@ -282,7 +287,9 @@ sub onProfileOwnSignInChoice(event as object)
         m.top.dialog = dialog
         dialog.setFocus(true)
     else if index = 2
-        if lcase(context.username.trim()) <> lcase(context.target.username) or context.password = ""
+        usernameMatches = lcase(context.username.trim()) = lcase(context.target.username)
+        if context.adding = true then usernameMatches = context.username.trim() <> ""
+        if not usernameMatches or context.password = ""
             context.password = ""
             showProfileOwnSignInForm("Dispatcharr did not accept that username or password.")
             return
@@ -296,6 +303,7 @@ sub onProfileOwnSignInChoice(event as object)
         task.ownProfileSignIn = true
         task.verifyOnly = true
         task.expectedUsername = context.target.username
+        if context.adding = true then task.expectedUsername = context.username.trim()
         task.expectedUserId = ""
         ' Default recovery is narrower than recreated non-default recovery:
         ' only the existing holder is qualified, even with legacy name-only data.
@@ -332,6 +340,25 @@ sub onProfileOwnSignInResult(event as object)
     if not profileOwnSignInContextCurrent() then cancelUserProfileOwnSignIn() : return
     context = m.profileOwnSignInContext
     result = event.getData()
+    if context.adding = true and context.addPhase = "read"
+        closeProfileOwnSignInTask()
+        if type(result) <> "roAssociativeArray"
+            context.addVerified.apiKey = ""
+            context.addPhase = ""
+            showProfileOwnSignInForm("Could not check this profile's protection. Please try again.")
+            return
+        end if
+        planned = userProfileAddPlan(context.connection, context.store, context.target.id, context.username, context.addVerified, result, CreateObject("roDateTime").asSeconds())
+        if not planned.ok
+            context.addVerified.apiKey = ""
+            context.addPhase = ""
+            showProfileOwnSignInForm(planned.reason)
+            return
+        end if
+        context.addRead = result
+        finishUserProfileOwnSignIn(context.addVerified)
+        return
+    end if
     closeProfileOwnSignInTask()
     if type(result) <> "roAssociativeArray" then showProfileOwnSignInForm("Dispatcharr did not accept that username or password.") : return
     if result.ok <> true
@@ -340,9 +367,31 @@ sub onProfileOwnSignInResult(event as object)
         showProfileOwnSignInForm(message)
         return
     end if
-    if (context.activeRecovery = true or context.startupRecovery = true) and result.verifiedBaseUrl <> context.connection.url
+    if (context.activeRecovery = true or context.startupRecovery = true or context.adding = true) and result.verifiedBaseUrl <> context.connection.url
         result.apiKey = ""
         showProfileOwnSignInForm("Dispatcharr did not accept that username or password.")
+        return
+    end if
+    if context.adding = true
+        facts = userProfileFromVerified(context.connection.id, context.target.id, result.verifiedUser, 0)
+        if facts = invalid then showProfileOwnSignInForm("Dispatcharr did not accept that username or password.") : return
+        if lcase(facts.username) <> lcase(context.username.trim()) or textValue(result.apiKey) = "" then showProfileOwnSignInForm("Dispatcharr did not accept that username or password.") : return
+        context.addVerified = {ok: true, apiKey: result.apiKey, verifiedBaseUrl: result.verifiedBaseUrl, verifiedUser: {id: facts.userId, username: facts.username, user_level: facts.userLevel, is_staff: facts.isStaff, is_superuser: facts.isSuperuser}}
+        result.apiKey = ""
+        result.verifiedUser = invalid
+        context.addPhase = "read"
+        task = CreateObject("roSGNode", "DispatcharrSyncReadTask")
+        tagTaskForCurrentUser(task)
+        task.baseUrl = context.connection.url
+        task.apiKey = context.addVerified.apiKey
+        task.authMode = context.connection.authMode
+        task.accountId = facts.userId.toStr()
+        task.username = facts.username
+        task.observeField("result", "onProfileOwnSignInResult")
+        task.observeField("state", "onProfileOwnSignInState")
+        m.profileOwnSignInTask = task
+        showProfileOwnSignInForm("Checking this account's saved profile protection...")
+        task.control = "RUN"
         return
     end if
     planned = userProfileOwnSignInPlan(context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.childRecovery = true, context.startupRecovery = true)
@@ -445,7 +494,11 @@ end sub
 sub finishUserProfileOwnSignIn(result as object)
     if not profileOwnSignInContextCurrent() then cancelUserProfileOwnSignIn() : return
     context = m.profileOwnSignInContext
-    saved = commitUserProfileOwnSignIn(m.registry, context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.nonce, m.profileOwnSignInNonce, context.childRecovery = true, context.startupRecovery = true)
+    if context.adding = true
+        saved = commitUserProfileAdd(m.registry, context, result, context.addRead, CreateObject("roDateTime").asSeconds(), m.profileOwnSignInNonce, m.activeUserScope, textValue(m.profileManagementNonce))
+    else
+        saved = commitUserProfileOwnSignIn(m.registry, context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.nonce, m.profileOwnSignInNonce, context.childRecovery = true, context.startupRecovery = true)
+    end if
     if not saved.ok
         result.apiKey = ""
         if saved.recoveryRequired = true
@@ -496,6 +549,10 @@ sub finishUserProfileOwnSignIn(result as object)
         return
     end if
     cancelUserProfileOwnSignIn()
+    if m.profileBaselineReady = true
+        openProfileBaselineMenu()
+        return
+    end if
     showNotice("Signed in. Select this profile when switching is available.")
 end sub
 
@@ -541,7 +598,11 @@ sub closeProfileOwnSignInTask()
     task.unobserveField("result")
     task.unobserveField("state")
     cancelNetworkTask(task)
-    task.password = ""
+    if type(task) <> "roSGNode"
+        task.password = ""
+    else if task.hasField("password")
+        task.password = ""
+    end if
     task.apiKey = ""
     task.username = ""
     task.result = invalid
@@ -554,6 +615,7 @@ sub retireUserProfileOwnSignIn()
     m.profileOwnSignInHoldClock = invalid
     if m.profileOwnSignInContext <> invalid
         if type(m.profileOwnSignInContext.pendingVerified) = "roAssociativeArray" then m.profileOwnSignInContext.pendingVerified.apiKey = ""
+        if type(m.profileOwnSignInContext.addVerified) = "roAssociativeArray" then m.profileOwnSignInContext.addVerified.apiKey = ""
     end if
     closeActiveUserProfileRecoveryPrompt()
     context = m.profileOwnSignInContext

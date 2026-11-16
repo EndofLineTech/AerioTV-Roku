@@ -89,7 +89,7 @@ sub emitPickerIntent()
     model = m.top.model
     action = m.input.action
     if action = "choose" then action = userProfilePickerChoice(model, m.input.focus)
-    if action = "reorder"
+    if action = "reorder" or action = "reorder-release"
         if model.tiles[m.input.focus].kind <> "profile" then return
     end if
     ' Parent must bind node/nonce/current roots and authorize every intent.
@@ -108,7 +108,12 @@ function onKeyEvent(key as string, press as boolean) as boolean
     end if
     if m.top.busy or m.input.count = 0 then return true
     wasArmed = m.input.armed
+    wasHeld = m.input.held
     m.input = userProfilePickerInput(m.input, key, press)
+    if key = "OK" and not press and wasArmed and wasHeld
+        m.input.action = "reorder-release"
+        m.input.held = false
+    end if
     if key = "OK" and press and not wasArmed then m.holdTimer.control = "start"
     if key <> "OK" or not press then m.holdTimer.control = "stop"
     drawPickerTiles()

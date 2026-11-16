@@ -3,6 +3,7 @@ sub refreshSettingsHub()
     version = info.getValue("major_version") + "." + info.getValue("minor_version") + "." + info.getValue("build_version")
     model = {account: m.accountIdentity, version: version, device: m.devicePreferences, guide: m.accountPreferences.guide, vodEnabled: m.accountPreferences.vodEnabled <> false, vodTmdbEnabled: m.accountPreferences.vodTmdbEnabled = true, startupBehavior: m.accountPreferences.startupBehavior, dvrPreRollMinutes: m.accountPreferences.dvrPreRollMinutes, dvrPostRollMinutes: m.accountPreferences.dvrPostRollMinutes, whatsNewVersion: m.accountPreferences.whatsNewVersion, movies: m.capabilities.movies, series: m.capabilities.series, catchup: m.capabilities.catchup, dvr: m.capabilities.dvr}
     model.userRole = currentUserSettingsRole()
+    if m.profileBaselineReady = true then model.profilesBaseline = profileBaselineContext() <> invalid
     m.settingsHub.model = userViewEvent(model, currentUserSessionId())
 end sub
 
@@ -48,6 +49,10 @@ sub onSettingsHubSelection(event as object)
     if not settingsHubActionAllowed(roleModel, item.action) then return
     if item.action = "profiles-manage"
         openUserProfileManagement()
+        return
+    end if
+    if item.action = "profiles-baseline"
+        openProfileBaselineMenu()
         return
     end if
     if item.action = "connection"

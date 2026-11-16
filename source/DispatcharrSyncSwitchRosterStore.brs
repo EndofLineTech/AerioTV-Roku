@@ -157,7 +157,7 @@ function commitDispatcharrSwitchRosterPull(registry as object, context as object
     if type(context.connection) <> "roAssociativeArray" or type(context.store) <> "roAssociativeArray" or type(context.target) <> "roAssociativeArray" then return denied
     if GetInterface(context.nonce, "ifString") = invalid then return denied
     entry = context.connection
-    plan = dispatcharrSyncSwitchRosterPlan(entry, context.store, context.target.id, verified, decoded, enabled, now, context.nonce, activeNonce, context.outgoing, activeOutgoing)
+    plan = dispatcharrSyncSwitchRosterPlan(entry, context.store, context.target.id, verified, decoded, enabled, now, context.nonce, activeNonce, context.outgoing, activeOutgoing, dispatcharrSyncLocalPendingAllowed(registry, context))
     if not plan.ok
         denied.reason = plan.reason
         denied.needsDefaultSwitch = plan.needsDefaultSwitch
@@ -219,7 +219,7 @@ function commitDispatcharrSwitchRosterCleanup(registry as object, context as obj
         plan = dispatcharrSyncUnavailableChildRosterPlan(context.connection, context.store, context.target.id, verified, decoded, enabled, now, context.nonce, activeNonce, activeOutgoing, activeKey, admin.record, context.management, textValue(context.managementNonce))
     else
         if not dispatcharrSyncSwitchRosterAccessCurrent(registry, context, verified, now, activeNonce, activeOutgoing, memoryKeys) then return denied
-        plan = dispatcharrSyncSwitchRosterPlan(context.connection, context.store, context.target.id, verified, decoded, enabled, now, context.nonce, activeNonce, context.outgoing, activeOutgoing)
+        plan = dispatcharrSyncSwitchRosterPlan(context.connection, context.store, context.target.id, verified, decoded, enabled, now, context.nonce, activeNonce, context.outgoing, activeOutgoing, dispatcharrSyncLocalPendingAllowed(registry, context))
     end if
     if not plan.ok
         denied.reason = plan.reason
@@ -343,7 +343,8 @@ end function
 function dispatcharrSyncSwitchRosterAccessCurrent(registry as object, context as object, verified as object, now as integer, activeNonce as string, activeOutgoing as dynamic, memoryKeys as object) as boolean
     if type(context.connection) <> "roAssociativeArray" or type(context.store) <> "roAssociativeArray" or type(context.target) <> "roAssociativeArray" then return false
     if GetInterface(context.nonce, "ifString") = invalid then return false
-    proof = dispatcharrSyncSwitchRosterPlan(context.connection, context.store, context.target.id, verified, {ok: true, rows: [], removed: []}, false, now, context.nonce, activeNonce, context.outgoing, activeOutgoing)
+    if userProfileTrue(context.localOnly) and not dispatcharrSyncLocalPendingAllowed(registry, context) then return false
+    proof = dispatcharrSyncSwitchRosterPlan(context.connection, context.store, context.target.id, verified, {ok: true, rows: [], removed: []}, false, now, context.nonce, activeNonce, context.outgoing, activeOutgoing, dispatcharrSyncLocalPendingAllowed(registry, context))
     if not proof.ok then return false
     for each profile in context.store.profiles
         if profile.id = context.store.active and profile.role = "child"

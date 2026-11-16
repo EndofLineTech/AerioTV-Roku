@@ -13,6 +13,22 @@ from unittest.mock import MagicMock, patch
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_baseline_builder_changes_only_manifest_and_writes_checksum(self):
+        spec = importlib.util.spec_from_file_location('baseline_builder', Path(__file__).with_name('build-profiles-baseline.py'))
+        builder = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(builder)
+        with tempfile.TemporaryDirectory() as folder:
+            source, output = Path(folder) / 'normal.zip', Path(folder) / 'baseline.zip'
+            with zipfile.ZipFile(source, 'w') as package:
+                package.writestr('manifest', 'title=AerioTV\nbuild_version=100\n')
+                package.writestr('source/Main.brs', b'unchanged')
+            with contextlib.redirect_stdout(io.StringIO()):
+                builder.build(source, output)
+            with zipfile.ZipFile(output) as package:
+                self.assertEqual(package.read('source/Main.brs'), b'unchanged')
+                self.assertEqual(package.read('manifest'), b'title=AerioTV Profiles Baseline\nbuild_version=100\naeriotv_profiles_baseline=1\n')
+            self.assertTrue(output.with_suffix('.zip.sha256').exists())
+
     def test_staged_switch_readiness_is_not_publicly_enabled(self):
         root = Path(__file__).resolve().parent.parent
         scene = (root / 'components/AerioScene.brs').read_text()
@@ -33,14 +49,14 @@ class ProfileProbeTest(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('startup_picker_probe', Path(__file__).with_name('test-profile-picker-launch-native.py'))
         probe = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(probe)
-        names = ['manifest', 'source/Main.brs', 'source/StartupBeaconModel.brs', 'components/AerioScene.xml', 'components/AerioScene.brs', 'components/ProfilePickerNavigation.brs',
+        names = ['manifest', 'source/Main.brs', 'source/StartupBeaconModel.brs', 'components/AerioScene.xml', 'components/AerioScene.brs', 'components/ProfilePickerNavigation.brs', 'components/ProfilePickerManagementNavigation.brs',
                  'components/GuideView.xml', 'components/GuideView.brs', 'source/MetadataCacheStore.brs']
         with tempfile.TemporaryDirectory() as folder:
             normal = Path(folder) / 'normal.zip'
             with zipfile.ZipFile(normal, 'w') as package:
                 for name in names:
                     package.write(root / name, name)
-            for mode in ['plain', 'pin', 'import-pin', 'back', 'reject', 'identity', 'cold-link', 'warm-link', 'warm-pin-link', 'warm-auth-link', 'warm-import-pin-link', 'warm-load-link', 'own-keyless', 'own-pin', 'own-held', 'own-cancel', 'own-link', 'own-pin-link', 'own-auth-link', 'own-default', 'own-default-pin', 'own-wrong', 'own-recreated', 'own-memory', 'own-keyboard', 'child-select', 'child-select-pin', 'child-select-reject', 'child-select-link']:
+            for mode in ['plain', 'pin', 'import-pin', 'back', 'reject', 'identity', 'cold-link', 'warm-link', 'warm-pin-link', 'warm-auth-link', 'warm-import-pin-link', 'warm-load-link', 'own-keyless', 'own-pin', 'own-held', 'own-cancel', 'own-link', 'own-pin-link', 'own-auth-link', 'own-default', 'own-default-pin', 'own-wrong', 'own-recreated', 'own-memory', 'own-keyboard', 'child-select', 'child-select-pin', 'child-select-reject', 'child-select-link', 'reorder']:
                 target = Path(folder) / f'{mode}.zip'
                 probe.build(target, normal, 'DisposablePicker', 'http://fixture.test', mode)
                 with zipfile.ZipFile(target) as package:

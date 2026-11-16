@@ -1,4 +1,26 @@
 sub main()
+    m.profilePreferenceDecoder = function(raw as string) as dynamic
+        return ParseJson(raw)
+    end function
+    switchRosterStoreFixture()
+    m.registry.values["settingsV1"] = FormatJson(defaultPreferenceStore())
+    m.context.localOnly = true
+    m.context.store = setCanonicalPreference(m.context.store, "pendingRoster", true)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.context.store)
+    m.context.store = loadUserProfileStore(m.registry, "slot-a")
+    check(dispatcharrSyncLocalPendingAllowed(m.registry, m.context), "baseline captured local-only intent resolves actual valid Sync Off")
+    localPlan = dispatcharrSyncSwitchRosterPlan(m.context.connection, m.context.store, m.context.target.id, m.verified, m.decoded, m.enabled, 600, m.context.nonce, m.activeNonce, m.outgoing, m.outgoing, true)
+    check(localPlan.ok, "baseline pure target staging admits retained pending intent: " + textValue(localPlan.reason))
+    check(switchRosterStoreAccess(), "baseline Sync Off permits own-key preflight with unacknowledged local edits")
+    staged = switchRosterStoreCommit()
+    check(staged.ok and staged.store.pendingRoster and staged.target.pinType = "numbers", "baseline still reads target protection and retains pending intent: " + textValue(staged.reason))
+    m.context.store = staged.store
+    m.context.target = staged.target
+    settings = defaultPreferenceStore()
+    settings.device.dispatcharrSyncEnabled = true
+    m.registry.values["settingsV1"] = FormatJson(settings)
+    before = FormatJson(m.registry.values)
+    check(not switchRosterStoreAccess() and not switchRosterStoreCommit().ok and FormatJson(m.registry.values) = before, "baseline rechecks actual Sync Off before continuation and writes")
     for each cold in [false, true]
         switchDefaultRetirementFixture()
         retained = m.context.store.profiles[2]

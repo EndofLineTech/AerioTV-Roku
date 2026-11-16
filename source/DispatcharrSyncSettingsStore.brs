@@ -1,5 +1,12 @@
 ' Device-wide explicit choices, never an account/profile sync category or an
 ' implicit opt-in. Read without rewriting sparse roots or malformed values.
+' Local-only baseline retains dirty roster intent; it never acknowledges it.
+function dispatcharrSyncLocalPendingAllowed(registry as object, context as object) as boolean
+    if not userProfileTrue(context.localOnly) then return false
+    settings = loadDispatcharrSyncSettings(registry)
+    return settings.ok and not settings.enabled
+end function
+
 function loadDispatcharrSyncSettings(registry as object) as object
     denied = {ok: false, enabled: false, profiles: true}
     store = loadStrictPreferenceStore(registry)

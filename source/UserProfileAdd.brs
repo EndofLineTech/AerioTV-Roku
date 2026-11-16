@@ -1,0 +1,113 @@
+' Manual Add reads the new user's existing protection before creating a row.
+' No source preferences, credential or authenticated scope are copied.
+function userProfileAddPlan(connection as object, previous as object, id as string, username as string, verified as object, read as object, now as integer) as object
+    denied = {ok: false, reason: "Could not verify this profile."}
+    if connection.provider <> "dispatcharr" or now <= 0 or userProfileLocalId(id) = "" then return denied
+    store = normalizeUserProfileStore(previous, connection.id)
+    if store.readOnly = true then return denied
+    if store.profiles.count() >= 4 then return {ok: false, reason: "This playlist already has four profiles."}
+    actor = invalid
+    for each profile in store.profiles
+        if profile.id = store.active then actor = profile
+        if profile.addressHeld then return {ok: false, reason: "Resolve the saved server address before adding a profile."}
+        if profile.id = lcase(id) then return denied
+    end for
+    if actor = invalid then return denied
+    if not userProfileFullAccess(actor.role) then return denied
+    if verified.ok <> true or verified.verifiedBaseUrl <> connection.url or textValue(verified.apiKey) = "" then return denied
+    if len(textValue(verified.apiKey)) > 512 then return denied
+    candidate = userProfileFromVerified(connection.id, id, verified.verifiedUser, now)
+    if candidate = invalid then return denied
+    if lcase(candidate.username) <> lcase(username.trim()) then return denied
+    if read.ok <> true or read.verifiedBaseUrl <> connection.url then return denied
+    if textValue(read.accountId) <> candidate.userId.toStr() or lcase(textValue(read.accountUsername)) <> lcase(candidate.username) then return denied
+    live = userProfileFromVerified(connection.id, id, read.verifiedUser, now)
+    if live = invalid then return denied
+    if live.userId <> candidate.userId or lcase(live.username) <> lcase(candidate.username) then return denied
+    candidate = setCanonicalPreference(live, "isDefault", false)
+    for each profile in store.profiles
+        if profile.userId = candidate.userId or lcase(profile.username) = lcase(candidate.username) then return {ok: false, reason: "This account already has a profile."}
+    end for
+    for each removed in store.removed
+        if lcase(removed[0]) = lcase(candidate.username) then return {ok: false, reason: "Restore this recently removed profile from your other device first."}
+    end for
+    roster = false
+    if read.state = "ready"
+        if read.profilesState <> "ready" and read.profilesState <> "absent" then return denied
+        if read.profilesState = "ready"
+            wire = invalid
+            if type(read.data) = "roAssociativeArray"
+                categories = read.data["categories"]
+                if type(categories) = "roAssociativeArray"
+                    category = categories["profiles"]
+                    if type(category) = "roAssociativeArray" then wire = category["data"]
+                end if
+            end if
+            decoded = dispatcharrSyncRosterDecode(wire)
+            if not decoded.ok then return denied
+            for each removed in decoded.removed
+                if removed.username = lcase(candidate.username) then return {ok: false, reason: "Restore this recently removed profile from your other device first."}
+            end for
+            for each row in decoded.rows
+                if lcase(row.username) = lcase(candidate.username)
+                    if row.userId <> candidate.userId or roster then return denied
+                    candidate = dispatcharrSyncMergeProfile(candidate, row, now)
+                    roster = true
+                end if
+            end for
+        end if
+    else if read.state <> "missing"
+        return {ok: false, reason: "Update this account's profile data on your other device first."}
+    end if
+    if candidate.role = "child" then return {ok: false, reason: "Adding Child profiles is not enabled in this baseline."}
+    for each profile in store.profiles
+        if profile.role = "child" and candidate.pinType = "none" then return {ok: false, reason: "While a Child profile exists, Admin and Standard profiles keep a PIN."}
+    end for
+    if roster
+        candidate = setCanonicalPreference(candidate, "addOrigin", "roster")
+    else
+        candidate = setCanonicalPreference(candidate, "updatedAt", now)
+        store = setCanonicalPreference(store, "pendingRoster", true)
+    end if
+    store.profiles.push(candidate)
+    tagged = userProfileAddressOwnTagPlan(store, candidate.id, read.verifiedUser, userProfileLiveDefaultAt(connection, store), true)
+    if not tagged.ok then return denied
+    store = normalizeUserProfileStore(tagged.store, connection.id)
+    if store.readOnly = true then return denied
+    for each profile in store.profiles
+        if profile.id = candidate.id then candidate = profile
+    end for
+    return {ok: true, store: store, target: candidate}
+end function
+
+function commitUserProfileAdd(registry as object, context as object, verified as object, read as object, now as integer, activeNonce as string, activeScope as dynamic, managementNonce as string) as object
+    denied = {ok: false, recoveryRequired: false, reason: "Profile access changed. Please try again."}
+    if userProfileLocalId(context.nonce) = "" or context.nonce <> activeNonce then return denied
+    if not userProfileSameSession(context.scope, activeScope) then return denied
+    if activeScope.playlistId <> context.connection.id or activeScope.profileId <> context.store.active then return denied
+    connections = loadConnectionStore(registry)
+    entry = connectionStoreEntry(connections, context.connection.id)
+    if connections.readOnly = true or connections.selected <> context.connection.id or entry = invalid then return denied
+    if FormatJson(entry) <> FormatJson(normalizeConnectionEntry(context.connection)) then return denied
+    actor = invalid
+    for each profile in context.store.profiles
+        if profile.id = activeScope.profileId then actor = profile
+    end for
+    if actor = invalid then return denied
+    if actor.userId.toStr() <> activeScope.accountId or activeScope.preferenceIdentity <> connectionPreferenceIdentity(entry, activeScope.accountId) then return denied
+    admin = userProfileLoadDeviceAdminPin(registry, entry.id)
+    if not admin.ok then return denied
+    if not userProfileManagementGrantMatches(context.store, admin.record, context.addGrant, managementNonce, true) then return denied
+    planned = userProfileAddPlan(entry, context.store, context.target.id, context.username, verified, read, now)
+    if not planned.ok then return planned
+    keys = {}
+    keys[planned.target.id] = verified.apiKey
+    prepared = userProfileStoreChanges(registry, context.store, planned.store, keys, entry.remember)
+    if not prepared.ok then return denied
+    saved = userProfileRegistryTransaction(registry, prepared.changes)
+    if saved.ok
+        saved.store = planned.store
+        saved.target = planned.target
+    end if
+    return saved
+end function

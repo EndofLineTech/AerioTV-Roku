@@ -8,6 +8,11 @@ sub init()
     m.profileSyncSchedulingReady = false
     m.profileSyncControlsReady = false
     m.profilePickerReady = false
+    m.profileBaselineReady = CreateObject("roAppInfo").getValue("aeriotv_profiles_baseline") = "1"
+    if m.profileBaselineReady
+        m.profilePickerReady = true
+        m.profileSwitchRosterReady = true
+    end if
     m.profileStartupDeferred = false
     m.profileStartupScreenReady = false
     m.profileStartupRoutingStarted = false
@@ -301,6 +306,11 @@ sub signalStartupComplete()
     completeStartupBeacons()
     ' A later authenticated guide still resolves links without a second beacon.
     handlePendingLaunch()
+    if m.profileBaselineReady = true and m.profileBaselinePendingAdd = true
+        m.profileBaselinePendingAdd = false
+        openSettingsHub()
+        beginProfileBaselineAdd()
+    end if
 end sub
 
 sub onLaunchRequest()

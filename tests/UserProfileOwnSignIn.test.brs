@@ -33,6 +33,29 @@ sub main()
     wrong.apiKey = invalid
     check(not userProfileOwnSignInPlan(entry, store, b.id, wrong, 100).ok, "an own account without API access cannot stage a credential commit")
     entry = normalizeConnectionEntry(entry)
+    newId = "00000000-0000-4000-8000-000000000003"
+    addedProof = {ok: true, apiKey: "cara-own-key", verifiedBaseUrl: entry.url, verifiedUser: {id: 9, username: "CARA", user_level: 1}}
+    addedRead = {ok: true, state: "missing", verifiedBaseUrl: entry.url, accountId: "9", accountUsername: "CARA", verifiedUser: {id: 9, username: "CARA", user_level: 1}}
+    addPlan = userProfileAddPlan(entry, store, newId, "Cara", addedProof, addedRead, 300)
+    check(addPlan.ok and addPlan.store.active = a.id and addPlan.target.userId = 9 and not addPlan.target.isDefault and addPlan.store.pendingRoster, "baseline Add creates only an own-verified inactive profile")
+    importedRead = copyJson(addedRead)
+    importedRead.state = "ready"
+    importedRead.profilesState = "ready"
+    importedRead.data = {categories: {profiles: {data: {rows: [[9, "Cara", "Imported Cara", "numbers", string(64, "a"), string(32, "b"), "user", 200, {}, 0]], removed: []}}}}
+    importedAdd = userProfileAddPlan(entry, store, newId, "Cara", addedProof, importedRead, 300)
+    check(importedAdd.ok and importedAdd.target.pinType = "numbers" and importedAdd.target.updatedAt = 200 and importedAdd.target.addOrigin = "roster", "Add reads and inherits existing protection before stamping a newer unprotected row")
+    wrongAdd = copyJson(addedProof)
+    wrongAdd.verifiedBaseUrl = "https://foreign.test"
+    check(not userProfileAddPlan(entry, store, newId, "Cara", wrongAdd, addedRead, 300).ok, "Add refuses foreign-address proof")
+    check(not userProfileAddPlan(entry, store, newId, "Bob", addedProof, addedRead, 300).ok, "Add binds the typed username to its actual own identity")
+    sourceScope = userProfileSessionScope(entry, a.id, 7, "add-source", "00000000-0000-4000-8000-000000000093")
+    addNonce = "00000000-0000-4000-8000-000000000094"
+    managementNonce = "00000000-0000-4000-8000-000000000095"
+    addContext = {connection: entry, store: store, target: {id: newId}, username: "Cara", scope: sourceScope, nonce: addNonce, addGrant: {slot: entry.id, active: a.id, nonce: managementNonce, purpose: "manage-profiles", kind: "pin", id: b.id, pinType: b.pinType, pinHash: b.pinHash, pinSalt: b.pinSalt}}
+    addRegistry = ownSignInRegistry(entry, store)
+    oldAddSettings = addRegistry.read("settingsV1")
+    savedAdd = commitUserProfileAdd(addRegistry, addContext, addedProof, addedRead, 300, addNonce, sourceScope, managementNonce)
+    check(savedAdd.ok and addRegistry.read(userProfileKeyName(entry.id, newId)) = "cara-own-key" and addRegistry.read("connKey_slot-a") = "default-key" and addRegistry.read("settingsV1") = oldAddSettings, "Add saves only its own credential/record without borrowing or copying source data")
     registry = ownSignInRegistry(entry, store)
     nonce = "00000000-0000-4000-8000-000000000090"
     startupResult = {ok: true, apiKey: "startup-default-key", verifiedBaseUrl: entry.url, verifiedUser: {id: 7, username: "ALICE", user_level: 1}}

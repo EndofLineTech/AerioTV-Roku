@@ -53,6 +53,9 @@ export function assertPackageEntries(entries) {
 }
 
 export function assertShippingManifest(manifest) {
+  if (/^\s*aeriotv_profiles_baseline\s*=/mi.test(manifest) || /^\s*title\s*=.*profiles baseline/im.test(manifest)) {
+    throw new Error('Developer profiles baseline cannot be used as Beta/Store packages');
+  }
   if (/^\s*aeriotv_profile_directions_test\s*=/mi.test(manifest)) {
     throw new Error('Developer Directions PIN entry is not approved for shipping');
   }

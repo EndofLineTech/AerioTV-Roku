@@ -1,5 +1,5 @@
-' Internal staged own-key switch controller. No picker/Settings entry enables
-' this until outgoing sync, Child access and all handler fences are integrated.
+' Staged own-key switch controller. Public rollout remains gated; the developer
+' baseline admits local adult switches only while actual Sync settings are Off.
 function beginUserProfileSwitch(targetId as string, unavailableChild = false as boolean) as boolean
     if m.profileScheduledSyncTask <> invalid then return false
     if m.profileOwnSignInContext <> invalid then return false
@@ -36,7 +36,12 @@ function beginUserProfileSwitch(targetId as string, unavailableChild = false as 
     ' The shipping boundary still refuses pending edits; private writer staging
     ' may settle them under the actual outgoing session AFTER the target PIN.
     if store.pendingRoster = true and (not unavailableChild or m.profileSwitchRosterReady = true)
-        if m.profileSyncWriterReady <> true or unavailableChild then return false
+        localPending = false
+        if m.profileBaselineReady = true and not unavailableChild
+            settings = loadDispatcharrSyncSettings(m.registry)
+            localPending = settings.ok and not settings.enabled
+        end if
+        if (m.profileSyncWriterReady <> true and not localPending) or unavailableChild then return false
     end if
     target = invalid
     for each profile in store.profiles
@@ -72,6 +77,10 @@ function beginUserProfileSwitch(targetId as string, unavailableChild = false as 
     if not requestGateAccessAllowed(connection.url, credential.key) then return false
     nonce = CreateObject("roDeviceInfo").getRandomUUID()
     m.profileSwitchContext = {nonce: nonce, unavailableChild: unavailableChild, connection: connection, connectionRoot: m.registry.read("connectionsV1"), connectionRootPresent: m.registry.exists("connectionsV1"), store: store, target: target, key: credential.key, outgoing: m.activeUserScope, outgoingProtection: outgoingProtection, unlock: m.profileUnlockGrant, management: m.profileManagementGrant, managementNonce: textValue(m.profileManagementNonce)}
+    if m.profileBaselineReady = true and not unavailableChild
+        settings = loadDispatcharrSyncSettings(m.registry)
+        m.profileSwitchContext.localOnly = settings.ok and not settings.enabled
+    end if
     if target.pinType <> "none"
         if beginProfilePinGate(target, "switch", nonce) then return true
         m.profileSwitchContext = invalid
@@ -84,6 +93,9 @@ end function
 sub onUserProfileSwitchPin(nonce as string)
     context = m.profileSwitchContext
     if context = invalid or context.nonce <> nonce then return
+    if userProfileTrue(context.localOnly)
+        if m.profileBaselineReady <> true or not dispatcharrSyncLocalPendingAllowed(m.registry, context) then rollbackUserProfileSwitch("Sync choices changed. Switch cancelled.") : return
+    end if
     if not userProfilePinGrantMatches(m.profileUnlockGrant, context.connection.id, context.target) then return
     current = loadUserProfileStore(m.registry, context.connection.id)
     if not userProfileSwitchAcceptPinStore(context.store, current, context.target.id, m.profileUnlockGrant)
@@ -99,6 +111,9 @@ end sub
 sub startUserProfileSwitchTask(nonce as string)
     context = m.profileSwitchContext
     if context = invalid or context.nonce <> nonce then return
+    if userProfileTrue(context.localOnly)
+        if m.profileBaselineReady <> true or not dispatcharrSyncLocalPendingAllowed(m.registry, context) then rollbackUserProfileSwitch("Sync choices changed. Switch cancelled.") : return
+    end if
     if context.connection.id <> m.selectedConnectionId then return
     connections = loadConnectionStore(m.registry)
     currentEntry = connectionStoreEntry(connections, context.connection.id)
@@ -129,7 +144,7 @@ sub startUserProfileSwitchTask(nonce as string)
         if m.activeUserScope <> invalid or m.apiKey <> "" then return
     else
         if not userProfileSameSession(context.outgoing, m.activeUserScope) then return
-        if currentStore.pendingRoster = true
+        if currentStore.pendingRoster = true and not dispatcharrSyncLocalPendingAllowed(m.registry, context)
             if context.phase = "flush" then return
             if not beginOutgoingUserProfileSync(context) then rollbackUserProfileSwitch("Could not safely flush outgoing changes. Saved edits were retained.")
             return
@@ -201,6 +216,9 @@ sub onUserProfileSwitchResult(event as object)
     context = m.profileSwitchContext
     if context = invalid or context.connection.id <> m.selectedConnectionId then return
     if not userProfileSwitchActorCurrent(context) then return
+    if userProfileTrue(context.localOnly)
+        if m.profileBaselineReady <> true or not dispatcharrSyncLocalPendingAllowed(m.registry, context) then rollbackUserProfileSwitch("Sync choices changed. Switch cancelled.") : return
+    end if
     verified = event.getData()
     if context.systemDefaultRetirement = true
         if type(verified) <> "roAssociativeArray" then stopSystemDefaultProfileSwitch("Could not verify the default profile.") : return

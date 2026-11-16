@@ -35,6 +35,9 @@
   <script type="text/brightscript" uri="ProfileManagementNavigation.brs" />
   <script type="text/brightscript" uri="ProfileSwitchNavigation.brs" />
   <script type="text/brightscript" uri="ProfilePickerNavigation.brs" />
+  <script type="text/brightscript" uri="ProfilePickerManagementNavigation.brs" />
+  <script type="text/brightscript" uri="ProfileBaselineNavigation.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileAdd.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfilePicker.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfilePickerInput.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileStartupSelection.brs" />

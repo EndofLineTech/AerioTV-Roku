@@ -27,6 +27,13 @@ sub onAdultProfileAuthorized()
     pending = m.profileManagementPending
     m.profileManagementPending = invalid
     if type(pending) = "roAssociativeArray"
+        if pending.action = "baseline-add"
+            current = profileBaselineContext()
+            if current = invalid then return
+            if not userProfileSameSession(pending.scope, current.scope) or pending.connectionRoot <> current.connectionRoot then return
+            beginProfileBaselineAdd(true)
+            return
+        end if
         showProfileManagementEditor(pending.id)
     else
         showProfileManagementRoster()
@@ -75,7 +82,7 @@ sub showProfileManagementEditor(id as string)
             if m.page = "profile-unavailable" and m.activeUserScope = invalid and profile.id <> store.active and userProfileFullAccess(profile.role) and not profile.addressHeld
                 choices.unshift({title: "Switch to this profile", action: "switch-unavailable"})
             end if
-            if profile.userLevel < 10 then choices.push({title: "Role: " + profile.role, action: "role"})
+            if profile.userLevel < 10 and m.profileBaselineReady <> true then choices.push({title: "Role: " + profile.role, action: "role"})
             choices.push({title: "Back", action: "roster"})
             openProfileManagementChoices(profile.displayName, "Changes apply only to this connection's profile.", choices)
             return

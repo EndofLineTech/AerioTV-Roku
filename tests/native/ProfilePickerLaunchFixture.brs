@@ -41,6 +41,10 @@ sub seedProfilePickerLaunchProbe(base as string, mode as string)
     store = defaultUserProfileStore("slot-a")
     store.profiles = [a, b]
     store.active = a.id
+    if mode = "baseline"
+        store.profiles = [a]
+        store = setCanonicalPreference(store, "askAtLaunch", false)
+    end if
     ' Exercise the production default, rather than forcing Ask on in the probe.
     store = setCanonicalPreference(store, "pendingRoster", true)
     connection = normalizeConnectionEntry({id: "slot-a", name: "Synthetic startup", provider: "dispatcharr", url: base, accountId: "7", remember: true})
@@ -48,10 +52,11 @@ sub seedProfilePickerLaunchProbe(base as string, mode as string)
     m.registry.write("connectionsV1", FormatJson({schema: 1, selected: "slot-a", entries: [connection]}))
     m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
     if not m.pickerProbeDefaultOwn and mode <> "own-memory" then m.registry.write("connKey_slot-a", "synthetic-a")
-    if left(mode, 4) <> "own-" or mode = "own-held" or m.pickerProbeDefaultOwn then m.registry.write(userProfileKeyName("slot-a", b.id), "synthetic-b")
+    if mode <> "baseline" and (left(mode, 4) <> "own-" or mode = "own-held" or m.pickerProbeDefaultOwn) then m.registry.write(userProfileKeyName("slot-a", b.id), "synthetic-b")
     settings = defaultPreferenceStore()
     settings.accounts[preferenceScope(connectionPreferenceIdentity(connection, "7"))] = normalizeAccountPreferences({favoriteIds: ["7"], profileSettings: {themePreset: "midnight"}, startupBehavior: "guide"})
     settings.accounts[preferenceScope(connectionPreferenceIdentity(connection, "8"))] = normalizeAccountPreferences({favoriteIds: ["8"], profileSettings: {themePreset: "forest"}, startupBehavior: "guide"})
+    if mode = "baseline" then settings.accounts.delete(preferenceScope(connectionPreferenceIdentity(connection, "8")))
     m.registry.write("settingsV1", FormatJson(settings))
     m.registry.flush()
     m.pickerProbeA = a.id
@@ -65,7 +70,87 @@ sub seedProfilePickerLaunchProbe(base as string, mode as string)
     m.pickerProbeClock.control = "start"
 end sub
 
+function baselineProbeEvent(node as object, choice as integer) as object
+    return {node: node, choice: choice, getRoSGNode: function() as object
+        return m.node
+    end function, getData: function() as integer
+        return m.choice
+    end function}
+end function
+
+sub onProfileBaselineProbeTick()
+    if m.pickerProbeBaselineStage = invalid then m.pickerProbeBaselineStage = 0
+    stage = m.pickerProbeBaselineStage
+    if m.pickerProbeBaselineTicks = invalid then m.pickerProbeBaselineTicks = 0
+    m.pickerProbeBaselineTicks++
+    if m.pickerProbeBaselineTicks mod 5 = 1
+        taskState = ""
+        if m.task <> invalid then taskState = m.task.state
+        print "[picker-launch] "; FormatJson({kind: "baseline-state", stage: stage, page: m.page, busy: m.busy, gate: m.global.profilegateclosed, ownPending: m.global.profileownsigninpending, sourceTask: taskState, picker: m.profilePicker <> invalid, ownForm: m.profileOwnSignInDialog <> invalid, baselineMenu: m.profileBaselineMenu <> invalid})
+        if m.page = "setup" and not m.busy
+            print "[picker-launch] "; FormatJson({kind: "baseline-source-failure", message: m.status})
+            m.pickerProbeClock.control = "stop"
+            print "[picker-launch] "; FormatJson({kind: "result", passed: false, baseline: true})
+        end if
+    end if
+    if stage = 0
+        if m.page <> "guide" or m.busy or m.activeUserScope = invalid then return
+        m.pickerProbeBaselineSettings = m.registry.read("settingsV1")
+        openSettingsHub()
+        openProfileBaselineMenu()
+        if m.profileBaselineMenu = invalid then return
+        m.pickerProbeBaselineStage = 1
+        onProfileBaselineChoice(baselineProbeEvent(m.profileBaselineMenu, 1))
+        return
+    end if
+    if stage = 1
+        if m.profileOwnSignInContext = invalid or m.profileOwnSignInDialog = invalid then return
+        m.profileOwnSignInContext.username = "Synthetic8"
+        m.profileOwnSignInContext.password = "synthetic-password"
+        m.pickerProbeBaselineStage = 2
+        onProfileOwnSignInChoice(baselineProbeEvent(m.profileOwnSignInDialog, 2))
+        return
+    end if
+    if stage = 2
+        if m.profileBaselineMenu = invalid then return
+        store = loadUserProfileStore(m.registry, "slot-a")
+        if store.profiles.count() <> 2 then return
+        for each profile in store.profiles
+            if profile.userId = 8 then m.pickerProbeAdded = profile.id
+        end for
+        valid = store.active = m.pickerProbeA and store.pendingRoster and m.registry.read("connKey_slot-a") = "synthetic-a"
+        valid = valid and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeAdded)) = "synthetic-b" and m.registry.read("settingsV1") = m.pickerProbeBaselineSettings
+        m.pickerProbeBaselineValid = valid
+        m.pickerProbeBaselineStage = 3
+        onProfileBaselineChoice(baselineProbeEvent(m.profileBaselineMenu, 1))
+        return
+    end if
+    if stage = 3
+        if m.busy or m.profileSwitchContext <> invalid or m.activeUserScope = invalid then return
+        if m.activeUserScope.accountId <> "8" then return
+        m.pickerProbeBaselineValid = m.pickerProbeBaselineValid and m.apiKey = "synthetic-b" and m.userProfileStore.pendingRoster and m.accountPreferences.favoriteIds.count() = 0
+        openUserProfileManagement()
+        if m.profileManagementDialog = invalid then return
+        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, 1))
+        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, 2))
+        m.pickerProbeBaselineStage = 4
+        return
+    end if
+    if stage = 4
+        m.pickerProbeClock.control = "stop"
+        store = loadUserProfileStore(m.registry, "slot-a")
+        sorted = userProfileSorted(store.profiles)
+        passed = m.pickerProbeBaselineValid and sorted[0].id = m.pickerProbeAdded and store.active = m.pickerProbeAdded and store.pendingRoster
+        passed = passed and m.apiKey = "synthetic-b" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.profileOwnSignInContext = invalid
+        print "[picker-launch] "; FormatJson({kind: "result", passed: passed, baseline: true})
+    end if
+end sub
+
 sub onProfilePickerLaunchProbeTick()
+    if m.pickerProbeMode = "baseline"
+        onProfileBaselineProbeTick()
+        return
+    end if
     ownForm = left(m.pickerProbeMode, 4) = "own-"
     ownLink = m.pickerProbeMode = "own-link" or m.pickerProbeMode = "own-pin-link" or m.pickerProbeMode = "own-auth-link"
     sourceLink = m.pickerProbeMode = "cold-link" or m.pickerProbeMode = "warm-link" or m.pickerProbeMode = "warm-pin-link" or m.pickerProbeMode = "warm-auth-link" or m.pickerProbeMode = "warm-import-pin-link" or m.pickerProbeMode = "warm-load-link" or ownLink or m.pickerProbeMode = "child-select-link"
@@ -84,6 +169,23 @@ sub onProfilePickerLaunchProbeTick()
         if m.pickerProbeChildTarget then formAdmissionExpected = not admission.ok
         ready = ready and formAdmissionExpected and m.activeUserScope = invalid and m.apiKey = "" and m.profileStartupTask = invalid
         print "[picker-launch] "; FormatJson({kind: "ready", ready: ready, own_form_admission: admission.ok})
+    end if
+    if m.pickerProbeMode = "reorder"
+        if m.profilePickerReorderDialog <> invalid and m.pickerProbeReorderMenuReady <> true
+            m.pickerProbeReorderMenuReady = true
+            dialog = m.profilePickerReorderDialog
+            ready = dialog.title = "Synthetic8" and dialog.buttons.count() = 3 and dialog.buttons[0] = "Move Left" and dialog.buttons[1] = "Move to Front" and dialog.buttons[2] = "Cancel"
+            ready = ready and m.activeUserScope = invalid and m.apiKey = "" and m.profileStartupTask = invalid and m.global.profilegateclosed and m.profilePicker.busy
+            print "[picker-launch] "; FormatJson({kind: "reorder-menu", ready: ready})
+        else if m.pickerProbeReorderMenuReady = true and m.profilePickerReorderDialog = invalid
+            m.pickerProbeClock.control = "stop"
+            store = loadUserProfileStore(m.registry, "slot-a")
+            passed = store.active = m.pickerProbeA and store.pendingRoster and m.profilePicker.model.tiles[0].id = m.pickerProbeB and m.profilePicker.focusIndex = 0 and not m.profilePicker.busy
+            passed = passed and m.activeUserScope = invalid and m.apiKey = "" and m.global.activeusersession = "" and m.global.profilegateclosed and m.profileStartupTask = invalid and m.profilePickerReorderContext = invalid and m.profilePickerReorderNonce = ""
+            passed = passed and m.registry.read("settingsV1") = m.pickerProbeSettingsRoot and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeB)) = "synthetic-b"
+            print "[picker-launch] "; FormatJson({kind: "result", passed: passed, reordered: true})
+        end if
+        return
     end if
     if (m.pickerProbeMode = "reject" or m.pickerProbeMode = "identity" or m.pickerProbeMode = "child-select-reject") and m.profilePicker <> invalid
         failureMessage = "The API key for Synthetic8 was rejected."

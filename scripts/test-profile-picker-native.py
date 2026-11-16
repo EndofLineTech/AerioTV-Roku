@@ -86,14 +86,14 @@ def main():
                     key("Select", "keydown")
                     time.sleep(0.9)
                     key("Select", "keyup")
-                elif event["step"] == 2:
+                elif event["step"] == 3:
                     key("Right")
                     key("Select")
-                elif event["step"] == 3:
+                elif event["step"] == 4:
                     key("Back")
         code = process.wait(timeout=15)
         events = report["events"]
-        report["passed"] = code == 0 and events[-1].get("kind") == "complete" and events[-1].get("passed") is True and report.get("screenshot") is True and len([e for e in events if e["kind"] == "intent"]) == 5 and all(k.get("status") == 200 for k in report["keys"])
+        report["passed"] = code == 0 and events[-1].get("kind") == "complete" and events[-1].get("passed") is True and report.get("screenshot") is True and len([e for e in events if e["kind"] == "intent"]) == 6 and all(k.get("status") == 200 for k in report["keys"])
     finally:
         if process is not None and process.poll() is None:
             process.terminate()

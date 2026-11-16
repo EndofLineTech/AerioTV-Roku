@@ -1,7 +1,7 @@
 ' Pure target-protection staging. No registry, network, key publication or runtime
 ' adoption. The controller must bind the actual auth/read nodes and atomically
 ' validate storage before applying this plan or asking for its new target PIN.
-function dispatcharrSyncSwitchRosterPlan(connection as object, previous as object, targetId as string, verified as object, decoded as object, enabled as boolean, now as integer, nonce as string, activeNonce as string, outgoing as dynamic, activeOutgoing as dynamic) as object
+function dispatcharrSyncSwitchRosterPlan(connection as object, previous as object, targetId as string, verified as object, decoded as object, enabled as boolean, now as integer, nonce as string, activeNonce as string, outgoing as dynamic, activeOutgoing as dynamic, localPending = false as boolean) as object
     denied = {ok: false, applied: false, reason: "stale-context", store: previous, removed: [], suggestions: [], needsDefaultSwitch: false}
     if userProfileLocalId(nonce) = "" or nonce <> activeNonce then return denied
     if not userProfileSameSession(outgoing, activeOutgoing) then return denied
@@ -11,7 +11,7 @@ function dispatcharrSyncSwitchRosterPlan(connection as object, previous as objec
     if outgoing.preferenceIdentity <> connectionPreferenceIdentity(connection, outgoing.accountId) then return denied
     store = normalizeUserProfileStore(previous, connection.id)
     if store.readOnly = true or now <= 0 then return denied
-    if store.pendingRoster
+    if store.pendingRoster and not localPending
         denied.reason = "outgoing-pending"
         return denied
     end if

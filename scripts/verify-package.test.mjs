@@ -46,6 +46,13 @@ test('developer Directions PIN opt-in cannot ship under any flag value', () => {
   }
 });
 
+test('developer profiles baseline cannot ship under any flag value', () => {
+  for (const value of ['1', '0', 'true', '']) {
+    assert.throws(() => assertShippingManifest(`title=AerioTV\naeriotv_profiles_baseline=${value}\n`), /baseline/i);
+  }
+  assert.throws(() => assertShippingManifest('title=AerioTV Profiles Baseline\n'), /baseline/i);
+});
+
 test('the packaged notices remain identical to the repository originals', () => {
   for (const name of ['LICENSE', 'NOTICE']) {
     assert.equal(

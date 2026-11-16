@@ -246,14 +246,20 @@ sub onUserProfilePickerIntent(event as object)
     expected = userProfilePickerChoice(m.profilePicker.model, intent.index)
     if expected = "" then return
     if intent.action <> expected
-        if intent.action = "reorder" then m.profilePicker.message = "Profile management is not enabled in this private startup flow."
+        if intent.action = "reorder" then beginStartupProfileReorder(intent.index)
+        if intent.action = "reorder-release" then releaseStartupProfileReorder(intent.index)
         return
     end if
     if expected = "add" or expected = "manage"
+        if expected = "add" and m.profileBaselineReady = true
+            beginBaselineAddFromStartup()
+            return
+        end if
         m.profilePicker.message = "Profile management is not enabled in this private startup flow."
         return
     end if
     tile = m.profilePicker.model.tiles[intent.index]
+    closeStartupProfileReorder()
     beginStartupProfileSelection(tile.id)
 end sub
 
@@ -607,6 +613,7 @@ sub cancelStartupProfileTask()
 end sub
 
 sub closeUserProfileLaunchPicker()
+    closeStartupProfileReorder()
     picker = m.profilePicker
     m.profilePicker = invalid
     m.profilePickerContext = invalid

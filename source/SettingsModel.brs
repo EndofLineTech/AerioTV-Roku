@@ -44,6 +44,11 @@ function settingsHubAllEntries(page as string, model as object) as object
     if page = ""
         entries = [{title: "Connection", page: "connection"}, {title: "Live TV", page: "live"}, {title: "Player", page: "player"}]
         if model <> invalid
+            if type(model.profilesBaseline) = "Boolean" or type(model.profilesBaseline) = "roBoolean"
+                if model.profilesBaseline then entries.push({title: "Profiles (baseline)", action: "profiles-baseline"})
+            end if
+        end if
+        if model <> invalid
             if model.movies = "allowed" or model.series = "allowed" then entries.push({title: "Movies & TV Shows", page: "movies"})
             if model.dvr = "manage" then entries.push({title: "DVR", page: "dvr"})
         end if

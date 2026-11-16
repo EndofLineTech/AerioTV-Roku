@@ -204,6 +204,40 @@ sub main()
     m.profileChildAccessReady = false
     onStartupProfileResult(pickerNavigationEvent(task, {ok: true, phase: "verified", verifiedBaseUrl: "https://example.test", apiKey: "bob-own-key", verifiedUser: {id: 8, username: "bob", user_level: 1}}))
     check(m.taskCreates = 1 and m.profileStartupTask = invalid and m.activeUserScope = invalid and m.registry.flushes = 0, "revoking live Child readiness refuses callback continuation before another request or storage adoption")
+    pickerNavigationFixture()
+    check(beginUserProfileLaunchPicker(false), "reorder starts from a current covered startup picker")
+    node = m.profilePicker
+    onUserProfilePickerIntent(pickerNavigationEvent(node, {action: "reorder", index: 1}))
+    check(m.profilePickerReorderContext <> invalid and m.profilePickerReorderDialog = invalid and m.reorderCreates = 0, "hold arms move menu but cannot give a native dialog the still-held OK release")
+    onUserProfilePickerIntent(pickerNavigationEvent(node, {action: "reorder-release", index: 1}))
+    dialog = m.profilePickerReorderDialog
+    check(dialog <> invalid and dialog.title = "bob" and dialog.buttons.count() = 3 and dialog.buttons[0] = "Move Left" and dialog.buttons[1] = "Move to Front" and m.profilePicker.busy, "actual hold release opens exact position-dependent move choices")
+    onStartupProfileReorderChoice(pickerNavigationEvent({tag: "stale"}, 0))
+    check(m.registry.flushes = 0 and m.profilePickerReorderDialog <> invalid, "stale move dialog cannot write metadata")
+    onStartupProfileReorderChoice(pickerNavigationEvent(dialog, 0))
+    moved = loadUserProfileStore(m.registry, "slot-a")
+    check(m.registry.flushes = 1 and moved.active = m.a.id and moved.pendingRoster and m.profilePicker.model.tiles[0].username = "bob" and m.profilePicker.model.focus = 0, "moving target commits local order and keeps that tile focused without switching")
+    check(m.taskCreates = 0 and m.apiKey = "" and m.activeUserScope = invalid and m.global.profilegateclosed and m.registry.read("connKey_slot-a") = "default-key" and m.registry.read(userProfileKeyName("slot-a", moved.profiles[0].id)) = "bob-own-key", "reorder borrows no credential or authenticated scope and sends no provider request")
+    onStartupProfileReorderChoice(pickerNavigationEvent(dialog, 0))
+    check(m.registry.flushes = 1 and not m.profilePicker.busy, "retired move menu cannot apply twice")
+    pickerNavigationFixture()
+    check(beginUserProfileLaunchPicker(false), "stale-root move has a separate lifecycle")
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "reorder", index: 1}))
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "reorder-release", index: 1}))
+    dialog = m.profilePickerReorderDialog
+    beforeMove = m.registry.read(userProfileStoreKey("slot-a"))
+    m.registry.values["connectionsV1"] = m.registry.read("connectionsV1") + " "
+    onStartupProfileReorderChoice(pickerNavigationEvent(dialog, 0))
+    check(m.registry.flushes = 0 and m.registry.read(userProfileStoreKey("slot-a")) = beforeMove and m.profilePicker = invalid and m.global.profilegateclosed, "changed connection root refuses reorder before any write and stays covered")
+    pickerNavigationFixture()
+    check(beginUserProfileLaunchPicker(false), "release on Add has no management grant")
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "reorder", index: 2}))
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "reorder-release", index: 2}))
+    check(m.reorderCreates = 0 and m.registry.flushes = 0, "Add tile cannot masquerade as a moveable profile")
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "reorder", index: 1}))
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "reorder-release", index: 1}))
+    onStartupProfileReorderClosed(pickerNavigationEvent(m.profilePickerReorderDialog, true))
+    check(m.registry.flushes = 0 and m.taskCreates = 0 and not m.profilePicker.busy and m.profilePicker.model.focus = 1 and m.top.exitRequested <> true, "native move-dialog Back returns to the focused covered picker without exiting or moving")
     print "ALL TESTS PASSED"
 end sub
 
@@ -231,6 +265,15 @@ sub pickerNavigationFixture()
     end function, read: function(key as string) as string
         if m.values.doesExist(key) then return m.values[key]
         return ""
+    end function, write: function(key as string, value as string) as boolean
+        m.values[key] = value
+        return true
+    end function, delete: function(key as string) as boolean
+        m.values.delete(key)
+        return true
+    end function, flush: function() as boolean
+        m.flushes++
+        return true
     end function}
     m.connectionStore = loadConnectionStore(m.registry)
     m.selectedConnectionId = "slot-a"
@@ -242,6 +285,19 @@ sub pickerNavigationFixture()
     m.profileStartupTask = invalid
     m.profilePinDialog = invalid
     m.profilePinContext = invalid
+    m.profilePickerReorderContext = invalid
+    m.profilePickerReorderDialog = invalid
+    m.profilePickerReorderNonce = ""
+    m.reorderCreates = 0
+    m.profilePickerReorderDialogFactory = function() as object
+        m.reorderCreates++
+        return {tag: "reorder-" + m.reorderCreates.toStr(), isSameNode: function(other as object) as boolean
+            return other.tag = m.tag
+        end function, observeField: sub(field as string, callback as string)
+        end sub, unobserveField: sub(field as string)
+        end sub, setFocus: sub(value as boolean)
+        end sub}
+    end function
     m.profileGateClock = {control: "stop"}
     m.adultPinDialog = invalid
     m.activeUserScope = invalid
@@ -315,10 +371,10 @@ sub pickerNavigationFixture()
     end function
 end sub
 
-function pickerNavigationEvent(node as object, data as object) as object
+function pickerNavigationEvent(node as object, data as dynamic) as object
     return {node: node, data: data, getRoSGNode: function() as object
         return m.node
-    end function, getData: function() as object
+    end function, getData: function() as dynamic
         return m.data
     end function}
 end function

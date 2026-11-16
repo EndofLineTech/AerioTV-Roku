@@ -19,8 +19,8 @@ end sub
 
 sub onProbeIntent(event as object)
     intent = event.getData()
-    expected = ["pin", "close", "reorder", "close", "back"]
-    indices = [1, 1, 0, 1, 1]
+    expected = ["pin", "close", "reorder", "reorder-release", "close", "back"]
+    indices = [1, 1, 0, 0, 1, 1]
     if m.step >= expected.count()
         m.failed = true
     else if intent.action <> expected[m.step] or intent.index <> indices[m.step]
@@ -33,7 +33,7 @@ sub onProbeIntent(event as object)
         m.model.tiles.push({kind: "manage", name: "Manage Profiles"})
         m.picker.model = m.model
     end if
-    if m.step = 3 then m.picker.busy = true
+    if m.step = 4 then m.picker.busy = true
     m.step++
-    if m.step = 5 then print "[picker-probe] "; FormatJson({kind: "complete", passed: not m.failed})
+    if m.step = 6 then print "[picker-probe] "; FormatJson({kind: "complete", passed: not m.failed})
 end sub

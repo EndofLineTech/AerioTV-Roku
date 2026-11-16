@@ -125,6 +125,7 @@ def build(output, base_url, registry=False, model_store=False):
         package.write(ROOT / 'source/UserProfileSwitch.brs', 'source/UserProfileSwitch.brs')
         package.write(ROOT / 'source/UserProfileStartupSelection.brs', 'source/UserProfileStartupSelection.brs')
         package.write(ROOT / 'source/UserProfileOwnSignIn.brs', 'source/UserProfileOwnSignIn.brs')
+        package.write(ROOT / 'source/UserProfileAdd.brs', 'source/UserProfileAdd.brs')
         package.write(ROOT / 'source/UserProfileAddressPolicy.brs', 'source/UserProfileAddressPolicy.brs')
         package.write(ROOT / 'source/UserProfileAddressStore.brs', 'source/UserProfileAddressStore.brs')
         package.write(ROOT / 'source/UserProfileChildAccess.brs', 'source/UserProfileChildAccess.brs')
