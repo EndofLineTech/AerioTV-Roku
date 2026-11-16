@@ -9,6 +9,7 @@
     <field id="moviesPermission" type="string" value="unknown" onChange="updatePrimaryTabs" />
     <field id="seriesPermission" type="string" value="unknown" onChange="updatePrimaryTabs" />
     <field id="dvrPermission" type="string" value="unknown" onChange="updatePrimaryTabs" />
+    <field id="profileSwitcher" type="assocarray" onChange="updatePrimaryTabs" />
     <field id="vodEnabled" type="boolean" value="true" />
     <field id="config" type="assocarray" onChange="configure" />
     <field id="active" type="boolean" value="false" onChange="onActive" />

@@ -1412,6 +1412,10 @@ sub updatePrimaryTabs()
     items = [{id: "live", label: "Live TV", enabled: true}, {id: "vod", label: "VOD", enabled: enabled}]
     if m.top.dvrPermission = "view" or m.top.dvrPermission = "manage" then items.push({id: "dvr", label: "DVR", enabled: true})
     items.push({id: "settings", label: "Settings", enabled: true})
+    profile = m.top.profileSwitcher
+    if type(profile) = "roAssociativeArray"
+        if profile.sessionId = userViewSession(m.top.config) then items.push(profile)
+    end if
     if FormatJson(m.primaryNavigation.items) <> FormatJson(items) then m.primaryNavigation.items = items
 end sub
 
@@ -1434,6 +1438,8 @@ sub onPrimarySelection(event as object)
         m.top.playerRequest = "dvrHome"
     else if event.getData() = "settings"
         m.top.playerRequest = "settingsHub"
+    else if event.getData() = "profiles"
+        m.top.playerRequest = "profiles"
     else
         m.top.setFocus(true)
     end if

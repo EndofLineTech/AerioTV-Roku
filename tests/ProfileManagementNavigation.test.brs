@@ -13,6 +13,7 @@ sub main()
     m.selectedConnectionId = "slot-a"
     m.profileManagementNonce = "00000000-0000-4000-8000-000000000090"
     m.profileManagementDialogNonce = m.profileManagementNonce
+    m.profileManagementDialogRoots = {store: m.registry.read(userProfileStoreKey("slot-a")), connections: m.registry.read("connectionsV1")}
     m.profileManagementDialog = {id: "current", close: false, isSameNode: function(other as object) as boolean
         return m.id = other.id
     end function, unobserveField: sub(field as string)
@@ -21,6 +22,14 @@ sub main()
         return m.node
     end function}
     check(profileManagementContextCurrent() and profileManagementEventCurrent(event), "current metadata dialog belongs to captured profile and lifecycle")
+    original = m.registry.data
+    changed = copyJson(store)
+    changed.profiles[0].displayName = "Changed"
+    m.registry.data = FormatJson(changed)
+    m.userProfileStore = normalizeUserProfileStore(changed, "slot-a")
+    check(not profileManagementEventCurrent(event), "refreshing shared roster memory cannot authorize a stale dialog")
+    m.registry.data = original
+    m.userProfileStore = normalizeUserProfileStore(store, "slot-a")
     m.selectedConnectionId = "slot-b"
     check(not profileManagementEventCurrent(event), "other slot cannot submit an old metadata dialog")
     m.selectedConnectionId = "slot-a"

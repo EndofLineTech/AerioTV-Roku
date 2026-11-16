@@ -26,5 +26,8 @@ sub main()
     selectSetting(0)
     if m.top.selection.action <> "profiles-baseline" or m.top.selection.account <> "example-account" then stop
     if m.top.selection.aeriosession <> m.userSessionId or m.choice <> invalid or m.stack.count() <> 0 then stop
+    m.items = [{title: "Example", action: "profile-edit", profileId: "local-profile"}]
+    selectSetting(0)
+    if m.top.selection.profileId <> "local-profile" or m.top.selection.action <> "profile-edit" then stop
     print "ALL TESTS PASSED"
 end sub

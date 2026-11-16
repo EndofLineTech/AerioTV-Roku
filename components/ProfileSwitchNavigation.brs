@@ -1,5 +1,5 @@
 ' Staged own-key switch controller. Public rollout remains gated; the developer
-' baseline admits local adult switches only while actual Sync settings are Off.
+' baseline admits local approved-profile switches while Sync settings are Off.
 function beginUserProfileSwitch(targetId as string, unavailableChild = false as boolean) as boolean
     if m.profileScheduledSyncTask <> invalid then return false
     if m.profileOwnSignInContext <> invalid then return false
@@ -48,8 +48,8 @@ function beginUserProfileSwitch(targetId as string, unavailableChild = false as 
         if profile.id = targetId then target = profile
     end for
     if target = invalid or target.addressHeld then return false
-    ' Child sessions remain fenced until their handler/access controller lands.
-    if target.role = "child" then return false
+    ' The private Child controller must be qualified before live selection.
+    if target.role = "child" and m.profileChildAccessReady <> true then return false
     admin = userProfileLoadDeviceAdminPin(m.registry, connection.id)
     if not admin.ok then return false
     if not userProfileManagementGrantMatches(store, admin.record, m.profileManagementGrant, textValue(m.profileManagementNonce)) then return false
@@ -293,6 +293,8 @@ sub adoptCompletedUserProfileState(context as object, saved as object, verified 
     m.reminderClock.control = "start"
     ' Deliberately no configured mini-player auto-start on a profile switch.
     activateProfileSyncScheduling()
+    if m.profileBaselineReady = true then refreshUserProfileChrome()
+    if type(context.afterRemoval) = "roAssociativeArray" then resumeProfileManagementRemoval(context.afterRemoval)
 end sub
 
 function userProfileSwitchActorCurrent(context as dynamic) as boolean
@@ -321,11 +323,10 @@ sub rollbackUserProfileSwitch(message as string)
     if type(context.outgoing) = "roAssociativeArray"
         if userProfileSameSession(context.outgoing, m.activeUserScope) then preserveSubmittedRecording()
     end if
-    closeOutgoingUserProfileSync()
-    closeUserProfileSwitchTask()
-    m.profileSwitchContext = invalid
+    retireUserProfileSwitch()
     m.global.profileswitchpending = false
     if m.userProfileRecoveryRequired = true
+        if m.profileSwitcher <> invalid then retireUserProfileSwitcher()
         m.activeUserScope = invalid
         m.global.activeusersession = ""
         m.global.profilegateclosed = true
@@ -347,6 +348,7 @@ sub rollbackUserProfileSwitch(message as string)
         return
     end if
     if not profileSwitchOutgoingProtectionCurrent(context)
+        if m.profileSwitcher <> invalid then retireUserProfileSwitcher()
         if m.playingChannel <> invalid then stopPlayback()
         m.activeUserScope = invalid
         m.global.activeusersession = ""
@@ -378,6 +380,14 @@ sub rollbackUserProfileSwitch(message as string)
     m.busy = false
     m.capabilityClock.control = "start"
     m.reminderClock.control = "start"
+    if m.profileBaselineReady = true then refreshUserProfileChrome()
+    if context.dismissSwitcher = true
+        retireUserProfileSwitcher()
+        return
+    end if
+    if m.profileSwitcher <> invalid
+        if resumeUserProfileSwitcherFailure(message) then return
+    end if
     showNotice(message)
 end sub
 
@@ -433,6 +443,11 @@ sub retireUserProfileSwitch()
             pad.unobserveField("wasClosed")
             pad.textEditBox.text = ""
             pad.close = true
+            if m.top <> invalid
+                if m.top.dialog <> invalid
+                    if m.top.dialog.isSameNode(pad) then m.top.dialog = invalid
+                end if
+            end if
             if type(pad) = "roSGNode"
                 if pad.isSubtype("DirectionsPinPad") then m.top.removeChild(pad)
             end if

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="ProfileServerAdminTask" extends="Task">
+  <interface>
+    <field id="baseUrl" type="string" />
+    <field id="apiKey" type="string" />
+    <field id="baseKey" type="string" />
+    <field id="accountId" type="string" />
+    <field id="username" type="string" />
+    <field id="baseAccountId" type="string" />
+    <field id="baseUsername" type="string" />
+    <field id="role" type="string" />
+    <field id="operation" type="string" />
+    <field id="targetId" type="string" />
+    <field id="targetUsername" type="string" />
+    <field id="confirmed" type="boolean" />
+    <field id="channelIds" type="array" />
+    <field id="minted" type="assocarray" />
+    <field id="cancelRequested" type="boolean" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="ProfileServerAdminTask.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileServerAdmin.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfilePin.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileAvatar.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RemoteMapModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideSettingsModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/StrictJson.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
+</component>

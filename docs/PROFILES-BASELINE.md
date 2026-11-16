@@ -17,7 +17,7 @@ that field under any value. Building does not install or sign anything.
 
 ## Try it
 
-On an authenticated adult Dispatcharr account, open **Settings → Profiles
+The currently installed checkpoint uses **Settings → Profiles
 (baseline) → Open Profiles**. Add another account using its own username/password, then choose
 it from the Profiles menu. Manage Profiles offers rename, avatar and earlier/
 later movement. The menu also toggles the per-playlist Ask-at-launch choice.
@@ -34,14 +34,54 @@ acknowledged.
 
 - Dispatcharr Sync must be off for baseline Add/local switching. No Sync writes
   or scheduler is enabled.
-- No new PIN creation or Child setup/selection is enabled by the baseline flag.
+- No new PIN creation or Child setup is enabled by the baseline flag.
   Unsupported protected/legacy/recently removed additions refuse safely.
-- The polished top-bar switcher, complete onboarding/removal and broader
+- Complete onboarding and broader
   physical-remote/accessibility/certification acceptance remain unfinished.
 - This uses the existing application registry. Do not clear data, reset keys or
   change the server merely to test it.
 
 ## Current device evidence
+
+### Follow-on source (not installed as the persistent baseline)
+
+Settings now uses **Connection → Profiles**, with profile rows, Add and
+Ask-at-launch. The authenticated top-bar avatar opens the full-screen TV
+switcher with Add/Manage, current/locked indicators and hold/release reorder.
+All twelve non-initial avatar catalog choices have distinct original packaged
+glyphs, tinted with the shared contrast ink in both tiles and top-bar avatars;
+unknown icons retain the initial fallback. `scripts/generate-ui-assets.py`
+reproduces the assets, and `out/mrr-avatar-catalog.jpg` is the inspected catalog.
+`out/mrr-core-avatar-native.json` passes the full core flow with a selected
+custom rocket avatar, including the adopted top-bar glyph URI.
+Management removes inactive non-default profiles atomically; active removal
+first switches to the default using its own access, then confirms again.
+Existing numeric PIN removal requires the target's current PIN and refuses
+adult PIN removal while any Child remains. Cancel restores management.
+New-salt PIN creation/change/reset and Device Admin creation remain unavailable.
+
+The focused real-server flow passed in `out/mrr-controls-canonical-native.log`
+and `.json`: Settings Add, own-account switcher, TV reorder, native PIN Cancel
+and verification/removal, active-profile removal, credential/preference isolation,
+private-fixture cleanup and exact installed-baseline restoration all passed.
+The earlier `out/mrr-controls-native.log` stalled in synthetic PIN seeding;
+canonical field replacement fixed the fixture without weakening app checks.
+Chosen own-sign-in now preserves outgoing playback through the credential/PIN
+form; focused host evidence is `out/mrr-own-playing-host.log`, not yet native
+playing-media acceptance. Bounded server-admin policy/payload tests exist, but
+its transport/UI has since been implemented behind the developer baseline gate;
+synthetic native policy/task checks pass in `out/mrr-admin-policy-final-native.log`.
+Real server-user mutations and native admin UI success-path acceptance remain
+unverified.
+
+`out/mrr-child-live-native.log` extends the same real-server main flow with an
+imported-PIN Child selection and actual adult-PIN management escape back to the
+other account. It passes hidden Child switcher, own keys, both native PIN pads,
+the rest of the core flow, cleanup and exact baseline restoration. Developer
+baseline source now enables existing Child loading/recovery and import-only role
+controls; normal builds still leave Child readiness false. New-salt/Device Admin
+creation and Directions access remain separately gated. Chosen missing-key Child
+own-sign-in has focused host checks; this is not full interoperability acceptance.
 
 The fixed developer ZIP is
 `out/profiles-baseline/aeriotv-roku-v0.3.100-profiles-baseline.zip`.

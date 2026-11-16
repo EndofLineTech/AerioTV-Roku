@@ -37,9 +37,11 @@ sub drawPickerTiles()
         if i = m.input.focus then color = "0x356480FF"
         uiSurface(group, 0, 0, 370, 280, 24, color)
         mark = "+"
+        avatarUri = ""
         ink = "0xFFFFFFFF"
         if tile.kind = "manage" then mark = "*"
         if tile.kind = "profile"
+            avatarUri = userProfileAvatarUri(tile.avatar)
             mark = userProfileAvatarInitial(tile.name, tile.username)
             colorName = ""
             if type(tile.avatar.color) = "String" or type(tile.avatar.color) = "roString" then colorName = tile.avatar.color
@@ -62,6 +64,15 @@ sub drawPickerTiles()
         label = uiLabel(group, mark, 137, 25, 96, 96, 48, ink)
         label.horizAlign = "center"
         label.vertAlign = "center"
+        if avatarUri <> ""
+            label.visible = false
+            poster = group.createChild("Poster")
+            poster.uri = avatarUri
+            poster.translation = [149, 37]
+            poster.width = 72
+            poster.height = 72
+            poster.blendColor = ink
+        end if
         label = uiLabel(group, tile.name, 20, 140, 330, 75, 30, "0xFFFFFFFF")
         label.horizAlign = "center"
         label.wrap = true
@@ -93,7 +104,7 @@ sub emitPickerIntent()
         if model.tiles[m.input.focus].kind <> "profile" then return
     end if
     ' Parent must bind node/nonce/current roots and authorize every intent.
-    m.top.intent = {action: action, index: m.input.focus}
+    m.top.intent = {action: action, index: m.input.focus, uiNonce: model.uiNonce}
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean

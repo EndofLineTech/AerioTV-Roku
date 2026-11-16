@@ -1,5 +1,9 @@
 sub main()
     store = pickerStore()
+    scope = {playlistId: store.playlistId, profileId: store.active, accountId: "2", sessionId: "00000000-0000-4000-8000-000000000090"}
+    chrome = userProfileSwitcherDescriptor(store, scope, "dispatcharr", true)
+    check(chrome.id = "profiles" and chrome.avatarInitial = "B" and chrome.sessionId = scope.sessionId and chrome.username = invalid, "top-bar avatar is bound to the adopted holder without exposing the roster")
+    check(userProfileSwitcherDescriptor(store, scope, "dispatcharr", false) = invalid, "normal builds keep profile chrome gated")
     plan = userProfilePickerPlan(store, "launch", "dispatcharr", false)
     check(plan.ok and plan.show and plan.focus = 1 and plan.back = "exit", "launch focuses restored holder and Back exits")
     check(plan.tiles.count() = 3 and plan.tiles[0].id = store.profiles[0].id and plan.tiles[1].id = store.active, "profile order followed by Add, without launch Manage")
@@ -46,6 +50,7 @@ sub main()
     check(userProfilePickerPlan(off, "switcher", "dispatcharr", false).show, "Ask Off does not disable explicit switcher")
     child = copyJson(store)
     child.profiles[1] = setCanonicalPreference(child.profiles[1], "role", "child")
+    check(userProfileSwitcherDescriptor(child, scope, "dispatcharr", true) = invalid, "Child receives no profile switcher descriptor")
     for each mode in ["launch", "switcher"]
         denied = userProfilePickerPlan(child, mode, "dispatcharr", false)
         check(denied.ok and not denied.show and denied.tiles.count() = 0, "Child never receives other profile identities")

@@ -78,6 +78,14 @@ function baselineProbeEvent(node as object, choice as integer) as object
     end function}
 end function
 
+sub openBaselineProbeSwitcher()
+    navigation = m.guide.findNode("primaryNavigation")
+    navigation.selected = "profiles"
+    navigation.active = true
+    navigation.callFunc("handleNavigationKey", "OK", true)
+    navigation.selected = "live"
+end sub
+
 sub onProfileBaselineProbeTick()
     if m.pickerProbeBaselineStage = invalid then m.pickerProbeBaselineStage = 0
     stage = m.pickerProbeBaselineStage
@@ -97,15 +105,10 @@ sub onProfileBaselineProbeTick()
         if m.page <> "guide" or m.busy or m.activeUserScope = invalid then return
         m.pickerProbeBaselineSettings = m.registry.read("settingsV1")
         openSettingsHub()
-        m.settingsHub.callFunc("selectSettingsCategory", 3)
-        m.settingsHub.callFunc("selectSetting", 0)
-        m.pickerProbeBaselineStage = 10
-        return
-    end if
-    if stage = 10
-        if m.profileBaselineMenu = invalid then return
+        m.settingsHub.callFunc("selectSettingsCategory", 0)
+        m.settingsHub.callFunc("selectSetting", 1)
+        m.settingsHub.callFunc("selectSetting", 1)
         m.pickerProbeBaselineStage = 1
-        onProfileBaselineChoice(baselineProbeEvent(m.profileBaselineMenu, 1))
         return
     end if
     if stage = 1
@@ -117,39 +120,248 @@ sub onProfileBaselineProbeTick()
         return
     end if
     if stage = 2
-        if m.profileBaselineMenu = invalid then return
+        if m.profileOwnSignInContext <> invalid then return
         store = loadUserProfileStore(m.registry, "slot-a")
         if store.profiles.count() <> 2 then return
         for each profile in store.profiles
-            if profile.userId = 8 then m.pickerProbeAdded = profile.id
+            if profile.userId = 8
+                m.pickerProbeAdded = profile.id
+                m.pickerProbeAddedUsername = lcase(profile.username)
+            end if
         end for
         valid = store.active = m.pickerProbeA and store.pendingRoster and m.registry.read("connKey_slot-a") = "synthetic-a"
         valid = valid and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeAdded)) = "synthetic-b" and m.registry.read("settingsV1") = m.pickerProbeBaselineSettings
         m.pickerProbeBaselineValid = valid
         m.pickerProbeBaselineAddValid = valid
+        candidate = copyJson(store)
+        for i = 0 to candidate.profiles.count() - 1
+            if candidate.profiles[i].id = m.pickerProbeAdded then candidate.profiles[i] = setCanonicalPreference(candidate.profiles[i], "avatar", {icon: "rocket", color: "purple"})
+        end for
+        if not commitUserProfileStore(m.registry, store, candidate, {}, true).ok then return
+        m.userProfileStore = candidate
+        closeProfileBaselineMenu()
+        closeSettingsHub()
+        openBaselineProbeSwitcher()
+        m.pickerProbeBaselineStage = 20
+        return
+    end if
+    if stage = 20
+        if m.profileSwitcher = invalid then return
+        m.pickerProbeBaselineSwitcherValid = m.activeUserScope.profileId = m.pickerProbeA and m.apiKey = "synthetic-a" and m.global.activeusersession = m.activeUserScope.sessionId
+        model = m.profileSwitcher.model
+        for i = 0 to model.tiles.count() - 1
+            if model.tiles[i].id = m.pickerProbeAdded
+                m.profileSwitcher.intent = {action: "switch", index: i, uiNonce: model.uiNonce}
+            end if
+        end for
         m.pickerProbeBaselineStage = 3
-        onProfileBaselineChoice(baselineProbeEvent(m.profileBaselineMenu, 1))
         return
     end if
     if stage = 3
         if m.busy or m.profileSwitchContext <> invalid or m.activeUserScope = invalid then return
         if m.activeUserScope.accountId <> "8" then return
         m.pickerProbeBaselineSwitchValid = m.apiKey = "synthetic-b" and m.userProfileStore.pendingRoster and m.accountPreferences.favoriteIds.count() = 0
+        m.pickerProbeBaselineSwitchValid = m.pickerProbeBaselineSwitchValid and m.guide.profileSwitcher.avatarUri = "pkg:/images/profile-avatar-rocket.png"
         m.pickerProbeBaselineValid = m.pickerProbeBaselineValid and m.pickerProbeBaselineSwitchValid
+        openBaselineProbeSwitcher()
+        m.pickerProbeBaselineStage = 30
+        return
+    end if
+    if stage = 30
+        if m.profileSwitcher = invalid then return
+        model = m.profileSwitcher.model
+        m.pickerProbeLiveMoveIndex = model.focus
+        m.profileSwitcher.intent = {action: "reorder", index: model.focus, uiNonce: model.uiNonce}
+        m.pickerProbeBaselineStage = 31
+        return
+    end if
+    if stage = 31
+        if m.profileSwitcherMoveTarget <> m.pickerProbeAdded then return
+        model = m.profileSwitcher.model
+        m.profileSwitcher.intent = {action: "reorder-release", index: m.pickerProbeLiveMoveIndex, uiNonce: model.uiNonce}
+        m.pickerProbeBaselineStage = 32
+        return
+    end if
+    if stage = 32
+        if m.profileSwitcherMoveDialog = invalid then return
+        onUserProfileSwitcherMove(baselineProbeEvent(m.profileSwitcherMoveDialog, 0))
+        m.pickerProbeBaselineStage = 33
+        return
+    end if
+    if stage = 33
+        if m.profileSwitcher = invalid then return
+        model = m.profileSwitcher.model
+        if model.tiles[0].id <> m.pickerProbeAdded or model.focus <> 0 then return
+        m.profileSwitcher.intent = {action: "close", index: 0, uiNonce: model.uiNonce}
+        m.pickerProbeBaselineStage = 34
+        return
+    end if
+    if stage = 34
+        if m.profileSwitcher <> invalid then return
+        store = loadUserProfileStore(m.registry, "slot-a")
+        candidate = copyJson(store)
+        for i = 0 to candidate.profiles.count() - 1
+            if candidate.profiles[i].id = m.pickerProbeAdded
+                target = candidate.profiles[i]
+                target = setCanonicalPreference(target, "pinType", "numbers")
+                target = setCanonicalPreference(target, "pinSalt", "00112233445566778899aabbccddeeff")
+                target = setCanonicalPreference(target, "pinHash", userProfilePinHash(target.pinSalt, "1234"))
+                target = setCanonicalPreference(target, "pinLength", 4)
+                candidate.profiles[i] = target
+            end if
+        end for
+        if not commitUserProfileStore(m.registry, store, candidate, {}, true).ok then return
+        m.userProfileStore = candidate
         openUserProfileManagement()
         if m.profileManagementDialog = invalid then return
-        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, 1))
-        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, 2))
+        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, 0))
+        m.pickerProbeBaselineStage = 35
+        return
+    end if
+    if stage = 35
+        pinIndex = -1
+        for i = 0 to m.profileManagementChoices.count() - 1
+            if m.profileManagementChoices[i].action = "pin-remove" then pinIndex = i
+        end for
+        if pinIndex < 0 then return
+        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, pinIndex))
+        m.pickerProbeBaselineStage = 36
+        return
+    end if
+    if stage = 36
+        if m.profilePinDialog = invalid then return
+        onProfilePinSubmit(baselineProbeEvent(m.profilePinDialog, 1))
+        m.pickerProbePinCancelValid = m.profilePinDialog = invalid and m.profileManagementPinContext = invalid and not m.global.profilegateclosed
+        m.pickerProbeBaselineStage = 37
+        return
+    end if
+    if stage = 37
+        pinIndex = -1
+        for i = 0 to m.profileManagementChoices.count() - 1
+            if m.profileManagementChoices[i].action = "pin-remove" then pinIndex = i
+        end for
+        if pinIndex < 0 then return
+        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, pinIndex))
+        m.pickerProbeBaselineStage = 38
+        return
+    end if
+    if stage = 38
+        if m.profilePinDialog = invalid then return
+        m.profilePinDialog.textEditBox.text = "1234"
+        onProfilePinSubmit(baselineProbeEvent(m.profilePinDialog, 0))
+        store = loadUserProfileStore(m.registry, "slot-a")
+        m.pickerProbePinRemovalValid = false
+        for each profile in store.profiles
+            if profile.id = m.pickerProbeAdded then m.pickerProbePinRemovalValid = profile.pinType = "none" and profile.pinHash = "" and profile.pinSalt = ""
+        end for
+        m.pickerProbeBeforeChild = store
+        candidate = copyJson(store)
+        for i = 0 to candidate.profiles.count() - 1
+            target = candidate.profiles[i]
+            role = "user"
+            if target.isDefault then role = "child"
+            target = setCanonicalPreference(target, "role", role)
+            target = setCanonicalPreference(target, "pinType", "numbers")
+            target = setCanonicalPreference(target, "pinSalt", "00112233445566778899aabbccddeeff")
+            target = setCanonicalPreference(target, "pinHash", userProfilePinHash(target.pinSalt, "1234"))
+            target = setCanonicalPreference(target, "pinLength", 4)
+            candidate.profiles[i] = target
+        end for
+        if not commitUserProfileStore(m.registry, store, candidate, {}, true).ok then return
+        closeProfileManagementDialog()
+        m.userProfileStore = candidate
+        m.profileChildAccessReady = true
+        if not openUserProfileSwitcher(m.pickerProbeA) then return
+        model = m.profileSwitcher.model
+        m.profileSwitcher.intent = {action: "switch", index: model.focus, uiNonce: model.uiNonce}
+        m.pickerProbeBaselineStage = 39
+        return
+    end if
+    if stage = 39
+        if m.profilePinDialog = invalid then return
+        m.profilePinDialog.textEditBox.text = "1234"
+        onProfilePinSubmit(baselineProbeEvent(m.profilePinDialog, 0))
+        m.pickerProbeBaselineStage = 40
+        return
+    end if
+    if stage = 40
+        if m.busy or m.profileSwitchContext <> invalid or m.activeUserScope = invalid then return
+        if m.activeUserScope.profileId <> m.pickerProbeA then return
+        m.pickerProbeChildLiveValid = currentUserSettingsRole() = "child" and m.guide.profileSwitcher = invalid and m.apiKey = "synthetic-a"
+        openSettingsHub()
+        openUserProfileManagement()
+        m.pickerProbeBaselineStage = 41
+        return
+    end if
+    if stage = 41
+        if m.adultPinDialog = invalid then return
+        m.adultPinDialog.textEditBox.text = "1234"
+        onAdultProfilePinSubmit(baselineProbeEvent(m.adultPinDialog, 0))
+        m.pickerProbeBaselineStage = 42
+        return
+    end if
+    if stage = 42
+        if m.profileManagementDialog = invalid then return
+        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, 0))
+        switchIndex = -1
+        for i = 0 to m.profileManagementChoices.count() - 1
+            if m.profileManagementChoices[i].action = "switch" then switchIndex = i
+        end for
+        if switchIndex < 0 then return
+        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, switchIndex))
+        m.pickerProbeBaselineStage = 43
+        return
+    end if
+    if stage = 43
+        if m.profilePinDialog = invalid then return
+        m.profilePinDialog.textEditBox.text = "1234"
+        onProfilePinSubmit(baselineProbeEvent(m.profilePinDialog, 0))
+        m.pickerProbeBaselineStage = 44
+        return
+    end if
+    if stage = 44
+        if m.busy or m.profileSwitchContext <> invalid or m.activeUserScope = invalid then return
+        if m.activeUserScope.profileId <> m.pickerProbeAdded then return
+        m.pickerProbeChildLiveValid = m.pickerProbeChildLiveValid and currentUserSettingsRole() = "user" and m.apiKey = "synthetic-b"
+        current = loadUserProfileStore(m.registry, "slot-a")
+        if not commitUserProfileStore(m.registry, current, m.pickerProbeBeforeChild, {}, true).ok then return
+        m.userProfileStore = m.pickerProbeBeforeChild
+        m.profileUnlockGrant = invalid
+        openUserProfileManagement()
+        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, 0))
         m.pickerProbeBaselineStage = 4
         return
     end if
     if stage = 4
-        m.pickerProbeClock.control = "stop"
         store = loadUserProfileStore(m.registry, "slot-a")
         sorted = userProfileSorted(store.profiles)
-        passed = m.pickerProbeBaselineValid and sorted[0].id = m.pickerProbeAdded and store.active = m.pickerProbeAdded and store.pendingRoster
-        passed = passed and m.apiKey = "synthetic-b" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.profileOwnSignInContext = invalid
-        print "[picker-launch] "; FormatJson({kind: "result", passed: passed, baseline: true, addIsolated: m.pickerProbeBaselineAddValid, switchIsolated: m.pickerProbeBaselineSwitchValid, reordered: sorted[0].id = m.pickerProbeAdded, activeRetained: store.active = m.pickerProbeAdded})
+        m.pickerProbeBaselineReorderValid = sorted[0].id = m.pickerProbeAdded and store.active = m.pickerProbeAdded and store.pendingRoster
+        removeIndex = -1
+        for i = 0 to m.profileManagementChoices.count() - 1
+            if m.profileManagementChoices[i].action = "remove" then removeIndex = i
+        end for
+        if removeIndex < 0 then return
+        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, removeIndex))
+        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, 0))
+        m.pickerProbeBaselineStage = 5
+        return
+    end if
+    if stage = 5
+        if m.busy or m.profileSwitchContext <> invalid then return
+        if m.activeUserScope = invalid or m.activeUserScope.profileId <> m.pickerProbeA then return
+        if m.profileManagementRemovalContext = invalid or m.profileManagementDialog = invalid then return
+        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, 0))
+        m.pickerProbeBaselineStage = 6
+        return
+    end if
+    if stage = 6
+        m.pickerProbeClock.control = "stop"
+        store = loadUserProfileStore(m.registry, "slot-a")
+        removed = store.profiles.count() = 1 and store.active = m.pickerProbeA and not m.registry.exists(userProfileKeyName("slot-a", m.pickerProbeAdded))
+        removed = removed and store.removed.count() = 1 and store.removed[0][0] = m.pickerProbeAddedUsername and store.pendingRoster
+        passed = m.pickerProbeBaselineValid and m.pickerProbeBaselineSwitcherValid and m.pickerProbeBaselineReorderValid and removed and m.apiKey = "synthetic-a" and m.registry.read("connKey_slot-a") = "synthetic-a"
+        passed = passed and m.pickerProbePinCancelValid and m.pickerProbePinRemovalValid and m.pickerProbeChildLiveValid
+        print "[picker-launch] "; FormatJson({kind: "result", passed: passed, baseline: true, addIsolated: m.pickerProbeBaselineAddValid, switchIsolated: m.pickerProbeBaselineSwitchValid, reordered: m.pickerProbeBaselineReorderValid, switcher: m.pickerProbeBaselineSwitcherValid, removed: removed, pinCancel: m.pickerProbePinCancelValid, pinRemoved: m.pickerProbePinRemovalValid, childLive: m.pickerProbeChildLiveValid})
     end if
 end sub
 

@@ -12,6 +12,16 @@ SPEC.loader.exec_module(ASSETS)
 
 
 class PillPatchTest(unittest.TestCase):
+    def test_profile_avatar_catalog_is_packaged_and_distinct(self):
+        names = ['person', 'face', 'child', 'paw', 'cat', 'fish', 'star', 'rocket', 'music', 'soccer', 'gamepad', 'movie']
+        images = []
+        for name in names:
+            data = (ROOT / f'images/profile-avatar-{name}.png').read_bytes()
+            self.assertEqual(data, ASSETS.icon_png('avatar-' + name, 96))
+            self.assertEqual(struct.unpack('>II', data[16:24]), (96, 96))
+            images.append(data)
+        self.assertEqual(len(set(images)), len(names))
+
     def test_packaged_masks_match_generator_and_stretch_only_the_center(self):
         for height in range(20, 129, 2):
             with self.subTest(height=height):

@@ -73,7 +73,7 @@ end sub
 sub onProfileBaselineClosed(event as object)
     if m.profileBaselineMenu = invalid then return
     if not m.profileBaselineMenu.isSameNode(event.getRoSGNode()) then return
-    if userProfileTrue(event.getData()) then closeProfileBaselineMenu()
+    closeProfileBaselineMenu()
 end sub
 
 sub onProfileBaselineChoice(event as object)
@@ -109,7 +109,7 @@ sub onProfileBaselineChoice(event as object)
     end if
 end sub
 
-sub beginProfileBaselineAdd(admitted = false as boolean)
+sub beginProfileBaselineAdd(admitted = false as boolean, returnToSwitcher = false as boolean)
     context = profileBaselineContext()
     if context = invalid then return
     if context.store.profiles.count() >= 4 then showNotice("This playlist already has four profiles.") : return
@@ -123,17 +123,17 @@ sub beginProfileBaselineAdd(admitted = false as boolean)
         m.profileManagementSlot = context.connection.id
         m.userProfileStore = context.store
         m.profileManagementGrant = invalid
-        m.profileManagementPending = {action: "baseline-add", scope: context.scope, connectionRoot: context.connectionRoot}
+        m.profileManagementPending = {action: "baseline-add", scope: context.scope, connectionRoot: context.connectionRoot, returnToSwitcher: returnToSwitcher}
         if not beginAdultProfilePinGate() then showNotice("This PIN type needs approved access on this Roku.")
         return
     end if
     if not userProfileManagementGrantMatches(context.store, admin.record, m.profileManagementGrant, textValue(m.profileManagementNonce), true) then return
-    if m.playingChannel <> invalid then stopPlayback()
     retireProfileRequestBinding()
     nonce = CreateObject("roDeviceInfo").getRandomUUID()
     target = {id: CreateObject("roDeviceInfo").getRandomUUID(), username: "", isDefault: false, addressHeld: false, pinType: "none"}
     m.profileOwnSignInNonce = nonce
     m.profileOwnSignInContext = {adding: true, nonce: nonce, connection: context.connection, store: context.store, scope: context.scope, target: target, page: m.page, guideActive: m.guide.active, covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, unlock: m.profileUnlockGrant, username: "", password: "", addGrant: m.profileManagementGrant, holds: {}}
+    m.profileOwnSignInContext.returnToSwitcher = returnToSwitcher
     if m.requestGate <> invalid then m.profileOwnSignInContext.holds = requestGateCopy(m.requestGate.snapshot.keys)
     m.global.profileownsigninpending = true
     m.global.profileownsigninnonce = nonce

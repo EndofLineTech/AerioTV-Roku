@@ -12,6 +12,7 @@ sub init()
     if m.profileBaselineReady
         m.profilePickerReady = true
         m.profileSwitchRosterReady = true
+        m.profileChildAccessReady = true
     end if
     m.profileStartupDeferred = false
     m.profileStartupScreenReady = false
@@ -301,6 +302,7 @@ sub init()
 end sub
 
 sub signalStartupComplete()
+    if m.profileBaselineReady = true then refreshUserProfileChrome()
     recordUserProfileLaunchResolution()
     if m.profilePickerReady = true and m.activeUserScope <> invalid then m.profileLaunchPickerResolved = true
     completeStartupBeacons()
@@ -315,6 +317,9 @@ end sub
 
 sub onLaunchRequest()
     if m.profileStartupDeferred = true then return
+    if m.profileSwitcher <> invalid
+        if launchRequestHasMediaIntent(m.top.launchRequest) then closeUserProfileSwitcher()
+    end if
     if m.profileOwnSignInContext <> invalid
         if m.profileOwnSignInContext.startupRecovery = true and launchRequestHasMediaIntent(m.top.launchRequest)
             m.pendingLaunch = normalizeLaunchRequest(m.top.launchRequest)
@@ -1690,6 +1695,10 @@ sub onGuidePlayerRequest(event as object)
     end if
     if event.getData() = "settingsHub"
         openSettingsHub()
+        return
+    end if
+    if event.getData() = "profiles"
+        openUserProfileSwitcher()
         return
     end if
     if event.getData() = "dvrHome"

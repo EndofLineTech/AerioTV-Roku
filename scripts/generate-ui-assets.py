@@ -35,6 +35,55 @@ def icon_png(kind, size=48):
     def ink(x, y):
         def rect(l, t, r, b):
             return l <= x <= r and t <= y <= b
+        def ellipse(cx, cy, rx, ry):
+            return ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1
+        def polygon(points):
+            inside = False
+            j = len(points) - 1
+            for i, (px, py) in enumerate(points):
+                qx, qy = points[j]
+                if (py > y) != (qy > y) and x < (qx - px) * (y - py) / (qy - py) + px:
+                    inside = not inside
+                j = i
+            return inside
+        if kind in ('avatar-person', 'avatar-child'):
+            scale = .85 if kind == 'avatar-child' else 1
+            return ellipse(.5, .29, .14 * scale, .14 * scale) or (y >= .5 and ellipse(.5, .76, .29 * scale, .27))
+        if kind == 'avatar-face':
+            ring = .31 <= math.hypot(x - .5, y - .5) <= .37
+            eyes = ellipse(.38, .43, .035, .045) or ellipse(.62, .43, .035, .045)
+            smile = y > .53 and .15 <= math.hypot(x - .5, y - .5) <= .20
+            return ring or eyes or smile
+        if kind == 'avatar-paw':
+            return ellipse(.5, .65, .22, .16) or any(ellipse(cx, cy, .075, .105) for cx, cy in [(.25, .43), (.4, .27), (.6, .27), (.75, .43)])
+        if kind == 'avatar-cat':
+            head = ellipse(.5, .57, .31, .26)
+            ears = polygon([(.2, .51), (.2, .17), (.43, .35)]) or polygon([(.57, .35), (.8, .17), (.8, .51)])
+            eyes = ellipse(.38, .52, .035, .05) or ellipse(.62, .52, .035, .05)
+            return (head or ears) and not eyes
+        if kind == 'avatar-fish':
+            return (ellipse(.43, .5, .29, .2) or polygon([(.65, .5), (.88, .27), (.88, .73)])) and not ellipse(.29, .46, .03, .03)
+        if kind == 'avatar-star':
+            points = [(.5 + (.38 if i % 2 == 0 else .17) * math.cos(-math.pi / 2 + i * math.pi / 5),
+                       .5 + (.38 if i % 2 == 0 else .17) * math.sin(-math.pi / 2 + i * math.pi / 5)) for i in range(10)]
+            return polygon(points)
+        if kind == 'avatar-rocket':
+            body = ellipse(.5, .42, .16, .31) and not ellipse(.5, .36, .065, .065)
+            fins = polygon([(.36, .48), (.22, .76), (.39, .68)]) or polygon([(.64, .48), (.78, .76), (.61, .68)])
+            return body or fins or polygon([(.42, .75), (.58, .75), (.5, .92)])
+        if kind == 'avatar-music':
+            return rect(.36, .22, .42, .71) or rect(.7, .15, .76, .64) or polygon([(.36, .22), (.76, .15), (.76, .29), (.36, .36)]) or ellipse(.29, .73, .13, .09) or ellipse(.63, .66, .13, .09)
+        if kind == 'avatar-soccer':
+            ring = .31 <= math.hypot(x - .5, y - .5) <= .37
+            center = polygon([(.5 + .13 * math.cos(-math.pi / 2 + i * 2 * math.pi / 5), .5 + .13 * math.sin(-math.pi / 2 + i * 2 * math.pi / 5)) for i in range(5)])
+            seams = math.hypot(x - .5, y - .5) < .34 and abs(math.sin((math.atan2(y - .5, x - .5) + math.pi / 2) * 2.5)) < .14
+            return ring or center or seams
+        if kind == 'avatar-gamepad':
+            body = (rect(.29, .3, .71, .7) or ellipse(.29, .54, .17, .24) or ellipse(.71, .54, .17, .24))
+            controls = rect(.25, .43, .31, .65) or rect(.18, .51, .38, .57) or ellipse(.7, .46, .04, .04) or ellipse(.78, .57, .04, .04)
+            return body and not controls
+        if kind == 'avatar-movie':
+            return (rect(.16, .2, .84, .8) and not rect(.25, .29, .75, .71)) or rect(.16, .43, .84, .5)
         if kind == 'live':
             return ((rect(.12, .2, .88, .72) and not rect(.19, .27, .81, .65))
                     or rect(.44, .72, .56, .82) or rect(.3, .82, .7, .88))
@@ -149,6 +198,8 @@ if __name__ == '__main__':
     for name in ['live', 'vod', 'settings', 'movie', 'series', 'continue', 'watchlist', 'hidden', 'categories', 'play', 'pause', 'channels', 'recent', 'minimize', 'options', 'stop', 'buffering']:
         (root / f'ui-icon-{name}.png').write_bytes(icon_png(name))
     print('Generated original navigation and transport glyphs.')
+    for name in ['person', 'face', 'child', 'paw', 'cat', 'fish', 'star', 'rocket', 'music', 'soccer', 'gamepad', 'movie']:
+        (root / f'profile-avatar-{name}.png').write_bytes(icon_png('avatar-' + name, 96))
     (root / 'ui-focus-pill.png').write_bytes(pill_png())
     (root / 'ui-focus-row.png').write_bytes(pill_png(1204, 68, 14))
     (root / 'ui-settings-rail.png').write_bytes(pill_png(408, 78, 12))

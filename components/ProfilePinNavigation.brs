@@ -7,13 +7,18 @@ function beginProfilePinGate(profile as object, continuation as string, resume =
     if directions
         if CreateObject("roAppInfo").getValue("aeriotv_profile_directions_test") <> "1" then return false
     end if
-    m.profileGateCover.visible = true
-    m.global.profilegateclosed = true
-    if type(m.top) = "roSGNode" then requestGateFenceRenderers(m.top)
+    preserveSource = false
+    if continuation = "own-signin" then preserveSource = profileOwnSignInPreservesSource(textValue(resume))
+    if not preserveSource
+        m.profileGateCover.visible = true
+        m.global.profilegateclosed = true
+        if type(m.top) = "roSGNode" then requestGateFenceRenderers(m.top)
+    end if
     m.profilePinLockUntil = 0
-    if m.playingChannel <> invalid then stopPlayback()
+    if m.playingChannel <> invalid and not preserveSource then stopPlayback()
     m.profileUnlockGrant = invalid
     m.profilePinContext = {slot: m.selectedConnectionId, profile: profile, continuation: continuation, resume: resume}
+    m.profilePinContext.preserveSource = preserveSource
     dialog = invalid
     if m.profilePinDialogFactory <> invalid then dialog = m.profilePinDialogFactory()
     if dialog = invalid
@@ -36,6 +41,12 @@ function beginProfilePinGate(profile as object, continuation as string, resume =
     uiSecureTextInput(dialog.textEditBox)
     if not directions then dialog.textEditBox.voiceEnabled = true
     dialog.buttons = ["OK"]
+    canCancel = continuation <> "connect" and continuation <> "complete" and continuation <> "startup-selection"
+    if continuation = "own-signin" and m.profileOwnSignInContext <> invalid
+        if m.profileOwnSignInContext.startupRecovery = true then canCancel = false
+    end if
+    m.profilePinContext.canCancel = canCancel
+    if canCancel then dialog.buttons = ["OK", "Cancel"]
     dialog.observeField("buttonSelected", "onProfilePinSubmit")
     dialog.observeField("wasClosed", "onProfilePinClosed")
     m.profilePinDialog = dialog
@@ -55,9 +66,22 @@ end function
 sub onProfilePinSubmit(event as object)
     if m.profilePinDialog = invalid or m.profilePinContext = invalid then return
     if not m.profilePinDialog.isSameNode(event.getRoSGNode()) then return
-    if event.getData() <> 0 then return
+    if event.getData() <> 0
+        if event.getData() = 1 and m.profilePinContext.canCancel = true then onProfilePinClosed(event)
+        return
+    end if
     context = m.profilePinContext
     if context.slot <> m.selectedConnectionId then return
+    if context.preserveSource = true
+        if not profileOwnSignInPreservesSource(textValue(context.resume)) then return
+    end if
+    if context.continuation = "pin-remove"
+        if not profileManagementPinContextCurrent(context)
+            m.profilePinDialog.textEditBox.text = ""
+            m.profilePinDialog.title = "Profile changed. Cancel and try again."
+            return
+        end if
+    end if
     switching = context.continuation = "switch" or context.continuation = "switch-roster"
     startupSelection = context.continuation = "startup-selection"
     startupOwn = false
@@ -106,6 +130,7 @@ sub onProfilePinSubmit(event as object)
     m.profilePinDialog.unobserveField("buttonSelected")
     m.profilePinDialog.unobserveField("wasClosed")
     m.profilePinDialog.close = true
+    clearProfilePinDialogOwner(m.profilePinDialog)
     if type(m.profilePinDialog) = "roSGNode"
         if m.profilePinDialog.isSubtype("DirectionsPinPad") then m.top.removeChild(m.profilePinDialog)
     end if
@@ -124,6 +149,7 @@ sub onProfilePinSubmit(event as object)
     if context.continuation = "switch" then onUserProfileSwitchPin(context.resume)
     if context.continuation = "switch-roster" then onUserProfileSwitchRosterPin(context.resume)
     if context.continuation = "own-signin" then onUserProfileOwnSignInPin(context.resume)
+    if context.continuation = "pin-remove" then onProfileManagementPinVerified(context.resume)
     if startupSelection then onStartupProfilePin(context.resume)
 end sub
 
@@ -141,6 +167,7 @@ sub onProfilePinClosed(event as object)
     m.profilePinDialog.unobserveField("wasClosed")
     m.profilePinDialog.textEditBox.text = ""
     m.profilePinDialog.close = true
+    clearProfilePinDialogOwner(m.profilePinDialog)
     if type(m.profilePinDialog) = "roSGNode"
         if m.profilePinDialog.isSubtype("DirectionsPinPad") then m.top.removeChild(m.profilePinDialog)
     end if
@@ -148,6 +175,12 @@ sub onProfilePinClosed(event as object)
     m.profilePinContext = invalid
     if staleSwitch or staleStartup then return
     m.profileGateClock.control = "stop"
+    if context <> invalid
+        if context.continuation = "pin-remove"
+            cancelProfileManagementPinRemoval(context.resume)
+            return
+        end if
+    end if
     m.profileGateCover.visible = true
     m.global.profilegateclosed = true
     if context <> invalid
@@ -161,6 +194,12 @@ sub onProfilePinClosed(event as object)
         end if
     end if
     m.top.exitRequested = true
+end sub
+
+sub clearProfilePinDialogOwner(dialog as object)
+    if m.top = invalid then return
+    if m.top.dialog = invalid then return
+    if m.top.dialog.isSameNode(dialog) then m.top.dialog = invalid
 end sub
 
 function profileSwitchPinContextCurrent(pin as object) as boolean

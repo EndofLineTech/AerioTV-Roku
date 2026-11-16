@@ -3,6 +3,16 @@ sub main()
     m.profilePreferenceDecoder = function(raw as string) as dynamic
         return ParseJson(raw)
     end function
+    resetRemovalFixture()
+    m.registry.values["connectionsV1"] = FormatJson({schema: 1, selected: m.connection.id, entries: [m.connection]})
+    scope = userProfileSessionScope(m.connection, m.store.active, "1", "own-generation", "00000000-0000-4000-8000-000000000090")
+    nonce = "00000000-0000-4000-8000-000000000091"
+    context = {connection: m.connection, connectionRoot: m.registry.read("connectionsV1"), store: m.store, targetId: m.other.id, scope: scope, nonce: nonce}
+    before = FormatJson(m.registry.values)
+    stale = commitManagedUserProfileRemoval(m.registry, context, 200, scope, "00000000-0000-4000-8000-000000000092", invalid)
+    check(not stale.ok and FormatJson(m.registry.values) = before and m.registry.flushes = 0, "stale management confirmation cannot delete a profile")
+    managed = commitManagedUserProfileRemoval(m.registry, context, 200, scope, nonce, invalid)
+    check(managed.ok and managed.store.active = scope.profileId and managed.store.profiles.count() = 1 and m.registry.read("connKey_slot-a") = "default-key", "actual current management confirmation removes only the inactive own profile")
     for each failFlush in [false, true]
         resetRemovalFixture()
         m.registry.failFlush = failFlush

@@ -1,6 +1,28 @@
-# Scoped-state implementation (`mrr.7`, in progress)
+# Scoped-state implementation (`mrr.7`)
 
-`source/UserProfileScope.brs` supplies scoped-state primitives. Verified
+## Current evidence disposition
+
+The chronological sections below retain earlier qualification limits. Local
+scoped-state implementation now has native evidence for two-slot settings
+isolation (`out/profile-settings-native.json`), scoped transaction/fault and
+seeding rules (`out/profile-scope-native.json`), own authorization-generation
+reload (`out/profile-assignment-refresh-native.json`), remembered cold restore
+(`out/profile-cold-remembered-native.json`), manual authority refresh and
+submitted-recording settlement (`out/profile-manual-refresh-native.json`,
+`out/profile-manual-recording-refresh-changed-native.json`), and the latest
+same-slot real-account Add/switch/reorder/PIN/Child/removal main flow
+(`out/mrr-core-final-native.json`). These reports pass, with exact app restoration;
+the normal-app fixtures also report private-data cleanup.
+
+This evidence supports the local scoped-state boundary; it does not establish
+populated VOD/DVR media playback, phone interoperability, public certification
+or owner acceptance. Those remain in `mrr.10`/`mrr.11`, their linked work and
+the epic. Shipping profile/Child/sync gates remain off. The developer baseline
+now admits the approved existing-Child/PIN core flows, not new-salt creation.
+
+## Original foundation and chronological qualification
+
+At the initial foundation checkpoint, `source/UserProfileScope.brs` supplied scoped-state primitives. Verified
 Dispatcharr connections now activate per-account settings through
 `UserProfilePreferenceNavigation`, **not a public profile switcher or completed
 application isolation**.

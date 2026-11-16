@@ -64,6 +64,7 @@ def real_baseline_fixture(fixture, accounts):
     fixture = fixture.replace('accountId: "7"', f'accountId: "{first["id"]}"')
     fixture = fixture.replace('m.activeUserScope.accountId <> "8"', f'm.activeUserScope.accountId <> "{second["id"]}"')
     fixture = fixture.replace('profile.userId = 8 then m.pickerProbeAdded', f'profile.userId = {second["id"]} then m.pickerProbeAdded')
+    fixture = fixture.replace('if profile.userId = 8\n', f'if profile.userId = {second["id"]}\n')
     fixture = fixture.replace('"synthetic-a"', json.dumps(first["api_key"]))
     fixture = fixture.replace('"synthetic-b"', json.dumps(second["api_key"]))
     return fixture.replace('"synthetic-password"', json.dumps(accounts[1]["password"]))

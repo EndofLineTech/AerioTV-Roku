@@ -27,6 +27,7 @@ sub configureNavigation()
         icon.height = 24
         iconName = m.items[i].id
         if iconName = "dvr" then iconName = "recent"
+        if iconName = "profiles" then iconName = "settings"
         favoriteIcon = invalid
         if iconName = "favorite"
             icon.visible = false
@@ -45,9 +46,27 @@ sub configureNavigation()
             content = uiPillContent(width, 50, 0, 0)
         end if
         icon.translation = [x + content.iconX, content.iconY]
+        avatar = invalid
+        mark = invalid
+        if type(m.items[i].avatarInitial) = "String" or type(m.items[i].avatarInitial) = "roString"
+            icon.visible = false
+            avatar = uiSurface(m.top, x + content.iconX, content.iconY, 24, 24, 12, m.items[i].avatarFill)
+            mark = uiLabel(m.top, m.items[i].avatarInitial, x + content.iconX, content.iconY, 24, 24, 18, m.items[i].avatarInk)
+            mark.horizAlign = "center"
+            mark.vertAlign = "center"
+            if m.items[i].avatarUri <> "" and m.items[i].avatarUri <> invalid
+                mark.visible = false
+                avatarPoster = m.top.createChild("Poster")
+                avatarPoster.uri = m.items[i].avatarUri
+                avatarPoster.width = 20
+                avatarPoster.height = 20
+                avatarPoster.translation = [x + content.iconX + 2, content.iconY + 2]
+                avatarPoster.blendColor = m.items[i].avatarInk
+            end if
+        end if
         if favoriteIcon <> invalid then favoriteIcon.translation = [x + content.iconX, 0]
         uiCenterLabel(label, x + content.textX, 0, content.textWidth, 50)
-        m.cells.push({bg: bg, fill: fill, label: label, icon: icon, favoriteIcon: favoriteIcon})
+        m.cells.push({bg: bg, fill: fill, label: label, icon: icon, favoriteIcon: favoriteIcon, avatar: avatar, avatarMark: mark})
     end for
     m.index = navigationFirst(m.items, focused)
     drawNavigation()

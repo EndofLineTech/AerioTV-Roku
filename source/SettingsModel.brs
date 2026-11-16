@@ -44,11 +44,6 @@ function settingsHubAllEntries(page as string, model as object) as object
     if page = ""
         entries = [{title: "Connection", page: "connection"}, {title: "Live TV", page: "live"}, {title: "Player", page: "player"}]
         if model <> invalid
-            if type(model.profilesBaseline) = "Boolean" or type(model.profilesBaseline) = "roBoolean"
-                if model.profilesBaseline then entries.push({title: "Profiles (baseline)", page: "profiles-baseline"})
-            end if
-        end if
-        if model <> invalid
             if model.movies = "allowed" or model.series = "allowed" then entries.push({title: "Movies & TV Shows", page: "movies"})
             if model.dvr = "manage" then entries.push({title: "DVR", page: "dvr"})
         end if
@@ -142,7 +137,30 @@ function settingsHubAllEntries(page as string, model as object) as object
         {title: "Launch and deep-link support remain in testing; see the GitHub release limits."},
         {title: "Mark this version read", action: "markWhatsNew"}
     ]
-    if page = "connection" then return [{title: "Open connection settings (edit / forget / reconnect)", action: "connection"}]
+    if page = "connection"
+        entries = [{title: "Open connection settings (edit / forget / reconnect)", action: "connection"}]
+        if model <> invalid
+            if type(model.profilesBaseline) = "Boolean" or type(model.profilesBaseline) = "roBoolean"
+                if model.profilesBaseline then entries.push({title: "Profiles", page: "profiles"})
+            end if
+        end if
+        return entries
+    end if
+    if page = "profiles"
+        entries = []
+        if model = invalid then return entries
+        if model.profilesBaseline <> true then return entries
+        if type(model.profileRows) = "roArray"
+            for each profile in model.profileRows
+                entries.push({title: profile.title, action: "profile-edit", profileId: profile.id})
+            end for
+        end if
+        entries.push({title: "Add Profile", action: "profiles-add"})
+        askTitle = "Ask who is watching at launch: Off"
+        if model.profilesAskAtLaunch = true then askTitle = "Ask who is watching at launch: On"
+        entries.push({title: askTitle, action: "profiles-ask"})
+        return entries
+    end if
     return []
 end function
 

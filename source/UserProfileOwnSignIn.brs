@@ -1,7 +1,7 @@
 ' Own username/password recovery is distinct from validating a saved key:
 ' a recreated non-default username may have a new integer user ID. This plan
 ' never activates or persists; scoped data must move in the credential commit.
-function userProfileOwnSignInPlan(connection as object, previous as object, targetId as string, verified as dynamic, now as integer, childRecovery = false as boolean, startupRecovery = false as boolean) as object
+function userProfileOwnSignInPlan(connection as object, previous as object, targetId as string, verified as dynamic, now as integer, childRecovery = false as boolean, startupRecovery = false as boolean, chosenChild = false as boolean) as object
     denied = {ok: false, reason: "login-refused"}
     if connection.provider <> "dispatcharr" or connection.id <> previous.playlistId then return denied
     if previous.readOnly = true or now <= 0 then return denied
@@ -22,7 +22,17 @@ function userProfileOwnSignInPlan(connection as object, previous as object, targ
         if type(verified.verifiedBaseUrl) <> "String" and type(verified.verifiedBaseUrl) <> "roString" then return denied
         if verified.verifiedBaseUrl <> connection.url then return denied
     end if
-    if childRecovery
+    if chosenChild
+        if childRecovery or startupRecovery or target.role <> "child" or store.active = targetId then return denied
+        actor = invalid
+        for each profile in store.profiles
+            if profile.id = store.active then actor = profile
+        end for
+        if actor = invalid then return denied
+        if not userProfileFullAccess(actor.role) then return denied
+        if type(verified) <> "roAssociativeArray" then return denied
+        if textValue(verified.verifiedBaseUrl) <> connection.url then return denied
+    else if childRecovery
         if target.role <> "child" or store.active <> targetId then return {ok: false, reason: "child-recovery-context"}
         if type(verified) <> "roAssociativeArray" then return denied
         if type(verified.verifiedBaseUrl) <> "String" and type(verified.verifiedBaseUrl) <> "roString" then return denied
@@ -33,13 +43,13 @@ function userProfileOwnSignInPlan(connection as object, previous as object, targ
     ' Defaults keep inactive full-access or explicit startup/active-Child own
     ' recovery. None of these paths permits default identity replacement.
     if target.isDefault
-        if not childRecovery
+        if not childRecovery and not chosenChild
             if (store.active = targetId and not startupRecovery) or not userProfileFullAccess(target.role) then return {ok: false, reason: "default-recovery-not-ready"}
         end if
     end if
     if target.addressHeld
         if target.isDefault then return {ok: false, reason: "address-recovery-not-ready"}
-        if not childRecovery
+        if not childRecovery and not chosenChild
             if (store.active = targetId and not startupRecovery) or not userProfileFullAccess(target.role) then return {ok: false, reason: "address-recovery-not-ready"}
         end if
         if type(verified) <> "roAssociativeArray" then return denied
@@ -94,7 +104,7 @@ end function
 
 ' Storage only. The controller still owes target PIN/Child admission, outgoing
 ' retirement and fresh runtime scope adoption. No password enters this boundary.
-function commitUserProfileOwnSignIn(registry as object, connection as object, previous as object, targetId as string, verified as object, now as integer, capturedNonce as string, activeNonce as string, childRecovery = false as boolean, startupRecovery = false as boolean) as object
+function commitUserProfileOwnSignIn(registry as object, connection as object, previous as object, targetId as string, verified as object, now as integer, capturedNonce as string, activeNonce as string, childRecovery = false as boolean, startupRecovery = false as boolean, chosenChild = false as boolean) as object
     denied = {ok: false, recoveryRequired: false, reason: "stale-context", preferencesMoved: false}
     if userProfileLocalId(capturedNonce) = "" or capturedNonce <> activeNonce then return denied
     connections = loadConnectionStore(registry)
@@ -102,7 +112,7 @@ function commitUserProfileOwnSignIn(registry as object, connection as object, pr
     current = connectionStoreEntry(connections, connection.id)
     if current = invalid then return denied
     if FormatJson(current) <> FormatJson(normalizeConnectionEntry(connection)) then return denied
-    planned = userProfileOwnSignInPlan(connection, previous, targetId, verified, now, childRecovery, startupRecovery)
+    planned = userProfileOwnSignInPlan(connection, previous, targetId, verified, now, childRecovery, startupRecovery, chosenChild)
     if not planned.ok
         denied.reason = planned.reason
         return denied

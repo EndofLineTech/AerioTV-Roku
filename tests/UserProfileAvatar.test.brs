@@ -1,4 +1,8 @@
 sub main()
+    check(userProfileAvatarUri(invalid) = "" and userProfileAvatarUri({icon: "future"}) = "", "unknown and initial avatars retain the native initial fallback")
+    for each icon in userProfileAvatarIcons()
+        if icon <> "initial" then check(userProfileAvatarUri({icon: icon}) = "pkg:/images/profile-avatar-" + icon + ".png", "every catalog choice resolves its own packaged glyph")
+    end for
     for each pair in [["alice", "slate"], ["sam", "blue"], ["Alice ", "slate"], [chr(9) + "sam" + chr(10), "blue"]]
         check(userProfileAvatarColor(pair[0]) = pair[1], "shared username color vector")
     end for

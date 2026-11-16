@@ -25,6 +25,14 @@ sub main()
     check(userProfileMayEditMetadata(store, adult.id, "name", invalid, grant, nonce), "verified adult gate may manage another profile's local metadata")
     check(not userProfileMayEditMetadata(store, adult.id, "reset-pin", invalid, grant, nonce), "metadata authority never enables salt-requiring PIN creation or reset")
     store.active = adult.id
+    pinProof = {slot: "slot-a", id: adult.id, pinType: adult.pinType, pinHash: adult.pinHash, pinSalt: adult.pinSalt}
+    blockedRemoval = userProfileMetadataEditPlan(store, adult.id, "pin-remove", pinProof, invalid, invalid, nonce, 200)
+    check(not blockedRemoval.ok, "an adult PIN stays while a Child profile exists, even after correct target verification")
+    noChild = copyJson(store)
+    noChild.profiles[0].role = "user"
+    removedPin = userProfileMetadataEditPlan(noChild, adult.id, "pin-remove", pinProof, invalid, invalid, nonce, 200)
+    check(removedPin.ok and removedPin.store.profiles[1].pinType = "none" and removedPin.store.pendingRoster, "correct target PIN can be removed without creating a salt and stamps roster intent")
+    check(not userProfileMetadataEditPlan(noChild, adult.id, "pin-remove", invalid, invalid, invalid, nonce, 200).ok, "management rights alone cannot remove another holder's PIN")
     check(userProfileManagementGrantMatches(store, invalid, invalid, ""), "Standard already has full local management rights, not server-admin authority")
     check(not userProfileMayEditMetadata(store, child.id, "role", invalid, invalid, nonce), "role changes still require an adult PIN when any exists, even for Standard")
     check(not userProfileMayEditMetadata(store, child.id, "remove", invalid, invalid, nonce), "removing a Child cannot skip the protected adult gate")

@@ -37,7 +37,7 @@ end function
 
 function userProfileMayEditMetadata(store as object, targetId as string, operation as string, deviceAdmin as dynamic, grant as dynamic, accessNonce as string) as boolean
     allowed = false
-    for each candidate in ["name", "avatar", "role", "order", "remove"]
+    for each candidate in ["name", "avatar", "role", "order", "remove", "pin-remove"]
         if operation = candidate then allowed = true
     end for
     if not allowed or store.readOnly = true then return false
@@ -105,6 +105,19 @@ function userProfileMetadataEditPlan(store as object, targetId as string, operat
         if children > 0 and adults = 0 and not userProfilePinRecordValid(deviceAdmin)
             return {ok: false, changed: false, reason: "exit-pin-required"}
         end if
+    else if operation = "pin-remove"
+        if not userProfilePinGrantMatches(value, cleaned.playlistId, profile) then return {ok: false, changed: false, reason: "current-pin-required"}
+        if not userProfilePinRecordValid(profile) then return denied
+        if userProfileFullAccess(profile.role)
+            for each candidate in nextStore.profiles
+                if candidate.role = "child" then return {ok: false, changed: false, reason: "adult-pin-required"}
+            end for
+        end if
+        profile = setCanonicalPreference(profile, "pinType", "none")
+        profile = setCanonicalPreference(profile, "pinHash", "")
+        profile = setCanonicalPreference(profile, "pinSalt", "")
+        profile = setCanonicalPreference(profile, "pinLength", 0)
+        wireChanged = true
     else if operation = "order"
         if not userProfileInteger(value) then return denied
         moved = userProfileMove(nextStore.profiles, targetId, value, now)

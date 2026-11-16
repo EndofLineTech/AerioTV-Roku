@@ -59,7 +59,7 @@ class ProfileProbeTest(unittest.TestCase):
         fixture = probe.real_baseline_fixture((root / 'tests/native/ProfilePickerLaunchFixture.brs').read_text(), accounts)
         self.assertIn('id: 23, username: "ExampleA", user_level: 1', fixture)
         self.assertIn('m.activeUserScope.accountId <> "42"', fixture)
-        self.assertIn('profile.userId = 42 then m.pickerProbeAdded', fixture)
+        self.assertIn('if profile.userId = 42\n', fixture)
         self.assertIn('m.profileOwnSignInContext.password = "example-password-b"', fixture)
         self.assertNotIn('"synthetic-a"', fixture)
 

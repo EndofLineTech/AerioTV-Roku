@@ -3,7 +3,7 @@ sub buildSettingsRail()
     m.railCells = []
     ' Reserve cells for every capability-gated category. Refresh their text
     ' and visibility on render rather than growing the SceneGraph each visit.
-    for i = 0 to 9
+    for i = 0 to 8
         y = 211 + i * 78
         fill = uiSurface(m.top, 98, y + 2, 408, 70, 35, "0x00000000")
         icon = m.top.createChild("Poster")
@@ -37,9 +37,6 @@ sub drawSettingsRail()
     end if
     for i = 0 to m.railCells.count() - 1
         cell = m.railCells[i]
-        pitch = 78
-        if m.railItems.count() > 9 then pitch = 72
-        cell.fill.translation = [98, 213 + i * pitch]
         visible = i < m.railItems.count()
         cell.fill.visible = visible
         cell.icon.visible = visible

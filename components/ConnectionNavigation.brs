@@ -406,6 +406,8 @@ sub changeProfiledConnectionUrl(entry as object, profiles as object, base as str
 end sub
 
 sub resetConnectionRuntime()
+    if m.profileServerAdminContext <> invalid then retireProfileServerAdmin()
+    if m.profileSwitcher <> invalid then retireUserProfileSwitcher()
     retireProfileSetupCredential()
     closeChildRejectedKeyDialog()
     m.childConnectionLoading = false

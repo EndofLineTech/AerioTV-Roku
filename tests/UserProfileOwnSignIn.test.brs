@@ -17,6 +17,13 @@ sub main()
     entry = {id: "slot-a", name: "Synthetic", provider: "dispatcharr", url: "https://example.test", accountId: "7", accountUsername: "Alice", remember: true}
     result = {ok: true, apiKey: "synthetic-new-own-key", verifiedUser: {id: 88, username: "BOB", user_level: 1}}
     planned = userProfileOwnSignInPlan(entry, store, b.id, result, 100)
+    childStore = copyJson(store)
+    childStore.profiles[1] = setCanonicalPreference(childStore.profiles[1], "role", "child")
+    childResult = copyJson(result)
+    childResult.verifiedBaseUrl = entry.url
+    chosenChild = userProfileOwnSignInPlan(entry, childStore, b.id, childResult, 100, false, false, true)
+    check(chosenChild.ok and chosenChild.target.role = "child" and chosenChild.store.active = a.id, "explicit adult-chosen Child own recovery preserves Child and outgoing selection")
+    check(not userProfileOwnSignInPlan(entry, childStore, b.id, childResult, 100).ok, "ordinary own recovery cannot silently acquire chosen Child authority")
     check(planned.ok and planned.target.id = b.id and planned.target.userId = 88, "non-default own sign-in accepts its recreated username with a new server user ID")
     check(planned.store.active = a.id and store.profiles[1].userId = 8 and entry.accountId = "7", "own sign-in planning cannot activate early or mutate the default holder")
     check(planned.target.pinHash = b.pinHash and planned.target.pinSalt = b.pinSalt and planned.target.displayName = "Living room", "credential recovery preserves local UUID, PIN and claimed profile metadata")

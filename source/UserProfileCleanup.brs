@@ -65,6 +65,31 @@ end function
 
 ' Caller must retire the active target first; the plan refuses to remove it.
 ' The returned preferences/store are adopted only after this transaction lands.
+function commitManagedUserProfileRemoval(registry as object, context as object, now as integer, activeScope as dynamic, activeNonce as string, managementGrant as dynamic) as object
+    denied = {ok: false, recoveryRequired: false, needsDefaultSwitch: false}
+    if userProfileLocalId(context.nonce) = "" or context.nonce <> activeNonce then return denied
+    if not userProfileSameSession(context.scope, activeScope) then return denied
+    connections = loadConnectionStore(registry)
+    if connections.readOnly = true or connections.selected <> context.connection.id then return denied
+    if registry.read("connectionsV1") <> context.connectionRoot then return denied
+    entry = connectionStoreEntry(connections, context.connection.id)
+    if entry = invalid then return denied
+    if FormatJson(entry) <> FormatJson(normalizeConnectionEntry(context.connection)) then return denied
+    store = loadUserProfileStore(registry, entry.id)
+    if store.readOnly = true or FormatJson(store) <> FormatJson(context.store) then return denied
+    if activeScope.playlistId <> entry.id or activeScope.profileId <> store.active then return denied
+    if activeScope.preferenceIdentity <> connectionPreferenceIdentity(entry, activeScope.accountId) then return denied
+    matched = false
+    for each profile in store.profiles
+        if profile.id = store.active and profile.userId.toStr() = activeScope.accountId then matched = true
+    end for
+    if not matched then return denied
+    admin = userProfileLoadDeviceAdminPin(registry, entry.id)
+    if not admin.ok then return denied
+    if not userProfileMayEditMetadata(store, context.targetId, "remove", admin.record, managementGrant, activeNonce) then return denied
+    return removeUserProfile(registry, entry, store, context.targetId, now, "normal")
+end function
+
 function removeUserProfile(registry as object, connection as object, store as object, id as string, now as integer, reason as string) as object
     denied = {ok: false, recoveryRequired: false, needsDefaultSwitch: false}
     if connection.provider <> "dispatcharr" or connection.id <> store.playlistId then return denied

@@ -3,6 +3,13 @@ function userProfileAvatarIcons() as object
     return ["initial", "person", "face", "child", "paw", "cat", "fish", "star", "rocket", "music", "soccer", "gamepad", "movie"]
 end function
 
+function userProfileAvatarUri(raw as dynamic) as string
+    avatar = userProfileNormalizeAvatar(raw)
+    if avatar.icon = invalid then return ""
+    if avatar.icon = "initial" then return ""
+    return "pkg:/images/profile-avatar-" + avatar.icon + ".png"
+end function
+
 function userProfileAvatarColors() as object
     return ["teal", "blue", "orange", "ember", "green", "purple", "slate", "sea"]
 end function

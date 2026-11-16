@@ -65,7 +65,7 @@ function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as
     if childRecovery and (not activeRecovery or m.profileChildAccessReady <> true) then return false
     if m.profileOwnSignInContext <> invalid or m.profileSwitchContext <> invalid then return false
     if m.profilePinDialog <> invalid or m.adultPinDialog <> invalid then return false
-    if m.playingChannel <> invalid then return false
+    if m.playingChannel <> invalid and (activeRecovery or childRecovery or startupRecovery) then return false
     if startupRecovery
         if activeRecovery or childRecovery then return false
         admission = startupProfileOwnSignInAdmission(targetId)
@@ -95,13 +95,14 @@ function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as
         if profile.id = targetId then target = profile
     end for
     if target = invalid then return false
+    chosenChild = not activeRecovery and not startupRecovery and target.role = "child" and m.profileChildAccessReady = true
     if childRecovery
         if target.role <> "child" then return false
         access = unavailableChildAccessContext()
         if access = invalid then return false
         if access.target.id <> targetId or not access.plan.signIn then return false
     else
-        if not userProfileFullAccess(target.role) then return false
+        if not userProfileFullAccess(target.role) and not chosenChild then return false
         if activeRecovery and (target.isDefault or target.addressHeld) then return false
     end if
     if target.isDefault and target.addressHeld then return false
@@ -123,6 +124,8 @@ function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as
     m.profileOwnSignInNonce = CreateObject("roDeviceInfo").getRandomUUID()
     m.profileOwnSignInContext = {nonce: m.profileOwnSignInNonce, activeRecovery: activeRecovery, childRecovery: childRecovery, startupRecovery: startupRecovery, connection: copyJson(entry), store: store, target: target, scope: copyJson(m.activeUserScope), page: m.page, guideActive: m.guide.active, covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, unlock: m.profileUnlockGrant, username: target.username, password: ""}
     m.profileOwnSignInContext.holds = holds
+    m.profileOwnSignInContext.chosenChild = chosenChild
+    m.profileOwnSignInContext.preserveSource = not activeRecovery and not startupRecovery
     if startupRecovery then m.profileOwnSignInContext.startupStoreRoot = m.profilePickerContext.storeRoot
     m.global.profileownsigninpending = true
     m.global.profileownsigninnonce = m.profileOwnSignInNonce
@@ -149,6 +152,15 @@ function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as
     return m.profileOwnSignInDialog <> invalid
 end function
 
+function profileOwnSignInPreservesSource(nonce as string) as boolean
+    context = m.profileOwnSignInContext
+    if type(context) <> "roAssociativeArray" then return false
+    if context.nonce <> nonce or context.preserveSource <> true then return false
+    if context.activeRecovery = true or context.startupRecovery = true or context.childRecovery = true then return false
+    if userProfileGateClosed() or m.global.profileswitchpending = true then return false
+    return profileOwnSignInContextCurrent()
+end function
+
 function profileOwnSignInContextCurrent() as boolean
     if m.userProfileRecoveryRequired = true then return false
     context = m.profileOwnSignInContext
@@ -156,6 +168,7 @@ function profileOwnSignInContextCurrent() as boolean
     if context.nonce <> m.profileOwnSignInNonce or context.connection.id <> m.selectedConnectionId or context.page <> m.page then return false
     if textValue(m.global.profileownsigninnonce) <> context.nonce or m.global.profileownsigninpending <> true then return false
     if context.childRecovery = true and m.profileChildAccessReady <> true then return false
+    if context.chosenChild = true and m.profileChildAccessReady <> true then return false
     if context.adding = true
         if m.profileBaselineReady <> true or not requestGateAccessAllowed(context.connection.url, textValue(m.apiKey)) then return false
         settings = loadDispatcharrSyncSettings(m.registry)
@@ -231,6 +244,9 @@ sub showProfileOwnSignInForm(message = "" as string)
     mask = ""
     if context.password <> "" then mask = "********"
     dialog.buttons = ["Username: " + context.username, "Password: " + mask, "Sign In", "Cancel"]
+    if context.adding = true and m.profileBaselineReady = true
+        if profileServerAdminHint() then dialog.buttons.push("Add from Dispatcharr")
+    end if
     if m.profileOwnSignInTask <> invalid or m.profileOwnSignInHold <> invalid then dialog.buttons = ["Cancel"]
     dialog.observeField("buttonSelected", "onProfileOwnSignInChoice")
     dialog.observeField("wasClosed", "onProfileOwnSignInClosed")
@@ -262,6 +278,7 @@ sub onProfileOwnSignInChoice(event as object)
     if m.profileOwnSignInTask <> invalid or m.profileOwnSignInHold <> invalid then cancelUserProfileOwnSignIn() : return
     if index = 3 then cancelUserProfileOwnSignIn() : return
     context = m.profileOwnSignInContext
+    if index = 4 and context.adding = true then beginProfileServerAdmin() : return
     if index = 0 or index = 1
         kind = "username"
         if index = 1 then kind = "password"
@@ -400,7 +417,7 @@ sub onProfileOwnSignInResult(event as object)
         task.control = "RUN"
         return
     end if
-    planned = userProfileOwnSignInPlan(context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.childRecovery = true, context.startupRecovery = true)
+    planned = userProfileOwnSignInPlan(context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.childRecovery = true, context.startupRecovery = true, context.chosenChild = true)
     if not planned.ok
         result.apiKey = ""
         showProfileOwnSignInForm("Could not safely save this profile. Existing credentials and data were retained.")
@@ -503,7 +520,7 @@ sub finishUserProfileOwnSignIn(result as object)
     if context.adding = true
         saved = commitUserProfileAdd(m.registry, context, result, context.addRead, CreateObject("roDateTime").asSeconds(), m.profileOwnSignInNonce, m.activeUserScope, textValue(m.profileManagementNonce))
     else
-        saved = commitUserProfileOwnSignIn(m.registry, context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.nonce, m.profileOwnSignInNonce, context.childRecovery = true, context.startupRecovery = true)
+        saved = commitUserProfileOwnSignIn(m.registry, context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.nonce, m.profileOwnSignInNonce, context.childRecovery = true, context.startupRecovery = true, context.chosenChild = true)
     end if
     if not saved.ok
         result.apiKey = ""
@@ -554,9 +571,27 @@ sub finishUserProfileOwnSignIn(result as object)
         connectServer(true)
         return
     end if
+    if context.adding = true then context.completedAdd = true
     cancelUserProfileOwnSignIn()
+    if context.switchAfterSignIn = true
+        closeUserProfileSwitcher()
+        refreshUserProfileChrome()
+        if openUserProfileSwitcher(context.target.id) then startUserProfileSwitcherSelection(context.target.id)
+        return
+    end if
     if m.profileBaselineReady = true
-        openProfileBaselineMenu()
+        refreshUserProfileChrome()
+        if context.adding = true
+            if context.returnToSwitcher = true
+                openUserProfileSwitcher(context.target.id)
+            else
+                if m.page = "guide" then openSettingsHub()
+                refreshSettingsHub()
+                m.settingsHub.callFunc("openProfilesPage", context.target.id)
+            end if
+        else
+            openProfileBaselineMenu()
+        end if
         return
     end if
     showNotice("Signed in. Select this profile when switching is available.")
@@ -616,6 +651,7 @@ sub closeProfileOwnSignInTask()
 end sub
 
 sub retireUserProfileOwnSignIn()
+    if m.profileServerAdminContext <> invalid then retireProfileServerAdmin()
     if m.profileOwnSignInHold <> invalid then m.profileOwnSignInHold.unobserveField("result")
     m.profileOwnSignInHold = invalid
     m.profileOwnSignInHoldClock = invalid
@@ -722,4 +758,9 @@ sub cancelUserProfileOwnSignIn()
     else if m.settingsHub <> invalid
         m.settingsHub.setFocus(true)
     end if
+    if m.profileSwitcher <> invalid
+        m.profileSwitcher.busy = false
+        m.profileSwitcher.setFocus(true)
+    end if
+    if context.adding = true and context.returnToSwitcher = true and context.completedAdd <> true then openUserProfileSwitcher()
 end sub

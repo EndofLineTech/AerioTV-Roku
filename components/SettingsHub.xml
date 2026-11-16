@@ -8,6 +8,7 @@
     <function name="handleSettingsKey" />
     <function name="selectSetting" />
     <function name="selectSettingsCategory" />
+    <function name="openProfilesPage" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />

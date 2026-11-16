@@ -1,12 +1,16 @@
 sub main()
     baseline = {profilesBaseline: true, movies: "allowed", series: "allowed", dvr: "manage"}
     baselineRoot = settingsHubEntries("", baseline)
-    if baselineRoot.count() <> 10 then stop
-    if baselineRoot[3].page <> "profiles-baseline" or baselineRoot[3].action <> invalid then stop
+    if baselineRoot.count() <> 9 then stop
+    if baselineRoot[3].page <> "movies" then stop
     for each entry in baselineRoot
         if type(entry.page) <> "String" and type(entry.page) <> "roString" then stop
     end for
-    if settingsHubEntries("profiles-baseline", baseline)[0].action <> "profiles-baseline" then stop
+    if settingsHubEntries("connection", baseline)[1].page <> "profiles" then stop
+    baseline.profileRows = [{id: "local-profile", title: "Example (Active) — Standard"}]
+    profilesPage = settingsHubEntries("profiles", baseline)
+    if profilesPage.count() <> 3 or profilesPage[0].action <> "profile-edit" or profilesPage[0].profileId <> "local-profile" then stop
+    if profilesPage[1].action <> "profiles-add" or profilesPage[2].action <> "profiles-ask" then stop
     model = {device: normalizeDevicePreferences(invalid), guide: normalizeGuideSettings(invalid), vodEnabled: true, startupBehavior: "guide", whatsNewVersion: "", version: "0.3.29", movies: "denied", series: "unknown", catchup: "allowed"}
     root = settingsHubEntries("", model)
     if root.count() <> 7 or root[0].page <> "connection" or root[1].page <> "live" or root[2].page <> "player" or root[6].page <> "about" then stop

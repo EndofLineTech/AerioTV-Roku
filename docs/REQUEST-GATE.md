@@ -1,4 +1,23 @@
-# Shared request safety (`mrr.14`, in progress)
+# Shared request safety (`mrr.14`)
+
+## Current integration evidence
+
+The shared broker/transport/renderer boundary passes
+`out/request-gate-native.json`. Own-profile recovery and its real slow probe
+pass `out/profile-active-own-recheck-native.json`; same-key recovery, Cancel and
+lost-acknowledgement timeout pass the corresponding
+`profile-active-same-key-{recovery,cancel,timeout}-native.json` reports.
+Default setup and protected default-Child same-key recovery also pass
+`profile-default-setup-same-key-native.json` and
+`profile-child-same-key-default-pin-native.json`. The latest real-account main
+flow (`out/mrr-core-final-native.json`) includes live Child entry/adult escape.
+All these reports pass and restore the exact preceding developer app.
+
+These later own-holder/Child integrations supersede the early interim-prompt
+limitation below. The new bounded server-admin Task also uses the same
+`httpTransferOnce` boundary and captured authenticated session; it has no
+transport bypass or retry loop. This is request-safety qualification, not
+public-release, sender-interoperability or owner acceptance.
 
 `RequestGateTask` owns a memory-only serialized ledger across Tasks. Clients
 submit individual Node tickets, not read/modify/write copies of global state.

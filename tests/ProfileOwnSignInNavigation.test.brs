@@ -1,5 +1,19 @@
 sub main()
     ownFormFixture()
+    m.playingChannel = {id: "source-live"}
+    sourceScope = m.activeUserScope
+    check(beginUserProfileOwnSignIn(m.fixtureTarget), "chosen missing-key form can open while outgoing playback remains active")
+    check(m.playingChannel.id = "source-live" and userProfileSameSession(sourceScope, m.activeUserScope) and not m.global.profilegateclosed, "chosen form does not retire or gate the playing source")
+    cancelUserProfileOwnSignIn()
+    m.playingChannel = invalid
+    ownFormFixture()
+    childStore = loadUserProfileStore(m.registry, "slot-a")
+    childStore.profiles[1] = setCanonicalPreference(childStore.profiles[1], "role", "child")
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(childStore)
+    m.profileChildAccessReady = true
+    check(beginUserProfileOwnSignIn(m.fixtureTarget) and m.profileOwnSignInContext.chosenChild = true and profileOwnSignInContextCurrent(), "adult can open own credentials for a chosen missing-key Child without activating it")
+    cancelUserProfileOwnSignIn()
+    ownFormFixture()
     check(beginUserProfileOwnSignIn(m.fixtureTarget), "baseline retry fixture opens an owned source-session form")
     m.profileBaselineReady = true
     m.apiKey = "source-key"

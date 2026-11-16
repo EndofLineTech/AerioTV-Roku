@@ -54,14 +54,14 @@ sub main()
     refreshSettingsRailModel({userRole: "child"})
     if m.railItems.count() <> 5 or m.railIndex <> 0 or m.railSelected <> 0 then stop
     m.railItems = settingsHubEntries("", {profilesBaseline: true, movies: "allowed", dvr: "manage"})
-    while m.railCells.count() < 10
-        m.railCells.push({fill: {translation: [98, 0]}, icon: {}, label: {font: {size: 24}, localBoundingRect: function() as object
+    while m.railCells.count() < 9
+        m.railCells.push({fill: {translation: [98, 213 + m.railCells.count() * 78]}, icon: {}, label: {font: {size: 24}, localBoundingRect: function() as object
             return {width: len(m.text) * 14}
         end function}})
     end while
     drawSettingsRail()
-    if m.railCells[9].fill.translation[1] + 70 >= 974 then stop
-    if m.railCells[3].icon.uri <> "pkg:/images/ui-icon-settings.png" then stop
+    if m.railItems.count() <> 9 or m.railCells[8].fill.translation[1] + 70 >= 974 then stop
+    if m.railItems[0].page <> "connection" then stop
     print "ALL TESTS PASSED"
 end sub
 

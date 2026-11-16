@@ -1,5 +1,23 @@
 sub main()
     switchRollbackFixture()
+    store = loadUserProfileStore(m.registry, "slot-a")
+    child = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Child", user_level: 1}, 2)
+    child.isDefault = false
+    child.role = "child"
+    child.pinType = "numbers"
+    child.pinSalt = string(32, "b")
+    child.pinHash = string(64, "a")
+    store.profiles.push(child)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    m.registry.values[userProfileKeyName("slot-a", child.id)] = "child-own-key"
+    m.connectionStore = loadConnectionStore(m.registry)
+    m.profileSwitchContext = invalid
+    m.profileChildAccessReady = false
+    check(not beginUserProfileSwitch(child.id), "shipping-unready Child live selection stays refused")
+    m.profileChildAccessReady = true
+    check(beginUserProfileSwitch(child.id) and m.livePinRequested and m.profileSwitchContext.key = "child-own-key", "developer-ready Child selection opens target PIN under only its own key")
+    check(m.apiKey = "synthetic-a" and m.activeUserScope.accountId = "7", "Child PIN staging cannot prematurely adopt target or borrow default")
+    switchRollbackFixture()
     oldSession = m.profileSwitchContext.outgoing.sessionId
     rollbackUserProfileSwitch("Rejected own key")
     check(m.profileSwitchContext = invalid and not m.profileGateCover.visible and not m.global.profilegateclosed and m.guide.active, "ordinary cancellation returns to previous guide without autoplay")
@@ -17,6 +35,11 @@ sub main()
     check(m.page = "profile-unavailable" and not m.busy and not m.global.profileswitchpending and m.childSurfaceRestored, "unavailable escape failure restores only the Child surface, never default setup or guide")
     print "ALL TESTS PASSED"
 end sub
+
+function beginProfilePinGate(profile as object, continuation as string, resume as dynamic) as boolean
+    m.livePinRequested = profile.role = "child" and continuation = "switch"
+    return true
+end function
 
 sub showUnavailableChildProfile()
     m.childSurfaceRestored = true

@@ -29,6 +29,10 @@ suites.unshift('ProfilePickerNavigation');
 suites.unshift('UserProfileForget');
 suites.unshift('UserProfileNavigation');
 suites.unshift('UserProfileRemoval');
+suites.unshift('ProfileSwitcherNavigation');
+suites.unshift('UserProfileServerAdmin');
+suites.unshift('ProfileServerAdminTask');
+suites.unshift('ProfileServerAdminNavigation');
 suites.unshift('RequestGateModel');
 suites.unshift('RequestGateOwnCredential');
 suites.unshift('RequestGateTask');
@@ -172,7 +176,12 @@ for (const suite of suites) {
     ...(suite === 'UserProfileRuntime' ? ['source/UserProfileRuntime.brs'] : []),
     ...(['UserProfileCredential', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/UserProfileCredential.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs'] : []),
     ...(suite === 'UserProfileCredential' ? ['source/ConnectionStoreModel.brs'] : []),
-    ...(suite === 'ProfileOwnSignInNavigation' ? ['source/DispatcharrSyncSettingsStore.brs'] : []),
+    ...(suite === 'ProfileOwnSignInNavigation' ? ['source/DispatcharrSyncSettingsStore.brs', 'components/ProfileServerAdminNavigation.brs'] : []),
+    ...(suite === 'UserProfileRemoval' ? ['source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs', 'source/UserProfileScope.brs'] : []),
+    ...(suite === 'UserProfileServerAdmin' ? ['source/UserProfileServerAdmin.brs', 'source/UserProfileModel.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs'] : []),
+    ...(suite === 'ProfileServerAdminTask' ? ['components/ProfileServerAdminTask.brs', 'source/UserProfileServerAdmin.brs', 'source/UserProfileModel.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs'] : []),
+    ...(suite === 'ProfileServerAdminNavigation' ? ['components/ProfileServerAdminNavigation.brs', 'source/UserProfileServerAdmin.brs', 'source/UserProfileScope.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/ConnectionStoreModel.brs', 'source/UserProfileModel.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs'] : []),
+    ...(suite === 'ProfileSwitcherNavigation' ? ['components/ProfileSwitcherNavigation.brs', 'components/ProfileBaselineNavigation.brs', 'source/UserProfilePicker.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'DispatcharrSyncAckStore' ? ['source/DispatcharrSyncSettingsStore.brs'] : []),
     ...(['ProfilePickerNavigation', 'UserProfileManagementPolicy', 'ProfileAdultPinNavigation', 'ProfileManagementNavigation', 'UserProfileSwitch', 'UserProfileOwnSignIn', 'UserProfileChildOwnSignIn'].includes(suite) ? ['source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(['UserProfileOwnSignIn', 'UserProfileChildOwnSignIn'].includes(suite) ? ['source/UserProfileOwnSignIn.brs', 'source/UserProfileAddressPolicy.brs', 'source/StrictJson.brs'] : []),
@@ -188,7 +197,7 @@ for (const suite of suites) {
     ...(suite === 'UserProfileSwitch' ? ['source/UserProfileSwitch.brs', 'source/UserProfileAddressPolicy.brs', 'source/UserProfileScope.brs', 'source/StrictJson.brs', 'source/UserProfileCredential.brs'] : []),
     ...(['UserProfileChildAccess', 'UserProfileChildRejectedPrompt'].includes(suite) ? ['source/UserProfileChildAccess.brs', 'source/UserProfileStore.brs', 'source/UserProfileModel.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'UserProfileChildActivation' ? ['source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
-    ...(suite === 'ProfileSwitchNavigation' ? ['components/ProfileSwitchNavigation.brs', 'components/DvrSettlementNavigation.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(suite === 'ProfileSwitchNavigation' ? ['components/ProfileSwitchNavigation.brs', 'components/DvrSettlementNavigation.brs', 'source/UserProfileCredential.brs', 'source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'ProfileSwitchRollbackProtection' ? ['components/ProfileSwitchNavigation.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(['DispatcharrSyncSwitchRoster', 'DispatcharrSyncSwitchRosterStore', 'DispatcharrSyncUnavailableChildRoster'].includes(suite) ? ['source/DispatcharrSyncSwitchRoster.brs', 'source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/DispatcharrSyncMerge.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'DispatcharrSyncUnavailableChildRoster' ? ['source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs'] : []),

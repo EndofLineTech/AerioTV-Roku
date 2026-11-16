@@ -31,7 +31,11 @@ sub onAdultProfileAuthorized()
             current = profileBaselineContext()
             if current = invalid then return
             if not userProfileSameSession(pending.scope, current.scope) or pending.connectionRoot <> current.connectionRoot then return
-            beginProfileBaselineAdd(true)
+            beginProfileBaselineAdd(true, pending.returnToSwitcher = true)
+            return
+        end if
+        if pending.action = "remove-confirm"
+            showProfileManagementRemoveConfirmation(pending.id)
             return
         end if
         showProfileManagementEditor(pending.id)
@@ -61,7 +65,7 @@ sub showProfileManagementRoster()
     if not profileManagementAuthorized() then return
     m.userProfileStore = loadUserProfileStore(m.registry, m.selectedConnectionId)
     choices = []
-    for each profile in m.userProfileStore.profiles
+    for each profile in userProfileSorted(m.userProfileStore.profiles)
         label = profile.displayName
         if profile.id = m.userProfileStore.active then label += " (Active)"
         if profile.pinType <> "none" then label += " — PIN"
@@ -78,13 +82,26 @@ sub showProfileManagementEditor(id as string)
         if profile.id = id
             m.userProfileStore = store
             m.profileManagementTarget = id
-            choices = [{title: "Rename", action: "name"}, {title: "Avatar", action: "avatar"}, {title: "Move earlier", action: "earlier"}, {title: "Move later", action: "later"}]
+            choices = [{title: "Rename", action: "name"}]
+            if m.activeUserScope <> invalid and profile.id <> store.active then choices.unshift({title: "Switch to this profile", action: "switch"})
+            if profile.userLevel < 10 and m.profileChildAccessReady = true then choices.push({title: "Role: " + profile.role, action: "role"})
+            choices.push({title: "Avatar", action: "avatar"})
+            if profile.pinType <> "none" and m.activeUserScope <> invalid then choices.push({title: "Remove PIN", action: "pin-remove"})
+            if m.profileBaselineReady = true
+                if profileServerAdminHint() then choices.push({title: "Channel Profiles", action: "server-channels"})
+            end if
             if m.page = "profile-unavailable" and m.activeUserScope = invalid and profile.id <> store.active and userProfileFullAccess(profile.role) and not profile.addressHeld
                 choices.unshift({title: "Switch to this profile", action: "switch-unavailable"})
             end if
-            if profile.userLevel < 10 and m.profileBaselineReady <> true then choices.push({title: "Role: " + profile.role, action: "role"})
+            if not profile.isDefault and m.activeUserScope <> invalid then choices.push({title: "Remove", action: "remove"})
             choices.push({title: "Back", action: "roster"})
-            openProfileManagementChoices(profile.displayName, "Changes apply only to this connection's profile.", choices)
+            caption = "Standard"
+            if profile.role = "admin" then caption = "Admin"
+            if profile.role = "child" then caption = "Child"
+            if profile.id = store.active then caption = "Active — " + caption
+            if profile.pinType <> "none" then caption += " — PIN"
+            caption += chr(10) + profile.username
+            openProfileManagementChoices(profile.displayName, caption, choices)
             return
         end if
     end for
@@ -105,6 +122,7 @@ sub openProfileManagementChoices(title as string, message as string, choices as 
     m.profileManagementDialog = dialog
     m.profileManagementChoices = choices
     m.profileManagementDialogNonce = m.profileManagementNonce
+    captureProfileManagementDialogRoots()
     m.top.dialog = dialog
     dialog.setFocus(true)
 end sub
@@ -112,8 +130,16 @@ end sub
 function profileManagementEventCurrent(event as object) as boolean
     if m.profileManagementDialog = invalid then return false
     if not m.profileManagementDialog.isSameNode(event.getRoSGNode()) then return false
+    roots = m.profileManagementDialogRoots
+    if type(roots) <> "roAssociativeArray" then return false
+    if roots.store <> m.registry.read(userProfileStoreKey(m.selectedConnectionId)) then return false
+    if roots.connections <> m.registry.read("connectionsV1") then return false
     return m.profileManagementDialogNonce = m.profileManagementNonce and profileManagementContextCurrent()
 end function
+
+sub captureProfileManagementDialogRoots()
+    m.profileManagementDialogRoots = {store: m.registry.read(userProfileStoreKey(m.selectedConnectionId)), connections: m.registry.read("connectionsV1")}
+end sub
 
 sub onProfileManagementChoice(event as object)
     if not profileManagementEventCurrent(event) then return
@@ -131,6 +157,7 @@ sub onProfileManagementChoice(event as object)
     end if
     if action = "edit" then showProfileManagementEditor(choice.id) : return
     if action = "roster" then showProfileManagementRoster() : return
+    if action = "remove-confirm" then commitProfileManagementRemoval() : return
     target = invalid
     store = loadUserProfileStore(m.registry, m.selectedConnectionId)
     for each profile in store.profiles
@@ -138,7 +165,20 @@ sub onProfileManagementChoice(event as object)
     end for
     if target = invalid then return
     m.userProfileStore = store
-    if action = "switch-unavailable"
+    if action = "server-channels"
+        beginProfileServerAdmin(target.id)
+    else if action = "switch"
+        if openUserProfileSwitcher(target.id)
+            model = m.profileSwitcher.model
+            m.profileSwitcher.intent = {action: "switch", index: model.focus, uiNonce: model.uiNonce}
+        else if not beginUserProfileSwitch(target.id)
+            showNotice("Sign in as this profile to verify its own access before switching.")
+        end if
+    else if action = "remove"
+        showProfileManagementRemoveConfirmation(target.id)
+    else if action = "pin-remove"
+        beginProfileManagementPinRemoval(target.id)
+    else if action = "switch-unavailable"
         if not beginUserProfileSwitch(target.id, true) then showProfileManagementEditor(target.id)
     else if action = "name"
         dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
@@ -150,6 +190,7 @@ sub onProfileManagementChoice(event as object)
         dialog.observeField("wasClosed", "onProfileManagementClosed")
         m.profileManagementDialog = dialog
         m.profileManagementDialogNonce = m.profileManagementNonce
+        captureProfileManagementDialogRoots()
         m.top.dialog = dialog
         dialog.setFocus(true)
     else if action = "avatar"
@@ -188,6 +229,183 @@ sub onProfileManagementChoice(event as object)
     end if
 end sub
 
+function profileManagementPinOwnerCurrent(context as dynamic) as boolean
+    if type(context) <> "roAssociativeArray" then return false
+    if context.nonce <> m.profileManagementNonce or context.page <> m.page then return false
+    if not userProfileSameSession(context.scope, m.activeUserScope) then return false
+    if currentUserSessionId() <> context.scope.sessionId then return false
+    connections = loadConnectionStore(m.registry)
+    entry = connectionStoreEntry(connections, context.connection.id)
+    if connections.readOnly = true or connections.selected <> context.connection.id or entry = invalid then return false
+    if FormatJson(entry) <> FormatJson(normalizeConnectionEntry(context.connection)) then return false
+    store = loadUserProfileStore(m.registry, entry.id)
+    if store.readOnly = true or store.active <> context.scope.profileId then return false
+    previous = invalid
+    current = invalid
+    for each profile in context.store.profiles
+        if profile.id = context.scope.profileId then previous = profile
+    end for
+    for each profile in store.profiles
+        if profile.id = context.scope.profileId then current = profile
+    end for
+    if previous = invalid or current = invalid then return false
+    if current.userId.toStr() <> context.scope.accountId then return false
+    for each field in ["userId", "role", "pinType", "pinHash", "pinSalt", "addressHeld"]
+        if previous[field] <> current[field] then return false
+    end for
+    return true
+end function
+
+function profileManagementPinContextCurrent(pin as object) as boolean
+    context = m.profileManagementPinContext
+    if not profileManagementPinOwnerCurrent(context) then return false
+    if pin.resume <> context.nonce or pin.slot <> context.connection.id or pin.profile.id <> context.targetId then return false
+    current = loadUserProfileStore(m.registry, context.connection.id)
+    return FormatJson(current) = FormatJson(context.store)
+end function
+
+sub beginProfileManagementPinRemoval(id as string)
+    if not profileManagementAuthorized() or m.activeUserScope = invalid then return
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    store = loadUserProfileStore(m.registry, m.selectedConnectionId)
+    target = invalid
+    for each profile in store.profiles
+        if profile.id = id then target = profile
+    end for
+    if entry = invalid or target = invalid then return
+    if target.pinType = "none" then return
+    if userProfileFullAccess(target.role)
+        for each profile in store.profiles
+            if profile.role = "child" then showNotice("While a Child profile exists, Admin and Standard profiles keep a PIN.") : return
+        end for
+    end if
+    m.profileManagementPinContext = {connection: entry, store: store, targetId: id, scope: m.activeUserScope, nonce: m.profileManagementNonce, page: m.page, unlock: m.profileUnlockGrant, covered: m.profileGateCover.visible, closed: m.global.profilegateclosed}
+    if not beginProfilePinGate(target, "pin-remove", m.profileManagementNonce)
+        m.profileManagementPinContext = invalid
+        showNotice("This PIN type needs approved access on this Roku.")
+    end if
+end sub
+
+sub coverProfileManagementRecovery(message as string)
+    retireProfileManagement()
+    m.userProfileRecoveryRequired = true
+    m.global.profilegateclosed = true
+    m.profileGateCover.visible = true
+    if m.playingChannel <> invalid then stopPlayback()
+    m.activeUserScope = invalid
+    m.global.activeusersession = ""
+    m.apiKey = ""
+    m.guide.active = false
+    m.top.findNode("profileGateMessage").text = message + " Back exits AerioTV."
+end sub
+
+sub onProfileManagementPinVerified(nonce as string)
+    context = m.profileManagementPinContext
+    if type(context) <> "roAssociativeArray" then return
+    if nonce <> context.nonce then return
+    if not profileManagementPinOwnerCurrent(context) then coverProfileManagementRecovery("Saved profile access changed.") : return
+    current = loadUserProfileStore(m.registry, context.connection.id)
+    if not userProfileSwitchAcceptPinStore(context.store, current, context.targetId, m.profileUnlockGrant)
+        coverProfileManagementRecovery("Saved PIN protection changed.")
+        return
+    end if
+    proof = m.profileUnlockGrant
+    m.profileUnlockGrant = context.unlock
+    m.profileManagementPinContext = invalid
+    m.userProfileStore = current
+    m.profileManagementTarget = context.targetId
+    saveProfileManagementMetadata("pin-remove", proof)
+    if context.targetId = current.active then m.profileUnlockGrant = invalid
+end sub
+
+sub cancelProfileManagementPinRemoval(nonce as string)
+    context = m.profileManagementPinContext
+    if type(context) <> "roAssociativeArray" then return
+    if context.nonce <> nonce then return
+    if not profileManagementPinOwnerCurrent(context) then coverProfileManagementRecovery("Saved profile access changed.") : return
+    m.profileManagementPinContext = invalid
+    m.profileUnlockGrant = context.unlock
+    m.global.profilegateclosed = context.closed
+    m.profileGateCover.visible = context.covered
+    m.userProfileStore = loadUserProfileStore(m.registry, context.connection.id)
+    showProfileManagementEditor(context.targetId)
+end sub
+
+sub showProfileManagementRemoveConfirmation(id as string)
+    if not profileManagementAuthorized() or m.activeUserScope = invalid then return
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    store = loadUserProfileStore(m.registry, m.selectedConnectionId)
+    target = invalid
+    for each profile in store.profiles
+        if profile.id = id then target = profile
+    end for
+    if entry = invalid or target = invalid then return
+    if target.isDefault then return
+    admin = userProfileLoadDeviceAdminPin(m.registry, entry.id)
+    if not admin.ok then return
+    if not userProfileMayEditMetadata(store, id, "remove", admin.record, m.profileManagementGrant, m.profileManagementNonce)
+        m.userProfileStore = store
+        m.profileManagementPending = {action: "remove-confirm", id: id}
+        if not beginAdultProfilePinGate() then showNotice("Verify an Admin or Standard PIN before removing this profile.")
+        return
+    end if
+    m.profileManagementTarget = id
+    m.userProfileStore = store
+    m.profileManagementRemovalContext = {connection: entry, connectionRoot: m.registry.read("connectionsV1"), store: store, targetId: id, scope: m.activeUserScope, nonce: m.profileManagementNonce, page: m.page}
+    message = "Remove this profile from this playlist? Its local data will be removed. Other profiles stay unchanged."
+    if id = store.active then message = "Stop playback and switch to the default profile before removing this profile? The default profile's own access and PIN are required."
+    openProfileManagementChoices("Remove " + target.displayName + "?", message, [{title: "Remove", action: "remove-confirm"}, {title: "Cancel", action: "edit", id: id}])
+end sub
+
+sub commitProfileManagementRemoval()
+    context = m.profileManagementRemovalContext
+    m.profileManagementRemovalContext = invalid
+    if type(context) <> "roAssociativeArray" then return
+    if context.page <> m.page or userProfileGateClosed() or not profileManagementAuthorized() then return
+    saved = commitManagedUserProfileRemoval(m.registry, context, CreateObject("roDateTime").asSeconds(), m.activeUserScope, m.profileManagementNonce, m.profileManagementGrant)
+    if saved.needsDefaultSwitch
+        target = invalid
+        defaultId = ""
+        for each profile in context.store.profiles
+            if profile.isDefault then defaultId = profile.id
+            if profile.id = context.targetId then target = profile
+        end for
+        if target <> invalid and defaultId <> ""
+            if beginUserProfileSwitch(defaultId)
+                if m.profileSwitchContext <> invalid then m.profileSwitchContext.afterRemoval = {id: target.id, userId: target.userId, username: target.username}
+                return
+            end if
+        end if
+        showNotice("Switch to the default profile using its own sign-in before removing this profile.")
+        return
+    end if
+    if not saved.ok
+        if saved.recoveryRequired = true then m.userProfileRecoveryRequired = true
+        showNotice("Could not remove this profile safely. Existing profiles were retained.")
+        return
+    end if
+    m.userProfileStore = saved.store
+    m.preferenceStore = saved.preferences
+    if m.profileBaselineReady = true then refreshUserProfileChrome()
+    if type(m.profileSessionKeys) = "roAssociativeArray" then m.profileSessionKeys.delete(preferenceScope(context.connection.url + "|" + context.connection.id + "|" + context.targetId))
+    showProfileManagementRoster()
+end sub
+
+sub resumeProfileManagementRemoval(expected as object)
+    store = loadUserProfileStore(m.registry, m.selectedConnectionId)
+    matched = false
+    for each profile in store.profiles
+        if profile.id = expected.id and profile.userId = expected.userId and lcase(profile.username) = lcase(expected.username) then matched = true
+    end for
+    if not matched then showNotice("Profile changed. Open Manage Profiles again.") : return
+    openUserProfileManagement()
+    if m.adultPinDialog <> invalid
+        m.profileManagementPending = {action: "remove-confirm", id: expected.id}
+    else
+        showProfileManagementRemoveConfirmation(expected.id)
+    end if
+end sub
+
 sub showProfileAvatarPage()
     choices = []
     icons = userProfileAvatarIcons()
@@ -217,7 +435,18 @@ sub saveProfileManagementMetadata(operation as string, value as dynamic)
     result = commitUserProfileMetadataEdit(m.registry, connection, m.userProfileStore, m.profileManagementTarget, operation, value, m.profileManagementGrant, m.profileManagementDialogNonce, m.profileManagementNonce, CreateObject("roDateTime").asSeconds())
     if result.ok
         m.userProfileStore = result.store
+        if operation = "role" and m.profileManagementTarget = result.store.active
+            ' Re-admit the current holder under its new role; old views/tasks
+            ' must not retain adult actions after a Child transition.
+            m.suppressNextMiniAutoStart = true
+            resetConnectionRuntime()
+            connectServer(true)
+            return
+        end if
+        if m.profileBaselineReady = true then refreshUserProfileChrome()
+        if m.page = "settings" then refreshSettingsHub()
     else
+        if result.recoveryRequired = true then coverProfileManagementRecovery("Saved profiles need recovery.") : return
         showNotice("Could not save this profile safely. " + textValue(result.reason))
     end if
     showProfileManagementEditor(m.profileManagementTarget)
@@ -228,6 +457,8 @@ sub onProfileManagementClosed(event as object)
     closeProfileManagementDialog()
     m.profileManagementGrant = invalid
     m.profileManagementNonce = ""
+    m.profileManagementRemovalContext = invalid
+    m.profileManagementPinContext = invalid
     if m.page = "profile-unavailable" then showUnavailableChildProfile()
 end sub
 
@@ -237,8 +468,14 @@ sub closeProfileManagementDialog()
     for each field in ["buttonSelected", "wasClosed"]
         m.profileManagementDialog.unobserveField(field)
     end for
-    m.profileManagementDialog.close = true
+    dialog = m.profileManagementDialog
+    dialog.close = true
     m.profileManagementDialog = invalid
+    if m.top <> invalid
+        if m.top.dialog <> invalid
+            if m.top.dialog.isSameNode(dialog) then m.top.dialog = invalid
+        end if
+    end if
 end sub
 
 sub retireProfileManagement()
@@ -246,6 +483,8 @@ sub retireProfileManagement()
     closeAdultProfilePinGate()
     m.profileManagementGrant = invalid
     m.profileManagementPending = invalid
+    m.profileManagementRemovalContext = invalid
+    m.profileManagementPinContext = invalid
     m.profileManagementNonce = ""
     m.profileManagementSlot = ""
     m.profileManagementTarget = ""

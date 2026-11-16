@@ -3,7 +3,24 @@ sub refreshSettingsHub()
     version = info.getValue("major_version") + "." + info.getValue("minor_version") + "." + info.getValue("build_version")
     model = {account: m.accountIdentity, version: version, device: m.devicePreferences, guide: m.accountPreferences.guide, vodEnabled: m.accountPreferences.vodEnabled <> false, vodTmdbEnabled: m.accountPreferences.vodTmdbEnabled = true, startupBehavior: m.accountPreferences.startupBehavior, dvrPreRollMinutes: m.accountPreferences.dvrPreRollMinutes, dvrPostRollMinutes: m.accountPreferences.dvrPostRollMinutes, whatsNewVersion: m.accountPreferences.whatsNewVersion, movies: m.capabilities.movies, series: m.capabilities.series, catchup: m.capabilities.catchup, dvr: m.capabilities.dvr}
     model.userRole = currentUserSettingsRole()
-    if m.profileBaselineReady = true then model.profilesBaseline = profileBaselineContext() <> invalid
+    model.profileRows = []
+    if m.profileBaselineReady = true
+        context = profileBaselineContext()
+        model.profilesBaseline = context <> invalid
+        if context <> invalid
+            model.profilesAskAtLaunch = context.store.askAtLaunch
+            for each profile in userProfileSorted(context.store.profiles)
+                title = profile.displayName
+                if profile.id = context.store.active then title += " (Active)"
+                label = "Standard"
+                if profile.role = "admin" then label = "Admin"
+                if profile.role = "child" then label = "Child"
+                title += " — " + label
+                if profile.pinType <> "none" then title += " — PIN"
+                model.profileRows.push({id: profile.id, title: title})
+            end for
+        end if
+    end if
     m.settingsHub.model = userViewEvent(model, currentUserSessionId())
 end sub
 
@@ -52,7 +69,29 @@ sub onSettingsHubSelection(event as object)
         return
     end if
     if item.action = "profiles-baseline"
-        openProfileBaselineMenu()
+        m.settingsHub.callFunc("openProfilesPage")
+        return
+    end if
+    if item.action = "profiles-add"
+        beginProfileBaselineAdd()
+        return
+    end if
+    if item.action = "profile-edit"
+        if profileBaselineContext() = invalid then return
+        openUserProfileManagement()
+        showProfileManagementEditor(textValue(item.profileId))
+        return
+    end if
+    if item.action = "profiles-ask"
+        context = profileBaselineContext()
+        if context = invalid then return
+        candidate = setCanonicalPreference(context.store, "askAtLaunch", not context.store.askAtLaunch)
+        if commitUserProfileStore(m.registry, context.store, candidate, {}, context.connection.remember).ok
+            m.userProfileStore = candidate
+            refreshSettingsHub()
+        else
+            showNotice("Could not save the launch choice.")
+        end if
         return
     end if
     if item.action = "connection"
