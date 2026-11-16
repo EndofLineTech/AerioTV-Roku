@@ -32,9 +32,10 @@ sub seedProfilePickerLaunchProbe(base as string, mode as string)
     ' Exercise the production default, rather than forcing Ask on in the probe.
     store = setCanonicalPreference(store, "pendingRoster", true)
     connection = normalizeConnectionEntry({id: "slot-a", name: "Synthetic startup", provider: "dispatcharr", url: base, accountId: "7", remember: true})
+    if mode = "own-memory" then connection = setCanonicalPreference(connection, "remember", false)
     m.registry.write("connectionsV1", FormatJson({schema: 1, selected: "slot-a", entries: [connection]}))
     m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
-    if not m.pickerProbeDefaultOwn then m.registry.write("connKey_slot-a", "synthetic-a")
+    if not m.pickerProbeDefaultOwn and mode <> "own-memory" then m.registry.write("connKey_slot-a", "synthetic-a")
     if left(mode, 4) <> "own-" or mode = "own-held" or m.pickerProbeDefaultOwn then m.registry.write(userProfileKeyName("slot-a", b.id), "synthetic-b")
     settings = defaultPreferenceStore()
     settings.accounts[preferenceScope(connectionPreferenceIdentity(connection, "7"))] = normalizeAccountPreferences({favoriteIds: ["7"], profileSettings: {themePreset: "midnight"}, startupBehavior: "guide"})
@@ -178,6 +179,15 @@ sub onProfilePickerLaunchProbeTick()
         print "[picker-launch] "; FormatJson({kind: "own-cancelled", passed: passed})
         return
     end if
+    if m.pickerProbeMode = "own-wrong" and m.profileOwnSignInDialog <> invalid and m.profileOwnSignInTask = invalid and m.pickerProbeOwnRejected <> true
+        if m.profileOwnSignInDialog.message = "Dispatcharr did not accept that username or password."
+            m.pickerProbeOwnRejected = true
+            passed = m.activeUserScope = invalid and m.apiKey = "" and m.profileGateCover.visible and m.global.profileownsigninpending and m.profileStartupTask = invalid and m.profileOwnSignInContext.password = ""
+            passed = passed and m.registry.read(userProfileStoreKey("slot-a")) = m.pickerProbeStoreRoot and m.registry.read("settingsV1") = m.pickerProbeSettingsRoot and m.registry.read("connKey_slot-a") = "synthetic-a" and not m.registry.exists(userProfileKeyName("slot-a", m.pickerProbeB))
+            print "[picker-launch] "; FormatJson({kind: "own-rejected", passed: passed})
+            return
+        end if
+    end if
     if ownForm and m.profileOwnSignInDialog <> invalid and m.profileOwnSignInTask = invalid
         if m.pickerProbeFormReady <> true
             m.pickerProbeFormReady = true
@@ -194,6 +204,7 @@ sub onProfilePickerLaunchProbeTick()
                 return 2
             end function}
             m.profileOwnSignInContext.password = "synthetic-password"
+            if m.pickerProbeMode = "own-wrong" and m.pickerProbeOwnRejected <> true then m.profileOwnSignInContext.password = "synthetic-rejected"
             onProfileOwnSignInChoice(event)
             if m.pickerProbeOwnCancelled <> true then m.pickerProbeCredentialTask = m.profileOwnSignInTask
         end if
@@ -238,17 +249,31 @@ sub onProfilePickerLaunchProbeTick()
     wantedUser = "8"
     wantedKey = "synthetic-b"
     wantedTheme = "forest"
+    if m.pickerProbeMode = "own-recreated" then wantedUser = "88"
     if m.pickerProbeDefaultOwn
         wantedUser = "7"
         wantedKey = "synthetic-a"
         wantedTheme = "midnight"
     end if
     if passed then passed = m.activeUserScope.profileId = m.pickerProbeTargetId and m.activeUserScope.accountId = wantedUser and m.activeUserScope.sessionId = m.global.activeusersession and userProfileLocalId(m.activeUserScope.sessionId) <> ""
-    passed = passed and store.active = m.pickerProbeTargetId and store.pendingRoster and m.apiKey = wantedKey and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeB)) = "synthetic-b"
-    passed = passed and m.accountPreferences.favoriteIds[0] = wantedUser and m.accountPreferences.profileSettings.themePreset = wantedTheme and m.guide.callFunc("profilePickerProbeLineup") = wantedUser
+    savedKeys = m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeB)) = "synthetic-b"
+    if m.pickerProbeMode = "own-memory"
+        bucket = preferenceScope(m.baseUrl + "|slot-a|" + m.pickerProbeB)
+        savedKeys = not m.registry.exists("connKey_slot-a") and not m.registry.exists(userProfileKeyName("slot-a", m.pickerProbeB)) and m.profileSessionKeys[bucket] = "synthetic-b"
+    end if
+    passed = passed and store.active = m.pickerProbeTargetId and store.pendingRoster and m.apiKey = wantedKey and savedKeys
+    wantedFavorite = "8"
+    if m.pickerProbeDefaultOwn then wantedFavorite = "7"
+    passed = passed and m.accountPreferences.favoriteIds[0] = wantedFavorite and m.accountPreferences.profileSettings.themePreset = wantedTheme and m.guide.callFunc("profilePickerProbeLineup") = wantedUser
     source = preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "7"))
     passed = passed and settings.accounts[source].favoriteIds[0] = "7" and not m.registry.exists(userProfileSyncAckKey("slot-a")) and m.startupDialogOpen = false
     if m.pickerProbeMode = "own-cancel" then passed = passed and m.pickerProbeOwnCancelled = true and m.pickerProbeCredentialTask.cancelRequested and m.pickerProbeCredentialTask.password = "" and m.pickerProbeCredentialTask.aeriosession <> m.activeUserScope.sessionId
+    if m.pickerProbeMode = "own-wrong" then passed = passed and m.pickerProbeOwnRejected = true
+    if m.pickerProbeMode = "own-recreated"
+        oldAccount = preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "8"))
+        newAccount = preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "88"))
+        passed = passed and not settings.accounts.doesExist(oldAccount) and settings.accounts[newAccount].favoriteIds[0] = "8"
+    end if
     print "[picker-launch] "; FormatJson({kind: "result", passed: passed})
 end sub
 

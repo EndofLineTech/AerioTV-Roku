@@ -504,3 +504,27 @@ The first default probe's pre-selection timeout remains preserved at
 All runs cleaned and exact-restored the owner app. Public activation,
 typed-key-rejection prompting and broader default/stale/import matrices remain
 unfinished; no release or owner acceptance is inferred.
+
+Further startup-own-form native cases now pass:
+
+- Wrong password: real rejected token POST leaves exact storage unchanged and
+  no bearer `/me`, then retry reaches only its own auth/read/guide:
+  `out/mrr-picker-own-wrong-repeat-native.log`.
+- Recreated non-default username: own password `/me` returns a new user ID;
+  local UUID is retained, settings move from the old account scope without
+  losing unavailable favorites, default data stays unchanged, and subsequent
+  own auth/read/lineup use the new ID:
+  `out/mrr-picker-own-recreated-native.log`.
+- Remember Off: own key lives only in its exact address/slot/profile memory
+  bucket; neither default nor target credential is written to the registry.
+  Own authentication/protection/guide still succeeds:
+  `out/mrr-picker-own-memory-native.log`.
+
+Full verification: `out/mrr-picker-own-form-negative-pre-native-verify.log`.
+The first wrong-password probe timed out before reaching the form; preserve
+`out/mrr-picker-own-wrong-native.log/.json` separately under `667m`.
+All runs cleaned and checksum-restored the exact owner app. These cases use
+the real form submit callback and credential network Task, with synthetic
+fixture password injection; they do not claim physical keyboard editing,
+voice-keyboard certification, a native wrong-default-ID case, or cold
+Remember-Off relaunch acceptance.
