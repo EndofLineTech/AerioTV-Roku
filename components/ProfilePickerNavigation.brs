@@ -1,5 +1,176 @@
 ' Private startup controller. It owns no outgoing authenticated actor or key.
 ' The ordinary authenticated switcher and unavailable-Child escape stay separate.
+function deferUserProfileLaunch() as boolean
+    if m.profilePickerReady <> true or m.profileStartupRoutingStarted = true then return false
+    if m.activeUserScope <> invalid then return false
+    connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if connection = invalid or connection.provider <> "dispatcharr" then return false
+    m.profileStartupLaunchConnection = normalizeConnectionEntry(connection)
+    m.profileStartupLaunchConnectionRoot = m.registry.read("connectionsV1")
+    m.profileStartupLaunchConnectionRootPresent = m.registry.exists("connectionsV1")
+    m.profileStartupDeferred = true
+    m.apiKey = ""
+    m.global.profilegateclosed = true
+    m.profileGateCover.visible = true
+    m.guide.active = false
+    return true
+end function
+
+' Main sends this only AFTER screen.show and registering exitRequested. Never
+' read launchRequest during init or infer screen readiness from elapsed time.
+sub onSceneStartupReady()
+    if m.profilePickerReady <> true or m.profileStartupDeferred <> true then return
+    if m.top.exitRequested = true then return
+    if m.top.startupReady <> true or m.profileStartupRoutingTimer <> invalid then return
+    m.profileStartupScreenReady = true
+    clock = invalid
+    if m.profileStartupRoutingTimerFactory <> invalid then clock = m.profileStartupRoutingTimerFactory()
+    if clock = invalid then clock = m.top.createChild("Timer")
+    clock.duration = 0.01
+    clock.repeat = false
+    clock.observeField("fire", "onDeferredUserProfileLaunch")
+    m.profileStartupRoutingTimer = clock
+    clock.control = "start"
+end sub
+
+sub onDeferredUserProfileLaunch()
+    if m.profileStartupDeferred <> true or m.profileStartupScreenReady <> true then return
+    if m.profileStartupRoutingTimer <> invalid
+        m.profileStartupRoutingTimer.control = "stop"
+        m.profileStartupRoutingTimer.unobserveField("fire")
+        m.profileStartupRoutingTimer = invalid
+    end if
+    m.profileStartupDeferred = false
+    m.profileStartupRoutingStarted = true
+    raw = m.top.launchRequest
+    m.pendingLaunch = normalizeLaunchRequest(raw)
+    m.profileLaunchPickerDeepLink = launchRequestHasMediaIntent(raw)
+    entry = m.profileStartupLaunchConnection
+    if entry = invalid then coverDeferredProfileLaunch("Saved connection access changed.") : return
+    if m.profileStartupLaunchConnectionRoot <> m.registry.read("connectionsV1") or m.profileStartupLaunchConnectionRootPresent <> m.registry.exists("connectionsV1")
+        coverDeferredProfileLaunch("Saved connection access changed.")
+        return
+    end if
+    store = loadUserProfileStore(m.registry, entry.id)
+    model = userProfilePickerPlan(store, "launch", entry.provider, m.profileLaunchPickerDeepLink)
+    if model.ok and model.show
+        if beginUserProfileLaunchPicker(false) then return
+        coverDeferredProfileLaunch("Could not safely open profile selection.")
+        return
+    end if
+    resumeUserProfileLaunch()
+end sub
+
+sub resumeUserProfileLaunch()
+    if m.activeUserScope <> invalid or m.profileStartupSelectionContext <> invalid then return
+    connection = m.profileStartupLaunchConnection
+    if connection = invalid then coverDeferredProfileLaunch("Saved connection access changed.") : return
+    if m.profileStartupLaunchConnectionRoot <> m.registry.read("connectionsV1") or m.profileStartupLaunchConnectionRootPresent <> m.registry.exists("connectionsV1")
+        coverDeferredProfileLaunch("Saved connection access changed.")
+        return
+    end if
+    connections = loadConnectionStore(m.registry)
+    entry = connectionStoreEntry(connections, connection.id)
+    if connections.readOnly = true or connections.selected <> connection.id or entry = invalid then coverDeferredProfileLaunch("Saved connection access changed.") : return
+    if FormatJson(entry) <> FormatJson(normalizeConnectionEntry(connection)) then coverDeferredProfileLaunch("Saved connection access changed.") : return
+    m.connectionStore = connections
+    m.selectedConnectionId = entry.id
+    m.baseUrl = entry.url
+    m.guideUrl = entry.epgUrl
+    m.remember = entry.remember
+    m.global.authHeaderMode = entry.authMode
+    m.global.httpUserAgent = dispatcharrUserAgent(entry.userAgent)
+    m.global.httpReferer = textValue(entry.referer)
+    store = loadUserProfileStore(m.registry, entry.id)
+    memory = {}
+    if type(m.profileSessionKeys) = "roAssociativeArray"
+        bucket = preferenceScope(entry.url + "|" + entry.id + "|" + store.active)
+        if m.profileSessionKeys.doesExist(bucket)
+            for each profile in store.profiles
+                if profile.id = store.active
+                    name = connectionRegistryKey(entry.id)
+                    if not profile.isDefault then name = userProfileKeyName(entry.id, profile.id)
+                    memory[name] = m.profileSessionKeys[bucket]
+                end if
+            end for
+        end if
+    end if
+    credential = userProfileCredential(m.registry, entry, store, memory)
+    m.apiKey = ""
+    if credential.ok then m.apiKey = credential.key
+    gate = selectedUserProfileGate()
+    if gate.reason = "picker"
+        if beginUserProfileLaunchPicker(false) then return
+        coverDeferredProfileLaunch("Could not safely open profile selection.")
+        return
+    end if
+    if gate.reason = "pin"
+        beginStartupDialog()
+        for each profile in m.userProfileStore.profiles
+            if profile.id = m.userProfileStore.active
+                if beginProfilePinGate(profile, "connect") then return
+            end if
+        end for
+        coverDeferredProfileLaunch("This profile's PIN requires approved access on this Roku.")
+        return
+    end if
+    if not gate.allowed
+        if selectedUserProfileIsChild()
+            if showUnavailableChildProfile() then return
+        end if
+        coverDeferredProfileLaunch(userProfileGateMessage(gate))
+        return
+    end if
+    if m.startupDialogOpen = true then completeStartupDialog()
+    m.global.profilegateclosed = false
+    m.profileGateCover.visible = false
+    if m.baseUrl <> "" and m.apiKey <> ""
+        connectServer(true)
+    else
+        drawSetup()
+    end if
+end sub
+
+sub coverDeferredProfileLaunch(message as string)
+    if m.activeUserScope <> invalid then return
+    if m.profileStartupSelectionContext <> invalid then cancelStartupProfileTask()
+    closeUserProfileLaunchPicker()
+    m.apiKey = ""
+    m.global.profilegateclosed = true
+    m.profileGateCover.visible = true
+    m.top.findNode("profileGateMessage").text = message + " Back exits AerioTV."
+    m.top.setFocus(true)
+end sub
+
+sub dismissStartupPickerForDeepLink()
+    if m.profilePickerReady <> true or m.activeUserScope <> invalid then return
+    context = m.profileStartupSelectionContext
+    if m.profilePinDialog <> invalid
+        pin = m.profilePinContext
+        if context = invalid or pin = invalid then coverDeferredProfileLaunch("Profile protection changed.") : return
+        if pin.continuation <> "startup-selection" or pin.resume <> context.nonce then coverDeferredProfileLaunch("Profile protection changed.") : return
+        dialog = m.profilePinDialog
+        dialog.unobserveField("buttonSelected")
+        dialog.unobserveField("wasClosed")
+        dialog.textEditBox.text = ""
+        dialog.close = true
+        if m.top.dialog <> invalid
+            if m.top.dialog.isSameNode(dialog) then m.top.dialog = invalid
+        end if
+        if type(dialog) = "roSGNode"
+            if dialog.isSubtype("DirectionsPinPad") then m.top.removeChild(dialog)
+        end if
+        m.profilePinDialog = invalid
+        m.profilePinContext = invalid
+        m.profileGateClock.control = "stop"
+    end if
+    cancelStartupProfileTask()
+    closeUserProfileLaunchPicker()
+    m.profileLaunchPickerDeepLink = true
+    if m.startupDialogOpen = true then completeStartupDialog()
+    resumeUserProfileLaunch()
+end sub
+
 function beginUserProfileLaunchPicker(deepLink as boolean) as boolean
     if m.profilePickerReady <> true or deepLink then return false
     if m.activeUserScope <> invalid or m.profilePicker <> invalid then return false
@@ -15,6 +186,11 @@ function beginUserProfileLaunchPicker(deepLink as boolean) as boolean
     if connections.readOnly = true or connections.selected <> connection.id or current = invalid then return false
     if FormatJson(current) <> FormatJson(normalizeConnectionEntry(connection)) then return false
     if not m.registry.exists(userProfileStoreKey(connection.id)) then return false
+    if m.profileStartupLaunchConnection = invalid
+        m.profileStartupLaunchConnection = normalizeConnectionEntry(connection)
+        m.profileStartupLaunchConnectionRoot = m.registry.read("connectionsV1")
+        m.profileStartupLaunchConnectionRootPresent = m.registry.exists("connectionsV1")
+    end if
     picker = invalid
     if m.profilePickerFactory <> invalid then picker = m.profilePickerFactory()
     if picker = invalid then picker = CreateObject("roSGNode", "UserProfilePicker")

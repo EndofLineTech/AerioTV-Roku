@@ -33,14 +33,14 @@ class ProfileProbeTest(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('startup_picker_probe', Path(__file__).with_name('test-profile-picker-launch-native.py'))
         probe = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(probe)
-        names = ['manifest', 'source/Main.brs', 'components/AerioScene.xml', 'components/AerioScene.brs', 'components/ProfilePickerNavigation.brs',
+        names = ['manifest', 'source/Main.brs', 'source/StartupBeaconModel.brs', 'components/AerioScene.xml', 'components/AerioScene.brs', 'components/ProfilePickerNavigation.brs',
                  'components/GuideView.xml', 'components/GuideView.brs', 'source/MetadataCacheStore.brs']
         with tempfile.TemporaryDirectory() as folder:
             normal = Path(folder) / 'normal.zip'
             with zipfile.ZipFile(normal, 'w') as package:
                 for name in names:
                     package.write(root / name, name)
-            for mode in ['plain', 'pin', 'import-pin', 'back', 'reject']:
+            for mode in ['plain', 'pin', 'import-pin', 'back', 'reject', 'cold-link', 'warm-link', 'warm-pin-link', 'warm-auth-link']:
                 target = Path(folder) / f'{mode}.zip'
                 probe.build(target, normal, 'DisposablePicker', 'http://fixture.test', mode)
                 with zipfile.ZipFile(target) as package:
@@ -49,8 +49,29 @@ class ProfileProbeTest(unittest.TestCase):
                     self.assertIn('CreateObject("roRegistrySection", "DisposablePicker")', scene)
                     self.assertIn(f'seedProfilePickerLaunchProbe("http://fixture.test", "{mode}")', scene)
                     self.assertIn('m.profilePickerReady = true', scene)
-                    self.assertIn('if beginUserProfileLaunchPicker(false) then return', scene)
+                    self.assertIn('if deferUserProfileLaunch() then return', scene)
                     self.assertNotIn('"cachefs:/aeriotv-metadata-v1"', package.read('source/MetadataCacheStore.brs').decode())
+
+    def test_startup_ready_is_signaled_only_after_screen_and_exit_observation(self):
+        root = Path(__file__).resolve().parent.parent
+        source = (root / 'source/Main.brs').read_text()
+        self.assertLess(source.index('screen.show()'), source.index('scene.observeField("exitRequested", port)'))
+        self.assertLess(source.index('scene.observeField("exitRequested", port)'), source.index('scene.startupReady = true'))
+        scene = (root / 'components/AerioScene.brs').read_text()
+        init = scene.split('sub init()', 1)[1].split('end sub', 1)[0]
+        self.assertNotIn('m.top.launchRequest', init)
+        self.assertIn('if m.profileStartupDeferred = true then return', scene.split('sub onLaunchRequest()', 1)[1].split('end sub', 1)[0])
+
+    def test_startup_cancel_waits_for_inflight_ecp_ack_before_verdict(self):
+        spec = importlib.util.spec_from_file_location('startup_cancel_ack_probe', Path(__file__).with_name('test-profile-picker-launch-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        report = {'back_attempted': True}
+        completed = MagicMock()
+        completed.wait.side_effect = lambda timeout: report.update({'back_status': 200}) or True
+        self.assertTrue(probe.await_back_ack(report, completed))
+        completed.wait.assert_called_once_with(5)
+        self.assertFalse(probe.await_back_ack({'back_attempted': True}, MagicMock(wait=MagicMock(return_value=False))))
 
     def test_imported_switch_pin_wire_uses_raw_salt_v2_and_only_target_row(self):
         import hashlib

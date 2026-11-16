@@ -3,13 +3,16 @@ sub seedProfilePickerLaunchProbe(base as string, mode as string)
     b = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Synthetic8", user_level: 1}, 1)
     b = setCanonicalPreference(b, "isDefault", false)
     m.pickerProbeMode = mode
-    if mode = "pin" or mode = "import-pin"
+    m.pickerProbePickerCount = 0
+    if mode = "pin" or mode = "import-pin" or mode = "cold-link" or mode = "warm-link" or mode = "warm-pin-link" or mode = "warm-auth-link"
         a = setCanonicalPreference(a, "pinType", "numbers")
         a = setCanonicalPreference(a, "pinSalt", "0123456789abcdef0123456789abcdef")
         a = setCanonicalPreference(a, "pinHash", userProfilePinHash(a.pinSalt, "2468"))
-        b = setCanonicalPreference(b, "pinType", "numbers")
-        b = setCanonicalPreference(b, "pinSalt", "0123456789abcdef0123456789abcdef")
-        b = setCanonicalPreference(b, "pinHash", userProfilePinHash(b.pinSalt, "1234"))
+        if mode = "pin" or mode = "import-pin" or mode = "warm-pin-link"
+            b = setCanonicalPreference(b, "pinType", "numbers")
+            b = setCanonicalPreference(b, "pinSalt", "0123456789abcdef0123456789abcdef")
+            b = setCanonicalPreference(b, "pinHash", userProfilePinHash(b.pinSalt, "1234"))
+        end if
     end if
     store = defaultUserProfileStore("slot-a")
     store.profiles = [a, b]
@@ -36,6 +39,12 @@ sub seedProfilePickerLaunchProbe(base as string, mode as string)
 end sub
 
 sub onProfilePickerLaunchProbeTick()
+    sourceLink = m.pickerProbeMode = "cold-link" or m.pickerProbeMode = "warm-link" or m.pickerProbeMode = "warm-pin-link" or m.pickerProbeMode = "warm-auth-link"
+    if m.pickerProbeMode = "cold-link" and m.profilePinDialog <> invalid and m.pickerProbeReady <> true
+        m.pickerProbeReady = true
+        ready = m.profilePicker = invalid and m.pickerProbePickerCount = 0 and m.profileStartupScreenReady and not m.profileStartupDeferred and m.activeUserScope = invalid and m.global.profilegateclosed and m.profilePinContext.profile.id = m.pickerProbeA and m.profilePinContext.continuation = "connect" and m.task = invalid
+        print "[picker-launch] "; FormatJson({kind: "ready", ready: ready, cold_link: true})
+    end if
     if m.profilePicker <> invalid and m.pickerProbeReady <> true
         m.pickerProbeReady = true
         m.pickerProbeStoreRoot = m.registry.read(userProfileStoreKey("slot-a"))
@@ -62,14 +71,30 @@ sub onProfilePickerLaunchProbeTick()
         end if
     end if
     if m.profilePinDialog <> invalid
+        targetBeforeLink = m.pickerProbeMode = "warm-pin-link" and m.profilePinContext.continuation = "startup-selection"
+        sourcePin = sourceLink and not targetBeforeLink
         freshDialog = m.pickerProbeDialog = invalid
         if not freshDialog then freshDialog = not m.profilePinDialog.isSameNode(m.pickerProbeDialog)
         if freshDialog
             m.pickerProbeDialog = m.profilePinDialog
             if m.pickerProbePinNumber = invalid then m.pickerProbePinNumber = 0
             m.pickerProbePinNumber++
+            if targetBeforeLink then m.pickerProbeRetiredDialog = m.profilePinDialog
+            if sourcePin and m.pickerProbeRetiredDialog <> invalid
+                stale = {node: m.pickerProbeRetiredDialog, getRoSGNode: function() as object
+                    return m.node
+                end function, getData: function() as integer
+                    return 0
+                end function}
+                current = m.profilePinDialog
+                onProfilePinSubmit(stale)
+                onProfilePinClosed(stale)
+                m.pickerProbeStaleRefused = m.profilePinDialog <> invalid and m.top.exitRequested <> true and m.activeUserScope = invalid and m.global.profilegateclosed
+                if m.pickerProbeStaleRefused then m.pickerProbeStaleRefused = m.profilePinDialog.isSameNode(current) and m.profilePinContext.profile.id = m.pickerProbeA
+            end if
             ready = m.profilePinContext.continuation = "startup-selection" and m.profilePinContext.profile.id = m.pickerProbeB and m.activeUserScope = invalid and m.apiKey = "" and m.global.profilegateclosed and m.profileStartupTask = invalid
-            print "[picker-launch] "; FormatJson({kind: "pin-ready", ready: ready, number: m.pickerProbePinNumber})
+            if sourcePin then ready = m.profilePinContext.continuation = "connect" and m.profilePinContext.profile.id = m.pickerProbeA and m.activeUserScope = invalid and m.apiKey = "synthetic-a" and m.global.profilegateclosed and m.task = invalid and m.profilePicker = invalid
+            print "[picker-launch] "; FormatJson({kind: "pin-ready", ready: ready, number: m.pickerProbePinNumber, target_before_link: targetBeforeLink, source_pin: sourcePin})
             return
         end if
         if m.pickerProbeSubmit = true
@@ -82,19 +107,41 @@ sub onProfilePickerLaunchProbeTick()
             m.profilePinDialog.textEditBox.text = "9999"
             onProfilePinSubmit(event)
             wrongCovered = m.profilePinDialog <> invalid and m.activeUserScope = invalid and m.apiKey = "" and m.global.profilegateclosed and m.profileStartupTask = invalid
+            if sourcePin then wrongCovered = m.profilePinDialog <> invalid and m.activeUserScope = invalid and m.apiKey = "synthetic-a" and m.global.profilegateclosed and m.task = invalid
             value = "1234"
             if m.pickerProbePinNumber = 2 then value = "5678"
+            if sourcePin then value = "2468"
             m.profilePinDialog.textEditBox.text = value
             onProfilePinSubmit(event)
             verified = m.profilePinDialog = invalid and m.profileStartupTask <> invalid and m.activeUserScope = invalid and m.apiKey = "" and m.startupDialogOpen
+            if sourcePin then verified = m.profilePinDialog = invalid and m.task <> invalid and m.activeUserScope = invalid and m.apiKey = "synthetic-a" and not m.startupDialogOpen
             print "[picker-launch] "; FormatJson({kind: "pin-submitted", number: m.pickerProbePinNumber, wrong_covered: wrongCovered, verified: verified})
         end if
         return
     end if
     if m.page <> "guide" or m.busy then return
+    if m.pickerProbeMode = "warm-auth-link"
+        if m.pickerProbeWarmWait = invalid
+            m.pickerProbeWarmWait = CreateObject("roTimeSpan")
+            m.pickerProbeWarmWait.mark()
+        end if
+        if m.pickerProbeWarmWait.totalMilliseconds() < 6000 then return
+    end if
     m.pickerProbeClock.control = "stop"
     store = loadUserProfileStore(m.registry, "slot-a")
     settings = loadStrictPreferenceStore(m.registry)
+    if sourceLink
+        expectedCount = 0
+        if m.pickerProbeMode <> "cold-link" then expectedCount = 1
+        passed = m.activeUserScope <> invalid and m.profilePicker = invalid and m.profileStartupSelectionContext = invalid and m.profileStartupTask = invalid and not m.global.profilegateclosed and not m.global.profileswitchpending and m.playingChannel = invalid
+        if passed then passed = m.activeUserScope.profileId = m.pickerProbeA and m.activeUserScope.accountId = "7" and m.activeUserScope.sessionId = m.global.activeusersession
+        passed = passed and store.active = m.pickerProbeA and store.pendingRoster and m.apiKey = "synthetic-a" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeB)) = "synthetic-b"
+        passed = passed and m.accountPreferences.favoriteIds[0] = "7" and m.guide.callFunc("profilePickerProbeLineup") = "7" and m.pickerProbePickerCount = expectedCount and m.profileLaunchPickerDeepLink and m.profileLaunchPickerResolved and m.pendingLaunch = invalid and not m.startupDialogOpen
+        if m.pickerProbeMode = "warm-pin-link" then passed = passed and m.pickerProbeStaleRefused = true
+        if m.pickerProbeMode = "warm-auth-link" then passed = passed and m.pickerProbeTask.cancelRequested and m.pickerProbeTask.apiKey = "" and m.pickerProbeTask.aeriosession <> m.activeUserScope.sessionId
+        print "[picker-launch] "; FormatJson({kind: "result", passed: passed, source_link: true, picker_count: m.pickerProbePickerCount})
+        return
+    end if
     passed = m.activeUserScope <> invalid and m.profilePicker = invalid and m.profileStartupSelectionContext = invalid and m.profileStartupTask = invalid and not m.global.profilegateclosed and not m.global.profileswitchpending and m.playingChannel = invalid
     if passed then passed = m.activeUserScope.profileId = m.pickerProbeB and m.activeUserScope.accountId = "8" and m.activeUserScope.sessionId = m.global.activeusersession and userProfileLocalId(m.activeUserScope.sessionId) <> ""
     passed = passed and store.active = m.pickerProbeB and store.pendingRoster and m.apiKey = "synthetic-b" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeB)) = "synthetic-b"

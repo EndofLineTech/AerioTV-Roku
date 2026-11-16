@@ -26,6 +26,11 @@ sub Main(args as dynamic)
     ' Component interface fields are not observable until the render thread has
     ' initialized the Scene. Registering before show() returns false on device.
     scene.observeField("exitRequested", port)
+    if scene.exitRequested = true
+        screen.close()
+        return
+    end if
+    scene.startupReady = true
     while true
         event = wait(0, port)
         if type(event) = "roSGNodeEvent"

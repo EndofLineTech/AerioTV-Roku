@@ -48,6 +48,68 @@ sub main()
     check(m.profilePicker.model.focus = 1 and m.profilePicker.model.tiles[1].username = "bob", "failed different-target selection preserves that holder's focus, not the restored current holder")
     onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "select", index: 1}))
     check(m.taskCreates = 1 and m.profileStartupTask = invalid and m.activeUserScope = invalid and m.apiKey = "", "held target retry opens no Task and borrows no source key")
+    pickerNavigationFixture()
+    check(deferUserProfileLaunch() and m.profileStartupDeferred and m.apiKey = "" and m.taskCreates = 0 and m.pickerCreates = 0, "private startup waits without reading or authenticating before screen readiness")
+    onDeferredUserProfileLaunch()
+    check(m.profileStartupDeferred and m.pickerCreates = 0, "timer callback cannot route before actual Main screen-ready signal")
+    m.top.startupReady = true
+    onSceneStartupReady()
+    check(m.routeTimerCreates = 1 and m.profileStartupRoutingTimer.control = "start", "actual screen-ready signal schedules one deferred decision")
+    onDeferredUserProfileLaunch()
+    check(m.profilePicker <> invalid and m.routeConnectCalls = 0 and m.taskCreates = 0, "ordinary deferred Ask opens picker before all connection work")
+    pickerNavigationFixture()
+    store = loadUserProfileStore(m.registry, "slot-a")
+    store.profiles[0] = setCanonicalPreference(store.profiles[0], "pinType", "numbers")
+    store.profiles[0] = setCanonicalPreference(store.profiles[0], "pinHash", string(64, "a"))
+    store.profiles[0] = setCanonicalPreference(store.profiles[0], "pinSalt", string(32, "b"))
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    check(deferUserProfileLaunch(), "deep-link startup is also deferred")
+    m.top.launchRequest = {contentId: "missing-channel", mediaType: "live"}
+    m.top.startupReady = true
+    onSceneStartupReady()
+    onDeferredUserProfileLaunch()
+    check(m.pickerCreates = 0 and m.routePinTarget = m.a.id and m.routeConnectCalls = 0 and m.activeUserScope = invalid, "cold media intent skips picker but still requires the actual restored holder PIN before requests")
+    check(m.pendingLaunch.id = "missing-channel" and m.apiKey = "default-key" and m.global.profilegateclosed, "validated link waits behind restored own-key PIN, never incoming target credentials")
+    pickerNavigationFixture()
+    store = loadUserProfileStore(m.registry, "slot-a")
+    store.profiles[0] = setCanonicalPreference(store.profiles[0], "pinType", "numbers")
+    store.profiles[0] = setCanonicalPreference(store.profiles[0], "pinHash", string(64, "a"))
+    store.profiles[0] = setCanonicalPreference(store.profiles[0], "pinSalt", string(32, "b"))
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    check(beginUserProfileLaunchPicker(false), "warm media intent starts from a real owned picker")
+    m.pendingLaunch = normalizeLaunchRequest({contentId: "missing-channel", mediaType: "live"})
+    dismissStartupPickerForDeepLink()
+    check(m.profilePicker = invalid and m.profilePickerContext = invalid and m.routePinTarget = m.a.id and m.routeConnectCalls = 0 and m.taskCreates = 0 and m.global.profilegateclosed, "warm media intent closes selection and routes only the actual restored holder's own PIN")
+    pickerNavigationFixture()
+    store = loadUserProfileStore(m.registry, "slot-a")
+    for i = 0 to store.profiles.count() - 1
+        store.profiles[i] = setCanonicalPreference(store.profiles[i], "pinType", "numbers")
+        store.profiles[i] = setCanonicalPreference(store.profiles[i], "pinHash", string(64, "a"))
+        store.profiles[i] = setCanonicalPreference(store.profiles[i], "pinSalt", string(32, "b"))
+    end for
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    check(beginUserProfileLaunchPicker(false), "warm PIN replacement starts with an owned picker")
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "pin", index: 1}))
+    context = m.profileStartupSelectionContext
+    oldDialog = {tag: "incoming-pin", textEditBox: {text: "1234"}, unobserveField: sub(field as string)
+    end sub, isSameNode: function(other as object) as boolean
+        return other.tag = m.tag
+    end function}
+    m.profilePinDialog = oldDialog
+    m.profilePinContext = {continuation: "startup-selection", resume: context.nonce, slot: "slot-a", profile: context.target}
+    m.top.dialog = oldDialog
+    m.profileGateClock = {control: "start"}
+    m.pendingLaunch = normalizeLaunchRequest({contentId: "missing-channel", mediaType: "live"})
+    dismissStartupPickerForDeepLink()
+    check(oldDialog.close and oldDialog.textEditBox.text = "" and m.top.dialog = invalid and m.profileGateClock.control = "stop", "owned incoming native PIN is detached and scrubbed before the restored PIN replaces it")
+    check(m.routePinTarget = m.a.id and m.profileStartupSelectionContext = invalid and m.taskCreates = 0 and m.global.profilegateclosed, "PIN replacement never authenticates chosen target or borrows its proof")
+    pickerNavigationFixture()
+    check(deferUserProfileLaunch(), "connection lease is captured before screen-ready")
+    m.registry.values["connectionsV1"] = m.registry.read("connectionsV1") + " "
+    m.top.startupReady = true
+    onSceneStartupReady()
+    onDeferredUserProfileLaunch()
+    check(m.pickerCreates = 0 and m.taskCreates = 0 and m.routeConnectCalls = 0 and m.apiKey = "" and m.global.profilegateclosed and m.registry.flushes = 0, "changed captured connection root cannot resume startup or overwrite storage")
     print "ALL TESTS PASSED"
 end sub
 
@@ -79,11 +141,17 @@ sub pickerNavigationFixture()
     m.profileStartupSelectionContext = invalid
     m.profileStartupTask = invalid
     m.profilePinDialog = invalid
+    m.profilePinContext = invalid
+    m.profileGateClock = {control: "stop"}
     m.adultPinDialog = invalid
     m.activeUserScope = invalid
     m.apiKey = "default-key"
     m.global = {profilegateclosed: false, profileswitchpending: false, activeusersession: ""}
-    m.top = {appended: 0, appendChild: function(node as object) as boolean
+    m.top = {appended: 0, gateMessage: {}, findNode: function(id as string) as object
+        return m.gateMessage
+    end function, setFocus: function(value as boolean) as boolean
+        return true
+    end function, appendChild: function(node as object) as boolean
         m.appended++
         return true
     end function, removeChild: function(node as object) as boolean
@@ -94,6 +162,30 @@ sub pickerNavigationFixture()
     m.profileSessionKeys = {}
     m.pickerCreates = 0
     m.taskCreates = 0
+    m.routeConnectCalls = 0
+    m.routeTimerCreates = 0
+    m.routePinTarget = ""
+    m.profileStartupDeferred = false
+    m.profileStartupScreenReady = false
+    m.profileStartupRoutingStarted = false
+    m.profileStartupRoutingTimer = invalid
+    m.profileStartupLaunchConnection = invalid
+    m.profileLaunchPickerResolved = false
+    m.profileLaunchPickerDeepLink = false
+    m.pendingLaunch = invalid
+    m.startupDialogOpen = true
+    m.startupBeaconSent = false
+    m.top.launchRequest = {}
+    m.top.startupReady = false
+    m.top.signalBeacon = sub(name as string)
+    end sub
+    m.profileStartupRoutingTimerFactory = function() as object
+        m.routeTimerCreates++
+        return {control: "stop", observeField: function(field as string, callback as string) as boolean
+            return true
+        end function, unobserveField: sub(field as string)
+        end sub}
+    end function
     m.profilePickerFactory = function() as object
         m.pickerCreates++
         return {tag: "picker", observeField: function(field as string, callback as string) as boolean
@@ -125,6 +217,19 @@ function pickerNavigationEvent(node as object, data as object) as object
         return m.data
     end function}
 end function
+
+function beginProfilePinGate(profile as object, continuation as string, resume = invalid as dynamic) as boolean
+    m.routePinTarget = profile.id
+    return true
+end function
+
+sub connectServer(skipRfi = false as boolean)
+    m.routeConnectCalls++
+end sub
+
+sub drawSetup()
+    m.routeDrewSetup = true
+end sub
 
 sub check(passed as boolean, message as string)
     if not passed then print "FAIL: "; message : stop

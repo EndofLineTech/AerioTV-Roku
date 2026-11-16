@@ -1,5 +1,18 @@
 ' Only opaque, account-resolved channel IDs may reach the live player.
 ' URLs, credentials and unknown media types are never interpreted as links.
+' Selection suppression is separate from playback validation: even a malformed
+' media intent must not insert an optional profile picker before authentication.
+function launchRequestHasMediaIntent(raw as dynamic) as boolean
+    if type(raw) <> "roAssociativeArray" then return false
+    for each key in raw
+        if lcase(key) = "contentid" or lcase(key) = "mediatype"
+            if GetInterface(raw[key], "ifString") = invalid then return true
+            if raw[key] <> "" then return true
+        end if
+    end for
+    return false
+end function
+
 function normalizeLaunchRequest(raw as dynamic) as dynamic
     if type(raw) <> "roAssociativeArray" then return invalid
     id = ""

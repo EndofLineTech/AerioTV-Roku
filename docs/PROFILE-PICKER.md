@@ -1,9 +1,9 @@
 # Profile picker implementation boundary
 
 `UserProfilePicker` and its staged Scene controller are private:
-`m.profilePickerReady` remains false. Synthetic normal-app fixtures invoke the
-controller before the legacy startup gates; shipping init does not, and there
-is no public top-bar action. The component itself grants no authentication,
+`m.profilePickerReady` remains false. Init now has a guarded deferred route;
+synthetic normal-app fixtures enable it, while shipping init retains its
+existing route. There is no public top-bar action. The component grants no authentication,
 PIN, management, or credential authority.
 
 `source/UserProfilePicker.brs` calculates ordered presentation from a validated
@@ -143,7 +143,8 @@ explicit readiness, an unresolved adult Ask launch chooses the picker before
 the restored holder's PIN/key gate. Actual resolved selection or a deep link
 suppresses only that picker, never PIN/own-key/Child protection. Malformed or
 absent readiness preserves the existing shipping behavior; malformed closure
-does not suppress selection. No Scene caller supplies readiness yet.
+does not suppress selection. The private Scene route now supplies readiness;
+shipping `profilePickerReady` remains false (see deferred routing below).
 
 Tests-first red: `out/mrr-startup-picker-order-red.log`. Final full verification:
 `out/mrr-startup-picker-order-final-verify.log`; shared native policy suite:
@@ -198,8 +199,8 @@ Every isolated run, including failures, cleaned its disposable registry and
 checksum-restored the exact owner app. New first-key timeouts remain preserved
 under `667m`; passing repeats do not resolve them.
 
-Still unfinished: deferred startup/deep-link routing after `screen.show`,
-the remaining cancel/reject/default/removal and stale-callback matrices, own keyless/
+Still unfinished: the remaining default/removal/cancellation and stale-callback
+matrices, own keyless/
 held forms, Child selection, Add/Manage/reorder, default-on Ask migration,
 top-bar switcher and full public acceptance. Current private handlers refuse
 unsupported own-form/Child/management choices without requests. Shipping readiness
@@ -248,3 +249,69 @@ roots and both keys. This is safe refusal, not completed own-sign-in forms.
 Full verification: `out/mrr-picker-failed-focus-verify.log`. The preceding
 first-key transport timeout remains separate at
 `out/mrr-picker-failed-focus-fixed-native.json`.
+
+## Deferred startup and deep links
+
+The private init route is now implemented, not a fixture-only cold-call hook.
+Main signals `startupReady` **after** `screen.show`, exit observation and a
+check for an already-requested exit. Only private picker readiness can defer
+startup. The Scene waits for that actual signal before starting its one-shot
+decision timer; it never reads `launchRequest` in init or guesses readiness
+from elapsed time. A changed captured connection root stays covered without
+requests or rewriting data.
+
+Cold media intent skips selection but not the actual restored holder's own
+key/PIN. A warm media intent closes the picker, cancels its owned incoming
+Task/nonce and scrubs/detaches its own native PIN node before returning to the
+restored holder's ordinary launch gate. It reloads current retained protection,
+not the pre-import snapshot. No authenticated outgoing/default scope or adult
+grant is invented. Malformed media intent still skips optional selection;
+`normalizeLaunchRequest` remains the sole playback validator and rejects URLs,
+unsupported media and invalid IDs.
+
+Native evidence:
+
+- Cold link: no picker created, real restored PIN before any provider request,
+  then own `/me`/App Data before own guide:
+  `out/mrr-picker-cold-link-qualified-native.log`; inspected native PIN image
+  `out/mrr-picker-cold-link-qualified-native.jpg`.
+- Link while picker is open: one picker created then closed, restored PIN
+  required, own source data and keys preserved:
+  `out/mrr-picker-warm-link-first-native.log`.
+- Link replaces the selected target's PIN pad: actual old pad is detached;
+  stale submit/close callbacks cannot affect the new source pad or exit it.
+  Real source verification then loads only the restored user's guide:
+  `out/mrr-picker-warm-pin-link-repeat-qualified-native.log`; inspected source
+  PIN image `out/mrr-picker-warm-pin-link-repeat-qualified-native-source-pin-2.jpg`.
+- Link during a submitted/delayed target `/me`: cancels the incoming Task and
+  key/nonce, requires restored PIN, then uses only the restored own key. The
+  restored guide remains correct past the delayed reply:
+  `out/mrr-picker-warm-auth-link-qualified-native.log`; inspected source PIN
+  image `out/mrr-picker-warm-auth-link-qualified-native-source-pin-1.jpg`.
+- Deferred protected-target/imported-PIN regression:
+  `out/mrr-picker-deferred-import-pin-repeat-native.log`.
+- Shipping-fenced held Child launch/own PIN/Back regression:
+  `out/mrr-picker-deferred-child-launch-regression-native.log`.
+- Shared native model/storage regression:
+  `out/mrr-picker-deferred-primitives-native.log`.
+- Final full verification:
+  `out/mrr-picker-deferred-routing-checkpoint-verify.log`.
+
+The link ID deliberately does not exist in the authorized lineup: these cases
+prove selection suppression/authentication/account routing and safe non-play,
+not media playback or certification. Local beacon instrumentation records one
+launch completion and paired dialog initiate/complete events; replacing the
+picker with a source PIN closes the old dialog and begins a new one. This is
+not Dashboard, production entropy or owner acceptance.
+
+All isolated runs cleaned and checksum-restored the exact app. First-key
+timeouts remain preserved under `667m`. A distinct install-success/no-launch
+trace failure is preserved under `36eu`, including its exact ZIP and checksum;
+later passing repetition does not establish its cause.
+
+`r7pl` separately fixes a runner race: Main could report actual cancellation
+and exit before the fixture HTTP thread assigned the ECP acknowledgement.
+The verdict now joins that bounded acknowledgement event, rather than sampling
+it before cleanup. Timeout/non-200 still fail; no key is retransmitted.
+Tests-first red: `out/mrr-picker-cancel-ack-red.log`; actual native green:
+`out/mrr-picker-deferred-back-ack-repeat-fixed-native.log`.

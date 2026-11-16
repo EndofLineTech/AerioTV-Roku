@@ -12,6 +12,11 @@ sub main()
     assertEqual(normalizeLaunchRequest({contentId: "", mediaType: "liveFeed"}), invalid, "empty ID is not a channel")
     assertEqual(normalizeLaunchRequest({contentId: "channel_1"}), invalid, "both fields are required")
     assertEqual(normalizeLaunchRequest("not an event"), invalid, "invalid event ignored")
+    assertEqual(launchRequestHasMediaIntent({contentId: "channel_1", mediaType: "live"}), true, "media intent suppresses optional selection")
+    assertEqual(launchRequestHasMediaIntent({contentId: "https://invalid.test", mediaType: "movie"}), true, "unplayable media intent still skips selection, never validation")
+    assertEqual(launchRequestHasMediaIntent({CONTENTID: 7}), true, "malformed media intent grants no playback but is not ordinary launch")
+    assertEqual(launchRequestHasMediaIntent({contentId: "", mediaType: ""}), false, "empty launch fields are not a media selection")
+    assertEqual(launchRequestHasMediaIntent({source: "homescreen"}), false, "ordinary app launch preserves picker")
     print "ALL TESTS PASSED"
 end sub
 

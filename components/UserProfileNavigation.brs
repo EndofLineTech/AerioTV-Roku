@@ -230,12 +230,14 @@ function selectedUserProfileGate() as object
             end if
         end if
     end for
-    gate = userProfileStartupGate(m.userProfileStore, ownCredential, childReady)
+    selection = invalid
+    if m.profilePickerReady = true then selection = {ready: true, resolved: m.profileLaunchPickerResolved = true, deepLink: m.profileLaunchPickerDeepLink = true}
+    gate = userProfileStartupGate(m.userProfileStore, ownCredential, childReady, false, selection)
     if gate.reason = "pin"
         for each profile in m.userProfileStore.profiles
             if profile.id = m.userProfileStore.active
                 if userProfilePinGrantMatches(m.profileUnlockGrant, entry.id, profile)
-                    if profile.role = "child" then return userProfileStartupGate(m.userProfileStore, ownCredential, childReady, true)
+                    if profile.role = "child" then return userProfileStartupGate(m.userProfileStore, ownCredential, childReady, true, selection)
                     return {allowed: true, reason: ""}
                 end if
             end if

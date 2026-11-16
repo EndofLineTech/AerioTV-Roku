@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="AerioScene" extends="Scene">
   <interface>
+    <field id="startupReady" type="boolean" value="false" onChange="onSceneStartupReady" />
     <field id="networkLinkEvent" type="assocarray" alwaysNotify="true" />
     <field id="memoryPressure" type="string" alwaysNotify="true" onChange="onMemoryPressure" />
     <field id="launchRequest" type="assocarray" alwaysNotify="true" onChange="onLaunchRequest" />

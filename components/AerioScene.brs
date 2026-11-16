@@ -8,6 +8,11 @@ sub init()
     m.profileSyncSchedulingReady = false
     m.profileSyncControlsReady = false
     m.profilePickerReady = false
+    m.profileStartupDeferred = false
+    m.profileStartupScreenReady = false
+    m.profileStartupRoutingStarted = false
+    m.profileLaunchPickerResolved = false
+    m.profileLaunchPickerDeepLink = false
     m.top.observeField("networkLinkEvent", "onProfileSyncNetworkLink")
     m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false, profileownsigninpending: false, profileownsigninnonce: "", requestgaterecovery: "", profilesyncflush: ""})
     m.profileGateCover = m.top.findNode("profileGateCover")
@@ -255,6 +260,7 @@ sub init()
     beginStartupBeacons(welcome)
     m.top.setFocus(true)
     if not welcome
+        if deferUserProfileLaunch() then return
         launchGate = selectedUserProfileGate()
         if launchGate.reason = "pin"
             for each profile in m.userProfileStore.profiles
@@ -289,15 +295,26 @@ sub init()
 end sub
 
 sub signalStartupComplete()
+    if m.profilePickerReady = true and m.activeUserScope <> invalid then m.profileLaunchPickerResolved = true
     completeStartupBeacons()
     ' A later authenticated guide still resolves links without a second beacon.
     handlePendingLaunch()
 end sub
 
 sub onLaunchRequest()
+    if m.profileStartupDeferred = true then return
     if m.profileOwnSignInContext <> invalid then return
     if m.profileSwitchContext <> invalid then return
-    m.pendingLaunch = normalizeLaunchRequest(m.top.launchRequest)
+    raw = m.top.launchRequest
+    m.pendingLaunch = normalizeLaunchRequest(raw)
+    if m.profilePickerReady = true
+        if m.profilePickerContext <> invalid or m.profileStartupSelectionContext <> invalid
+            if launchRequestHasMediaIntent(raw)
+                dismissStartupPickerForDeepLink()
+                return
+            end if
+        end if
+    end if
     if m.pendingLaunch = invalid
         if m.page = "guide" then showNotice("This link is not available. Browse your guide instead.")
         return
