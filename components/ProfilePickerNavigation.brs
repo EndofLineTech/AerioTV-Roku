@@ -279,9 +279,59 @@ function startupProfileIdentityRefused(connection as object, target as object, k
     return m.profileStartupIdentityRefusals.doesExist(token)
 end function
 
-sub beginStartupProfileSelection(targetId as string)
+' Credential-form admission is separate from cached-key selection. It grants
+' neither PIN verification nor an authenticated source. Active-default/Child
+' recovery keeps its own boundary; never route these through general setup.
+function startupProfileOwnSignInAdmission(targetId as string) as object
+    denied = {ok: false}
+    if m.profilePickerReady <> true or m.profilePicker = invalid or m.page <> "profile-picker" then return denied
+    picker = m.profilePickerContext
+    if picker = invalid or m.activeUserScope <> invalid or textValue(m.apiKey) <> "" then return denied
+    if m.profileStartupSelectionContext <> invalid or m.profileStartupTask <> invalid then return denied
+    if m.profileOwnSignInContext <> invalid or m.profilePinDialog <> invalid or m.adultPinDialog <> invalid then return denied
+    if m.userProfileRecoveryRequired = true or m.global.profilegateclosed <> true then return denied
+    if picker.connection.id <> m.selectedConnectionId then return denied
+    if picker.connectionRootPresent <> m.registry.exists("connectionsV1") or picker.connectionRoot <> m.registry.read("connectionsV1") then return denied
+    connections = loadConnectionStore(m.registry)
+    entry = connectionStoreEntry(connections, picker.connection.id)
+    if connections.readOnly = true or connections.selected <> picker.connection.id or entry = invalid then return denied
+    if FormatJson(entry) <> FormatJson(normalizeConnectionEntry(picker.connection)) then return denied
+    if picker.storeRoot <> m.registry.read(userProfileStoreKey(entry.id)) then return denied
+    store = loadUserProfileStore(m.registry, entry.id)
+    model = userProfilePickerPlan(store, "launch", entry.provider, false)
+    if not model.ok or not model.show then return denied
+    for each target in store.profiles
+        if target.id = targetId
+            if target.id = store.active or not userProfileFullAccess(target.role) then return denied
+            if target.isDefault
+                if not userProfileDefaultOwnIdentityMatches(entry, store, {id: target.userId, username: target.username}) then return denied
+            end if
+            return {ok: true, connection: entry, store: store, target: target, requiresPin: target.pinType <> "none"}
+        end if
+    end for
+    return denied
+end function
+
+sub finishStartupProfileOwnSignIn(context as object, accepted as boolean)
+    if m.activeUserScope <> invalid or textValue(m.apiKey) <> "" then return
+    if currentUserSessionId() <> context.nonce then return
+    m.global.activeusersession = ""
+    m.global.profilegateclosed = true
+    m.global.profileswitchpending = false
+    m.profileGateCover.visible = true
+    m.profileUnlockGrant = context.unlock
+    message = "Sign-in cancelled. No account was switched."
+    if accepted then message = ""
+    failStartupProfileSelection(message, context.target.id)
+    if accepted and m.profilePicker <> invalid and m.profilePickerContext <> invalid
+        beginStartupProfileSelection(context.target.id, context.pin)
+    end if
+end sub
+
+sub beginStartupProfileSelection(targetId as string, ownPin = invalid as dynamic)
     picker = m.profilePickerContext
     if picker = invalid or m.profileStartupSelectionContext <> invalid then return
+    if m.profileOwnSignInContext <> invalid then return
     if m.activeUserScope <> invalid or textValue(m.apiKey) <> "" then return
     target = invalid
     for each profile in picker.store.profiles
@@ -299,7 +349,13 @@ sub beginStartupProfileSelection(targetId as string)
         end if
     end if
     credential = userProfileCredential(m.registry, picker.connection, selected, memory)
-    ' Own-form/Child picker admission remains a separate unfinished boundary.
+    if target.role <> "child"
+        if credential.reason = "sign-in" or credential.reason = "address-held"
+            if beginUserProfileOwnSignIn(targetId, false, false, true) then return
+        else if credential.ok and startupProfileIdentityRefused(picker.connection, target, credential.key)
+            if beginUserProfileOwnSignIn(targetId, false, false, true) then return
+        end if
+    end if
     if not credential.ok or target.role = "child" or not requestGateAccessAllowed(picker.connection.url, credential.key)
         m.profilePicker.message = "This profile needs its own protected sign-in. No account was switched."
         return
@@ -315,6 +371,11 @@ sub beginStartupProfileSelection(targetId as string)
     m.profilePicker.busy = true
     m.profilePicker.message = ""
     if target.pinType <> "none"
+        if userProfilePinGrantMatches(ownPin, picker.connection.id, target)
+            context.pin = ownPin
+            startStartupProfileTask("authenticate")
+            return
+        end if
         if beginProfilePinGate(target, "startup-selection", nonce) then return
         failStartupProfileSelection("This profile's PIN is not available on this build.")
         return
@@ -539,8 +600,7 @@ sub closeUserProfileLaunchPicker()
     m.top.removeChild(picker)
 end sub
 
-sub failStartupProfileSelection(message as string)
-    targetId = ""
+sub failStartupProfileSelection(message as string, targetId = "" as string)
     incoming = m.profileStartupSelectionContext
     if type(incoming) = "roAssociativeArray"
         if type(incoming.target) = "roAssociativeArray" then targetId = textValue(incoming.target.id)

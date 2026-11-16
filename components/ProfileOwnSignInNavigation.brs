@@ -60,13 +60,17 @@ sub closeActiveUserProfileRecoveryPrompt()
     m.profileRecoveryNonce = ""
 end sub
 
-function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as boolean, childRecovery = false as boolean) as boolean
+function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as boolean, childRecovery = false as boolean, startupRecovery = false as boolean) as boolean
     if m.userProfileRecoveryRequired = true then return false
     if childRecovery and (not activeRecovery or m.profileChildAccessReady <> true) then return false
     if m.profileOwnSignInContext <> invalid or m.profileSwitchContext <> invalid then return false
     if m.profilePinDialog <> invalid or m.adultPinDialog <> invalid then return false
     if m.playingChannel <> invalid then return false
-    if activeRecovery
+    if startupRecovery
+        if activeRecovery or childRecovery then return false
+        admission = startupProfileOwnSignInAdmission(targetId)
+        if not admission.ok then return false
+    else if activeRecovery
         recoveryPage = "setup"
         if childRecovery then recoveryPage = "profile-unavailable"
         if m.activeUserScope <> invalid or not userProfileGateClosed() or m.apiKey <> "" or m.page <> recoveryPage then return false
@@ -117,11 +121,12 @@ function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as
         closeUnavailableChildDialog()
     end if
     m.profileOwnSignInNonce = CreateObject("roDeviceInfo").getRandomUUID()
-    m.profileOwnSignInContext = {nonce: m.profileOwnSignInNonce, activeRecovery: activeRecovery, childRecovery: childRecovery, connection: copyJson(entry), store: store, target: target, scope: copyJson(m.activeUserScope), page: m.page, guideActive: m.guide.active, covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, unlock: m.profileUnlockGrant, username: target.username, password: ""}
+    m.profileOwnSignInContext = {nonce: m.profileOwnSignInNonce, activeRecovery: activeRecovery, childRecovery: childRecovery, startupRecovery: startupRecovery, connection: copyJson(entry), store: store, target: target, scope: copyJson(m.activeUserScope), page: m.page, guideActive: m.guide.active, covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, unlock: m.profileUnlockGrant, username: target.username, password: ""}
     m.profileOwnSignInContext.holds = holds
+    if startupRecovery then m.profileOwnSignInContext.startupStoreRoot = m.profilePickerContext.storeRoot
     m.global.profileownsigninpending = true
     m.global.profileownsigninnonce = m.profileOwnSignInNonce
-    if activeRecovery
+    if activeRecovery or startupRecovery
         ' This nonce authorizes only the credential Task. No authenticated
         ' user scope is invented while the unavailable holder has no key.
         m.global.activeusersession = m.profileOwnSignInNonce
@@ -129,6 +134,7 @@ function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as
         m.scopedPreferencesRequired = true
         m.profileGateCover.visible = true
     end if
+    if startupRecovery then m.profilePicker.busy = true
     m.guide.active = false
     if target.pinType <> "none"
         if childRecovery and userProfilePinGrantMatches(m.profileUnlockGrant, entry.id, target)
@@ -150,7 +156,13 @@ function profileOwnSignInContextCurrent() as boolean
     if context.nonce <> m.profileOwnSignInNonce or context.connection.id <> m.selectedConnectionId or context.page <> m.page then return false
     if textValue(m.global.profileownsigninnonce) <> context.nonce or m.global.profileownsigninpending <> true then return false
     if context.childRecovery = true and m.profileChildAccessReady <> true then return false
-    if context.activeRecovery = true
+    if context.startupRecovery = true
+        if m.profilePickerReady <> true or m.profilePicker = invalid or m.profilePickerContext = invalid then return false
+        if m.page <> "profile-picker" or m.activeUserScope <> invalid or m.apiKey <> "" or currentUserSessionId() <> context.nonce then return false
+        picker = m.profilePickerContext
+        if picker.connectionRootPresent <> m.registry.exists("connectionsV1") or picker.connectionRoot <> m.registry.read("connectionsV1") then return false
+        if picker.storeRoot <> m.registry.read(userProfileStoreKey(context.connection.id)) then return false
+    else if context.activeRecovery = true
         if m.activeUserScope <> invalid or m.apiKey <> "" or currentUserSessionId() <> context.nonce then return false
     else
         if not userProfileSameSession(context.scope, m.activeUserScope) then return false
@@ -174,11 +186,22 @@ sub onUserProfileOwnSignInPin(nonce as string)
         cancelUserProfileOwnSignIn()
         return
     end if
+    if context.startupRecovery = true
+        if m.profilePickerContext = invalid then cancelUserProfileOwnSignIn() : return
+        if m.profilePickerContext.storeRoot <> context.startupStoreRoot then cancelUserProfileOwnSignIn() : return
+        m.profilePickerContext.store = current
+        m.profilePickerContext.storeRoot = m.registry.read(userProfileStoreKey(context.connection.id))
+        context.startupStoreRoot = m.profilePickerContext.storeRoot
+    end if
     context.store = current
     context.pin = m.profileUnlockGrant
     m.profileUnlockGrant = context.unlock
     if not profileOwnSignInContextCurrent() then cancelUserProfileOwnSignIn() : return
     if context.activeRecovery = true then m.profileGateCover.visible = true
+    if context.startupRecovery = true
+        m.global.profilegateclosed = false
+        m.profileGateCover.visible = true
+    end if
     showProfileOwnSignInForm()
 end sub
 
@@ -317,7 +340,7 @@ sub onProfileOwnSignInResult(event as object)
         showProfileOwnSignInForm(message)
         return
     end if
-    if context.activeRecovery = true and result.verifiedBaseUrl <> context.connection.url
+    if (context.activeRecovery = true or context.startupRecovery = true) and result.verifiedBaseUrl <> context.connection.url
         result.apiKey = ""
         showProfileOwnSignInForm("Dispatcharr did not accept that username or password.")
         return
@@ -395,7 +418,7 @@ sub tickUserProfileOwnSignInHold()
     ' Retire the credential nonce, not just its observer: an old broker ticket
     ' processed after the deadline must also refuse. Reopen only the same own
     ' form under fresh admission so a lost reply does not require app restart.
-    if beginUserProfileOwnSignIn(context.target.id, context.activeRecovery = true, context.childRecovery = true)
+    if beginUserProfileOwnSignIn(context.target.id, context.activeRecovery = true, context.childRecovery = true, context.startupRecovery = true)
         if m.profileOwnSignInDialog <> invalid then showProfileOwnSignInForm("Could not verify profile access. Please try again.")
     end if
 end sub
@@ -443,11 +466,20 @@ sub finishUserProfileOwnSignIn(result as object)
     end if
     if type(m.profileSessionKeys) <> "roAssociativeArray" then m.profileSessionKeys = {}
     m.profileSessionKeys[preferenceScope(context.connection.url + "|" + context.connection.id + "|" + context.target.id)] = result.apiKey
+    if context.startupRecovery = true
+        token = startupProfileIdentityToken(context.connection, context.target, result.apiKey)
+        if type(m.profileStartupIdentityRefusals) = "roAssociativeArray" then m.profileStartupIdentityRefusals.delete(token)
+    end if
     result.apiKey = ""
     m.userProfileStore = saved.store
     markerSuffix = "|" + context.connection.id + "|" + context.target.id
     if right(textValue(m.childRejectedIdentity), len(markerSuffix)) = markerSuffix then m.childRejectedIdentity = ""
     if type(saved.preferenceStore) = "roAssociativeArray" then m.preferenceStore = saved.preferenceStore
+    if context.startupRecovery = true
+        retireUserProfileOwnSignIn()
+        finishStartupProfileOwnSignIn(context, true)
+        return
+    end if
     if context.activeRecovery = true
         key = m.profileSessionKeys[preferenceScope(context.connection.url + "|" + context.connection.id + "|" + context.target.id)]
         pin = context.pin
@@ -497,6 +529,9 @@ sub closeProfileOwnSignInDialog()
     end if
     dialog.buttons = []
     dialog.close = true
+    if m.top.dialog <> invalid
+        if m.top.dialog.isSameNode(dialog) then m.top.dialog = invalid
+    end if
     m.profileOwnSignInDialog = invalid
 end sub
 
@@ -529,6 +564,9 @@ sub retireUserProfileOwnSignIn()
             pad.unobserveField("wasClosed")
             pad.textEditBox.text = ""
             pad.close = true
+            if m.top.dialog <> invalid
+                if m.top.dialog.isSameNode(pad) then m.top.dialog = invalid
+            end if
             if type(pad) = "roSGNode"
                 if pad.isSubtype("DirectionsPinPad") then m.top.removeChild(pad)
             end if
@@ -552,6 +590,10 @@ sub cancelUserProfileOwnSignIn()
     context = m.profileOwnSignInContext
     retireUserProfileOwnSignIn()
     if context = invalid then return
+    if context.startupRecovery = true
+        finishStartupProfileOwnSignIn(context, false)
+        return
+    end if
     if context.activeRecovery = true
         if context.connection.id = m.selectedConnectionId and m.activeUserScope = invalid and currentUserSessionId() = context.nonce
             m.global.activeusersession = ""

@@ -40,7 +40,7 @@ class ProfileProbeTest(unittest.TestCase):
             with zipfile.ZipFile(normal, 'w') as package:
                 for name in names:
                     package.write(root / name, name)
-            for mode in ['plain', 'pin', 'import-pin', 'back', 'reject', 'identity', 'cold-link', 'warm-link', 'warm-pin-link', 'warm-auth-link', 'warm-import-pin-link', 'warm-load-link']:
+            for mode in ['plain', 'pin', 'import-pin', 'back', 'reject', 'identity', 'cold-link', 'warm-link', 'warm-pin-link', 'warm-auth-link', 'warm-import-pin-link', 'warm-load-link', 'own-keyless', 'own-pin', 'own-held', 'own-cancel']:
                 target = Path(folder) / f'{mode}.zip'
                 probe.build(target, normal, 'DisposablePicker', 'http://fixture.test', mode)
                 with zipfile.ZipFile(target) as package:
@@ -72,6 +72,14 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertTrue(probe.await_back_ack(report, completed))
         completed.wait.assert_called_once_with(5)
         self.assertFalse(probe.await_back_ack({'back_attempted': True}, MagicMock(wait=MagicMock(return_value=False))))
+
+    def test_startup_fixture_has_no_shadowed_http_handlers(self):
+        import ast
+        source = Path(__file__).with_name('test-profile-picker-launch-native.py').read_text()
+        fixture = next(node for node in ast.walk(ast.parse(source)) if isinstance(node, ast.ClassDef) and node.name == 'Fixture')
+        methods = [node.name for node in fixture.body if isinstance(node, ast.FunctionDef)]
+        self.assertEqual(len(methods), len(set(methods)))
+        self.assertEqual(methods.count('do_POST'), 1)
 
     def test_imported_switch_pin_wire_uses_raw_salt_v2_and_only_target_row(self):
         import hashlib

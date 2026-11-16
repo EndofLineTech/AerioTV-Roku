@@ -201,10 +201,10 @@ checksum-restored the exact owner app. New first-key timeouts remain preserved
 under `667m`; passing repeats do not resolve them.
 
 Still unfinished: the remaining default/removal/cancellation and stale-callback
-matrices, own keyless/
-held forms, Child selection, Add/Manage/reorder, default-on Ask migration,
-top-bar switcher and full public acceptance. Current private handlers refuse
-unsupported own-form/Child/management choices without requests. Shipping readiness
+matrices, active-default own recovery, Child selection, Add/Manage/reorder,
+the public Ask toggle, top-bar switcher and full public acceptance.
+Inactive full-access own forms and new-store default-on Ask are now implemented
+as described below. Unsupported Child/management choices refuse without requests. Shipping readiness
 must stay false until those integrations and independent approval gates are met.
 
 ## Owned cancellation and rejection
@@ -325,7 +325,8 @@ selection with that known-mismatched key sends no request; a media intent cannot
 retry it through the restored-holder route either. Other holders and replacement
 keys remain independent. This is not a typed key rejection, broker hold, key
 deletion or authenticated adoption. It survives picker cancellation, not app
-restart; own-form integration remains unfinished.
+restart; inactive full-access own-form integration is now implemented below,
+while other recovery boundaries remain unfinished.
 
 Tests-first handler red: `out/mrr-picker-identity-refusal-red.log`.
 Native HTTP-200 wrong-identity plus repeated real Select green:
@@ -399,3 +400,57 @@ retain `out/mrr-picker-default-ask-switch-fixed-native.log/.json`, including
 successful reconnect evidence, rather than treating its passing repeat as a
 reliability explanation. All completed native runs cleaned their section and
 restored the exact owner app.
+
+## Private startup own-form continuation
+
+Inactive full-access targets now have a distinct startup credential-form
+admission: exact captured raw connection/roster roots, no authenticated actor,
+empty runtime key, actual target PIN first, and no general setup/adult-scope
+shortcut. Keyless and address-held targets, plus known identity-mismatch
+recovery, can use the existing native own form under a fresh credential nonce.
+Active-default and Child selection remain separate unfinished boundaries;
+typed rejected-key picker prompting is not completed by this path.
+
+The form verifies only its own username/password at the current address.
+Saving an own credential does not select the target or invent a source scope:
+it refreshes the picker and continues through fresh own-key authentication,
+own protection read and full load before normal atomic adoption. A real
+verified PIN grant is retained across that handoff, including learned-length
+root updates; it is not serialized or replaced with a fabricated proof.
+The startup selection dialog stays open across its own PIN/form phase.
+Cancel returns to the still-covered picker with the chosen target focused.
+
+Evidence:
+
+- Admission red: `out/mrr-picker-own-form-admission-red.log`; host controller,
+  stale-root, isolation, cancellation and PIN-learning cases run in full verify.
+- Actual keyless/protected-keyless/held startup own-form and full own guide:
+  `out/mrr-picker-own-keyless-qualified-native.log`,
+  `out/mrr-picker-own-pin-qualified-native.log`,
+  `out/mrr-picker-own-held-qualified-native.log`.
+  Inspected the per-run `-own-form.jpg` images for PIN and held cases.
+- Real submitted password POST, ECP Back, exact unchanged storage/no own `/me`,
+  cancelled/scrubbed Task, same-target retry under fresh nonce and correct guide
+  past the delayed reply: `out/mrr-picker-own-cancel-repeat-native.log`.
+  Target-focus red: `out/mrr-picker-own-form-cancel-focus-red.log`.
+- Known mismatch repeat opens the own form without another cached-key request
+  or fabricated broker hold:
+  `out/mrr-picker-own-form-identity-regression-native.log`.
+- Existing protected default-Child own recovery and full-access same-held-key
+  recovery still pass:
+  `out/mrr-picker-own-form-child-regression-native.log`,
+  `out/mrr-picker-own-form-active-same-key-regression-native.log`.
+- Shared native storage/model regression:
+  `out/mrr-picker-own-form-primitives-native.log`; full verification:
+  `out/mrr-picker-own-form-checkpoint-verify.log`.
+
+The new fixture initially shadowed its POST handler with the old reject-writes
+handler (`out/mrr-picker-own-keyless-repeat-native.log/.json`); this was a
+fixture error, not a failed application credential exchange. An AST regression
+now rejects duplicate handler names. First-key failures remain separately
+preserved (`out/mrr-picker-own-keyless-first-native.log/.json`,
+`out/mrr-picker-own-cancel-native.log/.json`, and the initial admission run).
+All runs cleaned and checksum-restored the exact app. Startup-form-specific
+native keyboard editing, wrong-credential/identity replacement, warm-link
+cancellation and remaining stale-callback/default/Child matrices still need
+qualification; public readiness remains false.

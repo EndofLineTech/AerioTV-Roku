@@ -4,6 +4,12 @@ sub seedProfilePickerLaunchProbe(base as string, mode as string)
     b = setCanonicalPreference(b, "isDefault", false)
     m.pickerProbeMode = mode
     m.pickerProbePickerCount = 0
+    if mode = "own-pin"
+        b = setCanonicalPreference(b, "pinType", "numbers")
+        b = setCanonicalPreference(b, "pinSalt", "0123456789abcdef0123456789abcdef")
+        b = setCanonicalPreference(b, "pinHash", userProfilePinHash(b.pinSalt, "1234"))
+    end if
+    if mode = "own-held" then b = setCanonicalPreference(b, "addressHeld", true)
     if mode = "pin" or mode = "import-pin" or mode = "cold-link" or mode = "warm-link" or mode = "warm-pin-link" or mode = "warm-auth-link" or mode = "warm-import-pin-link" or mode = "warm-load-link"
         a = setCanonicalPreference(a, "pinType", "numbers")
         a = setCanonicalPreference(a, "pinSalt", "0123456789abcdef0123456789abcdef")
@@ -23,7 +29,7 @@ sub seedProfilePickerLaunchProbe(base as string, mode as string)
     m.registry.write("connectionsV1", FormatJson({schema: 1, selected: "slot-a", entries: [connection]}))
     m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
     m.registry.write("connKey_slot-a", "synthetic-a")
-    m.registry.write(userProfileKeyName("slot-a", b.id), "synthetic-b")
+    if mode <> "own-keyless" and mode <> "own-pin" and mode <> "own-cancel" then m.registry.write(userProfileKeyName("slot-a", b.id), "synthetic-b")
     settings = defaultPreferenceStore()
     settings.accounts[preferenceScope(connectionPreferenceIdentity(connection, "7"))] = normalizeAccountPreferences({favoriteIds: ["7"], profileSettings: {themePreset: "midnight"}, startupBehavior: "guide"})
     settings.accounts[preferenceScope(connectionPreferenceIdentity(connection, "8"))] = normalizeAccountPreferences({favoriteIds: ["8"], profileSettings: {themePreset: "forest"}, startupBehavior: "guide"})
@@ -39,6 +45,7 @@ sub seedProfilePickerLaunchProbe(base as string, mode as string)
 end sub
 
 sub onProfilePickerLaunchProbeTick()
+    ownForm = m.pickerProbeMode = "own-keyless" or m.pickerProbeMode = "own-pin" or m.pickerProbeMode = "own-held" or m.pickerProbeMode = "own-cancel"
     sourceLink = m.pickerProbeMode = "cold-link" or m.pickerProbeMode = "warm-link" or m.pickerProbeMode = "warm-pin-link" or m.pickerProbeMode = "warm-auth-link" or m.pickerProbeMode = "warm-import-pin-link" or m.pickerProbeMode = "warm-load-link"
     if m.pickerProbeMode = "cold-link" and m.profilePinDialog <> invalid and m.pickerProbeReady <> true
         m.pickerProbeReady = true
@@ -50,7 +57,9 @@ sub onProfilePickerLaunchProbeTick()
         m.pickerProbeStoreRoot = m.registry.read(userProfileStoreKey("slot-a"))
         m.pickerProbeSettingsRoot = m.registry.read("settingsV1")
         ready = m.activeUserScope = invalid and m.apiKey = "" and m.global.profilegateclosed and m.profileStartupTask = invalid and m.profilePicker.model.focus = 0
-        print "[picker-launch] "; FormatJson({kind: "ready", ready: ready})
+        admission = startupProfileOwnSignInAdmission(m.pickerProbeB)
+        ready = ready and admission.ok and m.activeUserScope = invalid and m.apiKey = "" and m.profileStartupTask = invalid
+        print "[picker-launch] "; FormatJson({kind: "ready", ready: ready, own_form_admission: admission.ok})
     end if
     if (m.pickerProbeMode = "reject" or m.pickerProbeMode = "identity") and m.profilePicker <> invalid
         failureMessage = "The API key for Synthetic8 was rejected."
@@ -74,6 +83,11 @@ sub onProfilePickerLaunchProbeTick()
             m.pickerProbeClock.control = "stop"
             passed = m.activeUserScope = invalid and m.apiKey = "" and m.profileStartupTask = invalid and m.profileStartupSelectionContext = invalid and m.global.profilegateclosed and not m.profilePicker.busy and m.profilePicker.focusIndex = 1
             passed = passed and m.registry.read(userProfileStoreKey("slot-a")) = m.pickerProbeStoreRoot and m.registry.read("settingsV1") = m.pickerProbeSettingsRoot and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeB)) = "synthetic-b"
+            if m.pickerProbeMode = "identity"
+                passed = m.activeUserScope = invalid and m.apiKey = "" and m.profileStartupTask = invalid and m.profileStartupSelectionContext = invalid and m.profileGateCover.visible and m.profileOwnSignInContext <> invalid and m.profileOwnSignInDialog <> invalid
+                if passed then passed = m.profileOwnSignInContext.startupRecovery and m.global.profileownsigninpending
+                passed = passed and m.registry.read(userProfileStoreKey("slot-a")) = m.pickerProbeStoreRoot and m.registry.read("settingsV1") = m.pickerProbeSettingsRoot and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeB)) = "synthetic-b"
+            end if
             noHold = not m.requestGate.snapshot.keys.doesExist(requestGateCredentialHash("synthetic-b"))
             print "[picker-launch] "; FormatJson({kind: "result", passed: passed, rejected: true, held_refused: true, no_broker_hold: noHold})
             return
@@ -105,6 +119,7 @@ sub onProfilePickerLaunchProbeTick()
                 if m.pickerProbeStaleRefused then m.pickerProbeStaleRefused = m.profilePinDialog.isSameNode(current) and m.profilePinContext.profile.id = m.pickerProbeA
             end if
             ready = m.profilePinContext.continuation = "startup-selection" and m.profilePinContext.profile.id = m.pickerProbeB and m.activeUserScope = invalid and m.apiKey = "" and m.global.profilegateclosed and m.profileStartupTask = invalid
+            if ownForm then ready = m.profilePinContext.continuation = "own-signin" and m.profilePinContext.profile.id = m.pickerProbeB and m.activeUserScope = invalid and m.apiKey = "" and m.global.profilegateclosed and m.profileOwnSignInTask = invalid and m.profileOwnSignInDialog = invalid
             if sourcePin then ready = m.profilePinContext.continuation = "connect" and m.profilePinContext.profile.id = m.pickerProbeA and m.activeUserScope = invalid and m.apiKey = "synthetic-a" and m.global.profilegateclosed and m.task = invalid and m.profilePicker = invalid
             print "[picker-launch] "; FormatJson({kind: "pin-ready", ready: ready, number: m.pickerProbePinNumber, target_before_link: targetBeforeLink, source_pin: sourcePin})
             return
@@ -126,13 +141,43 @@ sub onProfilePickerLaunchProbeTick()
             m.profilePinDialog.textEditBox.text = value
             onProfilePinSubmit(event)
             verified = m.profilePinDialog = invalid and m.profileStartupTask <> invalid and m.activeUserScope = invalid and m.apiKey = "" and m.startupDialogOpen
+            if ownForm then verified = m.profilePinDialog = invalid and m.profileOwnSignInDialog <> invalid and m.profileOwnSignInTask = invalid and m.activeUserScope = invalid and m.apiKey = "" and m.profileGateCover.visible and m.startupDialogOpen
             if sourcePin then verified = m.profilePinDialog = invalid and m.task <> invalid and m.activeUserScope = invalid and m.apiKey = "synthetic-a" and not m.startupDialogOpen
             print "[picker-launch] "; FormatJson({kind: "pin-submitted", number: m.pickerProbePinNumber, wrong_covered: wrongCovered, verified: verified})
         end if
         return
     end if
+    if m.pickerProbeMode = "own-cancel" and m.pickerProbeFormReady = true and m.pickerProbeOwnCancelled <> true and m.profileOwnSignInContext = invalid and m.profilePicker <> invalid and m.profileStartupSelectionContext = invalid
+        m.pickerProbeOwnCancelled = true
+        m.pickerProbeFormReady = false
+        passed = m.activeUserScope = invalid and m.apiKey = "" and m.global.activeusersession = "" and m.global.profilegateclosed and m.profileGateCover.visible and not m.profilePicker.busy and m.profilePicker.focusIndex = 1
+        passed = passed and m.registry.read(userProfileStoreKey("slot-a")) = m.pickerProbeStoreRoot and m.registry.read("settingsV1") = m.pickerProbeSettingsRoot and m.registry.read("connKey_slot-a") = "synthetic-a" and not m.registry.exists(userProfileKeyName("slot-a", m.pickerProbeB))
+        passed = passed and m.pickerProbeCredentialTask.cancelRequested and m.pickerProbeCredentialTask.password = "" and m.pickerProbeCredentialTask.apiKey = ""
+        print "[picker-launch] "; FormatJson({kind: "own-cancelled", passed: passed})
+        return
+    end if
+    if ownForm and m.profileOwnSignInDialog <> invalid and m.profileOwnSignInTask = invalid
+        if m.pickerProbeFormReady <> true
+            m.pickerProbeFormReady = true
+            ready = m.profileOwnSignInContext <> invalid and m.activeUserScope = invalid and m.apiKey = "" and m.profileGateCover.visible and m.global.profileownsigninpending and m.profileOwnSignInContext.target.id = m.pickerProbeB and m.profileStartupTask = invalid
+            if m.pickerProbeMode = "own-held" then ready = ready and instr(1, m.profileOwnSignInDialog.message, "server address") > 0
+            print "[picker-launch] "; FormatJson({kind: "own-form-ready", ready: ready})
+        end if
+        if m.pickerProbeSubmit = true
+            m.pickerProbeSubmit = false
+            event = {node: m.profileOwnSignInDialog, getRoSGNode: function() as object
+                return m.node
+            end function, getData: function() as integer
+                return 2
+            end function}
+            m.profileOwnSignInContext.password = "synthetic-password"
+            onProfileOwnSignInChoice(event)
+            if m.pickerProbeOwnCancelled <> true then m.pickerProbeCredentialTask = m.profileOwnSignInTask
+        end if
+        return
+    end if
     if m.page <> "guide" or m.busy then return
-    if m.pickerProbeMode = "warm-auth-link" or m.pickerProbeMode = "warm-load-link"
+    if m.pickerProbeMode = "warm-auth-link" or m.pickerProbeMode = "warm-load-link" or m.pickerProbeMode = "own-cancel"
         if m.pickerProbeWarmWait = invalid
             m.pickerProbeWarmWait = CreateObject("roTimeSpan")
             m.pickerProbeWarmWait.mark()
@@ -168,6 +213,7 @@ sub onProfilePickerLaunchProbeTick()
     passed = passed and m.accountPreferences.favoriteIds[0] = "8" and m.accountPreferences.profileSettings.themePreset = "forest" and m.guide.callFunc("profilePickerProbeLineup") = "8"
     source = preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "7"))
     passed = passed and settings.accounts[source].favoriteIds[0] = "7" and not m.registry.exists(userProfileSyncAckKey("slot-a")) and m.startupDialogOpen = false
+    if m.pickerProbeMode = "own-cancel" then passed = passed and m.pickerProbeOwnCancelled = true and m.pickerProbeCredentialTask.cancelRequested and m.pickerProbeCredentialTask.password = "" and m.pickerProbeCredentialTask.aeriosession <> m.activeUserScope.sessionId
     print "[picker-launch] "; FormatJson({kind: "result", passed: passed})
 end sub
 

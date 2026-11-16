@@ -145,8 +145,58 @@ sub main()
     m.pendingLaunch = normalizeLaunchRequest({contentId: "missing-channel", mediaType: "live"})
     dismissStartupPickerForDeepLink()
     check(m.routeConnectCalls = 0 and m.taskCreates = 1 and m.activeUserScope = invalid and m.apiKey = "" and m.global.profilegateclosed, "media intent cannot retry a restored holder's known-mismatched key")
+    pickerNavigationFixture()
+    check(beginUserProfileLaunchPicker(false), "startup own-form admission begins without an authenticated actor")
+    targetId = m.profilePickerContext.store.profiles[1].id
+    m.registry.values[userProfileKeyName("slot-a", targetId)] = ""
+    admission = startupProfileOwnSignInAdmission(targetId)
+    check(admission.ok and admission.target.id = targetId and admission.target.username = "bob" and not admission.requiresPin, "inactive keyless full-access holder has a distinct own-form admission")
+    check(m.activeUserScope = invalid and m.apiKey = "" and m.taskCreates = 0 and m.registry.flushes = 0, "own-form admission grants no key, request, storage change or outgoing scope")
+    m.apiKey = "default-key"
+    check(not startupProfileOwnSignInAdmission(targetId).ok, "startup own form cannot borrow a restored runtime key")
+    m.apiKey = ""
+    m.activeUserScope = {profileId: "source"}
+    check(not startupProfileOwnSignInAdmission(targetId).ok, "authenticated callers must use the separate ordinary own-form boundary")
+    m.activeUserScope = invalid
+    m.profilePickerReady = false
+    check(not startupProfileOwnSignInAdmission(targetId).ok, "shipping-off controller cannot admit a startup form")
+    m.profilePickerReady = true
+    m.registry.values["connectionsV1"] = m.registry.read("connectionsV1") + " "
+    check(not startupProfileOwnSignInAdmission(targetId).ok, "changed raw connection root refuses before credentials")
+    pickerNavigationFixture()
+    store = loadUserProfileStore(m.registry, "slot-a")
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinType", "numbers")
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinHash", string(64, "a"))
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "pinSalt", string(32, "b"))
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "addressHeld", true)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    check(beginUserProfileLaunchPicker(false), "held protected target remains visible only behind the source's launch selection")
+    targetId = store.profiles[1].id
+    admission = startupProfileOwnSignInAdmission(targetId)
+    check(admission.ok and admission.requiresPin and admission.target.addressHeld, "held target admits only own credential recovery and still requires its real PIN")
+    m.registry.values[userProfileStoreKey("slot-a")] = m.registry.read(userProfileStoreKey("slot-a")) + " "
+    check(not startupProfileOwnSignInAdmission(targetId).ok, "changed raw roster cannot reuse old own-form admission")
+    pickerNavigationFixture()
+    store = loadUserProfileStore(m.registry, "slot-a")
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "role", "child")
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    check(beginUserProfileLaunchPicker(false), "restored adult can see a Child tile without Child admission")
+    check(not startupProfileOwnSignInAdmission(store.profiles[1].id).ok, "Child selection is not full-access own-form authority")
+    check(not startupProfileOwnSignInAdmission(store.active).ok, "restored active default own recovery remains a distinct boundary")
+    pickerNavigationFixture()
+    check(beginUserProfileLaunchPicker(false), "startup form cancellation has its own covered picker")
+    nonce = "00000000-0000-4000-8000-000000000090"
+    m.global.activeusersession = nonce
+    context = {nonce: nonce, target: m.profilePickerContext.store.profiles[1], unlock: invalid}
+    finishStartupProfileOwnSignIn(context, false)
+    check(m.profilePicker.model.focus = 1 and not m.profilePicker.busy and m.global.profilegateclosed and m.global.activeusersession = "" and m.taskCreates = 0, "own-form cancellation keeps chosen target focused without authentication")
     print "ALL TESTS PASSED"
 end sub
+
+function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as boolean, childRecovery = false as boolean, startupRecovery = false as boolean) as boolean
+    ' Full form lifecycle is qualified by its own controller suite.
+    return false
+end function
 
 sub pickerNavigationFixture()
     m.a = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000001", {id: 7, username: "alice", user_level: 1}, 1)

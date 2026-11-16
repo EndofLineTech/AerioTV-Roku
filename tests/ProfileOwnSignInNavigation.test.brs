@@ -1,4 +1,40 @@
 sub main()
+    startupOwnFormFixture()
+    beforeStartup = FormatJson(m.registry.values)
+    check(beginUserProfileOwnSignIn(m.fixtureTarget, false, false, true), "private startup selection opens distinct own-form lifecycle")
+    check(m.profileOwnSignInContext.startupRecovery and m.activeUserScope = invalid and m.apiKey = "" and m.profileGateCover.visible and m.profilePicker.busy, "startup form has no borrowed authenticated source or runtime key")
+    cancelUserProfileOwnSignIn()
+    check(m.fixtureStartupCancelled and FormatJson(m.registry.values) = beforeStartup and m.global.activeusersession = "" and m.global.profilegateclosed, "startup Cancel returns only to covered picker without writes")
+    startupOwnFormFixture()
+    check(beginUserProfileOwnSignIn(m.fixtureTarget, false, false, true), "startup own form can independently retry")
+    m.profileOwnSignInContext.password = "synthetic-password"
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 2))
+    task = m.profileOwnSignInTask
+    beforeStartup = FormatJson(m.registry.values)
+    onProfileOwnSignInResult(ownFormEvent(task, {ok: true, verifiedBaseUrl: "https://foreign.test", apiKey: "foreign-key", verifiedUser: {id: 8, username: "Bob", user_level: 1}}))
+    check(FormatJson(m.registry.values) = beforeStartup and m.profileOwnSignInContext <> invalid, "startup result must prove exact current address before saving")
+    m.profileOwnSignInContext.password = "synthetic-password"
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 2))
+    onProfileOwnSignInResult(ownFormEvent(m.profileOwnSignInTask, {ok: true, verifiedBaseUrl: "https://example.test", apiKey: "startup-own-key", verifiedUser: {id: 8, username: "BOB", user_level: 1}}))
+    check(m.fixtureStartupAccepted and m.profileOwnSignInContext = invalid and m.activeUserScope = invalid and m.apiKey = "" and m.global.profilegateclosed, "startup credential commit hands back to separate own auth/read/load without adopting a scope")
+    check(m.registry.read(userProfileKeyName("slot-a", m.fixtureTarget)) = "startup-own-key" and m.userProfileStore.active <> m.fixtureTarget, "startup own credentials neither overwrite default nor durably select target")
+    startupOwnFormFixture()
+    store = loadUserProfileStore(m.registry, "slot-a")
+    target = store.profiles[1]
+    target = setCanonicalPreference(target, "pinType", "numbers")
+    target = setCanonicalPreference(target, "pinSalt", string(32, "b"))
+    target = setCanonicalPreference(target, "pinHash", string(64, "a"))
+    store.profiles[1] = target
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    m.profilePickerContext.storeRoot = m.registry.read(userProfileStoreKey("slot-a"))
+    check(beginUserProfileOwnSignIn(m.fixtureTarget, false, false, true) and m.pinRequested and m.profileOwnSignInDialog = invalid and m.profileOwnSignInTask = invalid, "protected startup target requires actual own PIN before any credential form or request")
+    target = setCanonicalPreference(target, "pinLength", 4)
+    store.profiles[1] = target
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    m.profileUnlockGrant = {slot: "slot-a", id: target.id, pinType: target.pinType, pinSalt: target.pinSalt, pinHash: target.pinHash}
+    onUserProfileOwnSignInPin(m.profileOwnSignInNonce)
+    check(m.profileOwnSignInContext <> invalid and m.profileOwnSignInDialog <> invalid and m.profileOwnSignInContext.pin <> invalid and profileOwnSignInContextCurrent(), "real own PIN learning refreshes captured picker root without losing its proof or admitting stale roots")
+    cancelUserProfileOwnSignIn()
     heldOwnFormFixture()
     beforeTimeout = FormatJson(m.registry.values)
     oldNonce = m.profileOwnSignInNonce
@@ -280,6 +316,9 @@ function ownFormEvent(node as object, index as dynamic) as object
 end function
 
 sub ownFormFixture()
+    m.fixtureStartupAllowed = false
+    m.fixtureStartupAccepted = false
+    m.fixtureStartupCancelled = false
     m.fixtureUnavailableClosed = false
     m.requestGate = invalid
     m.profileOwnSignInHold = invalid
@@ -351,6 +390,37 @@ sub ownFormFixture()
         end sub, unobserveField: sub(field as string)
         end sub}
     end function
+end sub
+
+sub startupOwnFormFixture()
+    ownFormFixture()
+    m.fixtureStartupAllowed = true
+    m.profilePickerReady = true
+    m.activeUserScope = invalid
+    m.apiKey = ""
+    m.page = "profile-picker"
+    m.global.activeusersession = ""
+    m.global.profilegateclosed = true
+    m.profileGateCover.visible = true
+    m.guide.active = false
+    m.profilePicker = {busy: false}
+    m.profilePickerContext = {connectionRootPresent: true, connectionRoot: m.registry.read("connectionsV1"), storeRoot: m.registry.read(userProfileStoreKey("slot-a"))}
+end sub
+
+function startupProfileOwnSignInAdmission(targetId as string) as object
+    return {ok: m.fixtureStartupAllowed = true and targetId = m.fixtureTarget}
+end function
+
+function startupProfileIdentityToken(connection as object, target as object, key as string) as string
+    return "host-identity-" + key
+end function
+
+sub finishStartupProfileOwnSignIn(context as object, accepted as boolean)
+    m.fixtureStartupAccepted = accepted
+    m.fixtureStartupCancelled = not accepted
+    m.global.activeusersession = ""
+    m.global.profilegateclosed = true
+    m.profilePicker.busy = false
 end sub
 
 function beginProfilePinGate(profile as object, continuation as string, nonce as string) as boolean

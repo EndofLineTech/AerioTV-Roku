@@ -60,6 +60,8 @@ sub onProfilePinSubmit(event as object)
     if context.slot <> m.selectedConnectionId then return
     switching = context.continuation = "switch" or context.continuation = "switch-roster"
     startupSelection = context.continuation = "startup-selection"
+    startupOwn = false
+    if context.continuation = "own-signin" and m.profileOwnSignInContext <> invalid then startupOwn = m.profileOwnSignInContext.startupRecovery = true
     if startupSelection and not startupProfilePinContextCurrent(context)
         m.profilePinDialog.textEditBox.text = ""
         return
@@ -112,11 +114,11 @@ sub onProfilePinSubmit(event as object)
     m.profileGateClock.control = "stop"
     ' The switch continuation owns unblocking after current protection checks
     ' and incoming nonce retirement. Do not briefly resume old authenticated Tasks.
-    if not switching and not startupSelection
+    if not switching and not startupSelection and not startupOwn
         m.global.profilegateclosed = false
         m.profileGateCover.visible = false
     end if
-    if m.startupDialogOpen = true and not startupSelection then completeStartupDialog()
+    if m.startupDialogOpen = true and not startupSelection and not startupOwn then completeStartupDialog()
     if context.continuation = "connect" then connectServer(true)
     if context.continuation = "complete" then completeConnection(context.resume)
     if context.continuation = "switch" then onUserProfileSwitchPin(context.resume)

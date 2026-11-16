@@ -305,7 +305,14 @@ end sub
 
 sub onLaunchRequest()
     if m.profileStartupDeferred = true then return
-    if m.profileOwnSignInContext <> invalid then return
+    if m.profileOwnSignInContext <> invalid
+        if m.profileOwnSignInContext.startupRecovery = true and launchRequestHasMediaIntent(m.top.launchRequest)
+            m.pendingLaunch = normalizeLaunchRequest(m.top.launchRequest)
+            cancelUserProfileOwnSignIn()
+            dismissStartupPickerForDeepLink()
+        end if
+        return
+    end if
     if m.profileSwitchContext <> invalid then return
     raw = m.top.launchRequest
     m.pendingLaunch = normalizeLaunchRequest(raw)
