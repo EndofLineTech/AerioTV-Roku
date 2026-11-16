@@ -1,4 +1,19 @@
 sub main()
+    ownFormFixture()
+    check(beginUserProfileOwnSignIn(m.fixtureTarget), "baseline retry fixture opens an owned source-session form")
+    m.profileBaselineReady = true
+    m.apiKey = "source-key"
+    context = m.profileOwnSignInContext
+    context.adding = true
+    context.username = "Cara"
+    context.password = "synthetic-password"
+    context.addPhase = "read"
+    oldProof = {apiKey: "retired-own-proof"}
+    context.addVerified = oldProof
+    context.addRead = {state: "missing"}
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 2))
+    check(oldProof.apiKey = "" and context.addVerified = invalid and context.addRead = invalid and context.addPhase = "", "fresh Add submission scrubs the prior proof and exits the old protection-read phase")
+    check(m.profileOwnSignInTask <> invalid and m.profileOwnSignInTask.expectedUsername = "Cara", "Add retry creates a fresh own-password Task instead of treating its result as an old read")
     startupOwnFormFixture()
     m.fixtureTarget = m.userProfileStore.active
     check(beginUserProfileOwnSignIn(m.fixtureTarget, false, false, true), "restored default uses explicit no-actor startup own recovery")
@@ -330,6 +345,7 @@ function ownFormEvent(node as object, index as dynamic) as object
 end function
 
 sub ownFormFixture()
+    m.profileBaselineReady = false
     m.fixtureStartupAllowed = false
     m.fixtureStartupAccepted = false
     m.fixtureStartupCancelled = false

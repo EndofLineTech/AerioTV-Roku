@@ -172,6 +172,7 @@ for (const suite of suites) {
     ...(suite === 'UserProfileRuntime' ? ['source/UserProfileRuntime.brs'] : []),
     ...(['UserProfileCredential', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/UserProfileCredential.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs'] : []),
     ...(suite === 'UserProfileCredential' ? ['source/ConnectionStoreModel.brs'] : []),
+    ...(suite === 'ProfileOwnSignInNavigation' ? ['source/DispatcharrSyncSettingsStore.brs'] : []),
     ...(suite === 'DispatcharrSyncAckStore' ? ['source/DispatcharrSyncSettingsStore.brs'] : []),
     ...(['ProfilePickerNavigation', 'UserProfileManagementPolicy', 'ProfileAdultPinNavigation', 'ProfileManagementNavigation', 'UserProfileSwitch', 'UserProfileOwnSignIn', 'UserProfileChildOwnSignIn'].includes(suite) ? ['source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(['UserProfileOwnSignIn', 'UserProfileChildOwnSignIn'].includes(suite) ? ['source/UserProfileOwnSignIn.brs', 'source/UserProfileAddressPolicy.brs', 'source/StrictJson.brs'] : []),

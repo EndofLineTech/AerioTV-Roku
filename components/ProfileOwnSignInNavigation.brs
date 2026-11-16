@@ -294,6 +294,12 @@ sub onProfileOwnSignInChoice(event as object)
             showProfileOwnSignInForm("Dispatcharr did not accept that username or password.")
             return
         end if
+        if context.adding = true
+            if type(context.addVerified) = "roAssociativeArray" then context.addVerified.apiKey = ""
+            context.addVerified = invalid
+            context.addRead = invalid
+            context.addPhase = ""
+        end if
         task = invalid
         if m.profileOwnSignInTaskFactory <> invalid then task = m.profileOwnSignInTaskFactory()
         if task = invalid then task = CreateObject("roSGNode", "DispatcharrTask")

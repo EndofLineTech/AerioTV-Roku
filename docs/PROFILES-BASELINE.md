@@ -62,8 +62,13 @@ continues in Beads.
 
 Installed baseline ZIP SHA256:
 `2d3f1bca659887223a5fbd1ef0a63355dd29f7c555c3b4402b6e5035941004b6`.
-The network journey is tracked in `AerioTV-Roku-bou2`; safe retry cleanup after a
-failed Add commit is deferred in `AerioTV-Roku-letr`.
+The network journey is tracked in `AerioTV-Roku-bou2`. Add retry cleanup after a
+failed commit (`AerioTV-Roku-letr`) is fixed in source with a targeted red/green
+controller test; the installed ZIP above predates that follow-up. It is not
+silently reinstalled while the owner may be using the device.
+
+The full baseline regression gate passed in `out/mrr-baseline-verify.log`;
+the later retry fix separately passed its controller suite and compiler check.
 
 ## Rollback on the authorized development Roku
 
