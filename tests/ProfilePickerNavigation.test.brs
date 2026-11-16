@@ -182,7 +182,7 @@ sub main()
     m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
     check(beginUserProfileLaunchPicker(false), "restored adult can see a Child tile without Child admission")
     check(not startupProfileOwnSignInAdmission(store.profiles[1].id).ok, "Child selection is not full-access own-form authority")
-    check(not startupProfileOwnSignInAdmission(store.active).ok, "restored active default own recovery remains a distinct boundary")
+    check(startupProfileOwnSignInAdmission(store.active).ok, "restored active default can enter only its known-identity startup own form")
     pickerNavigationFixture()
     check(beginUserProfileLaunchPicker(false), "startup form cancellation has its own covered picker")
     nonce = "00000000-0000-4000-8000-000000000090"

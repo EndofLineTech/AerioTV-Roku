@@ -1,5 +1,19 @@
 sub main()
     startupOwnFormFixture()
+    m.fixtureTarget = m.userProfileStore.active
+    check(beginUserProfileOwnSignIn(m.fixtureTarget, false, false, true), "restored default uses explicit no-actor startup own recovery")
+    m.profileOwnSignInContext.password = "synthetic-password"
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 2))
+    task = m.profileOwnSignInTask
+    check(task.expectedUserId = "7" and task.expectedUsername = "Alice" and task.apiKey = "", "startup default password Task binds both known ID and username without using its old slot key")
+    beforeDefault = FormatJson(m.registry.values)
+    onProfileOwnSignInResult(ownFormEvent(task, {ok: true, verifiedBaseUrl: "https://example.test", apiKey: "wrong-default-key", verifiedUser: {id: 70, username: "Alice", user_level: 1}}))
+    check(FormatJson(m.registry.values) = beforeDefault and not m.fixtureStartupAccepted, "even a forged successful own Task result cannot replace the startup default identity")
+    m.profileOwnSignInContext.password = "synthetic-password"
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 2))
+    onProfileOwnSignInResult(ownFormEvent(m.profileOwnSignInTask, {ok: true, verifiedBaseUrl: "https://example.test", apiKey: "same-default-key", verifiedUser: {id: 7, username: "ALICE", user_level: 1}}))
+    check(m.fixtureStartupAccepted and m.registry.read("connKey_slot-a") = "same-default-key" and m.activeUserScope = invalid and m.apiKey = "", "same known default credentials return only to fresh startup authentication")
+    startupOwnFormFixture()
     beforeStartup = FormatJson(m.registry.values)
     check(beginUserProfileOwnSignIn(m.fixtureTarget, false, false, true), "private startup selection opens distinct own-form lifecycle")
     check(m.profileOwnSignInContext.startupRecovery and m.activeUserScope = invalid and m.apiKey = "" and m.profileGateCover.visible and m.profilePicker.busy, "startup form has no borrowed authenticated source or runtime key")

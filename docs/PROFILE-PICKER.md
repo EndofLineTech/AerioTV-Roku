@@ -201,7 +201,7 @@ checksum-restored the exact owner app. New first-key timeouts remain preserved
 under `667m`; passing repeats do not resolve them.
 
 Still unfinished: the remaining default/removal/cancellation and stale-callback
-matrices, active-default own recovery, Child selection, Add/Manage/reorder,
+matrices, Child selection, Add/Manage/reorder,
 the public Ask toggle, top-bar switcher and full public acceptance.
 Inactive full-access own forms and new-store default-on Ask are now implemented
 as described below. Unsupported Child/management choices refuse without requests. Shipping readiness
@@ -408,7 +408,7 @@ admission: exact captured raw connection/roster roots, no authenticated actor,
 empty runtime key, actual target PIN first, and no general setup/adult-scope
 shortcut. Keyless and address-held targets, plus known identity-mismatch
 recovery, can use the existing native own form under a fresh credential nonce.
-Active-default and Child selection remain separate unfinished boundaries;
+The later active-default continuation is described below; Child selection remains unfinished.
 typed rejected-key picker prompting is not completed by this path.
 
 The form verifies only its own username/password at the current address.
@@ -472,3 +472,35 @@ The first open-form-link attempt timed out before selection and remains
 preserved at `out/mrr-picker-own-form-link-native.log/.json` under `667m`.
 All attempts cleaned and checksum-restored the exact owner app; these are still
 missing-lineup safe-nonplay tests, not certification or public acceptance.
+
+### Active full-access default
+
+The startup own-form boundary now also admits the restored full-access default
+without a key. This is an explicit startup mode, not a relaxation of ordinary
+active recovery or Child admission. Its password Task binds both recorded ID
+and username; the planner and transaction independently enforce the same known
+default identity and exact current URL. It cannot use the form to replace that
+default with a recreated or different account. Successful credentials still
+return to separate own-key auth/protection/full load and atomic adoption.
+
+Tests-first policy/admission red:
+`out/mrr-picker-active-default-own-red.log`. Host and native tests cover
+foreign-address/different-ID refusal, Child-mode separation, exact failed-Flush
+rollback and preservation of the other profile's key. Real keyless default and
+protected keyless default cases pass:
+`out/mrr-picker-own-default-repeat-native.log` and
+`out/mrr-picker-own-default-pin-native.log`; the latter's actual own-form
+image was inspected. No provider request precedes its real target PIN/form.
+Both use only their own password exchange and own key thereafter.
+Shared native storage/policy:
+`out/mrr-picker-active-default-own-primitives-native.log`.
+Existing protected default-Child recovery and submitted-password Back/retry
+regressions pass:
+`out/mrr-picker-active-default-own-child-regression-native.log`,
+`out/mrr-picker-active-default-own-cancel-regression-native.log`.
+Full verification: `out/mrr-picker-active-default-own-pre-native-verify.log`.
+The first default probe's pre-selection timeout remains preserved at
+`out/mrr-picker-own-default-native.log/.json`, separately from passing repeats.
+All runs cleaned and exact-restored the owner app. Public activation,
+typed-key-rejection prompting and broader default/stale/import matrices remain
+unfinished; no release or owner acceptance is inferred.

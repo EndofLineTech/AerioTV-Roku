@@ -280,8 +280,8 @@ function startupProfileIdentityRefused(connection as object, target as object, k
 end function
 
 ' Credential-form admission is separate from cached-key selection. It grants
-' neither PIN verification nor an authenticated source. Active-default/Child
-' recovery keeps its own boundary; never route these through general setup.
+' neither PIN verification nor an authenticated source. Defaults must retain
+' their known identity; Child recovery keeps its separate boundary.
 function startupProfileOwnSignInAdmission(targetId as string) as object
     denied = {ok: false}
     if m.profilePickerReady <> true or m.profilePicker = invalid or m.page <> "profile-picker" then return denied
@@ -302,7 +302,7 @@ function startupProfileOwnSignInAdmission(targetId as string) as object
     if not model.ok or not model.show then return denied
     for each target in store.profiles
         if target.id = targetId
-            if target.id = store.active or not userProfileFullAccess(target.role) then return denied
+            if not userProfileFullAccess(target.role) then return denied
             if target.isDefault
                 if not userProfileDefaultOwnIdentityMatches(entry, store, {id: target.userId, username: target.username}) then return denied
             end if

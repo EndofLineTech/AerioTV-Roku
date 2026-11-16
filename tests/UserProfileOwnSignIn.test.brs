@@ -35,6 +35,28 @@ sub main()
     entry = normalizeConnectionEntry(entry)
     registry = ownSignInRegistry(entry, store)
     nonce = "00000000-0000-4000-8000-000000000090"
+    startupResult = {ok: true, apiKey: "startup-default-key", verifiedBaseUrl: entry.url, verifiedUser: {id: 7, username: "ALICE", user_level: 1}}
+    startup = userProfileOwnSignInPlan(entry, store, a.id, startupResult, 100, false, true)
+    check(startup.ok and startup.store.active = a.id and startup.target.id = a.id and startup.target.userId = 7, "explicit startup default recovery keeps the exact known holder without early selection")
+    foreignStartup = copyJson(startupResult)
+    foreignStartup.verifiedBaseUrl = "https://foreign.test"
+    check(not userProfileOwnSignInPlan(entry, store, a.id, foreignStartup, 100, false, true).ok, "startup recovery requires exact current-address verification even without a hold")
+    foreignStartup = copyJson(startupResult)
+    foreignStartup.verifiedUser.id = 70
+    check(not userProfileOwnSignInPlan(entry, store, a.id, foreignStartup, 100, false, true).ok, "startup default form never replaces the default's recorded server identity")
+    check(not userProfileOwnSignInPlan(entry, store, a.id, startupResult, 100, true, true).ok, "startup full-access recovery cannot borrow Child admission")
+    for each failStartup in [false, true]
+        startupRegistry = ownSignInRegistry(entry, store)
+        oldStartup = FormatJson(startupRegistry.values)
+        oldOther = startupRegistry.read(userProfileKeyName(entry.id, b.id))
+        startupRegistry.failOnce = failStartup
+        savedStartup = commitUserProfileOwnSignIn(startupRegistry, entry, store, a.id, startupResult, 100, nonce, nonce, false, true)
+        if failStartup
+            check(not savedStartup.ok and FormatJson(startupRegistry.values) = oldStartup, "startup default commit failure restores exact credentials and roots")
+        else
+            check(savedStartup.ok and startupRegistry.read("connKey_slot-a") = "startup-default-key" and startupRegistry.read(userProfileKeyName(entry.id, b.id)) = oldOther and savedStartup.store.active = a.id, "startup default own credentials commit without touching another holder or creating runtime adoption")
+        end if
+    end for
     heldStore = copyJson(store)
     heldStore.profiles[1] = setCanonicalPreference(heldStore.profiles[1], "addressHeld", true)
     heldStore = setCanonicalPreference(heldStore, "knownDefault", {userId: 70, username: "OldDefault"})

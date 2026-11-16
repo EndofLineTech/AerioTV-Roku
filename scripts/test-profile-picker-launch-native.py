@@ -95,7 +95,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--restore", required=True)
     parser.add_argument("--report", default="out/profile-picker-launch-native.json")
-    parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link", "own-keyless", "own-pin", "own-held", "own-cancel", "own-link", "own-pin-link", "own-auth-link"], default="plain")
+    parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link", "own-keyless", "own-pin", "own-held", "own-cancel", "own-link", "own-pin-link", "own-auth-link", "own-default", "own-default-pin"], default="plain")
     args = parser.parse_args()
     host, password = os.environ["ROKU_HOST"], os.environ["ROKU_DEV_PASSWORD"]
     modules = {}
@@ -115,17 +115,18 @@ def main():
     own_cancel_completed = threading.Event()
     own_link_completed = threading.Event()
     stamp = int(time.time())
+    target_user = 7 if args.mode in ["own-default", "own-default-pin"] else 8
 
     class Fixture(BaseHTTPRequestHandler):
         def log_message(self, *_args):
             pass
 
         def do_POST(self):
-            if args.mode not in ["own-keyless", "own-pin", "own-held", "own-cancel", "own-auth-link"]:
+            if args.mode not in ["own-keyless", "own-pin", "own-held", "own-cancel", "own-auth-link", "own-default", "own-default-pin"]:
                 self.reject_write()
                 return
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
-            accepted = self.path == "/api/accounts/token/" and body == {"username": "Synthetic8", "password": "synthetic-password"} and not self.headers.get("X-API-Key") and not self.headers.get("Authorization")
+            accepted = self.path == "/api/accounts/token/" and body == {"username": f"Synthetic{target_user}", "password": "synthetic-password"} and not self.headers.get("X-API-Key") and not self.headers.get("Authorization")
             report.setdefault("credential_posts", []).append({"path": self.path, "accepted": accepted})
             if args.mode == "own-auth-link":
                 report["media_input_activity"] = modules["management"].management_probe_activity(host)
@@ -164,7 +165,7 @@ def main():
             user = {"synthetic-a": 7, "synthetic-b": 8}.get(key, 0)
             bearer = self.headers.get("Authorization") == "Bearer synthetic-startup"
             if bearer:
-                user = 8
+                user = target_user
             hits.append({"user": user, "path": self.path, "method": "GET", "own_password_check": bearer})
             delayed_link = args.mode == "warm-auth-link" and self.path == "/api/accounts/users/me/"
             delayed_link = delayed_link or args.mode == "warm-load-link" and self.path.startswith("/api/channels/")
@@ -196,7 +197,7 @@ def main():
             if self.path == "/api/accounts/users/me/":
                 value = {"id": user, "username": f"Synthetic{user}", "user_level": 1}
                 if bearer:
-                    value["api_key"] = "synthetic-b"
+                    value["api_key"] = "synthetic-a" if target_user == 7 else "synthetic-b"
                 if args.mode == "identity":
                     value = {"id": 9, "username": "Synthetic9", "user_level": 1}
                     report["mismatched_me_response"] = {"status": 200, "id": 9, "username": "Synthetic9"}
@@ -259,6 +260,8 @@ def main():
                 report["screenshot"] = captured.returncode == 0
                 report["screenshot_path"] = screenshot_path
                 keys = [] if args.mode in ["cold-link", "warm-link"] else ["Right", "Select"]
+                if args.mode in ["own-default", "own-default-pin"]:
+                    keys = ["Select"]
                 if args.mode == "warm-link":
                     request = urllib.request.Request(f"http://{host}:8060/input?contentId=missing-fixture-id&mediaType=live", data=b"", method="POST")
                     try:
@@ -345,7 +348,7 @@ def main():
         if args.mode == "import-pin":
             expected_phases.insert(2, "read")
         pins = [event for event in events if event["kind"] == "pin-submitted"]
-        pin_count = {"plain": 0, "pin": 1, "import-pin": 2, "back": 0, "reject": 0, "identity": 0, "cold-link": 1, "warm-link": 1, "warm-pin-link": 1, "warm-auth-link": 1, "warm-import-pin-link": 2, "warm-load-link": 1, "own-keyless": 0, "own-pin": 1, "own-held": 0, "own-cancel": 0, "own-link": 1, "own-pin-link": 2, "own-auth-link": 1}[args.mode]
+        pin_count = {"plain": 0, "pin": 1, "import-pin": 2, "back": 0, "reject": 0, "identity": 0, "cold-link": 1, "warm-link": 1, "warm-pin-link": 1, "warm-auth-link": 1, "warm-import-pin-link": 2, "warm-load-link": 1, "own-keyless": 0, "own-pin": 1, "own-held": 0, "own-cancel": 0, "own-link": 1, "own-pin-link": 2, "own-auth-link": 1, "own-default": 0, "own-default-pin": 1}[args.mode]
         before_pins = report.get("pre_pin_requests", [])
         pin_ok = len(pins) == pin_count and all(event["wrong_covered"] and event["verified"] for event in pins) and [command.get("status") for command in report.get("pin_commands", [])] == [200] * pin_count
         if pin_count:
@@ -353,8 +356,9 @@ def main():
         if args.mode == "import-pin":
             reads = [event["read_nonce"] for event in phases if event["phase"] == "read"]
             pin_ok = pin_ok and len(set(reads)) == 2 and all(reads) and paths.count("/api/accounts/users/me/app-data/synthetic8.aeriotv/") == 2
-        report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and report.get("pre_selection_requests") == [] and report.get("screenshot") is True and [k.get("status") for k in report["keys"]] == [200, 200] and [p["phase"] for p in phases] == expected_phases and all(p["no_actor"] and p["empty_key"] for p in phases) and all(h.get("user") == 8 and h["method"] == "GET" for h in hits) and listing >= 2 and heavy > listing and paths.count("/api/accounts/users/me/") >= 3 and pin_ok
-        if args.mode in ["own-keyless", "own-pin", "own-held", "own-cancel"]:
+        wanted_keys = [200] if args.mode in ["own-default", "own-default-pin"] else [200, 200]
+        report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and report.get("pre_selection_requests") == [] and report.get("screenshot") is True and [k.get("status") for k in report["keys"]] == wanted_keys and [p["phase"] for p in phases] == expected_phases and all(p["no_actor"] and p["empty_key"] for p in phases) and all(h.get("user") == target_user and h["method"] == "GET" for h in hits) and listing >= 2 and heavy > listing and paths.count("/api/accounts/users/me/") >= 3 and pin_ok
+        if args.mode in ["own-keyless", "own-pin", "own-held", "own-cancel", "own-default", "own-default-pin"]:
             post_count = 2 if args.mode == "own-cancel" else 1
             report["passed"] = report["passed"] and report.get("credential_posts") == [{"path": "/api/accounts/token/", "accepted": True}] * post_count and report.get("pre_form_requests") == [] and report.get("own_form_submit_status") == 200 and report.get("own_form_screenshot") is True and hits[0].get("own_password_check") is True and sum(hit["own_password_check"] for hit in hits) == 1
             report["passed"] = report["passed"] and [event["name"] for event in events if event["kind"] == "beacon"] == ["AppDialogInitiate", "AppDialogComplete", "AppLaunchComplete"]

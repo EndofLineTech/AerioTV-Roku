@@ -88,7 +88,7 @@ function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as
     if activeRecovery
         if store.active <> targetId then return false
     else
-        if store.active = targetId then return false
+        if store.active = targetId and not startupRecovery then return false
     end if
     target = invalid
     for each profile in store.profiles
@@ -345,7 +345,7 @@ sub onProfileOwnSignInResult(event as object)
         showProfileOwnSignInForm("Dispatcharr did not accept that username or password.")
         return
     end if
-    planned = userProfileOwnSignInPlan(context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.childRecovery = true)
+    planned = userProfileOwnSignInPlan(context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.childRecovery = true, context.startupRecovery = true)
     if not planned.ok
         result.apiKey = ""
         showProfileOwnSignInForm("Could not safely save this profile. Existing credentials and data were retained.")
@@ -445,7 +445,7 @@ end sub
 sub finishUserProfileOwnSignIn(result as object)
     if not profileOwnSignInContextCurrent() then cancelUserProfileOwnSignIn() : return
     context = m.profileOwnSignInContext
-    saved = commitUserProfileOwnSignIn(m.registry, context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.nonce, m.profileOwnSignInNonce, context.childRecovery = true)
+    saved = commitUserProfileOwnSignIn(m.registry, context.connection, context.store, context.target.id, result, CreateObject("roDateTime").asSeconds(), context.nonce, m.profileOwnSignInNonce, context.childRecovery = true, context.startupRecovery = true)
     if not saved.ok
         result.apiKey = ""
         if saved.recoveryRequired = true
