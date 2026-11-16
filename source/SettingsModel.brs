@@ -45,7 +45,7 @@ function settingsHubAllEntries(page as string, model as object) as object
         entries = [{title: "Connection", page: "connection"}, {title: "Live TV", page: "live"}, {title: "Player", page: "player"}]
         if model <> invalid
             if type(model.profilesBaseline) = "Boolean" or type(model.profilesBaseline) = "roBoolean"
-                if model.profilesBaseline then entries.push({title: "Profiles (baseline)", action: "profiles-baseline"})
+                if model.profilesBaseline then entries.push({title: "Profiles (baseline)", page: "profiles-baseline"})
             end if
         end if
         if model <> invalid
@@ -54,6 +54,13 @@ function settingsHubAllEntries(page as string, model as object) as object
         end if
         entries.append([{title: "Appearance", page: "appearance"}, {title: "General", page: "general"}, {title: "Remote control", page: "remote"}, {title: "About", page: "about"}])
         return entries
+    end if
+    if page = "profiles-baseline"
+        if model = invalid then return []
+        if type(model.profilesBaseline) = "Boolean" or type(model.profilesBaseline) = "roBoolean"
+            if model.profilesBaseline then return [{title: "Open Profiles", action: "profiles-baseline"}]
+        end if
+        return []
     end if
     if page = "live" then return [
         {title: "Guide history days", scope: "guide", key: "historyDays", values: [1, 3, 7, 14, 30]}

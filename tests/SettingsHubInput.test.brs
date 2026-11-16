@@ -20,5 +20,11 @@ sub main()
     if m.focusRegion <> "rail" or m.railIndex <> 4 or m.top.closed or m.list.focused then stop
     if not m.top.focused then stop
     if not handleSettingsKey("back", true) or not m.top.closed then stop
+    m.top.model = {account: "example-account"}
+    m.items = [{title: "Open Profiles", action: "profiles-baseline"}]
+    m.userSessionId = "example-baseline-session"
+    selectSetting(0)
+    if m.top.selection.action <> "profiles-baseline" or m.top.selection.account <> "example-account" then stop
+    if m.top.selection.aeriosession <> m.userSessionId or m.choice <> invalid or m.stack.count() <> 0 then stop
     print "ALL TESTS PASSED"
 end sub

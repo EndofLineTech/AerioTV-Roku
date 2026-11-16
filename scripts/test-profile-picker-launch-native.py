@@ -12,6 +12,7 @@ import threading
 import tempfile
 import time
 import urllib.request
+import urllib.error
 import urllib.parse
 import uuid
 import zipfile
@@ -30,13 +31,20 @@ def real_baseline_accounts(config):
     """Resolve only the two explicitly supplied logins; never print their keys."""
     base = config["baseUrl"].rstrip("/")
     accounts = []
+    def read_json(request):
+        try:
+            with urllib.request.urlopen(request, timeout=20) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as error:
+            if error.code == 429:
+                retry = error.headers.get("Retry-After", "the server cooldown")
+                raise RuntimeError(f"Dispatcharr rate-limited authentication; retry after {retry}. No automatic retry was sent.") from None
+            raise
     for credentials in config["accounts"]:
         request = urllib.request.Request(base + "/api/accounts/token/", data=json.dumps(credentials).encode(), headers={"Content-Type": "application/json"}, method="POST")
-        with urllib.request.urlopen(request, timeout=20) as response:
-            token = json.load(response)["access"]
+        token = read_json(request)["access"]
         request = urllib.request.Request(base + "/api/accounts/users/me/", headers={"Authorization": "Bearer " + token})
-        with urllib.request.urlopen(request, timeout=20) as response:
-            user = json.load(response)
+        user = read_json(request)
         if user.get("username", "").lower() != credentials["username"].lower():
             raise RuntimeError("Test login did not return its own expected identity")
         if not user.get("api_key"):

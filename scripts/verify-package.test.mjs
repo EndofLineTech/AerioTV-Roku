@@ -51,6 +51,7 @@ test('developer profiles baseline cannot ship under any flag value', () => {
     assert.throws(() => assertShippingManifest(`title=AerioTV\naeriotv_profiles_baseline=${value}\n`), /baseline/i);
   }
   assert.throws(() => assertShippingManifest('title=AerioTV Profiles Baseline\n'), /baseline/i);
+  assert.throws(() => assertPackageEntries(['manifest', 'baseline-provision-private.json']), /provision/i);
 });
 
 test('the packaged notices remain identical to the repository originals', () => {

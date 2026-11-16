@@ -1,4 +1,12 @@
 sub main()
+    baseline = {profilesBaseline: true, movies: "allowed", series: "allowed", dvr: "manage"}
+    baselineRoot = settingsHubEntries("", baseline)
+    if baselineRoot.count() <> 10 then stop
+    if baselineRoot[3].page <> "profiles-baseline" or baselineRoot[3].action <> invalid then stop
+    for each entry in baselineRoot
+        if type(entry.page) <> "String" and type(entry.page) <> "roString" then stop
+    end for
+    if settingsHubEntries("profiles-baseline", baseline)[0].action <> "profiles-baseline" then stop
     model = {device: normalizeDevicePreferences(invalid), guide: normalizeGuideSettings(invalid), vodEnabled: true, startupBehavior: "guide", whatsNewVersion: "", version: "0.3.29", movies: "denied", series: "unknown", catchup: "allowed"}
     root = settingsHubEntries("", model)
     if root.count() <> 7 or root[0].page <> "connection" or root[1].page <> "live" or root[2].page <> "player" or root[6].page <> "about" then stop

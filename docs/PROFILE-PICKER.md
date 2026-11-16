@@ -1,18 +1,21 @@
 # Profile picker implementation boundary
 
-`UserProfilePicker` and its staged Scene controller are private:
-`m.profilePickerReady` remains false. Init now has a guarded deferred route;
-synthetic normal-app fixtures enable it, while shipping init retains its
-existing route. There is no public top-bar action. The component grants no authentication,
-PIN, management, or credential authority.
+Normal shipping builds keep `UserProfilePicker` and its staged Scene controller
+private: `m.profilePickerReady` defaults false and shipping init retains its
+existing route. The explicit developer-only `aeriotv_profiles_baseline=1` build
+enables startup selection and **Settings → Profiles (baseline) → Open Profiles**;
+see [the baseline workflow and limits](PROFILES-BASELINE.md). Shipping packaging
+rejects that manifest field under any value. Child access and Sync writes stay
+off. There is still no public top-bar action. The component itself grants no
+authentication, PIN, management, or credential authority.
 
 `source/UserProfilePicker.brs` calculates ordered presentation from a validated
 roster. Child, single-profile, other-provider and deep-link launch cases return
 no tiles. Explicit Ask Off is preserved. Launch and switcher purposes distinguish
 Back exit/close, current-holder PIN/close and Add/Manage intent.
 New playlists now default Ask on; saved Boolean choices remain unchanged.
-The public per-playlist Ask control remains unfinished;
-no stored choices were changed here.
+The developer baseline menu now exposes the per-playlist Ask choice; normal
+shipping exposure remains gated. Existing saved choices are preserved.
 
 The component displays initial/color avatar fallbacks, wrapped names, a native
 shape lock badge, current caption in switcher mode and four-column focus.

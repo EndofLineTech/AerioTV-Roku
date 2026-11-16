@@ -69,6 +69,7 @@ sub renderSettings()
     titles = {live: "Live TV", player: "Player", movies: "Movies & TV Shows", dvr: "DVR", remote: "Remote control", remotePlayer: "While watching", remoteGuide: "In the TV Guide", appearance: "Appearance", general: "General", connection: "Connection", about: "About", whatsNew: "What's New", licenses: "License notices"}
     if titles.doesExist(m.page) then m.heading.text = titles[m.page]
     if m.page = "manage-profiles" then m.heading.text = "Manage Profiles"
+    if m.page = "profiles-baseline" then m.heading.text = "Profiles (baseline)"
     m.note.text = "Changes are saved on this Roku. Back returns to the previous page without moving the guide."
     if m.page = "player" then m.note.text = "Archive skip uses whole minutes. Live startup retries apply on the next tune; each Dispatcharr attempt may wait up to 60 seconds."
     if m.page = "appearance" then m.note.text = "Appearance changes apply on this Roku without interrupting playback. Reset restores the default colors."
@@ -172,8 +173,8 @@ sub selectSetting(index as integer)
         goBackSettings()
     else if item.action = "connection"
         m.top.selection = userViewEvent({account: m.top.model.account, action: "connection"}, m.userSessionId)
-    else if item.action = "profiles-manage"
-        m.top.selection = userViewEvent({account: m.top.model.account, action: "profiles-manage"}, m.userSessionId)
+    else if item.action = "profiles-manage" or item.action = "profiles-baseline"
+        m.top.selection = userViewEvent({account: m.top.model.account, action: item.action}, m.userSessionId)
     else if item.action = "customAccent"
         m.accentDialog = CreateObject("roSGNode", "StandardKeyboardDialog")
         m.accentDialogSession = m.userSessionId

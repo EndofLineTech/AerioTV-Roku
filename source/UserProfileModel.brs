@@ -147,6 +147,20 @@ end function
 
 ' Authorization is the caller's gate; only use normalized, bounded records.
 ' A physical move writes every position but stamps only changed stored orders.
+' UI step controls operate on visible order; stored -1 means not moved yet.
+function userProfileMoveDestination(profiles as object, id as string, delta as integer) as integer
+    if delta <> -1 and delta <> 1 then return -1
+    sorted = userProfileSorted(profiles)
+    for i = 0 to sorted.count() - 1
+        if sorted[i].id = id
+            destination = i + delta
+            if destination < 0 or destination >= sorted.count() then return -1
+            return destination
+        end if
+    end for
+    return -1
+end function
+
 function userProfileMove(profiles as object, id as string, destination as integer, now as integer) as dynamic
     if destination < 0 or destination >= profiles.count() or now <= 0 then return invalid
     ordered = userProfileSorted(profiles)

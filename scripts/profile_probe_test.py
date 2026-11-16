@@ -13,6 +13,40 @@ from unittest.mock import MagicMock, patch
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_owner_approved_provision_archive_uses_normal_signin_and_keeps_payload_private(self):
+        spec = importlib.util.spec_from_file_location('baseline_provision', Path(__file__).with_name('provision-profiles-baseline-native.py'))
+        provision = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(provision)
+        with tempfile.TemporaryDirectory() as folder:
+            source, output = Path(folder) / 'normal.zip', Path(folder) / 'private.zip'
+            with zipfile.ZipFile(source, 'w') as package:
+                package.writestr('manifest', 'title=AerioTV Profiles Baseline\n')
+                package.writestr('components/AerioScene.brs', '    m.registry = CreateObject("roRegistrySection", "AerioTV")\n    m.task.baseUrl = m.baseUrl\n')
+            config = {"baseUrl": "http://example.test", "username": "ExampleA", "password": "example-private"}
+            provision.build(source, output, config)
+            with zipfile.ZipFile(output) as package:
+                scene = package.read('components/AerioScene.brs').decode()
+                self.assertIn('addSavedConnection()', scene)
+                self.assertIn('connectServer(true)', scene)
+                self.assertIn('if m.top.startupReady <> true', scene)
+                self.assertIn('m.task.expectedUsername = m.baselineProvisionConfig.username', scene)
+                self.assertNotIn('example-private', scene)
+                self.assertEqual(json.loads(package.read('baseline-provision-private.json')), config)
+
+    def test_real_baseline_rate_limit_does_not_loop_or_disclose_credentials(self):
+        import urllib.error
+        from email.message import Message
+        spec = importlib.util.spec_from_file_location('rate_baseline', Path(__file__).with_name('test-profile-picker-launch-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        headers = Message()
+        headers["Retry-After"] = "60"
+        error = urllib.error.HTTPError("http://example.test/api/accounts/token/", 429, "Too Many Requests", headers, None)
+        with patch.object(probe.urllib.request, "urlopen", side_effect=error) as request:
+            with self.assertRaisesRegex(RuntimeError, "retry after 60.*No automatic retry"):
+                probe.real_baseline_accounts({"baseUrl": "http://example.test", "accounts": [{"username": "ExampleA", "password": "example-secret"}]})
+            self.assertEqual(request.call_count, 1)
+
     def test_real_baseline_fixture_binds_distinct_approved_accounts(self):
         spec = importlib.util.spec_from_file_location('real_baseline', Path(__file__).with_name('test-profile-picker-launch-native.py'))
         probe = importlib.util.module_from_spec(spec)

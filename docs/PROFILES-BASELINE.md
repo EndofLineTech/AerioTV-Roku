@@ -18,7 +18,7 @@ that field under any value. Building does not install or sign anything.
 ## Try it
 
 On an authenticated adult Dispatcharr account, open **Settings → Profiles
-(baseline)**. Add another account using its own username/password, then choose
+(baseline) → Open Profiles**. Add another account using its own username/password, then choose
 it from the Profiles menu. Manage Profiles offers rename, avatar and earlier/
 later movement. The menu also toggles the per-playlist Ask-at-launch choice.
 With multiple profiles and Ask on, startup shows the picker; holding OK on a
@@ -43,32 +43,43 @@ acknowledged.
 
 ## Current device evidence
 
-The baseline ZIP was installed and its installed MD5 matched the built ZIP.
-The active developer app reports **AerioTV Profiles Baseline**. The current
-saved owner connection opens as Xtream with empty session login fields, so no
-authenticated Dispatcharr Profiles-menu acceptance is claimed from that state.
-Connection settings were not altered.
+The fixed developer ZIP is
+`out/profiles-baseline/aeriotv-roku-v0.3.100-profiles-baseline.zip`.
+SHA256: `86b92a22d10bd031e5a932c71f010295825a4983f1c8b418b373dbe63bb9cf21`.
+It includes Add retry cleanup, the actual Settings page/action integration, and
+management movement based on visible position rather than unset stored order.
+With explicit owner approval, **Profiles Test** was added and selected, signed
+in as the first approved test account through the normal password/auth/read/
+guide controllers. Existing Home metadata, saved key and profile root were
+verified unchanged. `out/mrr-baseline-provision-ready-native.log/.json` reports
+success; the normal fixed ZIP was reinstalled and its installed MD5 verified.
+The subsequent normal-build guide screenshot was inspected:
+`out/mrr-baseline-profiles-test-ready.jpg`. No provisioning fixture remains.
+The second test account was used only in the disposable flow; add it through
+the baseline menu when desired.
 
-Focused host tests and native fake-registry Add/switch-storage policies pass:
+The real Dispatcharr flow passed in
+`out/mrr-baseline-real-dispatcharr-move-fixed-native.log/.json`:
+Settings category → Open Profiles → own-password Add/protection read → own-key
+switch → management Move earlier. Final Add isolation, switch isolation,
+reorder and active-holder checks are all true; disposable registry cleanup and
+exact previous-baseline restoration passed. The source used its own verified
+key; form submission and management choices used owned controller events.
+This is real app/network/storage evidence, not physical-keyboard or
+accessibility/certification acceptance.
+
+The run exposed and fixed the Settings rail/action crash (`AerioTV-Roku-oq1r`)
+and unset-order movement bug (`AerioTV-Roku-ymqz`). Bounded real-server flow
+qualification is closed in `AerioTV-Roku-bou2`; broader epic acceptance remains
+open. Full regression: `out/mrr-baseline-real-settings-final-verify.log`.
+Focused policy/storage evidence remains in
 `out/mrr-baseline-focused-fixed-tests.log` and
-`out/mrr-baseline-policy-qualified-native.log`. These prove policy/storage
-boundaries, not a complete two-account UI/network journey.
+`out/mrr-baseline-policy-qualified-native.log`.
 
-The synthetic full-app journey currently cannot receive the Roku's HTTP
-callbacks through the host's VPN route; no network configuration was changed.
-The separate native Move attempt hit the already tracked initial ECP Right
-timeout. Both remain unverified rather than counted as passes. Full acceptance
-continues in Beads.
-
-Installed baseline ZIP SHA256:
-`2d3f1bca659887223a5fbd1ef0a63355dd29f7c555c3b4402b6e5035941004b6`.
-The network journey is tracked in `AerioTV-Roku-bou2`. Add retry cleanup after a
-failed commit (`AerioTV-Roku-letr`) is fixed in source with a targeted red/green
-controller test; the installed ZIP above predates that follow-up. It is not
-silently reinstalled while the owner may be using the device.
-
-The full baseline regression gate passed in `out/mrr-baseline-verify.log`;
-the later retry fix separately passed its controller suite and compiler check.
+The earlier synthetic host-callback journey was blocked by VPN reachability;
+no network configuration was changed. The separate held-OK startup Move attempt
+hit the tracked initial ECP Right timeout and is not counted as native success.
+That is separate from the now-qualified management Move action.
 
 For an authorized, existing Dispatcharr test server, the focused runner accepts
 `--dispatcharr-credentials /private/path/logins.json --restore /path/to/baseline.zip`.
@@ -79,9 +90,19 @@ never creates accounts or uploads App Data, stores credential-bearing ZIPs in
 a private temporary directory outside the checkout, and restores the exact
 baseline after cleaning its disposable registry.
 
-The owner-supplied test logins both authenticated successfully, but neither
-returned an API key. The real-server journey therefore remains blocked on
-enabling those accounts' own API access; no server settings were changed.
+Persistent setup is a separate, explicitly confirmed operation:
+`scripts/provision-profiles-baseline-native.py --confirm-create`. It uses normal
+connection and sign-in controllers, binds the intended username, refuses an
+existing test-name collision, verifies prior connection ownership unchanged,
+and installs the normal baseline afterward. Its credential payload and one-shot
+package stay in a private temporary directory outside the checkout. Shipping
+verification rejects provisioning material. It is not part of ordinary testing.
+
+The owner-supplied test logins both authenticated successfully. They initially
+returned no API key; after the owner enabled API access, both returned their own
+keys. The focused real-server journey then passed. A temporary HTTP
+429 during repeated sign-in checks was respected without automatic retries;
+no server settings were changed by the agent.
 
 ## Rollback on the authorized development Roku
 

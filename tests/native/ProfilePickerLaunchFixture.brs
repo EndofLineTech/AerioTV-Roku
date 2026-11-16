@@ -97,7 +97,12 @@ sub onProfileBaselineProbeTick()
         if m.page <> "guide" or m.busy or m.activeUserScope = invalid then return
         m.pickerProbeBaselineSettings = m.registry.read("settingsV1")
         openSettingsHub()
-        openProfileBaselineMenu()
+        m.settingsHub.callFunc("selectSettingsCategory", 3)
+        m.settingsHub.callFunc("selectSetting", 0)
+        m.pickerProbeBaselineStage = 10
+        return
+    end if
+    if stage = 10
         if m.profileBaselineMenu = invalid then return
         m.pickerProbeBaselineStage = 1
         onProfileBaselineChoice(baselineProbeEvent(m.profileBaselineMenu, 1))
@@ -121,6 +126,7 @@ sub onProfileBaselineProbeTick()
         valid = store.active = m.pickerProbeA and store.pendingRoster and m.registry.read("connKey_slot-a") = "synthetic-a"
         valid = valid and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeAdded)) = "synthetic-b" and m.registry.read("settingsV1") = m.pickerProbeBaselineSettings
         m.pickerProbeBaselineValid = valid
+        m.pickerProbeBaselineAddValid = valid
         m.pickerProbeBaselineStage = 3
         onProfileBaselineChoice(baselineProbeEvent(m.profileBaselineMenu, 1))
         return
@@ -128,7 +134,8 @@ sub onProfileBaselineProbeTick()
     if stage = 3
         if m.busy or m.profileSwitchContext <> invalid or m.activeUserScope = invalid then return
         if m.activeUserScope.accountId <> "8" then return
-        m.pickerProbeBaselineValid = m.pickerProbeBaselineValid and m.apiKey = "synthetic-b" and m.userProfileStore.pendingRoster and m.accountPreferences.favoriteIds.count() = 0
+        m.pickerProbeBaselineSwitchValid = m.apiKey = "synthetic-b" and m.userProfileStore.pendingRoster and m.accountPreferences.favoriteIds.count() = 0
+        m.pickerProbeBaselineValid = m.pickerProbeBaselineValid and m.pickerProbeBaselineSwitchValid
         openUserProfileManagement()
         if m.profileManagementDialog = invalid then return
         onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, 1))
@@ -142,7 +149,7 @@ sub onProfileBaselineProbeTick()
         sorted = userProfileSorted(store.profiles)
         passed = m.pickerProbeBaselineValid and sorted[0].id = m.pickerProbeAdded and store.active = m.pickerProbeAdded and store.pendingRoster
         passed = passed and m.apiKey = "synthetic-b" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.profileOwnSignInContext = invalid
-        print "[picker-launch] "; FormatJson({kind: "result", passed: passed, baseline: true})
+        print "[picker-launch] "; FormatJson({kind: "result", passed: passed, baseline: true, addIsolated: m.pickerProbeBaselineAddValid, switchIsolated: m.pickerProbeBaselineSwitchValid, reordered: sorted[0].id = m.pickerProbeAdded, activeRetained: store.active = m.pickerProbeAdded})
     end if
 end sub
 

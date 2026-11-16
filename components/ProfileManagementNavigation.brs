@@ -169,8 +169,10 @@ sub onProfileManagementChoice(event as object)
         m.profileAvatarPage = 1 - m.profileAvatarPage
         showProfileAvatarPage()
     else if action = "earlier" or action = "later"
-        position = target.order - 1
-        if action = "later" then position = target.order + 1
+        delta = -1
+        if action = "later" then delta = 1
+        position = userProfileMoveDestination(store.profiles, target.id, delta)
+        if position < 0 then showProfileManagementEditor(target.id) : return
         saveProfileManagementMetadata("order", position)
     else if action = "role"
         admin = userProfileLoadDeviceAdminPin(m.registry, m.selectedConnectionId)
