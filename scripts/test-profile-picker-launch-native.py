@@ -9,6 +9,7 @@ from pathlib import Path
 import socket
 import subprocess
 import threading
+import tempfile
 import time
 import urllib.request
 import urllib.parse
@@ -25,7 +26,42 @@ def await_back_ack(report, completed):
     return report.get("back_status") == 200
 
 
-def build(path, normal, section, base, mode="plain"):
+def real_baseline_accounts(config):
+    """Resolve only the two explicitly supplied logins; never print their keys."""
+    base = config["baseUrl"].rstrip("/")
+    accounts = []
+    for credentials in config["accounts"]:
+        request = urllib.request.Request(base + "/api/accounts/token/", data=json.dumps(credentials).encode(), headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(request, timeout=20) as response:
+            token = json.load(response)["access"]
+        request = urllib.request.Request(base + "/api/accounts/users/me/", headers={"Authorization": "Bearer " + token})
+        with urllib.request.urlopen(request, timeout=20) as response:
+            user = json.load(response)
+        if user.get("username", "").lower() != credentials["username"].lower():
+            raise RuntimeError("Test login did not return its own expected identity")
+        if not user.get("api_key"):
+            raise RuntimeError("Approved test account lacks API access; enable its own API key in Dispatcharr before testing")
+        accounts.append({"user": user, "password": credentials["password"]})
+    if len(accounts) != 2 or accounts[0]["user"]["id"] == accounts[1]["user"]["id"]:
+        raise RuntimeError("Two distinct approved accounts are required")
+    return base, accounts
+
+
+def real_baseline_fixture(fixture, accounts):
+    first, second = (account["user"] for account in accounts)
+    for old, user in [(7, first), (8, second)]:
+        fixture = fixture.replace(f'id: {old}, username: "Synthetic{old}", user_level: 1', f'id: {int(user["id"])}, username: {json.dumps(user["username"])}, user_level: {int(user["user_level"])}')
+        fixture = fixture.replace(f'"Synthetic{old}"', json.dumps(user["username"]))
+        fixture = fixture.replace(f'connectionPreferenceIdentity(connection, "{old}")', f'connectionPreferenceIdentity(connection, "{user["id"]}")')
+    fixture = fixture.replace('accountId: "7"', f'accountId: "{first["id"]}"')
+    fixture = fixture.replace('m.activeUserScope.accountId <> "8"', f'm.activeUserScope.accountId <> "{second["id"]}"')
+    fixture = fixture.replace('profile.userId = 8 then m.pickerProbeAdded', f'profile.userId = {second["id"]} then m.pickerProbeAdded')
+    fixture = fixture.replace('"synthetic-a"', json.dumps(first["api_key"]))
+    fixture = fixture.replace('"synthetic-b"', json.dumps(second["api_key"]))
+    return fixture.replace('"synthetic-password"', json.dumps(accounts[1]["password"]))
+
+
+def build(path, normal, section, base, mode="plain", baseline_accounts=None):
     with zipfile.ZipFile(normal) as original, zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
@@ -59,7 +95,10 @@ def build(path, normal, section, base, mode="plain"):
                     target = "            cancelStartupProfileTask()\n            closeUserProfileLaunchPicker()\n            m.top.exitRequested = true"
                     assert source.count(target) == 1
                     source = source.replace(target, target.replace("            m.top.exitRequested", "            verifyStartupPickerProbeCancel()\n            m.top.exitRequested"), 1)
-                body = source.encode() + b"\n" + (ROOT / "tests/native/ProfilePickerLaunchFixture.brs").read_bytes()
+                fixture = (ROOT / "tests/native/ProfilePickerLaunchFixture.brs").read_text()
+                if baseline_accounts:
+                    fixture = real_baseline_fixture(fixture, baseline_accounts)
+                body = (source + "\n" + fixture).encode()
             elif name == "components/AerioScene.xml" and mode == "back":
                 body = body.replace(b"<interface>", b'<interface><field id="pickerProbeCancelPassed" type="boolean" value="false" />', 1)
             elif name == "source/Main.brs" and mode == "back":
@@ -107,8 +146,16 @@ def main():
     parser.add_argument("--restore", required=True)
     parser.add_argument("--report", default="out/profile-picker-launch-native.json")
     parser.add_argument("--baseline", action="store_true", help="Focused Add, switch, and management baseline flow")
+    parser.add_argument("--dispatcharr-credentials", type=Path, help="Private JSON: baseUrl and two accounts with username/password; implies baseline, read-only server testing")
     parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link", "own-keyless", "own-pin", "own-held", "own-cancel", "own-link", "own-pin-link", "own-auth-link", "own-default", "own-default-pin", "own-wrong", "own-recreated", "own-memory", "own-keyboard", "child-select", "child-select-pin", "child-select-reject", "child-select-link", "reorder"], default="plain")
     args = parser.parse_args()
+    baseline_accounts = None
+    real_base = None
+    if args.dispatcharr_credentials:
+        if args.dispatcharr_credentials.resolve().is_relative_to(ROOT):
+            raise RuntimeError("Keep real test credentials outside the repository")
+        args.baseline = True
+        real_base, baseline_accounts = real_baseline_accounts(json.loads(args.dispatcharr_credentials.read_text()))
     host, password = os.environ["ROKU_HOST"], os.environ["ROKU_DEV_PASSWORD"]
     modules = {}
     for name in ["primitives", "recovery", "management"]:
@@ -256,9 +303,11 @@ def main():
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
     section = "AerioPickerLaunchProbe-" + str(uuid.uuid4())
-    archive = ROOT / "out/profile-picker-launch-probe.zip"
-    cleaner = ROOT / "out/profile-picker-launch-cleanup.zip"
-    build(archive, ROOT / "out/aeriotv-roku.zip", section, f"http://{local}:{server.server_port}", "baseline" if args.baseline else args.mode)
+    private_package = tempfile.TemporaryDirectory(prefix="aeriotv-real-baseline-", dir=args.dispatcharr_credentials.resolve().parent) if baseline_accounts else None
+    package_dir = Path(private_package.name) if private_package else ROOT / "out"
+    archive = package_dir / "profile-picker-launch-probe.zip"
+    cleaner = package_dir / "profile-picker-launch-cleanup.zip"
+    build(archive, ROOT / "out/aeriotv-roku.zip", section, real_base or f"http://{local}:{server.server_port}", "baseline" if args.baseline else args.mode, baseline_accounts)
     modules["recovery"].cleanup_package(cleaner, section)
     report = {"passed": False, "mode": args.mode, "events": [], "keys": [], "restore_sha256": hashlib.sha256(restore.read_bytes()).hexdigest(), "probe_sha256": hashlib.sha256(archive.read_bytes()).hexdigest()}
     process = None
@@ -267,7 +316,7 @@ def main():
         return subprocess.run(["python3", "scripts/run-native-probe.py", str(path), "--prefix", prefix, "--marker", marker, "--timeout", "45"], cwd=ROOT, capture_output=True, text=True, timeout=100)
 
     try:
-        process = subprocess.Popen(["python3", "scripts/run-native-probe.py", str(archive), "--prefix", "[picker-launch]", "--marker", '"kind":"result"', "--timeout", "75"], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        process = subprocess.Popen(["python3", "scripts/run-native-probe.py", str(archive), "--prefix", "[picker-launch]", "--marker", '"kind":"result"', "--timeout", "180" if baseline_accounts else "75"], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         for line in process.stdout:
             print(line, end="", flush=True)
             report.setdefault("output", []).append(line.rstrip())
@@ -496,6 +545,9 @@ def main():
         report["ready_events_valid"] = all(event.get("ready") is True for event in events if event["kind"] in ["ready", "pin-ready", "rejected-ready", "own-form-ready", "keyboard-ready", "reorder-menu"])
         if args.baseline:
             report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and events[-1].get("baseline") is True and report.get("credential_posts") == [{"path": "/api/accounts/token/", "accepted": True}] and all(hit.get("method") == "GET" for hit in hits) and any(hit.get("user") == 8 and hit.get("path", "").startswith("/api/channels/") for hit in hits)
+            if baseline_accounts:
+                report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and events[-1].get("baseline") is True
+                report["real_dispatcharr"] = True
         report["passed"] = report["passed"] and report["ready_events_valid"]
     finally:
         report["requests"] = hits.copy()
@@ -510,6 +562,8 @@ def main():
             report["restored"] = restored.returncode == 0 and modules["primitives"].installed_md5(host, password) == digest
             server.shutdown()
             server.server_close()
+            if private_package:
+                private_package.cleanup()
             Path(args.report).write_text(json.dumps(report, indent=2) + "\n")
             print(json.dumps({key: report.get(key, False) for key in ["passed", "cleaned", "restored"]}), flush=True)
         if not report.get("cleaned") or not report.get("restored"):

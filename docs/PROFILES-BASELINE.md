@@ -70,6 +70,19 @@ silently reinstalled while the owner may be using the device.
 The full baseline regression gate passed in `out/mrr-baseline-verify.log`;
 the later retry fix separately passed its controller suite and compiler check.
 
+For an authorized, existing Dispatcharr test server, the focused runner accepts
+`--dispatcharr-credentials /private/path/logins.json --restore /path/to/baseline.zip`.
+The private JSON contains `baseUrl` and exactly two `accounts`, each with
+`username` and `password`. Keep it outside the checkout. Both accounts must
+already have API access enabled. The runner uses auth POSTs and read requests,
+never creates accounts or uploads App Data, stores credential-bearing ZIPs in
+a private temporary directory outside the checkout, and restores the exact
+baseline after cleaning its disposable registry.
+
+The owner-supplied test logins both authenticated successfully, but neither
+returned an API key. The real-server journey therefore remains blocked on
+enabling those accounts' own API access; no server settings were changed.
+
 ## Rollback on the authorized development Roku
 
 Reinstall the preserved owner build

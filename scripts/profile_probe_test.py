@@ -13,6 +13,22 @@ from unittest.mock import MagicMock, patch
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_real_baseline_fixture_binds_distinct_approved_accounts(self):
+        spec = importlib.util.spec_from_file_location('real_baseline', Path(__file__).with_name('test-profile-picker-launch-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        root = Path(__file__).resolve().parent.parent
+        accounts = [
+            {"user": {"id": 23, "username": "ExampleA", "user_level": 1, "api_key": "example-key-a"}, "password": "example-password-a"},
+            {"user": {"id": 42, "username": "ExampleB", "user_level": 1, "api_key": "example-key-b"}, "password": "example-password-b"},
+        ]
+        fixture = probe.real_baseline_fixture((root / 'tests/native/ProfilePickerLaunchFixture.brs').read_text(), accounts)
+        self.assertIn('id: 23, username: "ExampleA", user_level: 1', fixture)
+        self.assertIn('m.activeUserScope.accountId <> "42"', fixture)
+        self.assertIn('profile.userId = 42 then m.pickerProbeAdded', fixture)
+        self.assertIn('m.profileOwnSignInContext.password = "example-password-b"', fixture)
+        self.assertNotIn('"synthetic-a"', fixture)
+
     def test_baseline_builder_changes_only_manifest_and_writes_checksum(self):
         spec = importlib.util.spec_from_file_location('baseline_builder', Path(__file__).with_name('build-profiles-baseline.py'))
         builder = importlib.util.module_from_spec(spec)
