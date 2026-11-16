@@ -40,7 +40,7 @@ class ProfileProbeTest(unittest.TestCase):
             with zipfile.ZipFile(normal, 'w') as package:
                 for name in names:
                     package.write(root / name, name)
-            for mode in ['plain', 'pin', 'import-pin', 'back', 'reject', 'identity', 'cold-link', 'warm-link', 'warm-pin-link', 'warm-auth-link']:
+            for mode in ['plain', 'pin', 'import-pin', 'back', 'reject', 'identity', 'cold-link', 'warm-link', 'warm-pin-link', 'warm-auth-link', 'warm-import-pin-link', 'warm-load-link']:
                 target = Path(folder) / f'{mode}.zip'
                 probe.build(target, normal, 'DisposablePicker', 'http://fixture.test', mode)
                 with zipfile.ZipFile(target) as package:

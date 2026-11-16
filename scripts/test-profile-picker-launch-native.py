@@ -95,7 +95,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--restore", required=True)
     parser.add_argument("--report", default="out/profile-picker-launch-native.json")
-    parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link"], default="plain")
+    parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link"], default="plain")
     args = parser.parse_args()
     host, password = os.environ["ROKU_HOST"], os.environ["ROKU_DEV_PASSWORD"]
     modules = {}
@@ -122,8 +122,11 @@ def main():
             key = self.headers.get("X-API-Key", "")
             user = {"synthetic-a": 7, "synthetic-b": 8}.get(key, 0)
             hits.append({"user": user, "path": self.path, "method": "GET"})
-            if args.mode == "warm-auth-link" and user == 8 and self.path == "/api/accounts/users/me/" and not report.get("media_input_attempted"):
+            delayed_link = args.mode == "warm-auth-link" and self.path == "/api/accounts/users/me/"
+            delayed_link = delayed_link or args.mode == "warm-load-link" and self.path.startswith("/api/channels/")
+            if delayed_link and user == 8 and not report.get("media_input_attempted"):
                 report["media_input_attempted"] = True
+                report["media_input_boundary"] = hits.copy()
                 report["media_input_activity"] = modules["management"].management_probe_activity(host)
                 if report["media_input_activity"] == {"dev_active": True, "screensaver_active": False}:
                     request = urllib.request.Request(f"http://{host}:8060/input?contentId=missing-fixture-id&mediaType=live", data=b"", method="POST")
@@ -152,7 +155,7 @@ def main():
                     value = {"id": 9, "username": "Synthetic9", "user_level": 1}
                     report["mismatched_me_response"] = {"status": 200, "id": 9, "username": "Synthetic9"}
             elif self.path == "/api/accounts/users/me/app-data/":
-                value = {"apps": [{"key": "synthetic8.aeriotv", "bytes": 600}]} if args.mode == "import-pin" else {"apps": []}
+                value = {"apps": [{"key": "synthetic8.aeriotv", "bytes": 600}]} if args.mode in ["import-pin", "warm-import-pin-link"] and user == 8 else {"apps": []}
             elif self.path == "/api/accounts/users/me/app-data/synthetic8.aeriotv/":
                 salt = "0123456789abcdef0123456789abcdef"
                 updated = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(stamp))
@@ -229,7 +232,7 @@ def main():
                         break
             elif event["kind"] == "pin-ready":
                 report.setdefault("pre_pin_requests", []).append(hits.copy())
-                if args.mode == "warm-pin-link" and event.get("target_before_link"):
+                if args.mode in ["warm-pin-link", "warm-import-pin-link"] and event.get("target_before_link"):
                     request = urllib.request.Request(f"http://{host}:8060/input?contentId=missing-fixture-id&mediaType=live", data=b"", method="POST")
                     try:
                         with urllib.request.urlopen(request, timeout=3) as response:
@@ -277,7 +280,7 @@ def main():
         if args.mode == "import-pin":
             expected_phases.insert(2, "read")
         pins = [event for event in events if event["kind"] == "pin-submitted"]
-        pin_count = {"plain": 0, "pin": 1, "import-pin": 2, "back": 0, "reject": 0, "identity": 0, "cold-link": 1, "warm-link": 1, "warm-pin-link": 1, "warm-auth-link": 1}[args.mode]
+        pin_count = {"plain": 0, "pin": 1, "import-pin": 2, "back": 0, "reject": 0, "identity": 0, "cold-link": 1, "warm-link": 1, "warm-pin-link": 1, "warm-auth-link": 1, "warm-import-pin-link": 2, "warm-load-link": 1}[args.mode]
         before_pins = report.get("pre_pin_requests", [])
         pin_ok = len(pins) == pin_count and all(event["wrong_covered"] and event["verified"] for event in pins) and [command.get("status") for command in report.get("pin_commands", [])] == [200] * pin_count
         if pin_count:
@@ -294,7 +297,7 @@ def main():
                 report["passed"] = report["passed"] and report.get("rejected_ready") is True and report.get("held_retry_status") == 200 and report.get("rejected_screenshot") is True and len(report.get("held_retry_boundary", [])) == 1 and events[-1].get("held_refused") is True
                 if args.mode == "identity":
                     report["passed"] = report["passed"] and report.get("mismatched_me_response") == {"status": 200, "id": 9, "username": "Synthetic9"} and events[-1].get("no_broker_hold") is True
-        if args.mode in ["cold-link", "warm-link", "warm-pin-link", "warm-auth-link"]:
+        if args.mode in ["cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link"]:
             expected_beacons = ["AppDialogInitiate", "AppDialogComplete", "AppLaunchComplete"]
             if args.mode != "cold-link":
                 expected_beacons = ["AppDialogInitiate", "AppDialogComplete", "AppDialogInitiate", "AppDialogComplete", "AppLaunchComplete"]
@@ -313,6 +316,20 @@ def main():
             report["passed"] = report["passed"] and len(report.get("source_pin_screenshots", [])) == 1 and all(image["captured"] for image in report["source_pin_screenshots"])
             if args.mode != "cold-link":
                 report["passed"] = report["passed"] and report.get("media_input_status") == 200
+        if args.mode in ["warm-import-pin-link", "warm-load-link"]:
+            target_hits = [hit for hit in hits if hit.get("user") == 8]
+            source_hits = hits[len(target_hits):]
+            pin_ok = len(pins) == pin_count and all(pin["wrong_covered"] and pin["verified"] for pin in pins) and [command.get("status") for command in report.get("pin_commands", [])] == [200] * pin_count
+            if args.mode == "warm-import-pin-link":
+                expected_target_paths = ["/api/accounts/users/me/", "/api/accounts/users/me/", "/api/accounts/users/me/app-data/", "/api/accounts/users/me/app-data/synthetic8.aeriotv/"]
+                expected_phases = ["authenticate", "read"]
+                pin_ok = pin_ok and len(before_pins) == 3 and before_pins[0] == [] and before_pins[1] == target_hits and before_pins[2] == target_hits
+            else:
+                expected_target_paths = ["/api/accounts/users/me/", "/api/accounts/users/me/", "/api/accounts/users/me/app-data/", "/api/accounts/users/me/", "/api/channels/channels/summary/?ordering=channel_number"]
+                expected_phases = ["authenticate", "read", "load"]
+                pin_ok = pin_ok and len(before_pins) == 1 and before_pins[0] == target_hits and report.get("media_input_boundary") == target_hits and report.get("media_input_activity") == {"dev_active": True, "screensaver_active": False}
+            source_paths = [hit["path"] for hit in source_hits]
+            report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and events[-1].get("source_link") is True and report.get("pre_selection_requests") == [] and report.get("screenshot") is True and [key.get("status") for key in report["keys"]] == [200, 200] and [p["phase"] for p in phases] == expected_phases and all(p["no_actor"] and p["empty_key"] for p in phases) and [hit["path"] for hit in target_hits] == expected_target_paths and all(hit.get("user") == 7 and hit["method"] == "GET" for hit in source_hits) and source_paths.count("/api/accounts/users/me/") >= 3 and "/api/accounts/users/me/app-data/" in source_paths and any(path.startswith("/api/channels/") for path in source_paths) and pin_ok and beacons == expected_beacons and report.get("media_input_status") == 200 and len(report.get("source_pin_screenshots", [])) == 1 and report["source_pin_screenshots"][0]["captured"]
         report["ready_events_valid"] = all(event.get("ready") is True for event in events if event["kind"] in ["ready", "pin-ready", "rejected-ready"])
         report["passed"] = report["passed"] and report["ready_events_valid"]
     finally:

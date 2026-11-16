@@ -338,3 +338,27 @@ Full verify: `out/mrr-picker-identity-refusal-final-verify.log`.
 The first native attempt timed out before selection; its separate evidence is
 preserved at `out/mrr-picker-identity-refusal-native.log/.json` under `667m`.
 All attempts cleaned their fixture data and restored the exact owner app.
+
+Further deferred-link qualification now covers:
+
+- `out/mrr-picker-warm-import-pin-link-repeat-native.log`: after initial target
+  PIN/authentication and canonical App Data, an imported replacement PIN is
+  durably retained. The link retires that real replacement pad; stale submit
+  and close callbacks cannot affect the restored holder's new pad. No target
+  lineup starts. The restored own PIN then loads only the restored guide.
+- `out/mrr-picker-warm-load-link-native.log`: after own authentication and
+  protection read, the link arrives during an actual delayed target channel
+  summary. It cancels/scrubs that Task and its nonce. Restored PIN/own reload
+  succeeds and remains correct for six seconds beyond guide readiness,
+  including the delayed target reply. No subsequent target requests occur.
+
+Both reports verify unchanged target preferences/both keys, pending roster
+intent, no adoption acknowledgement, local paired dialog beacons and one launch
+completion. Source-PIN screenshots ending `-source-pin-3.jpg` and
+`-source-pin-1.jpg`, respectively, were inspected. Final build/host/archive
+verification: `out/mrr-picker-late-links-pre-native-verify.log`.
+The first imported-PIN-link run timed out after picker readiness; preserve
+`out/mrr-picker-warm-import-pin-link-native.log/.json` separately under `667m`.
+Every run cleaned its section and checksum-restored the exact owner app.
+These deliberately missing-lineup links still do not establish media playback,
+Dashboard acceptance, production readiness or owner acceptance.

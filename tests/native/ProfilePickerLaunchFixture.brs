@@ -4,11 +4,11 @@ sub seedProfilePickerLaunchProbe(base as string, mode as string)
     b = setCanonicalPreference(b, "isDefault", false)
     m.pickerProbeMode = mode
     m.pickerProbePickerCount = 0
-    if mode = "pin" or mode = "import-pin" or mode = "cold-link" or mode = "warm-link" or mode = "warm-pin-link" or mode = "warm-auth-link"
+    if mode = "pin" or mode = "import-pin" or mode = "cold-link" or mode = "warm-link" or mode = "warm-pin-link" or mode = "warm-auth-link" or mode = "warm-import-pin-link" or mode = "warm-load-link"
         a = setCanonicalPreference(a, "pinType", "numbers")
         a = setCanonicalPreference(a, "pinSalt", "0123456789abcdef0123456789abcdef")
         a = setCanonicalPreference(a, "pinHash", userProfilePinHash(a.pinSalt, "2468"))
-        if mode = "pin" or mode = "import-pin" or mode = "warm-pin-link"
+        if mode = "pin" or mode = "import-pin" or mode = "warm-pin-link" or mode = "warm-import-pin-link"
             b = setCanonicalPreference(b, "pinType", "numbers")
             b = setCanonicalPreference(b, "pinSalt", "0123456789abcdef0123456789abcdef")
             b = setCanonicalPreference(b, "pinHash", userProfilePinHash(b.pinSalt, "1234"))
@@ -39,7 +39,7 @@ sub seedProfilePickerLaunchProbe(base as string, mode as string)
 end sub
 
 sub onProfilePickerLaunchProbeTick()
-    sourceLink = m.pickerProbeMode = "cold-link" or m.pickerProbeMode = "warm-link" or m.pickerProbeMode = "warm-pin-link" or m.pickerProbeMode = "warm-auth-link"
+    sourceLink = m.pickerProbeMode = "cold-link" or m.pickerProbeMode = "warm-link" or m.pickerProbeMode = "warm-pin-link" or m.pickerProbeMode = "warm-auth-link" or m.pickerProbeMode = "warm-import-pin-link" or m.pickerProbeMode = "warm-load-link"
     if m.pickerProbeMode = "cold-link" and m.profilePinDialog <> invalid and m.pickerProbeReady <> true
         m.pickerProbeReady = true
         ready = m.profilePicker = invalid and m.pickerProbePickerCount = 0 and m.profileStartupScreenReady and not m.profileStartupDeferred and m.activeUserScope = invalid and m.global.profilegateclosed and m.profilePinContext.profile.id = m.pickerProbeA and m.profilePinContext.continuation = "connect" and m.task = invalid
@@ -81,7 +81,10 @@ sub onProfilePickerLaunchProbeTick()
     end if
     if m.profilePinDialog <> invalid
         targetBeforeLink = m.pickerProbeMode = "warm-pin-link" and m.profilePinContext.continuation = "startup-selection"
-        sourcePin = sourceLink and not targetBeforeLink
+        if m.pickerProbeMode = "warm-import-pin-link" and m.profilePinContext.continuation = "startup-selection"
+            targetBeforeLink = m.profileStartupSelectionContext.authenticated = true
+        end if
+        sourcePin = sourceLink and m.profilePinContext.continuation = "connect"
         freshDialog = m.pickerProbeDialog = invalid
         if not freshDialog then freshDialog = not m.profilePinDialog.isSameNode(m.pickerProbeDialog)
         if freshDialog
@@ -129,7 +132,7 @@ sub onProfilePickerLaunchProbeTick()
         return
     end if
     if m.page <> "guide" or m.busy then return
-    if m.pickerProbeMode = "warm-auth-link"
+    if m.pickerProbeMode = "warm-auth-link" or m.pickerProbeMode = "warm-load-link"
         if m.pickerProbeWarmWait = invalid
             m.pickerProbeWarmWait = CreateObject("roTimeSpan")
             m.pickerProbeWarmWait.mark()
@@ -147,7 +150,15 @@ sub onProfilePickerLaunchProbeTick()
         passed = passed and store.active = m.pickerProbeA and store.pendingRoster and m.apiKey = "synthetic-a" and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeB)) = "synthetic-b"
         passed = passed and m.accountPreferences.favoriteIds[0] = "7" and m.guide.callFunc("profilePickerProbeLineup") = "7" and m.pickerProbePickerCount = expectedCount and m.profileLaunchPickerDeepLink and m.profileLaunchPickerResolved and m.pendingLaunch = invalid and not m.startupDialogOpen
         if m.pickerProbeMode = "warm-pin-link" then passed = passed and m.pickerProbeStaleRefused = true
-        if m.pickerProbeMode = "warm-auth-link" then passed = passed and m.pickerProbeTask.cancelRequested and m.pickerProbeTask.apiKey = "" and m.pickerProbeTask.aeriosession <> m.activeUserScope.sessionId
+        if m.pickerProbeMode = "warm-import-pin-link"
+            passed = passed and m.pickerProbeStaleRefused = true
+            for each profile in store.profiles
+                if profile.id = m.pickerProbeB then passed = passed and profile.pinType = "numbers" and profile.pinHash = userProfilePinHash("0123456789abcdef0123456789abcdef", "5678")
+            end for
+        end if
+        if m.pickerProbeMode = "warm-auth-link" or m.pickerProbeMode = "warm-load-link" then passed = passed and m.pickerProbeTask.cancelRequested and m.pickerProbeTask.apiKey = "" and m.pickerProbeTask.aeriosession <> m.activeUserScope.sessionId
+        targetSettings = preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "8"))
+        passed = passed and settings.accounts[targetSettings].favoriteIds[0] = "8" and settings.accounts[targetSettings].profileSettings.themePreset = "forest" and not m.registry.exists(userProfileSyncAckKey("slot-a"))
         print "[picker-launch] "; FormatJson({kind: "result", passed: passed, source_link: true, picker_count: m.pickerProbePickerCount})
         return
     end if
