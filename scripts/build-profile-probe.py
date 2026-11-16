@@ -135,6 +135,10 @@ def build(output, base_url, registry=False, model_store=False):
         for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'RequestGateClient', 'RequestGateModel', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileCleanup', 'UserProfileScope', 'UserProfileScopeStore', 'PreferenceModel', 'ConnectionStoreModel', 'RemoteMapModel', 'GuideSettingsModel', 'ReminderModel']:
             package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
         if model_store:
+            package.write(ROOT / 'source/PhoneSetupProfileImport.brs', 'source/PhoneSetupProfileImport.brs')
+            phone_checks = (ROOT / 'tests/PhoneSetupProfiles.test.brs').read_text().split('sub check(', 1)[0]
+            phone_checks = phone_checks.replace('sub main()', 'sub runPhoneSetupProfilesChecks()').replace('check(', 'profileAssert(')
+            package.writestr('source/PhoneSetupProfilesProbeChecks.brs', phone_checks)
             picker_checks = (ROOT / 'tests/UserProfilePicker.test.brs').read_text().split('sub check(', 1)[0]
             picker_checks = picker_checks.replace('sub main()', 'sub runUserProfilePickerChecks()').replace('check(', 'profileAssert(')
             package.writestr('source/UserProfilePickerProbeChecks.brs', picker_checks)

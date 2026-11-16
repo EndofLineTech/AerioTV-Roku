@@ -51,6 +51,8 @@ sub configureNavigation()
         if type(m.items[i].avatarInitial) = "String" or type(m.items[i].avatarInitial) = "roString"
             icon.visible = false
             avatar = uiSurface(m.top, x + content.iconX, content.iconY, 24, 24, 12, m.items[i].avatarFill)
+            avatar.uiPaint = {}
+            avatar.color = m.items[i].avatarFill
             mark = uiLabel(m.top, m.items[i].avatarInitial, x + content.iconX, content.iconY, 24, 24, 18, m.items[i].avatarInk)
             mark.horizAlign = "center"
             mark.vertAlign = "center"

@@ -135,7 +135,10 @@ sub onProfileBaselineProbeTick()
         m.pickerProbeBaselineAddValid = valid
         candidate = copyJson(store)
         for i = 0 to candidate.profiles.count() - 1
-            if candidate.profiles[i].id = m.pickerProbeAdded then candidate.profiles[i] = setCanonicalPreference(candidate.profiles[i], "avatar", {icon: "rocket", color: "purple"})
+            if candidate.profiles[i].id = m.pickerProbeAdded
+                candidate.profiles[i] = setCanonicalPreference(candidate.profiles[i], "avatar", {icon: "rocket", color: "purple"})
+                candidate.profiles[i] = setCanonicalPreference(candidate.profiles[i], "displayName", "Living Room Profile — Test User")
+            end if
         end for
         if not commitUserProfileStore(m.registry, store, candidate, {}, true).ok then return
         m.userProfileStore = candidate
@@ -163,12 +166,19 @@ sub onProfileBaselineProbeTick()
         m.pickerProbeBaselineSwitchValid = m.apiKey = "synthetic-b" and m.userProfileStore.pendingRoster and m.accountPreferences.favoriteIds.count() = 0
         m.pickerProbeBaselineSwitchValid = m.pickerProbeBaselineSwitchValid and m.guide.profileSwitcher.avatarUri = "pkg:/images/profile-avatar-rocket.png"
         m.pickerProbeBaselineValid = m.pickerProbeBaselineValid and m.pickerProbeBaselineSwitchValid
+        m.global.appearance = {themePreset: "aerio", appearanceMode: "light", textSize: 120, subtextSize: 120}
         openBaselineProbeSwitcher()
         m.pickerProbeBaselineStage = 30
         return
     end if
     if stage = 30
         if m.profileSwitcher = invalid then return
+        if m.pickerProbeVisualReady <> true
+            m.pickerProbeVisualReady = true
+            print "[picker-launch] "; FormatJson({kind: "switcher-visual", light: true, largeText: true})
+            return
+        end if
+        if m.pickerProbeVisualCaptured <> true then return
         model = m.profileSwitcher.model
         m.pickerProbeLiveMoveIndex = model.focus
         m.profileSwitcher.intent = {action: "reorder", index: model.focus, uiNonce: model.uiNonce}

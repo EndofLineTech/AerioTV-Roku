@@ -1,4 +1,10 @@
 sub init()
+    uiSetColor(m.top.findNode("background"), "0x081525FF")
+    uiSetColor(m.top.findNode("titleLabel"), "0xE8F3FAFF")
+    uiSetFont(m.top.findNode("titleLabel"), 48, "font", false, 90)
+    uiSetColor(m.top.findNode("helpLabel"), "0x9EB5C9FF")
+    uiSetFont(m.top.findNode("helpLabel"), 22, "font", false, 45)
+    uiSetFont(m.top.findNode("messageLabel"), 28, "font", false, 70)
     m.tiles = m.top.findNode("tiles")
     m.holdTimer = m.top.findNode("holdTimer")
     m.holdTimer.observeField("fire", "onPickerHold")
@@ -34,11 +40,11 @@ sub drawPickerTiles()
         group = m.tiles.createChild("Group")
         group.translation = [x, y]
         color = "0x172D43FF"
-        if i = m.input.focus then color = "0x356480FF"
+        if i = m.input.focus then color = "0x365163FF"
         uiSurface(group, 0, 0, 370, 280, 24, color)
         mark = "+"
         avatarUri = ""
-        ink = "0xFFFFFFFF"
+        ink = "0xE8F3FAFF"
         if tile.kind = "manage" then mark = "*"
         if tile.kind = "profile"
             avatarUri = userProfileAvatarUri(tile.avatar)
@@ -52,7 +58,9 @@ sub drawPickerTiles()
                 avatarHex = userProfileAvatarHex(colorName)
             end if
             avatarColor = "0x" + avatarHex + "FF"
-            uiSurface(group, 137, 25, 96, 96, 48, avatarColor)
+            avatar = uiSurface(group, 137, 25, 96, 96, 48, avatarColor)
+            avatar.uiPaint = {}
+            avatar.color = avatarColor
             ink = "0x" + userProfileAvatarInk(colorName) + "FF"
             if tile.locked
                 ' Native shapes, not a font glyph that may be absent on Roku.
@@ -73,9 +81,10 @@ sub drawPickerTiles()
             poster.height = 72
             poster.blendColor = ink
         end if
-        label = uiLabel(group, tile.name, 20, 140, 330, 75, 30, "0xFFFFFFFF")
+        label = uiLabel(group, tile.name, 20, 140, 330, 84, 30, "0xE8F3FAFF")
         label.horizAlign = "center"
         label.wrap = true
+        label.maxLines = 2
         caption = ""
         if tile.kind = "profile"
             if tile.current and model.purpose = "switcher" then caption = "Current"

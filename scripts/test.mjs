@@ -33,6 +33,7 @@ suites.unshift('ProfileSwitcherNavigation');
 suites.unshift('UserProfileServerAdmin');
 suites.unshift('ProfileServerAdminTask');
 suites.unshift('ProfileServerAdminNavigation');
+suites.unshift('PhoneSetupProfiles');
 suites.unshift('RequestGateModel');
 suites.unshift('RequestGateOwnCredential');
 suites.unshift('RequestGateTask');
@@ -181,6 +182,7 @@ for (const suite of suites) {
     ...(suite === 'UserProfileServerAdmin' ? ['source/UserProfileServerAdmin.brs', 'source/UserProfileModel.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs'] : []),
     ...(suite === 'ProfileServerAdminTask' ? ['components/ProfileServerAdminTask.brs', 'source/UserProfileServerAdmin.brs', 'source/UserProfileModel.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs'] : []),
     ...(suite === 'ProfileServerAdminNavigation' ? ['components/ProfileServerAdminNavigation.brs', 'source/UserProfileServerAdmin.brs', 'source/UserProfileScope.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/ConnectionStoreModel.brs', 'source/UserProfileModel.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs'] : []),
+    ...(suite === 'PhoneSetupProfiles' ? ['source/PhoneSetupProfileImport.brs', 'source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs', 'source/UserProfileAddressPolicy.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/ConnectionStoreModel.brs', 'source/UserProfileModel.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs'] : []),
     ...(suite === 'ProfileSwitcherNavigation' ? ['components/ProfileSwitcherNavigation.brs', 'components/ProfileBaselineNavigation.brs', 'source/UserProfilePicker.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'DispatcharrSyncAckStore' ? ['source/DispatcharrSyncSettingsStore.brs'] : []),
     ...(['ProfilePickerNavigation', 'UserProfileManagementPolicy', 'ProfileAdultPinNavigation', 'ProfileManagementNavigation', 'UserProfileSwitch', 'UserProfileOwnSignIn', 'UserProfileChildOwnSignIn'].includes(suite) ? ['source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),

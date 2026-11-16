@@ -438,9 +438,7 @@ sub saveProfileManagementMetadata(operation as string, value as dynamic)
         if operation = "role" and m.profileManagementTarget = result.store.active
             ' Re-admit the current holder under its new role; old views/tasks
             ' must not retain adult actions after a Child transition.
-            m.suppressNextMiniAutoStart = true
-            resetConnectionRuntime()
-            connectServer(true)
+            reloadManagedUserProfile()
             return
         end if
         if m.profileBaselineReady = true then refreshUserProfileChrome()
@@ -450,6 +448,21 @@ sub saveProfileManagementMetadata(operation as string, value as dynamic)
         showNotice("Could not save this profile safely. " + textValue(result.reason))
     end if
     showProfileManagementEditor(m.profileManagementTarget)
+end sub
+
+sub reloadManagedUserProfile()
+    if m.activeUserScope = invalid or textValue(m.apiKey) = "" then return
+    preserveSubmittedRecording()
+    cancelRecordFlow()
+    if not persistCurrentUserProfilePreferences()
+        coverProfileManagementRecovery("Could not preserve this profile before reloading.")
+        return
+    end if
+    retireProfileManagement()
+    ' connectServer owns re-admission/retirement. Resetting here would erase the
+    ' selected holder's own key and could not safely be repaired from connKey.
+    m.profileRefreshReload = true
+    connectServer(true)
 end sub
 
 sub onProfileManagementClosed(event as object)

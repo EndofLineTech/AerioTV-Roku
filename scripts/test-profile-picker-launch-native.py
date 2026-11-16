@@ -70,7 +70,7 @@ def real_baseline_fixture(fixture, accounts):
     return fixture.replace('"synthetic-password"', json.dumps(accounts[1]["password"]))
 
 
-def build(path, normal, section, base, mode="plain", baseline_accounts=None):
+def build(path, normal, section, base, mode="plain", baseline_accounts=None, admin_ui=False):
     with zipfile.ZipFile(normal) as original, zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
@@ -97,6 +97,10 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None):
         m.pickerProbeSubmit = true
         return
     end if
+    if m.top.launchRequest.pickerProbeVisualCaptured = "1"
+        m.pickerProbeVisualCaptured = true
+        return
+    end if
 ''', 1)
                 target = '    if not welcome\n        if deferUserProfileLaunch() then return\n        launchGate = selectedUserProfileGate()'
                 assert source.count(target) == 1
@@ -105,9 +109,24 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None):
                     assert source.count(target) == 1
                     source = source.replace(target, target.replace("            m.top.exitRequested", "            verifyStartupPickerProbeCancel()\n            m.top.exitRequested"), 1)
                 fixture = (ROOT / "tests/native/ProfilePickerLaunchFixture.brs").read_text()
+                if admin_ui:
+                    fixture = fixture.replace('sub onProfileBaselineProbeTick()\n', 'sub onProfileBaselineProbeTick()\n    onProfileServerAdminUiProbeTick()\n    return\n', 1)
+                    fixture += "\n" + (ROOT / "tests/native/ProfileServerAdminUiFixture.brs").read_text()
                 if baseline_accounts:
                     fixture = real_baseline_fixture(fixture, baseline_accounts)
                 body = (source + "\n" + fixture).encode()
+            elif name == "components/ProfileServerAdminTask.brs" and admin_ui:
+                text = body.decode()
+                start = text.index("function profileAdminRequest(")
+                end = text.index("end function", start) + len("end function")
+                text = text[:start] + (ROOT / "tests/native/ProfileServerAdminTransportFixture.brs").read_text() + text[end:]
+                body = text.encode()
+            elif name == "components/ProfileServerAdminNavigation.brs" and admin_ui:
+                text = body.decode()
+                target = '    if result.ok <> true then finishProfileServerAdminUi(textValue(result.reason)) : return'
+                assert text.count(target) == 1
+                text = text.replace(target, '    if result.ok <> true then print "[picker-launch] "; FormatJson({kind: "admin-ui-error", operation: context.operation, reason: result.reason})\n' + target)
+                body = text.encode()
             elif name == "components/AerioScene.xml" and mode == "back":
                 body = body.replace(b"<interface>", b'<interface><field id="pickerProbeCancelPassed" type="boolean" value="false" />', 1)
             elif name == "source/Main.brs" and mode == "back":
@@ -155,10 +174,13 @@ def main():
     parser.add_argument("--restore", required=True)
     parser.add_argument("--report", default="out/profile-picker-launch-native.json")
     parser.add_argument("--baseline", action="store_true", help="Focused Add, switch, and management baseline flow")
+    parser.add_argument("--admin-ui", action="store_true", help="Private synthetic admin transport with real native controls; requires read-only Dispatcharr fixture accounts")
     parser.add_argument("--dispatcharr-credentials", type=Path, help="Private JSON: baseUrl and two accounts with username/password; implies baseline, read-only server testing")
     parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link", "own-keyless", "own-pin", "own-held", "own-cancel", "own-link", "own-pin-link", "own-auth-link", "own-default", "own-default-pin", "own-wrong", "own-recreated", "own-memory", "own-keyboard", "child-select", "child-select-pin", "child-select-reject", "child-select-link", "reorder"], default="plain")
     args = parser.parse_args()
     baseline_accounts = None
+    if args.admin_ui and not args.dispatcharr_credentials:
+        parser.error("--admin-ui requires --dispatcharr-credentials; admin transport remains synthetic")
     real_base = None
     if args.dispatcharr_credentials:
         if args.dispatcharr_credentials.resolve().is_relative_to(ROOT):
@@ -316,7 +338,7 @@ def main():
     package_dir = Path(private_package.name) if private_package else ROOT / "out"
     archive = package_dir / "profile-picker-launch-probe.zip"
     cleaner = package_dir / "profile-picker-launch-cleanup.zip"
-    build(archive, ROOT / "out/aeriotv-roku.zip", section, real_base or f"http://{local}:{server.server_port}", "baseline" if args.baseline else args.mode, baseline_accounts)
+    build(archive, ROOT / "out/aeriotv-roku.zip", section, real_base or f"http://{local}:{server.server_port}", "baseline" if args.baseline else args.mode, baseline_accounts, admin_ui=args.admin_ui)
     modules["recovery"].cleanup_package(cleaner, section)
     report = {"passed": False, "mode": args.mode, "events": [], "keys": [], "restore_sha256": hashlib.sha256(restore.read_bytes()).hexdigest(), "probe_sha256": hashlib.sha256(archive.read_bytes()).hexdigest()}
     process = None
@@ -333,6 +355,14 @@ def main():
                 continue
             event = json.loads(line.split("[picker-launch] ", 1)[1])
             report["events"].append(event)
+            if event["kind"] == "switcher-visual":
+                image = str(Path(args.report).with_suffix(".switcher.jpg"))
+                captured = subprocess.run(["python3", "scripts/capture-roku-screenshot.py", "--developer-mode", "--output", image], cwd=ROOT, capture_output=True, timeout=40)
+                report["switcher_screenshot"] = captured.returncode == 0
+                report["switcher_screenshot_path"] = image
+                request = urllib.request.Request(f"http://{host}:8060/input?pickerProbeVisualCaptured=1", data=b"", method="POST")
+                with urllib.request.urlopen(request, timeout=3) as response:
+                    report["switcher_visual_ack"] = response.status
             if event["kind"] == "ready":
                 report["pre_selection_requests"] = hits.copy()
                 screenshot_path = str(Path(args.report).with_suffix(".jpg"))
@@ -556,6 +586,11 @@ def main():
             report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and events[-1].get("baseline") is True and report.get("credential_posts") == [{"path": "/api/accounts/token/", "accepted": True}] and all(hit.get("method") == "GET" for hit in hits) and any(hit.get("user") == 8 and hit.get("path", "").startswith("/api/channels/") for hit in hits)
             if baseline_accounts:
                 report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and events[-1].get("baseline") is True
+            if args.admin_ui:
+                report["admin_transport"] = "synthetic-no-http"
+                report["passed"] = report["passed"] and all(events[-1].get(field) is True for field in ["adminui", "syntheticadminonly", "apiaccess", "ownreload"])
+            else:
+                report["passed"] = report["passed"] and report.get("switcher_screenshot") is True and report.get("switcher_visual_ack") == 200
                 report["real_dispatcharr"] = True
         report["passed"] = report["passed"] and report["ready_events_valid"]
     finally:

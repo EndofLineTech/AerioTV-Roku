@@ -14,6 +14,10 @@ Output: `out/profiles-baseline/aeriotv-roku-profiles-baseline.zip`, with its
 `.zip.sha256` checksum. The title is **AerioTV Profiles Baseline** and the
 manifest contains `aeriotv_profiles_baseline=1`. Shipping verification rejects
 that field under any value. Building does not install or sign anything.
+For the separately approved developer D-pad qualification only, an explicit
+`--directions` argument also adds `aeriotv_profile_directions_test=1`.
+It is off by default and rejected by shipping-package verification. This is
+not a public Directions certification disposition (`mrr.19` remains blocked).
 
 ## Try it
 
@@ -72,7 +76,16 @@ playing-media acceptance. Bounded server-admin policy/payload tests exist, but
 its transport/UI has since been implemented behind the developer baseline gate;
 synthetic native policy/task checks pass in `out/mrr-admin-policy-final-native.log`.
 Real server-user mutations and native admin UI success-path acceptance remain
-unverified.
+separate from these policy checks. The later
+`out/mrr-admin-ui-own-reload-native.log`/`.json` now qualifies the actual native
+controls: user list, Enable API access, explicit revoke confirmation, revocation
+of a key minted in the same UI lifetime, Channel Profiles selection/Save, and
+fresh own-holder reload. Its private admin Task transport is entirely synthetic
+and makes no HTTP calls; real server-user mutations remain unperformed.
+Native findings `jah3` (non-resizable button-field array) and `cje2` (reset
+discarding the own key before reload) were fixed and this same flow passed.
+Managed reload preserves outgoing preferences/record observation and uses the
+established no-autoplay own-key re-admission path, never a default-key repair.
 
 `out/mrr-child-live-native.log` extends the same real-server main flow with an
 imported-PIN Child selection and actual adult-PIN management escape back to the

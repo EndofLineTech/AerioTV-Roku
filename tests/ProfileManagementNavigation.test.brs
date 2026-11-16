@@ -44,7 +44,26 @@ sub main()
     m.profileManagementChoices = [{title: "Sensitive other identity"}]
     retireProfileManagement()
     check(dialog.close and m.profileManagementDialog = invalid and m.profileManagementGrant = invalid and m.profileManagementPending = invalid and m.profileManagementNonce = "" and m.profileManagementChoices.count() = 0, "connection retirement closes dialogs and clears grants, pending work and identity labels")
+    m.apiKey = "nondefault-own-key"
+    m.activeUserScope = {profileId: "own-holder"}
+    reloadManagedUserProfile()
+    check(m.fixtureReloadKey = "nondefault-own-key" and m.fixtureRecordingPreserved and m.profileRefreshReload, "managed active reload retains own credential and uses established no-autoplay authority refresh")
     print "ALL TESTS PASSED"
+end sub
+
+sub preserveSubmittedRecording()
+    m.fixtureRecordingPreserved = true
+end sub
+
+sub cancelRecordFlow()
+end sub
+
+function persistCurrentUserProfilePreferences() as boolean
+    return true
+end function
+
+sub connectServer(skipRfi as boolean)
+    m.fixtureReloadKey = m.apiKey
 end sub
 
 sub check(passed as boolean, message as string)

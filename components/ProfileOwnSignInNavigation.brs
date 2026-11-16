@@ -243,10 +243,11 @@ sub showProfileOwnSignInForm(message = "" as string)
     dialog.message = message
     mask = ""
     if context.password <> "" then mask = "********"
-    dialog.buttons = ["Username: " + context.username, "Password: " + mask, "Sign In", "Cancel"]
+    buttons = ["Username: " + context.username, "Password: " + mask, "Sign In", "Cancel"]
     if context.adding = true and m.profileBaselineReady = true
-        if profileServerAdminHint() then dialog.buttons.push("Add from Dispatcharr")
+        if profileServerAdminHint() then buttons.push("Add from Dispatcharr")
     end if
+    dialog.buttons = buttons
     if m.profileOwnSignInTask <> invalid or m.profileOwnSignInHold <> invalid then dialog.buttons = ["Cancel"]
     dialog.observeField("buttonSelected", "onProfileOwnSignInChoice")
     dialog.observeField("wasClosed", "onProfileOwnSignInClosed")

@@ -127,9 +127,7 @@ sub onProfileServerAdminResult(event as object)
         active = context.target.id.toStr() = context.scope.accountId
         retireProfileServerAdmin()
         if active
-            m.suppressNextMiniAutoStart = true
-            resetConnectionRuntime()
-            connectServer(true)
+            reloadManagedUserProfile()
         else
             showProfileManagementEditor(m.profileManagementTarget)
         end if

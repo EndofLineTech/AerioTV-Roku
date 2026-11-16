@@ -78,6 +78,37 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertEqual(package.read('source/Main.brs'), b'unchanged')
                 self.assertEqual(package.read('manifest'), b'title=AerioTV Profiles Baseline\nbuild_version=100\naeriotv_profiles_baseline=1\n')
             self.assertTrue(output.with_suffix('.zip.sha256').exists())
+            with contextlib.redirect_stdout(io.StringIO()):
+                builder.build(source, output, directions=True)
+            with zipfile.ZipFile(output) as package:
+                self.assertIn(b'aeriotv_profile_directions_test=1\n', package.read('manifest'))
+                self.assertEqual(package.read('source/Main.brs'), b'unchanged')
+            with zipfile.ZipFile(source) as package:
+                self.assertNotIn(b'aeriotv_profile_directions_test', package.read('manifest'))
+
+    def test_admin_ui_fixture_replaces_only_private_admin_transport(self):
+        spec = importlib.util.spec_from_file_location('admin_ui_builder', Path(__file__).with_name('test-profile-picker-launch-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        root = Path(__file__).resolve().parent.parent
+        production = (root / 'components/ProfileServerAdminTask.brs').read_text()
+        with tempfile.TemporaryDirectory() as folder:
+            normal, output = Path(folder) / 'normal.zip', Path(folder) / 'private.zip'
+            with zipfile.ZipFile(normal, 'w') as package:
+                package.writestr('manifest', 'title=AerioTV\n')
+                package.writestr('components/AerioScene.brs', (root / 'components/AerioScene.brs').read_bytes())
+                package.writestr('components/ProfileServerAdminTask.brs', production)
+            probe.build(output, normal, 'PrivateAdminUiProbe', 'http://example.test', mode='baseline', admin_ui=True)
+            with zipfile.ZipFile(output) as package:
+                private = package.read('components/ProfileServerAdminTask.brs').decode()
+                start = private.index('function profileAdminRequest(')
+                end = private.index('end function', start)
+                self.assertNotIn('httpTransferOnce', private[start:end])
+                self.assertIn('synthetic-minted-key', private[start:end])
+                self.assertIn('onProfileServerAdminUiProbeTick()', package.read('components/AerioScene.brs').decode())
+                self.assertIn(b'aeriotv_profiles_baseline=1', package.read('manifest'))
+            with zipfile.ZipFile(normal) as package:
+                self.assertEqual(package.read('components/ProfileServerAdminTask.brs').decode(), production)
 
     def test_staged_switch_readiness_is_not_publicly_enabled(self):
         root = Path(__file__).resolve().parent.parent

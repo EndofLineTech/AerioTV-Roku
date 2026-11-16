@@ -3,10 +3,12 @@
 Normal shipping builds keep `UserProfilePicker` and its staged Scene controller
 private: `m.profilePickerReady` defaults false and shipping init retains its
 existing route. The explicit developer-only `aeriotv_profiles_baseline=1` build
-enables startup selection and **Settings → Profiles (baseline) → Open Profiles**;
+now enables startup selection, **Settings → Connection → Profiles**, the
+authenticated top-bar switcher, and approved existing-Child/PIN flows;
 see [the baseline workflow and limits](PROFILES-BASELINE.md). Shipping packaging
-rejects that manifest field under any value. Child access and Sync writes stay
-off. There is still no public top-bar action. The component itself grants no
+rejects that manifest field under any value. Sync writes stay off in the
+baseline, and normal builds still keep Child/profile readiness off. There is
+no public top-bar action. The component itself grants no
 authentication, PIN, management, or credential authority.
 
 `source/UserProfilePicker.brs` calculates ordered presentation from a validated
@@ -14,13 +16,20 @@ roster. Child, single-profile, other-provider and deep-link launch cases return
 no tiles. Explicit Ask Off is preserved. Launch and switcher purposes distinguish
 Back exit/close, current-holder PIN/close and Add/Manage intent.
 New playlists now default Ask on; saved Boolean choices remain unchanged.
-The developer baseline menu now exposes the per-playlist Ask choice; normal
+The developer Profiles page exposes the per-playlist Ask choice; normal
 shipping exposure remains gated. Existing saved choices are preserved.
 
-The component displays initial/color avatar fallbacks, wrapped names, a native
+The component displays initial/color avatar fallbacks, distinct catalog glyphs,
+bounded long names, a native
 shape lock badge, current caption in switcher mode and four-column focus.
-Catalog avatar artwork, appearance/text-scale variants and complete parent
-admissions remain unfinished. `UserProfilePickerInput.brs` defers short OK until release,
+Shared semantic palette/typography now covers Light and large text, while avatar
+colors retain the exact interoperable palette. The latest real-account core flow
+passes in `out/mrr-picker-light-large-qualified-native.json`; its
+`.switcher.jpg` was inspected at 120% text with a longer custom-avatar name.
+It also verifies native PIN removal/cancellation, live Child selection/adult
+escape, reorder and active removal, with cleanup/exact installed-app restoration.
+Public certification, interoperability and owner acceptance remain separate.
+`UserProfilePickerInput.brs` defers short OK until release,
 emits one hold intent and consumes that release, preventing an accidental switch
 after reorder. Parent handlers must independently recheck node identity, lifecycle,
 current roots, role, target PIN and own credentials before acting on any intent.
