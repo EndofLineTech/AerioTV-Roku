@@ -38,6 +38,16 @@ sub main()
     onStartupProfileResult(pickerNavigationEvent(task, {ok: false, relogin: true}))
     check(m.profilePicker.message = "The API key for alice was rejected." and m.profileStartupTask = invalid and m.profileStartupSelectionContext = invalid, "an owned rejection result must be consumed even after shared admission closes")
     check(m.activeUserScope = invalid and m.apiKey = "" and m.registry.flushes = 0 and m.registry.read("connKey_slot-a") = "default-key" and m.taskCreates = 1, "failure receipt consumption grants no transport/adoption and never deletes the default key or starts another Task")
+    pickerNavigationFixture()
+    check(beginUserProfileLaunchPicker(false), "failed target focus uses a fresh independent picker")
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "select", index: 1}))
+    task = m.profileStartupTask
+    m.global.requestGateRequired = true
+    m.global.requestGate = {ready: false}
+    onStartupProfileResult(pickerNavigationEvent(task, {ok: false, relogin: true}))
+    check(m.profilePicker.model.focus = 1 and m.profilePicker.model.tiles[1].username = "bob", "failed different-target selection preserves that holder's focus, not the restored current holder")
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "select", index: 1}))
+    check(m.taskCreates = 1 and m.profileStartupTask = invalid and m.activeUserScope = invalid and m.apiKey = "", "held target retry opens no Task and borrows no source key")
     print "ALL TESTS PASSED"
 end sub
 

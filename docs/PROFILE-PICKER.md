@@ -234,3 +234,17 @@ All runs cleaned their private section and restored the exact app. A separate
 first-key timeout before any target request remains preserved in
 `out/mrr-picker-launch-reject-fixed-native.json`, not conflated with rejection
 handling or claimed resolved by the later pass.
+
+Failure now keeps the selected target focused by its ID in the freshly sorted
+roster (`AerioTV-Roku-wvze`), not by a stale index or the restored source's
+default focus. Host and native tests-first failures:
+`out/mrr-picker-failed-focus-red.log`,
+`out/mrr-picker-failed-focus-red-native.log`; the red screenshot is retained.
+Actual native green and inspected target-focused rejection screenshot:
+`out/mrr-picker-failed-focus-repeat-fixed-native.log`,
+`out/profile-picker-launch-rejected.jpg`. A further real Select on the held
+target creates no Task/provider request or adoption, and preserves exact saved
+roots and both keys. This is safe refusal, not completed own-sign-in forms.
+Full verification: `out/mrr-picker-failed-focus-verify.log`. The preceding
+first-key transport timeout remains separate at
+`out/mrr-picker-failed-focus-fixed-native.json`.

@@ -322,6 +322,11 @@ sub closeUserProfileLaunchPicker()
 end sub
 
 sub failStartupProfileSelection(message as string)
+    targetId = ""
+    incoming = m.profileStartupSelectionContext
+    if type(incoming) = "roAssociativeArray"
+        if type(incoming.target) = "roAssociativeArray" then targetId = textValue(incoming.target.id)
+    end if
     cancelStartupProfileTask()
     if m.profilePicker = invalid or m.profilePickerContext = invalid then return
     context = m.profilePickerContext
@@ -336,6 +341,9 @@ sub failStartupProfileSelection(message as string)
     end if
     context.store = store
     context.storeRoot = m.registry.read(userProfileStoreKey(context.connection.id))
+    for i = 0 to model.tiles.count() - 1
+        if model.tiles[i].kind = "profile" and model.tiles[i].id = targetId then model.focus = i
+    end for
     m.profilePicker.model = model
     m.profilePicker.message = message
     m.profilePicker.busy = false

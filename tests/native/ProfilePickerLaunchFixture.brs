@@ -45,10 +45,19 @@ sub onProfilePickerLaunchProbeTick()
     end if
     if m.pickerProbeMode = "reject" and m.profilePicker <> invalid
         if m.profilePicker.message = "The API key for Synthetic8 was rejected."
-            m.pickerProbeClock.control = "stop"
             passed = m.activeUserScope = invalid and m.apiKey = "" and m.profileStartupTask = invalid and m.profileStartupSelectionContext = invalid and m.global.profilegateclosed and not m.profilePicker.busy and m.top.dialog = invalid
             passed = passed and m.registry.read(userProfileStoreKey("slot-a")) = m.pickerProbeStoreRoot and m.registry.read("settingsV1") = m.pickerProbeSettingsRoot and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeB)) = "synthetic-b"
-            print "[picker-launch] "; FormatJson({kind: "result", passed: passed, rejected: true})
+            if m.pickerProbeRejectedReady <> true
+                m.pickerProbeRejectedReady = true
+                print "[picker-launch] "; FormatJson({kind: "rejected-ready", ready: passed and m.profilePicker.focusIndex = 1, focus: m.profilePicker.focusIndex})
+            end if
+            return
+        end if
+        if m.pickerProbeRejectedReady = true and m.profilePicker.message = "This profile needs its own protected sign-in. No account was switched."
+            m.pickerProbeClock.control = "stop"
+            passed = m.activeUserScope = invalid and m.apiKey = "" and m.profileStartupTask = invalid and m.profileStartupSelectionContext = invalid and m.global.profilegateclosed and not m.profilePicker.busy and m.profilePicker.focusIndex = 1
+            passed = passed and m.registry.read(userProfileStoreKey("slot-a")) = m.pickerProbeStoreRoot and m.registry.read("settingsV1") = m.pickerProbeSettingsRoot and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeB)) = "synthetic-b"
+            print "[picker-launch] "; FormatJson({kind: "result", passed: passed, rejected: true, held_refused: true})
             return
         end if
     end if

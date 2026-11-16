@@ -189,6 +189,19 @@ def main():
                         command["status"] = response.status
                 except OSError as error:
                     command["error"] = type(error).__name__
+            elif event["kind"] == "rejected-ready":
+                report["rejected_ready"] = event.get("ready", False)
+                report["held_retry_boundary"] = hits.copy()
+                captured = subprocess.run(["python3", "scripts/capture-roku-screenshot.py", "--developer-mode", "--output", "out/profile-picker-launch-rejected.jpg"], cwd=ROOT, capture_output=True, timeout=40)
+                report["rejected_screenshot"] = captured.returncode == 0
+                if not report["rejected_ready"]:
+                    raise RuntimeError("Rejected startup target lost focus or ownership")
+                request = urllib.request.Request(f"http://{host}:8060/keypress/Select", data=b"", method="POST")
+                try:
+                    with urllib.request.urlopen(request, timeout=3) as response:
+                        report["held_retry_status"] = response.status
+                except OSError as error:
+                    report["held_retry_error"] = type(error).__name__
         code = process.wait(timeout=15)
         events = report["events"]
         phases = [e for e in events if e["kind"] == "phase"]
@@ -213,7 +226,10 @@ def main():
             report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and events[-1].get("exited" if args.mode == "back" else "rejected") is True and report.get("pre_selection_requests") == [] and report.get("screenshot") is True and [k.get("status") for k in report["keys"]] == [200, 200] and [p["phase"] for p in phases] == ["authenticate"] and all(p["no_actor"] and p["empty_key"] for p in phases) and len(hits) == 1 and hits[0].get("user") == 8 and hits[0].get("path") == "/api/accounts/users/me/" and hits[0]["method"] == "GET"
             if args.mode == "back":
                 report["passed"] = report["passed"] and report.get("back_status") == 200 and report.get("back_activity") == {"dev_active": True, "screensaver_active": False}
+            else:
+                report["passed"] = report["passed"] and report.get("rejected_ready") is True and report.get("held_retry_status") == 200 and report.get("rejected_screenshot") is True and len(report.get("held_retry_boundary", [])) == 1 and events[-1].get("held_refused") is True
     finally:
+        report["requests"] = hits.copy()
         if process is not None and process.poll() is None:
             process.terminate()
             process.wait(timeout=10)
