@@ -199,8 +199,38 @@ checksum-restored the exact owner app. New first-key timeouts remain preserved
 under `667m`; passing repeats do not resolve them.
 
 Still unfinished: deferred startup/deep-link routing after `screen.show`,
-actual cancel/reject/default/removal and stale-callback matrices, own keyless/
+the remaining cancel/reject/default/removal and stale-callback matrices, own keyless/
 held forms, Child selection, Add/Manage/reorder, default-on Ask migration,
 top-bar switcher and full public acceptance. Current private handlers refuse
 unsupported own-form/Child/management choices without requests. Shipping readiness
 must stay false until those integrations and independent approval gates are met.
+
+## Owned cancellation and rejection
+
+Real Back while B's submitted `/me` is deliberately delayed now cancels the
+owned Task, clears its key/nonce and closes the picker, then exits Main with
+the exact initial roster/settings/keys unchanged:
+`out/mrr-picker-launch-back-fixed-native.log`. The ECP Back is sent only after
+foreground-dev/no-screensaver checks, receives HTTP 200 and is observed through
+actual cancellation and Main closure. No App Data or heavy requests occur.
+
+Typed rejected-key `/me` now returns to the covered picker with no actor/runtime
+key, exact saved roots/keys and the required target-username rejection text:
+`out/mrr-picker-launch-reject-repeat-fixed-native.log`. It sends only that one
+own `/me`, never retries or deletes either credential.
+
+`AerioTV-Roku-czoh` fixed the first rejection run's generic message: checking
+permission to send **new** requests had prevented consuming the already-owned
+failed Task result after the broker held the key. Failure consumption now checks
+exact actor/key/root/PIN/actual global nonce ownership without reopening broker
+admission. Successful read/adoption and every new Task still require it.
+Tests-first handler red: `out/mrr-picker-owned-rejection-red.log`; native storage
+regression: `out/mrr-picker-rejection-boundary-primitives-native.log`; full
+verification: `out/mrr-picker-rejection-fix-verify.log`. The imported-PIN/fresh-
+read normal-app case also passes after this change:
+`out/mrr-picker-launch-import-pin-rejection-regression-native.log`.
+
+All runs cleaned their private section and restored the exact app. A separate
+first-key timeout before any target request remains preserved in
+`out/mrr-picker-launch-reject-fixed-native.json`, not conflated with rejection
+handling or claimed resolved by the later pass.

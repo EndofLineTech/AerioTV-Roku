@@ -147,6 +147,10 @@ end sub
 sub startStartupProfileTask(phase as string)
     context = m.profileStartupSelectionContext
     if context = invalid or m.profileStartupTask <> invalid then return
+    if phase <> "authenticate" and currentUserSessionId() <> context.nonce
+        failStartupProfileSelection("Profile access changed. No account was switched.")
+        return
+    end if
     if not userProfileStartupSelectionCurrent(m.registry, context, context.nonce, m.activeUserScope, textValue(m.apiKey), context.memoryKeys, true)
         failStartupProfileSelection("Profile access changed. No account was switched.")
         return
@@ -200,11 +204,15 @@ sub onStartupProfileResult(event as object)
     if not isCurrentTaskEvent(event, m.profileStartupTask) then return
     context = m.profileStartupSelectionContext
     if context = invalid or context.connection.id <> m.selectedConnectionId then return
-    if not userProfileStartupSelectionCurrent(m.registry, context, context.nonce, m.activeUserScope, textValue(m.apiKey), context.memoryKeys, true)
+    result = event.getData()
+    owned = userProfileStartupSelectionStorageCurrent(m.registry, context, currentUserSessionId(), m.activeUserScope, textValue(m.apiKey), context.memoryKeys, true)
+    if type(result) = "roAssociativeArray"
+        if result.ok = true then owned = owned and userProfileStartupSelectionCurrent(m.registry, context, currentUserSessionId(), m.activeUserScope, textValue(m.apiKey), context.memoryKeys, true)
+    end if
+    if not owned
         failStartupProfileSelection("Profile access changed. No account was switched.")
         return
     end if
-    result = event.getData()
     phase = context.phase
     closeStartupProfileTask()
     if type(result) <> "roAssociativeArray"
@@ -229,7 +237,7 @@ sub onStartupProfileResult(event as object)
         return
     end if
     if phase = "read"
-        published = commitUserProfileStartupRosterPull(m.registry, context, result, context.readNonce, m.profileRosterEnabled <> false, CreateObject("roDateTime").asSeconds(), context.nonce, m.activeUserScope, textValue(m.apiKey), context.memoryKeys)
+        published = commitUserProfileStartupRosterPull(m.registry, context, result, context.readNonce, m.profileRosterEnabled <> false, CreateObject("roDateTime").asSeconds(), currentUserSessionId(), m.activeUserScope, textValue(m.apiKey), context.memoryKeys)
         if not published.ok
             m.userProfileRecoveryRequired = published.recoveryRequired = true
             failStartupProfileSelection("Could not safely retain profile protection.")
@@ -269,7 +277,7 @@ sub onStartupProfileResult(event as object)
         return
     end if
     if phase <> "load" then return
-    saved = commitUserProfileStartupSelection(m.registry, context, result, context.nonce, m.activeUserScope, textValue(m.apiKey), context.memoryKeys)
+    saved = commitUserProfileStartupSelection(m.registry, context, result, currentUserSessionId(), m.activeUserScope, textValue(m.apiKey), context.memoryKeys)
     if not saved.ok
         m.userProfileRecoveryRequired = saved.recoveryRequired = true
         failStartupProfileSelection("Could not safely save the selected profile.")

@@ -38,8 +38,19 @@ end sub
 sub onProfilePickerLaunchProbeTick()
     if m.profilePicker <> invalid and m.pickerProbeReady <> true
         m.pickerProbeReady = true
+        m.pickerProbeStoreRoot = m.registry.read(userProfileStoreKey("slot-a"))
+        m.pickerProbeSettingsRoot = m.registry.read("settingsV1")
         ready = m.activeUserScope = invalid and m.apiKey = "" and m.global.profilegateclosed and m.profileStartupTask = invalid and m.profilePicker.model.focus = 0
         print "[picker-launch] "; FormatJson({kind: "ready", ready: ready})
+    end if
+    if m.pickerProbeMode = "reject" and m.profilePicker <> invalid
+        if m.profilePicker.message = "The API key for Synthetic8 was rejected."
+            m.pickerProbeClock.control = "stop"
+            passed = m.activeUserScope = invalid and m.apiKey = "" and m.profileStartupTask = invalid and m.profileStartupSelectionContext = invalid and m.global.profilegateclosed and not m.profilePicker.busy and m.top.dialog = invalid
+            passed = passed and m.registry.read(userProfileStoreKey("slot-a")) = m.pickerProbeStoreRoot and m.registry.read("settingsV1") = m.pickerProbeSettingsRoot and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeB)) = "synthetic-b"
+            print "[picker-launch] "; FormatJson({kind: "result", passed: passed, rejected: true})
+            return
+        end if
     end if
     if m.profilePinDialog <> invalid
         freshDialog = m.pickerProbeDialog = invalid
@@ -82,4 +93,15 @@ sub onProfilePickerLaunchProbeTick()
     source = preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "7"))
     passed = passed and settings.accounts[source].favoriteIds[0] = "7" and not m.registry.exists(userProfileSyncAckKey("slot-a")) and m.startupDialogOpen = false
     print "[picker-launch] "; FormatJson({kind: "result", passed: passed})
+end sub
+
+sub verifyStartupPickerProbeCancel()
+    if m.pickerProbeMode <> "back" then return
+    m.pickerProbeClock.control = "stop"
+    passed = m.activeUserScope = invalid and m.apiKey = "" and m.profileStartupTask = invalid and m.profileStartupSelectionContext = invalid and m.profilePicker = invalid and m.global.profilegateclosed and not m.global.profileswitchpending and m.global.activeusersession = ""
+    passed = passed and m.registry.read(userProfileStoreKey("slot-a")) = m.pickerProbeStoreRoot and m.registry.read("settingsV1") = m.pickerProbeSettingsRoot and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeB)) = "synthetic-b"
+    passed = passed and m.pickerProbeTask <> invalid
+    if passed then passed = m.pickerProbeTask.cancelRequested and m.pickerProbeTask.apiKey = ""
+    m.top.pickerProbeCancelPassed = passed
+    print "[picker-launch] "; FormatJson({kind: "cancelled", passed: passed})
 end sub

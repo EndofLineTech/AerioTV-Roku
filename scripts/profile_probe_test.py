@@ -33,14 +33,14 @@ class ProfileProbeTest(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('startup_picker_probe', Path(__file__).with_name('test-profile-picker-launch-native.py'))
         probe = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(probe)
-        names = ['manifest', 'components/AerioScene.brs', 'components/ProfilePickerNavigation.brs',
+        names = ['manifest', 'source/Main.brs', 'components/AerioScene.xml', 'components/AerioScene.brs', 'components/ProfilePickerNavigation.brs',
                  'components/GuideView.xml', 'components/GuideView.brs', 'source/MetadataCacheStore.brs']
         with tempfile.TemporaryDirectory() as folder:
             normal = Path(folder) / 'normal.zip'
             with zipfile.ZipFile(normal, 'w') as package:
                 for name in names:
                     package.write(root / name, name)
-            for mode in ['plain', 'pin', 'import-pin']:
+            for mode in ['plain', 'pin', 'import-pin', 'back', 'reject']:
                 target = Path(folder) / f'{mode}.zip'
                 probe.build(target, normal, 'DisposablePicker', 'http://fixture.test', mode)
                 with zipfile.ZipFile(target) as package:

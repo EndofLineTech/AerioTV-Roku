@@ -29,6 +29,15 @@ sub main()
     check(m.taskCreates = 1 and m.profileStartupTask.verifyOnly and m.profileStartupTask.apiKey = "default-key" and m.profileStartupTask.expectedUserId = "7", "selected current holder starts only own verify-only authentication")
     check(m.activeUserScope = invalid and m.apiKey = "" and m.global.profileswitchpending and m.profilePicker.busy, "incoming request nonce is not an authenticated outgoing scope or active runtime key")
     check(m.registry.flushes = 0 and loadUserProfileStore(m.registry, "slot-a").active = m.a.id, "selection is not durably adopted before target auth/protection/lineup")
+    task = m.profileStartupTask
+    m.global.requestGateRequired = true
+    m.global.requestGate = {ready: false}
+    context = m.profileStartupSelectionContext
+    check(userProfileStartupSelectionStorageCurrent(m.registry, context, currentUserSessionId(), invalid, "", context.memoryKeys, true) and not userProfileStartupSelectionCurrent(m.registry, context, currentUserSessionId(), invalid, "", context.memoryKeys, true), "failure ownership does not reopen broker-blocked transport")
+    check(not userProfileStartupSelectionStorageCurrent(m.registry, context, "00000000-0000-4000-8000-000000000099", invalid, "", context.memoryKeys, true), "failure-only boundary still rejects a stale actual callback nonce")
+    onStartupProfileResult(pickerNavigationEvent(task, {ok: false, relogin: true}))
+    check(m.profilePicker.message = "The API key for alice was rejected." and m.profileStartupTask = invalid and m.profileStartupSelectionContext = invalid, "an owned rejection result must be consumed even after shared admission closes")
+    check(m.activeUserScope = invalid and m.apiKey = "" and m.registry.flushes = 0 and m.registry.read("connKey_slot-a") = "default-key" and m.taskCreates = 1, "failure receipt consumption grants no transport/adoption and never deletes the default key or starts another Task")
     print "ALL TESTS PASSED"
 end sub
 
@@ -89,7 +98,9 @@ sub pickerNavigationFixture()
     end function
     m.profileStartupTaskFactory = function(kind as string) as object
         m.taskCreates++
-        return {observeField: function(field as string, callback as string) as boolean
+        return {tag: "startup-task", isSameNode: function(other as object) as boolean
+            return other.tag = m.tag
+        end function, observeField: function(field as string, callback as string) as boolean
             return true
         end function, unobserveField: function(field as string) as boolean
             return true

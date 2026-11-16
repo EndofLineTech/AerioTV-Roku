@@ -2,6 +2,14 @@
 ' unavailable-Child escape. No outgoing actor/key exists, and this preflight
 ' neither selects a persisted holder nor creates a session or a PIN grant.
 function userProfileStartupSelectionCurrent(registry as object, context as object, activeNonce as string, activeScope as dynamic, activeKey as string, memoryKeys as object, requirePin as boolean) as boolean
+    if not userProfileStartupSelectionStorageCurrent(registry, context, activeNonce, activeScope, activeKey, memoryKeys, requirePin) then return false
+    return requestGateAccessAllowed(context.connection.url, context.key)
+end function
+
+' Ownership of an already-completed failure is not permission to start another
+' request. A key hold/429 can close transport while its own result still needs
+' consuming. Only failure handling uses this broker-independent boundary.
+function userProfileStartupSelectionStorageCurrent(registry as object, context as object, activeNonce as string, activeScope as dynamic, activeKey as string, memoryKeys as object, requirePin as boolean) as boolean
     if activeScope <> invalid or activeKey <> "" then return false
     if context.purpose <> "startup-picker" then return false
     if userProfileLocalId(textValue(context.nonce)) = "" or context.nonce <> activeNonce then return false
@@ -44,7 +52,7 @@ function userProfileStartupSelectionCurrent(registry as object, context as objec
     if connection.remember
         if not registry.exists(credential.keyName) or registry.read(credential.keyName) <> credential.key then return false
     end if
-    return requestGateAccessAllowed(connection.url, credential.key)
+    return true
 end function
 
 ' Called only for the actual current read Task after retained protection has
