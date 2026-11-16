@@ -11,6 +11,7 @@ import subprocess
 import threading
 import time
 import urllib.request
+import urllib.parse
 import uuid
 import zipfile
 
@@ -95,7 +96,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--restore", required=True)
     parser.add_argument("--report", default="out/profile-picker-launch-native.json")
-    parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link", "own-keyless", "own-pin", "own-held", "own-cancel", "own-link", "own-pin-link", "own-auth-link", "own-default", "own-default-pin", "own-wrong", "own-recreated", "own-memory"], default="plain")
+    parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link", "own-keyless", "own-pin", "own-held", "own-cancel", "own-link", "own-pin-link", "own-auth-link", "own-default", "own-default-pin", "own-wrong", "own-recreated", "own-memory", "own-keyboard"], default="plain")
     args = parser.parse_args()
     host, password = os.environ["ROKU_HOST"], os.environ["ROKU_DEV_PASSWORD"]
     modules = {}
@@ -125,7 +126,7 @@ def main():
             pass
 
         def do_POST(self):
-            if args.mode not in ["own-keyless", "own-pin", "own-held", "own-cancel", "own-auth-link", "own-default", "own-default-pin", "own-wrong", "own-recreated", "own-memory"]:
+            if args.mode not in ["own-keyless", "own-pin", "own-held", "own-cancel", "own-auth-link", "own-default", "own-default-pin", "own-wrong", "own-recreated", "own-memory", "own-keyboard"]:
                 self.reject_write()
                 return
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
@@ -286,6 +287,22 @@ def main():
                     except OSError as error:
                         attempt["error"] = type(error).__name__
                         break
+            elif event["kind"] == "keyboard-ready":
+                value = "Synthetic8" if event["field"] == "username" else "synthetic-password"
+                image = str(Path(args.report).with_name(Path(args.report).stem + f'-{event["field"]}-keyboard.jpg'))
+                captured = subprocess.run(["python3", "scripts/capture-roku-screenshot.py", "--developer-mode", "--output", image], cwd=ROOT, capture_output=True, timeout=40)
+                entry = {"field": event["field"], "characters": len(value), "statuses": [], "captured": captured.returncode == 0}
+                report.setdefault("keyboard_inputs", []).append(entry)
+                for character in value:
+                    command = urllib.request.Request(f"http://{host}:8060/keypress/Lit_{urllib.parse.quote(character, safe='')}", data=b"", method="POST")
+                    with urllib.request.urlopen(command, timeout=3) as response:
+                        entry["statuses"].append(response.status)
+                image = str(Path(args.report).with_name(Path(args.report).stem + f'-{event["field"]}-filled-keyboard.jpg'))
+                captured = subprocess.run(["python3", "scripts/capture-roku-screenshot.py", "--developer-mode", "--output", image], cwd=ROOT, capture_output=True, timeout=40)
+                entry["filled_captured"] = captured.returncode == 0
+                command = urllib.request.Request(f"http://{host}:8060/input?pickerProbeSubmit=1", data=b"", method="POST")
+                with urllib.request.urlopen(command, timeout=3) as response:
+                    entry["submit_status"] = response.status
             elif event["kind"] == "own-rejected":
                 report["own_rejected"] = event.get("passed") is True
                 report["own_rejected_boundary"] = hits.copy()
@@ -361,7 +378,7 @@ def main():
         if args.mode == "import-pin":
             expected_phases.insert(2, "read")
         pins = [event for event in events if event["kind"] == "pin-submitted"]
-        pin_count = {"plain": 0, "pin": 1, "import-pin": 2, "back": 0, "reject": 0, "identity": 0, "cold-link": 1, "warm-link": 1, "warm-pin-link": 1, "warm-auth-link": 1, "warm-import-pin-link": 2, "warm-load-link": 1, "own-keyless": 0, "own-pin": 1, "own-held": 0, "own-cancel": 0, "own-link": 1, "own-pin-link": 2, "own-auth-link": 1, "own-default": 0, "own-default-pin": 1, "own-wrong": 0, "own-recreated": 0, "own-memory": 0}[args.mode]
+        pin_count = {"plain": 0, "pin": 1, "import-pin": 2, "back": 0, "reject": 0, "identity": 0, "cold-link": 1, "warm-link": 1, "warm-pin-link": 1, "warm-auth-link": 1, "warm-import-pin-link": 2, "warm-load-link": 1, "own-keyless": 0, "own-pin": 1, "own-held": 0, "own-cancel": 0, "own-link": 1, "own-pin-link": 2, "own-auth-link": 1, "own-default": 0, "own-default-pin": 1, "own-wrong": 0, "own-recreated": 0, "own-memory": 0, "own-keyboard": 0}[args.mode]
         before_pins = report.get("pre_pin_requests", [])
         pin_ok = len(pins) == pin_count and all(event["wrong_covered"] and event["verified"] for event in pins) and [command.get("status") for command in report.get("pin_commands", [])] == [200] * pin_count
         if pin_count:
@@ -371,7 +388,7 @@ def main():
             pin_ok = pin_ok and len(set(reads)) == 2 and all(reads) and paths.count("/api/accounts/users/me/app-data/synthetic8.aeriotv/") == 2
         wanted_keys = [200] if args.mode in ["own-default", "own-default-pin"] else [200, 200]
         report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and report.get("pre_selection_requests") == [] and report.get("screenshot") is True and [k.get("status") for k in report["keys"]] == wanted_keys and [p["phase"] for p in phases] == expected_phases and all(p["no_actor"] and p["empty_key"] for p in phases) and all(h.get("user") == target_user and h["method"] == "GET" for h in hits) and listing >= 2 and heavy > listing and paths.count("/api/accounts/users/me/") >= 3 and pin_ok
-        if args.mode in ["own-keyless", "own-pin", "own-held", "own-cancel", "own-default", "own-default-pin", "own-wrong", "own-recreated", "own-memory"]:
+        if args.mode in ["own-keyless", "own-pin", "own-held", "own-cancel", "own-default", "own-default-pin", "own-wrong", "own-recreated", "own-memory", "own-keyboard"]:
             post_count = 2 if args.mode == "own-cancel" else 1
             expected_posts = [{"path": "/api/accounts/token/", "accepted": True}] * post_count
             if args.mode == "own-wrong":
@@ -382,6 +399,10 @@ def main():
                 report["passed"] = report["passed"] and own_cancel_completed.wait(5) and report.get("own_cancel_status") == 200 and report.get("own_cancelled") is True and report.get("own_cancel_boundary") == [] and report.get("own_retry_status") == 200 and report.get("own_cancel_activity") == {"dev_active": True, "screensaver_active": False}
             if args.mode == "own-wrong":
                 report["passed"] = report["passed"] and report.get("own_rejected") is True and report.get("own_rejected_boundary") == [] and report.get("own_retry_status") == 200
+            if args.mode == "own-keyboard":
+                inputs = report.get("keyboard_inputs", [])
+                results = [event for event in events if event["kind"] == "keyboard-result"]
+                report["passed"] = report["passed"] and [item["field"] for item in inputs] == ["username", "password"] and all(item["captured"] and item["filled_captured"] and item.get("submit_status") == 200 and item["statuses"] == [200] * item["characters"] for item in inputs) and len(results) == 1 and results[0].get("passed") is True
         if args.mode in ["back", "reject", "identity"]:
             report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and events[-1].get("exited" if args.mode == "back" else "rejected") is True and report.get("pre_selection_requests") == [] and report.get("screenshot") is True and [k.get("status") for k in report["keys"]] == [200, 200] and [p["phase"] for p in phases] == ["authenticate"] and all(p["no_actor"] and p["empty_key"] for p in phases) and len(hits) == 1 and hits[0].get("user") == 8 and hits[0].get("path") == "/api/accounts/users/me/" and hits[0]["method"] == "GET"
             if args.mode == "back":
@@ -431,7 +452,7 @@ def main():
                 report["passed"] = report["passed"] and own_link_completed.wait(5) and report.get("media_input_activity") == {"dev_active": True, "screensaver_active": False} and report.get("credential_posts") == [{"path": "/api/accounts/token/", "accepted": True}]
             else:
                 report["passed"] = report["passed"] and report.get("credential_posts", []) == []
-        report["ready_events_valid"] = all(event.get("ready") is True for event in events if event["kind"] in ["ready", "pin-ready", "rejected-ready", "own-form-ready"])
+        report["ready_events_valid"] = all(event.get("ready") is True for event in events if event["kind"] in ["ready", "pin-ready", "rejected-ready", "own-form-ready", "keyboard-ready"])
         report["passed"] = report["passed"] and report["ready_events_valid"]
     finally:
         report["requests"] = hits.copy()

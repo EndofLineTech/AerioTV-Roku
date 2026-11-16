@@ -528,3 +528,22 @@ the real form submit callback and credential network Task, with synthetic
 fixture password injection; they do not claim physical keyboard editing,
 voice-keyboard certification, a native wrong-default-ID case, or cold
 Remember-Off relaunch acceptance.
+
+Native startup keyboard editing is now separately qualified at
+`out/mrr-picker-own-keyboard-qualified-native.log/.json`: the actual
+`StandardKeyboardDialog` username/email-domain and password-domain fields receive
+ECP `Lit_` characters from empty fields, then their real owned edit callbacks
+feed the normal credential Task and own auth/read/guide sequence. Inspected
+`-username-filled-keyboard.jpg` and `-password-filled-keyboard.jpg` show the
+entered synthetic username and a masked password. The fixture verifies stale
+keyboard callbacks cannot affect the new Task, closes/scrubs the old text
+fields, masks the returned form and clears the transient password after submit.
+Reports retain character counts/statuses, not typed password text.
+The initial username capture preceded its rendered keyboard; the final fixture
+announces on the next owned keyboard tick and captures both empty/filled states.
+That earlier image is not used as visual acceptance.
+Full verification: `out/mrr-picker-own-keyboard-final-verify.log`.
+The first pre-form key timeout remains at
+`out/mrr-picker-own-keyboard-native.log/.json` under `667m`.
+All runs cleaned and exact-restored the owner app. ECP native text editing is
+not physical D-pad/voice input, a Dashboard pass or certification approval.

@@ -103,6 +103,50 @@ sub onProfilePickerLaunchProbeTick()
             return
         end if
     end if
+    if m.pickerProbeMode = "own-keyboard" and m.profileOwnSignInDialog <> invalid and m.profileOwnSignInDialogKind <> "form"
+        if m.pickerProbeKeyboardReadyPending = true
+            m.pickerProbeKeyboardReadyPending = false
+            keyboard = m.profileOwnSignInDialog
+            ready = m.profileOwnSignInDialogKind = m.pickerProbeKeyboardExpected and keyboard.keyboardDomain = m.pickerProbeKeyboardDomain and m.activeUserScope = invalid and m.apiKey = "" and m.profileGateCover.visible and m.global.profileownsigninpending and m.profileOwnSignInTask = invalid
+            if m.pickerProbeKeyboardExpected = "password" then ready = ready and keyboard.textEditBox.secureMode
+            print "[picker-launch] "; FormatJson({kind: "keyboard-ready", field: m.pickerProbeKeyboardExpected, ready: ready})
+            return
+        end if
+        if m.pickerProbeSubmit = true
+            m.pickerProbeSubmit = false
+            keyboard = m.profileOwnSignInDialog
+            kind = m.profileOwnSignInDialogKind
+            event = {node: keyboard, getRoSGNode: function() as object
+                return m.node
+            end function, getData: function() as integer
+                return 0
+            end function}
+            onProfileOwnSignInEdited(event)
+            if kind = "username"
+                m.pickerProbeUsernameEdited = m.profileOwnSignInContext.username = "Synthetic8"
+                openStartupPickerProbeKeyboard(1)
+            else
+                m.pickerProbeKeyboardCompleted = m.pickerProbeUsernameEdited and m.profileOwnSignInContext.password = "synthetic-password" and keyboard.text = "" and keyboard.textEditBox.text = ""
+                m.pickerProbeKeyboardCompleted = m.pickerProbeKeyboardCompleted and instr(1, FormatJson(m.profileOwnSignInDialog.buttons), "synthetic-password") = 0
+                event.node = m.profileOwnSignInDialog
+                event.getData = function() as integer
+                    return 2
+                end function
+                onProfileOwnSignInChoice(event)
+                current = m.profileOwnSignInTask
+                stale = {node: keyboard, getRoSGNode: function() as object
+                    return m.node
+                end function, getData: function() as integer
+                    return 0
+                end function}
+                onProfileOwnSignInEdited(stale)
+                m.pickerProbeKeyboardCompleted = m.pickerProbeKeyboardCompleted and m.profileOwnSignInTask <> invalid and m.profileOwnSignInContext.password = ""
+                if m.pickerProbeKeyboardCompleted then m.pickerProbeKeyboardCompleted = m.profileOwnSignInTask.isSameNode(current)
+                print "[picker-launch] "; FormatJson({kind: "keyboard-result", passed: m.pickerProbeKeyboardCompleted})
+            end if
+        end if
+        return
+    end if
     if m.profilePinDialog <> invalid
         targetBeforeLink = m.pickerProbeMode = "warm-pin-link" and m.profilePinContext.continuation = "startup-selection"
         if m.pickerProbeMode = "warm-import-pin-link" and m.profilePinContext.continuation = "startup-selection"
@@ -204,6 +248,11 @@ sub onProfilePickerLaunchProbeTick()
                 return 2
             end function}
             m.profileOwnSignInContext.password = "synthetic-password"
+            if m.pickerProbeMode = "own-keyboard"
+                m.profileOwnSignInContext.password = ""
+                openStartupPickerProbeKeyboard(0)
+                return
+            end if
             if m.pickerProbeMode = "own-wrong" and m.pickerProbeOwnRejected <> true then m.profileOwnSignInContext.password = "synthetic-rejected"
             onProfileOwnSignInChoice(event)
             if m.pickerProbeOwnCancelled <> true then m.pickerProbeCredentialTask = m.profileOwnSignInTask
@@ -269,12 +318,34 @@ sub onProfilePickerLaunchProbeTick()
     passed = passed and settings.accounts[source].favoriteIds[0] = "7" and not m.registry.exists(userProfileSyncAckKey("slot-a")) and m.startupDialogOpen = false
     if m.pickerProbeMode = "own-cancel" then passed = passed and m.pickerProbeOwnCancelled = true and m.pickerProbeCredentialTask.cancelRequested and m.pickerProbeCredentialTask.password = "" and m.pickerProbeCredentialTask.aeriosession <> m.activeUserScope.sessionId
     if m.pickerProbeMode = "own-wrong" then passed = passed and m.pickerProbeOwnRejected = true
+    if m.pickerProbeMode = "own-keyboard" then passed = passed and m.pickerProbeKeyboardCompleted = true
     if m.pickerProbeMode = "own-recreated"
         oldAccount = preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "8"))
         newAccount = preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "88"))
         passed = passed and not settings.accounts.doesExist(oldAccount) and settings.accounts[newAccount].favoriteIds[0] = "8"
     end if
     print "[picker-launch] "; FormatJson({kind: "result", passed: passed})
+end sub
+
+sub openStartupPickerProbeKeyboard(choice as integer)
+    event = {node: m.profileOwnSignInDialog, choice: choice, getRoSGNode: function() as object
+        return m.node
+    end function, getData: function() as integer
+        return m.choice
+    end function}
+    onProfileOwnSignInChoice(event)
+    keyboard = m.profileOwnSignInDialog
+    keyboard.text = ""
+    keyboard.textEditBox.text = ""
+    expectedKind = "username"
+    domain = "email"
+    if choice = 1
+        expectedKind = "password"
+        domain = "password"
+    end if
+    m.pickerProbeKeyboardExpected = expectedKind
+    m.pickerProbeKeyboardDomain = domain
+    m.pickerProbeKeyboardReadyPending = true
 end sub
 
 sub verifyStartupPickerProbeCancel()
