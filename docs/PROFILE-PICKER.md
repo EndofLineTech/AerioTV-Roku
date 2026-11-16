@@ -451,6 +451,24 @@ now rejects duplicate handler names. First-key failures remain separately
 preserved (`out/mrr-picker-own-keyless-first-native.log/.json`,
 `out/mrr-picker-own-cancel-native.log/.json`, and the initial admission run).
 All runs cleaned and checksum-restored the exact app. Startup-form-specific
-native keyboard editing, wrong-credential/identity replacement, warm-link
-cancellation and remaining stale-callback/default/Child matrices still need
+native keyboard editing, wrong-credential/identity replacement and remaining
+stale-callback/default/Child matrices still need
 qualification; public readiness remains false.
+
+Startup-form warm-link qualification now passes three real cases:
+`out/mrr-picker-own-form-link-repeat-native.log` (open keyless form),
+`out/mrr-picker-own-pin-form-link-native.log` (form after its real target PIN),
+and `out/mrr-picker-own-auth-form-link-native.log` (submitted/delayed token
+POST). Each retires the target form/credential lifecycle and requires the
+restored holder's own PIN before any source request. Replaying the retired
+form's submit/close callbacks cannot replace or dismiss that PIN gate.
+The delayed POST is cancelled/scrubbed and never produces a bearer `/me`,
+saved target key, target roster read or lineup; source guide remains correct
+past the late token reply. Target preferences/pending intent remain preserved.
+Paired local dialog beacons and one launch completion remain asserted.
+The protected-form and delayed-POST source-PIN screenshots were inspected.
+Full verification: `out/mrr-picker-own-links-pre-native-verify.log`.
+The first open-form-link attempt timed out before selection and remains
+preserved at `out/mrr-picker-own-form-link-native.log/.json` under `667m`.
+All attempts cleaned and checksum-restored the exact owner app; these are still
+missing-lineup safe-nonplay tests, not certification or public acceptance.

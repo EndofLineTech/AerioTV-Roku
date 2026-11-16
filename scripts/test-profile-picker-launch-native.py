@@ -95,7 +95,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--restore", required=True)
     parser.add_argument("--report", default="out/profile-picker-launch-native.json")
-    parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link", "own-keyless", "own-pin", "own-held", "own-cancel"], default="plain")
+    parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link", "own-keyless", "own-pin", "own-held", "own-cancel", "own-link", "own-pin-link", "own-auth-link"], default="plain")
     args = parser.parse_args()
     host, password = os.environ["ROKU_HOST"], os.environ["ROKU_DEV_PASSWORD"]
     modules = {}
@@ -113,6 +113,7 @@ def main():
     hits = []
     back_completed = threading.Event()
     own_cancel_completed = threading.Event()
+    own_link_completed = threading.Event()
     stamp = int(time.time())
 
     class Fixture(BaseHTTPRequestHandler):
@@ -120,12 +121,23 @@ def main():
             pass
 
         def do_POST(self):
-            if args.mode not in ["own-keyless", "own-pin", "own-held", "own-cancel"]:
+            if args.mode not in ["own-keyless", "own-pin", "own-held", "own-cancel", "own-auth-link"]:
                 self.reject_write()
                 return
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
             accepted = self.path == "/api/accounts/token/" and body == {"username": "Synthetic8", "password": "synthetic-password"} and not self.headers.get("X-API-Key") and not self.headers.get("Authorization")
             report.setdefault("credential_posts", []).append({"path": self.path, "accepted": accepted})
+            if args.mode == "own-auth-link":
+                report["media_input_activity"] = modules["management"].management_probe_activity(host)
+                if report["media_input_activity"] == {"dev_active": True, "screensaver_active": False}:
+                    command = urllib.request.Request(f"http://{host}:8060/input?contentId=missing-fixture-id&mediaType=live", data=b"", method="POST")
+                    try:
+                        with urllib.request.urlopen(command, timeout=3) as response:
+                            report["media_input_status"] = response.status
+                    except OSError as error:
+                        report["media_input_error"] = type(error).__name__
+                own_link_completed.set()
+                time.sleep(4)
             if args.mode == "own-cancel" and len(report["credential_posts"]) == 1:
                 report["own_cancel_activity"] = modules["management"].management_probe_activity(host)
                 if report["own_cancel_activity"] == {"dev_active": True, "screensaver_active": False}:
@@ -275,6 +287,11 @@ def main():
                 image = str(Path(args.report).with_name(Path(args.report).stem + "-own-form.jpg"))
                 captured = subprocess.run(["python3", "scripts/capture-roku-screenshot.py", "--developer-mode", "--output", image], cwd=ROOT, capture_output=True, timeout=40)
                 report["own_form_screenshot"] = captured.returncode == 0
+                if args.mode in ["own-link", "own-pin-link"]:
+                    command = urllib.request.Request(f"http://{host}:8060/input?contentId=missing-fixture-id&mediaType=live", data=b"", method="POST")
+                    with urllib.request.urlopen(command, timeout=3) as response:
+                        report["media_input_status"] = response.status
+                    continue
                 command = urllib.request.Request(f"http://{host}:8060/input?pickerProbeSubmit=1", data=b"", method="POST")
                 with urllib.request.urlopen(command, timeout=3) as response:
                     report["own_form_submit_status"] = response.status
@@ -328,7 +345,7 @@ def main():
         if args.mode == "import-pin":
             expected_phases.insert(2, "read")
         pins = [event for event in events if event["kind"] == "pin-submitted"]
-        pin_count = {"plain": 0, "pin": 1, "import-pin": 2, "back": 0, "reject": 0, "identity": 0, "cold-link": 1, "warm-link": 1, "warm-pin-link": 1, "warm-auth-link": 1, "warm-import-pin-link": 2, "warm-load-link": 1, "own-keyless": 0, "own-pin": 1, "own-held": 0, "own-cancel": 0}[args.mode]
+        pin_count = {"plain": 0, "pin": 1, "import-pin": 2, "back": 0, "reject": 0, "identity": 0, "cold-link": 1, "warm-link": 1, "warm-pin-link": 1, "warm-auth-link": 1, "warm-import-pin-link": 2, "warm-load-link": 1, "own-keyless": 0, "own-pin": 1, "own-held": 0, "own-cancel": 0, "own-link": 1, "own-pin-link": 2, "own-auth-link": 1}[args.mode]
         before_pins = report.get("pre_pin_requests", [])
         pin_ok = len(pins) == pin_count and all(event["wrong_covered"] and event["verified"] for event in pins) and [command.get("status") for command in report.get("pin_commands", [])] == [200] * pin_count
         if pin_count:
@@ -384,6 +401,14 @@ def main():
                 pin_ok = pin_ok and len(before_pins) == 1 and before_pins[0] == target_hits and report.get("media_input_boundary") == target_hits and report.get("media_input_activity") == {"dev_active": True, "screensaver_active": False}
             source_paths = [hit["path"] for hit in source_hits]
             report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and events[-1].get("source_link") is True and report.get("pre_selection_requests") == [] and report.get("screenshot") is True and [key.get("status") for key in report["keys"]] == [200, 200] and [p["phase"] for p in phases] == expected_phases and all(p["no_actor"] and p["empty_key"] for p in phases) and [hit["path"] for hit in target_hits] == expected_target_paths and all(hit.get("user") == 7 and hit["method"] == "GET" for hit in source_hits) and source_paths.count("/api/accounts/users/me/") >= 3 and "/api/accounts/users/me/app-data/" in source_paths and any(path.startswith("/api/channels/") for path in source_paths) and pin_ok and beacons == expected_beacons and report.get("media_input_status") == 200 and len(report.get("source_pin_screenshots", [])) == 1 and report["source_pin_screenshots"][0]["captured"]
+        if args.mode in ["own-link", "own-pin-link", "own-auth-link"]:
+            beacons = [event["name"] for event in events if event["kind"] == "beacon"]
+            pin_ok = len(pins) == pin_count and all(pin["wrong_covered"] and pin["verified"] for pin in pins) and [command.get("status") for command in report.get("pin_commands", [])] == [200] * pin_count and len(before_pins) == pin_count and all(boundary == [] for boundary in before_pins)
+            report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and events[-1].get("source_link") is True and report.get("pre_selection_requests") == [] and report.get("screenshot") is True and [key.get("status") for key in report["keys"]] == [200, 200] and phases == [] and all(hit.get("user") == 7 and hit["method"] == "GET" and not hit["own_password_check"] for hit in hits) and listing >= 2 and heavy > listing and paths.count("/api/accounts/users/me/") >= 3 and pin_ok and report.get("pre_form_requests") == [] and report.get("own_form_screenshot") is True and report.get("media_input_status") == 200 and beacons == ["AppDialogInitiate", "AppDialogComplete", "AppDialogInitiate", "AppDialogComplete", "AppLaunchComplete"] and len(report.get("source_pin_screenshots", [])) == 1 and report["source_pin_screenshots"][0]["captured"]
+            if args.mode == "own-auth-link":
+                report["passed"] = report["passed"] and own_link_completed.wait(5) and report.get("media_input_activity") == {"dev_active": True, "screensaver_active": False} and report.get("credential_posts") == [{"path": "/api/accounts/token/", "accepted": True}]
+            else:
+                report["passed"] = report["passed"] and report.get("credential_posts", []) == []
         report["ready_events_valid"] = all(event.get("ready") is True for event in events if event["kind"] in ["ready", "pin-ready", "rejected-ready", "own-form-ready"])
         report["passed"] = report["passed"] and report["ready_events_valid"]
     finally:
