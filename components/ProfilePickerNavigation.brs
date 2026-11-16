@@ -97,7 +97,17 @@ sub resumeUserProfileLaunch()
     end if
     credential = userProfileCredential(m.registry, entry, store, memory)
     m.apiKey = ""
-    if credential.ok then m.apiKey = credential.key
+    if credential.ok
+        for each profile in store.profiles
+            if profile.id = store.active
+                if startupProfileIdentityRefused(entry, profile, credential.key)
+                    coverDeferredProfileLaunch("Sign in as " + profile.username + " to verify this profile's account.")
+                    return
+                end if
+            end if
+        end for
+        m.apiKey = credential.key
+    end if
     gate = selectedUserProfileGate()
     if gate.reason = "picker"
         if beginUserProfileLaunchPicker(false) then return
@@ -247,6 +257,28 @@ sub onUserProfilePickerIntent(event as object)
     beginStartupProfileSelection(tile.id)
 end sub
 
+' A successful HTTP /me can still prove the cached key belongs to somebody
+' else. This is not a typed rejection and must not manufacture a broker hold.
+' Keep only exact identity/credential digests for this app process; own-form
+' replacement can proceed with a different key without touching the source.
+function startupProfileIdentityToken(connection as object, target as object, key as string) as string
+    hash = ""
+    if m.profileStartupCredentialDigest <> invalid
+        hash = m.profileStartupCredentialDigest(key)
+    else
+        hash = requestGateCredentialHash(key)
+    end if
+    if hash = "" then return ""
+    return FormatJson([connection.url, connection.id, target.id, target.userId.toStr(), lcase(target.username), hash])
+end function
+
+function startupProfileIdentityRefused(connection as object, target as object, key as string) as boolean
+    token = startupProfileIdentityToken(connection, target, key)
+    if token = "" then return true
+    if type(m.profileStartupIdentityRefusals) <> "roAssociativeArray" then return false
+    return m.profileStartupIdentityRefusals.doesExist(token)
+end function
+
 sub beginStartupProfileSelection(targetId as string)
     picker = m.profilePickerContext
     if picker = invalid or m.profileStartupSelectionContext <> invalid then return
@@ -270,6 +302,10 @@ sub beginStartupProfileSelection(targetId as string)
     ' Own-form/Child picker admission remains a separate unfinished boundary.
     if not credential.ok or target.role = "child" or not requestGateAccessAllowed(picker.connection.url, credential.key)
         m.profilePicker.message = "This profile needs its own protected sign-in. No account was switched."
+        return
+    end if
+    if startupProfileIdentityRefused(picker.connection, target, credential.key)
+        m.profilePicker.message = "Sign in as " + target.username + " to verify this profile's account."
         return
     end if
     nonce = CreateObject("roDeviceInfo").getRandomUUID()
@@ -398,6 +434,12 @@ sub onStartupProfileResult(event as object)
     if result.ok <> true
         message = "Could not load this profile. No account was switched."
         if result.relogin = true then message = "The API key for " + context.target.username + " was rejected."
+        if result.identityChanged = true
+            if type(m.profileStartupIdentityRefusals) <> "roAssociativeArray" then m.profileStartupIdentityRefusals = {}
+            token = startupProfileIdentityToken(context.connection, context.target, context.key)
+            if token <> "" then m.profileStartupIdentityRefusals[token] = true
+            message = "Sign in as " + context.target.username + " to verify this profile's account."
+        end if
         failStartupProfileSelection(message)
         return
     end if

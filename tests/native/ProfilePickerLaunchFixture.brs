@@ -52,8 +52,16 @@ sub onProfilePickerLaunchProbeTick()
         ready = m.activeUserScope = invalid and m.apiKey = "" and m.global.profilegateclosed and m.profileStartupTask = invalid and m.profilePicker.model.focus = 0
         print "[picker-launch] "; FormatJson({kind: "ready", ready: ready})
     end if
-    if m.pickerProbeMode = "reject" and m.profilePicker <> invalid
-        if m.profilePicker.message = "The API key for Synthetic8 was rejected."
+    if (m.pickerProbeMode = "reject" or m.pickerProbeMode = "identity") and m.profilePicker <> invalid
+        failureMessage = "The API key for Synthetic8 was rejected."
+        retryMessage = "This profile needs its own protected sign-in. No account was switched."
+        initial = true
+        if m.pickerProbeMode = "identity"
+            failureMessage = "Sign in as Synthetic8 to verify this profile's account."
+            retryMessage = failureMessage
+            initial = m.pickerProbeSelectionCount = 1
+        end if
+        if m.profilePicker.message = failureMessage and initial
             passed = m.activeUserScope = invalid and m.apiKey = "" and m.profileStartupTask = invalid and m.profileStartupSelectionContext = invalid and m.global.profilegateclosed and not m.profilePicker.busy and m.top.dialog = invalid
             passed = passed and m.registry.read(userProfileStoreKey("slot-a")) = m.pickerProbeStoreRoot and m.registry.read("settingsV1") = m.pickerProbeSettingsRoot and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeB)) = "synthetic-b"
             if m.pickerProbeRejectedReady <> true
@@ -62,11 +70,12 @@ sub onProfilePickerLaunchProbeTick()
             end if
             return
         end if
-        if m.pickerProbeRejectedReady = true and m.profilePicker.message = "This profile needs its own protected sign-in. No account was switched."
+        if m.pickerProbeRejectedReady = true and m.profilePicker.message = retryMessage
             m.pickerProbeClock.control = "stop"
             passed = m.activeUserScope = invalid and m.apiKey = "" and m.profileStartupTask = invalid and m.profileStartupSelectionContext = invalid and m.global.profilegateclosed and not m.profilePicker.busy and m.profilePicker.focusIndex = 1
             passed = passed and m.registry.read(userProfileStoreKey("slot-a")) = m.pickerProbeStoreRoot and m.registry.read("settingsV1") = m.pickerProbeSettingsRoot and m.registry.read("connKey_slot-a") = "synthetic-a" and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeB)) = "synthetic-b"
-            print "[picker-launch] "; FormatJson({kind: "result", passed: passed, rejected: true, held_refused: true})
+            noHold = not m.requestGate.snapshot.keys.doesExist(requestGateCredentialHash("synthetic-b"))
+            print "[picker-launch] "; FormatJson({kind: "result", passed: passed, rejected: true, held_refused: true, no_broker_hold: noHold})
             return
         end if
     end if

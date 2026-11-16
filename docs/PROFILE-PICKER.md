@@ -315,3 +315,26 @@ The verdict now joins that bounded acknowledgement event, rather than sampling
 it before cleanup. Timeout/non-200 still fail; no key is retransmitted.
 Tests-first red: `out/mrr-picker-cancel-ack-red.log`; actual native green:
 `out/mrr-picker-deferred-back-ack-repeat-fixed-native.log`.
+
+## Known account mismatch
+
+An owned `identityChanged` result now retains an in-process refusal bound to
+the exact server/slot/local holder/user ID/username/credential digest. Repeating
+selection with that known-mismatched key sends no request; a media intent cannot
+retry it through the restored-holder route either. Other holders and replacement
+keys remain independent. This is not a typed key rejection, broker hold, key
+deletion or authenticated adoption. It survives picker cancellation, not app
+restart; own-form integration remains unfinished.
+
+Tests-first handler red: `out/mrr-picker-identity-refusal-red.log`.
+Native HTTP-200 wrong-identity plus repeated real Select green:
+`out/mrr-picker-identity-refusal-repeat-native.log`; inspected image:
+`out/mrr-picker-identity-refusal-repeat-native-rejected.jpg`.
+The report proves one target `/me`, no App Data/lineup, no broker hold and
+unchanged roster/settings/both keys. Typed rejection and cold-link regressions:
+`out/mrr-picker-identity-refusal-rejection-regression-native.log` and
+`out/mrr-picker-identity-refusal-cold-link-regression-native.log`.
+Full verify: `out/mrr-picker-identity-refusal-final-verify.log`.
+The first native attempt timed out before selection; its separate evidence is
+preserved at `out/mrr-picker-identity-refusal-native.log/.json` under `667m`.
+All attempts cleaned their fixture data and restored the exact owner app.

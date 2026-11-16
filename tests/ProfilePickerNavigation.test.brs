@@ -110,6 +110,41 @@ sub main()
     onSceneStartupReady()
     onDeferredUserProfileLaunch()
     check(m.pickerCreates = 0 and m.taskCreates = 0 and m.routeConnectCalls = 0 and m.apiKey = "" and m.global.profilegateclosed and m.registry.flushes = 0, "changed captured connection root cannot resume startup or overwrite storage")
+    pickerNavigationFixture()
+    check(beginUserProfileLaunchPicker(false), "identity mismatch has its own fresh selection")
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "select", index: 1}))
+    task = m.profileStartupTask
+    onStartupProfileResult(pickerNavigationEvent(task, {ok: false, identityChanged: true}))
+    check(m.profilePicker.message = "Sign in as bob to verify this profile's account.", "identity mismatch is not mislabeled as typed key rejection or transient failure")
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "select", index: 1}))
+    check(m.taskCreates = 1 and m.profileStartupTask = invalid and m.profileStartupSelectionContext = invalid, "known mismatched cached credential cannot be retried")
+    check(m.registry.flushes = 0 and m.registry.read("connKey_slot-a") = "default-key" and m.registry.read(userProfileKeyName("slot-a", m.profilePickerContext.store.profiles[1].id)) = "bob-own-key", "mismatch preserves source and target keys without adopting either identity")
+    connection = m.profilePickerContext.connection
+    target = m.profilePickerContext.store.profiles[1]
+    check(startupProfileIdentityRefused(connection, target, "bob-own-key"), "owned mismatch retains exact failed credential identity")
+    changed = copyPreferenceValue(connection)
+    changed.url = "https://other.example.test"
+    check(not startupProfileIdentityRefused(changed, target, "bob-own-key"), "refusal does not cross server address")
+    changed = copyPreferenceValue(connection)
+    changed.id = "slot-b"
+    check(not startupProfileIdentityRefused(changed, target, "bob-own-key"), "refusal does not cross connection slots")
+    changedTarget = setCanonicalPreference(target, "username", "new-bob")
+    check(not startupProfileIdentityRefused(connection, changedTarget, "bob-own-key"), "refusal cannot poison a different recorded account identity")
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "select", index: 0}))
+    check(m.taskCreates = 2 and m.profileStartupTask.apiKey = "default-key", "target mismatch cannot deny independent source credential")
+    failStartupProfileSelection("Independent source attempt cancelled.")
+    onStartupProfileResult(pickerNavigationEvent(task, {ok: false, identityChanged: true}))
+    keyName = userProfileKeyName("slot-a", m.profilePickerContext.store.profiles[1].id)
+    m.registry.values[keyName] = "bob-new-own-key"
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "select", index: 1}))
+    check(m.taskCreates = 3 and m.profileStartupTask.apiKey = "bob-new-own-key", "retired stale mismatch cannot poison a different credential")
+    pickerNavigationFixture()
+    check(beginUserProfileLaunchPicker(false), "restored identity mismatch starts privately")
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "select", index: 0}))
+    onStartupProfileResult(pickerNavigationEvent(m.profileStartupTask, {ok: false, identityChanged: true}))
+    m.pendingLaunch = normalizeLaunchRequest({contentId: "missing-channel", mediaType: "live"})
+    dismissStartupPickerForDeepLink()
+    check(m.routeConnectCalls = 0 and m.taskCreates = 1 and m.activeUserScope = invalid and m.apiKey = "" and m.global.profilegateclosed, "media intent cannot retry a restored holder's known-mismatched key")
     print "ALL TESTS PASSED"
 end sub
 
@@ -160,6 +195,11 @@ sub pickerNavigationFixture()
     m.profileGateCover = {visible: true}
     m.guide = {active: false}
     m.profileSessionKeys = {}
+    m.profileStartupIdentityRefusals = {}
+    ' Native launch qualification uses the real SHA256; host lacks byte crypto.
+    m.profileStartupCredentialDigest = function(key as string) as string
+        return "host-digest-" + key
+    end function
     m.pickerCreates = 0
     m.taskCreates = 0
     m.routeConnectCalls = 0

@@ -70,6 +70,10 @@ def build(path, normal, section, base, mode="plain"):
                     assert body.count(target) == 1
                     body = body.replace(target, f'    print "[picker-launch] "; FormatJson({{kind: "beacon", name: "{beacon}"}})\n'.encode() + target, 1)
             elif name == "components/ProfilePickerNavigation.brs":
+                if mode == "identity":
+                    target = b"sub beginStartupProfileSelection(targetId as string)\n"
+                    assert body.count(target) == 1
+                    body = body.replace(target, target + b"    if m.pickerProbeSelectionCount = invalid then m.pickerProbeSelectionCount = 0\n    m.pickerProbeSelectionCount++\n", 1)
                 target = b"    m.profilePicker = picker\n"
                 assert body.count(target) == 1
                 body = body.replace(target, target + b"    m.pickerProbePickerCount++\n", 1)
@@ -91,7 +95,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--restore", required=True)
     parser.add_argument("--report", default="out/profile-picker-launch-native.json")
-    parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link"], default="plain")
+    parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link"], default="plain")
     args = parser.parse_args()
     host, password = os.environ["ROKU_HOST"], os.environ["ROKU_DEV_PASSWORD"]
     modules = {}
@@ -144,6 +148,9 @@ def main():
             value = []
             if self.path == "/api/accounts/users/me/":
                 value = {"id": user, "username": f"Synthetic{user}", "user_level": 1}
+                if args.mode == "identity":
+                    value = {"id": 9, "username": "Synthetic9", "user_level": 1}
+                    report["mismatched_me_response"] = {"status": 200, "id": 9, "username": "Synthetic9"}
             elif self.path == "/api/accounts/users/me/app-data/":
                 value = {"apps": [{"key": "synthetic8.aeriotv", "bytes": 600}]} if args.mode == "import-pin" else {"apps": []}
             elif self.path == "/api/accounts/users/me/app-data/synthetic8.aeriotv/":
@@ -245,8 +252,10 @@ def main():
             elif event["kind"] == "rejected-ready":
                 report["rejected_ready"] = event.get("ready", False)
                 report["held_retry_boundary"] = hits.copy()
-                captured = subprocess.run(["python3", "scripts/capture-roku-screenshot.py", "--developer-mode", "--output", "out/profile-picker-launch-rejected.jpg"], cwd=ROOT, capture_output=True, timeout=40)
+                image = str(Path(args.report).with_name(Path(args.report).stem + "-rejected.jpg"))
+                captured = subprocess.run(["python3", "scripts/capture-roku-screenshot.py", "--developer-mode", "--output", image], cwd=ROOT, capture_output=True, timeout=40)
                 report["rejected_screenshot"] = captured.returncode == 0
+                report["rejected_screenshot_path"] = image
                 if not report["rejected_ready"]:
                     raise RuntimeError("Rejected startup target lost focus or ownership")
                 request = urllib.request.Request(f"http://{host}:8060/keypress/Select", data=b"", method="POST")
@@ -268,7 +277,7 @@ def main():
         if args.mode == "import-pin":
             expected_phases.insert(2, "read")
         pins = [event for event in events if event["kind"] == "pin-submitted"]
-        pin_count = {"plain": 0, "pin": 1, "import-pin": 2, "back": 0, "reject": 0, "cold-link": 1, "warm-link": 1, "warm-pin-link": 1, "warm-auth-link": 1}[args.mode]
+        pin_count = {"plain": 0, "pin": 1, "import-pin": 2, "back": 0, "reject": 0, "identity": 0, "cold-link": 1, "warm-link": 1, "warm-pin-link": 1, "warm-auth-link": 1}[args.mode]
         before_pins = report.get("pre_pin_requests", [])
         pin_ok = len(pins) == pin_count and all(event["wrong_covered"] and event["verified"] for event in pins) and [command.get("status") for command in report.get("pin_commands", [])] == [200] * pin_count
         if pin_count:
@@ -277,12 +286,14 @@ def main():
             reads = [event["read_nonce"] for event in phases if event["phase"] == "read"]
             pin_ok = pin_ok and len(set(reads)) == 2 and all(reads) and paths.count("/api/accounts/users/me/app-data/synthetic8.aeriotv/") == 2
         report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and report.get("pre_selection_requests") == [] and report.get("screenshot") is True and [k.get("status") for k in report["keys"]] == [200, 200] and [p["phase"] for p in phases] == expected_phases and all(p["no_actor"] and p["empty_key"] for p in phases) and all(h.get("user") == 8 and h["method"] == "GET" for h in hits) and listing >= 2 and heavy > listing and paths.count("/api/accounts/users/me/") >= 3 and pin_ok
-        if args.mode in ["back", "reject"]:
+        if args.mode in ["back", "reject", "identity"]:
             report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and events[-1].get("exited" if args.mode == "back" else "rejected") is True and report.get("pre_selection_requests") == [] and report.get("screenshot") is True and [k.get("status") for k in report["keys"]] == [200, 200] and [p["phase"] for p in phases] == ["authenticate"] and all(p["no_actor"] and p["empty_key"] for p in phases) and len(hits) == 1 and hits[0].get("user") == 8 and hits[0].get("path") == "/api/accounts/users/me/" and hits[0]["method"] == "GET"
             if args.mode == "back":
                 report["passed"] = report["passed"] and report.get("back_ack_before_verdict") is True and report.get("back_status") == 200 and report.get("back_activity") == {"dev_active": True, "screensaver_active": False}
             else:
                 report["passed"] = report["passed"] and report.get("rejected_ready") is True and report.get("held_retry_status") == 200 and report.get("rejected_screenshot") is True and len(report.get("held_retry_boundary", [])) == 1 and events[-1].get("held_refused") is True
+                if args.mode == "identity":
+                    report["passed"] = report["passed"] and report.get("mismatched_me_response") == {"status": 200, "id": 9, "username": "Synthetic9"} and events[-1].get("no_broker_hold") is True
         if args.mode in ["cold-link", "warm-link", "warm-pin-link", "warm-auth-link"]:
             expected_beacons = ["AppDialogInitiate", "AppDialogComplete", "AppLaunchComplete"]
             if args.mode != "cold-link":

@@ -13,6 +13,7 @@ sub init()
     m.profileStartupRoutingStarted = false
     m.profileLaunchPickerResolved = false
     m.profileLaunchPickerDeepLink = false
+    m.profileStartupIdentityRefusals = {}
     m.top.observeField("networkLinkEvent", "onProfileSyncNetworkLink")
     m.global.addFields({activeusersession: "", profilegateclosed: false, profileswitchpending: false, profileownsigninpending: false, profileownsigninnonce: "", requestgaterecovery: "", profilesyncflush: ""})
     m.profileGateCover = m.top.findNode("profileGateCover")
