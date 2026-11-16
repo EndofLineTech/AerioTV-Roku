@@ -296,6 +296,7 @@ sub init()
 end sub
 
 sub signalStartupComplete()
+    recordUserProfileLaunchResolution()
     if m.profilePickerReady = true and m.activeUserScope <> invalid then m.profileLaunchPickerResolved = true
     completeStartupBeacons()
     ' A later authenticated guide still resolves links without a second beacon.

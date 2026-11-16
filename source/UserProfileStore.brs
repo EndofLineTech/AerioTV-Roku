@@ -32,7 +32,9 @@ function userProfileDeviceAdminKey(slotId as string) as string
 end function
 
 function defaultUserProfileStore(slotId as string) as object
-    return {schema: 1, playlistId: slotId, active: "", askAtLaunch: false, profiles: [], removed: [], pendingRoster: false}
+    ' Only new/absent stores receive the default. Normalization retains every
+    ' saved Boolean choice, including Off; malformed present roots stay recovery.
+    return {schema: 1, playlistId: slotId, active: "", askAtLaunch: true, profiles: [], removed: [], pendingRoster: false}
 end function
 
 function userProfileStoreRecovery(slotId as string) as object

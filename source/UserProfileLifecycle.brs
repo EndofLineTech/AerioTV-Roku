@@ -87,8 +87,8 @@ function userProfileRemovalPlan(store as object, id as string, now as integer, r
 end function
 
 ' Selection state only suppresses the picker, never identity/PIN/Child gates.
-' The Scene must bind actual closure/deep-link events before passing it. Until
-' that controller is integrated, absent readiness preserves the shipping fence.
+' The Scene binds actual closure/deep-link events or an adopted launch's
+' playlist-bound resolution. Absent readiness preserves the shipping fence.
 function userProfileStartupGate(store as object, ownProfileCredential = false as boolean, childAccessReady = false as boolean, childPinGranted = false as boolean, selection = invalid as dynamic) as object
     if store.readOnly = true then return {allowed: false, reason: "recovery"}
     if store.profiles.count() = 0 then return {allowed: true, reason: ""}

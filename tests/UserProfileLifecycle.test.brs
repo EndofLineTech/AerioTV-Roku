@@ -48,7 +48,8 @@ sub main()
     b.updatedAt = 201
     check(not userProfileTombstoneRemoves([["bob", 200]], b), "intentional newer re-add wins")
     check(not userProfileTombstoneRemoves([["alice", 200]], a), "default is never tombstoned locally")
-    check(userProfileStartupGate(store).allowed, "unprotected default retains normal single-user startup")
+    store = setCanonicalPreference(store, "askAtLaunch", false)
+    check(userProfileStartupGate(store).allowed, "unprotected default retains ordinary startup with explicit Ask Off")
     selected = copyJson(store)
     selected.active = selected.profiles[1].id
     selected.profiles[1] = setCanonicalPreference(selected.profiles[1], "role", "user")

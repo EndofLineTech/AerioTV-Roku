@@ -1,5 +1,6 @@
 sub main()
     empty = defaultUserProfileStore("slot-a")
+    check(empty.askAtLaunch = true, "new playlists default Ask who is watching on")
     profile = storeFixtureProfile(1)
     staged = userProfileEnsureDefault(empty, profile)
     check(staged <> invalid, "verified default candidate normalizes on native Roku")
@@ -8,6 +9,18 @@ sub main()
         return
     end if
     check(staged.profiles.count() = 1 and staged.active = profile.id, "first verified default becomes active")
+    check(staged.askAtLaunch = true, "first verified migration retains default-on Ask")
+    for each choice in [false, true]
+        existing = setCanonicalPreference(staged, "askAtLaunch", choice)
+        loadedChoice = normalizeUserProfileStore(existing, "slot-a")
+        check(loadedChoice.readOnly <> true and loadedChoice.askAtLaunch = choice, "existing explicit launch choice is never replaced by the new default")
+        check(userProfileEnsureDefault(loadedChoice, profile).askAtLaunch = choice, "refreshing default identity preserves existing launch choice")
+    end for
+    missingChoice = copyJson(staged)
+    for each field in missingChoice.keys()
+        if lcase(field) = "askatlaunch" then missingChoice.delete(field)
+    end for
+    check(normalizeUserProfileStore(missingChoice, "slot-a").readOnly = true, "present roster missing launch choice remains recovery rather than an inferred opt-in")
     check(staged.profiles[0].updatedAt = 0, "migration does not stamp a roster edit")
     avatarCandidate = copyJson(staged)
     avatarCandidate.profiles[0].avatar = {icon: "future", color: "future"}

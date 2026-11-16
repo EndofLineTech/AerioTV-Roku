@@ -207,6 +207,28 @@ function userProfileSetupEditCurrent(context as dynamic) as boolean
     return true
 end function
 
+' Ask is a launch decision, not a reconnect authorization gate. Record only
+' after an actual adopted holder renders; this marker grants no PIN/key/Child
+' authority and is bound to the playlist address for this app process.
+sub recordUserProfileLaunchResolution()
+    if m.userProfileRecoveryRequired = true or m.global = invalid then return
+    scope = m.activeUserScope
+    if not userProfileSameSession(scope, scope) then return
+    if scope.sessionId <> textValue(m.global.activeusersession) then return
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid or scope.playlistId <> m.selectedConnectionId then return
+    if entry.provider <> "dispatcharr" then return
+    store = loadUserProfileStore(m.registry, entry.id)
+    if store.readOnly = true or store.active <> scope.profileId then return
+    for each profile in store.profiles
+        if profile.id = store.active and profile.userId.toStr() = scope.accountId
+            if scope.preferenceIdentity = connectionPreferenceIdentity(entry, scope.accountId)
+                m.profileLaunchResolvedConnection = {id: entry.id, url: entry.url}
+            end if
+        end if
+    end for
+end sub
+
 function selectedUserProfileGate() as object
     if m.userProfileRecoveryRequired = true then return {allowed: false, reason: "recovery"}
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
@@ -232,6 +254,10 @@ function selectedUserProfileGate() as object
     end for
     selection = invalid
     if m.profilePickerReady = true then selection = {ready: true, resolved: m.profileLaunchPickerResolved = true, deepLink: m.profileLaunchPickerDeepLink = true}
+    resolved = m.profileLaunchResolvedConnection
+    if type(resolved) = "roAssociativeArray"
+        if resolved.id = entry.id and resolved.url = entry.url then selection = {ready: true, resolved: true, deepLink: false}
+    end if
     gate = userProfileStartupGate(m.userProfileStore, ownCredential, childReady, false, selection)
     if gate.reason = "pin"
         for each profile in m.userProfileStore.profiles

@@ -91,6 +91,8 @@ sub main()
     check(ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000002", 101), "reconnect preserves default identity")
     check(m.userProfileStore.profiles[0].id = "00000000-0000-4000-8000-000000000001", "reconnect does not create another UUID")
     frozen = setCanonicalPreference(m.userProfileStore, "knownDefault", {userId: 70, username: "FrozenDefault"})
+    ' This authority-refresh case does not exercise launch selection.
+    frozen = setCanonicalPreference(frozen, "askAtLaunch", false)
     b = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000003", {id: 8, username: "Bob", user_level: 1}, 1)
     b.isDefault = false
     b.addressHeld = true
@@ -117,6 +119,7 @@ sub main()
         ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100)
         previousId = m.userProfileStore.active
         staged = copyJson(m.userProfileStore)
+        staged = setCanonicalPreference(staged, "askAtLaunch", false)
         staged.profiles[0] = setCanonicalPreference(staged.profiles[0], "preferenceAnchor", "https://old.test|7|slot-a")
         b = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000003", {id: 8, username: "Bob", user_level: 1}, 1)
         b.isDefault = false
@@ -160,6 +163,7 @@ sub main()
     resetProfileNavigation()
     check(ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100), "nondefault reconnect fixture establishes default")
     previous = copyJson(m.userProfileStore)
+    previous = setCanonicalPreference(previous, "askAtLaunch", false)
     b = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000003", {id: 8, username: "Bob", user_level: 1}, 1)
     b.isDefault = false
     previous.profiles.push(b)
@@ -174,7 +178,47 @@ sub main()
     check(m.userProfileStore.active = b.id and FormatJson(m.userProfileStore.profiles[0]) = beforeDefault and m.userProfileStore["knownDefault"]["userId"] = 7, "nondefault reconnect preserves default metadata, selection and recorded default authority")
     before = FormatJson(m.registry.values)
     check(not ensureConnectedUserProfile({ok: true, phase: "verified", accountId: "88", accountUsername: "Bob", verifiedUser: {id: 88, username: "Bob", user_level: 1}}, "", 102) and FormatJson(m.registry.values) = before, "saved-key reconnect cannot adopt a recreated nondefault ID; only its own form may migrate it")
+    runLaunchSelectionResolutionChecks()
     print "ALL TESTS PASSED"
+end sub
+
+sub runLaunchSelectionResolutionChecks()
+    resetProfileNavigation()
+    check(ensureConnectedUserProfile(profileResult(), "00000000-0000-4000-8000-000000000001", 100), "launch resolution fixture verifies first holder")
+    entry = m.connectionStore.entries[0]
+    store = setCanonicalPreference(m.userProfileStore, "askAtLaunch", true)
+    b = userProfileFromVerified(entry.id, "00000000-0000-4000-8000-000000000003", {id: 8, username: "Bob", user_level: 1}, 1)
+    b = setCanonicalPreference(b, "isDefault", false)
+    store.profiles.push(b)
+    m.registry.values[userProfileStoreKey(entry.id)] = FormatJson(store)
+    m.profileLaunchResolvedConnection = invalid
+    m.activeUserScope = invalid
+    m.global = {activeusersession: ""}
+    recordUserProfileLaunchResolution()
+    check(selectedUserProfileGate().reason = "picker", "no-actor cold startup cannot fabricate resolved selection")
+    nonce = "00000000-0000-4000-8000-000000000090"
+    m.activeUserScope = userProfileSessionScope(entry, store.active, "7", "verified-generation", nonce)
+    m.global.activeusersession = "00000000-0000-4000-8000-000000000091"
+    recordUserProfileLaunchResolution()
+    check(selectedUserProfileGate().reason = "picker", "stale adopted scope cannot resolve a new startup")
+    m.global.activeusersession = nonce
+    recordUserProfileLaunchResolution()
+    check(selectedUserProfileGate().allowed, "actual adopted launch resolves optional Ask for this playlist")
+    m.activeUserScope = invalid
+    m.global.activeusersession = ""
+    check(selectedUserProfileGate().allowed, "same-launch reconnect need not choose a profile again after retiring scope")
+    protected = copyJson(store)
+    protected.profiles[0] = setCanonicalPreference(protected.profiles[0], "pinType", "numbers")
+    protected.profiles[0] = setCanonicalPreference(protected.profiles[0], "pinHash", string(64, "a"))
+    protected.profiles[0] = setCanonicalPreference(protected.profiles[0], "pinSalt", string(32, "b"))
+    m.registry.values[userProfileStoreKey(entry.id)] = FormatJson(protected)
+    check(selectedUserProfileGate().reason = "pin", "launch resolution never grants PIN admission")
+    m.registry.values[userProfileStoreKey(entry.id)] = FormatJson(store)
+    m.connectionStore.entries[0].url = "https://other.test"
+    check(selectedUserProfileGate().reason = "picker", "launch resolution does not cross server address")
+    m.profileLaunchResolvedConnection = invalid
+    m.activeUserScope = invalid
+    m.global = invalid
 end sub
 
 sub runLegacyOwnerMigrationChecks()

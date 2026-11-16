@@ -9,8 +9,9 @@ PIN, management, or credential authority.
 `source/UserProfilePicker.brs` calculates ordered presentation from a validated
 roster. Child, single-profile, other-provider and deep-link launch cases return
 no tiles. Explicit Ask Off is preserved. Launch and switcher purposes distinguish
-Back exit/close, current-holder PIN/close and Add/Manage intent. Creation's
-default-on Ask choice and existing explicit-choice migration remain unfinished;
+Back exit/close, current-holder PIN/close and Add/Manage intent.
+New playlists now default Ask on; saved Boolean choices remain unchanged.
+The public per-playlist Ask control remains unfinished;
 no stored choices were changed here.
 
 The component displays initial/color avatar fallbacks, wrapped names, a native
@@ -362,3 +363,39 @@ The first imported-PIN-link run timed out after picker readiness; preserve
 Every run cleaned its section and checksum-restored the exact owner app.
 These deliberately missing-lineup links still do not establish media playback,
 Dashboard acceptance, production readiness or owner acceptance.
+
+## Default-on Ask and reconnect
+
+Only absent/new stores receive `askAtLaunch: true`; existing saved On and Off
+are both retained through normalization/default identity refresh. A present
+roster missing the field still requires recovery, rather than silently opting
+in or rebuilding protection. No existing store is rewritten just to change
+this default. Test red: `out/mrr-picker-default-ask-red.log`.
+
+The normal-app regression exposed `c50y`: launch-only selection was also being
+applied on an authenticated reconnect. An actual rendered, adopted holder now
+records an in-process playlist/address-bound launch resolution. This suppresses
+only optional Ask on subsequent reconnects; it grants no own key, PIN or Child
+admission. No-actor and stale-session startup cannot create that resolution;
+another address does not inherit it. Shipping picker readiness remains false.
+
+Evidence:
+
+- Host red: `out/mrr-picker-reconnect-selection-red.log`.
+- Real default-on A/B/reconnect-B/A/rejection/Back regression:
+  `out/mrr-picker-default-ask-switch-repeat-fixed-native.log/.json`.
+- Native picker uses the production default (no fixture Ask override):
+  `out/mrr-picker-default-ask-plain-native.log`.
+- Existing saved-Off remembered nondefault cold restore:
+  `out/mrr-picker-default-ask-existing-off-native.log`.
+- Shared native model/storage:
+  `out/mrr-picker-default-ask-final-primitives-native.log`.
+- Full verification: `out/mrr-picker-default-ask-final-verify.log`.
+
+Original reconnect failure remains at
+`out/mrr-picker-default-ask-switch-regression-native.log`.
+A later run fixed reconnect but failed its independent delayed-Back verdict;
+retain `out/mrr-picker-default-ask-switch-fixed-native.log/.json`, including
+successful reconnect evidence, rather than treating its passing repeat as a
+reliability explanation. All completed native runs cleaned their section and
+restored the exact owner app.

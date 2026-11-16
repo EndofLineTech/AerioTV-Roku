@@ -17,7 +17,7 @@ sub seedProfilePickerLaunchProbe(base as string, mode as string)
     store = defaultUserProfileStore("slot-a")
     store.profiles = [a, b]
     store.active = a.id
-    store = setCanonicalPreference(store, "askAtLaunch", true)
+    ' Exercise the production default, rather than forcing Ask on in the probe.
     store = setCanonicalPreference(store, "pendingRoster", true)
     connection = normalizeConnectionEntry({id: "slot-a", name: "Synthetic startup", provider: "dispatcharr", url: base, accountId: "7", remember: true})
     m.registry.write("connectionsV1", FormatJson({schema: 1, selected: "slot-a", entries: [connection]}))
