@@ -1,5 +1,14 @@
 sub main()
     resetImportTest()
+    m.phonePending.phoneProfilesRequired = true
+    startPhoneVerification()
+    check(m.phonePending = invalid and m.phoneVerifyTask = invalid, "lost profile verification cannot retry as an unprotected ordinary connection")
+    resetImportTest()
+    m.phonePending.phoneProfilesRequired = true
+    m.phoneResult = {apiKey: "verified-default-key"}
+    commitPhoneSetup("add")
+    check(m.phonePending = invalid and m.connectionStore.selected = "old", "missing profile lifecycle refuses commit before saving a default key")
+    resetImportTest()
     finishPhoneVerification({ok: false})
     check(m.phonePending <> invalid and m.phoneResult = invalid, "verification failure keeps only the prepared candidate for explicit retry")
     check(m.phoneVerifyTask = invalid and m.phoneSetup.retryAvailable, "failed verification detaches task and exposes retry")

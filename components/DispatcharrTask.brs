@@ -15,6 +15,7 @@ sub loadChannels()
     m.deadlineMs = 115000
     m.base = normalizeBaseUrl(m.top.baseUrl)
     m.key = m.top.apiKey
+    m.singleAttempt = m.top.singleAttempt = true
     m.requestMode = dispatcharrHeaderMode(textValue(m.top.authMode))
     m.requestUserAgent = invalid
     if m.top.userAgent <> "" then m.requestUserAgent = m.top.userAgent
@@ -55,7 +56,7 @@ sub loadChannels()
         user = requestJson(m.base + "/api/accounts/users/me/")
         if type(user) <> "roAssociativeArray" and m.requestMode <> "x-api-key"
             if type(m.httpFailure) = "roAssociativeArray"
-                if m.httpFailure.status = 400
+                if m.httpFailure.status = 400 and not m.singleAttempt
                     m.requestMode = "x-api-key"
                     user = requestJson(m.base + "/api/accounts/users/me/")
                 end if
@@ -203,5 +204,10 @@ sub publishError(message as string, relogin = false as boolean, apiAccessRequire
     m.top.apiKey = ""
     m.top.password = ""
     if m.top.cancelRequested = true then return
-    m.top.result = {ok: false, message: message, relogin: relogin, apiAccessRequired: apiAccessRequired}
+    result = {ok: false, message: message, relogin: relogin, apiAccessRequired: apiAccessRequired}
+    if type(m.httpFailure) = "roAssociativeArray"
+        if m.httpFailure.status = 429 then result.rateLimited = true
+        if textValue(m.httpFailure.gateReason) <> "" then result.requestGateReason = m.httpFailure.gateReason
+    end if
+    m.top.result = result
 end sub

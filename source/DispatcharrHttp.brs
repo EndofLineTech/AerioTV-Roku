@@ -99,7 +99,7 @@ function requestJson(url as string, body = invalid as dynamic, bearer = "" as st
         ' Rate limits are shared server parks, never a local immediate retry.
         if response.status = 429 then return invalid
         ' Never auto-repeat login/source-switch/catch-up mutations.
-        if method <> "GET" or body <> invalid or attempt > 0 or not failure.retryable then return invalid
+        if m.singleAttempt = true or method <> "GET" or body <> invalid or attempt > 0 or not failure.retryable then return invalid
         delay = failure.retryAfter
         if delay < 0 then delay = 1
         remaining = timeout - clock.totalMilliseconds()

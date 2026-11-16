@@ -10,6 +10,11 @@ function userProfileStoreKey(slotId as string) as string
     return "userProfilesV1_" + slotId
 end function
 
+function userProfileImportKey(slotId as string) as string
+    if connectionRegistryKey(slotId) = "" then return ""
+    return "profileImportV1_" + slotId
+end function
+
 function userProfileRetirementKey(slotId as string) as string
     if connectionRegistryKey(slotId) = "" then return ""
     return "profileRetirementV1_" + slotId
@@ -263,6 +268,7 @@ end function
 function loadUserProfileStoreForRetirement(registry as object, slotId as string) as object
     key = userProfileStoreKey(slotId)
     if key = "" then return userProfileStoreRecovery(slotId)
+    if registry.exists(userProfileImportKey(slotId)) then return userProfileStoreRecovery(slotId)
     if not registry.exists(key) then return defaultUserProfileStore(slotId)
     text = registry.read(key)
     if text = "" then return userProfileStoreRecovery(slotId)
@@ -325,7 +331,7 @@ end function
 
 ' Validated transaction preparation, also used when scoped preference cleanup
 ' must be committed in the very same Flush as a profile/key removal.
-function userProfileStoreChanges(registry as object, previous as object, staged as object, keys as object, remember as boolean, retirementRoot = invalid as dynamic) as object
+function userProfileStoreChanges(registry as object, previous as object, staged as object, keys as object, remember as boolean, retirementRoot = invalid as dynamic, importRoot = invalid as dynamic) as object
     failure = {ok: false, recoveryRequired: false}
     if previous.readOnly = true or staged.readOnly = true then return failure
     slotId = previous.playlistId
@@ -336,6 +342,15 @@ function userProfileStoreChanges(registry as object, previous as object, staged 
     if previous.profiles.count() > 0 then before = normalizeUserProfileStore(previous, slotId)
     if before.readOnly = true then return failure
     actual = loadUserProfileStore(registry, slotId)
+    if importRoot <> invalid
+        if retirementRoot <> invalid then return failure
+        if type(importRoot) <> "String" and type(importRoot) <> "roString" then return failure
+        if importRoot = "" or registry.read(userProfileImportKey(slotId)) <> importRoot then return failure
+        if registry.exists(userProfileRetirementKey(slotId)) then return failure
+        actual = defaultUserProfileStore(slotId)
+        if registry.exists(key) then actual = normalizeUserProfileStore(ParseJson(registry.read(key)), slotId)
+        if actual.retirementPending = true then return failure
+    end if
     if retirementRoot <> invalid
         if GetInterface(retirementRoot, "ifString") = invalid then return failure
         pending = userProfileRetirementKey(slotId)

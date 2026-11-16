@@ -42,7 +42,8 @@ sub acceptPhoneSetupPayload(payload as object)
     if m.page <> "phoneSetup" or not m.phoneSetup.active then return
     digest = ""
     if payload.playlist.type = "m3u" then digest = metadataCacheDigest("m3u|" + phoneSetupFeedIdentity(payload.playlist.url))
-    prepared = phoneSetupPrepareImport(payload, CreateObject("roDeviceInfo").getRandomUUID(), digest)
+    profilesReady = m.profilePhoneImportReady = true and payload.playlist.type = "dispatcharr"
+    prepared = phoneSetupPrepareImport(payload, CreateObject("roDeviceInfo").getRandomUUID(), digest, profilesReady)
     if not prepared.ok
         m.phonePending = invalid
         failPhoneSetup(prepared.message)
@@ -50,6 +51,11 @@ sub acceptPhoneSetupPayload(payload as object)
     end if
     m.phonePending = prepared
     m.phoneStoreSnapshot = formatJson(m.connectionStore)
+    if profilesReady
+        prepared.phoneProfilesRequired = true
+        beginPhoneProfileVerification(payload, prepared)
+        return
+    end if
     startPhoneVerification()
 end sub
 
@@ -71,7 +77,15 @@ sub startPhoneVerification()
     if not userProfileConnectionSetupAllowed() then return
     stopPhoneVerification()
     if m.phonePending = invalid or m.page <> "phoneSetup" then return
+    if m.phonePending.phoneProfilesRequired = true and m.phoneProfileImport = invalid
+        m.phonePending = invalid
+        failPhoneSetup("Send profile setup again to verify all required protection.")
+        return
+    end if
     profileGate = selectedUserProfileGate()
+    if m.phoneProfileImport <> invalid
+        if phoneProfileDefaultVerificationCurrent() then profileGate = {allowed: true}
+    end if
     if not profileGate.allowed
         m.phonePending = invalid
         failPhoneSetup(userProfileGateMessage(profileGate))
@@ -177,12 +191,23 @@ sub closePhoneSetupDialog()
 end sub
 
 sub onPhoneSetupClosed()
+    incomplete = false
+    if type(m.phoneProfileImport) = "roAssociativeArray" then incomplete = m.phoneProfileImport.saved <> invalid
+    if m.phoneProfileImport <> invalid or m.phoneProfileVerifyTask <> invalid then retirePhoneProfileImport()
     closePhoneSetupDialog()
     stopPhoneVerification()
     m.phoneSetup.active = false
     m.phoneSetup.visible = false
     m.phonePending = invalid
     m.phoneResult = invalid
+    if incomplete
+        resetConnectionRuntime()
+        m.connectionStore = loadConnectionStore(m.registry)
+        m.selectedConnectionId = m.connectionStore.selected
+        applySelectedConnection()
+        showIncompletePhoneImportRecovery()
+        return
+    end if
     if m.page <> "phoneSetup" then return
     m.page = m.phoneOriginPage
     if m.page = "welcome" then drawWelcome() else drawSetup()
@@ -198,6 +223,13 @@ sub showPhoneSetupConfirmation()
     if not userProfileConnectionSetupAllowed() then return
     closePhoneSetupDialog()
     matches = phoneSetupDuplicateIds(m.connectionStore, m.phonePending.entry)
+    if type(m.phoneProfileImport) = "roAssociativeArray"
+        if m.phoneProfileImport.matchedId <> ""
+            m.phoneMatchedId = m.phoneProfileImport.matchedId
+            commitPhoneSetup("replace")
+            return
+        end if
+    end if
     m.phoneMatches = matches
     if matches.count() = 0
         if m.connectionStore.entries.count() >= 4
@@ -279,18 +311,30 @@ end sub
 sub commitPhoneSetup(choice as string)
     if not userProfileConnectionSetupAllowed() then return
     if m.phonePending = invalid or m.phoneResult = invalid then return
+    if m.phonePending.phoneProfilesRequired = true and m.phoneProfileImport = invalid
+        m.phonePending = invalid
+        failPhoneSetup("Profile verification expired. Send setup again.")
+        return
+    end if
     if formatJson(m.connectionStore) <> m.phoneStoreSnapshot
         failPhoneSetup("Saved connections changed during verification. Cancel and send setup again.")
         m.phonePending = invalid
         return
     end if
-    staged = phoneSetupStageVerifiedConnection(m.connectionStore, m.phonePending.entry, choice, m.phoneMatchedId)
+    matchedById = false
+    if type(m.phoneProfileImport) = "roAssociativeArray" then matchedById = m.phoneProfileImport.matchedId <> "" and m.phoneProfileImport.matchedId = m.phoneMatchedId
+    staged = phoneSetupStageVerifiedConnection(m.connectionStore, m.phonePending.entry, choice, m.phoneMatchedId, matchedById)
     if staged = invalid
         failPhoneSetup("Could not stage this connection. Saved connections were not changed.")
         return
     end if
     m.phoneSetup.phase = "Saving verified connection"
-    saved = phoneSetupCommitConnection(m.registry, m.connectionStore, staged, textValue(m.phoneResult.apiKey))
+    if m.phoneProfileImport <> invalid
+        startPhoneProfileCommit(staged)
+        return
+    else
+        saved = phoneSetupCommitConnection(m.registry, m.connectionStore, staged, textValue(m.phoneResult.apiKey))
+    end if
     if not saved.ok
         failPhoneSetup(saved.message)
         if saved.recoveryRequired
@@ -303,6 +347,10 @@ sub commitPhoneSetup(choice as string)
     end if
     pending = m.phonePending
     result = m.phoneResult
+    if m.phoneProfileImport <> invalid
+        continuePhoneProfileImport(saved, pending, result)
+        return
+    end if
     m.phonePending = invalid
     m.phoneResult = invalid
     m.phoneSetup.active = false

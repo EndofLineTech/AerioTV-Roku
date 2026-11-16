@@ -51,6 +51,9 @@ sub onDeferredUserProfileLaunch()
         coverDeferredProfileLaunch("Saved connection access changed.")
         return
     end if
+    if m.registry.exists(userProfileImportKey(entry.id))
+        if showIncompletePhoneImportRecovery() then return
+    end if
     store = loadUserProfileStore(m.registry, entry.id)
     model = userProfilePickerPlan(store, "launch", entry.provider, m.profileLaunchPickerDeepLink)
     if model.ok and model.show

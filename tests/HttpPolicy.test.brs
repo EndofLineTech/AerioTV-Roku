@@ -1,4 +1,9 @@
 sub main()
+    m.singleAttempt = true
+    resetHttpTest([{status: 503, body: "{}"}, {status: 200, body: "{}"}])
+    if requestJson("https://example.test/api/accounts/users/me/") <> invalid or m.calls <> 1 then stop
+    m.singleAttempt = false
+    if httpFailure(0, {}, 1000, "parked").gateReason <> "parked" then stop
     globalIdentity = {httpUserAgent: "Old-Connection", httpReferer: "https://old.example.test"}
     isolated = taskRequestIdentity({userAgent: "", referer: ""}, globalIdentity)
     if isolated.userAgent <> dispatcharrUserAgent("") or isolated.referer <> "" then stop

@@ -23,7 +23,7 @@ function phoneSetupEffectiveCredential(payload as object) as dynamic
     return result
 end function
 
-function phoneSetupPrepareImport(payload as object, id as string, digest as string) as object
+function phoneSetupPrepareImport(payload as object, id as string, digest as string, profilesReady = false as boolean) as object
     failure = {ok: false, message: "These playlist settings cannot be imported. Use manual setup or edit the sending playlist."}
     playlist = payload.playlist
     multipleProfiles = false
@@ -37,7 +37,7 @@ function phoneSetupPrepareImport(payload as object, id as string, digest as stri
                 ' Interim builds cannot enforce imported roles/PINs. Refuse
                 ' before a provider Task or registry candidate can be created.
                 pinType = textValue(profile.pinType)
-                if profile.role = "child" or pinType = "numbers" or pinType = "directions"
+                if not profilesReady and (profile.role = "child" or pinType = "numbers" or pinType = "directions")
                     return {ok: false, message: "This profile needs Child or PIN protection that Roku does not support yet. Saved connections were not changed."}
                 end if
             else
@@ -77,7 +77,7 @@ function phoneSetupPrepareImport(payload as object, id as string, digest as stri
         sourceDigest: digest, sessionUrl: sessionUrl, remember: playlist.type = "dispatcharr"})
     if entry = invalid then return failure
     notes = []
-    if multipleProfiles then notes.push("Multiple profiles aren't currently supported on Roku. Stay tuned.")
+    if multipleProfiles and not profilesReady then notes.push("Multiple profiles aren't currently supported on Roku. Stay tuned.")
     if payload.sync <> invalid then notes.push("Dispatcharr Sync will not be enabled.")
     if sessionUrl then notes.push("The token-bearing or long playlist URL is session-only; send it again after restarting the app.")
     if entry.localUrl <> "" then notes.push("Local URL retained; automatic LAN failover is not applied by this build.")
@@ -139,7 +139,7 @@ end function
 
 ' Stage a verified candidate only; registry/credential persistence is a separate
 ' transaction owned by the future apply controller. No input object is changed.
-function phoneSetupStageVerifiedConnection(store as object, candidate as object, choice as string, matchedId as string) as dynamic
+function phoneSetupStageVerifiedConnection(store as object, candidate as object, choice as string, matchedId as string, matchedPlaylistId = false as boolean) as dynamic
     if store.readOnly = true or choice = "cancel" then return invalid
     staged = normalizeConnectionStore(store)
     if staged.readOnly = true then return invalid
@@ -148,6 +148,10 @@ function phoneSetupStageVerifiedConnection(store as object, candidate as object,
     matches = phoneSetupDuplicateIds(staged, entry)
     if choice = "replace"
         matched = false
+        if matchedPlaylistId and entry.id = matchedId
+            previous = connectionStoreEntry(staged, matchedId)
+            if previous <> invalid then matched = previous.provider = entry.provider
+        end if
         for each id in matches
             if id = matchedId then matched = true
         end for

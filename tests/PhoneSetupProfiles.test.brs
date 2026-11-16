@@ -1,5 +1,22 @@
 sub main()
+    ' Host interpreter lacks ByteArray/EVPDigest; native probe removes this seam.
+    m.phoneProfileRootHasher = function(text as string) as string
+        if m.phoneProfileTestRoots = invalid then m.phoneProfileTestRoots = {}
+        if not m.phoneProfileTestRoots.doesExist(text) then m.phoneProfileTestRoots[text] = right(string(64, "0") + m.phoneProfileTestRoots.count().toStr(), 64)
+        return m.phoneProfileTestRoots[text]
+    end function
+    if m.phoneProfileRootHasher = invalid then check(phoneSetupProfileRootHash("") = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "native empty profile root has the standard SHA-256 digest")
     entry = normalizeConnectionEntry({id: "slot-a", name: "Import", provider: "dispatcharr", url: "https://example.test", accountId: "1", accountUsername: "Alice", remember: true})
+    roster = {schema: 1, selected: entry.id, entries: [entry]}
+    matched = phoneSetupPlaylistIdentityPlan(roster, "SLOT-A", "fresh-slot")
+    check(matched.ok and matched.matchedId = entry.id and matched.id = entry.id and roster.selected = entry.id, "incoming playlist ID matches case-insensitively before account/URL duplicate choices")
+    fresh = phoneSetupPlaylistIdentityPlan(roster, "PHONE-SLOT", "fresh-slot")
+    check(fresh.ok and fresh.id = "phone-slot" and fresh.matchedId = "", "free registry-safe incoming ID is retained in lowercase")
+    check(phoneSetupPlaylistIdentityPlan(roster, "../unsafe", "fresh-slot").id = "fresh-slot", "unsafe incoming IDs cannot name registry values")
+    check(phoneSetupProfileNextAttempt("key", true, {ok: false, relogin: true}) = "password", "refused supplied key gets one supplied-password attempt")
+    check(phoneSetupProfileNextAttempt("password", true, {ok: false, relogin: true}) = "skip", "password failure never starts a retry loop")
+    check(phoneSetupProfileNextAttempt("key", true, {ok: false, rateLimited: true}) = "stop", "server rate limit stops the remaining batch")
+    check(phoneSetupProfileNextAttempt("key", true, {ok: false}) = "skip", "generic failures do not turn into speculative password retries")
     ids = {defaultId: "00000000-0000-4000-8000-000000000001", byUsername: {bob: "00000000-0000-4000-8000-00000000000b", kid: "00000000-0000-4000-8000-00000000000c"}}
     pin = {pinType: "numbers", pinHash: string(64, "a"), pinSalt: string(32, "b")}
     adult = {username: "Bob", displayName: "Living Room", role: "user", order: 1, id: ucase(ids.byUsername.bob), avatar: {icon: "rocket", color: "purple"}}
@@ -19,6 +36,7 @@ sub main()
     check(planned.ok and planned.store.profiles.count() = 3 and planned.store.active = ids.defaultId, "handoff creates default and verified chosen users without selecting another holder")
     check(planned.store.profiles[0].username = "Alice" and planned.store.profiles[1].username = "Bob" and planned.store.profiles[2].role = "child", "default then all non-Child then Child, not merely order or input order")
     check(planned.store.profiles[1].id = ids.byUsername.bob and planned.store.profiles[1].avatar.icon = "rocket", "free incoming UUID is lowercased and metadata is applied")
+    check(not planned.store.profiles[1].displayNameClaimed and not planned.store.profiles[1].avatarClaimed, "setup metadata is not an explicit local name/avatar claim")
     check(planned.store.profiles[0].pinLength = 0 and planned.store.profiles[1].pinType = "numbers" and planned.store.pendingRoster, "existing valid PIN material imports with unknown length and roster intent")
     check(not planned.keys.doesExist(ids.defaultId) and planned.keys[ids.byUsername.bob] = "Bob-own-key", "profile batch never writes a default-holder key or password")
     existing = planned.store
@@ -50,6 +68,10 @@ sub main()
         return true
     end function, flush: function() as boolean
         m.flushes++
+        if m.failNextFlush = true
+            m.failNextFlush = false
+            return false
+        end if
         return true
     end function}
     registry.values["connectionsV1"] = FormatJson({schema: 1, selected: entry.id, entries: [entry]})
@@ -60,6 +82,49 @@ sub main()
     saved = commitPhoneSetupProfileBatch(registry, context, 100, nonce)
     check(saved.ok and registry.flushes = 1 and registry.read("connKey_slot-a") = "default-slot-key" and registry.read("settingsV1") = "untouched-private-root", "second Flush atomically adds roster/own keys without touching committed slot credential or personal data")
     check(not commitPhoneSetupProfileBatch(registry, context, 101, nonce).ok and registry.flushes = 1, "old batch cannot overwrite a successor roster")
+    registry.values = {}
+    registry.values["connectionsV1"] = FormatJson(defaultConnectionStore())
+    staged = {schema: 1, selected: entry.id, entries: [entry]}
+    fenced = phoneSetupCommitFencedConnection(registry, defaultConnectionStore(), staged, "default-slot-key", nonce)
+    check(fenced.ok and registry.exists(userProfileImportKey(entry.id)), "verified slot and durable import fence commit together")
+    check(loadUserProfileStore(registry, entry.id).readOnly = true and loadUserProfileStoreForRetirement(registry, entry.id).readOnly = true, "cold loaders cannot bootstrap a partially imported default")
+    context.connectionRoot = registry.read("connectionsV1")
+    context.importRoot = fenced.importRoot
+    check(not commitPhoneSetupProfileBatch(registry, context, 100, "00000000-0000-4000-8000-000000000091").ok, "successor nonce cannot remove the protection fence")
+    registry.failNextFlush = true
+    failed = commitPhoneSetupProfileBatch(registry, context, 100, nonce)
+    check(not failed.ok and registry.exists(userProfileImportKey(entry.id)) and loadUserProfileStore(registry, entry.id).readOnly = true, "failed metadata Flush retains the protection fence")
+    recovered = commitPhoneSetupProfileBatch(registry, context, 100, nonce)
+    check(recovered.ok and not registry.exists(userProfileImportKey(entry.id)) and loadUserProfileStore(registry, entry.id).profiles[0].pinType = "numbers", "metadata own keys and fence removal share the second Flush")
+    currentConnections = loadConnectionStore(registry)
+    held = phoneSetupHoldMatchedAddress(registry, currentConnections, entry.id, "https://other.example.test")
+    check(held.ok and held.store.addressChangeSnapshot.userId = 1 and held.store.profiles[1].addressHeld, "matched new origin snapshots the old recorded default and holds nondefault users before authentication")
+    check(registry.read("connKey_slot-a") = "" and registry.read(userProfileKeyName(entry.id, ids.byUsername.bob)) = "", "new-origin hold transaction retires saved default and other-user keys")
+    check(held.store.profiles[0].preferenceAnchor = connectionPreferenceIdentity(entry, "1"), "address hold preserves the old preference ownership anchor")
+    nextEntry = connectionStoreEntry(held.connections, entry.id)
+    nextEntry.accountId = "9"
+    nextEntry.accountUsername = "NewDefault"
+    changedProof = {ok: true, apiKey: "new-default-own-key", verifiedBaseUrl: nextEntry.url, verifiedUser: {id: 9, username: "NewDefault", user_level: 1}}
+    changed = phoneSetupProfileBatchPlan(nextEntry, held.store, [], {newdefault: changedProof}, ids, 102)
+    check(changed.ok and changed.store.profiles[0].id = ids.defaultId and changed.store.profiles[0].userId = 9, "new default identity reuses the established in-place rebuild and stable local UUID")
+    check(changed.store.profiles[0].pinType = "numbers" and changed.store.profiles[1].addressHeld and changed.store.addressChangeSnapshot.userId = 1, "default replacement retains inherited PIN and frozen old-server holds")
+    recoveryBefore = loadConnectionStore(registry)
+    originalRoot = registry.read(userProfileStoreKey(entry.id))
+    stagedRecovery = copyJson(recoveryBefore)
+    stagedRecovery.entries[0].name = "Incomplete phone edit"
+    interrupted = phoneSetupCommitFencedConnection(registry, recoveryBefore, stagedRecovery, "temporary-new-default-key", nonce)
+    check(interrupted.ok and loadUserProfileStore(registry, entry.id).readOnly = true, "interrupted existing-slot edit stays fenced after first save")
+    registry.values[userProfileStoreKey(entry.id)] = originalRoot + " "
+    check(not phoneSetupDiscardIncompleteImport(registry, loadConnectionStore(registry), entry.id, interrupted.importRoot).ok, "discard cannot restore an old operation over a changed profile root")
+    registry.values[userProfileStoreKey(entry.id)] = originalRoot
+    discarded = phoneSetupDiscardIncompleteImport(registry, loadConnectionStore(registry), entry.id, interrupted.importRoot)
+    check(discarded.ok and registry.read(userProfileStoreKey(entry.id)) = originalRoot and registry.read("connKey_slot-a") = "", "explicit discard restores original protected profile root without restoring or borrowing a key")
+    check(connectionStoreEntry(discarded.connections, entry.id).name = "Import" and not registry.exists(userProfileImportKey(entry.id)), "discard restores non-secret original slot metadata and removes only its fence")
+    registry.values = {}
+    registry.values["connectionsV1"] = FormatJson(defaultConnectionStore())
+    interrupted = phoneSetupCommitFencedConnection(registry, defaultConnectionStore(), staged, "temporary-new-default-key", nonce)
+    discarded = phoneSetupDiscardIncompleteImport(registry, loadConnectionStore(registry), entry.id, interrupted.importRoot)
+    check(discarded.ok and discarded.connections.entries.count() = 0 and registry.read("connKey_slot-a") = "", "discard of an incomplete new slot removes that slot and its key: " + textValue(discarded.reason))
     print "ALL TESTS PASSED"
 end sub
 

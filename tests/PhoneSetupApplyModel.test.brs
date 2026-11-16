@@ -1,4 +1,9 @@
 sub main()
+    oldEntry = normalizeConnectionEntry({id: "phone-slot", name: "Saved", provider: "dispatcharr", url: "https://old.example.test", accountId: "1", accountUsername: "Old"})
+    newEntry = normalizeConnectionEntry({id: "phone-slot", name: "Received", provider: "dispatcharr", url: "https://new.example.test", accountId: "9", accountUsername: "New"})
+    identified = {schema: 1, selected: oldEntry.id, entries: [oldEntry]}
+    check(phoneSetupStageVerifiedConnection(identified, newEntry, "replace", oldEntry.id) = invalid, "ordinary duplicate replacement cannot invent an unrelated account match")
+    check(phoneSetupStageVerifiedConnection(identified, newEntry, "replace", oldEntry.id, true).entries[0].accountId = "9", "explicit matched playlist ID updates in place independently of account or URL duplicate matching")
     payload = {playlist: {credential: {apiKey: "fixture-key"}}, profiles: []}
     credential = phoneSetupEffectiveCredential(payload)
     check(credential.apiKey = "fixture-key" and credential.username = "", "API-key-only default needs no username")
@@ -116,6 +121,7 @@ sub testInterimProfiles()
         end if
         refused = phoneSetupPrepareImport(payload, "received", "")
         check(not refused.ok and refused.credential = invalid and refused.entry = invalid, "protected single default refused before verification/persistence")
+        check(phoneSetupPrepareImport(payload, "received", "", true).ok, "only an explicitly admitted private import controller can stage protected metadata")
     end for
     payload.profiles.push({username: "adult", displayName: "Adult", isDefault: true, role: "user", pinType: "none"})
     check(phoneSetupPrepareImport(payload, "received", "").ok, "protected non-default is ignored, not mistaken for selected default")

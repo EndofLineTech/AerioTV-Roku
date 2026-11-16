@@ -3,6 +3,7 @@ import argparse
 import base64
 import hashlib
 import json
+import re
 from pathlib import Path
 import zipfile
 
@@ -136,8 +137,11 @@ def build(output, base_url, registry=False, model_store=False):
             package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
         if model_store:
             package.write(ROOT / 'source/PhoneSetupProfileImport.brs', 'source/PhoneSetupProfileImport.brs')
+            package.write(ROOT / 'source/PhoneSetupProfilePolicy.brs', 'source/PhoneSetupProfilePolicy.brs')
+            package.write(ROOT / 'components/PhoneSetupProfileNavigation.brs', 'source/PhoneSetupProfileNavigation.brs')
             phone_checks = (ROOT / 'tests/PhoneSetupProfiles.test.brs').read_text().split('sub check(', 1)[0]
             phone_checks = phone_checks.replace('sub main()', 'sub runPhoneSetupProfilesChecks()').replace('check(', 'profileAssert(')
+            phone_checks = re.sub(r'm\.phoneProfileRootHasher = function\(text as string\) as string\n.*?    end function', 'm.phoneProfileRootHasher = invalid', phone_checks, count=1, flags=re.S)
             package.writestr('source/PhoneSetupProfilesProbeChecks.brs', phone_checks)
             picker_checks = (ROOT / 'tests/UserProfilePicker.test.brs').read_text().split('sub check(', 1)[0]
             picker_checks = picker_checks.replace('sub main()', 'sub runUserProfilePickerChecks()').replace('check(', 'profileAssert(')

@@ -2,6 +2,7 @@ sub init()
     ' Remains false in shipping builds until Child own loading/recovery paths
     ' and all required access/certification boundaries are qualified.
     m.profileChildAccessReady = false
+    m.profilePhoneImportReady = false
     m.profileSwitchRosterReady = false
     m.profileDefaultRetirementReady = false
     m.profileSyncWriterReady = false
@@ -665,6 +666,9 @@ sub connectServer(skipRfi = false as boolean)
     end if
     profileGate = selectedUserProfileGate()
     if not profileGate.allowed
+        if m.registry.exists(userProfileImportKey(entry.id))
+            if showIncompletePhoneImportRecovery() then return
+        end if
         if profileGate.reason = "pin"
             for each profile in m.userProfileStore.profiles
                 if profile.id = m.userProfileStore.active

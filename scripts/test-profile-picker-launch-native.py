@@ -70,7 +70,11 @@ def real_baseline_fixture(fixture, accounts):
     return fixture.replace('"synthetic-password"', json.dumps(accounts[1]["password"]))
 
 
-def build(path, normal, section, base, mode="plain", baseline_accounts=None, admin_ui=False):
+def build(path, normal, section, base, mode="plain", baseline_accounts=None, admin_ui=False, phone_verify=False, phone_import=False):
+    if sum([admin_ui, phone_verify, phone_import]) > 1:
+        raise ValueError("Choose one focused native flow")
+    if (phone_verify or phone_import) and not baseline_accounts:
+        raise ValueError("Phone verification needs private authorized test accounts")
     with zipfile.ZipFile(normal) as original, zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
@@ -112,6 +116,12 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
                 if admin_ui:
                     fixture = fixture.replace('sub onProfileBaselineProbeTick()\n', 'sub onProfileBaselineProbeTick()\n    onProfileServerAdminUiProbeTick()\n    return\n', 1)
                     fixture += "\n" + (ROOT / "tests/native/ProfileServerAdminUiFixture.brs").read_text()
+                if phone_verify:
+                    fixture = fixture.replace('sub onProfileBaselineProbeTick()\n', 'sub onProfileBaselineProbeTick()\n    onPhoneProfileVerifyProbeTick()\n    return\n', 1)
+                    fixture += "\n" + (ROOT / "tests/native/PhoneSetupProfileVerifyFixture.brs").read_text()
+                if phone_import:
+                    fixture = fixture.replace('sub onProfileBaselineProbeTick()\n', 'sub onProfileBaselineProbeTick()\n    onPhoneProfileImportProbeTick()\n    return\n', 1)
+                    fixture += "\n" + (ROOT / "tests/native/PhoneSetupProfileImportFixture.brs").read_text()
                 if baseline_accounts:
                     fixture = real_baseline_fixture(fixture, baseline_accounts)
                 body = (source + "\n" + fixture).encode()
@@ -167,6 +177,9 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
                 body += b'\nfunction profilePickerProbeLineup() as string\n    if type(m.channels) <> "roArray" then return ""\n    if m.channels.count() = 0 then return ""\n    return m.channels[0].id\nend function\n'
                 body += b'\nfunction profilePickerProbeRole() as string\n    return m.userRole\nend function\n'
             package.writestr(name, body)
+        if phone_verify or phone_import:
+            second = baseline_accounts[1]
+            package.writestr("fixtures/phone-profile-verify.json", json.dumps({"username": second["user"]["username"], "apiKey": second["user"]["api_key"], "password": second["password"]}))
 
 
 def main():
@@ -175,12 +188,16 @@ def main():
     parser.add_argument("--report", default="out/profile-picker-launch-native.json")
     parser.add_argument("--baseline", action="store_true", help="Focused Add, switch, and management baseline flow")
     parser.add_argument("--admin-ui", action="store_true", help="Private synthetic admin transport with real native controls; requires read-only Dispatcharr fixture accounts")
+    parser.add_argument("--phone-verify", action="store_true", help="Read-only native phone-profile credential service; never imports or writes server data")
+    parser.add_argument("--phone-import", action="store_true", help="Private native receiver-controller import; isolated registry and read-only server access")
     parser.add_argument("--dispatcharr-credentials", type=Path, help="Private JSON: baseUrl and two accounts with username/password; implies baseline, read-only server testing")
     parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link", "own-keyless", "own-pin", "own-held", "own-cancel", "own-link", "own-pin-link", "own-auth-link", "own-default", "own-default-pin", "own-wrong", "own-recreated", "own-memory", "own-keyboard", "child-select", "child-select-pin", "child-select-reject", "child-select-link", "reorder"], default="plain")
     args = parser.parse_args()
     baseline_accounts = None
-    if args.admin_ui and not args.dispatcharr_credentials:
-        parser.error("--admin-ui requires --dispatcharr-credentials; admin transport remains synthetic")
+    if (args.admin_ui or args.phone_verify or args.phone_import) and not args.dispatcharr_credentials:
+        parser.error("Focused account flows require --dispatcharr-credentials")
+    if sum([args.admin_ui, args.phone_verify, args.phone_import]) > 1:
+        parser.error("Choose one focused native flow")
     real_base = None
     if args.dispatcharr_credentials:
         if args.dispatcharr_credentials.resolve().is_relative_to(ROOT):
@@ -338,7 +355,7 @@ def main():
     package_dir = Path(private_package.name) if private_package else ROOT / "out"
     archive = package_dir / "profile-picker-launch-probe.zip"
     cleaner = package_dir / "profile-picker-launch-cleanup.zip"
-    build(archive, ROOT / "out/aeriotv-roku.zip", section, real_base or f"http://{local}:{server.server_port}", "baseline" if args.baseline else args.mode, baseline_accounts, admin_ui=args.admin_ui)
+    build(archive, ROOT / "out/aeriotv-roku.zip", section, real_base or f"http://{local}:{server.server_port}", "baseline" if args.baseline else args.mode, baseline_accounts, admin_ui=args.admin_ui, phone_verify=args.phone_verify, phone_import=args.phone_import)
     modules["recovery"].cleanup_package(cleaner, section)
     report = {"passed": False, "mode": args.mode, "events": [], "keys": [], "restore_sha256": hashlib.sha256(restore.read_bytes()).hexdigest(), "probe_sha256": hashlib.sha256(archive.read_bytes()).hexdigest()}
     process = None
@@ -586,7 +603,13 @@ def main():
             report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and events[-1].get("baseline") is True and report.get("credential_posts") == [{"path": "/api/accounts/token/", "accepted": True}] and all(hit.get("method") == "GET" for hit in hits) and any(hit.get("user") == 8 and hit.get("path", "").startswith("/api/channels/") for hit in hits)
             if baseline_accounts:
                 report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and events[-1].get("baseline") is True
-            if args.admin_ui:
+            if args.phone_import:
+                report["verification_transport"] = "authorized-read-only"
+                report["passed"] = report["passed"] and all(events[-1].get(field) is True for field in ["phoneimport", "ownkeys", "protectedadmission", "sourceunchanged", "recoveryui"])
+            elif args.phone_verify:
+                report["verification_transport"] = "authorized-read-only"
+                report["passed"] = report["passed"] and all(events[-1].get(field) is True for field in ["phoneverify", "ownproofs", "inputscleared", "unchanged"])
+            elif args.admin_ui:
                 report["admin_transport"] = "synthetic-no-http"
                 report["passed"] = report["passed"] and all(events[-1].get(field) is True for field in ["adminui", "syntheticadminonly", "apiaccess", "ownreload"])
             else:

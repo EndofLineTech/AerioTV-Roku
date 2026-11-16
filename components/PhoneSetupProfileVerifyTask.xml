@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="PhoneSetupProfileVerifyTask" extends="Task">
+  <interface>
+    <field id="baseUrl" type="string" />
+    <field id="authMode" type="string" />
+    <field id="userAgent" type="string" />
+    <field id="captureNonce" type="string" />
+    <field id="defaultCredential" type="assocarray" />
+    <field id="profiles" type="array" />
+    <field id="defaultOnly" type="boolean" value="false" />
+    <field id="verifiedDefault" type="assocarray" />
+    <field id="cancelRequested" type="boolean" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="PhoneSetupProfileVerifyTask.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupProfilePolicy.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfilePin.brs" />
+  <script type="text/brightscript" uri="pkg:/source/UserProfileAvatar.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RemoteMapModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideSettingsModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/StrictJson.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpPolicy.brs" />
+  <script type="text/brightscript" uri="pkg:/source/HttpTransport.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrHttp.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RequestGateClient.brs" />
+</component>

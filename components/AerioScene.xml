@@ -113,6 +113,9 @@
   <script type="text/brightscript" uri="DvrSeriesNavigation.brs" />
   <script type="text/brightscript" uri="ConnectionNavigation.brs" />
   <script type="text/brightscript" uri="PhoneSetupNavigation.brs" />
+  <script type="text/brightscript" uri="PhoneSetupProfileNavigation.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupProfileImport.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupProfilePolicy.brs" />
   <script type="text/brightscript" uri="pkg:/source/PhoneSetupModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/PhoneSetupApplyModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/PhoneSetupStore.brs" />
