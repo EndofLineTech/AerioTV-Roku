@@ -215,6 +215,27 @@ sub main()
     context = startup.context
     context.pin = invalid
     check(userProfileStartupSelectionCurrent(startup.registry, context, nextAttempt, invalid, "", {}, false), "PIN form admission resolves only the target's own key without granting transport")
+    for each childReady in [invalid, false, "true", true]
+        startup = startupSelectionFixture(connection, a, b, nextAttempt)
+        context = startup.context
+        context.store.profiles[1] = setCanonicalPreference(context.store.profiles[1], "role", "child")
+        context.target = context.store.profiles[1]
+        context.childAccessReady = childReady
+        startup.registry.write(userProfileStoreKey("slot-a"), FormatJson(context.store))
+        context.storeRoot = startup.registry.read(userProfileStoreKey("slot-a"))
+        allowed = userProfileStartupSelectionCurrent(startup.registry, context, nextAttempt, invalid, "", {}, true)
+        check(allowed = userProfileTrue(childReady), "Child startup admission requires explicit typed private readiness plus its own key and actual PIN")
+        if userProfileTrue(childReady)
+            context.readNonce = "00000000-0000-4000-8000-000000000097"
+            read = {ok: true, state: "ready", profilesState: "ready", verifiedUser: {id: 8, username: "bob", user_level: 1}, verifiedBaseUrl: connection.url, accountId: "8", accountUsername: "bob", data: {categories: {profiles: {data: {rows: [[8, "bob", "Do not apply", "none", "", "", "user", 200, {}, 0]], removed: []}}}}}
+            published = commitUserProfileStartupRosterPull(startup.registry, context, read, context.readNonce, true, 200, nextAttempt, invalid, "", {})
+            check(published.ok and published.protectionReceipt <> invalid and published.context.target.role = "child" and published.context.target.pinHash = context.target.pinHash and published.context.target.displayName = context.target.displayName, "Child's own early read never applies roster role/name/PIN changes")
+            context = published.context
+            proof = {ok: true, apiKey: "bob-own-key", verifiedUser: {id: 8, username: "bob", user_level: 1}, verifiedBaseUrl: connection.url, accountId: "8", accountUsername: "bob", channels: [], groups: [], generation: "startup-child-generation"}
+            adopted = commitUserProfileStartupSelection(startup.registry, context, proof, nextAttempt, invalid, "", {})
+            check(adopted.ok and adopted.scope.profileId = b.id and adopted.store.profiles[1].role = "child" and startup.registry.read("connKey_slot-a") = "default-key", "Child own scope can be adopted without inventing an adult/default authenticated source")
+        end if
+    end for
     for each change in ["none", "flush", "missing-read", "read-nonce", "read-root", "read-key", "read-pin", "read-authority", "proof-url", "proof-identity", "proof-key", "proof-authority", "actor", "runtime-key", "pin"]
         startup = startupSelectionFixture(connection, a, b, nextAttempt)
         registry = startup.registry

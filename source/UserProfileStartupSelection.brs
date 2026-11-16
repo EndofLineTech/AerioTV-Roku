@@ -1,6 +1,12 @@
 ' Startup picker admission is neither an authenticated chosen switch nor an
 ' unavailable-Child escape. No outgoing actor/key exists, and this preflight
 ' neither selects a persisted holder nor creates a session or a PIN grant.
+function userProfileStartupTargetRoleAllowed(context as object, target as dynamic) as boolean
+    if type(target) <> "roAssociativeArray" then return false
+    if userProfileFullAccess(target.role) then return true
+    return target.role = "child" and userProfileTrue(context.childAccessReady)
+end function
+
 function userProfileStartupSelectionCurrent(registry as object, context as object, activeNonce as string, activeScope as dynamic, activeKey as string, memoryKeys as object, requirePin as boolean) as boolean
     if not userProfileStartupSelectionStorageCurrent(registry, context, activeNonce, activeScope, activeKey, memoryKeys, requirePin) then return false
     return requestGateAccessAllowed(context.connection.url, context.key)
@@ -37,9 +43,7 @@ function userProfileStartupSelectionStorageCurrent(registry as object, context a
     if restored = invalid or target = invalid then return false
     if not userProfileFullAccess(restored.role) then return false
     if FormatJson(target) <> FormatJson(context.target) or target.addressHeld then return false
-    ' Incoming Child activation remains separately fenced until its picker
-    ' admission and changed-protection continuations have native qualification.
-    if not userProfileFullAccess(target.role) then return false
+    if not userProfileStartupTargetRoleAllowed(context, target) then return false
     if requirePin and target.pinType <> "none"
         if not userProfilePinGrantMatches(context.pin, connection.id, target) then return false
     end if
@@ -70,6 +74,7 @@ function userProfileStartupProtectionReceipt(context as object, read as object, 
     if read.verifiedBaseUrl <> context.connection.url then return invalid
     target = context.target
     if type(target) <> "roAssociativeArray" then return invalid
+    if not userProfileStartupTargetRoleAllowed(context, target) then return invalid
     if textValue(read.accountId) <> target.userId.toStr() or textValue(read.verifiedUser.id) <> target.userId.toStr() then return invalid
     if lcase(textValue(read.accountUsername)) <> lcase(target.username) or lcase(textValue(read.verifiedUser.username)) <> lcase(target.username) then return invalid
     if target.pinType <> "none"
@@ -205,7 +210,7 @@ function commitUserProfileStartupRosterPull(registry as object, context as objec
     nextContext.protectionReceipt = invalid
     result.context = nextContext
     if target.pinType <> "none" then result.requiresPin = not userProfilePinGrantMatches(context.pin, context.connection.id, target)
-    if not sourceRemoved and not result.requiresPin and not sourceChild and userProfileFullAccess(target.role)
+    if not sourceRemoved and not result.requiresPin and not sourceChild and userProfileStartupTargetRoleAllowed(nextContext, target)
         result.protectionReceipt = userProfileStartupProtectionReceipt(nextContext, read, readNonce)
         result.context.protectionReceipt = result.protectionReceipt
     end if

@@ -190,6 +190,20 @@ sub main()
     context = {nonce: nonce, target: m.profilePickerContext.store.profiles[1], unlock: invalid}
     finishStartupProfileOwnSignIn(context, false)
     check(m.profilePicker.model.focus = 1 and not m.profilePicker.busy and m.global.profilegateclosed and m.global.activeusersession = "" and m.taskCreates = 0, "own-form cancellation keeps chosen target focused without authentication")
+    pickerNavigationFixture()
+    store = loadUserProfileStore(m.registry, "slot-a")
+    store.profiles[1] = setCanonicalPreference(store.profiles[1], "role", "child")
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
+    check(beginUserProfileLaunchPicker(false), "Child target selection starts only from an adult-restored launch")
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "select", index: 1}))
+    check(m.taskCreates = 0, "shipping Child readiness still refuses target activation")
+    m.profileChildAccessReady = true
+    onUserProfilePickerIntent(pickerNavigationEvent(m.profilePicker, {action: "select", index: 1}))
+    task = m.profileStartupTask
+    check(m.taskCreates = 1 and task.expectedUserId = "8" and task.apiKey = "bob-own-key" and m.activeUserScope = invalid and m.apiKey = "", "private available Child selection verifies only its own key without an outgoing authenticated adult")
+    m.profileChildAccessReady = false
+    onStartupProfileResult(pickerNavigationEvent(task, {ok: true, phase: "verified", verifiedBaseUrl: "https://example.test", apiKey: "bob-own-key", verifiedUser: {id: 8, username: "bob", user_level: 1}}))
+    check(m.taskCreates = 1 and m.profileStartupTask = invalid and m.activeUserScope = invalid and m.registry.flushes = 0, "revoking live Child readiness refuses callback continuation before another request or storage adoption")
     print "ALL TESTS PASSED"
 end sub
 
@@ -221,6 +235,7 @@ sub pickerNavigationFixture()
     m.connectionStore = loadConnectionStore(m.registry)
     m.selectedConnectionId = "slot-a"
     m.profilePickerReady = true
+    m.profileChildAccessReady = false
     m.profilePicker = invalid
     m.profilePickerContext = invalid
     m.profileStartupSelectionContext = invalid

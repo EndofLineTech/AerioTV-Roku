@@ -328,6 +328,12 @@ sub finishStartupProfileOwnSignIn(context as object, accepted as boolean)
     end if
 end sub
 
+function startupProfileTargetAllowed(context as object) as boolean
+    if not userProfileStartupTargetRoleAllowed(context, context.target) then return false
+    if context.target.role = "child" then return m.profileChildAccessReady = true
+    return true
+end function
+
 sub beginStartupProfileSelection(targetId as string, ownPin = invalid as dynamic)
     picker = m.profilePickerContext
     if picker = invalid or m.profileStartupSelectionContext <> invalid then return
@@ -356,7 +362,8 @@ sub beginStartupProfileSelection(targetId as string, ownPin = invalid as dynamic
             if beginUserProfileOwnSignIn(targetId, false, false, true) then return
         end if
     end if
-    if not credential.ok or target.role = "child" or not requestGateAccessAllowed(picker.connection.url, credential.key)
+    roleReady = userProfileFullAccess(target.role) or (target.role = "child" and m.profileChildAccessReady = true)
+    if not credential.ok or not roleReady or not requestGateAccessAllowed(picker.connection.url, credential.key)
         m.profilePicker.message = "This profile needs its own protected sign-in. No account was switched."
         return
     end if
@@ -365,7 +372,7 @@ sub beginStartupProfileSelection(targetId as string, ownPin = invalid as dynamic
         return
     end if
     nonce = CreateObject("roDeviceInfo").getRandomUUID()
-    context = {purpose: "startup-picker", nonce: nonce, connection: picker.connection, connectionRoot: picker.connectionRoot, connectionRootPresent: picker.connectionRootPresent, store: picker.store, storeRoot: picker.storeRoot, target: target, key: credential.key, memoryKeys: memory, phase: "pin"}
+    context = {purpose: "startup-picker", nonce: nonce, connection: picker.connection, connectionRoot: picker.connectionRoot, connectionRootPresent: picker.connectionRootPresent, store: picker.store, storeRoot: picker.storeRoot, target: target, key: credential.key, memoryKeys: memory, phase: "pin", childAccessReady: m.profileChildAccessReady = true}
     if not userProfileStartupSelectionCurrent(m.registry, context, nonce, m.activeUserScope, textValue(m.apiKey), memory, false) then return
     m.profileStartupSelectionContext = context
     m.profilePicker.busy = true
@@ -386,6 +393,7 @@ end sub
 function startupProfilePinContextCurrent(pin as object) as boolean
     context = m.profileStartupSelectionContext
     if context = invalid or m.profilePickerContext = invalid then return false
+    if not startupProfileTargetAllowed(context) then return false
     if pin.continuation <> "startup-selection" or pin.resume <> context.nonce or pin.slot <> context.connection.id then return false
     if m.global.profilegateclosed <> true then return false
     material = {slot: pin.slot, id: pin.profile.id, pinType: pin.profile.pinType, pinHash: pin.profile.pinHash, pinSalt: pin.profile.pinSalt}
@@ -396,6 +404,7 @@ end function
 sub onStartupProfilePin(nonce as string)
     context = m.profileStartupSelectionContext
     if context = invalid or context.nonce <> nonce then return
+    if not startupProfileTargetAllowed(context) then failStartupProfileSelection("This profile requires protected Child access.") : return
     if not userProfilePinGrantMatches(m.profileUnlockGrant, context.connection.id, context.target) then return
     current = loadUserProfileStore(m.registry, context.connection.id)
     if not userProfileSwitchAcceptPinStore(context.store, current, context.target.id, m.profileUnlockGrant)
@@ -420,6 +429,7 @@ end sub
 sub startStartupProfileTask(phase as string)
     context = m.profileStartupSelectionContext
     if context = invalid or m.profileStartupTask <> invalid then return
+    if not startupProfileTargetAllowed(context) then failStartupProfileSelection("This profile requires protected Child access.") : return
     if phase <> "authenticate" and currentUserSessionId() <> context.nonce
         failStartupProfileSelection("Profile access changed. No account was switched.")
         return
@@ -478,6 +488,12 @@ sub onStartupProfileResult(event as object)
     context = m.profileStartupSelectionContext
     if context = invalid or context.connection.id <> m.selectedConnectionId then return
     result = event.getData()
+    if type(result) = "roAssociativeArray"
+        if result.ok = true and not startupProfileTargetAllowed(context)
+            failStartupProfileSelection("This profile requires protected Child access.")
+            return
+        end if
+    end if
     owned = userProfileStartupSelectionStorageCurrent(m.registry, context, currentUserSessionId(), m.activeUserScope, textValue(m.apiKey), context.memoryKeys, true)
     if type(result) = "roAssociativeArray"
         if result.ok = true then owned = owned and userProfileStartupSelectionCurrent(m.registry, context, currentUserSessionId(), m.activeUserScope, textValue(m.apiKey), context.memoryKeys, true)
@@ -536,7 +552,7 @@ sub onStartupProfileResult(event as object)
         end if
         m.profileStartupSelectionContext = published.context
         context = published.context
-        if not userProfileFullAccess(context.target.role)
+        if not startupProfileTargetAllowed(context)
             failStartupProfileSelection("This profile requires protected Child access.")
             return
         end if

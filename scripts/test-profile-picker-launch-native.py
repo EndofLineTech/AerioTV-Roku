@@ -36,6 +36,9 @@ def build(path, normal, section, base, mode="plain"):
                 body = body.replace(b'"cachefs:/aeriotv-metadata-v1"', b'"tmp:/picker-launch-cache"')
             elif name == "components/AerioScene.brs":
                 source = body.decode()
+                if mode.startswith("child-"):
+                    assert source.count('    m.profileChildAccessReady = false') == 1
+                    source = source.replace('    m.profileChildAccessReady = false', '    m.profileChildAccessReady = true', 1)
                 assert source.count("m.profilePickerReady = false") == 1
                 source = source.replace("m.profilePickerReady = false", "m.profilePickerReady = true", 1)
                 target = '    m.registry = CreateObject("roRegistrySection", "AerioTV")'
@@ -86,9 +89,10 @@ def build(path, normal, section, base, mode="plain"):
                     assert body.count(target) == 1
                     body = body.replace(target, b"        verifyStartupPickerProbeCancel()\n" + target, 1)
             elif name == "components/GuideView.xml":
-                body = body.replace(b"</interface>", b'<function name="profilePickerProbeLineup" /></interface>', 1)
+                body = body.replace(b"</interface>", b'<function name="profilePickerProbeLineup" /><function name="profilePickerProbeRole" /></interface>', 1)
             elif name == "components/GuideView.brs":
                 body += b'\nfunction profilePickerProbeLineup() as string\n    if type(m.channels) <> "roArray" then return ""\n    if m.channels.count() = 0 then return ""\n    return m.channels[0].id\nend function\n'
+                body += b'\nfunction profilePickerProbeRole() as string\n    return m.userRole\nend function\n'
             package.writestr(name, body)
 
 
@@ -96,7 +100,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--restore", required=True)
     parser.add_argument("--report", default="out/profile-picker-launch-native.json")
-    parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link", "own-keyless", "own-pin", "own-held", "own-cancel", "own-link", "own-pin-link", "own-auth-link", "own-default", "own-default-pin", "own-wrong", "own-recreated", "own-memory", "own-keyboard"], default="plain")
+    parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link", "own-keyless", "own-pin", "own-held", "own-cancel", "own-link", "own-pin-link", "own-auth-link", "own-default", "own-default-pin", "own-wrong", "own-recreated", "own-memory", "own-keyboard", "child-select", "child-select-pin", "child-select-reject", "child-select-link"], default="plain")
     args = parser.parse_args()
     host, password = os.environ["ROKU_HOST"], os.environ["ROKU_DEV_PASSWORD"]
     modules = {}
@@ -173,7 +177,7 @@ def main():
             if bearer:
                 user = target_user
             hits.append({"user": user, "path": self.path, "method": "GET", "own_password_check": bearer})
-            delayed_link = args.mode == "warm-auth-link" and self.path == "/api/accounts/users/me/"
+            delayed_link = args.mode in ["warm-auth-link", "child-select-link"] and self.path == "/api/accounts/users/me/"
             delayed_link = delayed_link or args.mode == "warm-load-link" and self.path.startswith("/api/channels/")
             if delayed_link and user == 8 and not report.get("media_input_attempted"):
                 report["media_input_attempted"] = True
@@ -210,14 +214,17 @@ def main():
                     value = {"id": 9, "username": "Synthetic9", "user_level": 1}
                     report["mismatched_me_response"] = {"status": 200, "id": 9, "username": "Synthetic9"}
             elif self.path == "/api/accounts/users/me/app-data/":
-                value = {"apps": [{"key": "synthetic8.aeriotv", "bytes": 600}]} if args.mode in ["import-pin", "warm-import-pin-link"] and user == 8 else {"apps": []}
+                with_profiles = args.mode in ["import-pin", "warm-import-pin-link", "child-select", "child-select-pin"]
+                value = {"apps": [{"key": "synthetic8.aeriotv", "bytes": 600}]} if with_profiles and user == 8 else {"apps": []}
             elif self.path == "/api/accounts/users/me/app-data/synthetic8.aeriotv/":
                 salt = "0123456789abcdef0123456789abcdef"
                 updated = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(stamp))
                 value = {"schemaVersion": 3, "deviceId": "synthetic-phone", "platform": "android", "appVersion": "1", "updatedAt": updated, "categories": {"profiles": {"updatedAt": updated, "data": {"rows": [[8, "Synthetic8", "Imported target", "numbers", hashlib.sha256(bytes.fromhex(salt) + b"5678").hexdigest(), salt, "user", stamp, {}, 0]], "removed": []}}}}
+                if args.mode in ["child-select", "child-select-pin"]:
+                    value["categories"]["profiles"]["data"]["rows"] = [[8, "Synthetic8", "Forbidden rename", "none", "", "", "user", stamp, {}, 0]]
             elif self.path.split("?", 1)[0] in ["/api/channels/channels/", "/api/channels/channels/summary/"]:
                 value = [{"id": user, "uuid": f"00000000-0000-4000-8000-{user:012d}", "name": f"Synthetic {user}", "channel_number": user}]
-            rejected = args.mode == "reject"
+            rejected = args.mode in ["reject", "child-select-reject"]
             if rejected:
                 value = {"detail": "Invalid API key"}
             body = json.dumps(value).encode()
@@ -287,6 +294,10 @@ def main():
                     except OSError as error:
                         attempt["error"] = type(error).__name__
                         break
+            elif event["kind"] == "result" and args.mode in ["child-select", "child-select-pin"] and event.get("passed") is True:
+                image = str(Path(args.report).with_name(Path(args.report).stem + "-child-guide.jpg"))
+                captured = subprocess.run(["python3", "scripts/capture-roku-screenshot.py", "--developer-mode", "--output", image], cwd=ROOT, capture_output=True, timeout=40)
+                report["child_guide_screenshot"] = captured.returncode == 0
             elif event["kind"] == "keyboard-ready":
                 value = "Synthetic8" if event["field"] == "username" else "synthetic-password"
                 image = str(Path(args.report).with_name(Path(args.report).stem + f'-{event["field"]}-keyboard.jpg'))
@@ -378,7 +389,7 @@ def main():
         if args.mode == "import-pin":
             expected_phases.insert(2, "read")
         pins = [event for event in events if event["kind"] == "pin-submitted"]
-        pin_count = {"plain": 0, "pin": 1, "import-pin": 2, "back": 0, "reject": 0, "identity": 0, "cold-link": 1, "warm-link": 1, "warm-pin-link": 1, "warm-auth-link": 1, "warm-import-pin-link": 2, "warm-load-link": 1, "own-keyless": 0, "own-pin": 1, "own-held": 0, "own-cancel": 0, "own-link": 1, "own-pin-link": 2, "own-auth-link": 1, "own-default": 0, "own-default-pin": 1, "own-wrong": 0, "own-recreated": 0, "own-memory": 0, "own-keyboard": 0}[args.mode]
+        pin_count = {"plain": 0, "pin": 1, "import-pin": 2, "back": 0, "reject": 0, "identity": 0, "cold-link": 1, "warm-link": 1, "warm-pin-link": 1, "warm-auth-link": 1, "warm-import-pin-link": 2, "warm-load-link": 1, "own-keyless": 0, "own-pin": 1, "own-held": 0, "own-cancel": 0, "own-link": 1, "own-pin-link": 2, "own-auth-link": 1, "own-default": 0, "own-default-pin": 1, "own-wrong": 0, "own-recreated": 0, "own-memory": 0, "own-keyboard": 0, "child-select": 0, "child-select-pin": 1, "child-select-reject": 0, "child-select-link": 1}[args.mode]
         before_pins = report.get("pre_pin_requests", [])
         pin_ok = len(pins) == pin_count and all(event["wrong_covered"] and event["verified"] for event in pins) and [command.get("status") for command in report.get("pin_commands", [])] == [200] * pin_count
         if pin_count:
@@ -388,6 +399,8 @@ def main():
             pin_ok = pin_ok and len(set(reads)) == 2 and all(reads) and paths.count("/api/accounts/users/me/app-data/synthetic8.aeriotv/") == 2
         wanted_keys = [200] if args.mode in ["own-default", "own-default-pin"] else [200, 200]
         report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and report.get("pre_selection_requests") == [] and report.get("screenshot") is True and [k.get("status") for k in report["keys"]] == wanted_keys and [p["phase"] for p in phases] == expected_phases and all(p["no_actor"] and p["empty_key"] for p in phases) and all(h.get("user") == target_user and h["method"] == "GET" for h in hits) and listing >= 2 and heavy > listing and paths.count("/api/accounts/users/me/") >= 3 and pin_ok
+        if args.mode in ["child-select", "child-select-pin"]:
+            report["passed"] = report["passed"] and report.get("child_guide_screenshot") is True and paths.count("/api/accounts/users/me/app-data/synthetic8.aeriotv/") == 1
         if args.mode in ["own-keyless", "own-pin", "own-held", "own-cancel", "own-default", "own-default-pin", "own-wrong", "own-recreated", "own-memory", "own-keyboard"]:
             post_count = 2 if args.mode == "own-cancel" else 1
             expected_posts = [{"path": "/api/accounts/token/", "accepted": True}] * post_count
@@ -403,7 +416,7 @@ def main():
                 inputs = report.get("keyboard_inputs", [])
                 results = [event for event in events if event["kind"] == "keyboard-result"]
                 report["passed"] = report["passed"] and [item["field"] for item in inputs] == ["username", "password"] and all(item["captured"] and item["filled_captured"] and item.get("submit_status") == 200 and item["statuses"] == [200] * item["characters"] for item in inputs) and len(results) == 1 and results[0].get("passed") is True
-        if args.mode in ["back", "reject", "identity"]:
+        if args.mode in ["back", "reject", "identity", "child-select-reject"]:
             report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and events[-1].get("exited" if args.mode == "back" else "rejected") is True and report.get("pre_selection_requests") == [] and report.get("screenshot") is True and [k.get("status") for k in report["keys"]] == [200, 200] and [p["phase"] for p in phases] == ["authenticate"] and all(p["no_actor"] and p["empty_key"] for p in phases) and len(hits) == 1 and hits[0].get("user") == 8 and hits[0].get("path") == "/api/accounts/users/me/" and hits[0]["method"] == "GET"
             if args.mode == "back":
                 report["passed"] = report["passed"] and report.get("back_ack_before_verdict") is True and report.get("back_status") == 200 and report.get("back_activity") == {"dev_active": True, "screensaver_active": False}
@@ -411,16 +424,16 @@ def main():
                 report["passed"] = report["passed"] and report.get("rejected_ready") is True and report.get("held_retry_status") == 200 and report.get("rejected_screenshot") is True and len(report.get("held_retry_boundary", [])) == 1 and events[-1].get("held_refused") is True
                 if args.mode == "identity":
                     report["passed"] = report["passed"] and report.get("mismatched_me_response") == {"status": 200, "id": 9, "username": "Synthetic9"} and events[-1].get("no_broker_hold") is True
-        if args.mode in ["cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link"]:
+        if args.mode in ["cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link", "child-select-link"]:
             expected_beacons = ["AppDialogInitiate", "AppDialogComplete", "AppLaunchComplete"]
             if args.mode != "cold-link":
                 expected_beacons = ["AppDialogInitiate", "AppDialogComplete", "AppDialogInitiate", "AppDialogComplete", "AppLaunchComplete"]
             beacons = [event["name"] for event in events if event["kind"] == "beacon"]
             expected_keys = [] if args.mode in ["cold-link", "warm-link"] else [200, 200]
-            expected_phases = ["authenticate"] if args.mode == "warm-auth-link" else []
+            expected_phases = ["authenticate"] if args.mode in ["warm-auth-link", "child-select-link"] else []
             own_hits = hits
             pin_ok = len(pins) == 1 and pins[0]["wrong_covered"] and pins[0]["verified"] and [command.get("status") for command in report.get("pin_commands", [])] == [200]
-            if args.mode == "warm-auth-link":
+            if args.mode in ["warm-auth-link", "child-select-link"]:
                 pin_ok = pin_ok and len(before_pins) == 1 and len(before_pins[0]) == 1 and before_pins[0][0].get("user") == 8 and before_pins[0][0].get("path") == "/api/accounts/users/me/"
                 own_hits = hits[1:]
                 pin_ok = pin_ok and report.get("media_input_activity") == {"dev_active": True, "screensaver_active": False}

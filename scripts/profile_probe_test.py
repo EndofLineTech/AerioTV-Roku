@@ -40,7 +40,7 @@ class ProfileProbeTest(unittest.TestCase):
             with zipfile.ZipFile(normal, 'w') as package:
                 for name in names:
                     package.write(root / name, name)
-            for mode in ['plain', 'pin', 'import-pin', 'back', 'reject', 'identity', 'cold-link', 'warm-link', 'warm-pin-link', 'warm-auth-link', 'warm-import-pin-link', 'warm-load-link', 'own-keyless', 'own-pin', 'own-held', 'own-cancel', 'own-link', 'own-pin-link', 'own-auth-link', 'own-default', 'own-default-pin', 'own-wrong', 'own-recreated', 'own-memory', 'own-keyboard']:
+            for mode in ['plain', 'pin', 'import-pin', 'back', 'reject', 'identity', 'cold-link', 'warm-link', 'warm-pin-link', 'warm-auth-link', 'warm-import-pin-link', 'warm-load-link', 'own-keyless', 'own-pin', 'own-held', 'own-cancel', 'own-link', 'own-pin-link', 'own-auth-link', 'own-default', 'own-default-pin', 'own-wrong', 'own-recreated', 'own-memory', 'own-keyboard', 'child-select', 'child-select-pin', 'child-select-reject', 'child-select-link']:
                 target = Path(folder) / f'{mode}.zip'
                 probe.build(target, normal, 'DisposablePicker', 'http://fixture.test', mode)
                 with zipfile.ZipFile(target) as package:
@@ -49,6 +49,7 @@ class ProfileProbeTest(unittest.TestCase):
                     self.assertIn('CreateObject("roRegistrySection", "DisposablePicker")', scene)
                     self.assertIn(f'seedProfilePickerLaunchProbe("http://fixture.test", "{mode}")', scene)
                     self.assertIn('m.profilePickerReady = true', scene)
+                    self.assertIn('m.profileChildAccessReady = ' + ('true' if mode.startswith('child-') else 'false'), scene)
                     self.assertIn('if deferUserProfileLaunch() then return', scene)
                     self.assertNotIn('"cachefs:/aeriotv-metadata-v1"', package.read('source/MetadataCacheStore.brs').decode())
 

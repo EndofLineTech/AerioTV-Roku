@@ -4,6 +4,18 @@ sub seedProfilePickerLaunchProbe(base as string, mode as string)
     b = setCanonicalPreference(b, "isDefault", false)
     m.pickerProbeMode = mode
     m.pickerProbePickerCount = 0
+    m.pickerProbeChildTarget = left(mode, 6) = "child-"
+    if m.pickerProbeChildTarget
+        b = setCanonicalPreference(b, "role", "child")
+        a = setCanonicalPreference(a, "pinType", "numbers")
+        a = setCanonicalPreference(a, "pinSalt", "0123456789abcdef0123456789abcdef")
+        a = setCanonicalPreference(a, "pinHash", userProfilePinHash(a.pinSalt, "2468"))
+        if mode = "child-select-pin"
+            b = setCanonicalPreference(b, "pinType", "numbers")
+            b = setCanonicalPreference(b, "pinSalt", "0123456789abcdef0123456789abcdef")
+            b = setCanonicalPreference(b, "pinHash", userProfilePinHash(b.pinSalt, "1234"))
+        end if
+    end if
     m.pickerProbeDefaultOwn = mode = "own-default" or mode = "own-default-pin"
     if mode = "own-default-pin"
         a = setCanonicalPreference(a, "pinType", "numbers")
@@ -56,7 +68,7 @@ end sub
 sub onProfilePickerLaunchProbeTick()
     ownForm = left(m.pickerProbeMode, 4) = "own-"
     ownLink = m.pickerProbeMode = "own-link" or m.pickerProbeMode = "own-pin-link" or m.pickerProbeMode = "own-auth-link"
-    sourceLink = m.pickerProbeMode = "cold-link" or m.pickerProbeMode = "warm-link" or m.pickerProbeMode = "warm-pin-link" or m.pickerProbeMode = "warm-auth-link" or m.pickerProbeMode = "warm-import-pin-link" or m.pickerProbeMode = "warm-load-link" or ownLink
+    sourceLink = m.pickerProbeMode = "cold-link" or m.pickerProbeMode = "warm-link" or m.pickerProbeMode = "warm-pin-link" or m.pickerProbeMode = "warm-auth-link" or m.pickerProbeMode = "warm-import-pin-link" or m.pickerProbeMode = "warm-load-link" or ownLink or m.pickerProbeMode = "child-select-link"
     if m.pickerProbeMode = "cold-link" and m.profilePinDialog <> invalid and m.pickerProbeReady <> true
         m.pickerProbeReady = true
         ready = m.profilePicker = invalid and m.pickerProbePickerCount = 0 and m.profileStartupScreenReady and not m.profileStartupDeferred and m.activeUserScope = invalid and m.global.profilegateclosed and m.profilePinContext.profile.id = m.pickerProbeA and m.profilePinContext.continuation = "connect" and m.task = invalid
@@ -68,10 +80,12 @@ sub onProfilePickerLaunchProbeTick()
         m.pickerProbeSettingsRoot = m.registry.read("settingsV1")
         ready = m.activeUserScope = invalid and m.apiKey = "" and m.global.profilegateclosed and m.profileStartupTask = invalid and m.profilePicker.model.focus = 0
         admission = startupProfileOwnSignInAdmission(m.pickerProbeTargetId)
-        ready = ready and admission.ok and m.activeUserScope = invalid and m.apiKey = "" and m.profileStartupTask = invalid
+        formAdmissionExpected = admission.ok
+        if m.pickerProbeChildTarget then formAdmissionExpected = not admission.ok
+        ready = ready and formAdmissionExpected and m.activeUserScope = invalid and m.apiKey = "" and m.profileStartupTask = invalid
         print "[picker-launch] "; FormatJson({kind: "ready", ready: ready, own_form_admission: admission.ok})
     end if
-    if (m.pickerProbeMode = "reject" or m.pickerProbeMode = "identity") and m.profilePicker <> invalid
+    if (m.pickerProbeMode = "reject" or m.pickerProbeMode = "identity" or m.pickerProbeMode = "child-select-reject") and m.profilePicker <> invalid
         failureMessage = "The API key for Synthetic8 was rejected."
         retryMessage = "This profile needs its own protected sign-in. No account was switched."
         initial = true
@@ -260,7 +274,7 @@ sub onProfilePickerLaunchProbeTick()
         return
     end if
     if m.page <> "guide" or m.busy then return
-    if m.pickerProbeMode = "warm-auth-link" or m.pickerProbeMode = "warm-load-link" or m.pickerProbeMode = "own-cancel" or m.pickerProbeMode = "own-auth-link"
+    if m.pickerProbeMode = "warm-auth-link" or m.pickerProbeMode = "warm-load-link" or m.pickerProbeMode = "own-cancel" or m.pickerProbeMode = "own-auth-link" or m.pickerProbeMode = "child-select-link"
         if m.pickerProbeWarmWait = invalid
             m.pickerProbeWarmWait = CreateObject("roTimeSpan")
             m.pickerProbeWarmWait.mark()
@@ -286,7 +300,13 @@ sub onProfilePickerLaunchProbeTick()
                 if profile.id = m.pickerProbeB then passed = passed and profile.pinType = "numbers" and profile.pinHash = userProfilePinHash("0123456789abcdef0123456789abcdef", "5678")
             end for
         end if
-        if m.pickerProbeMode = "warm-auth-link" or m.pickerProbeMode = "warm-load-link" then passed = passed and m.pickerProbeTask.cancelRequested and m.pickerProbeTask.apiKey = "" and m.pickerProbeTask.aeriosession <> m.activeUserScope.sessionId
+        if m.pickerProbeMode = "warm-auth-link" or m.pickerProbeMode = "warm-load-link" or m.pickerProbeMode = "child-select-link" then passed = passed and m.pickerProbeTask.cancelRequested and m.pickerProbeTask.apiKey = "" and m.pickerProbeTask.aeriosession <> m.activeUserScope.sessionId
+        if m.pickerProbeMode = "child-select-link"
+            passed = passed and currentUserSettingsRole() = "user" and m.guide.callFunc("profilePickerProbeRole") = "user"
+            for each profile in store.profiles
+                if profile.id = m.pickerProbeB then passed = passed and profile.role = "child"
+            end for
+        end if
         if ownLink then passed = passed and m.pickerProbeStaleFormRefused = true
         if m.pickerProbeMode = "own-auth-link" then passed = passed and m.pickerProbeCredentialTask.cancelRequested and m.pickerProbeCredentialTask.password = "" and m.pickerProbeCredentialTask.apiKey = "" and m.pickerProbeCredentialTask.aeriosession <> m.activeUserScope.sessionId
         targetSettings = preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "8"))
@@ -319,6 +339,17 @@ sub onProfilePickerLaunchProbeTick()
     if m.pickerProbeMode = "own-cancel" then passed = passed and m.pickerProbeOwnCancelled = true and m.pickerProbeCredentialTask.cancelRequested and m.pickerProbeCredentialTask.password = "" and m.pickerProbeCredentialTask.aeriosession <> m.activeUserScope.sessionId
     if m.pickerProbeMode = "own-wrong" then passed = passed and m.pickerProbeOwnRejected = true
     if m.pickerProbeMode = "own-keyboard" then passed = passed and m.pickerProbeKeyboardCompleted = true
+    if m.pickerProbeChildTarget
+        passed = passed and currentUserSettingsRole() = "child" and m.guide.callFunc("profilePickerProbeRole") = "child" and not userProfileConnectionSetupAllowed()
+        for each profile in store.profiles
+            if profile.id = m.pickerProbeB then passed = passed and profile.role = "child" and profile.displayName = "Synthetic8"
+        end for
+        if m.pickerProbeMode = "child-select-pin"
+            for each profile in store.profiles
+                if profile.id = m.pickerProbeB then passed = passed and profile.pinType = "numbers" and profile.pinHash = userProfilePinHash("0123456789abcdef0123456789abcdef", "1234")
+            end for
+        end if
+    end if
     if m.pickerProbeMode = "own-recreated"
         oldAccount = preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "8"))
         newAccount = preferenceScope(connectionPreferenceIdentity(connectionStoreEntry(m.connectionStore, "slot-a"), "88"))

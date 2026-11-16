@@ -547,3 +547,32 @@ The first pre-form key timeout remains at
 `out/mrr-picker-own-keyboard-native.log/.json` under `667m`.
 All runs cleaned and exact-restored the owner app. ECP native text editing is
 not physical D-pad/voice input, a Dashboard pass or certification approval.
+
+## Available Child selection: private, still under qualification
+
+Available Child targets now require explicit typed Child readiness in the
+no-actor startup boundary, plus their own key/PIN. Scene callbacks recheck the
+live flag before continuation/adoption. Child early reads never apply roster
+role/name/PIN changes; adoption configures the Child guide and refuses setup.
+Restored Child startup and keyless/held Child selection remain separate.
+Both shipping readiness flags remain false.
+
+Host red: `out/mrr-picker-child-selection-red.log`; full verify:
+`out/mrr-picker-child-selection-final-verify.log`.
+Bounded native passes: `out/mrr-picker-child-select-admission-fixed-native.log`,
+`out/mrr-picker-child-select-pin-native.log`,
+`out/mrr-picker-child-select-reject-native.log` (one own rejected request,
+no own form/default borrowing/retry request), and
+`out/mrr-picker-child-select-link-repeat-native.log` (cancel delayed target,
+require restored adult's real own PIN, correct source guide past late reply).
+Shared native and existing adult-gated Child escape regressions pass.
+
+Native qualification is not finished: a later protected guide-capture run
+stalls after verified PIN/authenticate phase with zero HTTP requests
+(`out/mrr-picker-child-select-pin-repeat-qualified-native.log/.json`).
+Its exact package is preserved under `5fif`; no app/device cause is established
+and no final Child-guide image acceptance is claimed. Pre-selection key
+timeouts stay separate under `667m`. The first Child fixture also wrongly
+expected adult own-form admission for a Child; it now requires refusal.
+All runs cleaned and exact-restored the owner app. Remaining reliability and
+wider Child selection matrices stay tracked while core controls proceed.
