@@ -30,6 +30,7 @@ end sub
 
 sub recordRealProfileSyncReceipt(result as object, saved as object)
     print "[real-sync] "; FormatJson({kind: "receipt", state: textValue(result.state), ok: result.ok = true, committed: saved.ok = true, submitted: result.submitted = true})
+    if saved.ok = true then m.realSyncSettled = true
     if result.state = "written" and result.ok = true and saved.ok = true
         m.realSyncWrites[m.activeUserScope.profileId] = true
     end if
@@ -125,11 +126,6 @@ sub onRealProfileSyncTick()
         m.profileSyncWriterReady = m.realSyncBaselineWriterReady
         m.profileSyncSchedulingReady = m.realSyncBaselineSchedulingReady
         m.profileSyncControlsReady = m.realSyncBaselineControlsReady
-        name = "Test 1"
-        for each profile in store.profiles
-            if profile.id = m.realSyncFirst and profile.displayName = name then name = m.realSyncConfig.first
-        end for
-        if not renameRealSyncHolder(m.realSyncFirst, name) then finishRealProfileSync(false, "first-edit-refused") : return
         openDispatcharrSyncControls()
         if m.connectionDialog = invalid then finishRealProfileSync(false, "consent-menu-unavailable") : return
         if loadDispatcharrSyncSettings(m.registry).enabled then finishRealProfileSync(false, "explicit-off-start-required") : return
@@ -140,7 +136,18 @@ sub onRealProfileSyncTick()
         return
     end if
     if stage = 1
-        if not m.realSyncWrites.doesExist(m.realSyncFirst) then return
+        if not m.realSyncWrites.doesExist(m.realSyncFirst)
+            if m.realSyncSettled <> true or m.realSyncFirstEdited = true then return
+            if m.profileScheduledSyncTask <> invalid or m.profileSyncWriteTask <> invalid then return
+            store = loadUserProfileStore(m.registry, m.selectedConnectionId)
+            name = "Test 1"
+            for each profile in store.profiles
+                if profile.id = m.realSyncFirst and profile.displayName = name then name = m.realSyncConfig.first
+            end for
+            if not renameRealSyncHolder(m.realSyncFirst, name) then finishRealProfileSync(false, "first-edit-refused") : return
+            m.realSyncFirstEdited = true
+            return
+        end if
         if m.profileScheduledSyncTask <> invalid or m.profileSyncWriteTask <> invalid then return
         if not beginUserProfileSwitch(m.realSyncSecond) then finishRealProfileSync(false, "second-switch-refused") : return
         m.realSyncStage = 2

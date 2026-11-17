@@ -13,6 +13,16 @@ from unittest.mock import MagicMock, patch
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_real_sync_edits_after_initial_settlement_without_forcing_readiness(self):
+        root = Path(__file__).resolve().parent.parent
+        fixture = (root / 'tests/native/RealProfileSyncFixture.brs').read_text()
+        first = fixture.index('renameRealSyncHolder(m.realSyncFirst, name)')
+        self.assertGreater(first, fixture.index('    if stage = 1\n'))
+        self.assertIn('m.realSyncSettled <> true', fixture)
+        self.assertIn('qualified-baseline-required', fixture)
+        builder = Path(__file__).with_name('test-real-profiles-sync-native.py').read_text()
+        self.assertNotIn('m.syncWriterReady = true', builder)
+
     def test_media_verdict_uses_both_playback_results_not_switcher_capture(self):
         builder = Path(__file__).with_name('test-profile-picker-launch-native.py').read_text()
         branch = builder.split('            elif args.profile_media:\n', 1)[1].split('            else:', 1)[0]
