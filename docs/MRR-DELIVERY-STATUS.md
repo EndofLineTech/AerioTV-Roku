@@ -104,6 +104,13 @@ and Add Profile.
 
 ## Verified developer handoff
 
+Current full verification passes in
+`out/mrr-real-sync-qualified-full-verify.log` (380-file normal ZIP). Latest
+focused tooling also passes in `out/mrr-baseline-settled-tools.log`.
+`out/mrr-qualified-baseline-full-gate-match.json` verifies that all compiled
+files in the installed baseline match that full-gate normal ZIP; only its
+developer manifest differs.
+
 Prior API-key implementation regression passes:
 `out/mrr-delivery-api-key-final-verify.log` (380-file normal ZIP).
 Unsigned developer artifact:
