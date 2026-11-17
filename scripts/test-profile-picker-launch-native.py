@@ -76,7 +76,7 @@ def real_baseline_fixture(fixture, accounts):
     return fixture.replace('"synthetic-password"', json.dumps(accounts[1]["password"]))
 
 
-def build(path, normal, section, base, mode="plain", baseline_accounts=None, admin_ui=False, phone_verify=False, phone_import=False, phone_import_add=False, profile_media=False, peer_envelope=None, peer_material=None):
+def build(path, normal, section, base, mode="plain", baseline_accounts=None, admin_ui=False, phone_verify=False, phone_import=False, phone_import_add=False, profile_media=False, peer_envelope=None, peer_material=None, profile_vod=False):
     if sum([admin_ui, phone_verify, phone_import, profile_media]) > 1:
         raise ValueError("Choose one focused native flow")
     if (phone_verify or phone_import or profile_media) and not baseline_accounts:
@@ -138,7 +138,7 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
                         fixture = fixture.replace('"phone-import"', json.dumps(slot))
                 if profile_media:
                     fixture = fixture.replace('sub onProfileBaselineProbeTick()\n', 'sub onProfileBaselineProbeTick()\n    onProfileMediaAcceptanceTick()\n    return\n', 1)
-                    fixture += "\n" + (ROOT / "tests/native/ProfileMediaAcceptanceFixture.brs").read_text()
+                    fixture += "\n" + (ROOT / ("tests/native/ProfileVodAcceptanceFixture.brs" if profile_vod else "tests/native/ProfileMediaAcceptanceFixture.brs")).read_text()
                 if baseline_accounts:
                     fixture = real_baseline_fixture(fixture, baseline_accounts)
                 body = (source + "\n" + fixture).encode()
@@ -211,6 +211,10 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
             elif name == "components/GuideView.brs":
                 body += b'\nfunction profilePickerProbeLineup() as string\n    if type(m.channels) <> "roArray" then return ""\n    if m.channels.count() = 0 then return ""\n    return m.channels[0].id\nend function\n'
                 body += b'\nfunction profilePickerProbeRole() as string\n    return m.userRole\nend function\n'
+            elif name == "components/VodView.xml" and profile_vod:
+                body = body.replace(b"</interface>", b'<function name="profileVodAcceptanceState" /><function name="profileVodAcceptanceAction" /></interface>', 1)
+            elif name == "components/VodView.brs" and profile_vod:
+                body += b"\n" + (ROOT / "tests/native/ProfileVodViewFixture.brs").read_bytes()
             elif name == "components/DvrView.xml" and profile_media:
                 body = body.replace(b"</interface>", b'<function name="profileMediaAcceptanceRow" /></interface>', 1)
             elif name == "components/DvrView.brs" and profile_media:
@@ -263,11 +267,14 @@ def main():
     parser.add_argument("--phone-import", action="store_true", help="Private native receiver-controller import; isolated registry and read-only server access")
     parser.add_argument("--phone-import-add", action="store_true", help="Phone import with one default, then own-credential onboarding Add and Undo")
     parser.add_argument("--profile-media", action="store_true", help="Read-only completed DVR playback before/after own-account profile switching")
+    parser.add_argument("--profile-vod", action="store_true", help="Populated Movies/Series and representative movie playback before/after own-account switching")
     parser.add_argument("--peer-envelope", type=Path, help="Private actual-peer encrypted setup envelope; only with --phone-import")
     parser.add_argument("--peer-material", type=Path, help="Private test receiver material; never enables production entropy")
     parser.add_argument("--dispatcharr-credentials", type=Path, help="Private JSON: baseUrl and two accounts with username/password; implies baseline, read-only server testing")
     parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link", "own-keyless", "own-pin", "own-held", "own-cancel", "own-link", "own-pin-link", "own-auth-link", "own-default", "own-default-pin", "own-wrong", "own-recreated", "own-memory", "own-keyboard", "child-select", "child-select-pin", "child-select-reject", "child-select-link", "reorder"], default="plain")
     args = parser.parse_args()
+    if args.profile_vod:
+        args.profile_media = True
     if args.phone_import_add:
         args.phone_import = True
     if bool(args.peer_envelope) != bool(args.peer_material) or (args.peer_envelope and (not args.phone_import or args.phone_import_add)):
@@ -437,7 +444,7 @@ def main():
     package_dir = Path(private_package.name) if private_package else ROOT / "out"
     archive = package_dir / "profile-picker-launch-probe.zip"
     cleaner = package_dir / "profile-picker-launch-cleanup.zip"
-    build(archive, ROOT / "out/aeriotv-roku.zip", section, real_base or f"http://{local}:{server.server_port}", "baseline" if args.baseline else args.mode, baseline_accounts, admin_ui=args.admin_ui, phone_verify=args.phone_verify, phone_import=args.phone_import, phone_import_add=args.phone_import_add, profile_media=args.profile_media, peer_envelope=args.peer_envelope, peer_material=args.peer_material)
+    build(archive, ROOT / "out/aeriotv-roku.zip", section, real_base or f"http://{local}:{server.server_port}", "baseline" if args.baseline else args.mode, baseline_accounts, admin_ui=args.admin_ui, phone_verify=args.phone_verify, phone_import=args.phone_import, phone_import_add=args.phone_import_add, profile_media=args.profile_media, peer_envelope=args.peer_envelope, peer_material=args.peer_material, profile_vod=args.profile_vod)
     modules["recovery"].cleanup_package(cleaner, section)
     report = {"passed": False, "mode": args.mode, "events": [], "keys": [], "restore_sha256": hashlib.sha256(restore.read_bytes()).hexdigest(), "probe_sha256": hashlib.sha256(archive.read_bytes()).hexdigest()}
     report["private_registry_section"] = section
@@ -455,6 +462,14 @@ def main():
                 continue
             event = json.loads(line.split("[picker-launch] ", 1)[1])
             report["events"].append(event)
+            if event["kind"] == "profile-vod-visual":
+                image = str(Path(args.report).with_suffix(f'.account-{event["account"]}-{event["view"]}.jpg'))
+                captured = subprocess.run(["python3", "scripts/capture-roku-screenshot.py", "--developer-mode", "--output", image], cwd=ROOT, capture_output=True, timeout=40)
+                entry = {"account": event["account"], "view": event["view"], "captured": captured.returncode == 0, "path": image}
+                report.setdefault("vod_visuals", []).append(entry)
+                request = urllib.request.Request(f"http://{host}:8060/input?pickerProbeVisualCaptured=1", data=b"", method="POST")
+                with urllib.request.urlopen(request, timeout=3) as response:
+                    entry["ack"] = response.status
             if event["kind"] == "switcher-visual":
                 image = str(Path(args.report).with_suffix(".switcher.jpg"))
                 captured = subprocess.run(["python3", "scripts/capture-roku-screenshot.py", "--developer-mode", "--output", image], cwd=ROOT, capture_output=True, timeout=40)
@@ -698,6 +713,9 @@ def main():
             elif args.profile_media:
                 report["media_transport"] = "actual-own-account-playback"
                 report["passed"] = report["passed"] and all(events[-1].get(field) is True for field in ["profilemedia", "sourceplayed", "targetplayed"])
+                if args.profile_vod:
+                    visuals = report.get("vod_visuals", [])
+                    report["passed"] = report["passed"] and events[-1].get("profilevod") is True and [(v["account"], v["view"]) for v in visuals] == [(a, view) for a in [1, 2] for view in ["movies", "series", "playing"]] and all(v["captured"] and v.get("ack") == 200 for v in visuals)
             else:
                 report["passed"] = report["passed"] and report.get("switcher_screenshot") is True and report.get("switcher_visual_ack") == 200
                 report["real_dispatcharr"] = True

@@ -13,6 +13,19 @@ from unittest.mock import MagicMock, patch
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_populated_vod_acceptance_uses_real_views_and_internal_player_state(self):
+        root = Path(__file__).resolve().parent.parent
+        fixture = (root / 'tests/native/ProfileVodAcceptanceFixture.brs').read_text()
+        for text in ['openVodLibrary("movie")', 'openVodLibrary("series")',
+                     'profileMediaAcceptanceState', 'beginUserProfileSwitch(profile.id)',
+                     'm.profileOwnSignInContext.addKey = "synthetic-b"',
+                     'profile-vod-visual', 'source-preferences']:
+            self.assertIn(text, fixture)
+        builder = Path(__file__).with_name('test-profile-picker-launch-native.py').read_text()
+        self.assertIn('--profile-vod', builder)
+        self.assertIn('ProfileVodAcceptanceFixture.brs', builder)
+        self.assertIn('ProfileVodViewFixture.brs', builder)
+
     def test_real_sync_edits_after_initial_settlement_without_forcing_readiness(self):
         root = Path(__file__).resolve().parent.parent
         fixture = (root / 'tests/native/RealProfileSyncFixture.brs').read_text()
@@ -132,6 +145,11 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertIn('if profile.userId = 42\n', media)
         self.assertIn('m.profileOwnSignInContext.addKey = "example-key-b"', media)
         self.assertNotIn('"synthetic-password"', media)
+        vod = probe.real_baseline_fixture((root / 'tests/native/ProfileVodAcceptanceFixture.brs').read_text(), accounts)
+        self.assertIn('m.activeUserScope.accountId = "42"', vod)
+        self.assertIn('if profile.userId = 42\n', vod)
+        self.assertIn('m.profileOwnSignInContext.addKey = "example-key-b"', vod)
+        self.assertNotIn('"synthetic-b"', vod)
 
     def test_baseline_builder_changes_only_manifest_and_writes_checksum(self):
         spec = importlib.util.spec_from_file_location('baseline_builder', Path(__file__).with_name('build-profiles-baseline.py'))
