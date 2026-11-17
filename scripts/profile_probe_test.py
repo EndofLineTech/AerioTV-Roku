@@ -116,6 +116,8 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertIn('    m.profileSwitchRosterReady = false', scene)
         self.assertNotIn('\n    m.profileSwitchRosterReady = true', scene)
         self.assertIn('    m.profileChildAccessReady = false', scene)
+        self.assertIn('    m.profilePhoneImportReady = false', scene)
+        self.assertIn('    if m.profileBaselineReady\n        m.profilePhoneImportReady = true', scene)
         self.assertIn('    m.profileDefaultRetirementReady = false', scene)
         self.assertIn('    m.profileSyncWriterReady = false', scene)
         self.assertIn('    m.profileSyncSchedulingReady = false', scene)

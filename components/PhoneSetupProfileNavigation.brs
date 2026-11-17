@@ -191,6 +191,7 @@ sub continuePhoneProfileImport(saved as object, pending as object, result as obj
     m.userProfileStore = saved.profiles
     m.phoneOptions = entry
     m.phoneCommittedId = entry.id
+    m.phoneProfileOnboarding = {slot: entry.id, phase: "offer", incomingSync: context.incomingSync, addedIds: [], connectionRoot: m.registry.read("connectionsV1")}
     retirePhoneProfileImport()
     m.page = "setup"
     m.profileRefreshReload = true

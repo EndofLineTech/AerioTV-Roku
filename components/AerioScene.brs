@@ -11,6 +11,7 @@ sub init()
     m.profilePickerReady = false
     m.profileBaselineReady = CreateObject("roAppInfo").getValue("aeriotv_profiles_baseline") = "1"
     if m.profileBaselineReady
+        m.profilePhoneImportReady = true
         m.profilePickerReady = true
         m.profileSwitchRosterReady = true
         m.profileChildAccessReady = true
@@ -976,6 +977,7 @@ sub completeConnection(result as dynamic)
     if m.profileRefreshReload <> true then startConfiguredMiniPlayback(result.channels)
     m.profileRefreshReload = false
     activateProfileSyncScheduling()
+    if m.phoneProfileOnboarding <> invalid then continuePhoneProfileOnboarding()
 end sub
 
 sub startConfiguredMiniPlayback(channels as object)

@@ -572,8 +572,12 @@ sub finishUserProfileOwnSignIn(result as object)
         connectServer(true)
         return
     end if
-    if context.adding = true then context.completedAdd = true
+    if context.adding = true
+        context.completedAdd = true
+        if context.returnToPhoneOnboarding = true and m.phoneProfileOnboarding <> invalid then m.phoneProfileOnboarding.addedIds.push(context.target.id)
+    end if
     cancelUserProfileOwnSignIn()
+    if context.returnToPhoneOnboarding = true then refreshUserProfileChrome() : return
     if context.switchAfterSignIn = true
         closeUserProfileSwitcher()
         refreshUserProfileChrome()
@@ -764,4 +768,5 @@ sub cancelUserProfileOwnSignIn()
         m.profileSwitcher.setFocus(true)
     end if
     if context.adding = true and context.returnToSwitcher = true and context.completedAdd <> true then openUserProfileSwitcher()
+    if context.returnToPhoneOnboarding = true then continuePhoneProfileOnboarding()
 end sub

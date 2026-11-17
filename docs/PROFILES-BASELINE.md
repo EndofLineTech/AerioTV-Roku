@@ -49,6 +49,15 @@ acknowledged.
 
 ### Follow-on source (not installed as the persistent baseline)
 
+Phone-profile controller imports are now enabled by the developer-baseline
+flag, not by normal shipping builds. The native core flow passes protected
+slot-first save, own keys, picker/PIN admission, imported playlist options,
+explicit Sync Not Now, Who watches/Continue and incomplete-import recovery:
+`out/mrr-phone-baseline-onboarding-native.log`/`.json`. Cleanup and exact
+installed-app restoration pass. This does not change listener entropy/security
+gates or establish actual phone sender, Turn On, Add/undo UI or public acceptance.
+See [phone import scope and evidence](PHONE-PROFILE-IMPORT.md).
+
 Settings now uses **Connection → Profiles**, with profile rows, Add and
 Ask-at-launch. The authenticated top-bar avatar opens the full-screen TV
 switcher with Add/Manage, current/locked indicators and hold/release reorder.

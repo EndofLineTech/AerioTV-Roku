@@ -45,8 +45,9 @@ additional password attempts/throttle waits out of the first slot transaction.
 The second transaction installs successful profile metadata/own keys before
 returning to existing startup picker/PIN/Child admission.
 Lost verification cannot retry or commit as an ordinary unprotected connection.
-The new `profilePhoneImportReady` gate remains **false**, including baseline
-builds, pending address/identity acceptance, recovery and onboarding work.
+The new `profilePhoneImportReady` gate remains **false in shipping builds**.
+Developer-baseline source now enables this qualified import/onboarding path;
+the separately installed persistent baseline has not been upgraded.
 Production entropy/access gates are
 unchanged. This is not Android/Apple sender interoperability or owner acceptance.
 
@@ -116,6 +117,51 @@ empty-message value; the native vector/transaction suite passes
 `out/mrr-phone-empty-root-qualified-native.log`/`.json`. Failed diagnostic runs
 are retained, not reclassified as passing evidence.
 
-Explicit Sync offer/decline, complete onboarding continuation, sender
-interoperability and acceptance remain unfinished; the receiver gate must not
-be enabled on the strength of the batch/service checks alone.
+Normal public readiness, actual sender interoperability and integrated acceptance
+remain unfinished. The native tests invoke an already-decoded payload in a
+private registry; they do not bypass or qualify listener crypto/entropy gates.
+
+## Post-admission onboarding source
+
+`PhoneSetupOnboardingNavigation.brs` now resumes only after a verified full-access
+profile has been admitted. A payload requesting Sync triggers a separate
+**Turn On / Not Now** offer; payload data itself never writes Sync settings.
+Turn On uses existing current-session Sync admission and remains unavailable
+when that build's Sync controls are gated. Existing per-category opt-outs are
+retained. Not Now records a device-local decline without enabling Sync or
+changing account data; Back does not invent consent or a persistent decline.
+Prior enabled/declined choices suppress repeated offers.
+
+The next dialog is **Who watches on this TV?**, with existing Added profiles,
+Add through the established own-credential path, and Continue. Only profiles
+added in this onboarding lifecycle get Remove/undo controls. Undo reuses the
+existing roster/plain-add removal policy and target-only key/data cleanup.
+Child sessions skip the full-access dialogs. New-salt/Device Admin creation is
+still unavailable.
+
+The pending step is carried through the verified startup-picker adoption
+boundary, not through arbitrary later profile switches. That path now consumes
+the imported playlist options once and clears the phone-commit marker.
+The source has focused host/compiler checks in
+`out/mrr-phone-onboarding-adoption-host.log` and
+`out/mrr-phone-onboarding-adoption-build.log`. Actual native onboarding
+qualification now passes `out/mrr-phone-baseline-onboarding-native.log`/`.json`
+without a fixture override of the controller gate. It checks the actual
+developer-baseline source: protected import and PIN admission, one-time VOD/
+guide options, Not Now retained through later preference persistence, Who
+watches/Continue, recovery, own keys/source preservation, cleanup and exact
+installed-baseline restoration. This does not establish actual Add/undo UI,
+Turn On, or Android/Apple sender acceptance.
+
+The prior complete regression passed
+`out/mrr-phone-onboarding-adoption-full-verify.log` (379-file verified ZIP);
+focused final host, builder, compiler/build and package checks also pass.
+Native finding `dsb7` was a missing `roInteger` wire-validation alias: the
+successful native log records that actual boxed type for `guideDays`.
+
+One native onboarding run lost device access during cleanup/restoration.
+The exact baseline was manually restored and verified; a read-only native scan
+found no `AerioPickerLaunchProbe-*` sections. Evidence is
+`out/mrr-phone-onboarding-recovered-baseline.json` and the referenced logs.
+The failed run remains failed. Reports now retain the private section identifier
+and cleanup/restore exit codes for safe, bounded recovery.

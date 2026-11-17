@@ -161,7 +161,7 @@ function phoneSetupTypeMatches(value as dynamic, expected as string) as boolean
     if expected = "bool" then return kind = "Boolean" or kind = "roBoolean"
     if expected = "array" then return kind = "roArray"
     if expected = "int"
-        if kind = "Integer" or kind = "roInt" or kind = "LongInteger" or kind = "roLongInteger" then return true
+        if kind = "Integer" or kind = "roInt" or kind = "roInteger" or kind = "LongInteger" or kind = "roLongInteger" then return true
         if kind = "Float" or kind = "roFloat" or kind = "Double" or kind = "roDouble" then return value = fix(value)
     end if
     return false

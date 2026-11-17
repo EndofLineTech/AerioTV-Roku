@@ -131,6 +131,19 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
                 end = text.index("end function", start) + len("end function")
                 text = text[:start] + (ROOT / "tests/native/ProfileServerAdminTransportFixture.brs").read_text() + text[end:]
                 body = text.encode()
+            elif name == "components/DispatcharrTask.brs" and phone_import:
+                text = body.decode()
+                target = 'sub publishError(message as string, relogin = false as boolean, apiAccessRequired = false as boolean)\n'
+                assert text.count(target) == 1
+                text = text.replace(target, target + '''    status = 0
+    category = ""
+    if type(m.httpFailure) = "roAssociativeArray"
+        status = m.httpFailure.status
+        category = textValue(m.httpFailure.category)
+    end if
+    print "[picker-launch] "; FormatJson({kind: "phone-import-auth-error", status: status, category: category, rejected: relogin, apiAccess: apiAccessRequired})
+''', 1)
+                body = text.encode()
             elif name == "components/ProfileServerAdminNavigation.brs" and admin_ui:
                 text = body.decode()
                 target = '    if result.ok <> true then finishProfileServerAdminUi(textValue(result.reason)) : return'
@@ -358,6 +371,7 @@ def main():
     build(archive, ROOT / "out/aeriotv-roku.zip", section, real_base or f"http://{local}:{server.server_port}", "baseline" if args.baseline else args.mode, baseline_accounts, admin_ui=args.admin_ui, phone_verify=args.phone_verify, phone_import=args.phone_import)
     modules["recovery"].cleanup_package(cleaner, section)
     report = {"passed": False, "mode": args.mode, "events": [], "keys": [], "restore_sha256": hashlib.sha256(restore.read_bytes()).hexdigest(), "probe_sha256": hashlib.sha256(archive.read_bytes()).hexdigest()}
+    report["private_registry_section"] = section
     process = None
 
     def run(path, marker, prefix):
@@ -605,7 +619,7 @@ def main():
                 report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and events[-1].get("baseline") is True
             if args.phone_import:
                 report["verification_transport"] = "authorized-read-only"
-                report["passed"] = report["passed"] and all(events[-1].get(field) is True for field in ["phoneimport", "ownkeys", "protectedadmission", "sourceunchanged", "recoveryui"])
+                report["passed"] = report["passed"] and all(events[-1].get(field) is True for field in ["phoneimport", "ownkeys", "protectedadmission", "sourceunchanged", "recoveryui", "onboarding"])
             elif args.phone_verify:
                 report["verification_transport"] = "authorized-read-only"
                 report["passed"] = report["passed"] and all(events[-1].get(field) is True for field in ["phoneverify", "ownproofs", "inputscleared", "unchanged"])
@@ -623,9 +637,11 @@ def main():
             process.wait(timeout=10)
         try:
             cleaned = run(cleaner, "[profile-recovery] cleanup=", "[profile-recovery]")
+            report["cleanup_returncode"] = cleaned.returncode
             report["cleaned"] = cleaned.returncode == 0 and "cleanup=true" in cleaned.stdout
         finally:
             restored = run(restore, "Running dev", "[picker-restore]")
+            report["restore_returncode"] = restored.returncode
             report["restored"] = restored.returncode == 0 and modules["primitives"].installed_md5(host, password) == digest
             server.shutdown()
             server.server_close()

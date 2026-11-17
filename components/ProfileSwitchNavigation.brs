@@ -256,7 +256,13 @@ end sub
 ' Runtime publication only AFTER a caller's distinct storage admission succeeds.
 ' This helper grants no switching/startup/PIN authority on its own.
 sub adoptCompletedUserProfileState(context as object, saved as object, verified as object)
+    onboarding = m.phoneProfileOnboarding
+    preservePhoneOnboarding = false
+    if type(onboarding) = "roAssociativeArray"
+        preservePhoneOnboarding = onboarding.scope = invalid and m.activeUserScope = invalid and onboarding.slot = context.connection.id and onboarding.connectionRoot = m.registry.read("connectionsV1")
+    end if
     resetConnectionRuntime()
+    if preservePhoneOnboarding then m.phoneProfileOnboarding = onboarding
     m.userProfileStore = saved.store
     if type(context.rosterSuggestions) = "roArray" then m.profileRosterSuggestions = context.rosterSuggestions
     m.preferenceStore = saved.preferenceStore
@@ -273,6 +279,14 @@ sub adoptCompletedUserProfileState(context as object, saved as object, verified 
     m.authMode = "key"
     m.hlsAvailable = verified.hlsAvailable = true
     m.global.authHeaderMode = dispatcharrHeaderMode(textValue(verified.authModeUsed))
+    if preservePhoneOnboarding
+        m.accountPreferences = takePhoneSetupPreferences(m.accountPreferences, context.connection)
+        m.phoneCommittedId = ""
+        if not persistCurrentUserProfilePreferences()
+            coverProfileManagementRecovery("Could not preserve the imported playlist options.")
+            return
+        end if
+    end if
     applyDevicePreferences()
     m.global.cacheEpoch = CreateObject("roDeviceInfo").getRandomUUID()
     m.guide.historyAccount = m.accountIdentity
@@ -295,6 +309,7 @@ sub adoptCompletedUserProfileState(context as object, saved as object, verified 
     activateProfileSyncScheduling()
     if m.profileBaselineReady = true then refreshUserProfileChrome()
     if type(context.afterRemoval) = "roAssociativeArray" then resumeProfileManagementRemoval(context.afterRemoval)
+    if preservePhoneOnboarding then continuePhoneProfileOnboarding()
 end sub
 
 function userProfileSwitchActorCurrent(context as dynamic) as boolean
