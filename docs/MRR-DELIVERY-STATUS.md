@@ -24,7 +24,7 @@ epic-complete claim. Beads remains the status register.
 | `mrr.8` PIN/Child | Imported Numbers/Directions hashes, native Numbers and existing-Child/adult-management main flows. Private native keyboard candidate verifies an existing Directions hash. | Directions voice reports false; public alternative, all-Directions access and certification remain unapproved. New salt creation stays disabled. |
 | `mrr.9` picker/management | Native picker/management, own switch, reorder, light/large presentation, startup beacons and OS 14.6 runtime guard. | Physical-remote acceptance and upstream public PIN/switch boundaries; Dashboard verification is not inferred. |
 | `mrr.10` local acceptance | Existing host/native storage/auth/PIN/Child/request-safety reports and current main-flow evidence. | Explicit owner acceptance and `mrr.19` public disposition; no planning-only closure. |
-| `mrr.11` integrated acceptance | Both actual accounts' Sync/media progression plus named unmodified Apple/Android encoder imports. | Initial VOD startup defect `unxg`, human picture/audio, physical-phone integration, authenticated Dashboard floor, public certification and owner acceptance remain distinct. Entropy assurance is non-blocking under the owner disposition below. |
+| `mrr.11` integrated acceptance | Both actual accounts' Sync/media progression plus named unmodified Apple/Android encoder imports. Owner confirmed the initial VOD startup incidents were provider-side; `unxg` is closed. | Human picture/audio, physical-phone integration, authenticated Dashboard floor, public certification and owner acceptance remain distinct verification requirements. Entropy assurance is non-blocking under the owner disposition below. |
 | `mrr.18` bounded admin | Native synthetic gates/transport/actions/UI and active-own reload: `mrr-admin-final-actions-native`, `mrr-admin-ui-own-reload-native`. | Dependency on `mrr.6`, not an invented requirement to mutate real server users. |
 | `mrr.19` Directions disposition | Official current keyboard/certification references checked; private text entry feasibility and unchanged verifier demonstrated. | A documented option is not an approved/tested public fallback; actual voice/household qualification and explicit disposition remain open. |
 
@@ -78,12 +78,17 @@ installed baseline. Catalog captures were inspected. Native player captures
 are black; they do **not** establish human picture/audio acceptance.
 Toy Story's observed app memory usage was 5–21%; no native error was reported.
 
-**Intermittent VOD failure remains open (`AerioTV-Roku-unxg`).** Earlier Matrix
+**Intermittent VOD incident closed (`AerioTV-Roku-unxg`).** On November 17,
+the owner confirmed these failures were provider-side and explicitly directed
+closure. No Roku client fix or further investigation is required for these
+incidents. The historical evidence below is preserved, not an ongoing blocker.
+Earlier Matrix
 and Sintel attempts reached buffering, then `finished` with error code `-3`,
 without confirmed progression. Initial evidence is preserved in
 `out/mrr-populated-vod-{main,player-state,sintel}-native.log`/`.json`.
-Successful repeats used unchanged production playback code and do not prove a
-root-cause fix or provider-only failure. Following the owner's direction to
+Successful repeats used unchanged production playback code; the provider
+disposition comes from the owner's confirmation, not an inference from retries.
+Following the owner's earlier direction to
 investigate multiple-title failures, the private probe now records selected
 title/identity digest/container, sanitized native error string and error-info
 fields, current session/admission and app memory. It treats nonzero error
