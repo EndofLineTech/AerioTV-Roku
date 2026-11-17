@@ -61,3 +61,17 @@ matrices. No network configuration was changed.
 The persistent installed developer baseline remains the previously authorized
 versioned ZIP; isolated acceptance runs restore it exactly. Follow-on source and
 its evidence are not an assertion that the installed checkpoint was upgraded.
+
+## Verified developer handoff
+
+Final API-key implementation regression passes:
+`out/mrr-delivery-api-key-final-verify.log` (380-file normal ZIP).
+Unsigned developer artifact:
+`out/profiles-delivery/aeriotv-roku-v0.3.100-profiles-baseline.zip`.
+Its `.zip.sha256` verification passed; SHA-256:
+`16156c552addf70a6c103f11f0bab15029e33c49ccd1ec3636cdec6872c63b35`.
+
+This build includes the preserved owner working-tree version/cache changes;
+those unrelated files were not committed by this delivery work. It was not
+signed, released or installed over the persistent baseline. The baseline flag
+does not enable Sync writer/scheduler/controls or bypass public security gates.
