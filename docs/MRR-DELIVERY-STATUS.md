@@ -21,9 +21,17 @@ API-key-only Add also passes the same real native flow in
 `out/mrr-delivery-api-key-onboarding-native.log`/`.json`; its username comes only
 from fresh own authentication, and the secure editor/Task context is scrubbed.
 
-The supplied accounts have empty movie/series catalogs; existing read-only
-inventory is `out/mrr-integrated-media-readiness.json`. Populated real-account
-VOD acceptance cannot be claimed from an empty library.
+The supplied accounts' movie/series title requests return zero rows; this does
+**not** establish that their provider has no VOD. After the owner's correction,
+fresh own authentication confirms both accounts have Movies/Series enabled and
+adult hiding off. The same server exposes 34 movie and 30 series categories and
+an active XC provider with VOD enabled, but **zero enabled category relations**.
+Both unfiltered REST title catalogs still return `count: 0`; the first account's
+own Xtream interface also returns empty category/title lists. Evidence:
+`out/mrr-vod-{catalog,category,provider}-recheck.json` and
+`out/mrr-vod-own-xc-recheck.json`. No provider/category/server configuration was
+changed. Populated VOD acceptance remains unverified pending resolution of this
+server/account catalog discrepancy, not a claim that provider content is absent.
 
 Real DVR/profile integration now passes
 `out/mrr-media-main-qualified-native.log`/`.json`: populated library, actual
