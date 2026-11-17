@@ -41,7 +41,7 @@ sub openProfileBaselineMenu()
     choices.push({title: "Done", action: "done"})
     dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = "Profiles — baseline"
-    dialog.message = "Choose a profile or add another Dispatcharr login. This baseline uses local profiles with Dispatcharr Sync off."
+    dialog.message = "Choose a profile or add another Dispatcharr login. Each profile uses its own credentials; Sync follows this TV's saved choice."
     buttons = []
     for each choice in choices
         buttons.push(choice.title)
@@ -114,7 +114,11 @@ sub beginProfileBaselineAdd(admitted = false as boolean, returnToSwitcher = fals
     if context = invalid then return
     if context.store.profiles.count() >= 4 then showNotice("This playlist already has four profiles.") : return
     settings = loadDispatcharrSyncSettings(m.registry)
-    if not settings.ok or settings.enabled then showNotice("Turn Dispatcharr Sync off before adding a local profile in this baseline.") : return
+    if not settings.ok then showNotice("Sync settings need recovery before adding a profile.") : return
+    if not userProfileAddSyncAvailable(settings, m.profileScheduledSyncTask, m.profileSyncWriteTask)
+        showNotice("Sync is finishing. Try Add Profile again in a moment.")
+        return
+    end if
     admin = userProfileLoadDeviceAdminPin(m.registry, context.connection.id)
     if not admin.ok then showNotice("PIN storage needs recovery.") : return
     holders = userProfileAdultPinHolders(context.store.profiles, admin.record)

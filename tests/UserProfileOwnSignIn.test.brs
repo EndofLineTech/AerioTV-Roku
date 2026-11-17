@@ -45,6 +45,11 @@ sub main()
     addedRead = {ok: true, state: "missing", verifiedBaseUrl: entry.url, accountId: "9", accountUsername: "CARA", verifiedUser: {id: 9, username: "CARA", user_level: 1}}
     addPlan = userProfileAddPlan(entry, store, newId, "Cara", addedProof, addedRead, 300)
     check(addPlan.ok and addPlan.store.active = a.id and addPlan.target.userId = 9 and not addPlan.target.isDefault and addPlan.store.pendingRoster, "baseline Add creates only an own-verified inactive profile")
+    check(userProfileAddSyncAvailable({ok: true, enabled: true}, invalid, invalid), "explicit Sync On does not prohibit own-credential Add")
+    check(userProfileAddSyncAvailable({ok: true, enabled: false}, invalid, invalid), "local-only Add remains available with Sync Off")
+    check(not userProfileAddSyncAvailable({ok: false, enabled: true}, invalid, invalid), "unreadable Sync choices cannot authorize Add")
+    check(not userProfileAddSyncAvailable({ok: true, enabled: true}, {kind: "scheduled"}, invalid), "Add waits for a scheduled Sync transaction instead of racing its saved roots")
+    check(not userProfileAddSyncAvailable({ok: true, enabled: true}, invalid, {kind: "outgoing"}), "Add cannot overlap outgoing Sync flush")
     importedRead = copyJson(addedRead)
     importedRead.state = "ready"
     importedRead.profilesState = "ready"
@@ -60,9 +65,13 @@ sub main()
     managementNonce = "00000000-0000-4000-8000-000000000095"
     addContext = {connection: entry, store: store, target: {id: newId}, username: "Cara", scope: sourceScope, nonce: addNonce, addGrant: {slot: entry.id, active: a.id, nonce: managementNonce, purpose: "manage-profiles", kind: "pin", id: b.id, pinType: b.pinType, pinHash: b.pinHash, pinSalt: b.pinSalt}}
     addRegistry = ownSignInRegistry(entry, store)
+    addSettings = ParseJson(addRegistry.read("settingsV1"))
+    addSettings.device = {dispatcharrSyncEnabled: true, dispatcharrSyncProfiles: false, futureChoice: true}
+    addRegistry.write("settingsV1", FormatJson(addSettings))
     oldAddSettings = addRegistry.read("settingsV1")
     savedAdd = commitUserProfileAdd(addRegistry, addContext, addedProof, addedRead, 300, addNonce, sourceScope, managementNonce)
-    check(savedAdd.ok and addRegistry.read(userProfileKeyName(entry.id, newId)) = "cara-own-key" and addRegistry.read("connKey_slot-a") = "default-key" and addRegistry.read("settingsV1") = oldAddSettings, "Add saves only its own credential/record without borrowing or copying source data")
+    check(savedAdd.ok and addRegistry.read(userProfileKeyName(entry.id, newId)) = "cara-own-key" and addRegistry.read("connKey_slot-a") = "default-key" and addRegistry.read("settingsV1") = oldAddSettings, "Sync-enabled Add saves only its own credential/record, preserving opt-outs and source private data")
+    check(savedAdd.store.pendingRoster, "Sync-enabled Add retains dirty intent for the scheduler instead of acknowledging an unsent row")
     registry = ownSignInRegistry(entry, store)
     nonce = "00000000-0000-4000-8000-000000000090"
     startupResult = {ok: true, apiKey: "startup-default-key", verifiedBaseUrl: entry.url, verifiedUser: {id: 7, username: "ALICE", user_level: 1}}

@@ -24,6 +24,7 @@ function scheduledProfileSyncAllowed() as boolean
     if m.profileSyncLinkKnown = true and m.profileSyncLinkUp <> true then return false
     if m.profileSwitchContext <> invalid or m.profileOwnSignInContext <> invalid or m.profileSyncWriteTask <> invalid then return false
     if m.profileSyncSettingsContext <> invalid then return false
+    if m.phoneProfileOnboarding <> invalid then return false
     if m.profilePinDialog <> invalid or m.adultPinDialog <> invalid or m.profileManagementDialog <> invalid then return false
     if userProfileGateClosed() or m.activeUserScope = invalid or textValue(m.apiKey) = "" then return false
     if textValue(m.global.activeusersession) <> textValue(m.activeUserScope.sessionId) then return false

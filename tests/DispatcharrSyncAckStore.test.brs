@@ -61,6 +61,28 @@ sub main()
     onProfileSyncScheduleTick()
     check(m.profileScheduledSyncTask = invalid, "scheduled tasks cannot use the outgoing-flush closed-gate exception")
     syncScheduledFixture()
+    m.phoneProfileOnboarding = {phase: "who"}
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask = invalid, "Sync consent defers background transactions until Who watches finishes, keeping dialog roots current")
+    m.phoneProfileOnboarding = invalid
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask <> invalid, "Continue releases deferred own Sync discovery without changing the session")
+    closeScheduledProfileSync()
+    syncScheduledFixture()
+    m.profileOwnSignInContext = {adding: true}
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask = invalid and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "own-credential Add suspends scheduled Sync without clearing pending changes")
+    m.profileOwnSignInContext = invalid
+    onProfileSyncScheduleTick()
+    task = m.profileScheduledSyncTask
+    check(task <> invalid and task.aeriosession = m.scope.sessionId, "leaving Add resumes existing scheduler under the same actual source session")
+    m.profileOwnSignInContext = {adding: true}
+    onScheduledProfileSyncResult(syncFlushEvent(task, m.receipt))
+    check(loadUserProfileStore(m.registry, "slot-a").pendingRoster, "a delayed pre-form Sync receipt cannot acknowledge changes while Add owns the UI")
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask = invalid and task.apiKey = "", "scheduler retires suspended transport rather than publishing into the Add form")
+    m.profileOwnSignInContext = invalid
+    syncScheduledFixture()
     onProfileSyncScheduleTick()
     task = m.profileScheduledSyncTask
     m.activeUserScope = setCanonicalPreference(m.scope, "sessionId", "00000000-0000-4000-8000-000000000096")

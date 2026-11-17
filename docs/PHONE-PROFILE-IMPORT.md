@@ -179,6 +179,31 @@ preflight with **No route to host**, before any installation or registry work.
 It is not a passing acceptance result; no network/device changes or retries
 were made. Builder tests pass; this native flow remains unverified.
 
+### Sync-enabled Add integration
+
+Source no longer requires turning Sync off before Add (`4kdm`). Own-credential
+Add waits for existing scheduled/outgoing Sync transactions to finish, then uses
+the same protection read, own-key commit and roster/plain-add semantics. The
+existing own-form scheduler guard prevents new flights and rejects delayed
+receipts while the form owns the UI. Outside onboarding, form exit resumes the
+existing timer; Add retains unsent roster intent and does not reset category
+choices or acknowledge a write.
+
+The scheduler also defers while the overall phone onboarding context is pending.
+Otherwise a newly enabled background pull could change Who watches' captured
+roster root, leaving its Continue/Add controls stale. Continue releases the
+existing timer to perform fresh own discovery; consent itself is not a PUT.
+This has a failing-before-fix actual scheduler regression in
+`out/mrr-sync-onboarding-defer-red.log`.
+
+Host checks in `out/mrr-sync-enabled-add-integration-host.log` cover admission,
+own-form suspension/resumption, delayed receipt refusal and credential cleanup.
+The actual Add storage test also preserves Sync On, Profiles Off, unknown choices
+and both source accounts' private data. Compiler/build checks pass; full
+requalification is running in `out/mrr-sync-enabled-add-full-verify.log`.
+No readiness flag or persistent installed app was changed. Actual Turn On →
+Add/Undo native acceptance remains unverified while device access is unavailable.
+
 One native onboarding run lost device access during cleanup/restoration.
 The exact baseline was manually restored and verified; a read-only native scan
 found no `AerioPickerLaunchProbe-*` sections. Evidence is

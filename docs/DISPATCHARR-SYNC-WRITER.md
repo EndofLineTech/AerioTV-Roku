@@ -5,9 +5,31 @@ PUT, including remaining user quota and exact-key replacement credit. See
 [mapping and deployed capability evidence](DISPATCHARR-SYNC-MAPPING.md).
 Over-budget data stays pending and unsupported categories are never trimmed.
 
-The general writer (`AerioTV-Roku-e3e.6`) is **not active**. Profile switching
-still lacks outgoing sync flush/session settlement; do not enable public profile
-readiness based on the structural validation below.
+## Current delivery boundary
+
+The **profiles-only** engine has qualified private native integration for own
+read-before-write, typed preservation/merge, absent canonical creation, outgoing
+switch flush, atomic acknowledgement, durable read publication/retirement,
+bounded scheduling, network-return hooks and error backoff. The sections below
+record those increments chronologically; their earlier “not yet implemented”
+statements are historical, not the current implementation inventory.
+
+Shipping writer/scheduler/control readiness remains off. The persistent
+developer-baseline installation has not been upgraded. Explicit consent is
+required; a phone payload never enables Sync. No production App Data upload or
+named Android/Apple interoperability is claimed.
+
+Profile spec §13.8 permits preserving categories Roku does not implement. The
+engine owns only `profiles`; general favorites/VOD/settings adapters and
+full-category legacy migration are **not delivered** and are not additional
+requirements invented for this profiles-only phase. Legacy-only discovery
+remains read-only.
+
+Foundation and bounded recovery/read-only roster items are qualified. Remaining
+integration acceptance includes actual onboarding Add/Undo and Turn On, named
+senders, integrated media/profile use and explicit owner/public-access decisions.
+The final regression passed `out/mrr-sync-phone-qualified-full-verify.log`
+(380-file ZIP); this is not epic or release acceptance.
 
 ## Private checked-body boundary
 

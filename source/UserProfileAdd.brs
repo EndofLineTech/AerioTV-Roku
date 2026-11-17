@@ -1,5 +1,12 @@
 ' Manual Add reads the new user's existing protection before creating a row.
 ' No source preferences, credential or authenticated scope are copied.
+function userProfileAddSyncAvailable(settings as object, scheduledTask as dynamic, outgoingTask as dynamic) as boolean
+    if settings.ok <> true then return false
+    ' Sync On is not an Add prohibition. The new own form already suspends
+    ' scheduling/callback admission; do not open it over an existing transaction.
+    return scheduledTask = invalid and outgoingTask = invalid
+end function
+
 function userProfileAddPlan(connection as object, previous as object, id as string, username as string, verified as object, read as object, now as integer) as object
     denied = {ok: false, reason: "Could not verify this profile."}
     if connection.provider <> "dispatcharr" or now <= 0 or userProfileLocalId(id) = "" then return denied

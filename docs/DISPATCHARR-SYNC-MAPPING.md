@@ -98,6 +98,9 @@ Double-preserving TV lane projection and integer channel translation; the exact
 persistent developer baseline was restored.
 The added advertised-cap/quota checks also pass on Roku in
 `out/mrr-sync-budget-native.log` / `.json`, with exact baseline restoration.
+The full regression passed `out/mrr-sync-phone-qualified-full-verify.log`
+(380-file ZIP). The foundation Bead `e3e.3` is closed; downstream integration
+and final owner acceptance remain open.
 
 General category adapters, timestamp capture and legacy full-category migration
 are not delivered. They are not prerequisites invented by this mapping document
