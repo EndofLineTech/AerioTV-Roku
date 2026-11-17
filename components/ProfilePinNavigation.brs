@@ -4,7 +4,8 @@ function beginProfilePinGate(profile as object, continuation as string, resume =
     if m.profilePinDialog <> invalid then return true
     if not userProfilePinRecordValid(profile) then return false
     directions = profile.pinType = "directions"
-    if directions
+    keyboard = directions and m.profileNativePinKeyboardReady = true
+    if directions and not keyboard
         if CreateObject("roAppInfo").getValue("aeriotv_profile_directions_test") <> "1" then return false
     end if
     preserveSource = false
@@ -19,10 +20,13 @@ function beginProfilePinGate(profile as object, continuation as string, resume =
     m.profileUnlockGrant = invalid
     m.profilePinContext = {slot: m.selectedConnectionId, profile: profile, continuation: continuation, resume: resume}
     m.profilePinContext.preserveSource = preserveSource
+    m.profilePinContext.keyboard = keyboard
     dialog = invalid
     if m.profilePinDialogFactory <> invalid then dialog = m.profilePinDialogFactory()
     if dialog = invalid
-        if directions
+        if keyboard
+            dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
+        else if directions
             dialog = CreateObject("roSGNode", "DirectionsPinPad")
         else
             dialog = CreateObject("roSGNode", "StandardPinPadDialog")
@@ -32,14 +36,18 @@ function beginProfilePinGate(profile as object, continuation as string, resume =
     ' Roku's platform-specific rule requires six native slots even when the
     ' profile's locally learned length is known (spec 7.7, Roku item 1).
     dialog.textEditBox.maxTextLength = 6
-    if directions
+    if keyboard
+        dialog.keyboardDomain = "password"
+        dialog.textEditBox.maxTextLength = 64
+        dialog.textEditBox.hintText = "U D L R or Up Down Left Right"
+    else if directions
         lengthType = type(profile.pinLength)
         if lengthType = "Integer" or lengthType = "roInt" or lengthType = "roInteger"
             if profile.pinLength >= 4 and profile.pinLength <= 6 then dialog.textEditBox.maxTextLength = profile.pinLength
         end if
     end if
     uiSecureTextInput(dialog.textEditBox)
-    if not directions then dialog.textEditBox.voiceEnabled = true
+    if not directions or keyboard then dialog.textEditBox.voiceEnabled = true
     dialog.buttons = ["OK"]
     canCancel = continuation <> "connect" and continuation <> "complete" and continuation <> "startup-selection"
     if continuation = "own-signin" and m.profileOwnSignInContext <> invalid
@@ -50,7 +58,7 @@ function beginProfilePinGate(profile as object, continuation as string, resume =
     dialog.observeField("buttonSelected", "onProfilePinSubmit")
     dialog.observeField("wasClosed", "onProfilePinClosed")
     m.profilePinDialog = dialog
-    if directions
+    if directions and not keyboard
         m.top.appendChild(dialog)
     else
         m.top.dialog = dialog
@@ -71,13 +79,19 @@ sub onProfilePinSubmit(event as object)
         return
     end if
     context = m.profilePinContext
-    if context.slot <> m.selectedConnectionId then return
+    if context.slot <> m.selectedConnectionId
+        uiClearSecureDialogText(m.profilePinDialog)
+        return
+    end if
     if context.preserveSource = true
-        if not profileOwnSignInPreservesSource(textValue(context.resume)) then return
+        if not profileOwnSignInPreservesSource(textValue(context.resume))
+            uiClearSecureDialogText(m.profilePinDialog)
+            return
+        end if
     end if
     if context.continuation = "pin-remove"
         if not profileManagementPinContextCurrent(context)
-            m.profilePinDialog.textEditBox.text = ""
+            uiClearSecureDialogText(m.profilePinDialog)
             m.profilePinDialog.title = "Profile changed. Cancel and try again."
             return
         end if
@@ -87,30 +101,24 @@ sub onProfilePinSubmit(event as object)
     startupOwn = false
     if context.continuation = "own-signin" and m.profileOwnSignInContext <> invalid then startupOwn = m.profileOwnSignInContext.startupRecovery = true
     if startupSelection and not startupProfilePinContextCurrent(context)
-        m.profilePinDialog.textEditBox.text = ""
+        uiClearSecureDialogText(m.profilePinDialog)
         return
     end if
     if switching and not profileSwitchPinContextCurrent(context)
-        m.profilePinDialog.textEditBox.text = ""
+        uiClearSecureDialogText(m.profilePinDialog)
         return
     end if
-    text = m.profilePinDialog.textEditBox.text
-    m.profilePinDialog.textEditBox.text = ""
-    pattern = "^[0-9]{4,6}$"
+    text = uiTakeSecureDialogText(m.profilePinDialog, context.keyboard = true)
     message = "Enter 4 to 6 numbers"
     if context.profile.pinType = "directions"
-        pattern = "^[UDLR]{4,6}$"
         message = "Enter 4 to 6 directions"
     end if
-    if not CreateObject("roRegex", pattern, "").isMatch(text)
+    entries = userProfilePinTextEntries(context.profile.pinType, text)
+    text = ""
+    if entries = invalid
         m.profilePinDialog.title = message
         return
     end if
-    entries = []
-    for i = 1 to len(text)
-        entries.push(mid(text, i, 1))
-    end for
-    text = ""
     if m.profilePinVerifier <> invalid
         checked = m.profilePinVerifier(context.profile, entries)
     else
@@ -165,7 +173,7 @@ sub onProfilePinClosed(event as object)
     end if
     m.profilePinDialog.unobserveField("buttonSelected")
     m.profilePinDialog.unobserveField("wasClosed")
-    m.profilePinDialog.textEditBox.text = ""
+    uiClearSecureDialogText(m.profilePinDialog)
     m.profilePinDialog.close = true
     clearProfilePinDialogOwner(m.profilePinDialog)
     if type(m.profilePinDialog) = "roSGNode"
@@ -197,9 +205,7 @@ sub onProfilePinClosed(event as object)
 end sub
 
 sub clearProfilePinDialogOwner(dialog as object)
-    if m.top = invalid then return
-    if m.top.dialog = invalid then return
-    if m.top.dialog.isSameNode(dialog) then m.top.dialog = invalid
+    uiClearDialogOwner(m.top, dialog)
 end sub
 
 function profileSwitchPinContextCurrent(pin as object) as boolean

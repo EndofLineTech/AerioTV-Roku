@@ -7,15 +7,19 @@ import zipfile
 from pathlib import Path
 
 
-def build(source, destination, directions=False):
+def build(source, destination, directions=False, voice_pins=False):
+    if directions and voice_pins:
+        raise ValueError("Choose native voice PINs or developer D-pad, not both")
     with zipfile.ZipFile(source) as original:
         manifest = original.read("manifest").decode()
-        if re.search(r"^\s*(aeriotv_profiles_baseline|aeriotv_profile_directions_test)\s*=", manifest, re.M):
+        if re.search(r"^\s*(aeriotv_profiles_baseline|aeriotv_profile_directions_test|aeriotv_profile_voice_pin_test)\s*=", manifest, re.M):
             raise ValueError("Input must be a normal build, not an existing baseline")
         manifest = re.sub(r"^title=.*$", "title=AerioTV Profiles Baseline", manifest, flags=re.M)
         manifest = manifest.rstrip() + "\naeriotv_profiles_baseline=1\n"
         if directions:
             manifest += "aeriotv_profile_directions_test=1\n"
+        if voice_pins:
+            manifest += "aeriotv_profile_voice_pin_test=1\n"
         destination.parent.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(destination, "w", zipfile.ZIP_DEFLATED) as output:
             for item in original.infolist():
@@ -30,5 +34,6 @@ if __name__ == "__main__":
     parser.add_argument("--source", type=Path, default=Path("out/aeriotv-roku.zip"))
     parser.add_argument("--output", type=Path, default=Path("out/profiles-baseline/aeriotv-roku-profiles-baseline.zip"))
     parser.add_argument("--directions", action="store_true", help="Explicit developer-only D-pad qualification; not public Directions certification")
+    parser.add_argument("--voice-pins", action="store_true", help="Explicit developer-only native voice keyboard PIN qualification; not speech/certification acceptance")
     args = parser.parse_args()
-    build(args.source, args.output, directions=args.directions)
+    build(args.source, args.output, directions=args.directions, voice_pins=args.voice_pins)

@@ -5,8 +5,10 @@
 This is the acceptance record for the approved **unsigned developer,
 import-and-verify phase**, not public enablement, certification or a signed
 release. `.6`, `.7`, `.8`, `.14`, `.15`, `.17` and `.18` implementation evidence
-is available. `.9` still retains physical-remote acceptance; `.19` still owns
-unfinished native voice-keyboard integration and qualification.
+is available. `.9` still retains physical-remote acceptance; `.19` owns native
+voice-keyboard access qualification. Its subsequent
+[shared-controller implementation](PROFILE-NATIVE-PIN-KEYBOARD.md) now has
+developer-only native evidence, not spoken-entry acceptance.
 
 The owner requested work on `.10`, **not final acceptance of it**. Keep `.10`
 open until its remaining acceptance conditions are actually met. Automated
@@ -55,14 +57,17 @@ Both fresh runs preflighted and checksum-restored the exact current unsigned ZIP
 The re-inspected fresh `out/mrr10-local-acceptance-ready.jpg` confirms the
 restored picker retains Sync Test 1, Sync Test 2 and Add.
 
-All **210 packaged BrightScript files** byte-match the current working sources.
+At the `.10` checkpoint, all **210 packaged BrightScript files** byte-matched
+the working sources.
 The baseline's compiled contents, excluding its developer-only manifest, also
 match the 380-file normal ZIP from the passing
 `out/mrr6-completion-full-verify.log`. XML is compiler-normalized, so raw XML
 source equality is not claimed. Older normal-app reports remain evidence for
 their recorded versions; digest checks do not retroactively rerun them.
-No new full host regression is claimed for this documentation-only acceptance
-pass. The preceding full gate remains the applicable unchanged-code gate.
+No new full host regression was claimed for that documentation-only acceptance
+pass. The preceding full gate was the applicable unchanged-code gate. Later
+`.19` source changes and their distinct qualification are recorded in the
+native keyboard document; this earlier audit is not a new-code regression pass.
 
 Reproduction (supply device credentials through the environment):
 
@@ -93,7 +98,7 @@ Native commands require the local-network-capable Python described in
 | Remember/Forget and scoped state | Memory-only switch/reconnect, remembered/keyless cold reports, current credential/scope/cleanup tests and real disposable-registry Forget. Whole-slot Forget is local-only, preserves other slots and creates no tombstones. Host/native injected failure is distinguished from actual storage failure on a full device. |
 | Imported peer PIN/role protection | `mrr8-completion-directions-import-native`, native numeric import and actual protected onboarding. Existing PINs remain required before own transport; changed imported PIN invalidates the prior proof. Peer-generated encoder-to-Roku import evidence is separately recorded in delivery status, not a physical-phone claim. |
 | Child access, deep links and no unsafe fallback | `profile-child-launch-native`, `profile-child-escape-native`, `profile-child-settings-native`, actual core Child/adult flows and private startup Child selection/rejection/link reports. Warm-link fixtures use deliberately unavailable content IDs and prove safe routing/non-play, not successful protected deep-link playback. |
-| Directions/all-Directions and phase boundaries | Developer-only D-pad import/adult gates pass; every valid adult/Device Admin Directions PIN counts as protection. Lack of voice does not turn it into “no PIN.” Current ordinary baseline does not opt into D-pad Directions. `.19` compliant native keyboard integration and physical voice qualification remain unfinished. New PIN/Device Admin creation and kid-only setup are intentionally unavailable. |
+| Directions/all-Directions and phase boundaries | Developer-only D-pad import/adult gates pass; every valid adult/Device Admin Directions PIN counts as protection. Lack of voice does not turn it into “no PIN.” Ordinary baseline does not opt into Directions. `.19` now adds opt-in native controller integration; physical voice and public qualification remain unfinished. New PIN/Device Admin creation and kid-only setup are intentionally unavailable. |
 | Launch timing/certification | Native dialog/void-cancellation and beacon primitives plus actual startup/link controllers establish local ordering and paired dialog/launch events. They do not establish public certification, every-device 15-second latency, or authenticated Dashboard firmware-floor settings. OS 14.6 direct-launch protection is implemented; portal verification remains `.11`. |
 | Screenshots, focus and limitations | Reinspected `mrr-picker-light-large-qualified-native.switcher.jpg`: readable Light/large labels, bounded long-name ellipsis, focused/current tile, avatar and footer. `profile-child-settings.jpg`: only the five approved categories, with visible focus and no other identities. `mrr6-completion-baseline-ready.jpg`: both retained test profiles and Add. These are visual evidence, not physical-remote acceptance. |
 
@@ -131,9 +136,10 @@ deliberate real-server throttling were not performed.
 Beads, not this document, tracks remaining work:
 
 - `.9`: physical-remote UI acceptance.
-- `.19`: implement and qualify the native voice-keyboard route across protected
-  entry points; the discriminating physical-remote check was deferred by the
-  owner. Do not report it as only paperwork or vendor approval.
+- `.19`: finish native voice-keyboard access qualification across protected entry
+  points; developer-only shared controller integration is now implemented, but
+  the discriminating physical-remote check was deferred by the owner. Do not
+  report it as only paperwork or vendor approval.
 - `.10`: retain the explicit local acceptance decision and the above limitations;
   do not force-close through its open dependencies.
 - `.11`: physical-phone integration, human media picture/audio, authenticated

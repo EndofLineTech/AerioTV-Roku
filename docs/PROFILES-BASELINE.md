@@ -19,6 +19,12 @@ For the separately approved developer D-pad qualification only, an explicit
 It is off by default and rejected by shipping-package verification. This is
 not a public Directions certification disposition (`mrr.19` remains blocked).
 
+For the native keyboard integration, `--voice-pins` instead adds the separate
+developer-only voice-PIN flag. It cannot be combined with `--directions`, is off
+by default, and is rejected by shipping verification. It requests native voice;
+it does not establish dictation availability or spoken-entry success. See
+[native PIN keyboard integration](PROFILE-NATIVE-PIN-KEYBOARD.md).
+
 ## Try it
 
 The current qualified baseline uses **Settings → Connection → Profiles**.

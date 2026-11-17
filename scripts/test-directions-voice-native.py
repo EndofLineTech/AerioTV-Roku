@@ -1,4 +1,4 @@
-"""Private native-keyboard Directions feasibility; no public UI/approval change."""
+"""Production native-keyboard Directions integration; not spoken-entry acceptance."""
 import argparse
 import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -34,20 +34,12 @@ def build(normal, output, section, base):
             for name in original.namelist():
                 body = original.read(name)
                 if name == "manifest":
-                    body += b"\naeriotv_profiles_baseline=1\n"
+                    body = body.replace(b"aeriotv_profile_directions_test=1\n", b"")
+                    body += b"\naeriotv_profiles_baseline=1\naeriotv_profile_voice_pin_test=1\n"
                 elif name == "components/ProfilePinNavigation.brs":
                     text = body.decode()
-                    anchor = 'dialog = CreateObject("roSGNode", "DirectionsPinPad")'
-                    assert text.count(anchor) == 1
-                    text = text.replace(anchor, 'dialog = CreateObject("roSGNode", "StandardKeyboardDialog")')
-                    text = text.replace('if not directions then dialog.textEditBox.voiceEnabled = true', 'dialog.keyboardDomain = "password"\n    dialog.textEditBox.voiceEnabled = true\n    dialog.title = "Directions PIN: U Up, D Down, L Left, R Right"')
-                    anchor = '    if directions\n        m.top.appendChild(dialog)\n    else\n        m.top.dialog = dialog\n    end if'
-                    assert text.count(anchor) == 1
-                    text = text.replace(anchor, "    m.top.dialog = dialog")
-                    # Native letter/voice entry may be lowercase. Canonical wire
-                    # input remains UDLR; the actual stored verifier is unchanged.
-                    text = text.replace('text = m.profilePinDialog.textEditBox.text', 'text = ucase(m.profilePinDialog.text)', 1)
-                    text = text.replace('m.profilePinDialog.textEditBox.text = ""', 'm.profilePinDialog.text = ""')
+                    # Replace only the old input driver, not production PIN UI,
+                    # parsing, verification, persistence or continuation logic.
                     start = text.index("\nsub onPinFixtureTick()")
                     text = text[:start] + "\n" + (ROOT / "tests/native/DirectionsVoiceEntryFixture.brs").read_text()
                     body = text.encode()
@@ -70,7 +62,8 @@ def build(normal, output, section, base):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--restore", type=Path, required=True)
-    parser.add_argument("--report", type=Path, default=Path("out/mrr-directions-voice-candidate-native.json"))
+    parser.add_argument("--report", type=Path, default=Path("out/mrr-directions-native-entry-native.json"))
+    parser.add_argument("--cancel", action="store_true", help="Real Back from native launch keyboard must exit without provider requests")
     args = parser.parse_args()
     device = module("directions_voice_device", "test-profile-primitives-native.py")
     recovery = module("directions_voice_recovery", "test-profile-recovery-native.py")
@@ -103,7 +96,7 @@ def main():
 
     server = ThreadingHTTPServer((local, 0), Fixture)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    report = {"passed": False, "public_approval": False, "events": [], "requests": hits}
+    report = {"passed": False, "mode": "cancel" if args.cancel else "entry", "entry_integration_passed": False, "spoken_entry_verified": False, "public_approval": False, "events": [], "requests": hits}
     args.report.parent.mkdir(parents=True, exist_ok=True)
     section = "AerioDirectionsVoice-" + str(uuid.uuid4())
 
@@ -114,7 +107,8 @@ def main():
         archive, cleaner = Path(folder) / "candidate.zip", Path(folder) / "cleanup.zip"
         build(ROOT / "out/aeriotv-roku.zip", archive, section, f"http://{local}:{server.server_port}")
         recovery.cleanup_package(cleaner, section)
-        command = [sys.executable, "scripts/run-native-probe.py", str(archive), "--prefix", "[profile-pin]", "--marker", '"kind":"guide"', "--timeout", "75"]
+        marker = "[profile-pin] exit-main" if args.cancel else '"kind":"guide"'
+        command = [sys.executable, "scripts/run-native-probe.py", str(archive), "--prefix", "[profile-pin]", "--marker", marker, "--timeout", "75"]
         try:
             with subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True) as process:
                 for line in process.stdout:
@@ -125,6 +119,11 @@ def main():
                     report["events"].append(event)
                     if event["kind"] == "covered":
                         report["before_entry_requests"] = hits.copy()
+                        if args.cancel:
+                            req = urllib.request.Request(f"http://{host}:8060/keypress/Back", data=b"", method="POST")
+                            with urllib.request.urlopen(req, timeout=3) as response:
+                                report["back_status"] = response.status
+                            continue
                         statuses = []
                         for letter in "udlr":
                             req = urllib.request.Request(f"http://{host}:8060/keypress/Lit_{letter}", data=b"", method="POST")
@@ -141,7 +140,11 @@ def main():
                 code = process.wait(timeout=10)
             rows = report["events"]
             covered = next((r for r in rows if r["kind"] == "covered"), {})
-            report["passed"] = code == 0 and [r["kind"] for r in rows] == ["covered", "input", "unlocked", "guide"] and all(covered.get(k) is True for k in ["covered", "closed", "nativekeyboard", "voice", "masked"]) and covered.get("domain") == "password" and not covered.get("task") and rows[1]["characters"] == 4 and rows[2].get("grant") is True and rows[3].get("account") == "7" and report.get("before_entry_requests") == [] and report.get("before_submit_requests") == [] and report.get("text_entry_statuses") == [200] * 4 and report.get("submit_status") == 200 and report.get("masked_keyboard_capture") is True
+            report["voice_available_observed"] = covered.get("voice") is True
+            report["entry_integration_passed"] = code == 0 and [r["kind"] for r in rows] == ["covered", "input", "unlocked", "guide"] and all(covered.get(k) is True for k in ["covered", "closed", "nativekeyboard", "masked"]) and covered.get("domain") == "password" and not covered.get("task") and rows[1]["characters"] == 4 and rows[2].get("grant") is True and rows[3].get("account") == "7" and report.get("before_entry_requests") == [] and report.get("before_submit_requests") == [] and report.get("text_entry_statuses") == [200] * 4 and report.get("submit_status") == 200 and report.get("masked_keyboard_capture") is True
+            if args.cancel:
+                report["entry_integration_passed"] = code == 0 and [r["kind"] for r in rows] == ["covered"] and all(covered.get(k) is True for k in ["covered", "closed", "nativekeyboard", "masked"]) and covered.get("domain") == "password" and not covered.get("task") and hits == [] and report.get("back_status") == 200
+            report["passed"] = report["entry_integration_passed"]
         finally:
             try:
                 cleaned = run(cleaner, "cleanup=", "[profile-recovery]")

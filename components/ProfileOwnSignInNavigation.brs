@@ -797,7 +797,7 @@ sub retireUserProfileOwnSignIn()
             pad = m.profilePinDialog
             pad.unobserveField("buttonSelected")
             pad.unobserveField("wasClosed")
-            pad.textEditBox.text = ""
+            uiClearSecureDialogText(pad)
             pad.close = true
             if m.top.dialog <> invalid
                 if m.top.dialog.isSameNode(pad) then m.top.dialog = invalid

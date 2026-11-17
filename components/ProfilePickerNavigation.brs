@@ -165,7 +165,7 @@ sub dismissStartupPickerForDeepLink()
         dialog = m.profilePinDialog
         dialog.unobserveField("buttonSelected")
         dialog.unobserveField("wasClosed")
-        dialog.textEditBox.text = ""
+        uiClearSecureDialogText(dialog)
         dialog.close = true
         if m.top.dialog <> invalid
             if m.top.dialog.isSameNode(dialog) then m.top.dialog = invalid

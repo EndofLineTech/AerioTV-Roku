@@ -74,6 +74,12 @@ The earlier private Directions candidate's text-entry/hash verification remains
 valid; its false voice field and lack of spoken-entry evidence are separate.
 No public certification, spoken-input acceptance or release is claimed.
 
+The shared production controllers now also have an explicit developer-only
+[native PIN keyboard route](PROFILE-NATIVE-PIN-KEYBOARD.md), rather than relying
+on the earlier fixture-only UI replacement. Integration pass, observed
+`voiceEnabled` and actual spoken input are recorded separately. This does not
+change or explain the isolated device-wide false field above.
+
 ## Reproduce
 
 With the existing authorized developer environment:
@@ -81,7 +87,7 @@ With the existing authorized developer environment:
 ```sh
 python3 -m unittest scripts.voice_keyboard_probe_test
 python3 scripts/test-voice-keyboard-native.py \
-  --restore out/profiles-final-seven/aeriotv-roku-v0.3.100-profiles-baseline.zip \
+  --restore out/profiles-mrr6/aeriotv-roku-v0.3.100-profiles-baseline.zip \
   --report out/mrr19-minimal-voice-native.json
 ```
 

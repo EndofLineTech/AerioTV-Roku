@@ -97,7 +97,9 @@ def startup_probe_timer(source):
     return source.replace('sub init()', 'sub init()\n' + timer, 1)
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False, switch_authority_race=False, switch_active_retirement=False, active_default_mode='usable', switch_writer=False, writer_mode='direct', baseline_readiness=False):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False, switch_authority_race=False, switch_active_retirement=False, active_default_mode='usable', switch_writer=False, writer_mode='direct', baseline_readiness=False, voice_keyboard=False):
+    if voice_keyboard and not (directions or (switching and switch_pin and switch_roster)):
+        raise ValueError('Native keyboard fixture requires adult Directions or protected early-roster switch')
     if baseline_readiness and not (switch_active_retirement or (switch_writer and writer_mode == 'flush-own-retirement')):
         raise ValueError('Baseline readiness is limited to existing retirement fixtures')
     if writer_mode not in ['direct', 'controls', 'controls-restore', 'unchanged', 'schedule', 'schedule-too-large', 'schedule-signin', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'] or (writer_mode != 'direct' and not switch_writer):
@@ -860,7 +862,26 @@ end sub
         return
     end if
 ''', 1)
+                if voice_keyboard:
+                    head, driver = source.split('sub onManagementProbeTick()', 1)
+                    driver = driver.replace('adult.pinType = "numbers"', 'adult.pinType = "directions"')
+                    driver = driver.replace('userProfilePinHash(adult.pinSalt, "1234")', 'userProfilePinHash(adult.pinSalt, "UDLR")')
+                    driver = driver.replace('"pinType", "numbers"', '"pinType", "directions"')
+                    driver = driver.replace('userProfilePinHash(adult.pinSalt, "5678")', 'userProfilePinHash(adult.pinSalt, "LLLL")')
+                    driver = driver.replace('m.adultPinDialog.subtype() = "DirectionsPinPad"', 'm.adultPinDialog.subtype() = "StandardKeyboardDialog"')
+                    for owner in ['adultPinDialog', 'profilePinDialog']:
+                        for value in ['1234', 'UDLR', '9999', 'UUUU']:
+                            words = 'up down left right' if value in ['1234', 'UDLR'] else 'up up up up'
+                            driver = driver.replace(f'm.{owner}.textEditBox.text = "{value}"', f'managementKeyboardProbe(m.{owner})\n        m.{owner}.text = "{words}"')
+                    source = head + 'sub onManagementProbeTick()' + driver + '''
+sub managementKeyboardProbe(dialog as object)
+    print "[profile-management] "; FormatJson({kind: "keyboard-gate", native: dialog.isSubtype("StandardKeyboardDialog"), masked: dialog.textEditBox.secureMode, domain: dialog.keyboardDomain, voice: dialog.textEditBox.voiceEnabled})
+end sub
+'''
                 body = source.replace('OWN_RECONNECT_PROBE', 'true' if reconnect else 'false').encode()
+            if name == 'manifest' and voice_keyboard:
+                body = body.replace(b'aeriotv_profile_directions_test=1\n', b'')
+                body += b'\naeriotv_profiles_baseline=1\naeriotv_profile_voice_pin_test=1\n'
             package.writestr(name, body)
         package.writestr('profile-management-probe.json', json.dumps({'synthetic': True}))
 
@@ -869,6 +890,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--restore', required=True)
     parser.add_argument('--directions', action='store_true', help='Exercise numeric-to-Directions adult-type selection under developer opt-in')
+    parser.add_argument('--voice-keyboard', action='store_true', help='Qualify production native keyboard with --directions or --switch --switch-pin --switch-roster; not spoken entry')
     parser.add_argument('--switch', action='store_true', help='Exercise internal same-slot A/B/A and rejected-key rollback without enabling the public picker')
     parser.add_argument('--switch-roster', action='store_true', help='With --switch or --child-escape, opt in ONLY this synthetic package to staged target authentication/own roster read before lineup; no public flag change')
     parser.add_argument('--switch-import-pin', action='store_true', help='Only with --switch --switch-roster: import a previously absent target numeric PIN, reject the old value and admit its real stored v2 value')
@@ -900,6 +922,8 @@ def main():
     parser.add_argument('--child-retry', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private Child transient failure, own Retry and Back during delayed authentication, followed by own retry')
     parser.add_argument('--child-rejected', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private actual Child rejection: exact cut prompt, permitted own form/dismissal, no stale replay, adult management and real Back exit')
     args = parser.parse_args()
+    if args.voice_keyboard and not (args.directions or (args.switch and args.switch_pin and args.switch_roster)):
+        parser.error('--voice-keyboard requires --directions or --switch --switch-pin --switch-roster')
     if args.baseline_readiness and not (args.switch_active_retirement or (args.switch_writer and args.writer_mode == 'flush-own-retirement')):
         parser.error('--baseline-readiness requires an active or own-writer retirement fixture')
     if args.switch_roster and not (args.switch or args.child_escape):
@@ -1176,7 +1200,7 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode, args.favorite_retention, args.switch_recording, args.switch_roster, args.switch_import_pin, args.switch_inactive_cleanup, args.switch_target_retirement, args.switch_authority_race, args.switch_active_retirement, args.active_default_mode, args.switch_writer, args.writer_mode, args.baseline_readiness)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode, args.favorite_retention, args.switch_recording, args.switch_roster, args.switch_import_pin, args.switch_inactive_cleanup, args.switch_target_retirement, args.switch_authority_race, args.switch_active_retirement, args.active_default_mode, args.switch_writer, args.writer_mode, args.baseline_readiness, voice_keyboard=args.voice_keyboard)
     modules['recovery'].cleanup_package(cleaner, section)
     report = {'passed': False, 'baseline_readiness': args.baseline_readiness}
 
@@ -1299,7 +1323,8 @@ def main():
             print(result.stderr, end='', flush=True)
         rows = [json.loads(line.split('[profile-management] ', 1)[1]) for line in result.stdout.splitlines() if '[profile-management] {' in line]
         report['baseline_retirement_consent'] = [row for row in rows if row.get('kind') == 'baseline-retirement-consent']
-        rows = [row for row in rows if row.get('kind') not in ['baseline-retirement-consent', 'switch-cancel-observed']]
+        report['native_keyboard_gates'] = [row for row in rows if row.get('kind') == 'keyboard-gate']
+        rows = [row for row in rows if row.get('kind') not in ['baseline-retirement-consent', 'switch-cancel-observed', 'keyboard-gate']]
         report['switch_key_events'] = [row for row in rows if row.get('kind') == 'switch-key']
         report['switch_guide_key_events'] = [row for row in rows if row.get('kind') == 'switch-guide-key']
         report['default_rejection_ready'] = any(row.get('kind') == 'active-default-reject-ready' for row in rows)
@@ -1506,6 +1531,12 @@ def main():
             report['passed'] = result.returncode == 0 and len(safe) == 1 and safe[0].get('passed') and rows[-1].get('exited') and bool(hits) and all(hit['user'] == expected for hit in hits) and bool(rejected) and rejected[0]['path'] == '/api/accounts/users/me/' and report['no_unavailable_requests'] and report.get('back_count') == (2 if args.child_rejected.startswith('default') else 1)
             if args.child_rejected.endswith('-pin'):
                 report['passed'] = report['passed'] and report.get('pre_pin_requests') == []
+        if args.voice_keyboard:
+            gates = report['native_keyboard_gates']
+            report['entry_integration_passed'] = report['passed'] and bool(gates) and all(row.get('native') is True and row.get('masked') is True and row.get('domain') == 'password' for row in gates)
+            report['voice_available_observed'] = bool(gates) and all(row.get('voice') is True for row in gates)
+            report['spoken_entry_verified'] = False
+            report['passed'] = report['entry_integration_passed']
         if not report['passed']:
             raise RuntimeError('Native management controller assertions failed')
     finally:
@@ -1571,6 +1602,8 @@ def main():
                 name = name.replace('-native.json', f'-writer-{args.writer_mode}-native.json')
             if args.baseline_readiness:
                 name = name.replace('-native.json', '-baseline-readiness-native.json')
+            if args.voice_keyboard:
+                name = name.replace('-native.json', '-keyboard-native.json')
             (ROOT / 'out' / name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

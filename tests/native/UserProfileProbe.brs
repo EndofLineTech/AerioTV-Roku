@@ -56,6 +56,15 @@ sub Main()
     profileAssert(profilePinVector("00000000000000000000000000000000", "1234", "e4ae0c82639990744974cc3495a82432d8c5366e5e5f1796b2f9a36ad12664b5"), "pin-v2-zero-salt-fixture")
     profileAssert(profilePinVector("b81e4c2a9d07f3e1a5c6d8e90f1b2c3d", "UULR", "3ea9be0818449911ef5780edfe9d3a36b030efa593f1116922e88e687f04915f"), "pin-v2-directions4")
     profileAssert(profilePinVector("b81e4c2a9d07f3e1a5c6d8e90f1b2c3d", "UDLRUD", "1743a521f797b639615d35a3ec1f317b23e2c8a1b7c212a6d2ad70699555c1ea"), "pin-v2-directions6")
+    nativeWords = userProfilePinTextEntries("directions", "Up Up Left Right")
+    profileAssert(type(nativeWords) = "roArray", "native-keyboard-words-return-canonical-array")
+    if nativeWords <> invalid
+        profileAssert(userProfilePinNormalize("directions", nativeWords) = "UULR", "native-keyboard-words-preserve-repetition")
+    else
+        profileAssert(false, "native-keyboard-words-preserve-repetition")
+    end if
+    profileAssert(userProfilePinNormalize("directions", userProfilePinTextEntries("directions", "udlr")) = "UDLR", "native-keyboard-lowercase-letters")
+    profileAssert(userProfilePinTextEntries("directions", "up,,down,left,right") = invalid, "native-keyboard-malformed-separator-refused")
     if config.registry = true then profileProbeRegistry()
     if config.modelStore = true
         runUserProfileModelChecks()

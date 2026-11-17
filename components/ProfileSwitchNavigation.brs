@@ -461,7 +461,7 @@ sub retireUserProfileSwitch()
             pad = m.profilePinDialog
             pad.unobserveField("buttonSelected")
             pad.unobserveField("wasClosed")
-            pad.textEditBox.text = ""
+            uiClearSecureDialogText(pad)
             pad.close = true
             if m.top <> invalid
                 if m.top.dialog <> invalid

@@ -3,6 +3,31 @@ function userProfilePinCreationAllowed() as boolean
     return false
 end function
 
+' Native keyboard input is transient. Accept exact direction letters or separate
+' direction words, never fuzzy dictation aliases; the existing v2 verifier owns
+' canonical normalization, hashing, learned length and durable backoff.
+function userProfilePinTextEntries(pinType as string, text as string) as dynamic
+    if len(text) > 64 then return invalid
+    entries = []
+    if pinType = "numbers" or CreateObject("roRegex", "^[UDLRudlr]{4,6}$", "").isMatch(text)
+        for i = 1 to len(text)
+            entries.push(mid(text, i, 1))
+        end for
+    else if pinType = "directions"
+        text = text.trim()
+        if not CreateObject("roRegex", "^[A-Za-z]+([ ]*,?[ ]+[A-Za-z]+|,[ ]*[A-Za-z]+)*$", "").isMatch(text) then return invalid
+        ' Native roRegex.Split returns roList, unlike the host interpreter.
+        ' Copy its tokens into the verifier's deliberately strict roArray input.
+        for each entry in CreateObject("roRegex", "[ ,]+", "").split(text)
+            entries.push(entry)
+        end for
+    else
+        return invalid
+    end if
+    if userProfilePinNormalize(pinType, entries) = invalid then return invalid
+    return entries
+end function
+
 function userProfilePinGrantMatches(grant as dynamic, slotId as string, profile as object) as boolean
     if type(grant) <> "roAssociativeArray" then return false
     if not userProfilePinRecordValid(profile) then return false

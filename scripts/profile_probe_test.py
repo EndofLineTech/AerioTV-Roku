@@ -13,6 +13,30 @@ from unittest.mock import MagicMock, patch
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_native_keyboard_management_driver_does_not_replace_production_gates(self):
+        spec = importlib.util.spec_from_file_location('voice_management', Path(__file__).with_name('test-profile-management-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        root = Path(__file__).resolve().parent.parent
+        with tempfile.TemporaryDirectory() as folder:
+            normal, output = Path(folder) / 'normal.zip', Path(folder) / 'probe.zip'
+            with zipfile.ZipFile(normal, 'w') as package:
+                package.writestr('manifest', 'title=AerioTV\n')
+                for name in ['components/AerioScene.brs', 'components/ProfileAdultPinNavigation.brs', 'components/ProfilePinNavigation.brs', 'source/MetadataCacheStore.brs']:
+                    package.writestr(name, (root / name).read_bytes())
+            for flags in [{'directions': True}, {'switching': True, 'switch_pin': True, 'switch_roster': True}]:
+                probe.build(output, normal, 'PrivateNativeKeyboard', 'http://127.0.0.1:1234', voice_keyboard=True, **flags)
+                with zipfile.ZipFile(output) as package:
+                    manifest = package.read('manifest')
+                    self.assertIn(b'aeriotv_profile_voice_pin_test=1', manifest)
+                    self.assertNotIn(b'aeriotv_profile_directions_test', manifest)
+                    self.assertEqual(package.read('components/ProfileAdultPinNavigation.brs'), (root / 'components/ProfileAdultPinNavigation.brs').read_bytes())
+                    self.assertEqual(package.read('components/ProfilePinNavigation.brs'), (root / 'components/ProfilePinNavigation.brs').read_bytes())
+                    scene = package.read('components/AerioScene.brs').decode()
+                    self.assertIn('keyboard-gate', scene)
+                    self.assertIn('up down left right', scene)
+                    self.assertNotIn('m.profileNativePinKeyboardReady = true', scene)
+
     def test_baseline_retirement_requires_one_actual_consent_and_both_readiness_flags(self):
         spec = importlib.util.spec_from_file_location('retirement_consent', Path(__file__).with_name('test-profile-management-native.py'))
         probe = importlib.util.module_from_spec(spec)
@@ -40,13 +64,14 @@ class ProfileProbeTest(unittest.TestCase):
             with zipfile.ZipFile(output) as package:
                 pin = package.read('components/ProfilePinNavigation.brs').decode()
                 self.assertIn('CreateObject("roSGNode", "StandardKeyboardDialog")', pin)
-                self.assertNotIn('CreateObject("roSGNode", "DirectionsPinPad")', pin)
+                self.assertIn('CreateObject("roSGNode", "DirectionsPinPad")', pin)
                 self.assertIn('dialog.keyboardDomain = "password"', pin)
-                self.assertIn('text = ucase(m.profilePinDialog.text)', pin)
+                self.assertIn('uiTakeSecureDialogText(m.profilePinDialog, context.keyboard = true)', pin)
                 self.assertIn('userProfilePinAttemptStored(', pin)
                 self.assertNotRegex(pin, r'(?m)^\s*m\.profilePinVerifier\s*=')
                 self.assertIn('profile-pin-probe.json', package.namelist())
-                self.assertIn(b'aeriotv_profile_directions_test=1', package.read('manifest'))
+                self.assertNotIn(b'aeriotv_profile_directions_test', package.read('manifest'))
+                self.assertIn(b'aeriotv_profile_voice_pin_test=1', package.read('manifest'))
                 self.assertIn(b'aeriotv_profiles_baseline=1', package.read('manifest'))
                 self.assertIn(b'Private native entry proof never uploads', package.read('components/AerioScene.brs'))
                 self.assertNotIn('CreateObject("roRegistrySection", "AerioTV")', package.read('components/AerioScene.brs').decode())
@@ -230,6 +255,14 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertEqual(package.read('source/Main.brs'), b'unchanged')
             with zipfile.ZipFile(source) as package:
                 self.assertNotIn(b'aeriotv_profile_directions_test', package.read('manifest'))
+            with contextlib.redirect_stdout(io.StringIO()):
+                builder.build(source, output, voice_pins=True)
+            with zipfile.ZipFile(output) as package:
+                self.assertIn(b'aeriotv_profile_voice_pin_test=1\n', package.read('manifest'))
+                self.assertNotIn(b'aeriotv_profile_directions_test', package.read('manifest'))
+                self.assertEqual(package.read('source/Main.brs'), b'unchanged')
+            with self.assertRaises(ValueError):
+                builder.build(source, output, directions=True, voice_pins=True)
 
     def test_admin_ui_fixture_replaces_only_private_admin_transport(self):
         spec = importlib.util.spec_from_file_location('admin_ui_builder', Path(__file__).with_name('test-profile-picker-launch-native.py'))
@@ -268,6 +301,10 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertIn('    m.profileSyncSchedulingReady = false', scene)
         self.assertIn('    m.profileSyncControlsReady = false', scene)
         self.assertIn('    m.profilePickerReady = false', scene)
+        self.assertIn('    m.profileNativePinKeyboardReady = false', scene)
+        self.assertNotIn('m.profileNativePinKeyboardReady = true', scene)
+        baseline_block = scene.split('    if m.profileBaselineReady\n', 1)[1].split('    end if', 1)[0]
+        self.assertIn('m.profileNativePinKeyboardReady = CreateObject("roAppInfo").getValue("aeriotv_profile_voice_pin_test") = "1"', baseline_block)
         self.assertNotIn('\n    m.profilePickerReady = true', scene)
         writer = (root / 'components/DispatcharrSyncWriteTask.brs').read_text()
         self.assertIn('    m.syncWriterReady = false', writer)

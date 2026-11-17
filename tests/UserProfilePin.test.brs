@@ -15,6 +15,18 @@ sub main()
     check(userProfilePinRecordValid({pinType: "numbers", pinHash: a, pinSalt: string(32, "b")}), "valid imported v2 record")
     check(not userProfilePinRecordValid({pinType: "numbers", pinHash: "bad", pinSalt: string(32, "b")}), "corrupt record cannot be an unlocked PIN")
     check(not userProfilePinCreationAllowed(), "new salt creation stays production gated")
+    for each text in ["udlr", "Up Down Left Right", " u, DOWN, left, r ", "U D L R", "right right right right right right"]
+        entries = userProfilePinTextEntries("directions", text)
+        check(type(entries) = "roArray", "native letter or spoken-word text parses without changing the PIN record")
+        check(userProfilePinNormalize("directions", entries) <> invalid, "parsed directions use existing canonical hash input")
+    end for
+    check(userProfilePinNormalize("directions", userProfilePinTextEntries("directions", "up up left right")) = "UULR", "spoken direction words preserve exact entry order and repetition")
+    for each text in ["", "UDL", "UDLRUDL", "up down left select", "updownleftright", "up. down left right", "you down left right", "up,,down,left,right", string(65, "u")]
+        check(userProfilePinTextEntries("directions", text) = invalid, "malformed or ambiguous keyboard input is not guessed into a PIN")
+    end for
+    check(userProfilePinNormalize("numbers", userProfilePinTextEntries("numbers", "482913")) = "482913", "numeric pad keeps exact ASCII digit contract")
+    check(userProfilePinTextEntries("numbers", "1 2 3 4") = invalid, "numeric input does not gain permissive speech aliases")
+    check(userProfilePinTextEntries("unknown", "UDLR") = invalid, "unknown keyboard PIN type fails closed")
     print "ALL TESTS PASSED"
 end sub
 

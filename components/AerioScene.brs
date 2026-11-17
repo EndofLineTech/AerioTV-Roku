@@ -9,9 +9,11 @@ sub init()
     m.profileSyncSchedulingReady = false
     m.profileSyncControlsReady = false
     m.profilePickerReady = false
+    m.profileNativePinKeyboardReady = false
     m.profileBaselineReady = CreateObject("roAppInfo").getValue("aeriotv_profiles_baseline") = "1"
     if m.profileBaselineReady
         m.profilePhoneImportReady = true
+        m.profileNativePinKeyboardReady = CreateObject("roAppInfo").getValue("aeriotv_profile_voice_pin_test") = "1"
         m.profilePickerReady = true
         m.profileSwitchRosterReady = true
         m.profileChildAccessReady = true

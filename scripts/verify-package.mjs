@@ -60,6 +60,9 @@ export function assertShippingManifest(manifest) {
   if (/^\s*aeriotv_profile_directions_test\s*=/mi.test(manifest)) {
     throw new Error('Developer Directions PIN entry is not approved for shipping');
   }
+  if (/^\s*aeriotv_profile_voice_pin_test\s*=/mi.test(manifest)) {
+    throw new Error('Developer native voice PIN entry is not approved for shipping');
+  }
   if (/^\s*aeriotv_pairing_test\s*=/mi.test(manifest) || /^\s*title\s*=.*pairing test/im.test(manifest)) {
     throw new Error('Pairing test builds cannot be used as Beta/Store packages');
   }

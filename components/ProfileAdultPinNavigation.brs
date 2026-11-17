@@ -19,7 +19,9 @@ function beginAdultProfilePinGate(inputType = "numbers" as string) as boolean
         onAdultProfileAuthorized()
         return true
     end if
-    if inputType = "directions"
+    keyboard = inputType = "directions" and m.profileNativePinKeyboardReady = true
+    context.keyboard = keyboard
+    if inputType = "directions" and not keyboard
         if CreateObject("roAppInfo").getValue("aeriotv_profile_directions_test") <> "1"
             m.adultPinContext = invalid
             return false
@@ -45,7 +47,9 @@ function beginAdultProfilePinGate(inputType = "numbers" as string) as boolean
     dialog = invalid
     if m.adultPinDialogFactory <> invalid then dialog = m.adultPinDialogFactory()
     if dialog = invalid
-        if inputType = "directions"
+        if keyboard
+            dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
+        else if inputType = "directions"
             dialog = CreateObject("roSGNode", "DirectionsPinPad")
         else
             dialog = CreateObject("roSGNode", "StandardPinPadDialog")
@@ -53,11 +57,16 @@ function beginAdultProfilePinGate(inputType = "numbers" as string) as boolean
     end if
     dialog.title = "Enter a PIN from an Admin or Standard profile"
     dialog.textEditBox.maxTextLength = 6
+    if keyboard
+        dialog.keyboardDomain = "password"
+        dialog.textEditBox.maxTextLength = 64
+        dialog.textEditBox.hintText = "U D L R or Up Down Left Right"
+    end if
     uiSecureTextInput(dialog.textEditBox)
-    if inputType = "numbers" then dialog.textEditBox.voiceEnabled = true
+    if inputType = "numbers" or keyboard then dialog.textEditBox.voiceEnabled = true
     choices.push("OK")
     if otherType <> ""
-        if otherType = "numbers" or CreateObject("roAppInfo").getValue("aeriotv_profile_directions_test") = "1"
+        if otherType = "numbers" or m.profileNativePinKeyboardReady = true or CreateObject("roAppInfo").getValue("aeriotv_profile_directions_test") = "1"
             choices.push("Use " + otherType + " PIN")
             context.otherType = otherType
         end if
@@ -66,7 +75,7 @@ function beginAdultProfilePinGate(inputType = "numbers" as string) as boolean
     dialog.observeField("buttonSelected", "onAdultProfilePinSubmit")
     dialog.observeField("wasClosed", "onAdultProfilePinClosed")
     m.adultPinDialog = dialog
-    if inputType = "directions"
+    if inputType = "directions" and not keyboard
         m.top.appendChild(dialog)
     else
         m.top.dialog = dialog
@@ -102,13 +111,13 @@ sub onAdultProfilePinSubmit(event as object)
         return
     end if
     if button <> 0 then return
-    text = m.adultPinDialog.textEditBox.text
-    m.adultPinDialog.textEditBox.text = ""
-    entries = []
-    for i = 1 to len(text)
-        entries.push(mid(text, i, 1))
-    end for
+    text = uiTakeSecureDialogText(m.adultPinDialog, context.keyboard = true)
+    entries = userProfilePinTextEntries(context.inputType, text)
     text = ""
+    if entries = invalid
+        m.adultPinDialog.title = "Enter 4 to 6 " + context.inputType
+        return
+    end if
     checked = userProfileAdultPinAttemptStored(m.registry, context.slot, context.store, context.admin, entries, context.inputType, CreateObject("roDateTime").asSeconds())
     entries = []
     if checked.verified
@@ -175,9 +184,10 @@ sub closeAdultProfilePinGate()
     if m.adultPinDialog <> invalid
         m.adultPinDialog.unobserveField("buttonSelected")
         m.adultPinDialog.unobserveField("wasClosed")
-        m.adultPinDialog.textEditBox.text = ""
+        uiClearSecureDialogText(m.adultPinDialog)
         m.adultPinDialog.close = true
-        if m.adultPinContext.inputType = "directions" then m.top.removeChild(m.adultPinDialog)
+        uiClearDialogOwner(m.top, m.adultPinDialog)
+        if m.adultPinContext.inputType = "directions" and m.adultPinContext.keyboard <> true then m.top.removeChild(m.adultPinDialog)
     end if
     if m.adultPinContext <> invalid
         if adultProfilePinContextCurrent()

@@ -46,6 +46,12 @@ test('developer Directions PIN opt-in cannot ship under any flag value', () => {
   }
 });
 
+test('developer native voice PIN opt-in cannot ship under any flag value', () => {
+  for (const value of ['1', '0', 'true', '']) {
+    assert.throws(() => assertShippingManifest(`title=AerioTV\naeriotv_profile_voice_pin_test=${value}\n`), /voice PIN.*shipping/i);
+  }
+});
+
 test('developer profiles baseline cannot ship under any flag value', () => {
   for (const value of ['1', '0', 'true', '']) {
     assert.throws(() => assertShippingManifest(`title=AerioTV\naeriotv_profiles_baseline=${value}\n`), /baseline/i);

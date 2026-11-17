@@ -5,7 +5,7 @@ sub main()
     m.profileGateClock = {control: "stop"}
     m.selectedConnectionId = "slot-a"
     m.profilePinDialogFactory = function() as object
-        return {title: "", textEditBox: {text: "", maxTextLength: 0, hasField: function(field as string) as boolean
+        return {id: "pin-dialog", title: "", text: "", textEditBox: {text: "", maxTextLength: 0, hasField: function(field as string) as boolean
             return false
         end function}, buttons: [], close: false
             observeField: function(field as string, callback as string) as boolean
@@ -22,6 +22,7 @@ sub main()
     end function
     m.profilePinVerifier = function(profile as object, entries as object) as object
         m.submissions++
+        m.lastPinEntries = entries
         return m.nextVerification
     end function
     m.submissions = 0
@@ -122,6 +123,51 @@ sub main()
     m.profileGateCover.visible = false
     onProfilePinClosed(event)
     check(not m.top.exitRequested and not m.global.profilegateclosed and not m.profileGateCover.visible, "stale startup close cannot exit or cover a successor lifecycle")
+    profile.pinType = "directions"
+    m.profileNativePinKeyboardReady = true
+    m.profileSwitchContext = invalid
+    m.profilePinDialog = invalid
+    check(beginProfilePinGate(profile, "connect"), "native Directions keyboard opens only under explicit developer readiness")
+    check(m.profilePinContext.keyboard and m.top.dialog <> invalid and m.profilePinDialog.keyboardDomain = "password", "Directions keyboard is the owned native dialog rather than an appended Dpad surface")
+    check(m.profilePinDialog.textEditBox.secureMode and m.profilePinDialog.textEditBox.voiceEnabled and m.profilePinDialog.textEditBox.maxTextLength = 64, "Directions native keyboard requests voice, masks input and bounds spoken words")
+    m.profilePinDialog.text = "up up left right"
+    m.profilePinDialog.textEditBox.text = "stale-alias"
+    m.nextVerification = {verified: false, validInput: true, locked: false, remaining: 0, recoveryRequired: false}
+    onProfilePinSubmit(event)
+    check(userProfilePinNormalize("directions", m.lastPinEntries) = "UULR" and m.profileGateCover.visible, "native text alias supplies canonical ordered entries to unchanged durable verifier")
+    check(m.profilePinDialog.text = "" and m.profilePinDialog.textEditBox.text = "", "every attempt scrubs both native text aliases")
+    m.profilePinDialog.text = "up down left select"
+    before = m.submissions
+    onProfilePinSubmit(event)
+    check(m.submissions = before and m.profilePinDialog.text = "", "malformed voice text never consumes a PIN attempt")
+    oldDialog = m.profilePinDialog
+    oldDialog.text = "udlr"
+    onProfilePinClosed(event)
+    check(m.top.dialog = invalid and oldDialog.text = "" and m.top.exitRequested and m.profileGateCover.visible, "native Directions launch closure scrubs text and exits without revealing content")
+    m.top.exitRequested = false
+    pinSwitchOwner(profile, "native-keyboard-switch")
+    beginProfilePinGate(profile, "switch", "native-keyboard-switch")
+    m.profilePinDialog.text = "u d l r"
+    m.nextVerification = {verified: true, validInput: true, locked: false, remaining: 0, recoveryRequired: false}
+    onProfilePinSubmit(event)
+    check(m.profileUnlockGrant.pinType = "directions" and m.gateAtSwitchResume and m.top.dialog = invalid, "native keyboard switch retains exact hash grant and covered continuation ownership")
+    pinSwitchOwner(profile, "retired-native-keyboard-switch")
+    beginProfilePinGate(profile, "switch", "retired-native-keyboard-switch")
+    m.profilePinDialog.text = "up down left right"
+    m.profileSwitchContext = invalid
+    m.profileUnlockGrant = {marker: "native-successor"}
+    before = m.submissions
+    onProfilePinSubmit(event)
+    check(m.submissions = before and m.profileUnlockGrant.marker = "native-successor" and m.profilePinDialog.text = "", "retired native switch input cannot consume an attempt or replace successor authority")
+    onProfilePinClosed(event)
+    check(not m.top.exitRequested and m.profileUnlockGrant.marker = "native-successor", "retired native keyboard close cannot exit a successor lifecycle")
+    beginProfilePinGate(profile, "connect")
+    m.profilePinDialog.text = "up down left right"
+    m.profilePinDialog.textEditBox.text = "alias"
+    m.selectedConnectionId = "slot-b"
+    before = m.submissions
+    onProfilePinSubmit(event)
+    check(m.submissions = before and m.profilePinDialog.text = "" and m.profilePinDialog.textEditBox.text = "", "same owned native keyboard on a changed slot is scrubbed without verification")
     print "ALL TESTS PASSED"
 end sub
 

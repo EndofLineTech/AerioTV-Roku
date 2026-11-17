@@ -5,6 +5,31 @@ sub uiSecureTextInput(textBox as object)
     if textBox.hasField("secureLastCharacter") then textBox.secureLastCharacter = true
 end sub
 
+' Native keyboard dialogs expose text both on the dialog and its edit box.
+' Scrub both, including on cancellation/retirement, so a detached node cannot
+' retain an earlier PIN or republish it through the other alias.
+sub uiClearSecureDialogText(dialog as object)
+    if type(dialog) = "roSGNode"
+        if dialog.hasField("text") then dialog.text = ""
+    else if type(dialog) = "roAssociativeArray"
+        if dialog.doesExist("text") then dialog.text = ""
+    end if
+    dialog.textEditBox.text = ""
+end sub
+
+function uiTakeSecureDialogText(dialog as object, keyboard as boolean) as string
+    text = dialog.textEditBox.text
+    if keyboard then text = dialog.text
+    uiClearSecureDialogText(dialog)
+    return text
+end function
+
+sub uiClearDialogOwner(scene as object, dialog as object)
+    if scene = invalid then return
+    if scene.dialog = invalid then return
+    if scene.dialog.isSameNode(dialog) then scene.dialog = invalid
+end sub
+
 function uiRect(parent as object, x as float, y as float, w as float, h as float, color as string) as object
     node = parent.createChild("Rectangle")
     node.translation = [x, y]

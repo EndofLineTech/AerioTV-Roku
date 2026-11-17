@@ -48,6 +48,36 @@ sub main()
     m.profileManagementNonce = "00000000-0000-4000-8000-000000000091"
     onAdultProfilePinClosed(event)
     check(not m.phoneReturned, "retired adult gate cannot resurrect phone onboarding")
+    setupAdultControllerFixture()
+    store = loadUserProfileStore(m.registry, "slot-a")
+    store.profiles[0] = setCanonicalPreference(store.profiles[0], "pinType", "directions")
+    m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
+    m.profileNativePinKeyboardReady = true
+    check(beginAdultProfilePinGate(), "all-Directions adults route from numeric default to native keyboard, never stranded bypass")
+    check(m.adultPinContext.keyboard and m.adultPinContext.inputType = "directions" and m.top.dialog <> invalid, "adult Directions uses owned native dialog without revealing holder names")
+    check(m.adultPinDialog.keyboardDomain = "password" and m.adultPinDialog.textEditBox.secureMode and m.adultPinDialog.textEditBox.voiceEnabled, "adult keyboard masks letters and requests native voice")
+    event.node = m.adultPinDialog
+    m.adultPinDialog.text = "up down left right"
+    m.pinPolicyDigest = function(salt as string, normalized as string) as string
+        if normalized = "UDLR" then return string(64, "a")
+        return string(64, "c")
+    end function
+    onAdultProfilePinSubmit(event)
+    check(m.authorized = 1 and m.profileManagementGrant.pinType = "directions" and m.profileUnlockGrant = invalid, "native Directions adult gate grants only management purpose")
+    check(m.top.dialog = invalid and event.node.text = "" and event.node.textEditBox.text = "", "adult success detaches owned native keyboard and scrubs both text aliases")
+    beginAdultProfilePinGate("directions")
+    event.node = m.adultPinDialog
+    m.adultPinDialog.text = "up down left right"
+    m.profileManagementNonce = "00000000-0000-4000-8000-000000000091"
+    onAdultProfilePinSubmit(event)
+    check(m.adultPinDialog = invalid and event.node.text = "" and m.profileManagementGrant = invalid, "retired native adult keyboard scrubs text without granting successor management authority")
+    setupAdultControllerFixture()
+    m.profileNativePinKeyboardReady = true
+    beginAdultProfilePinGate()
+    event.node = m.adultPinDialog
+    m.adultPinDialog.textEditBox.text = "1234"
+    onAdultProfilePinSubmit(event)
+    check(m.authorized = 1 and m.profileManagementGrant.pinType = "numbers", "numeric adult pad remains compatible when native Directions is enabled")
     print "ALL TESTS PASSED"
 end sub
 
@@ -92,7 +122,7 @@ sub setupAdultControllerFixture()
     end function, removeChild: sub(node as object)
     end sub}
     m.adultPinDialogFactory = function() as object
-        return {title: "", textEditBox: {text: "", hasField: function(field as string) as boolean
+        return {title: "", text: "", textEditBox: {text: "", hasField: function(field as string) as boolean
             return false
         end function}, observeField: sub(field as string, callback as string)
         end sub, unobserveField: sub(field as string)
