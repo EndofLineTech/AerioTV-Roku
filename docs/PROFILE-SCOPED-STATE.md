@@ -24,7 +24,7 @@ Current populated VOD/DVR and named Apple/Android encoder evidence is recorded
 in [delivery status](MRR-DELIVERY-STATUS.md); the narrower historical scope
 above does not make those main flows newly outstanding.
 
-## `mrr.6` implementation completion boundary
+## `mrr.6` completed implementation boundary
 
 This is staged switching and slot/key/address lifecycle implementation under the
 approved developer/import-only phase. Its direct prerequisites, including
@@ -98,6 +98,22 @@ switching/address/credential/default-replacement/Forget suites pass. Final
 profile/phone/voice-probe tooling and package checks also pass in
 `out/mrr6-completion-tools-final.log` and
 `out/mrr6-completion-package-tests.log`. Full regression is recorded separately.
+
+Full `npm run verify` **passes** in
+`out/mrr6-completion-full-verify.log` (380-file normal package).
+`out/mrr6-completion-baseline-installed.json` verifies the sidecar checksum,
+duplicate-free equal entry sets, identical compiled file contents against that
+full-gate package, exact preceding-app preflight, successful install/launch and
+the installed checksum. ZIP entry order differs between builds; file contents
+do not. An initial order-sensitive preflight refused before installation and was
+corrected to compare entry sets and every compiled byte.
+
+The installed unsigned baseline is now
+`out/profiles-mrr6/aeriotv-roku-v0.3.100-profiles-baseline.zip`, SHA-256
+`0f03d501786cc107d6e52075876bb36416e18c783722d4a379ffb3c77846ab33`.
+The inspected `out/mrr6-completion-baseline-ready.jpg` retains Sync Test 1,
+Sync Test 2 and Add Profile. Previous artifacts are preserved; no real profiles,
+server settings, voice settings, public flags or release/signing state changed.
 
 ### Baseline default-retirement integration — November 17, 2026
 

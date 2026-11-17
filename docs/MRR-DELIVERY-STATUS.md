@@ -20,12 +20,12 @@ epic-complete claim. Beads remains the status register.
 
 | Item | Implemented/verified scope | Remaining boundary |
 | --- | --- | --- |
-| `mrr.6` switching | Own-key staged switching, isolation/address recovery and native main flows. Completion qualification adds explicit default-only slot persistence and fresh memory-only switch/cancel, actual-baseline address replacement and outgoing-flush native evidence (see [scoped state](PROFILE-SCOPED-STATE.md)). | `mrr.8` is closed; deferred public Directions qualification in `.19` does not block this implementation. Final regression qualification is being recorded separately from public/epic acceptance. |
+| `mrr.6` switching | **Completed approved implementation.** Explicit default-only slot persistence; fresh memory-only switch/cancel, actual-baseline address replacement and outgoing-flush native qualification; full regression passes and matching unsigned baseline is installed (see [scoped state](PROFILE-SCOPED-STATE.md)). | Public/epic acceptance and deferred native Directions qualification remain separate, not reasons to reopen this implementation. |
 | `mrr.8` PIN/Child | **Completed approved import-only/developer implementation.** Fresh 1,626-assertion native policy/storage run plus imported Directions D-pad lock/unlock and Directions adult-management smoke pass; see [PIN completion evidence](PROFILE-PIN-POLICY.md). | Public Directions access/voice/certification remains separately owned by `mrr.19`, not a reason to keep this implementation open. New salt creation stays disabled. |
-| `mrr.9` picker/management | Native picker/management, own switch, reorder, light/large presentation, startup beacons and OS 14.6 runtime guard. | Physical-remote acceptance and upstream public PIN/switch boundaries; Dashboard verification is not inferred. |
+| `mrr.9` picker/management | Native picker/management, own switch, reorder, light/large presentation, startup beacons and OS 14.6 runtime guard. All direct implementation prerequisites are closed; status reconciled to in progress. | Physical-remote acceptance remains unverified; public native voice qualification is separate in `.19`. Dashboard verification belongs to `.11` and is not inferred. |
 | `mrr.10` local acceptance | Existing host/native storage/auth/PIN/Child/request-safety reports and current main-flow evidence. | Explicit owner acceptance and `mrr.19` public disposition; no planning-only closure. |
 | `mrr.11` integrated acceptance | Both actual accounts' Sync/media progression plus named unmodified Apple/Android encoder imports. Owner confirmed the initial VOD startup incidents were provider-side; `unxg` is closed. | Human picture/audio, physical-phone integration, authenticated Dashboard floor, public certification and owner acceptance remain distinct verification requirements. Entropy assurance is non-blocking under the owner disposition below. |
-| `mrr.18` bounded admin | Native synthetic gates/transport/actions/UI and active-own reload: `mrr-admin-final-actions-native`, `mrr-admin-ui-own-reload-native`. | Dependency on `mrr.6`, not an invented requirement to mutate real server users. |
+| `mrr.18` bounded admin | **Closed.** Native synthetic gates/transport/actions/UI and active-own reload: `mrr-admin-final-actions-native`, `mrr-admin-ui-own-reload-native`; admin and current full regression gates pass. | Last dependency `.6` is closed. No real server mutation, public release or owner acceptance is inferred or required for this bounded implementation closure. |
 | `mrr.19` Directions disposition | Official current keyboard/certification references checked; private text entry feasibility and unchanged verifier demonstrated. | A documented option is not an approved/tested public fallback; actual voice/household qualification and explicit disposition remain open. |
 
 Native Directions details and preserved failed verdicts are in
@@ -194,6 +194,19 @@ are now **Sync Test 1** and **Sync Test 2**. Sync remains Off.
 ## Verified developer handoff
 
 ### Latest final-seven baseline
+
+The newer **`.6` completion baseline** is now installed:
+
+`out/profiles-mrr6/aeriotv-roku-v0.3.100-profiles-baseline.zip`
+
+SHA-256: `0f03d501786cc107d6e52075876bb36416e18c783722d4a379ffb3c77846ab33`.
+Full regression passes in `out/mrr6-completion-full-verify.log` (380 files).
+`out/mrr6-completion-baseline-installed.json` confirms checksum, full-gate compiled
+contents, exact old-app preflight and new installed checksum. The inspected
+`out/mrr6-completion-baseline-ready.jpg` retains both supplied profiles and Add.
+It adds the default-only slot persistence boundary, not public feature flags,
+voice settings, signing or release. The older final-seven checkpoint below is
+preserved for provenance, not the current installed artifact.
 
 Full `npm run verify` passes in `out/mrr-final-seven-full-verify.log`
 (380-file normal ZIP); the focused probe suite passes in
