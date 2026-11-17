@@ -13,6 +13,18 @@ from unittest.mock import MagicMock, patch
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_vod_probe_selects_a_requested_movie_without_source_editing(self):
+        spec = importlib.util.spec_from_file_location('vod_titles', Path(__file__).with_name('test-profile-picker-launch-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        view = probe.vod_view_fixture("The Matrix", "1999")
+        self.assertIn('m.query = "The Matrix"', view)
+        self.assertIn('"the matrix"', view)
+        self.assertIn('item.year = "1999"', view)
+        self.assertNotIn('"Sintel"', view)
+        with self.assertRaises(ValueError):
+            probe.vod_view_fixture('bad"\nsource', '1999')
+
     def test_populated_vod_acceptance_uses_real_views_and_internal_player_state(self):
         root = Path(__file__).resolve().parent.parent
         fixture = (root / 'tests/native/ProfileVodAcceptanceFixture.brs').read_text()
@@ -25,6 +37,13 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertIn('--profile-vod', builder)
         self.assertIn('ProfileVodAcceptanceFixture.brs', builder)
         self.assertIn('ProfileVodViewFixture.brs', builder)
+        self.assertIn('errorStr: sanitizePlaybackDiagnostic(m.video.errorStr, key)', builder)
+        self.assertIn('getMemoryLimitPercent()', builder)
+        self.assertIn('m.video.errorInfo', builder)
+        view = (root / 'tests/native/ProfileVodViewFixture.brs').read_text()
+        self.assertIn('m.query = "Sintel"', view)
+        self.assertIn('item.year = "2010"', view)
+        self.assertIn('video.errorCode <> 0 or video.state = "error"', fixture)
 
     def test_real_sync_edits_after_initial_settlement_without_forcing_readiness(self):
         root = Path(__file__).resolve().parent.parent

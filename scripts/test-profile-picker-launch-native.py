@@ -5,6 +5,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import socket
 import subprocess
@@ -76,7 +77,14 @@ def real_baseline_fixture(fixture, accounts):
     return fixture.replace('"synthetic-password"', json.dumps(accounts[1]["password"]))
 
 
-def build(path, normal, section, base, mode="plain", baseline_accounts=None, admin_ui=False, phone_verify=False, phone_import=False, phone_import_add=False, profile_media=False, peer_envelope=None, peer_material=None, profile_vod=False):
+def vod_view_fixture(title, year):
+    if not re.fullmatch(r"[A-Za-z0-9 -]{1,120}", title) or not re.fullmatch(r"[0-9]{4}", year):
+        raise ValueError("Use a bounded plain-text movie title and four-digit year")
+    view = (ROOT / "tests/native/ProfileVodViewFixture.brs").read_text()
+    return view.replace('"Sintel"', json.dumps(title)).replace('"sintel"', json.dumps(title.lower())).replace('item.year = "2010"', f'item.year = {json.dumps(year)}')
+
+
+def build(path, normal, section, base, mode="plain", baseline_accounts=None, admin_ui=False, phone_verify=False, phone_import=False, phone_import_add=False, profile_media=False, peer_envelope=None, peer_material=None, profile_vod=False, vod_title="Sintel", vod_year="2010"):
     if sum([admin_ui, phone_verify, phone_import, profile_media]) > 1:
         raise ValueError("Choose one focused native flow")
     if (phone_verify or phone_import or profile_media) and not baseline_accounts:
@@ -214,7 +222,7 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
             elif name == "components/VodView.xml" and profile_vod:
                 body = body.replace(b"</interface>", b'<function name="profileVodAcceptanceState" /><function name="profileVodAcceptanceAction" /></interface>', 1)
             elif name == "components/VodView.brs" and profile_vod:
-                body += b"\n" + (ROOT / "tests/native/ProfileVodViewFixture.brs").read_bytes()
+                body += b"\n" + vod_view_fixture(vod_title, vod_year).encode()
             elif name == "components/DvrView.xml" and profile_media:
                 body = body.replace(b"</interface>", b'<function name="profileMediaAcceptanceRow" /></interface>', 1)
             elif name == "components/DvrView.brs" and profile_media:
@@ -233,11 +241,17 @@ end function
 function profileMediaAcceptanceState() as object
     allowed = false
     current = false
+    key = ""
     if type(m.top.request) = "roAssociativeArray"
+        key = textValue(m.top.request.apiKey)
         current = userEventCurrent(m.top.request)
         allowed = requestGateRenderAllowed(m.top.request.url, m.top.request.apiKey)
     end if
-    return {state: m.video.state, position: m.video.position, duration: m.video.duration, visible: m.top.visible, session: m.session <> invalid, current: current, allowed: allowed, errorCode: m.video.errorCode}
+    info = m.video.errorInfo
+    diagnostic = {}
+    if type(info) = "roAssociativeArray" then diagnostic = {category: textValue(info.category), code: info.errcode, ignored: info.ignored, message: sanitizePlaybackDiagnostic(textValue(info.dbgmsg), key)}
+    if m.profileMediaAcceptanceMonitor = invalid then m.profileMediaAcceptanceMonitor = CreateObject("roAppMemoryMonitor")
+    return {state: m.video.state, position: m.video.position, duration: m.video.duration, visible: m.top.visible, session: m.session <> invalid, current: current, allowed: allowed, errorCode: m.video.errorCode, errorStr: sanitizePlaybackDiagnostic(m.video.errorStr, key), nativeError: diagnostic, memoryPercent: m.profileMediaAcceptanceMonitor.getMemoryLimitPercent()}
 end function
 '''
             package.writestr(name, body)
@@ -268,6 +282,8 @@ def main():
     parser.add_argument("--phone-import-add", action="store_true", help="Phone import with one default, then own-credential onboarding Add and Undo")
     parser.add_argument("--profile-media", action="store_true", help="Read-only completed DVR playback before/after own-account profile switching")
     parser.add_argument("--profile-vod", action="store_true", help="Populated Movies/Series and representative movie playback before/after own-account switching")
+    parser.add_argument("--vod-title", default="Sintel", help="Representative title for --profile-vod")
+    parser.add_argument("--vod-year", default="2010", help="Representative release year for --profile-vod")
     parser.add_argument("--peer-envelope", type=Path, help="Private actual-peer encrypted setup envelope; only with --phone-import")
     parser.add_argument("--peer-material", type=Path, help="Private test receiver material; never enables production entropy")
     parser.add_argument("--dispatcharr-credentials", type=Path, help="Private JSON: baseUrl and two accounts with username/password; implies baseline, read-only server testing")
@@ -275,6 +291,7 @@ def main():
     args = parser.parse_args()
     if args.profile_vod:
         args.profile_media = True
+        vod_view_fixture(args.vod_title, args.vod_year)
     if args.phone_import_add:
         args.phone_import = True
     if bool(args.peer_envelope) != bool(args.peer_material) or (args.peer_envelope and (not args.phone_import or args.phone_import_add)):
@@ -444,10 +461,12 @@ def main():
     package_dir = Path(private_package.name) if private_package else ROOT / "out"
     archive = package_dir / "profile-picker-launch-probe.zip"
     cleaner = package_dir / "profile-picker-launch-cleanup.zip"
-    build(archive, ROOT / "out/aeriotv-roku.zip", section, real_base or f"http://{local}:{server.server_port}", "baseline" if args.baseline else args.mode, baseline_accounts, admin_ui=args.admin_ui, phone_verify=args.phone_verify, phone_import=args.phone_import, phone_import_add=args.phone_import_add, profile_media=args.profile_media, peer_envelope=args.peer_envelope, peer_material=args.peer_material, profile_vod=args.profile_vod)
+    build(archive, ROOT / "out/aeriotv-roku.zip", section, real_base or f"http://{local}:{server.server_port}", "baseline" if args.baseline else args.mode, baseline_accounts, admin_ui=args.admin_ui, phone_verify=args.phone_verify, phone_import=args.phone_import, phone_import_add=args.phone_import_add, profile_media=args.profile_media, peer_envelope=args.peer_envelope, peer_material=args.peer_material, profile_vod=args.profile_vod, vod_title=args.vod_title, vod_year=args.vod_year)
     modules["recovery"].cleanup_package(cleaner, section)
     report = {"passed": False, "mode": args.mode, "events": [], "keys": [], "restore_sha256": hashlib.sha256(restore.read_bytes()).hexdigest(), "probe_sha256": hashlib.sha256(archive.read_bytes()).hexdigest()}
     report["private_registry_section"] = section
+    if args.profile_vod:
+        report["representative_movie"] = {"title": args.vod_title, "year": args.vod_year}
     process = None
 
     def run(path, marker, prefix):

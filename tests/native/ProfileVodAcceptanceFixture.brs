@@ -74,7 +74,16 @@ sub onProfileMediaAcceptanceTick()
         m.pickerProbeBaselineStage = 6
     else if stage = 6
         video = m.mediaPlayer.callFunc("profileMediaAcceptanceState")
-        if video.state = "error" then finishProfileVodAcceptance(false, "movie-player-error") : return
+        if m.vodAcceptanceVideoState <> video.state
+            m.vodAcceptanceVideoState = video.state
+            print "[picker-launch] "; FormatJson({kind: "profile-vod-player", account: m.vodAcceptanceAccount, state: video.state, position: video.position, duration: video.duration, current: video.current, allowed: video.allowed, session: video.session, visible: video.visible, errorCode: video.errorCode, errorStr: video.errorStr, nativeError: video.nativeError, memoryPercent: video.memoryPercent})
+        end if
+        if video.errorCode <> 0 or video.state = "error"
+            diagnostic = m.mediaPlayer.diagnostic
+            if type(diagnostic) = "roAssociativeArray" then print "[picker-launch] "; FormatJson({kind: "profile-vod-error", code: diagnostic.code, message: diagnostic.message})
+            finishProfileVodAcceptance(false, "movie-player-error")
+            return
+        end if
         if m.page <> "onDemand" then finishProfileVodAcceptance(false, "movie-player-not-open") : return
         if video.state <> "playing" or video.position < 2 then return
         if not video.current or not video.allowed then finishProfileVodAcceptance(false, "movie-player-scope") : return

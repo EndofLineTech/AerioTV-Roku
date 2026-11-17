@@ -9,7 +9,7 @@ release, public feature enablement or owner acceptance.
 | Protected phone-import controller, explicit Sync consent, Who watches, Add/Undo and Continue/recovery | `out/mrr-delivery-onboarding-qualified-native.log`/`.json`: all result flags, cleanup and exact baseline restoration pass. Real approved account authentication and local transactions; decoded private payload and suggestion hint, not a phone sender. |
 | Profiles-only Sync | **Actual supplied accounts:** `out/mrr-real-profiles-sync-cache-fixed-native.log`/`.json` passes explicit On, both own canonical PUTs and atomic acknowledgements, server readback, A/B/A and explicit Off. Unsupported categories are preserved. Existing private policy evidence remains in [writer status](DISPATCHARR-SYNC-WRITER.md). |
 | Named peer setup wire import | Actual unmodified Apple and Android encoders → Roku production decryption → protected import/own verification/onboarding pass; see named evidence below. Not physical-phone UI/discovery acceptance. |
-| VOD/DVR layout | Existing inspected populated visual fixes remain complete in [UI audit fixes](UI-AUDIT-FIXES.md). They are not proof of account-backed playback. |
+| VOD/DVR integration | Actual Movies/Series grids and four movie titles across both supplied accounts now pass the native main flow below. DVR progression across the same own-account switch also passes. Initial intermittent VOD failures remain tracked separately; picture/audio acceptance is not inferred from player state. |
 
 ## Actual remaining boundaries
 
@@ -27,8 +27,38 @@ return **126,433 movies and 32,935 series** each
 reports are historical observations, **not current blockers**. No provider,
 category or server configuration was changed by this agent. Actual populated
 Movies/Series browse and representative movie playback across profile switching
-are being qualified on the Roku using a disposable registry and exact installed
+were qualified on the Roku using a disposable registry and exact installed
 baseline restoration; API counts alone are not on-TV acceptance.
+
+Actual populated VOD/profile main-flow evidence now passes for four movies,
+each on both own accounts:
+
+- Sintel: `out/mrr-vod-terminal-diagnostic-native.log`/`.json`.
+- The Matrix: `out/mrr-vod-client-matrix-native.log`/`.json`.
+- Big Buck Bunny: `out/mrr-vod-client-bunny-native.log`/`.json`.
+- Toy Story (not host-stream-sampled before native playback):
+  `out/mrr-vod-client-unsampled-title-native.log`/`.json`.
+
+Each run browses the real populated Movies and TV Shows grids, opens a real
+title through the existing details/play controllers, confirms `playing` and
+position progression before/after the own-account profile switch, preserves
+source preferences, cleans its disposable registry and restores the exact
+installed baseline. Catalog captures were inspected. Native player captures
+are black; they do **not** establish human picture/audio acceptance.
+Toy Story's observed app memory usage was 5–21%; no native error was reported.
+
+**Intermittent VOD failure remains open (`AerioTV-Roku-unxg`).** Earlier Matrix
+and Sintel attempts reached buffering, then `finished` with error code `-3`,
+without confirmed progression. Initial evidence is preserved in
+`out/mrr-populated-vod-{main,player-state,sintel}-native.log`/`.json`.
+Successful repeats used unchanged production playback code and do not prove a
+root-cause fix or provider-only failure. Following the owner's direction to
+investigate multiple-title failures, the private probe now records selected
+title/identity digest/container, sanitized native error string and error-info
+fields, current session/admission and app memory. It treats nonzero error
+codes as failure even if the transient `error` state has already become
+`finished`. Detailed native failure text was not captured by the earlier
+probe; no speculative production player change was made.
 
 Real DVR/profile integration now passes
 `out/mrr-media-main-qualified-native.log`/`.json`: populated library, actual
@@ -128,7 +158,7 @@ are now **Sync Test 1** and **Sync Test 2**. Sync remains Off.
 
 Current full verification passes in
 `out/mrr-real-sync-qualified-full-verify.log` (380-file normal ZIP). Latest
-focused tooling also passes in `out/mrr-sync-nonstripped-edit-green.log`.
+focused tooling also passes in `out/mrr-vod-client-native-diagnostics-green.log`.
 `out/mrr-qualified-baseline-full-gate-match.json` verifies that all compiled
 files in the installed baseline match that full-gate normal ZIP; only its
 developer manifest differs.

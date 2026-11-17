@@ -6,20 +6,21 @@ end function
 function profileVodAcceptanceAction(action as string) as boolean
     if m.task <> invalid then return false
     if action = "search"
-        m.query = "The Matrix"
+        m.query = "Sintel"
         m.pageNumber = 1
         m.index = 0
         loadVodPage()
         return true
     else if action = "detail"
         for each item in m.items
-            if instr(1, lcase(item.title), "the matrix") > 0 and item.year = "1999"
+            if instr(1, lcase(item.title), "sintel") > 0 and item.year = "2010"
                 loadVodPage(item.id)
                 return true
             end if
         end for
     else if action = "play"
         if m.dialog = invalid or m.detail = invalid then return false
+        print "[picker-launch] "; FormatJson({kind: "profile-vod-selected", title: m.detail.title, identityDigest: requestGateCredentialHash(m.detail.id + "|" + m.detail.uuid), streamFormat: m.detail.streamFormat})
         for i = 0 to m.detailActions.count() - 1
             if m.detailActions[i] = "play"
                 event = {node: m.dialog, choice: i, getRoSGNode: function() as object
