@@ -13,6 +13,44 @@ from unittest.mock import MagicMock, patch
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_baseline_retirement_requires_one_actual_consent_and_both_readiness_flags(self):
+        spec = importlib.util.spec_from_file_location('retirement_consent', Path(__file__).with_name('test-profile-management-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        good = {'kind': 'baseline-retirement-consent', 'enabled': True, 'writerready': True, 'retirementready': True}
+        self.assertTrue(probe.baseline_retirement_consent_valid([good]))
+        self.assertFalse(probe.baseline_retirement_consent_valid([]))
+        self.assertFalse(probe.baseline_retirement_consent_valid([good, good]))
+        for field in ['enabled', 'writerready', 'retirementready']:
+            self.assertFalse(probe.baseline_retirement_consent_valid([{**good, field: False}]))
+            self.assertFalse(probe.baseline_retirement_consent_valid([{**good, field: 'true'}]))
+
+    def test_directions_voice_candidate_is_native_private_and_preserves_verifier(self):
+        spec = importlib.util.spec_from_file_location('directions_voice', Path(__file__).with_name('test-directions-voice-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        root = Path(__file__).resolve().parent.parent
+        with tempfile.TemporaryDirectory() as folder:
+            normal, output = Path(folder) / 'normal.zip', Path(folder) / 'candidate.zip'
+            with zipfile.ZipFile(normal, 'w') as package:
+                package.writestr('manifest', 'title=AerioTV\n')
+                for name in ['components/AerioScene.brs', 'components/ProfilePinNavigation.brs', 'source/MetadataCacheStore.brs']:
+                    package.writestr(name, (root / name).read_bytes())
+            probe.build(normal, output, 'PrivateDirectionsVoice', 'http://127.0.0.1:1234')
+            with zipfile.ZipFile(output) as package:
+                pin = package.read('components/ProfilePinNavigation.brs').decode()
+                self.assertIn('CreateObject("roSGNode", "StandardKeyboardDialog")', pin)
+                self.assertNotIn('CreateObject("roSGNode", "DirectionsPinPad")', pin)
+                self.assertIn('dialog.keyboardDomain = "password"', pin)
+                self.assertIn('text = ucase(m.profilePinDialog.text)', pin)
+                self.assertIn('userProfilePinAttemptStored(', pin)
+                self.assertNotRegex(pin, r'(?m)^\s*m\.profilePinVerifier\s*=')
+                self.assertIn('profile-pin-probe.json', package.namelist())
+                self.assertIn(b'aeriotv_profile_directions_test=1', package.read('manifest'))
+                self.assertIn(b'aeriotv_profiles_baseline=1', package.read('manifest'))
+                self.assertIn(b'Private native entry proof never uploads', package.read('components/AerioScene.brs'))
+                self.assertNotIn('CreateObject("roRegistrySection", "AerioTV")', package.read('components/AerioScene.brs').decode())
+
     def test_vod_probe_selects_a_requested_movie_without_source_editing(self):
         spec = importlib.util.spec_from_file_location('vod_titles', Path(__file__).with_name('test-profile-picker-launch-native.py'))
         probe = importlib.util.module_from_spec(spec)
@@ -81,7 +119,7 @@ class ProfileProbeTest(unittest.TestCase):
         root = Path(__file__).resolve().parent.parent
         scene = (root / 'components/AerioScene.brs').read_text()
         block = scene.split('    if m.profileBaselineReady\n', 1)[1].split('    end if', 1)[0]
-        for field in ['profileSyncControlsReady', 'profileSyncWriterReady', 'profileSyncSchedulingReady']:
+        for field in ['profileSyncControlsReady', 'profileSyncWriterReady', 'profileSyncSchedulingReady', 'profileDefaultRetirementReady']:
             self.assertIn(f'm.{field} = true', block)
             self.assertIn(f'm.{field} = false', scene.split('    if m.profileBaselineReady\n', 1)[0])
         writer = (root / 'components/DispatcharrSyncWriteTask.brs').read_text()
@@ -724,6 +762,15 @@ class ProfileProbeTest(unittest.TestCase):
                 probe.build(output, normal, 'SyntheticFlushFailureSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_writer=True, writer_mode=mode)
                 with zipfile.ZipFile(output) as package:
                     self.assertIn('m.writerProbeMode = "' + mode + '"', package.read('components/AerioScene.brs').decode())
+            probe.build(output, normal, 'SyntheticBaselineRetirement', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_writer=True, writer_mode='flush-own-retirement', baseline_readiness=True)
+            with zipfile.ZipFile(output) as package:
+                self.assertIn(b'aeriotv_profiles_baseline=1', package.read('manifest'))
+                scene = package.read('components/AerioScene.brs').decode()
+                self.assertIn('m.profileDefaultRetirementReady = false', scene)
+                self.assertNotIn('m.profileDefaultRetirementReady = true', scene)
+                writer = package.read('components/DispatcharrSyncWriteTask.brs').decode()
+                self.assertIn('m.syncWriterReady = false', writer)
+                self.assertNotIn('"AerioTV"', writer)
             for mode in ['missing', 'held', 'child', 'simultaneous', 'import-pin', 'import-child']:
                 probe.build(output, normal, 'SyntheticUnavailableDefaultSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True, switch_active_retirement=True, active_default_mode=mode)
                 with zipfile.ZipFile(output) as package:

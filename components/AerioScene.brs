@@ -18,6 +18,7 @@ sub init()
         m.profileSyncControlsReady = true
         m.profileSyncWriterReady = true
         m.profileSyncSchedulingReady = true
+        m.profileDefaultRetirementReady = true
     end if
     m.profileStartupDeferred = false
     m.profileStartupScreenReady = false

@@ -18,6 +18,10 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def baseline_retirement_consent_valid(events):
+    return len(events) == 1 and all(events[0].get(field) is True for field in ['enabled', 'writerready', 'retirementready'])
+
+
 def management_probe_activity(host):
     # Read-only evidence; do not emit another app's or screensaver's identity.
     with urllib.request.urlopen(f'http://{host}:8060/query/active-app', timeout=5) as response:
@@ -93,7 +97,9 @@ def startup_probe_timer(source):
     return source.replace('sub init()', 'sub init()\n' + timer, 1)
 
 
-def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False, switch_authority_race=False, switch_active_retirement=False, active_default_mode='usable', switch_writer=False, writer_mode='direct'):
+def build(output, normal, section, base, directions=False, switching=False, switch_pin=False, cancel_pin=False, reject_active=False, remember_off=False, child_settings=False, reconnect=False, cold_restore=None, default_filter=False, assignment_refresh=False, child_escape=False, child_launch=False, child_available=None, child_retry=None, child_rejected=None, manual_refresh=False, manual_recording=False, manual_mode='changed', favorite_retention=False, switch_recording=None, switch_roster=False, switch_import_pin=False, switch_cleanup=False, switch_target_retirement=False, switch_authority_race=False, switch_active_retirement=False, active_default_mode='usable', switch_writer=False, writer_mode='direct', baseline_readiness=False):
+    if baseline_readiness and not (switch_active_retirement or (switch_writer and writer_mode == 'flush-own-retirement')):
+        raise ValueError('Baseline readiness is limited to existing retirement fixtures')
     if writer_mode not in ['direct', 'controls', 'controls-restore', 'unchanged', 'schedule', 'schedule-too-large', 'schedule-signin', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'] or (writer_mode != 'direct' and not switch_writer):
         raise ValueError('Writer mode requires the private writer fixture')
     if switch_writer and (not switching or not switch_roster or any([directions, switch_pin, cancel_pin, reject_active, remember_off, child_settings, reconnect, cold_restore, default_filter, assignment_refresh, child_escape, child_launch, child_available, child_retry, child_rejected, manual_refresh, manual_recording, favorite_retention, switch_recording, switch_import_pin, switch_cleanup, switch_target_retirement, switch_authority_race, switch_active_retirement]) or active_default_mode != 'usable'):
@@ -130,7 +136,9 @@ def build(output, normal, section, base, directions=False, switching=False, swit
                 source = body.decode()
                 assert source.count('m.syncWriterReady = false') == 1
                 assert source.count('CreateObject("roRegistrySection", "AerioTV")') == 1
-                body = source.replace('m.syncWriterReady = false', 'm.syncWriterReady = true', 1).replace('CreateObject("roRegistrySection", "AerioTV")', f'CreateObject("roRegistrySection", "{section}")', 1).encode()
+                if not baseline_readiness:
+                    source = source.replace('m.syncWriterReady = false', 'm.syncWriterReady = true', 1)
+                body = source.replace('CreateObject("roRegistrySection", "AerioTV")', f'CreateObject("roRegistrySection", "{section}")', 1).encode()
             if active_default_mode == 'cold' and name == 'components/ProfileDefaultRetirementNavigation.brs':
                 target = '    preserveSubmittedRecording()'
                 source = body.decode()
@@ -150,6 +158,8 @@ def build(output, normal, section, base, directions=False, switching=False, swit
                 body = body.replace(target, target + b'    m.probeRecordConfirmed = result.ok = true\n    m.manualRecordingSettled = m.probeRecordConfirmed\n    print "[profile-management] "; FormatJson({kind: "record-settled", confirmed: m.probeRecordConfirmed, operation_only: false, retired: currentUserSessionId() <> m.probeRecordOldSession})\n', 1)
             if name == 'manifest':
                 body = body.replace(b'title=AerioTV\n', b'title=Aerio Profile Management Probe\n')
+                if baseline_readiness:
+                    body += b'\naeriotv_profiles_baseline=1\n'
                 if directions:
                     body += b'\naeriotv_profile_directions_test=1\n'
             if (child_launch or child_rejected) and name == 'source/Main.brs':
@@ -763,7 +773,8 @@ end sub
                 if switch_roster:
                     target = 'm.profileSwitchRosterReady = false'
                     assert source.count(target) == 1
-                    source = source.replace(target, 'm.profileSwitchRosterReady = true', 1)
+                    if not baseline_readiness:
+                        source = source.replace(target, 'm.profileSwitchRosterReady = true', 1)
                     target = 'function onKeyEvent(key as string, press as boolean) as boolean\n'
                     assert source.count(target) == 1
                     source = source.replace(target, target + '''    if m.profileSwitchContext <> invalid and press
@@ -776,7 +787,8 @@ end sub
                 if switch_active_retirement:
                     flag = 'm.profileDefaultRetirementReady = false'
                     assert source.count(flag) == 1
-                    source = source.replace(flag, 'm.profileDefaultRetirementReady = true', 1)
+                    if not baseline_readiness:
+                        source = source.replace(flag, 'm.profileDefaultRetirementReady = true', 1)
                     target = '    else if phase = 4\n        if OWN_RECONNECT_PROBE\n'
                     assert source.count(target) == 1
                     start = source.index(target)
@@ -814,10 +826,10 @@ end sub
         m.managementProbePhase--
 ''' + source[end:]
                     source += '\n' + (ROOT / 'tests/native/ProfileSyncWriterFixture.brs').read_text().replace('PROFILE_WRITER_MODE', json.dumps(writer_mode))
-                    if writer_mode != 'direct':
+                    if writer_mode != 'direct' and not baseline_readiness:
                         assert source.count('m.profileSyncWriterReady = false') == 1
                         source = source.replace('m.profileSyncWriterReady = false', 'm.profileSyncWriterReady = true', 1)
-                    if writer_mode == 'flush-own-retirement':
+                    if writer_mode == 'flush-own-retirement' and not baseline_readiness:
                         assert source.count('m.profileDefaultRetirementReady = false') == 1
                         source = source.replace('m.profileDefaultRetirementReady = false', 'm.profileDefaultRetirementReady = true', 1)
                     if writer_mode == 'controls-restore':
@@ -848,6 +860,7 @@ def main():
     parser.add_argument('--switch-target-retirement', action='store_true', help='Only with --switch --switch-roster: non-default B selects C, whose own tombstone retires C without adopting C or the different default A')
     parser.add_argument('--switch-authority-race', action='store_true', help='Only with --switch --switch-roster: change target authority on final me and require rollback with zero target lineup requests')
     parser.add_argument('--switch-active-retirement', action='store_true', help='Only with --switch --switch-roster: C own roster removes actual B, requiring default A own system adoption without its PIN')
+    parser.add_argument('--baseline-readiness', action='store_true', help='For existing retirement fixtures: use actual developer-baseline readiness instead of forced Scene/Task flags')
     parser.add_argument('--switch-writer', action='store_true', help='Only with --switch --switch-roster: private own-B canonical re-read and checked-string PUT')
     parser.add_argument('--writer-mode', choices=['direct', 'controls', 'controls-restore', 'unchanged', 'schedule', 'schedule-too-large', 'schedule-signin', 'create', 'create-legacy', 'create-proxy404', 'flush', 'flush-failed', 'flush-cancel', 'flush-authority', 'flush-import-pin', 'flush-own-retirement'], default='direct', help='Private writer fixture: explicit controls/cold restore, scheduled/direct/unchanged, canonical creation/refusal, outgoing flush, own retirement, imported PIN or refusal')
     parser.add_argument('--active-default-mode', choices=['usable', 'missing', 'held', 'child', 'cold', 'simultaneous', 'import-pin', 'import-child'], default='usable', help='Only with --switch-active-retirement: default own credential/access state')
@@ -871,6 +884,8 @@ def main():
     parser.add_argument('--child-retry', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private Child transient failure, own Retry and Back during delayed authentication, followed by own retry')
     parser.add_argument('--child-rejected', choices=['own', 'own-pin', 'default', 'default-pin'], help='Private actual Child rejection: exact cut prompt, permitted own form/dismissal, no stale replay, adult management and real Back exit')
     args = parser.parse_args()
+    if args.baseline_readiness and not (args.switch_active_retirement or (args.switch_writer and args.writer_mode == 'flush-own-retirement')):
+        parser.error('--baseline-readiness requires an active or own-writer retirement fixture')
     if args.switch_roster and not (args.switch or args.child_escape):
         parser.error('--switch-roster requires --switch or --child-escape')
     if args.switch_import_pin and (not args.switch or not args.switch_roster or any([args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.reconnect, args.child_settings, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.favorite_retention, args.switch_recording, args.directions])):
@@ -1138,9 +1153,9 @@ def main():
     section = 'AerioManagementProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-management-probe.zip'
     cleaner = ROOT / 'out/profile-management-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode, args.favorite_retention, args.switch_recording, args.switch_roster, args.switch_import_pin, args.switch_inactive_cleanup, args.switch_target_retirement, args.switch_authority_race, args.switch_active_retirement, args.active_default_mode, args.switch_writer, args.writer_mode)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, f'http://{local}:{server.server_port}', args.directions, args.switch, args.switch_pin, args.cancel_pin, args.reject_active, args.remember_off, args.child_settings, args.reconnect, args.cold_restore, args.default_filter, args.assignment_refresh, args.child_escape, args.child_launch, args.child_available, args.child_retry, args.child_rejected, args.manual_refresh, args.manual_recording, args.manual_mode, args.favorite_retention, args.switch_recording, args.switch_roster, args.switch_import_pin, args.switch_inactive_cleanup, args.switch_target_retirement, args.switch_authority_race, args.switch_active_retirement, args.active_default_mode, args.switch_writer, args.writer_mode, args.baseline_readiness)
     modules['recovery'].cleanup_package(cleaner, section)
-    report = {'passed': False}
+    report = {'passed': False, 'baseline_readiness': args.baseline_readiness}
 
     def run(path, marker, prefix='[profile-management]'):
         command = ['python3', 'scripts/run-native-probe.py', str(path), '--prefix', prefix, '--marker', marker, '--timeout', '75' if args.writer_mode.startswith('controls') else '45']
@@ -1255,6 +1270,8 @@ def main():
         if result.returncode:
             print(result.stderr, end='', flush=True)
         rows = [json.loads(line.split('[profile-management] ', 1)[1]) for line in result.stdout.splitlines() if '[profile-management] {' in line]
+        report['baseline_retirement_consent'] = [row for row in rows if row.get('kind') == 'baseline-retirement-consent']
+        rows = [row for row in rows if row.get('kind') != 'baseline-retirement-consent']
         report['switch_key_events'] = [row for row in rows if row.get('kind') == 'switch-key']
         report['switch_guide_key_events'] = [row for row in rows if row.get('kind') == 'switch-guide-key']
         report['default_rejection_ready'] = any(row.get('kind') == 'active-default-reject-ready' for row in rows)
@@ -1320,6 +1337,8 @@ def main():
                 report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('writer', False) and report['writer_own_request_order'] and rows[-1].get('authority_covered', False)
             if args.writer_mode == 'flush-own-retirement':
                 report['passed'] = result.returncode == 0 and len(rows) == 3 and rows[-1].get('own_retired', False) and report['writer_own_request_order'] and not any(hit.get('method') == 'PUT' for hit in after)
+                if args.baseline_readiness:
+                    report['passed'] = report['passed'] and baseline_retirement_consent_valid(report['baseline_retirement_consent'])
             if args.writer_mode in ['create-legacy', 'create-proxy404']:
                 expected_reads = expected[:2] if args.writer_mode == 'create-legacy' else expected[:3]
                 report['writer_own_request_order'] = [(hit.get('method', 'GET'), hit['path']) for hit in after] == expected_reads and all(hit['user'] == 8 for hit in after)
@@ -1518,6 +1537,8 @@ def main():
                 name = name.replace('-native.json', f'-active-retirement-{args.active_default_mode}-native.json')
             if args.switch_writer:
                 name = name.replace('-native.json', f'-writer-{args.writer_mode}-native.json')
+            if args.baseline_readiness:
+                name = name.replace('-native.json', '-baseline-readiness-native.json')
             (ROOT / 'out' / name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

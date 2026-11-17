@@ -1,4 +1,35 @@
-# Import-only PIN verification policy (in progress)
+# Import-only PIN verification policy
+
+## Current acceptance boundary — November 17, 2026
+
+The implementation narrative below includes intermediate limitations.
+Later native evidence supersedes those stages, not the remaining public gates.
+The developer baseline now supports the approved existing-Child/Numbers main
+flows, adult-purpose management, own-account switching, address recovery and
+protected imported PINs. See [delivery status](MRR-DELIVERY-STATUS.md) and
+[baseline scope](PROFILES-BASELINE.md) for the current evidence. New PIN salt
+creation and public Directions access remain disabled.
+
+A **private candidate**, not production UI, substitutes `StandardKeyboardDialog`
+in a disposable archive. Password-domain entry of four actual lowercase ECP
+letters is privately canonicalized to existing UDLR wire input and passes the
+unchanged persisted verifier. `out/mrr-final-seven-directions-post-show-native`
+(`.log`/`.json`) records no requests before submission, an actual unlock grant,
+own synthetic guide continuation, registry cleanup and exact app restoration.
+The inspected `.keyboard.jpg` shows four masked characters. Outer and inner
+text fields both contain four characters; this does not prove a production
+text-field defect.
+
+The overall candidate **does not pass**: its native `voiceEnabled` observation
+is false and spoken/physical-remote entry was not tested. Roku certification
+[criterion 4.12](https://developer.roku.com/dev/docs/certification), checked
+November 17, 2026, requires native voice-enabled PIN keyboards.
+[StandardKeyboardDialog](https://developer.roku.com/dev/docs/standard-keyboard-dialog)
+documents password-domain letter-by-letter dictation; documentation alone is
+not native qualification or an approved Directions fallback. No public choice,
+all-Directions household acceptance or certification approval is inferred.
+`AerioTV-Roku-mrr.19` retains that decision gate; existing Directions PINs are
+never treated as absent or bypassed.
 
 `UserProfilePinPolicy` implements per-holder import-only verification/backoff.
 `ProfilePinNavigation` connects numeric records to the native launch PIN pad.

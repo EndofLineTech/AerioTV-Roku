@@ -13,6 +13,25 @@ release, public feature enablement or owner acceptance.
 
 ## Actual remaining boundaries
 
+### Final seven-item audit
+
+These are acceptance dispositions, not duplicate implementation tasks or an
+epic-complete claim. Beads remains the status register.
+
+| Item | Implemented/verified scope | Remaining boundary |
+| --- | --- | --- |
+| `mrr.6` switching | Own-key staged switching, isolation/address recovery and native main flows; baseline active-holder retirement now qualifies with actual readiness and consent (see [scoped state](PROFILE-SCOPED-STATE.md)). | Public PIN-dependent acceptance still depends on `mrr.8`; no gate bypass. |
+| `mrr.8` PIN/Child | Imported Numbers/Directions hashes, native Numbers and existing-Child/adult-management main flows. Private native keyboard candidate verifies an existing Directions hash. | Directions voice reports false; public alternative, all-Directions access and certification remain unapproved. New salt creation stays disabled. |
+| `mrr.9` picker/management | Native picker/management, own switch, reorder, light/large presentation, startup beacons and OS 14.6 runtime guard. | Physical-remote acceptance and upstream public PIN/switch boundaries; Dashboard verification is not inferred. |
+| `mrr.10` local acceptance | Existing host/native storage/auth/PIN/Child/request-safety reports and current main-flow evidence. | Explicit owner acceptance and `mrr.19` public disposition; no planning-only closure. |
+| `mrr.11` integrated acceptance | Both actual accounts' Sync/media progression plus named unmodified Apple/Android encoder imports. | Initial VOD startup defect `unxg`, human picture/audio, physical-phone/listener entropy, authenticated Dashboard floor, public certification and owner acceptance remain distinct. |
+| `mrr.18` bounded admin | Native synthetic gates/transport/actions/UI and active-own reload: `mrr-admin-final-actions-native`, `mrr-admin-ui-own-reload-native`. | Dependency on `mrr.6`, not an invented requirement to mutate real server users. |
+| `mrr.19` Directions disposition | Official current keyboard/certification references checked; private text entry feasibility and unchanged verifier demonstrated. | A documented option is not an approved/tested public fallback; actual voice/household qualification and explicit disposition remain open. |
+
+Native Directions details and preserved failed verdicts are in
+[PIN policy](PROFILE-PIN-POLICY.md). Earlier statements that baseline Sync is
+always off or that later-qualified main flows are unimplemented are historical.
+
 The final source-row version also passes
 `out/mrr-delivery-source-roster-onboarding-native.log`/`.json`: name/stamp/origin
 are retained and roster Undo creates no tombstone. Full automated verification

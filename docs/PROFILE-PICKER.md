@@ -6,8 +6,9 @@ existing route. The explicit developer-only `aeriotv_profiles_baseline=1` build
 now enables startup selection, **Settings → Connection → Profiles**, the
 authenticated top-bar switcher, and approved existing-Child/PIN flows;
 see [the baseline workflow and limits](PROFILES-BASELINE.md). Shipping packaging
-rejects that manifest field under any value. Sync writes stay off in the
-baseline, and normal builds still keep Child/profile readiness off. There is
+rejects that manifest field under any value. The qualified baseline now offers
+explicit profiles-only Sync consent; it does not enable Sync automatically.
+Normal builds still keep Child/profile readiness off. There is
 no public top-bar action. The component itself grants no
 authentication, PIN, management, or credential authority.
 

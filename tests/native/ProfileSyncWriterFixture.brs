@@ -311,6 +311,26 @@ end sub
 sub advanceProfileSyncFlushProbe()
     if m.writerFlushSeeded <> true
         m.writerFlushSeeded = true
+        if m.writerProbeMode = "flush-own-retirement" and m.profileBaselineReady = true
+            ' Isolate the chosen-switch flush from the independent scheduler;
+            ' do not force writer or retirement readiness on.
+            m.profileSyncSchedulingReady = false
+            openDispatcharrSyncControls()
+            if m.connectionDialog = invalid
+                m.managementProbeClock.control = "stop"
+                print "[profile-management] "; FormatJson({kind: "result", writer: false, reason: "baseline-consent-unavailable"})
+                return
+            end if
+            onConnectionChoice(managementProbeEvent(m.connectionDialog, 0))
+            onConnectionChoice(managementProbeEvent(m.connectionDialog, 2))
+            enabled = loadDispatcharrSyncSettings(m.registry).enabled
+            print "[profile-management] "; FormatJson({kind: "baseline-retirement-consent", enabled: enabled, writerReady: m.profileSyncWriterReady, retirementReady: m.profileDefaultRetirementReady})
+            if not enabled
+                m.managementProbeClock.control = "stop"
+                print "[profile-management] "; FormatJson({kind: "result", writer: false, reason: "baseline-consent-not-saved"})
+                return
+            end if
+        end if
         m.guide.active = false
         m.writerFlushSource = m.activeUserScope
         store = loadUserProfileStore(m.registry, "slot-a")

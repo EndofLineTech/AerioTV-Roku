@@ -20,6 +20,40 @@ or owner acceptance. Those remain in `mrr.10`/`mrr.11`, their linked work and
 the epic. Shipping profile/Child/sync gates remain off. The developer baseline
 now admits the approved existing-Child/PIN core flows, not new-salt creation.
 
+Current populated VOD/DVR and named Apple/Android encoder evidence is recorded
+in [delivery status](MRR-DELIVERY-STATUS.md); the narrower historical scope
+above does not make those main flows newly outstanding.
+
+### Baseline default-retirement integration — November 17, 2026
+
+The developer baseline now enables `profileDefaultRetirementReady` beside its
+qualified Sync controls/writer; the shipping default stays false. Previously,
+Sync was available but an active-holder tombstone could not enter the existing
+own-default retirement controller.
+
+`out/mrr-final-seven-baseline-retirement-qualified-native.log` and
+`out/mrr-final-seven-baseline-retirement-qualified-native.json` pass
+with `--baseline-readiness`: actual manifest readiness, explicit On through
+real Sync controls, target PIN before outgoing own reads, no PUT after the
+outgoing tombstone, protected default own adoption, retired-holder cleanup,
+disposable registry cleanup and exact installed-baseline restoration.
+The private fixture disables unrelated periodic scheduling only; it does not
+force Scene or Task writer/default-retirement readiness. All HTTP is synthetic;
+no real account tombstone or admin mutation was used.
+
+The incoming-target own-roster path also passes with actual baseline readiness:
+`out/mrr-final-seven-baseline-incoming-retirement-native.log` and
+`out/profile-switch-early-roster-active-retirement-usable-baseline-readiness-native.json`.
+Its synthetic target roster retires the actual outgoing holder; the controller
+selects the separate default lifecycle, authenticates the default's own key and
+reads its own roster before lineup. Native state, HTTP ordering, private cleanup
+and exact app restoration all pass. This is not a new live-account mutation.
+
+The initial `out/mrr-final-seven-baseline-retirement-native.log` completed
+the native flow but failed the host's fixed row count after adding consent
+evidence. The corrected verdict validates exactly one consent event and both
+actual readiness flags separately, rather than discarding the safety check.
+
 ## Original foundation and chronological qualification
 
 At the initial foundation checkpoint, `source/UserProfileScope.brs` supplied scoped-state primitives. Verified

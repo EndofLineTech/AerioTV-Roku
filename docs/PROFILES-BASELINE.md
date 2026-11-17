@@ -21,8 +21,8 @@ not a public Directions certification disposition (`mrr.19` remains blocked).
 
 ## Try it
 
-The currently installed checkpoint uses **Settings → Profiles
-(baseline) → Open Profiles**. Add another account using its own username/password, then choose
+The current qualified baseline uses **Settings → Connection → Profiles**.
+Add another account using its own username/password or API key, then choose
 it from the Profiles menu. Manage Profiles offers rename, avatar and earlier/
 later movement. The menu also toggles the per-playlist Ask-at-launch choice.
 With multiple profiles and Ask on, startup shows the picker; holding OK on a
@@ -38,19 +38,26 @@ acknowledged.
 
 - Current source enables profiles-only Sync controls, writer and scheduler only
   under the non-shipping baseline flag, after actual two-account Roku
-  qualification. Explicit consent remains required; unsupported categories are
+  qualification. Active-holder tombstone retirement also uses the qualified
+  own-default controller under this flag; shipping readiness stays false.
+  Explicit consent remains required; unsupported categories are
   preserved. Older installed checkpoints may predate this enablement; see
   [delivery status](MRR-DELIVERY-STATUS.md) for exact installed checksums/evidence.
 - No new PIN creation or Child setup is enabled by the baseline flag.
   Unsupported protected/legacy/recently removed additions refuse safely.
-- Complete onboarding and broader
+- Native onboarding/Add/Undo is qualified; physical phone UI/discovery and broader
   physical-remote/accessibility/certification acceptance remain unfinished.
 - This uses the existing application registry. Do not clear data, reset keys or
   change the server merely to test it.
 
 ## Current device evidence
 
-### Follow-on source (not installed as the persistent baseline)
+### Qualified implementation and chronological evidence
+
+The following narrative includes earlier checkpoint limitations. Current
+installed checksums and final main-flow verdicts are maintained in
+[delivery status](MRR-DELIVERY-STATUS.md); later evidence supersedes earlier
+“not yet” statements without granting public certification or acceptance.
 
 Add now supports either username/password or a masked API key. A username is
 optional with a key: a fresh `/me/` must establish the target identity before
