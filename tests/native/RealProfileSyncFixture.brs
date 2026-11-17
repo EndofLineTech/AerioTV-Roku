@@ -142,7 +142,7 @@ sub onRealProfileSyncTick()
             store = loadUserProfileStore(m.registry, m.selectedConnectionId)
             name = "Test 1"
             for each profile in store.profiles
-                if profile.id = m.realSyncFirst and profile.displayName = name then name = m.realSyncConfig.first
+                if profile.id = m.realSyncFirst and profile.displayName = name then name = "Sync Test 1"
             end for
             if not renameRealSyncHolder(m.realSyncFirst, name) then finishRealProfileSync(false, "first-edit-refused") : return
             m.realSyncFirstEdited = true
@@ -160,7 +160,7 @@ sub onRealProfileSyncTick()
         store = loadUserProfileStore(m.registry, m.selectedConnectionId)
         name = "Test 2"
         for each profile in store.profiles
-            if profile.id = m.realSyncSecond and profile.displayName = name then name = m.realSyncConfig.second
+            if profile.id = m.realSyncSecond and profile.displayName = name then name = "Sync Test 2"
         end for
         if not renameRealSyncHolder(m.realSyncSecond, name) then finishRealProfileSync(false, "second-edit-refused") : return
         m.realSyncStage = 3

@@ -60,6 +60,20 @@ is `out/mrr-real-sync-device-cache-{red,green}.log`; the complete real-device re
 above passes including final Off. Only the existing **non-shipping baseline flag**
 enables the qualified controls, scheduler and writer; shipping defaults stay off.
 
+Final-baseline probes no longer force Scene/Task writer readiness. Two preserved
+reruns (`mrr-final-baseline-sync-native` and
+`mrr-final-baseline-settled-sync-native` in `out/`) reached legitimate
+`unchanged` receipts but timed out waiting for a PUT: their two-name edit
+alternated a display name with the bare username, which the shared stripped-row
+repair deliberately replaces with richer remote metadata. Both safely turned
+Sync Off and restored the exact baseline. The corrected fixture alternates two
+non-stripped display names after initial settlement, not production merge rules.
+The corrected final-baseline run **passes**
+`out/mrr-final-baseline-main-sync-native.log`/`.json`: both actual own PUTs,
+atomic acknowledgements, both server readbacks, preserved unsupported categories,
+credential-free documents, A/B/A, explicit Off and exact fixture-free restoration.
+No Scene or Task readiness override was used for this final run.
+
 Named encoder evidence:
 
 - Apple `8df372291da4a858b0081e291a7fa5cbe398f9f8`:
@@ -101,12 +115,15 @@ subsequently installed with exact old-ZIP preflight and new installed checksum
 verification (`out/mrr-qualified-baseline-installed.json`). Its normal picker
 was inspected in `out/mrr-qualified-baseline-ready.jpg`, showing Test 1, Test 2
 and Add Profile.
+After the final real Sync run, the inspected normal picker is
+`out/mrr-qualified-final-ready.jpg`; the supplied accounts' test display names
+are now **Sync Test 1** and **Sync Test 2**. Sync remains Off.
 
 ## Verified developer handoff
 
 Current full verification passes in
 `out/mrr-real-sync-qualified-full-verify.log` (380-file normal ZIP). Latest
-focused tooling also passes in `out/mrr-baseline-settled-tools.log`.
+focused tooling also passes in `out/mrr-sync-nonstripped-edit-green.log`.
 `out/mrr-qualified-baseline-full-gate-match.json` verifies that all compiled
 files in the installed baseline match that full-gate normal ZIP; only its
 developer manifest differs.

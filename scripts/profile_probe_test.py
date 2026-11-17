@@ -20,6 +20,10 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertGreater(first, fixture.index('    if stage = 1\n'))
         self.assertIn('m.realSyncSettled <> true', fixture)
         self.assertIn('qualified-baseline-required', fixture)
+        self.assertIn('then name = "Sync Test 1"', fixture)
+        self.assertIn('then name = "Sync Test 2"', fixture)
+        self.assertNotIn('then name = m.realSyncConfig.first', fixture)
+        self.assertNotIn('then name = m.realSyncConfig.second', fixture)
         builder = Path(__file__).with_name('test-real-profiles-sync-native.py').read_text()
         self.assertNotIn('m.syncWriterReady = true', builder)
 
