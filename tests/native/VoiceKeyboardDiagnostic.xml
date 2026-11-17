@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="VoiceKeyboardDiagnostic" extends="Scene">
+  <interface>
+    <field id="start" type="boolean" value="false" onChange="startVoiceDiagnostic" />
+  </interface>
+  <script type="text/brightscript" uri="VoiceKeyboardDiagnostic.brs" />
+  <children>
+    <Timer id="clock" duration="1" repeat="true" />
+  </children>
+</component>

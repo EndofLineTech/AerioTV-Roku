@@ -31,6 +31,17 @@ all-Directions household acceptance or certification approval is inferred.
 `AerioTV-Roku-mrr.19` retains that decision gate; existing Directions PINs are
 never treated as absent or bypassed.
 
+The owner subsequently directed using native voice-keyboard entry under
+criterion 4.12, not pursuing a Directions exception. A fresh
+[isolated-device diagnosis](ROKU-VOICE-KEYBOARD-DIAGNOSTICS.md) reproduces
+`voiceEnabled=false` for plain text, passwords, numeric PINs and raw
+`DynamicKeyboard` without any AerioTV code—even with the voice-control manifest
+attribute. Native capability reads confirm a paired voice remote, US
+account/app countries and English locale. This rules out several app-specific
+causes, but does not establish the underlying platform/remote/service trigger.
+The owner was unavailable for a live physical-remote check; no settings were
+changed and the installed baseline was restored exactly.
+
 ## `mrr.8` completed implementation boundary
 
 `mrr.8` owns the approved import-and-verify roles/PIN/Child implementation.
@@ -71,8 +82,9 @@ Fresh completion qualification:
   grant without profile unlock, native rename keyboard and real Back
   cancellation all pass, with private cleanup and exact baseline restoration.
 - `out/mrr8-completion-tools-final.log`: profile/phone probe and pairing-build
-  tooling suites pass. The production PIN/role/Child implementation is unchanged
-  from the passing `out/mrr-final-seven-full-verify.log` 380-file gate.
+  tooling suites pass. The fresh full `npm run verify` also passes in
+  `out/mrr8-completion-full-verify.log` (380-file normal package). The production
+  PIN/role/Child implementation is unchanged from the preceding qualified gate.
 
 The fresh adult smoke initially exposed a stale private fixture, not a PIN
 failure: it selected roster/editor items by index even though an ordered
