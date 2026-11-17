@@ -263,6 +263,17 @@ function managementProbeEvent(node as object, index as integer) as object
     end function}
 end function
 
+function managementProbeChoose(action as string, id = "" as string) as boolean
+    for i = 0 to m.profileManagementChoices.count() - 1
+        choice = m.profileManagementChoices[i]
+        if choice.action = action and (id = "" or choice.id = id)
+            onProfileManagementChoice(managementProbeEvent(m.profileManagementDialog, i))
+            return true
+        end if
+    end for
+    return false
+end function
+
 sub onManagementProbeTick()
     m.managementProbePhase++
     phase = m.managementProbePhase
@@ -280,9 +291,10 @@ sub onManagementProbeTick()
         openUserProfileManagement()
         print "[profile-management] "; FormatJson({kind: "roster", dialog: m.profileManagementDialog <> invalid, choices: m.profileManagementChoices.count()})
     else if phase = 2
-        onProfileManagementChoice(managementProbeEvent(m.profileManagementDialog, 0))
+        store = loadUserProfileStore(m.registry, m.selectedConnectionId)
+        managementProbeChoose("edit", store.active)
     else if phase = 3
-        onProfileManagementChoice(managementProbeEvent(m.profileManagementDialog, 0))
+        managementProbeChoose("name")
         print "[profile-management] "; FormatJson({kind: "keyboard", native: m.profileManagementDialog.subtype() = "StandardKeyboardDialog"})
     else if phase = 4
         m.profileManagementDialog.text = "Renamed Synthetic"

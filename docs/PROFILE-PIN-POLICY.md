@@ -31,6 +31,61 @@ all-Directions household acceptance or certification approval is inferred.
 `AerioTV-Roku-mrr.19` retains that decision gate; existing Directions PINs are
 never treated as absent or bypassed.
 
+## `mrr.8` completed implementation boundary
+
+`mrr.8` owns the approved import-and-verify roles/PIN/Child implementation.
+It does not own public Directions certification (`mrr.19`), new PIN creation,
+public release enablement or final integrated owner acceptance (`mrr.10/.11`).
+The user explicitly directed finishing `.8` after separating these concerns.
+Its implementation is already present; retaining a public-release condition
+does not make that developer implementation blocked or incomplete.
+
+| Acceptance area | Implementation and evidence |
+| --- | --- |
+| Imported Numbers/Directions v2 records, 4–6 entries, raw-salt hash, learned length | `UserProfilePin`, `UserProfileModel`, `DispatcharrSyncRoster`, `PhoneSetupModel` and `PhoneSetupProfiles` host suites; saved/imported native reports `profile-pin-native`, `profile-pin-import-native`, `profile-directions-native`, `profile-directions-import-native`. Malformed setup versus roster precedence is tested separately, without downgrading an existing roster PIN. |
+| Per-holder persistence/backoff and failure behavior | `UserProfilePinPolicy` host/shared-native tests cover five failures, 30-second initial lock, exponent cap, no digest/count while locked, success reset, independent slots/holders and corrupt/failed storage. |
+| Target protection and import-only management | `UserProfileManagementPolicy`, `ProfileManagementNavigation`, `PhoneSetupProfiles` and `PhoneSetupOnboarding` tests; `mrr-controls-canonical-native` qualifies current-target PIN removal and native cancel. New-salt Set/Change/Reset/Device Admin creation remain deliberately unavailable, not simulated as completed features. |
+| Existing local Device Admin and all-Directions adult authority | `UserProfilePinPolicy` and management-policy tests count every valid adult/Device Admin PIN independent of server-key availability; `profile-management-directions-native` verifies a Directions-only adult gate. Only actual absence of all valid exit PINs permits stranded recovery. Corrupt or unsupported records cannot become a bypass. |
+| Child launch, own-key/keyless/held/rejected recovery and identity hiding | `UserProfileChildActivation`, `UserProfileChildOwnSignIn`, `UserProfileChildRejectedPrompt`, `ProfileChildUnavailableNavigation`, `ProfileChildRejectedNavigation` and Settings/setup-fence suites; `profile-child-launch-native` and `profile-child-escape-native`. Previously qualified own/default rejection and keyless/held reports remain recorded in the chronology below. |
+| Actual Child/adult main flow | `mrr-child-live-native`, `mrr-core-avatar-native` and `mrr-controls-canonical-native` pass own numeric target PIN, adult→Child switch, hidden Child switcher, adult-purpose management escape, target own PIN and return to the other account. Each report passes disposable cleanup and exact preceding-app restoration. |
+| Native dialog lifecycle and no public Directions enablement | `ProfilePinNavigation`, `ProfileAdultPinNavigation`, `DirectionsPinPad` and launch suites; `profile-directions-disabled-native` proves protected refusal without opt-in. Actual D-pad saved/imported entry is qualified under the approved developer manifest only. Native-keyboard research is not substituted for that passing implementation. |
+
+All cited native report stems are under `out/` with `.json` artifacts.
+Their `passed`, `cleaned` and `restored` fields were rechecked for this audit.
+The chronological “unfinished” implementation paragraphs below describe
+intermediate stages, not additional current `.8` requirements.
+
+Fresh completion qualification:
+
+- `out/mrr8-completion-policy-native.log`/`.json`: **1,626 passing native
+  assertions**, including the shared role/PIN/Child policies, faulted/fake-store
+  cases and disposable real-registry checks; exact installed-baseline restoration.
+- `out/mrr8-completion-directions-import-native.log`/`.json`: actual early
+  own-roster import, covered wrong submissions, a real 30-second lock,
+  correct-input refusal during lock, actual ECP D-pad entry after expiry,
+  persisted unlock grant and own guide continuation; cleanup/restoration pass.
+- `out/mrr8-completion-existing-evidence.json`: rechecked native report verdicts
+  and report digests, with current implementation-source digests.
+- `out/mrr8-completion-adult-directions-qualified-native.log`/`.json`: Directions
+  adult-purpose verification, wrong-input refusal, learned length, management
+  grant without profile unlock, native rename keyboard and real Back
+  cancellation all pass, with private cleanup and exact baseline restoration.
+- `out/mrr8-completion-tools-final.log`: profile/phone probe and pairing-build
+  tooling suites pass. The production PIN/role/Child implementation is unchanged
+  from the passing `out/mrr-final-seven-full-verify.log` 380-file gate.
+
+The fresh adult smoke initially exposed a stale private fixture, not a PIN
+failure: it selected roster/editor items by index even though an ordered
+non-active profile now precedes the default and its editor begins with Switch.
+The fixture now selects the active holder and Rename by identity/action, without
+changing authorization checks. Red/green builder tests are preserved in
+`out/mrr8-management-actions-{red,green}.log`; the initial native failure and its
+successful cleanup/restoration remain in
+`out/mrr8-completion-adult-directions-native.log` and
+`out/mrr8-completion-adult-directions-initial-native.json`.
+
+## Implementation detail and chronological qualification
+
 `UserProfilePinPolicy` implements per-holder import-only verification/backoff.
 `ProfilePinNavigation` connects numeric records to the native launch PIN pad.
 Neither generates salt or creates/changes a PIN.

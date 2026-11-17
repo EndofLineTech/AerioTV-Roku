@@ -678,6 +678,11 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertNotIn('"AerioTV"', package.read('components/AerioScene.brs').decode())
                 self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
                 self.assertIn('profile-management-probe.json', package.namelist())
+                scene = package.read('components/AerioScene.brs').decode()
+                self.assertIn('managementProbeChoose("edit", store.active)', scene)
+                self.assertIn('managementProbeChoose("name")', scene)
+                self.assertIn('choice.action = action', scene)
+                self.assertIn('choice.id = id', scene)
             probe.build(output, normal, 'SyntheticManagementSection', 'http://127.0.0.1:1234', switching=True, reconnect=True)
             with zipfile.ZipFile(output) as package:
                 source = package.read('components/AerioScene.brs').decode()
