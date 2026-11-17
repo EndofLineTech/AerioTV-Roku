@@ -26,7 +26,7 @@ epic-complete claim. Beads remains the status register.
 | `mrr.10` local acceptance | **1,626 native policy/storage assertions + all 14 request-safety groups pass** at the `.10` checkpoint, with exact baseline restoration. [Local acceptance and all 18 specification §17 scenarios](PROFILE-LOCAL-ACCEPTANCE.md) distinguish native policy, synthetic integration, actual-account evidence and physical acceptance; 49 report verdicts/digests audited. Subsequent `.19` changes have their own qualification. | Physical-remote acceptance, `.19` native voice/access qualification and explicit owner acceptance remain unclaimed; no planning-only closure. |
 | `mrr.11` integrated acceptance | Both actual accounts' Sync/media progression plus named unmodified Apple/Android encoder imports. Owner confirmed the initial VOD startup incidents were provider-side; `unxg` is closed. | Human picture/audio, physical-phone integration, authenticated Dashboard floor, public certification and owner acceptance remain distinct verification requirements. Entropy assurance is non-blocking under the owner disposition below. |
 | `mrr.18` bounded admin | **Closed.** Native synthetic gates/transport/actions/UI and active-own reload: `mrr-admin-final-actions-native`, `mrr-admin-ui-own-reload-native`; admin and current full regression gates pass. | Last dependency `.6` is closed. No real server mutation, public release or owner acceptance is inferred or required for this bounded implementation closure. |
-| `mrr.19` native PIN keyboard | [Shared production controller integration](PROFILE-NATIVE-PIN-KEYBOARD.md) now exists under explicit developer-only opt-in: native Directions launch, chosen switch and all-Directions adult verification have bounded native evidence. Existing PIN/hash/lockout and purpose/session gates remain. | Native integration is not spoken-entry acceptance: observed `voiceEnabled` remains false, the physical check is deferred, and public voice/household qualification remains open. |
+| `mrr.19` native PIN keyboard | [Shared production controller integration](PROFILE-NATIVE-PIN-KEYBOARD.md) now exists under explicit developer-only opt-in: native Directions launch, chosen switch and all-Directions adult verification have bounded native evidence. Full regression passes; matching ordinary unsigned baseline is installed, with voice opt-in kept separate. Existing PIN/hash/lockout and purpose/session gates remain. | Native integration is not spoken-entry acceptance: observed `voiceEnabled` remains false, the physical check is deferred, and public voice/household qualification remains open. |
 
 Native Directions details and preserved failed verdicts are in
 [PIN policy](PROFILE-PIN-POLICY.md). Earlier statements that baseline Sync is
@@ -195,7 +195,25 @@ are now **Sync Test 1** and **Sync Test 2**. Sync remains Off.
 
 ### Latest final-seven baseline
 
-The newer **`.6` completion baseline** is now installed:
+The newer **`.19` implementation baseline** is now installed:
+
+`out/profiles-mrr19/aeriotv-roku-v0.3.100-profiles-baseline.zip`
+
+SHA-256: `690479161796c3b98aeed5515bdcede413aa303a8f11e0353f71d3fa52522668`.
+Full regression passes in `out/mrr19-native-keyboard-full-verify.log` (380 files).
+`out/mrr19-native-keyboard-baseline-installed.json` verifies sidecar checksums,
+full-gate compiled contents, all 210 current BrightScript files, exact old-app
+preflight and the new installed checksum. The inspected ready screenshot retains
+Sync Test 1, Sync Test 2 and Add.
+
+This ordinary baseline includes the new PIN code but keeps both Directions
+opt-ins off. The separately verified, **not installed** developer native-keyboard
+variant is
+`out/profiles-mrr19/aeriotv-roku-v0.3.100-profiles-voice-baseline.zip`, SHA-256
+`df85ea1fd0bdbf70270c684f1f615365590bf9d03360ce46a536461442c36203`.
+Neither is signed/released; speech/public acceptance is not inferred.
+
+The earlier **`.6` completion baseline** is preserved:
 
 `out/profiles-mrr6/aeriotv-roku-v0.3.100-profiles-baseline.zip`
 

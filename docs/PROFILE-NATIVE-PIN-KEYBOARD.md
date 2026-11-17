@@ -119,9 +119,30 @@ both aliases are scrubbed without verification when the owned keyboard's slot
 has changed; it is not a native replay of that specific stale-slot case.
 Probe/compiler/package checks pass, and the six native verdicts/digests are
 recorded in `out/mrr19-native-keyboard-evidence-audit.json`.
-Full repository regression is running separately in
-`out/mrr19-native-keyboard-full-verify.log`; these focused results are not
-substituted for its final verdict.
+Full `npm run verify` **passes** in
+`out/mrr19-native-keyboard-full-verify.log`, including the 380-file normal
+package. These focused results are not substituted for that full gate.
+
+## Verified unsigned baseline handoff
+
+`out/mrr19-native-keyboard-baseline-installed.json` verifies both variant
+checksums, duplicate-free entry sets, compiled-content equality against the
+full-gate package and byte equality for all 210 current BrightScript files.
+It also verifies the exact previous-app checksum before replacement and the
+new installed checksum afterward.
+
+- **Installed ordinary baseline:**
+  `out/profiles-mrr19/aeriotv-roku-v0.3.100-profiles-baseline.zip`
+  SHA-256 `690479161796c3b98aeed5515bdcede413aa303a8f11e0353f71d3fa52522668`.
+- **Separate, not installed, explicit native keyboard variant:**
+  `out/profiles-mrr19/aeriotv-roku-v0.3.100-profiles-voice-baseline.zip`
+  SHA-256 `df85ea1fd0bdbf70270c684f1f615365590bf9d03360ce46a536461442c36203`.
+
+The inspected `out/mrr19-native-keyboard-baseline-ready.jpg` retains both test
+profiles and Add. The installed ordinary baseline contains the new code but
+does **not** enable native Directions or D-pad opt-ins. Use its exact ZIP as the
+restore artifact for subsequent probes. Earlier restore ZIPs remain preserved.
+Neither variant is signed or released.
 
 ## Acceptance limits
 
