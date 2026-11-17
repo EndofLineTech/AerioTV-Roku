@@ -41,15 +41,20 @@ def real_baseline_accounts(config):
                 raise RuntimeError(f"Dispatcharr rate-limited authentication; retry after {retry}. No automatic retry was sent.") from None
             raise
     for credentials in config["accounts"]:
-        request = urllib.request.Request(base + "/api/accounts/token/", data=json.dumps(credentials).encode(), headers={"Content-Type": "application/json"}, method="POST")
-        token = read_json(request)["access"]
-        request = urllib.request.Request(base + "/api/accounts/users/me/", headers={"Authorization": "Bearer " + token})
+        if credentials.get("apiKey"):
+            headers = {"X-API-Key": credentials["apiKey"]}
+        else:
+            password_body = {"username": credentials["username"], "password": credentials["password"]}
+            request = urllib.request.Request(base + "/api/accounts/token/", data=json.dumps(password_body).encode(), headers={"Content-Type": "application/json"}, method="POST")
+            token = read_json(request)["access"]
+            headers = {"Authorization": "Bearer " + token}
+        request = urllib.request.Request(base + "/api/accounts/users/me/", headers=headers)
         user = read_json(request)
         if user.get("username", "").lower() != credentials["username"].lower():
             raise RuntimeError("Test login did not return its own expected identity")
         if not user.get("api_key"):
             raise RuntimeError("Approved test account lacks API access; enable its own API key in Dispatcharr before testing")
-        accounts.append({"user": user, "password": credentials["password"]})
+        accounts.append({"user": user, "password": credentials.get("password", "")})
     if len(accounts) != 2 or accounts[0]["user"]["id"] == accounts[1]["user"]["id"]:
         raise RuntimeError("Two distinct approved accounts are required")
     return base, accounts
@@ -71,7 +76,7 @@ def real_baseline_fixture(fixture, accounts):
     return fixture.replace('"synthetic-password"', json.dumps(accounts[1]["password"]))
 
 
-def build(path, normal, section, base, mode="plain", baseline_accounts=None, admin_ui=False, phone_verify=False, phone_import=False, phone_import_add=False, profile_media=False):
+def build(path, normal, section, base, mode="plain", baseline_accounts=None, admin_ui=False, phone_verify=False, phone_import=False, phone_import_add=False, profile_media=False, peer_envelope=None, peer_material=None):
     if sum([admin_ui, phone_verify, phone_import, profile_media]) > 1:
         raise ValueError("Choose one focused native flow")
     if (phone_verify or phone_import or profile_media) and not baseline_accounts:
@@ -96,6 +101,11 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
                 target = '    m.registry = CreateObject("roRegistrySection", "AerioTV")'
                 assert source.count(target) == 1
                 source = source.replace(target, f'    m.registry = CreateObject("roRegistrySection", "{section}")\n    seedProfilePickerLaunchProbe({json.dumps(base)}, {json.dumps(mode)})', 1)
+                if phone_import:
+                    # Protected synthetic phone imports must never upload their
+                    # fixture PIN/roster to the real approved accounts.
+                    anchor = f'    seedProfilePickerLaunchProbe({json.dumps(base)}, {json.dumps(mode)})'
+                    source = source.replace(anchor, anchor + '\n    m.profileSyncWriterReady = false\n    m.profileSyncSchedulingReady = false', 1)
                 target = "sub onLaunchRequest()\n    if m.profileStartupDeferred = true then return\n"
                 assert source.count(target) == 1
                 source = source.replace(target, target + '''    if m.top.launchRequest.pickerProbeSubmit = "1"
@@ -123,6 +133,9 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
                 if phone_import:
                     fixture = fixture.replace('sub onProfileBaselineProbeTick()\n', 'sub onProfileBaselineProbeTick()\n    onPhoneProfileImportProbeTick()\n    return\n', 1)
                     fixture += "\n" + (ROOT / "tests/native/PhoneSetupProfileImportFixture.brs").read_text()
+                    if peer_envelope:
+                        slot = json.loads(Path(peer_material).read_text())["expectedPlaylistId"].lower()
+                        fixture = fixture.replace('"phone-import"', json.dumps(slot))
                 if profile_media:
                     fixture = fixture.replace('sub onProfileBaselineProbeTick()\n', 'sub onProfileBaselineProbeTick()\n    onProfileMediaAcceptanceTick()\n    return\n', 1)
                     fixture += "\n" + (ROOT / "tests/native/ProfileMediaAcceptanceFixture.brs").read_text()
@@ -135,6 +148,11 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
                 end = text.index("end function", start) + len("end function")
                 text = text[:start] + (ROOT / "tests/native/ProfileServerAdminTransportFixture.brs").read_text() + text[end:]
                 body = text.encode()
+            elif name == "components/DispatcharrSyncWriteTask.brs" and phone_import:
+                # The normal baseline now has qualified Sync. Phone fixtures
+                # carry test PINs and must remain read-only even after consent.
+                line = b'    if CreateObject("roAppInfo").getValue("aeriotv_profiles_baseline") = "1" then m.syncWriterReady = true'
+                body = body.replace(line, b"    ' Private phone qualification never enables PUT.", 1)
             elif name == "components/DispatcharrTask.brs" and phone_import:
                 text = body.decode()
                 target = 'sub publishError(message as string, relogin = false as boolean, apiAccessRequired = false as boolean)\n'
@@ -204,10 +222,35 @@ function profileMediaAcceptanceRow() as object
     return {loaded: m.task = invalid, ready: false}
 end function
 '''
+            elif name == "components/OnDemandPlayer.xml" and profile_media:
+                body = body.replace(b"</interface>", b'<function name="profileMediaAcceptanceState" /></interface>', 1)
+            elif name == "components/OnDemandPlayer.brs" and profile_media:
+                body += b'''
+function profileMediaAcceptanceState() as object
+    allowed = false
+    current = false
+    if type(m.top.request) = "roAssociativeArray"
+        current = userEventCurrent(m.top.request)
+        allowed = requestGateRenderAllowed(m.top.request.url, m.top.request.apiKey)
+    end if
+    return {state: m.video.state, position: m.video.position, duration: m.video.duration, visible: m.top.visible, session: m.session <> invalid, current: current, allowed: allowed, errorCode: m.video.errorCode}
+end function
+'''
             package.writestr(name, body)
         if phone_verify or phone_import:
             second = baseline_accounts[1]
             package.writestr("fixtures/phone-profile-verify.json", json.dumps({"userId": second["user"]["id"], "username": second["user"]["username"], "apiKey": second["user"]["api_key"], "password": second["password"], "addOnboarding": phone_import_add}))
+        if peer_envelope:
+            package.writestr("peer-envelope.json", Path(peer_envelope).read_bytes())
+            package.writestr("peer-material.json", Path(peer_material).read_bytes())
+            package.writestr("components/PeerSetupDecodeTask.xml", '''<component name="PeerSetupDecodeTask" extends="Task"><interface><field id="result" type="assocarray" /></interface><script uri="pkg:/source/PhoneSetupModel.brs" /><script uri="pkg:/source/PhoneSetupTransport.brs" /><script uri="pkg:/source/PhoneSetupCrypto.brs" /><script uri="pkg:/source/PhoneSetupX25519.brs" /><script uri="PeerSetupDecodeTask.brs" /></component>''')
+            package.writestr("components/PeerSetupDecodeTask.brs", '''sub init()
+    m.top.functionName = "decodePeerSetup"
+end sub
+sub decodePeerSetup()
+    m.top.result = phoneSetupOpen(ReadAsciiFile("pkg:/peer-envelope.json"), ParseJson(ReadAsciiFile("pkg:/peer-material.json")))
+end sub
+''')
 
 
 def main():
@@ -220,11 +263,18 @@ def main():
     parser.add_argument("--phone-import", action="store_true", help="Private native receiver-controller import; isolated registry and read-only server access")
     parser.add_argument("--phone-import-add", action="store_true", help="Phone import with one default, then own-credential onboarding Add and Undo")
     parser.add_argument("--profile-media", action="store_true", help="Read-only completed DVR playback before/after own-account profile switching")
+    parser.add_argument("--peer-envelope", type=Path, help="Private actual-peer encrypted setup envelope; only with --phone-import")
+    parser.add_argument("--peer-material", type=Path, help="Private test receiver material; never enables production entropy")
     parser.add_argument("--dispatcharr-credentials", type=Path, help="Private JSON: baseUrl and two accounts with username/password; implies baseline, read-only server testing")
     parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link", "own-keyless", "own-pin", "own-held", "own-cancel", "own-link", "own-pin-link", "own-auth-link", "own-default", "own-default-pin", "own-wrong", "own-recreated", "own-memory", "own-keyboard", "child-select", "child-select-pin", "child-select-reject", "child-select-link", "reorder"], default="plain")
     args = parser.parse_args()
     if args.phone_import_add:
         args.phone_import = True
+    if bool(args.peer_envelope) != bool(args.peer_material) or (args.peer_envelope and (not args.phone_import or args.phone_import_add)):
+        parser.error("Peer envelope/material require --phone-import without --phone-import-add")
+    for private in [args.peer_envelope, args.peer_material]:
+        if private and private.resolve().is_relative_to(ROOT):
+            parser.error("Peer secret material must remain outside the checkout")
     baseline_accounts = None
     if (args.admin_ui or args.phone_verify or args.phone_import or args.profile_media) and not args.dispatcharr_credentials:
         parser.error("Focused account flows require --dispatcharr-credentials")
@@ -387,7 +437,7 @@ def main():
     package_dir = Path(private_package.name) if private_package else ROOT / "out"
     archive = package_dir / "profile-picker-launch-probe.zip"
     cleaner = package_dir / "profile-picker-launch-cleanup.zip"
-    build(archive, ROOT / "out/aeriotv-roku.zip", section, real_base or f"http://{local}:{server.server_port}", "baseline" if args.baseline else args.mode, baseline_accounts, admin_ui=args.admin_ui, phone_verify=args.phone_verify, phone_import=args.phone_import, phone_import_add=args.phone_import_add, profile_media=args.profile_media)
+    build(archive, ROOT / "out/aeriotv-roku.zip", section, real_base or f"http://{local}:{server.server_port}", "baseline" if args.baseline else args.mode, baseline_accounts, admin_ui=args.admin_ui, phone_verify=args.phone_verify, phone_import=args.phone_import, phone_import_add=args.phone_import_add, profile_media=args.profile_media, peer_envelope=args.peer_envelope, peer_material=args.peer_material)
     modules["recovery"].cleanup_package(cleaner, section)
     report = {"passed": False, "mode": args.mode, "events": [], "keys": [], "restore_sha256": hashlib.sha256(restore.read_bytes()).hexdigest(), "probe_sha256": hashlib.sha256(archive.read_bytes()).hexdigest()}
     report["private_registry_section"] = section
@@ -645,6 +695,9 @@ def main():
             elif args.admin_ui:
                 report["admin_transport"] = "synthetic-no-http"
                 report["passed"] = report["passed"] and all(events[-1].get(field) is True for field in ["adminui", "syntheticadminonly", "apiaccess", "ownreload"])
+            elif args.profile_media:
+                report["media_transport"] = "actual-own-account-playback"
+                report["passed"] = report["passed"] and all(events[-1].get(field) is True for field in ["profilemedia", "sourceplayed", "targetplayed"])
             else:
                 report["passed"] = report["passed"] and report.get("switcher_screenshot") is True and report.get("switcher_visual_ack") == 200
                 report["real_dispatcharr"] = True

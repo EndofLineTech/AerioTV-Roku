@@ -25,6 +25,24 @@ sub onPhoneProfileImportProbeTick()
         first.append(pin)
         second = {username: private.username, displayName: "Phone Other", isDefault: false, role: "user", credential: {apiKey: private["apiKey"]}}
         payload = {playlist: {id: "PHONE-IMPORT", type: "dispatcharr", name: "Phone Import", url: m.baseUrl, credential: {apiKey: m.apiKey}, vodEnabled: false, guideDays: 3}, profiles: [second, first], sync: {provider: "dispatcharr", enabled: true}}
+        if ReadAsciiFile("pkg:/peer-envelope.json") <> ""
+            if m.phoneImportPeerTask = invalid
+                m.phoneImportPeerTask = CreateObject("roSGNode", "PeerSetupDecodeTask")
+                m.phoneImportPeerTask.control = "RUN"
+                return
+            end if
+            opened = m.phoneImportPeerTask.result
+            if type(opened) <> "roAssociativeArray" then return
+            if opened.ok <> true
+                m.pickerProbeClock.control = "stop"
+                print "[picker-launch] "; FormatJson({kind: "result", passed: false, reason: "actual-peer-decrypt-refused"})
+                return
+            end if
+            payload = opened.payload
+            m.phoneImportPeerTask.result = invalid
+            m.phoneImportPeerTask = invalid
+            print "[picker-launch] "; FormatJson({kind: "actual-peer-decrypted", profiles: payload.profiles.count()})
+        end if
         m.phoneImportAddMode = private.addOnboarding = true
         if m.phoneImportAddMode then payload.profiles = [first]
         checked = validatePhoneSetupPayload(payload)

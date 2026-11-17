@@ -102,6 +102,10 @@ function toggleDispatcharrSyncControls(context as dynamic, field as string, valu
         return false
     end if
     m.preferenceStore = saved.preferenceStore
+    ' Profile changes flush this runtime cache too. Keep explicit device-wide
+    ' consent/category choices current so an outgoing save cannot revert them.
+    m.devicePreferences = setCanonicalPreference(m.devicePreferences, "dispatcharrSyncEnabled", enabled)
+    m.devicePreferences = setCanonicalPreference(m.devicePreferences, "dispatcharrSyncProfiles", profiles)
     applyDispatcharrSyncChoices()
     ' A new opt-in/category lifecycle starts with fresh own me/list/key discovery.
     m.profileSyncSchedule = invalid

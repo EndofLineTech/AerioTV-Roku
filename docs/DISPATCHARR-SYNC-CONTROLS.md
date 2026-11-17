@@ -5,6 +5,12 @@ These controls are implemented and developer-tested, **not publicly enabled**.
 `m.profileSyncWriterReady` remain false in shipping source. The entire profiles
 epic and general category sync are unfinished.
 
+The non-shipping `aeriotv_profiles_baseline=1` build now enables these three
+readiness flags and the writer Task after actual two-account Roku qualification.
+Explicit consent is still required. See [delivery status](MRR-DELIVERY-STATUS.md)
+for real own-account PUT/readback/acknowledgement/Off evidence and the installed
+unsigned artifact; this does not enable shipping builds or unsupported lanes.
+
 The approved delivery phase is **profiles-only**. Unsupported categories and
 settings lanes are preserved, not additional adapters required for this phase.
 The historical remaining-work paragraph below is not a new scope requirement.

@@ -36,10 +36,11 @@ acknowledged.
 
 ## Deliberate limits
 
-- The persistent checkpoint requires Sync off for Add/local switching. Follow-on
-  source permits Add after explicit Sync consent; local switching still requires
-  Sync off unless the separately qualified writer is enabled. The baseline flag
-  itself enables neither the writer nor scheduler.
+- Current source enables profiles-only Sync controls, writer and scheduler only
+  under the non-shipping baseline flag, after actual two-account Roku
+  qualification. Explicit consent remains required; unsupported categories are
+  preserved. Older installed checkpoints may predate this enablement; see
+  [delivery status](MRR-DELIVERY-STATUS.md) for exact installed checksums/evidence.
 - No new PIN creation or Child setup is enabled by the baseline flag.
   Unsupported protected/legacy/recently removed additions refuse safely.
 - Complete onboarding and broader

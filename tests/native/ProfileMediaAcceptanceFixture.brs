@@ -26,14 +26,15 @@ sub onProfileMediaAcceptanceTick()
         onDvrPlayRequested(baselineProbeEvent(m.dvr, userViewEvent({scope: m.accountIdentity, accountId: m.serverAccountId, recordingId: row.id, fromBeginning: true}, currentUserSessionId())))
         m.pickerProbeBaselineStage = stage + 1
     else if stage = 2 or stage = 7
-        if m.page <> "onDemand" then return
-        video = m.mediaPlayer.findNode("mediaVideo")
-        if m.mediaAcceptanceVideoState <> video.state
+        video = m.mediaPlayer.callFunc("profileMediaAcceptanceState")
+        if m.mediaAcceptanceVideoState <> video.state or m.page <> "onDemand"
             m.mediaAcceptanceVideoState = video.state
-            print "[picker-launch] "; FormatJson({kind: "profile-media-player", state: video.state, progressed: video.position >= 2})
+            print "[picker-launch] "; FormatJson({kind: "profile-media-player", page: m.page, state: video.state, progressed: video.position >= 2, duration: video.duration, session: video.session, current: video.current, allowed: video.allowed, visible: video.visible, errorCode: video.errorCode})
         end if
+        if m.page <> "onDemand" then finishProfileMediaAcceptance(false, "player-returned-before-progress") : return
         if video.state = "error" then finishProfileMediaAcceptance(false, "playback-error") : return
         if video.state <> "playing" or video.position < 2 then return
+        print "[picker-launch] "; FormatJson({kind: "profile-media-progress", stage: stage, state: video.state, position: video.position, duration: video.duration, current: video.current, allowed: video.allowed, errorCode: video.errorCode})
         if stage = 2 then m.mediaAcceptanceSourcePlayed = true else m.mediaAcceptanceTargetPlayed = true
         m.mediaPlayer.callFunc("closeMedia")
         m.pickerProbeBaselineStage = stage + 1
@@ -47,8 +48,8 @@ sub onProfileMediaAcceptanceTick()
         m.pickerProbeBaselineStage = 4
     else if stage = 4
         if m.profileOwnSignInContext = invalid or m.profileOwnSignInDialog = invalid then return
-        m.profileOwnSignInContext.username = "Synthetic8"
-        m.profileOwnSignInContext.password = "synthetic-password"
+        m.profileOwnSignInContext.username = ""
+        m.profileOwnSignInContext.addKey = "synthetic-b"
         onProfileOwnSignInChoice(baselineProbeEvent(m.profileOwnSignInDialog, 2))
         m.pickerProbeBaselineStage = 5
     else if stage = 5

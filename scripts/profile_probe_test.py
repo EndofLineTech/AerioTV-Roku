@@ -13,6 +13,52 @@ from unittest.mock import MagicMock, patch
 
 
 class ProfileProbeTest(unittest.TestCase):
+    def test_media_verdict_uses_both_playback_results_not_switcher_capture(self):
+        builder = Path(__file__).with_name('test-profile-picker-launch-native.py').read_text()
+        branch = builder.split('            elif args.profile_media:\n', 1)[1].split('            else:', 1)[0]
+        self.assertIn('["profilemedia", "sourceplayed", "targetplayed"]', branch)
+        self.assertNotIn('switcher_screenshot', branch)
+
+    def test_real_account_tools_verify_supplied_keys_without_password_reexchange(self):
+        spec = importlib.util.spec_from_file_location('key_accounts', Path(__file__).with_name('test-profile-picker-launch-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        config = {"baseUrl": "http://example.test", "accounts": [{"username": "A", "apiKey": "key-a"}, {"username": "B", "apiKey": "key-b"}]}
+        replies = [io.BytesIO(json.dumps({"id": i, "username": name, "api_key": key, "user_level": 1}).encode()) for i, name, key in [(1, "A", "key-a"), (2, "B", "key-b")]]
+        with patch.object(probe.urllib.request, "urlopen", side_effect=replies) as request:
+            _, accounts = probe.real_baseline_accounts(config)
+        self.assertEqual([a["user"]["username"] for a in accounts], ["A", "B"])
+        self.assertEqual(request.call_count, 2)
+        self.assertTrue(all(call.args[0].get_method() == "GET" and call.args[0].full_url.endswith("/users/me/") for call in request.call_args_list))
+
+    def test_qualified_sync_is_baseline_only_and_phone_probes_cannot_upload(self):
+        root = Path(__file__).resolve().parent.parent
+        scene = (root / 'components/AerioScene.brs').read_text()
+        block = scene.split('    if m.profileBaselineReady\n', 1)[1].split('    end if', 1)[0]
+        for field in ['profileSyncControlsReady', 'profileSyncWriterReady', 'profileSyncSchedulingReady']:
+            self.assertIn(f'm.{field} = true', block)
+            self.assertIn(f'm.{field} = false', scene.split('    if m.profileBaselineReady\n', 1)[0])
+        writer = (root / 'components/DispatcharrSyncWriteTask.brs').read_text()
+        self.assertIn('m.syncWriterReady = false', writer)
+        self.assertIn('getValue("aeriotv_profiles_baseline") = "1" then m.syncWriterReady = true', writer)
+        builder = (root / 'scripts/test-profile-picker-launch-native.py').read_text()
+        self.assertIn('Private phone qualification never enables PUT.', builder)
+        self.assertIn('m.profileSyncWriterReady = false\\n    m.profileSyncSchedulingReady = false', builder)
+
+    def test_real_sync_preservation_is_typed_and_package_rejects_credentials(self):
+        spec = importlib.util.spec_from_file_location('real_sync', Path(__file__).with_name('test-real-profiles-sync-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        self.assertTrue(probe.typed_equal({"Case": [1, 1.0, None]}, {"Case": [1, 1.0, None]}))
+        self.assertFalse(probe.typed_equal({"Case": 1}, {"case": 1}))
+        self.assertFalse(probe.typed_equal(1, 1.0))
+        self.assertFalse(probe.typed_equal(True, 1))
+        key_only = [{"user": {"api_key": "private-key"}, "password": ""}]
+        self.assertTrue(probe.credential_free(b'{"profiles":{}}', key_only))
+        self.assertFalse(probe.credential_free(b'{"leak":"private-key"}', key_only))
+        with self.assertRaisesRegex(ValueError, "not credentials"):
+            probe.build(Path("unused"), Path("unused"), {"apiKey": "must-never-package"})
+
     def test_owner_approved_provision_archive_uses_normal_signin_and_keeps_payload_private(self):
         spec = importlib.util.spec_from_file_location('baseline_provision', Path(__file__).with_name('provision-profiles-baseline-native.py'))
         provision = importlib.util.module_from_spec(spec)
@@ -32,6 +78,11 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertIn('m.task.expectedUsername = m.baselineProvisionConfig.username', scene)
                 self.assertNotIn('example-private', scene)
                 self.assertEqual(json.loads(package.read('baseline-provision-private.json')), config)
+        fixture = (Path(__file__).resolve().parent.parent / 'tests/native/ProfileBaselineProvisionFixture.brs').read_text()
+        self.assertIn('if m.page = "welcome" then onKeyEvent("back", true)', fixture)
+        self.assertIn('beginProfileBaselineAdd()', fixture)
+        self.assertIn('beginUserProfileSwitch(m.baselineProvisionFirstId)', fixture)
+        self.assertIn('connectionStoreRename(m.connectionStore, current.id, "Profiles Test")', fixture)
 
     def test_real_baseline_rate_limit_does_not_loop_or_disclose_credentials(self):
         import urllib.error
@@ -65,6 +116,7 @@ class ProfileProbeTest(unittest.TestCase):
         media = probe.real_baseline_fixture((root / 'tests/native/ProfileMediaAcceptanceFixture.brs').read_text(), accounts)
         self.assertIn('m.activeUserScope.accountId = "42"', media)
         self.assertIn('if profile.userId = 42\n', media)
+        self.assertIn('m.profileOwnSignInContext.addKey = "example-key-b"', media)
         self.assertNotIn('"synthetic-password"', media)
 
     def test_baseline_builder_changes_only_manifest_and_writes_checksum(self):

@@ -6,6 +6,7 @@ sub main()
     check(context <> invalid and m.connectionChoices.count() = 3 and m.connectionChoices[0].value = true and m.connectionChoices[1].value = false, "private selected-connection controls offer explicit opt-in and Profiles choices without enabling them")
     check(toggleDispatcharrSyncControls(context, "enabled", true), "actual current full-access holder may explicitly enable device-wide sync")
     check(loadDispatcharrSyncSettings(m.registry).enabled and m.profileSyncEnabled and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "explicit opt-in updates runtime choice but leaves durable dirty intent")
+    check(m.devicePreferences.dispatcharrSyncEnabled and m.devicePreferences.dispatcharrSyncProfiles and m.devicePreferences.futureDevice = "keep", "controls update the cached device choices used by outgoing profile preference saves")
     before = FormatJson(m.registry.values)
     check(not toggleDispatcharrSyncControls(context, "profiles", false) and FormatJson(m.registry.values) = before, "old controls snapshot cannot toggle a newer settings root")
     syncControlsFixture()
@@ -104,6 +105,7 @@ sub syncControlsFixture()
     m.profileSyncEnabled = false
     m.profileRosterEnabled = true
     m.profileSyncClock = invalid
+    m.devicePreferences = {dispatcharrSyncEnabled: false, dispatcharrSyncProfiles: true, futureDevice: "keep"}
 end sub
 
 sub openConnectionDialog(title as string, message as string, choices as object)

@@ -39,12 +39,17 @@ def main():
     parser.add_argument("--current", required=True, type=Path, help="Exact currently installed baseline ZIP")
     parser.add_argument("--baseline", required=True, type=Path, help="Fixed normal baseline to leave installed")
     parser.add_argument("--confirm-create", action="store_true", required=True)
+    parser.add_argument("--add-second", action="store_true", help="Also add the second supplied test login and verify own-account A/B/A switching")
     parser.add_argument("--report", type=Path, default=Path("out/profiles-baseline-provision-native.json"))
     args = parser.parse_args()
     if args.credentials.resolve().is_relative_to(ROOT):
         raise RuntimeError("Private credentials must remain outside the checkout")
     credentials = json.loads(args.credentials.read_text())
     config = {"baseUrl": credentials["baseUrl"].rstrip("/"), **credentials["accounts"][0]}
+    if args.add_second:
+        if len(credentials["accounts"]) != 2 or credentials["accounts"][0]["username"].lower() == credentials["accounts"][1]["username"].lower():
+            raise RuntimeError("Two distinct approved test logins are required")
+        config["otherAccount"] = credentials["accounts"][1]
     spec = importlib.util.spec_from_file_location("device", ROOT / "scripts/test-profile-primitives-native.py")
     device = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(device)

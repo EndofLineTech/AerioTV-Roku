@@ -3,6 +3,7 @@
 sub init()
     m.top.functionName = "writeDispatcharrSync"
     m.syncWriterReady = false
+    if CreateObject("roAppInfo").getValue("aeriotv_profiles_baseline") = "1" then m.syncWriterReady = true
 end sub
 
 sub writeDispatcharrSync()

@@ -15,6 +15,9 @@ sub init()
         m.profilePickerReady = true
         m.profileSwitchRosterReady = true
         m.profileChildAccessReady = true
+        m.profileSyncControlsReady = true
+        m.profileSyncWriterReady = true
+        m.profileSyncSchedulingReady = true
     end if
     m.profileStartupDeferred = false
     m.profileStartupScreenReady = false
