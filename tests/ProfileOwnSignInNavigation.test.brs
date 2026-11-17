@@ -34,6 +34,27 @@ sub main()
     check(oldProof.apiKey = "" and context.addVerified = invalid and context.addRead = invalid and context.addPhase = "", "fresh Add submission scrubs the prior proof and exits the old protection-read phase")
     check(m.profileOwnSignInTask <> invalid and m.profileOwnSignInTask.expectedUsername = "Cara", "Add retry creates a fresh own-password Task instead of treating its result as an old read")
     ownFormFixture()
+    check(beginUserProfileOwnSignIn(m.fixtureTarget), "API-key Add fixture opens an owned form")
+    m.profileBaselineReady = true
+    m.apiKey = "source-key"
+    context = m.profileOwnSignInContext
+    context.adding = true
+    context.username = ""
+    showProfileOwnSignInForm()
+    check(m.profileOwnSignInApiKeyIndex >= 4, "manual Add offers the specification's API-key entry")
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, m.profileOwnSignInApiKeyIndex))
+    check(m.profileOwnSignInDialogKind = "api-key" and m.profileOwnSignInDialog.keyboardDomain = "password", "API key uses a secure native editor")
+    m.profileOwnSignInDialog.text = "new-target-key"
+    onProfileOwnSignInEdited(ownFormEvent(m.profileOwnSignInDialog, 0))
+    check(context.addKey = "new-target-key" and m.profileOwnSignInDialog.buttons[4] <> "new-target-key", "the own-key editor returns masked credential state")
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 2))
+    check(m.profileOwnSignInTask.apiKey = "new-target-key" and m.profileOwnSignInTask.username = "" and m.profileOwnSignInTask.password = "" and m.profileOwnSignInTask.expectedUsername = "", "key-only Add authenticates that supplied key without source credentials or an invented username")
+    check(context.addKey = "", "submitted key is scrubbed from the form context")
+    m.profileOwnSignInReadTaskFactory = m.profileOwnSignInTaskFactory
+    onProfileOwnSignInResult(ownFormEvent(m.profileOwnSignInTask, {ok: true, apiKey: "new-target-key", verifiedBaseUrl: "https://example.test", verifiedUser: {id: 9, username: "Cara", user_level: 1}}))
+    check(context.username = "Cara" and m.profileOwnSignInTask.accountId = "9" and m.profileOwnSignInTask.apiKey = "new-target-key" and context.addPhase = "read", "fresh key-only identity starts the same own-account protection read before Add can save")
+    cancelUserProfileOwnSignIn()
+    ownFormFixture()
     check(beginUserProfileOwnSignIn(m.fixtureTarget), "roster suggestion fixture opens an owned credential form")
     m.profileBaselineReady = true
     m.apiKey = "source-key"

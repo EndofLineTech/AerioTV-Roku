@@ -51,6 +51,13 @@ acknowledged.
 
 ### Follow-on source (not installed as the persistent baseline)
 
+Add now supports either username/password or a masked API key. A username is
+optional with a key: a fresh `/me/` must establish the target identity before
+the existing own-protection read and Add transaction. The source key is never
+reused. Native key-only onboarding/Add/Undo passes
+`out/mrr-delivery-api-key-onboarding-native.log`/`.json`, with cleanup and exact
+baseline restoration. Earlier password Add evidence remains valid.
+
 Phone-profile controller imports are now enabled by the developer-baseline
 flag, not by normal shipping builds. The native core flow passes protected
 slot-first save, own keys, picker/PIN admission, imported playlist options,

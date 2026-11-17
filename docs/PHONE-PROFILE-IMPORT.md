@@ -230,6 +230,13 @@ a target envelope, and Undo removes only the local addition/key with **zero
 tombstones**. All final flags, cleanup and exact restoration pass. Full regression:
 `out/mrr-delivery-final-verify.log` (380-file verified normal ZIP).
 
+The same source-row onboarding journey also passes using **API key alone** in
+`out/mrr-delivery-api-key-onboarding-native.log`/`.json`: secure native key-editor
+callbacks, live own identity discovery with no typed username/password, own
+protection read, Add and zero-tombstone roster Undo. All result flags, cleanup and
+exact restoration pass. This is a real key-authentication path, not keyboard/
+voice certification or an actual phone sender.
+
 One native onboarding run lost device access during cleanup/restoration.
 The exact baseline was manually restored and verified; a read-only native scan
 found no `AerioPickerLaunchProbe-*` sections. Evidence is

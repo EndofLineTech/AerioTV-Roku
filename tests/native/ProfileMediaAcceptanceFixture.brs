@@ -28,6 +28,10 @@ sub onProfileMediaAcceptanceTick()
     else if stage = 2 or stage = 7
         if m.page <> "onDemand" then return
         video = m.mediaPlayer.findNode("mediaVideo")
+        if m.mediaAcceptanceVideoState <> video.state
+            m.mediaAcceptanceVideoState = video.state
+            print "[picker-launch] "; FormatJson({kind: "profile-media-player", state: video.state, progressed: video.position >= 2})
+        end if
         if video.state = "error" then finishProfileMediaAcceptance(false, "playback-error") : return
         if video.state <> "playing" or video.position < 2 then return
         if stage = 2 then m.mediaAcceptanceSourcePlayed = true else m.mediaAcceptanceTargetPlayed = true

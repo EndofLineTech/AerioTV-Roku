@@ -117,7 +117,15 @@ sub onPhoneProfileImportProbeTick()
                 if m.profileOwnSignInDialogKind <> "suggestions" then return
                 onProfileOwnSignInSuggestionChoice(baselineProbeEvent(m.profileOwnSignInDialog, 0))
                 if m.profileOwnSignInContext.username <> private.username then return
-                m.profileOwnSignInContext.password = private.password
+                ' Key-only manual Add must learn its username from fresh /me,
+                ' then retain the source roster row through the same commit.
+                onProfileOwnSignInChoice(baselineProbeEvent(m.profileOwnSignInDialog, 0))
+                m.profileOwnSignInDialog.text = ""
+                onProfileOwnSignInEdited(baselineProbeEvent(m.profileOwnSignInDialog, 0))
+                onProfileOwnSignInChoice(baselineProbeEvent(m.profileOwnSignInDialog, m.profileOwnSignInApiKeyIndex))
+                if m.profileOwnSignInDialogKind <> "api-key" or m.profileOwnSignInDialog.keyboardDomain <> "password" then return
+                m.profileOwnSignInDialog.text = private["apiKey"]
+                onProfileOwnSignInEdited(baselineProbeEvent(m.profileOwnSignInDialog, 0))
                 onProfileOwnSignInChoice(baselineProbeEvent(m.profileOwnSignInDialog, 2))
                 m.pickerProbeBaselineStage = 6
                 return

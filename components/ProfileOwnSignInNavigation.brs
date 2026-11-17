@@ -235,6 +235,7 @@ sub showProfileOwnSignInForm(message = "" as string)
     context = m.profileOwnSignInContext
     dialog = newProfileOwnSignInDialog("form")
     dialog.title = "Sign in to Dispatcharr"
+    if context.adding = true and message = "" then message = "Enter a username and password, or an API key. Username is optional with a key."
     if context.target.addressHeld
         explanation = userProfileOwnSignInAddressMessage(context.connection.name)
         if message <> "" then explanation += chr(10) + chr(10) + message
@@ -245,12 +246,17 @@ sub showProfileOwnSignInForm(message = "" as string)
     if context.password <> "" then mask = "********"
     buttons = ["Username: " + context.username, "Password: " + mask, "Sign In", "Cancel"]
     m.profileOwnSignInSuggestionIndex = -1
+    m.profileOwnSignInApiKeyIndex = -1
     if context.adding = true and m.profileBaselineReady = true
         if profileServerAdminHint() then buttons.push("Add from Dispatcharr")
         if profileOwnSignInSuggestions().count() > 0
             m.profileOwnSignInSuggestionIndex = buttons.count()
             buttons.push("From your other devices")
         end if
+        m.profileOwnSignInApiKeyIndex = buttons.count()
+        keyLabel = "API key (instead of password)"
+        if textValue(context.addKey) <> "" then keyLabel = "API key: ********"
+        buttons.push(keyLabel)
     end if
     dialog.buttons = buttons
     if m.profileOwnSignInTask <> invalid or m.profileOwnSignInHold <> invalid then dialog.buttons = ["Cancel"]
@@ -285,10 +291,12 @@ sub onProfileOwnSignInChoice(event as object)
     if index = m.profileOwnSignInSuggestionIndex and index >= 4 then showProfileOwnSignInSuggestions() : return
     if index = 3 then cancelUserProfileOwnSignIn() : return
     context = m.profileOwnSignInContext
-    if index = 4 and context.adding = true then beginProfileServerAdmin() : return
-    if index = 0 or index = 1
+    keyEditor = index = m.profileOwnSignInApiKeyIndex and index >= 4 and context.adding = true
+    if index = 4 and context.adding = true and not keyEditor then beginProfileServerAdmin() : return
+    if index = 0 or index = 1 or keyEditor
         kind = "username"
         if index = 1 then kind = "password"
+        if keyEditor then kind = "api-key"
         closeProfileOwnSignInDialog()
         dialog = newProfileOwnSignInDialog(kind)
         dialog.title = "Username"
@@ -296,8 +304,9 @@ sub onProfileOwnSignInChoice(event as object)
         dialog.text = context.username
         dialog.textEditBox.voiceEnabled = true
         dialog.textEditBox.maxTextLength = 256
-        if kind = "password"
+        if kind = "password" or kind = "api-key"
             dialog.title = "Password"
+            if kind = "api-key" then dialog.title = "API key"
             dialog.text = ""
             dialog.keyboardDomain = "password"
             dialog.textEditBox.maxTextLength = 512
@@ -311,10 +320,13 @@ sub onProfileOwnSignInChoice(event as object)
         m.top.dialog = dialog
         dialog.setFocus(true)
     else if index = 2
+        usingKey = context.adding = true and textValue(context.addKey).trim() <> ""
         usernameMatches = lcase(context.username.trim()) = lcase(context.target.username)
         if context.adding = true then usernameMatches = context.username.trim() <> ""
-        if not usernameMatches or context.password = ""
+        if usingKey then usernameMatches = true
+        if not usernameMatches or (context.password = "" and not usingKey)
             context.password = ""
+            context.addKey = ""
             showProfileOwnSignInForm("Dispatcharr did not accept that username or password.")
             return
         end if
@@ -341,6 +353,14 @@ sub onProfileOwnSignInChoice(event as object)
         task.apiKey = ""
         task.username = context.username.trim()
         task.password = context.password
+        if usingKey
+            task.ownProfileSignIn = false
+            task.apiKey = context.addKey.trim()
+            task.username = ""
+            task.password = ""
+        end if
+        context.addUsingKey = usingKey
+        context.addKey = ""
         context.password = ""
         task.observeField("result", "onProfileOwnSignInResult")
         task.observeField("state", "onProfileOwnSignInState")
@@ -443,9 +463,15 @@ sub onProfileOwnSignInEdited(event as object)
         value = m.profileOwnSignInDialog.text
         if kind = "username" then m.profileOwnSignInContext.username = value.trim()
         if kind = "password" then m.profileOwnSignInContext.password = value
+        if kind = "password" then m.profileOwnSignInContext.addKey = ""
+        if kind = "api-key"
+            m.profileOwnSignInContext.addKey = value.trim()
+            m.profileOwnSignInContext.password = ""
+        end if
         value = ""
-    else if kind = "password"
+    else if kind = "password" or kind = "api-key"
         m.profileOwnSignInContext.password = ""
+        m.profileOwnSignInContext.addKey = ""
     end if
     closeProfileOwnSignInDialog()
     showProfileOwnSignInForm()
@@ -482,6 +508,7 @@ sub onProfileOwnSignInResult(event as object)
     if type(result) <> "roAssociativeArray" then showProfileOwnSignInForm("Dispatcharr did not accept that username or password.") : return
     if result.ok <> true
         message = "Dispatcharr did not accept that username or password."
+        if context.addUsingKey = true then message = "Dispatcharr did not accept that API key."
         if result.apiAccessRequired = true then message = "This account has no API key yet. Ask your Dispatcharr administrator to turn on API access for it."
         showProfileOwnSignInForm(message)
         return
@@ -494,12 +521,15 @@ sub onProfileOwnSignInResult(event as object)
     if context.adding = true
         facts = userProfileFromVerified(context.connection.id, context.target.id, result.verifiedUser, 0)
         if facts = invalid then showProfileOwnSignInForm("Dispatcharr did not accept that username or password.") : return
+        if context.addUsingKey = true and context.username.trim() = "" then context.username = facts.username
         if lcase(facts.username) <> lcase(context.username.trim()) or textValue(result.apiKey) = "" then showProfileOwnSignInForm("Dispatcharr did not accept that username or password.") : return
         context.addVerified = {ok: true, apiKey: result.apiKey, verifiedBaseUrl: result.verifiedBaseUrl, verifiedUser: {id: facts.userId, username: facts.username, user_level: facts.userLevel, is_staff: facts.isStaff, is_superuser: facts.isSuperuser}}
         result.apiKey = ""
         result.verifiedUser = invalid
         context.addPhase = "read"
-        task = CreateObject("roSGNode", "DispatcharrSyncReadTask")
+        task = invalid
+        if m.profileOwnSignInReadTaskFactory <> invalid then task = m.profileOwnSignInReadTaskFactory()
+        if task = invalid then task = CreateObject("roSGNode", "DispatcharrSyncReadTask")
         tagTaskForCurrentUser(task)
         task.baseUrl = context.connection.url
         task.apiKey = context.addVerified.apiKey
@@ -711,6 +741,7 @@ sub onProfileOwnSignInClosed(event as object)
         cancelUserProfileOwnSignIn()
     else
         if m.profileOwnSignInDialogKind = "password" then m.profileOwnSignInContext.password = ""
+        if m.profileOwnSignInDialogKind = "api-key" then m.profileOwnSignInContext.addKey = ""
         closeProfileOwnSignInDialog()
         showProfileOwnSignInForm()
     end if
@@ -721,7 +752,7 @@ sub closeProfileOwnSignInDialog()
     dialog = m.profileOwnSignInDialog
     dialog.unobserveField("buttonSelected")
     dialog.unobserveField("wasClosed")
-    if m.profileOwnSignInDialogKind = "username" or m.profileOwnSignInDialogKind = "password"
+    if m.profileOwnSignInDialogKind = "username" or m.profileOwnSignInDialogKind = "password" or m.profileOwnSignInDialogKind = "api-key"
         dialog.text = ""
         dialog.textEditBox.text = ""
     end if
@@ -781,7 +812,10 @@ sub retireUserProfileOwnSignIn()
     end if
     closeProfileOwnSignInDialog()
     closeProfileOwnSignInTask()
-    if m.profileOwnSignInContext <> invalid then m.profileOwnSignInContext.password = ""
+    if m.profileOwnSignInContext <> invalid
+        m.profileOwnSignInContext.password = ""
+        m.profileOwnSignInContext.addKey = ""
+    end if
     m.profileOwnSignInContext = invalid
     m.profileOwnSignInNonce = ""
     if m.global <> invalid

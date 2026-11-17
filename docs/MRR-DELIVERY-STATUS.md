@@ -16,20 +16,38 @@ The final source-row version also passes
 `out/mrr-delivery-source-roster-onboarding-native.log`/`.json`: name/stamp/origin
 are retained and roster Undo creates no tombstone. Full automated verification
 passes in `out/mrr-delivery-final-verify.log` (380-file normal ZIP).
+API-key-only Add also passes the same real native flow in
+`out/mrr-delivery-api-key-onboarding-native.log`/`.json`; its username comes only
+from fresh own authentication, and the secure editor/Task context is scrubbed.
 
 The supplied accounts have empty movie/series catalogs; existing read-only
 inventory is `out/mrr-integrated-media-readiness.json`. Populated real-account
 VOD acceptance cannot be claimed from an empty library.
 
+The real DVR integration reached the populated library and on-demand player,
+but playback did not progress before the existing bounded deadline:
+`out/mrr-delivery-profile-dvr-event-fixed-native.log`/`.json`. Cleanup and exact
+restoration passed. One read-only HTTP-206 sample confirms the completed MKV
+contains MPEG-2 video and AC-3 stereo
+(`out/mrr-delivery-dvr-media-readiness.json`). This does not establish the sole
+buffering cause or successful picture/audio acceptance. A known Roku-compatible
+completed recording and populated VOD samples are needed; no server recording,
+transcoding configuration or account setting was changed to manufacture them.
+
 Actual named Android **and** Apple sender interoperability, the production
 listener entropy disposition, public Directions access/certification disposition,
 Dashboard OS-floor verification and explicit owner acceptance remain unverified.
+The read-only Dashboard attempt redirected to Roku sign-in; no authenticated
+portal access or setting change occurred. Runtime enforcement remains 14.6.
 The approved import-only PIN phase does not require inventing new salt creation
 or Device Admin onboarding. Normal shipping readiness gates remain off.
 
 Real App Data uploads and real server-user/settings mutations have **not** been
 authorized or performed. Synthetic native writer/admin evidence must not be
 described as real-server mutation acceptance.
+Actual peer roundtrips on the supplied accounts need narrowly authorized App Data
+test writes; login credentials alone are not that permission. Real admin
+mutations are not being added as an acceptance prerequisite.
 
 ## Native runner access
 
