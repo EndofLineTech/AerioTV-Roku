@@ -24,13 +24,25 @@ epic-complete claim. Beads remains the status register.
 | `mrr.8` PIN/Child | Imported Numbers/Directions hashes, native Numbers and existing-Child/adult-management main flows. Private native keyboard candidate verifies an existing Directions hash. | Directions voice reports false; public alternative, all-Directions access and certification remain unapproved. New salt creation stays disabled. |
 | `mrr.9` picker/management | Native picker/management, own switch, reorder, light/large presentation, startup beacons and OS 14.6 runtime guard. | Physical-remote acceptance and upstream public PIN/switch boundaries; Dashboard verification is not inferred. |
 | `mrr.10` local acceptance | Existing host/native storage/auth/PIN/Child/request-safety reports and current main-flow evidence. | Explicit owner acceptance and `mrr.19` public disposition; no planning-only closure. |
-| `mrr.11` integrated acceptance | Both actual accounts' Sync/media progression plus named unmodified Apple/Android encoder imports. | Initial VOD startup defect `unxg`, human picture/audio, physical-phone/listener entropy, authenticated Dashboard floor, public certification and owner acceptance remain distinct. |
+| `mrr.11` integrated acceptance | Both actual accounts' Sync/media progression plus named unmodified Apple/Android encoder imports. | Initial VOD startup defect `unxg`, human picture/audio, physical-phone integration, authenticated Dashboard floor, public certification and owner acceptance remain distinct. Entropy assurance is non-blocking under the owner disposition below. |
 | `mrr.18` bounded admin | Native synthetic gates/transport/actions/UI and active-own reload: `mrr-admin-final-actions-native`, `mrr-admin-ui-own-reload-native`. | Dependency on `mrr.6`, not an invented requirement to mutate real server users. |
 | `mrr.19` Directions disposition | Official current keyboard/certification references checked; private text entry feasibility and unchanged verifier demonstrated. | A documented option is not an approved/tested public fallback; actual voice/household qualification and explicit disposition remain open. |
 
 Native Directions details and preserved failed verdicts are in
 [PIN policy](PROFILE-PIN-POLICY.md). Earlier statements that baseline Sync is
 always off or that later-qualified main flows are unimplemented are historical.
+
+### Owner disposition: entropy assurance is non-blocking
+
+On November 17, after clarification that phone setup works in testing and no
+randomness failure or credential leak has been demonstrated, the owner explicitly
+directed: **“This isn't a blocker, move on.”** The undocumented cryptographic
+assurance of the device-key construction is a recorded non-blocking risk, not
+a prerequisite to further functional phone-setup or epic acceptance work.
+Additional entropy investigation was stopped (`AerioTV-Roku-z1zz`, closed
+without code changes). Earlier claims that this assurance alone blocks progress
+are superseded. This does not fabricate a vendor guarantee, change the installed
+entropy provider, or authorize signing/release execution.
 
 The final source-row version also passes
 `out/mrr-delivery-source-roster-onboarding-native.log`/`.json`: name/stamp/origin
@@ -91,7 +103,7 @@ an unrelated switcher screenshot; focused red/green and the complete rerun pass.
 This is player progression evidence, not human picture/audio acceptance or VOD
 acceptance. No recording, transcoding or account setting was changed.
 
-The production listener entropy disposition, public Directions access/certification disposition,
+The public Directions access/certification disposition,
 Dashboard OS-floor verification and explicit owner acceptance remain unverified.
 The read-only Dashboard attempt redirected to Roku sign-in; no authenticated
 portal access or setting change occurred. Runtime enforcement remains 14.6.
@@ -141,8 +153,9 @@ and checksum-verified portable JVM/Kotlin tools. Each generated an encrypted
 two-account protected-default payload; the actual Roku executed production
 `phoneSetupOpen`, import, own verification and onboarding. Each disposable
 registry was cleaned and the exact normal baseline restored. Private host-CSPRNG
-receiver material does **not** qualify production Roku entropy. Physical phone
-sender UI, discovery and production listener acceptance remain separate.
+receiver material does **not** qualify production Roku entropy. That assurance
+gap is non-blocking under the owner disposition above. Physical phone sender UI,
+discovery and production listener functional acceptance remain separate.
 Phone-import probes disable Scene scheduling/writing and internal Task PUT
 readiness, preventing fixture PINs from being uploaded to actual accounts.
 

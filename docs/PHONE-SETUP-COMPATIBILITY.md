@@ -1,5 +1,20 @@
 # Phone-assisted setup: wire-v1 compatibility
 
+## Current owner disposition — November 17, 2026
+
+The device-key pairing build works in testing; no randomness failure or
+credential leak has been demonstrated. Its cryptographic-source guarantee is
+undocumented, not disproved. After this distinction was explained, the owner
+explicitly directed: **“This isn't a blocker, move on.”**
+Record that assurance gap as non-blocking and continue functional work; do not
+require further vendor confirmation or repeat entropy experiments as a project
+prerequisite. Additional investigation `AerioTV-Roku-z1zz` was closed without
+code changes. Historical gate language below describes earlier decisions and
+unchanged code, not a current assurance-only stop-work requirement. No vendor
+guarantee, provider change, signing or release is inferred by this disposition.
+See [current delivery evidence](MRR-DELIVERY-STATUS.md) for later profile/import
+and named peer-encoder qualification superseding the original research slice.
+
 Research and implementation slice, 2026-10-28. Bead: `AerioTV-Roku-e3e.2`.
 This is not an enabled sign-in feature or a successful phone-to-Roku transfer.
 
