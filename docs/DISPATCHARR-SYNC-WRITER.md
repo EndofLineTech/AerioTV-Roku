@@ -1,5 +1,10 @@
 # Dispatcharr sync writer status
 
+The fresh-list storage-budget gate now honors smaller deployed limits before
+PUT, including remaining user quota and exact-key replacement credit. See
+[mapping and deployed capability evidence](DISPATCHARR-SYNC-MAPPING.md).
+Over-budget data stays pending and unsupported categories are never trimmed.
+
 The general writer (`AerioTV-Roku-e3e.6`) is **not active**. Profile switching
 still lacks outgoing sync flush/session settlement; do not enable public profile
 readiness based on the structural validation below.

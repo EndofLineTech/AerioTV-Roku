@@ -25,6 +25,8 @@ sub onPhoneProfileImportProbeTick()
         first.append(pin)
         second = {username: private.username, displayName: "Phone Other", isDefault: false, role: "user", credential: {apiKey: private["apiKey"]}}
         payload = {playlist: {id: "PHONE-IMPORT", type: "dispatcharr", name: "Phone Import", url: m.baseUrl, credential: {apiKey: m.apiKey}, vodEnabled: false, guideDays: 3}, profiles: [second, first], sync: {provider: "dispatcharr", enabled: true}}
+        m.phoneImportAddMode = private.addOnboarding = true
+        if m.phoneImportAddMode then payload.profiles = [first]
         checked = validatePhoneSetupPayload(payload)
         if m.phoneImportValidationLogged <> true
             m.phoneImportValidationLogged = true
@@ -51,6 +53,10 @@ sub onPhoneProfileImportProbeTick()
         onPhoneSetupChoice(baselineProbeEvent(m.phoneDialog, 1))
         m.pickerProbeBaselineStage = 2
     else if stage = 2
+        if m.phoneImportAddMode and m.profilePinDialog <> invalid
+            m.pickerProbeBaselineStage = 3
+            return
+        end if
         if m.profilePicker = invalid then return
         m.profilePicker.intent = {action: userProfilePickerChoice(m.profilePicker.model, 0), index: 0}
         m.pickerProbeBaselineStage = 3
@@ -69,7 +75,7 @@ sub onPhoneProfileImportProbeTick()
             choice = phoneSetupSyncOfferChoice(m.registry)
             print "[picker-launch] "; FormatJson({kind: "phone-onboarding-state", context: m.phoneProfileOnboarding <> invalid, dialog: m.phoneProfileOnboardingDialog <> invalid, phase: phase, role: currentUserSettingsRole(), enabled: choice.enabled, declined: choice.declined})
         end if
-        if m.phoneImportOnboardingValid <> true
+        if m.phoneImportOnboardingStarted <> true
             if m.phoneProfileOnboardingDialog = invalid or m.phoneProfileOnboarding = invalid then return
             if m.phoneProfileOnboarding.phase <> "offer" then return
             onPhoneProfileOnboardingChoice(baselineProbeEvent(m.phoneProfileOnboardingDialog, 1))
@@ -83,9 +89,20 @@ sub onPhoneProfileImportProbeTick()
             onAdultProfilePinSubmit(baselineProbeEvent(m.adultPinDialog, 0))
             if m.profileOwnSignInContext = invalid then return
             if m.profileOwnSignInContext.returnToPhoneOnboarding <> true then return
+            m.phoneImportOnboardingStarted = true
+            if m.phoneImportAddMode
+                private = ParseJson(ReadAsciiFile("pkg:/fixtures/phone-profile-verify.json"))
+                m.profileOwnSignInContext.username = private.username
+                m.profileOwnSignInContext.password = private.password
+                submitUserProfileOwnSignIn()
+                m.pickerProbeBaselineStage = 6
+                return
+            end if
             cancelUserProfileOwnSignIn()
             if m.phoneProfileOnboardingDialog = invalid or m.phoneProfileOnboarding.phase <> "who" then return
             m.phoneImportAddReturn = true
+        end if
+        if m.phoneImportOnboardingValid <> true
             choices = m.phoneProfileOnboardingChoices
             onPhoneProfileOnboardingChoice(baselineProbeEvent(m.phoneProfileOnboardingDialog, choices.count() - 1))
             choice = phoneSetupSyncOfferChoice(m.registry)
@@ -94,10 +111,12 @@ sub onPhoneProfileImportProbeTick()
         end if
         store = loadUserProfileStore(m.registry, "phone-import")
         valid = not store.readOnly = true and store.profiles.count() = 2 and m.selectedConnectionId = "phone-import"
+        if m.phoneImportAddMode then valid = not store.readOnly = true and store.profiles.count() = 1 and m.selectedConnectionId = "phone-import"
         own = false
         for each profile in store.profiles
             if lcase(profile.username) = lcase(m.phoneImportSecondUsername) then own = m.registry.read(userProfileKeyName("phone-import", profile.id)) = m.phoneImportSecondKey
         end for
+        if m.phoneImportAddMode then own = m.phoneImportAddUndo = true
         unchanged = m.registry.read(userProfileStoreKey("slot-a")) = m.phoneImportSourceProfiles and m.registry.read(connectionRegistryKey("slot-a")) = m.phoneImportSourceKey
         valid = valid and own and unchanged and m.phoneImportCovered and m.apiKey = m.phoneImportBaseKey and not m.registry.exists(userProfileImportKey("phone-import"))
         options = m.accountPreferences.vodEnabled = false and m.accountPreferences.guide.futureDays = 3 and m.phoneOptions = invalid and m.phoneCommittedId = ""
@@ -120,6 +139,24 @@ sub onPhoneProfileImportProbeTick()
         applySelectedConnection()
         if not showIncompletePhoneImportRecovery() then return
         m.pickerProbeBaselineStage = 5
+    else if stage = 6
+        if m.profileOwnSignInContext <> invalid or m.phoneProfileOnboardingDialog = invalid then return
+        if m.phoneProfileOnboarding.phase <> "who" or m.phoneProfileOnboarding.addedIds.count() <> 1 then return
+        addedId = m.phoneProfileOnboarding.addedIds[0]
+        store = loadUserProfileStore(m.registry, "phone-import")
+        if store.profiles.count() <> 2 or m.registry.read(userProfileKeyName("phone-import", addedId)) <> m.phoneImportSecondKey then return
+        undoIndex = -1
+        for i = 0 to m.phoneProfileOnboardingChoices.count() - 1
+            if m.phoneProfileOnboardingChoices[i].action = "undo" then undoIndex = i
+        end for
+        if undoIndex < 0 then return
+        onPhoneProfileOnboardingChoice(baselineProbeEvent(m.phoneProfileOnboardingDialog, undoIndex))
+        store = loadUserProfileStore(m.registry, "phone-import")
+        if store.profiles.count() <> 1 or m.registry.read(userProfileKeyName("phone-import", addedId)) <> "" then return
+        if store.removed.count() <> 1 or not store.pendingRoster then return
+        m.phoneImportAddUndo = true
+        m.phoneImportAddReturn = true
+        m.pickerProbeBaselineStage = 4
     else if stage = 5
         if m.phoneImportRecoveryDialog = invalid then return
         onIncompletePhoneImportRecovery(baselineProbeEvent(m.phoneImportRecoveryDialog, 0))

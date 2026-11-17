@@ -171,6 +171,14 @@ and `out/mrr-sync-phone-final-focused-host.log`. The corrected fixture was
 checked against the original two-argument handoff in an external temporary copy.
 This is not successful Add/Undo or Turn On qualification.
 
+`--phone-import-add` provides the remaining core Add/Undo acceptance flow:
+import one default, add the other approved account through its own sign-in,
+Undo the newly added profile, then continue/recover. Its first attempt
+(`out/mrr-phone-onboarding-add-undo-native.log`) stopped at the installed-app
+preflight with **No route to host**, before any installation or registry work.
+It is not a passing acceptance result; no network/device changes or retries
+were made. Builder tests pass; this native flow remains unverified.
+
 One native onboarding run lost device access during cleanup/restoration.
 The exact baseline was manually restored and verified; a read-only native scan
 found no `AerioPickerLaunchProbe-*` sections. Evidence is
