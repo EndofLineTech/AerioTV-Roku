@@ -204,7 +204,10 @@ sub finishScheduledProfileSync(result as dynamic)
     m.profileSyncSchedule = dispatcharrSyncScheduleDirty(m.profileSyncSchedule, m.activeUserScope, requestGateCredentialHash(currentRoot), saved.store.pendingRoster = true, profileSyncSchedulingNow(), false)
     m.userProfileStore = saved.store
     if type(saved.preferenceStore) = "roAssociativeArray" then m.preferenceStore = saved.preferenceStore
-    if type(saved.suggestions) = "roArray" then m.profileRosterSuggestions = saved.suggestions
+    if type(saved.suggestions) = "roArray"
+        m.profileRosterSuggestions = saved.suggestions
+        m.profileRosterSuggestionScope = m.activeUserScope
+    end if
     if type(saved.removed) = "roArray" and type(m.profileSessionKeys) = "roAssociativeArray"
         for each removed in saved.removed
             m.profileSessionKeys.delete(preferenceScope(context.connection.url + "|" + context.connection.id + "|" + removed.id))

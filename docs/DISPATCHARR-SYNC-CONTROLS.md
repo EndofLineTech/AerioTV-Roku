@@ -5,6 +5,32 @@ These controls are implemented and developer-tested, **not publicly enabled**.
 `m.profileSyncWriterReady` remain false in shipping source. The entire profiles
 epic and general category sync are unfinished.
 
+The approved delivery phase is **profiles-only**. Unsupported categories and
+settings lanes are preserved, not additional adapters required for this phase.
+The historical remaining-work paragraph below is not a new scope requirement.
+
+## Explicit roster suggestions
+
+Follow-on Add source offers **From your other devices** when a verified read in
+the current own session supplied missing users. Profiles Off, an address-held
+holder, or a retired session suppresses the offer. Lists are bounded to five
+profiles per page. Choosing one only prefills its username in the existing
+own-credential form: it does not save a holder, copy credentials or grant access.
+The normal fresh own-account authentication/protection read still applies the
+current roster metadata and PIN before committing Add. Existing roster-add Undo
+semantics remain unchanged. This also works through onboarding's Add action.
+The Add lifecycle also retains the current source session's received row for
+manual username matches. An absent target envelope cannot turn that roster user
+into a newer unprotected plain Add. A newer target row wins; unverifiable PIN
+material or a mismatched live user ID refuses. The source stamp is retained
+(zero becomes now), and roster Undo remains local without a tombstone.
+
+Focused actual-controller evidence:
+`out/mrr-delivery-roster-offer-red.log` and
+`out/mrr-delivery-roster-offer-green.log`.
+The focused source-row regression is
+`out/mrr-delivery-source-roster-add-{red,green}.log`.
+
 ## Delivered boundary
 
 - The existing selected Connection manager offers **Dispatcharr Sync (this Roku)**

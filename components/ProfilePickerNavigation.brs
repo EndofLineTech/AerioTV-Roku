@@ -561,6 +561,7 @@ sub onStartupProfileResult(event as object)
         end if
         m.profileStartupSelectionContext = published.context
         context = published.context
+        context.rosterSuggestions = published.suggestions
         if not startupProfileTargetAllowed(context)
             failStartupProfileSelection("This profile requires protected Child access.")
             return

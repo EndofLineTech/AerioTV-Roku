@@ -62,6 +62,10 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertIn('if profile.userId = 42\n', fixture)
         self.assertIn('m.profileOwnSignInContext.password = "example-password-b"', fixture)
         self.assertNotIn('"synthetic-a"', fixture)
+        media = probe.real_baseline_fixture((root / 'tests/native/ProfileMediaAcceptanceFixture.brs').read_text(), accounts)
+        self.assertIn('m.activeUserScope.accountId = "42"', media)
+        self.assertIn('if profile.userId = 42\n', media)
+        self.assertNotIn('"synthetic-password"', media)
 
     def test_baseline_builder_changes_only_manifest_and_writes_checksum(self):
         spec = importlib.util.spec_from_file_location('baseline_builder', Path(__file__).with_name('build-profiles-baseline.py'))

@@ -414,6 +414,8 @@ sub resetConnectionRuntime()
     m.childConnectionLoading = false
     m.profileRosterContext = invalid
     m.profileRosterGrant = invalid
+    m.profileRosterSuggestions = []
+    m.profileRosterSuggestionScope = invalid
     closeUnavailableChildDialog()
     m.setupEditContext = invalid
     m.setupEditNonce = ""

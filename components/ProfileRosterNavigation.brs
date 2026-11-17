@@ -60,6 +60,7 @@ sub finishAuthenticatedRosterRead(read as object)
     m.profileRosterContext = invalid
     m.busy = false
     m.profileRosterSuggestions = []
+    m.profileRosterSuggestionScope = invalid
     if not profileRosterReadAuthorityCurrent(context, read)
         coverProfileRosterAuthorityChange()
         return
@@ -77,6 +78,7 @@ sub finishAuthenticatedRosterRead(read as object)
         if saved.applied
             m.userProfileStore = saved.store
             m.profileRosterSuggestions = saved.suggestions
+            m.profileRosterSuggestionScope = m.activeUserScope
             m.preferenceStore = loadPreferenceStore(m.registry, true)
         end if
     end if

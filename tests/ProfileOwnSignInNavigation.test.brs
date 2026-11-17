@@ -19,6 +19,11 @@ sub main()
     m.apiKey = "source-key"
     context = m.profileOwnSignInContext
     context.adding = true
+    m.profilePreferenceDecoder = function(raw as string) as dynamic
+        return ParseJson(raw)
+    end function
+    m.registry.values["settingsV1"] = FormatJson({schema: 1, device: {dispatcharrSyncEnabled: true, dispatcharrSyncProfiles: false}, accounts: {}})
+    check(profileOwnSignInContextCurrent(), "explicit Sync consent does not invalidate the owned Add credential form")
     context.username = "Cara"
     context.password = "synthetic-password"
     context.addPhase = "read"
@@ -28,6 +33,25 @@ sub main()
     onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, 2))
     check(oldProof.apiKey = "" and context.addVerified = invalid and context.addRead = invalid and context.addPhase = "", "fresh Add submission scrubs the prior proof and exits the old protection-read phase")
     check(m.profileOwnSignInTask <> invalid and m.profileOwnSignInTask.expectedUsername = "Cara", "Add retry creates a fresh own-password Task instead of treating its result as an old read")
+    ownFormFixture()
+    check(beginUserProfileOwnSignIn(m.fixtureTarget), "roster suggestion fixture opens an owned credential form")
+    m.profileBaselineReady = true
+    m.apiKey = "source-key"
+    context = m.profileOwnSignInContext
+    context.adding = true
+    m.profileRosterSuggestionScope = m.activeUserScope
+    m.profileRosterSuggestions = [{userId: 9, username: "Cara", displayName: "Other device"}, {userId: 8, username: "Bob", displayName: "Already here"}]
+    showProfileOwnSignInForm()
+    check(m.profileOwnSignInSuggestionIndex >= 4, "Add offers current own-session roster suggestions")
+    beforeSuggestion = FormatJson(m.registry.values)
+    onProfileOwnSignInChoice(ownFormEvent(m.profileOwnSignInDialog, m.profileOwnSignInSuggestionIndex))
+    check(m.profileOwnSignInDialog.title = "From your other devices" and m.profileOwnSignInSuggestions.count() = 1, "suggestion list excludes accounts already on this TV")
+    onProfileOwnSignInSuggestionChoice(ownFormEvent(m.profileOwnSignInDialog, 0))
+    check(context.username = "Cara" and context.password = "" and m.profileOwnSignInTask = invalid and FormatJson(m.registry.values) = beforeSuggestion, "explicit suggestion only prefills own sign-in; no credential, metadata or access is copied")
+    m.profileRosterSuggestionScope = invalid
+    showProfileOwnSignInForm()
+    check(m.profileOwnSignInSuggestionIndex = -1, "retired source-session suggestions are not exposed")
+    cancelUserProfileOwnSignIn()
     startupOwnFormFixture()
     m.fixtureTarget = m.userProfileStore.active
     check(beginUserProfileOwnSignIn(m.fixtureTarget, false, false, true), "restored default uses explicit no-actor startup own recovery")

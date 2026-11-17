@@ -98,9 +98,9 @@ sub onProfileBaselineChoice(event as object)
         openProfileBaselineMenu()
         return
     end if
-    settings = loadDispatcharrSyncSettings(m.registry)
-    if not settings.ok or settings.enabled then showNotice("This baseline supports local profiles while Dispatcharr Sync is off.") : return
     if choice.action = "add" then beginProfileBaselineAdd() : return
+    settings = loadDispatcharrSyncSettings(m.registry)
+    if not settings.ok or settings.enabled then showNotice("This baseline supports local switching while Dispatcharr Sync is off.") : return
     if choice.action = "switch"
         if choice.id = current.store.active then return
         if not beginUserProfileSwitch(choice.id)
@@ -139,6 +139,17 @@ sub beginProfileBaselineAdd(admitted = false as boolean, returnToSwitcher = fals
     m.profileOwnSignInContext = {adding: true, nonce: nonce, connection: context.connection, store: context.store, scope: context.scope, target: target, page: m.page, guideActive: m.guide.active, covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, unlock: m.profileUnlockGrant, username: "", password: "", addGrant: m.profileManagementGrant, holds: {}}
     m.profileOwnSignInContext.returnToSwitcher = returnToSwitcher
     m.profileOwnSignInContext.returnToPhoneOnboarding = returnToPhoneOnboarding
+    m.profileOwnSignInContext.addRosterRows = []
+    m.profileOwnSignInContext.addRosterScope = context.scope
+    if userProfileSameSession(m.profileRosterSuggestionScope, context.scope) and settings.profiles
+        if type(m.profileRosterSuggestions) = "roArray"
+            for each row in m.profileRosterSuggestions
+                if type(row) = "roAssociativeArray"
+                    if type(row.raw) = "roArray" then m.profileOwnSignInContext.addRosterRows.push(row.raw)
+                end if
+            end for
+        end if
+    end if
     if m.requestGate <> invalid then m.profileOwnSignInContext.holds = requestGateCopy(m.requestGate.snapshot.keys)
     m.global.profileownsigninpending = true
     m.global.profileownsigninnonce = nonce

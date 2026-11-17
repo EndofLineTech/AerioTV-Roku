@@ -172,7 +172,7 @@ function profileOwnSignInContextCurrent() as boolean
     if context.adding = true
         if m.profileBaselineReady <> true or not requestGateAccessAllowed(context.connection.url, textValue(m.apiKey)) then return false
         settings = loadDispatcharrSyncSettings(m.registry)
-        if not settings.ok or settings.enabled then return false
+        if not settings.ok then return false
     end if
     if context.startupRecovery = true
         if m.profilePickerReady <> true or m.profilePicker = invalid or m.profilePickerContext = invalid then return false
@@ -244,8 +244,13 @@ sub showProfileOwnSignInForm(message = "" as string)
     mask = ""
     if context.password <> "" then mask = "********"
     buttons = ["Username: " + context.username, "Password: " + mask, "Sign In", "Cancel"]
+    m.profileOwnSignInSuggestionIndex = -1
     if context.adding = true and m.profileBaselineReady = true
         if profileServerAdminHint() then buttons.push("Add from Dispatcharr")
+        if profileOwnSignInSuggestions().count() > 0
+            m.profileOwnSignInSuggestionIndex = buttons.count()
+            buttons.push("From your other devices")
+        end if
     end if
     dialog.buttons = buttons
     if m.profileOwnSignInTask <> invalid or m.profileOwnSignInHold <> invalid then dialog.buttons = ["Cancel"]
@@ -277,6 +282,7 @@ sub onProfileOwnSignInChoice(event as object)
     if not profileOwnSignInEventCurrent(event) then return
     index = event.getData()
     if m.profileOwnSignInTask <> invalid or m.profileOwnSignInHold <> invalid then cancelUserProfileOwnSignIn() : return
+    if index = m.profileOwnSignInSuggestionIndex and index >= 4 then showProfileOwnSignInSuggestions() : return
     if index = 3 then cancelUserProfileOwnSignIn() : return
     context = m.profileOwnSignInContext
     if index = 4 and context.adding = true then beginProfileServerAdmin() : return
@@ -344,6 +350,92 @@ sub onProfileOwnSignInChoice(event as object)
     end if
 end sub
 
+' These are hints from a verified read in this exact own session, not authority
+' to add a holder. The existing Add Task must still authenticate and freshly
+' read that target's protection before any key/metadata transaction.
+function profileOwnSignInSuggestions() as object
+    result = []
+    context = m.profileOwnSignInContext
+    if type(context) <> "roAssociativeArray" then return result
+    if context.adding <> true or m.profileBaselineReady <> true then return result
+    if not userProfileSameSession(m.profileRosterSuggestionScope, m.activeUserScope) then return result
+    settings = loadDispatcharrSyncSettings(m.registry)
+    if not settings.ok or not settings.profiles then return result
+    for each profile in context.store.profiles
+        if profile.addressHeld then return result
+    end for
+    if type(m.profileRosterSuggestions) <> "roArray" then return result
+    known = {}
+    for each profile in context.store.profiles
+        known[lcase(profile.username)] = true
+    end for
+    for each row in m.profileRosterSuggestions
+        if type(row) = "roAssociativeArray"
+            username = textValue(row.username).trim()
+            if username <> "" and not known.doesExist(lcase(username))
+                known[lcase(username)] = true
+                result.push({username: username, displayName: textValue(row.displayName)})
+            end if
+        end if
+        if result.count() >= 25 then exit for
+    end for
+    return result
+end function
+
+sub showProfileOwnSignInSuggestions(offset = 0 as integer)
+    if not profileOwnSignInContextCurrent() then return
+    rows = profileOwnSignInSuggestions()
+    if rows.count() = 0 then showProfileOwnSignInForm() : return
+    closeProfileOwnSignInDialog()
+    m.profileOwnSignInSuggestions = rows
+    m.profileOwnSignInSuggestionChoices = []
+    last = offset + 5
+    if last > rows.count() then last = rows.count()
+    buttons = []
+    for i = offset to last - 1
+        row = rows[i]
+        label = row.displayName
+        if label = "" then label = row.username
+        buttons.push(label + " — " + row.username)
+        m.profileOwnSignInSuggestionChoices.push({action: "add", username: row.username})
+    end for
+    if last < rows.count()
+        buttons.push("More")
+        m.profileOwnSignInSuggestionChoices.push({action: "more", offset: last})
+    end if
+    buttons.push("Back")
+    m.profileOwnSignInSuggestionChoices.push({action: "back"})
+    dialog = newProfileOwnSignInDialog("form")
+    dialog.title = "From your other devices"
+    dialog.message = "Sign in once to add a profile here. Its current name, avatar, role and PIN are checked before saving. Skipping changes nothing on the other device."
+    dialog.buttons = buttons
+    dialog.observeField("buttonSelected", "onProfileOwnSignInSuggestionChoice")
+    dialog.observeField("wasClosed", "onProfileOwnSignInClosed")
+    m.profileOwnSignInDialog = dialog
+    m.profileOwnSignInDialogKind = "suggestions"
+    m.top.dialog = dialog
+    dialog.setFocus(true)
+end sub
+
+sub onProfileOwnSignInSuggestionChoice(event as object)
+    if not profileOwnSignInEventCurrent(event) then return
+    index = event.getData()
+    if not userProfileInteger(index) then return
+    if index < 0 or index >= m.profileOwnSignInSuggestionChoices.count() then return
+    choice = m.profileOwnSignInSuggestionChoices[index]
+    if choice.action = "more" then showProfileOwnSignInSuggestions(choice.offset) : return
+    if choice.action = "add"
+        found = false
+        for each row in profileOwnSignInSuggestions()
+            if row.username = choice.username then found = true
+        end for
+        if not found then showProfileOwnSignInForm() : return
+        m.profileOwnSignInContext.username = choice.username
+        m.profileOwnSignInContext.password = ""
+    end if
+    showProfileOwnSignInForm()
+end sub
+
 sub onProfileOwnSignInEdited(event as object)
     if not profileOwnSignInEventCurrent(event) then return
     kind = m.profileOwnSignInDialogKind
@@ -372,7 +464,10 @@ sub onProfileOwnSignInResult(event as object)
             showProfileOwnSignInForm("Could not check this profile's protection. Please try again.")
             return
         end if
-        planned = userProfileAddPlan(context.connection, context.store, context.target.id, context.username, context.addVerified, result, CreateObject("roDateTime").asSeconds())
+        sourceRows = invalid
+        settings = loadDispatcharrSyncSettings(m.registry)
+        if settings.ok and settings.profiles then sourceRows = context.addRosterRows
+        planned = userProfileAddPlan(context.connection, context.store, context.target.id, context.username, context.addVerified, result, CreateObject("roDateTime").asSeconds(), sourceRows)
         if not planned.ok
             context.addVerified.apiKey = ""
             context.addPhase = ""
@@ -626,7 +721,7 @@ sub closeProfileOwnSignInDialog()
     dialog = m.profileOwnSignInDialog
     dialog.unobserveField("buttonSelected")
     dialog.unobserveField("wasClosed")
-    if m.profileOwnSignInDialogKind <> "form"
+    if m.profileOwnSignInDialogKind = "username" or m.profileOwnSignInDialogKind = "password"
         dialog.text = ""
         dialog.textEditBox.text = ""
     end if

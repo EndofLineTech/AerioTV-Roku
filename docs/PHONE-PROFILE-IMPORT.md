@@ -204,6 +204,32 @@ requalification pass in `out/mrr-sync-enabled-add-full-verify.log` (380-file ZIP
 No readiness flag or persistent installed app was changed. Actual Turn On →
 Add/Undo native acceptance remains unverified while device access is unavailable.
 
+Delivery follow-up found and removed a second obsolete Sync-Off restriction in
+the own-form ownership check, not just Add admission. The actual-controller
+regression fails before the fix and passes after it:
+`out/mrr-delivery-sync-add-context-{red,green}.log`.
+The native Add journey now chooses **Turn On** explicitly and uses the real owned
+form Sign In callback. Only private controls are enabled for this fixture;
+writer/scheduler remain off, so approved real accounts cannot receive App Data
+uploads. Its final native result must be recorded separately before acceptance.
+
+That same main journey now passes in
+`out/mrr-delivery-onboarding-qualified-native.log`/`.json`: protected slot-first
+import, explicit Turn On, the actual suggested-name UI, real own-account sign-in/
+protection read/Add, Undo, Continue and recovery. All result flags, isolated
+cleanup and exact baseline restoration are true. The suggestion is a private
+read hint, not a named phone sender. The fixture enables only private controls,
+not the writer/scheduler; this proves consent/Add integration without real
+App Data mutation. It does not establish listener crypto, actual Android/Apple
+sender interoperability or owner/public acceptance.
+
+The completed source-row Add/Undo integration is additionally qualified in
+`out/mrr-delivery-source-roster-onboarding-native.log`/`.json`: the received
+display name/stamp and `roster` origin survive real own-account Add even without
+a target envelope, and Undo removes only the local addition/key with **zero
+tombstones**. All final flags, cleanup and exact restoration pass. Full regression:
+`out/mrr-delivery-final-verify.log` (380-file verified normal ZIP).
+
 One native onboarding run lost device access during cleanup/restoration.
 The exact baseline was manually restored and verified; a read-only native scan
 found no `AerioPickerLaunchProbe-*` sections. Evidence is

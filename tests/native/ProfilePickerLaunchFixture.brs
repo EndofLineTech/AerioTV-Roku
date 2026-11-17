@@ -70,10 +70,10 @@ sub seedProfilePickerLaunchProbe(base as string, mode as string)
     m.pickerProbeClock.control = "start"
 end sub
 
-function baselineProbeEvent(node as object, choice as integer) as object
+function baselineProbeEvent(node as object, choice as dynamic) as object
     return {node: node, choice: choice, getRoSGNode: function() as object
         return m.node
-    end function, getData: function() as integer
+    end function, getData: function() as dynamic
         return m.choice
     end function}
 end function

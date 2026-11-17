@@ -7,7 +7,7 @@ function userProfileAddSyncAvailable(settings as object, scheduledTask as dynami
     return scheduledTask = invalid and outgoingTask = invalid
 end function
 
-function userProfileAddPlan(connection as object, previous as object, id as string, username as string, verified as object, read as object, now as integer) as object
+function userProfileAddPlan(connection as object, previous as object, id as string, username as string, verified as object, read as object, now as integer, sourceRows = invalid as dynamic) as object
     denied = {ok: false, reason: "Could not verify this profile."}
     if connection.provider <> "dispatcharr" or now <= 0 or userProfileLocalId(id) = "" then return denied
     store = normalizeUserProfileStore(previous, connection.id)
@@ -39,6 +39,21 @@ function userProfileAddPlan(connection as object, previous as object, id as stri
         if lcase(removed[0]) = lcase(candidate.username) then return {ok: false, reason: "Restore this recently removed profile from your other device first."}
     end for
     roster = false
+    rosterRow = invalid
+    if type(sourceRows) = "roArray"
+        for each raw in sourceRows
+            row = dispatcharrSyncRosterRow(raw)
+            if row = invalid then return denied
+            if lcase(row.username) = lcase(candidate.username)
+                if row.userId <> candidate.userId then return denied
+                if rosterRow = invalid
+                    rosterRow = row
+                else if row.updatedAt > rosterRow.updatedAt
+                    rosterRow = row
+                end if
+            end if
+        end for
+    end if
     if read.state = "ready"
         if read.profilesState <> "ready" and read.profilesState <> "absent" then return denied
         if read.profilesState = "ready"
@@ -57,14 +72,26 @@ function userProfileAddPlan(connection as object, previous as object, id as stri
             end for
             for each row in decoded.rows
                 if lcase(row.username) = lcase(candidate.username)
-                    if row.userId <> candidate.userId or roster then return denied
-                    candidate = dispatcharrSyncMergeProfile(candidate, row, now)
-                    roster = true
+                    if row.userId <> candidate.userId then return denied
+                    if rosterRow = invalid
+                        rosterRow = row
+                    else if row.updatedAt > rosterRow.updatedAt
+                        rosterRow = row
+                    end if
                 end if
             end for
         end if
     else if read.state <> "missing"
         return {ok: false, reason: "Update this account's profile data on your other device first."}
+    end if
+    if rosterRow <> invalid
+        if rosterRow.pinAction = "keep" then return denied
+        ' A new holder has no competing local metadata. Apply the complete row,
+        ' including a zero-stamp PIN, rather than turning it into a plain Add.
+        candidate = setCanonicalPreference(candidate, "updatedAt", -1)
+        candidate = dispatcharrSyncMergeProfile(candidate, rosterRow, now)
+        if candidate.updatedAt = 0 then candidate = setCanonicalPreference(candidate, "updatedAt", now)
+        roster = true
     end if
     if candidate.role = "child" then return {ok: false, reason: "Adding Child profiles is not enabled in this baseline."}
     for each profile in store.profiles
@@ -105,7 +132,16 @@ function commitUserProfileAdd(registry as object, context as object, verified as
     admin = userProfileLoadDeviceAdminPin(registry, entry.id)
     if not admin.ok then return denied
     if not userProfileManagementGrantMatches(context.store, admin.record, context.addGrant, managementNonce, true) then return denied
-    planned = userProfileAddPlan(entry, context.store, context.target.id, context.username, verified, read, now)
+    sourceRows = invalid
+    if type(context.addRosterRows) = "roArray"
+        if context.addRosterRows.count() > 0
+            if not userProfileSameSession(context.addRosterScope, activeScope) then return denied
+            settings = loadDispatcharrSyncSettings(registry)
+            if not settings.ok then return denied
+            if settings.profiles then sourceRows = context.addRosterRows
+        end if
+    end if
+    planned = userProfileAddPlan(entry, context.store, context.target.id, context.username, verified, read, now, sourceRows)
     if not planned.ok then return planned
     keys = {}
     keys[planned.target.id] = verified.apiKey

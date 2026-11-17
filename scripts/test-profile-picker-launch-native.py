@@ -63,6 +63,7 @@ def real_baseline_fixture(fixture, accounts):
         fixture = fixture.replace(f'connectionPreferenceIdentity(connection, "{old}")', f'connectionPreferenceIdentity(connection, "{user["id"]}")')
     fixture = fixture.replace('accountId: "7"', f'accountId: "{first["id"]}"')
     fixture = fixture.replace('m.activeUserScope.accountId <> "8"', f'm.activeUserScope.accountId <> "{second["id"]}"')
+    fixture = fixture.replace('m.activeUserScope.accountId = "8"', f'm.activeUserScope.accountId = "{second["id"]}"')
     fixture = fixture.replace('profile.userId = 8 then m.pickerProbeAdded', f'profile.userId = {second["id"]} then m.pickerProbeAdded')
     fixture = fixture.replace('if profile.userId = 8\n', f'if profile.userId = {second["id"]}\n')
     fixture = fixture.replace('"synthetic-a"', json.dumps(first["api_key"]))
@@ -70,10 +71,10 @@ def real_baseline_fixture(fixture, accounts):
     return fixture.replace('"synthetic-password"', json.dumps(accounts[1]["password"]))
 
 
-def build(path, normal, section, base, mode="plain", baseline_accounts=None, admin_ui=False, phone_verify=False, phone_import=False, phone_import_add=False):
-    if sum([admin_ui, phone_verify, phone_import]) > 1:
+def build(path, normal, section, base, mode="plain", baseline_accounts=None, admin_ui=False, phone_verify=False, phone_import=False, phone_import_add=False, profile_media=False):
+    if sum([admin_ui, phone_verify, phone_import, profile_media]) > 1:
         raise ValueError("Choose one focused native flow")
-    if (phone_verify or phone_import) and not baseline_accounts:
+    if (phone_verify or phone_import or profile_media) and not baseline_accounts:
         raise ValueError("Phone verification needs private authorized test accounts")
     with zipfile.ZipFile(normal) as original, zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
@@ -122,6 +123,9 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
                 if phone_import:
                     fixture = fixture.replace('sub onProfileBaselineProbeTick()\n', 'sub onProfileBaselineProbeTick()\n    onPhoneProfileImportProbeTick()\n    return\n', 1)
                     fixture += "\n" + (ROOT / "tests/native/PhoneSetupProfileImportFixture.brs").read_text()
+                if profile_media:
+                    fixture = fixture.replace('sub onProfileBaselineProbeTick()\n', 'sub onProfileBaselineProbeTick()\n    onProfileMediaAcceptanceTick()\n    return\n', 1)
+                    fixture += "\n" + (ROOT / "tests/native/ProfileMediaAcceptanceFixture.brs").read_text()
                 if baseline_accounts:
                     fixture = real_baseline_fixture(fixture, baseline_accounts)
                 body = (source + "\n" + fixture).encode()
@@ -189,10 +193,21 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
             elif name == "components/GuideView.brs":
                 body += b'\nfunction profilePickerProbeLineup() as string\n    if type(m.channels) <> "roArray" then return ""\n    if m.channels.count() = 0 then return ""\n    return m.channels[0].id\nend function\n'
                 body += b'\nfunction profilePickerProbeRole() as string\n    return m.userRole\nend function\n'
+            elif name == "components/DvrView.xml" and profile_media:
+                body = body.replace(b"</interface>", b'<function name="profileMediaAcceptanceRow" /></interface>', 1)
+            elif name == "components/DvrView.brs" and profile_media:
+                body += b'''
+function profileMediaAcceptanceRow() as object
+    for each row in m.loaded
+        if row.status = "completed" and row.fileReady then return {loaded: true, ready: true, id: row.id}
+    end for
+    return {loaded: m.task = invalid, ready: false}
+end function
+'''
             package.writestr(name, body)
         if phone_verify or phone_import:
             second = baseline_accounts[1]
-            package.writestr("fixtures/phone-profile-verify.json", json.dumps({"username": second["user"]["username"], "apiKey": second["user"]["api_key"], "password": second["password"], "addOnboarding": phone_import_add}))
+            package.writestr("fixtures/phone-profile-verify.json", json.dumps({"userId": second["user"]["id"], "username": second["user"]["username"], "apiKey": second["user"]["api_key"], "password": second["password"], "addOnboarding": phone_import_add}))
 
 
 def main():
@@ -204,15 +219,16 @@ def main():
     parser.add_argument("--phone-verify", action="store_true", help="Read-only native phone-profile credential service; never imports or writes server data")
     parser.add_argument("--phone-import", action="store_true", help="Private native receiver-controller import; isolated registry and read-only server access")
     parser.add_argument("--phone-import-add", action="store_true", help="Phone import with one default, then own-credential onboarding Add and Undo")
+    parser.add_argument("--profile-media", action="store_true", help="Read-only completed DVR playback before/after own-account profile switching")
     parser.add_argument("--dispatcharr-credentials", type=Path, help="Private JSON: baseUrl and two accounts with username/password; implies baseline, read-only server testing")
     parser.add_argument("--mode", choices=["plain", "pin", "import-pin", "back", "reject", "identity", "cold-link", "warm-link", "warm-pin-link", "warm-auth-link", "warm-import-pin-link", "warm-load-link", "own-keyless", "own-pin", "own-held", "own-cancel", "own-link", "own-pin-link", "own-auth-link", "own-default", "own-default-pin", "own-wrong", "own-recreated", "own-memory", "own-keyboard", "child-select", "child-select-pin", "child-select-reject", "child-select-link", "reorder"], default="plain")
     args = parser.parse_args()
     if args.phone_import_add:
         args.phone_import = True
     baseline_accounts = None
-    if (args.admin_ui or args.phone_verify or args.phone_import) and not args.dispatcharr_credentials:
+    if (args.admin_ui or args.phone_verify or args.phone_import or args.profile_media) and not args.dispatcharr_credentials:
         parser.error("Focused account flows require --dispatcharr-credentials")
-    if sum([args.admin_ui, args.phone_verify, args.phone_import]) > 1:
+    if sum([args.admin_ui, args.phone_verify, args.phone_import, args.profile_media]) > 1:
         parser.error("Choose one focused native flow")
     real_base = None
     if args.dispatcharr_credentials:
@@ -371,7 +387,7 @@ def main():
     package_dir = Path(private_package.name) if private_package else ROOT / "out"
     archive = package_dir / "profile-picker-launch-probe.zip"
     cleaner = package_dir / "profile-picker-launch-cleanup.zip"
-    build(archive, ROOT / "out/aeriotv-roku.zip", section, real_base or f"http://{local}:{server.server_port}", "baseline" if args.baseline else args.mode, baseline_accounts, admin_ui=args.admin_ui, phone_verify=args.phone_verify, phone_import=args.phone_import, phone_import_add=args.phone_import_add)
+    build(archive, ROOT / "out/aeriotv-roku.zip", section, real_base or f"http://{local}:{server.server_port}", "baseline" if args.baseline else args.mode, baseline_accounts, admin_ui=args.admin_ui, phone_verify=args.phone_verify, phone_import=args.phone_import, phone_import_add=args.phone_import_add, profile_media=args.profile_media)
     modules["recovery"].cleanup_package(cleaner, section)
     report = {"passed": False, "mode": args.mode, "events": [], "keys": [], "restore_sha256": hashlib.sha256(restore.read_bytes()).hexdigest(), "probe_sha256": hashlib.sha256(archive.read_bytes()).hexdigest()}
     report["private_registry_section"] = section

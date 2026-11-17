@@ -3,6 +3,7 @@ sub main()
     m.profileOwnSignInSettingsDecoder = function(raw as string) as dynamic
         return ParseJson(raw)
     end function
+    m.profilePreferenceDecoder = m.profileOwnSignInSettingsDecoder
     a = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000001", {id: 7, username: "Alice", user_level: 1}, 1)
     b = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Bob", user_level: 1}, 1)
     b.isDefault = false
@@ -56,6 +57,9 @@ sub main()
     importedRead.data = {categories: {profiles: {data: {rows: [[9, "Cara", "Imported Cara", "numbers", string(64, "a"), string(32, "b"), "user", 200, {}, 0]], removed: []}}}}
     importedAdd = userProfileAddPlan(entry, store, newId, "Cara", addedProof, importedRead, 300)
     check(importedAdd.ok and importedAdd.target.pinType = "numbers" and importedAdd.target.updatedAt = 200 and importedAdd.target.addOrigin = "roster", "Add reads and inherits existing protection before stamping a newer unprotected row")
+    sourceRows = importedRead.data.categories.profiles.data.rows
+    sourceAdd = userProfileAddPlan(entry, store, newId, "Cara", addedProof, addedRead, 300, sourceRows)
+    check(sourceAdd.ok and sourceAdd.target.pinType = "numbers" and sourceAdd.target.displayName = "Imported Cara" and sourceAdd.target.updatedAt = 200 and sourceAdd.target.addOrigin = "roster", "suggested or manual Add retains the source roster row even when the new account has no own envelope")
     wrongAdd = copyJson(addedProof)
     wrongAdd.verifiedBaseUrl = "https://foreign.test"
     check(not userProfileAddPlan(entry, store, newId, "Cara", wrongAdd, addedRead, 300).ok, "Add refuses foreign-address proof")
@@ -64,6 +68,8 @@ sub main()
     addNonce = "00000000-0000-4000-8000-000000000094"
     managementNonce = "00000000-0000-4000-8000-000000000095"
     addContext = {connection: entry, store: store, target: {id: newId}, username: "Cara", scope: sourceScope, nonce: addNonce, addGrant: {slot: entry.id, active: a.id, nonce: managementNonce, purpose: "manage-profiles", kind: "pin", id: b.id, pinType: b.pinType, pinHash: b.pinHash, pinSalt: b.pinSalt}}
+    addContext.addRosterRows = sourceRows
+    addContext.addRosterScope = sourceScope
     addRegistry = ownSignInRegistry(entry, store)
     addSettings = ParseJson(addRegistry.read("settingsV1"))
     addSettings.device = {dispatcharrSyncEnabled: true, dispatcharrSyncProfiles: false, futureChoice: true}
@@ -72,6 +78,7 @@ sub main()
     savedAdd = commitUserProfileAdd(addRegistry, addContext, addedProof, addedRead, 300, addNonce, sourceScope, managementNonce)
     check(savedAdd.ok and addRegistry.read(userProfileKeyName(entry.id, newId)) = "cara-own-key" and addRegistry.read("connKey_slot-a") = "default-key" and addRegistry.read("settingsV1") = oldAddSettings, "Sync-enabled Add saves only its own credential/record, preserving opt-outs and source private data")
     check(savedAdd.store.pendingRoster, "Sync-enabled Add retains dirty intent for the scheduler instead of acknowledging an unsent row")
+    check(savedAdd.target.pinType = "none" and savedAdd.target.addOrigin = "plain", "Profiles Off does not adopt source roster hints during Add")
     registry = ownSignInRegistry(entry, store)
     nonce = "00000000-0000-4000-8000-000000000090"
     startupResult = {ok: true, apiKey: "startup-default-key", verifiedBaseUrl: entry.url, verifiedUser: {id: 7, username: "ALICE", user_level: 1}}

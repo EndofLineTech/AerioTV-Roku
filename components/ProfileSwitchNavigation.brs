@@ -264,7 +264,12 @@ sub adoptCompletedUserProfileState(context as object, saved as object, verified 
     resetConnectionRuntime()
     if preservePhoneOnboarding then m.phoneProfileOnboarding = onboarding
     m.userProfileStore = saved.store
-    if type(context.rosterSuggestions) = "roArray" then m.profileRosterSuggestions = context.rosterSuggestions
+    m.profileRosterSuggestions = []
+    m.profileRosterSuggestionScope = invalid
+    if type(context.rosterSuggestions) = "roArray"
+        m.profileRosterSuggestions = context.rosterSuggestions
+        m.profileRosterSuggestionScope = saved.scope
+    end if
     m.preferenceStore = saved.preferenceStore
     m.accountPreferences = saved.preferences
     m.devicePreferences = saved.device

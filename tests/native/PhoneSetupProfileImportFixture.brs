@@ -78,11 +78,28 @@ sub onPhoneProfileImportProbeTick()
         if m.phoneImportOnboardingStarted <> true
             if m.phoneProfileOnboardingDialog = invalid or m.phoneProfileOnboarding = invalid then return
             if m.phoneProfileOnboarding.phase <> "offer" then return
-            onPhoneProfileOnboardingChoice(baselineProbeEvent(m.phoneProfileOnboardingDialog, 1))
+            choiceIndex = 1
+            if m.phoneImportAddMode
+                ' Exercise explicit Turn On before Add/Undo. Enable only the
+                ' private controls: writer/scheduler stay off, so this real
+                ' account journey cannot upload App Data.
+                m.profileSyncControlsReady = true
+                choiceIndex = 0
+            end if
+            onPhoneProfileOnboardingChoice(baselineProbeEvent(m.phoneProfileOnboardingDialog, choiceIndex))
+            choice = phoneSetupSyncOfferChoice(m.registry)
+            if m.phoneImportAddMode and (not choice.ok or not choice.enabled) then return
             if m.phoneProfileOnboardingDialog = invalid then return
             choices = m.phoneProfileOnboardingChoices
             if choices[choices.count() - 1].action <> "continue" then return
             if choices[choices.count() - 2].action <> "add" then return
+            if m.phoneImportAddMode
+                private = ParseJson(ReadAsciiFile("pkg:/fixtures/phone-profile-verify.json"))
+                m.phoneImportSuggestionStamp = CreateObject("roDateTime").asSeconds() - 100
+                raw = [private.userId, private.username, "From another device", "none", "", "", "user", m.phoneImportSuggestionStamp, {}, 0]
+                m.profileRosterSuggestionScope = m.activeUserScope
+                m.profileRosterSuggestions = [dispatcharrSyncRosterRow(raw)]
+            end if
             onPhoneProfileOnboardingChoice(baselineProbeEvent(m.phoneProfileOnboardingDialog, choices.count() - 2))
             if m.adultPinDialog = invalid or m.phoneProfileOnboardingDialog <> invalid then return
             m.adultPinDialog.textEditBox.text = "1234"
@@ -92,9 +109,16 @@ sub onPhoneProfileImportProbeTick()
             m.phoneImportOnboardingStarted = true
             if m.phoneImportAddMode
                 private = ParseJson(ReadAsciiFile("pkg:/fixtures/phone-profile-verify.json"))
-                m.profileOwnSignInContext.username = private.username
+                ' Private read hint exercises the actual explicit suggestion UI.
+                ' The real own sign-in/protection read still authorizes the Add.
+                showProfileOwnSignInForm()
+                if m.profileOwnSignInSuggestionIndex < 4 then return
+                onProfileOwnSignInChoice(baselineProbeEvent(m.profileOwnSignInDialog, m.profileOwnSignInSuggestionIndex))
+                if m.profileOwnSignInDialogKind <> "suggestions" then return
+                onProfileOwnSignInSuggestionChoice(baselineProbeEvent(m.profileOwnSignInDialog, 0))
+                if m.profileOwnSignInContext.username <> private.username then return
                 m.profileOwnSignInContext.password = private.password
-                submitUserProfileOwnSignIn()
+                onProfileOwnSignInChoice(baselineProbeEvent(m.profileOwnSignInDialog, 2))
                 m.pickerProbeBaselineStage = 6
                 return
             end if
@@ -106,7 +130,9 @@ sub onPhoneProfileImportProbeTick()
             choices = m.phoneProfileOnboardingChoices
             onPhoneProfileOnboardingChoice(baselineProbeEvent(m.phoneProfileOnboardingDialog, choices.count() - 1))
             choice = phoneSetupSyncOfferChoice(m.registry)
-            m.phoneImportOnboardingValid = choice.ok and choice.declined and not choice.enabled and m.phoneProfileOnboarding = invalid
+            consentValid = choice.declined and not choice.enabled
+            if m.phoneImportAddMode then consentValid = choice.enabled and not choice.declined
+            m.phoneImportOnboardingValid = choice.ok and consentValid and m.phoneProfileOnboarding = invalid
             if not m.phoneImportOnboardingValid then return
         end if
         store = loadUserProfileStore(m.registry, "phone-import")
@@ -145,6 +171,11 @@ sub onPhoneProfileImportProbeTick()
         addedId = m.phoneProfileOnboarding.addedIds[0]
         store = loadUserProfileStore(m.registry, "phone-import")
         if store.profiles.count() <> 2 or m.registry.read(userProfileKeyName("phone-import", addedId)) <> m.phoneImportSecondKey then return
+        for each profile in store.profiles
+            if profile.id = addedId
+                if profile.displayName <> "From another device" or profile.updatedAt <> m.phoneImportSuggestionStamp or profile.addOrigin <> "roster" then return
+            end if
+        end for
         undoIndex = -1
         for i = 0 to m.phoneProfileOnboardingChoices.count() - 1
             if m.phoneProfileOnboardingChoices[i].action = "undo" then undoIndex = i
@@ -153,7 +184,7 @@ sub onPhoneProfileImportProbeTick()
         onPhoneProfileOnboardingChoice(baselineProbeEvent(m.phoneProfileOnboardingDialog, undoIndex))
         store = loadUserProfileStore(m.registry, "phone-import")
         if store.profiles.count() <> 1 or m.registry.read(userProfileKeyName("phone-import", addedId)) <> "" then return
-        if store.removed.count() <> 1 or not store.pendingRoster then return
+        if store.removed.count() <> 0 then return
         m.phoneImportAddUndo = true
         m.phoneImportAddReturn = true
         m.pickerProbeBaselineStage = 4
@@ -165,8 +196,9 @@ sub onPhoneProfileImportProbeTick()
         noActor = m.activeUserScope = invalid and m.profileUnlockGrant = invalid and m.guide.active <> true
         selected = m.selectedConnectionId = "phone-import"
         choice = phoneSetupSyncOfferChoice(m.registry)
-        declineKept = choice.ok and choice.declined and not choice.enabled
-        recovered = removed and rootKept and noActor and selected and declineKept
+        consentKept = choice.declined and not choice.enabled
+        if m.phoneImportAddMode then consentKept = choice.enabled and not choice.declined
+        recovered = removed and rootKept and noActor and selected and choice.ok and consentKept
         m.pickerProbeClock.control = "stop"
         print "[picker-launch] "; FormatJson({kind: "result", baseline: true, phoneImport: true, passed: m.phoneImportCorePassed and recovered and m.phoneImportAddReturn = true, addReturn: m.phoneImportAddReturn, ownKeys: m.phoneImportCoreOwn, protectedAdmission: m.phoneImportCovered, sourceUnchanged: m.phoneImportCoreUnchanged, recoveryUi: recovered, onboarding: m.phoneImportOnboardingValid, removed: removed, rootKept: rootKept, noActor: noActor, selectedRestored: selected, recoveryFailure: m.phoneImportRecoveryFailure})
     end if
