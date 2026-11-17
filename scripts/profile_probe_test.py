@@ -498,6 +498,9 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertIn('if m.managementProbeClock = invalid', source)
                 self.assertNotIn('cachefs:', package.read('source/MetadataCacheStore.brs').decode())
                 self.assertIn('profile-address-probe.json', package.namelist())
+            probe.build(output, normal, 'SyntheticBaselineAddress', 'http://127.0.0.1:1234', 'http://127.0.0.1:5678', replacement=True, baseline_readiness=True)
+            with zipfile.ZipFile(output) as package:
+                self.assertIn(b'aeriotv_profiles_baseline=1\n', package.read('manifest'))
             probe.build(output, normal, 'SyntheticLegacySection', 'http://127.0.0.1:1234', 'http://127.0.0.1:5678', legacy=True)
             with zipfile.ZipFile(output) as package:
                 source = package.read('components/AerioScene.brs').decode()
@@ -690,6 +693,8 @@ class ProfileProbeTest(unittest.TestCase):
                 self.assertIn('m.switchProbeReconnectStarted = true', source)
                 self.assertIn('connectServer(true)', source)
                 self.assertNotIn('"AerioTV"', source)
+                self.assertIn('kind: "switch-cancel-observed"', source)
+                self.assertIn('store.active = m.switchProbeDefault', source)
             probe.build(output, normal, 'SyntheticEarlyRosterSection', 'http://127.0.0.1:1234', switching=True, switch_roster=True)
             with zipfile.ZipFile(output) as package:
                 source = package.read('components/AerioScene.brs').decode()

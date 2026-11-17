@@ -93,6 +93,7 @@ sub onManagementProbeTick()
         lifted = not store.profiles[1].addressHeld and not store.doesExist("addressChangeSnapshot") and store["knownDefault"]["userId"] = 7
         holdsCorrect = lifted
         if m.addressReplaceDefault then holdsCorrect = store.profiles[1].addressHeld and store.doesExist("addressChangeSnapshot") and store["knownDefault"]["userId"] = 7
-        print "[profile-address] "; FormatJson({kind: "result", passed: m.addressPassed and own and isolated and holdsCorrect and m.playingChannel = invalid, own: own, isolated: isolated, lifted: lifted, holds_correct: holdsCorrect, no_autoplay: m.playingChannel = invalid, status: m.status, page: m.page, closed: userProfileGateClosed(), pending: userProfileUiClosed(), recovery: m.userProfileRecoveryRequired = true})
+        currentGate = selectedUserProfileGate()
+        print "[profile-address] "; FormatJson({kind: "result", passed: m.addressPassed and own and isolated and holdsCorrect and m.playingChannel = invalid, own: own, isolated: isolated, lifted: lifted, holds_correct: holdsCorrect, no_autoplay: m.playingChannel = invalid, status: m.status, page: m.page, closed: userProfileGateClosed(), pending: userProfileUiClosed(), recovery: m.userProfileRecoveryRequired = true, gate_reason: currentGate.reason, picker_ready: m.profilePickerReady = true})
     end if
 end sub

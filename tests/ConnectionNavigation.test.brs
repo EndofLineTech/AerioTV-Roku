@@ -104,7 +104,10 @@ sub main()
     m.apiKey = "bob-verified-key"
     m.remember = true
     beforeConnection = FormatJson(m.connectionStore)
-    assertEqual(rememberConnectedAccount("8", "BOB"), true, "nondefault reconnect persists only its own verified key")
+    beforeSlotCall = FormatJson(m.registry.values)
+    assertEqual(rememberConnectedAccount("8", "BOB"), false, "slot-default persistence entry point refuses a nondefault active holder")
+    assertEqual(FormatJson(m.registry.values), beforeSlotCall, "refused slot-default persistence has no registry side effects")
+    assertEqual(rememberConnectedUserProfileAccount("8", "BOB"), true, "nondefault reconnect persists only its own verified key")
     assertEqual(m.registry.read(userProfileKeyName("legacy", b.id)), "bob-verified-key", "nondefault credential is saved under its own profile key")
     assertEqual(m.registry.read("connKey_legacy"), "default-only", "nondefault reconnect cannot overwrite or retire the default slot credential")
     assertEqual(FormatJson(m.connectionStore), beforeConnection, "nondefault reconnect cannot rewrite default slot identity metadata")
@@ -115,17 +118,17 @@ sub main()
     end function
     beforeFailure = FormatJson(m.registry.values)
     m.apiKey = "bob-new-verified-key"
-    assertEqual(rememberConnectedAccount("8", "Bob"), false, "failed own credential Flush refuses persistence")
+    assertEqual(rememberConnectedUserProfileAccount("8", "Bob"), false, "failed own credential Flush refuses persistence")
     assertEqual(FormatJson(m.registry.values), beforeFailure, "failed own credential Flush restores exact own/default keys and metadata")
     oldConnectionBytes = m.registry.read("connectionsV1")
     changed = connectionStoreUpdate(m.connectionStore, "legacy", {url: "https://changed.test"})
     m.registry.write("connectionsV1", FormatJson(changed))
     staleSnapshot = FormatJson(m.registry.values)
-    assertEqual(rememberConnectedAccount("8", "Bob"), false, "changed persisted URL retires an old nondefault credential result")
+    assertEqual(rememberConnectedUserProfileAccount("8", "Bob"), false, "changed persisted URL retires an old nondefault credential result")
     assertEqual(FormatJson(m.registry.values), staleSnapshot, "stale nondefault persistence writes no key at the replacement address")
     m.registry.write("connectionsV1", oldConnectionBytes)
     before = FormatJson(m.registry.values)
-    assertEqual(rememberConnectedAccount("88", "Bob"), false, "remembering a recreated nondefault ID requires its own recovery transaction")
+    assertEqual(rememberConnectedUserProfileAccount("88", "Bob"), false, "remembering a recreated nondefault ID requires its own recovery transaction")
     assertEqual(FormatJson(m.registry.values), before, "wrong nondefault persistence changes no keys or metadata")
     print "ALL TESTS PASSED"
 end sub

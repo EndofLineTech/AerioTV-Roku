@@ -459,6 +459,10 @@ end sub
         end if
     else if phase = 10
         print "[profile-management] "; FormatJson({kind: "cancel-ready", covered: m.profileGateCover.visible})
+    else if phase = 11
+        store = loadUserProfileStore(m.registry, "slot-a")
+        observed = m.profileSwitchContext = invalid and store.active = m.switchProbeDefault and m.activeUserScope.profileId = m.switchProbeDefault
+        print "[profile-management] "; FormatJson({kind: "switch-cancel-observed", observed: observed})
     else if phase = 15
         m.managementProbeClock.control = "stop"
         store = loadUserProfileStore(m.registry, "slot-a")
@@ -969,6 +973,7 @@ def main():
 
     hits = []
     fixture_state = {'changed': False}
+    cancel_reply_release = threading.Event()
     recording_probe = bool(args.manual_recording or args.switch_recording)
 
     class Fixture(BaseHTTPRequestHandler):
@@ -1061,7 +1066,13 @@ def main():
             rejected = key == 'rejected-synthetic-key' or child_rejected or (args.switch_active_retirement and args.active_default_mode == 'held' and fixture_state.get('reject_system_default', False) and user == 7)
             hits.append({'user': user, 'path': self.path, 'rejected': rejected, 'delayed': key in ['delayed-b', 'delayed-a']})
             if key in ['delayed-b', 'delayed-a'] and self.path == '/api/accounts/users/me/':
-                time.sleep(4)
+                if args.switch and not args.cancel_pin:
+                    fixture_state['cancel_auth_waiting'] = True
+                    # Do not let machine scheduling turn a cancellation test
+                    # into Back after a successfully committed switch.
+                    fixture_state['cancel_reply_released'] = cancel_reply_release.wait(timeout=12)
+                else:
+                    time.sleep(4)
             if args.switch_recording == 'cancel' and key == 'synthetic-a' and self.path == '/api/accounts/users/me/':
                 fixture_state['switch_auth_delayed'] = True
                 time.sleep(4)
@@ -1273,6 +1284,11 @@ def main():
                     request = urllib.request.Request(f'http://{host}:8060/keypress/Back', data=b'', method='POST')
                     urllib.request.urlopen(request, timeout=10).close()
                     report['back_count'] = report.get('back_count', 0) + 1
+                if '"kind":"switch-cancel-observed"' in line:
+                    row = json.loads(line.split('[profile-management] ', 1)[1])
+                    report['switch_cancel_observed'] = row.get('observed') is True
+                    if report['switch_cancel_observed']:
+                        cancel_reply_release.set()
             stderr = process.stderr.read()
             return subprocess.CompletedProcess(command, process.wait(timeout=100), ''.join(output), stderr)
 
@@ -1283,7 +1299,7 @@ def main():
             print(result.stderr, end='', flush=True)
         rows = [json.loads(line.split('[profile-management] ', 1)[1]) for line in result.stdout.splitlines() if '[profile-management] {' in line]
         report['baseline_retirement_consent'] = [row for row in rows if row.get('kind') == 'baseline-retirement-consent']
-        rows = [row for row in rows if row.get('kind') != 'baseline-retirement-consent']
+        rows = [row for row in rows if row.get('kind') not in ['baseline-retirement-consent', 'switch-cancel-observed']]
         report['switch_key_events'] = [row for row in rows if row.get('kind') == 'switch-key']
         report['switch_guide_key_events'] = [row for row in rows if row.get('kind') == 'switch-guide-key']
         report['default_rejection_ready'] = any(row.get('kind') == 'active-default-reject-ready' for row in rows)
@@ -1298,6 +1314,10 @@ def main():
             report['requests'] = hits
             cancelled_requests = not delayed if args.cancel_pin else len(delayed) == 1 and delayed[0]['path'] == '/api/accounts/users/me/'
             report['passed'] = result.returncode == 0 and len(rows) == 5 and rows[0].get('started') and all(rows[4].get(key) for key in ['a', 'b', 'rollback', 'preserved', 'uncovered', 'no_autoplay', 'cancelled', 'stale_a', 'stale_keyboard']) and len(rejected) == 1 and rejected[0]['path'] == '/api/accounts/users/me/' and cancelled_requests
+            if not args.cancel_pin and not any([args.reject_active, args.switch_authority_race, args.switch_writer, args.switch_active_retirement]):
+                report['cancel_auth_waiting'] = fixture_state.get('cancel_auth_waiting', False)
+                report['cancel_reply_released'] = fixture_state.get('cancel_reply_released', False)
+                report['passed'] = report['passed'] and report.get('switch_cancel_observed', False) and report['cancel_auth_waiting'] and report['cancel_reply_released']
             if args.reject_active:
                 report['passed'] = result.returncode == 0 and len(rows) == 3 and all(rows[2].get(key) for key in ['b', 'active_retained', 'default_preserved', 'own_revoked', 'covered', 'no_default_session'])
             if args.remember_off:

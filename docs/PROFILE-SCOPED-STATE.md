@@ -24,6 +24,81 @@ Current populated VOD/DVR and named Apple/Android encoder evidence is recorded
 in [delivery status](MRR-DELIVERY-STATUS.md); the narrower historical scope
 above does not make those main flows newly outstanding.
 
+## `mrr.6` implementation completion boundary
+
+This is staged switching and slot/key/address lifecycle implementation under the
+approved developer/import-only phase. Its direct prerequisites, including
+`mrr.8`, are closed. The deferred physical voice-keyboard check in `mrr.19`
+does not reopen this implementation or require an invented certification gate.
+Public release and integrated owner acceptance remain separate.
+
+| Acceptance area | Implementation and qualification |
+| --- | --- |
+| Playback stop, outgoing flush, staged own identity/capabilities/lineup/settings | `ProfileSwitchNavigation`, `ProfileSyncNavigation`, `ProfileSwitchRosterNavigation`, `UserProfileSwitch` and switch-store suites. Actual-account Sync/media switch evidence is in delivery status; synthetic writer-flush native evidence verifies own-source reads/PUT/ack before incoming authentication and roster/lineup. |
+| Failure/Back rollback, fresh lifetimes and no autoplay | Switch navigation/rollback-protection suites and native `profile-switch-native`, `profile-switch-pin-native`; fresh memory-only reconnect/cancel qualification described below. Late callbacks cannot adopt an incoming session after cancellation. |
+| Own credentials, empty non-default Channel Profile filters, hidden slot editors | All Dispatcharr `storedConnectionKey` reads resolve through `userProfileCredential`; `applySelectedConnection` uses that wrapper. Native `profile-reconnect-saved-default-filter-native` and main switch reports qualify filters, hidden controls and forged-handler refusal. |
+| Default-only slot persistence | `completeConnection` now calls `rememberConnectedUserProfileAccount`, which sends a non-default verified result only to its profile-owned transaction. Only a default result delegates to `rememberConnectedAccount`; the slot-default function independently refuses a non-default active holder without writes. Focused `ConnectionNavigation` red/green covers this exact entry-point boundary, own Flush rollback and stale/wrong identity. The former shared function already protected slot keys; this change makes its contract explicit rather than claiming a prior credential leak. |
+| Remember Off, own-key rejection and Fix Login | `UserProfileCredential`, request-gate/own-credential and own-sign-in/setup-credential suites; remembered/keyless/held cold reports, `profile-switch-active-reject-native` and actual main flows. Generic/proxy401 and403 preserve keys; specific own rejection never borrows/deletes the default key or exposes general setup to a Child. |
+| Atomic origin holds and failure recovery | Address policy/store suites cover every non-default, including keyless holders, frozen default snapshots/tags, key deletion before changed origin, failed Flush/rollback, and path/case/default-port equivalence. `profile-address-handler-native`, replacement and legacy native reports exercise actual handlers against synthetic origins. |
+| Same-server lift, held Add/Undo and default replacement | Address/own-sign-in/default-replacement and phone-import suites plus native address/own-form qualification. Replacement retains local ID/PIN while rebuilding verified identity/role and clearing old visual/order/stamp ownership; old/foreign preferences survive, no removal tombstone is invented. |
+| Forget and stale work | `UserProfileForget`, cleanup, scoped store and request-safety suites; native policy/real disposable-registry coverage includes atomic slot Forget and preservation of other-slot data. Renderer/Task/session fences prevent stale credentials, headers and writes surviving retirement. |
+
+The callable-key audit finds Dispatcharr saved-key reads only at Scene launch
+and `applySelectedConnection`, both through `storedConnectionKey`'s active-holder
+resolver. The production slot persistence call exists only inside the new
+profile-aware dispatcher. No direct non-default call enters slot persistence.
+
+The initial fresh memory-only main run passed A/B/A, reconnect, key isolation and
+rejected-key rollback, but failed the last Back assertion under its four-second
+synthetic response delay. That report is retained as
+`out/mrr6-completion-switch-memory-initial-native.json` and its `.log` stem without
+`-initial`. The revised fixture waits for observed real-Back rollback before
+releasing the synthetic reply, with a bounded safety timeout. The final native
+verdict requires both that ordering and unchanged default active scope afterward;
+it does not weaken cancellation assertions or invoke rollback instead of Back.
+Red/green builder coverage is `out/mrr6-cancel-handshake-{red,green}.log`.
+
+`out/mrr6-completion-switch-memory-qualified-native` records passing ordering
+qualification before the entry-point refactor. The current-source
+`out/mrr6-completion-switch-memory-final-native.log`/`.json` also passes:
+memory-only A/B/A, own reconnect, hidden/forged slot-editor refusal, own rejection
+rollback, real Back before delayed reply, stale event/keyboard refusal, no saved
+keys/no autoplay, disposable cleanup and exact installed-baseline restoration.
+
+Fresh address qualification passes with **actual developer-baseline readiness**:
+`out/mrr6-completion-address-replacement-baseline-native.json` and
+`out/mrr6-address-baseline-reproduction-native.log`. The real URL handler rejects
+an injected failed Flush without changing the prior connection, then atomically
+retires keys/records holds, authenticates only the new origin's explicitly
+supplied default credential, preserves the local default ID and old/foreign data,
+retains other holders' holds under a changed default identity, and does not
+autoplay. `gate_reason` is empty and `picker_ready=true`. All HTTP and registry
+data are disposable/synthetic.
+
+The initial non-baseline address fixture refused the protected reconnect in a
+normal shipping-gated build (`out/mrr6-completion-address-replacement-native.log`
+and `out/mrr6-completion-address-replacement-initial-native.json`). Repeating the
+same handler flow with the real baseline manifest succeeds; no protection gate
+or address-authentication check was weakened to manufacture a pass.
+
+The current-source outgoing flush also passes:
+`out/mrr6-completion-outgoing-flush-native.log`/`.json` verifies target PIN before
+work, real outgoing own reads/PUT/ack, then incoming own authentication/roster
+before lineup, plus cleanup/exact restoration. That server is synthetic; the
+existing actual-account consent/Sync qualification remains separate.
+
+`out/mrr6-completion-evidence-audit.json` rechecks 17 native
+passed/cleaned/restored reports and records current implementation-source
+digests. Focused entry-point regression is
+`out/mrr6-default-persistence-boundary-red.log` versus
+`out/mrr6-default-persistence-unit-green.log`; a broader three-suite host attempt
+hit its runner deadline after two passes, not an assertion failure, and is
+superseded by `out/mrr6-completion-focused-host.log`, where all ten selected
+switching/address/credential/default-replacement/Forget suites pass. Final
+profile/phone/voice-probe tooling and package checks also pass in
+`out/mrr6-completion-tools-final.log` and
+`out/mrr6-completion-package-tests.log`. Full regression is recorded separately.
+
 ### Baseline default-retirement integration — November 17, 2026
 
 The developer baseline now enables `profileDefaultRetirementReady` beside its

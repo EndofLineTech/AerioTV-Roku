@@ -196,7 +196,9 @@ sub updateConnectionGuideUrl(url as string)
     m.status = "XMLTV URL updated. Reconnect to load this connection's guide."
 end sub
 
-function rememberConnectedAccount(accountId as string, accountUsername = invalid as dynamic) as boolean
+' Dispatch verified profile credentials to their owner before any slot-default
+' persistence. A non-default reconnect never enters rememberConnectedAccount.
+function rememberConnectedUserProfileAccount(accountId as string, accountUsername = invalid as dynamic) as boolean
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     if entry = invalid then return false
     if entry.provider = "dispatcharr"
@@ -226,6 +228,19 @@ function rememberConnectedAccount(accountId as string, accountUsername = invalid
                 m.userProfileStore = profiles
                 return true
             end if
+        end for
+    end if
+    return rememberConnectedAccount(accountId, accountUsername)
+end function
+
+function rememberConnectedAccount(accountId as string, accountUsername = invalid as dynamic) as boolean
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid then return false
+    if entry.provider = "dispatcharr"
+        profiles = loadUserProfileStore(m.registry, entry.id)
+        if profiles.readOnly = true then return false
+        for each profile in profiles.profiles
+            if profile.id = profiles.active and not profile.isDefault then return false
         end for
     end if
     keyName = connectionRegistryKey(entry.id)

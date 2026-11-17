@@ -22,7 +22,7 @@ def module(name):
     return loaded
 
 
-def build(output, normal, section, old_url, new_url, replacement=False, legacy=False):
+def build(output, normal, section, old_url, new_url, replacement=False, legacy=False, baseline_readiness=False):
     seed = output.with_suffix('.seed.zip')
     module('management').build(seed, normal, section, old_url)
     fixture = (ROOT / 'tests/native/ProfileAddressFixture.brs').read_text().replace('OWN_ADDRESS_NEW_URL', json.dumps(new_url))
@@ -40,6 +40,8 @@ def build(output, normal, section, old_url, new_url, replacement=False, legacy=F
     with zipfile.ZipFile(seed) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
+            if name == 'manifest' and baseline_readiness:
+                body += b'\naeriotv_profiles_baseline=1\n'
             if name == 'components/AerioScene.brs':
                 source = body.decode()
                 assert source.count('sub onManagementProbeTick()') == 1
@@ -67,6 +69,7 @@ def main():
     parser.add_argument('--restore', required=True)
     parser.add_argument('--replace-default', action='store_true', help='New origin verifies a different default account; preserve holds and seed settings only')
     parser.add_argument('--legacy', action='store_true', help='Qualify original-owner legacy startup migration before the real address handler')
+    parser.add_argument('--baseline-readiness', action='store_true', help='Use actual developer-baseline manifest readiness, without forcing Scene flags')
     args = parser.parse_args()
     host, password = os.environ['ROKU_HOST'], os.environ['ROKU_DEV_PASSWORD']
     primitives, recovery = module('primitives'), module('recovery')
@@ -114,9 +117,9 @@ def main():
     section = 'AerioAddressProbe-' + str(uuid.uuid4())
     archive = ROOT / 'out/profile-address-probe.zip'
     cleaner = ROOT / 'out/profile-address-cleanup.zip'
-    build(archive, ROOT / 'out/aeriotv-roku.zip', section, *(f'http://{local}:{server.server_port}' for server in servers), replacement=args.replace_default, legacy=args.legacy)
+    build(archive, ROOT / 'out/aeriotv-roku.zip', section, *(f'http://{local}:{server.server_port}' for server in servers), replacement=args.replace_default, legacy=args.legacy, baseline_readiness=args.baseline_readiness)
     recovery.cleanup_package(cleaner, section)
-    report = {'passed': False}
+    report = {'passed': False, 'baseline_readiness': args.baseline_readiness}
 
     def run(path, marker, prefix):
         return subprocess.run(['python3', 'scripts/run-native-probe.py', str(path), '--prefix', prefix, '--marker', marker, '--timeout', '75'], cwd=ROOT, capture_output=True, text=True, timeout=125)
@@ -145,6 +148,8 @@ def main():
             report_name = 'profile-address-replacement-native.json' if args.replace_default else 'profile-address-handler-native.json'
             if args.legacy:
                 report_name = 'profile-address-legacy-native.json'
+            if args.baseline_readiness:
+                report_name = report_name.replace('-native.json', '-baseline-native.json')
             (ROOT / 'out' / report_name).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:

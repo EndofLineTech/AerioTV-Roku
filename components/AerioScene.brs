@@ -948,7 +948,7 @@ sub completeConnection(result as dynamic)
     if m.phoneCommittedId = connection.id
         m.phoneCommittedId = ""
     else
-        if not rememberConnectedAccount(result.accountId, textValue(result.accountUsername)) then result.warning = "Could not save this connection. Check Roku app storage and reconnect before exiting."
+        if not rememberConnectedUserProfileAccount(result.accountId, textValue(result.accountUsername)) then result.warning = "Could not save this connection. Check Roku app storage and reconnect before exiting."
     end if
     m.guide.config = {
         aeriosession: currentUserSessionId()
