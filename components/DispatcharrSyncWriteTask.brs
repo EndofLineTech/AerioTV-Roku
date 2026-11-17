@@ -66,6 +66,8 @@ sub writeDispatcharrSync()
         finishDispatcharrSyncWrite({ok: true, state: "unchanged", submitted: false, readStatus: 200, maximumSentStamp: prepared.maximumSentStamp, storeRoot: m.top.storeRoot, connectionRoot: m.top.connectionRoot, credentialHash: requestGateCredentialHash(m.key), scope: m.top.userScope})
         return
     end if
+    budget = dispatcharrSyncWriteBudget(listing.data, key, prepared.bytes)
+    if not budget.ok then finishDispatcharrSyncWrite(budget) : return
     response = httpTransferOnce(url, invalid, "", 10000, 65536, "PUT", prepared.body)
     if not syncWriterAccessCurrent()
         finishDispatcharrSyncWrite({ok: false, state: "stale-context", submitted: true})

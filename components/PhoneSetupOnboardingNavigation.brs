@@ -110,11 +110,8 @@ sub onPhoneProfileOnboardingChoice(event as object)
         end if
         context.phase = "who"
     else if action = "add"
-        beginProfileBaselineAdd()
-        if m.profileOwnSignInContext <> invalid
-            m.profileOwnSignInContext.returnToPhoneOnboarding = true
-            return
-        end if
+        beginProfileBaselineAdd(false, false, true)
+        if m.profileOwnSignInContext <> invalid or m.adultPinDialog <> invalid then return
     else if action = "undo"
         tracked = false
         for each id in context.addedIds

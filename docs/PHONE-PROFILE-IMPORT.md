@@ -159,6 +159,18 @@ focused final host, builder, compiler/build and package checks also pass.
 Native finding `dsb7` was a missing `roInteger` wire-validation alias: the
 successful native log records that actual boxed type for `guideDays`.
 
+The protected Add handoff is additionally qualified in
+`out/mrr-phone-add-continuation-native.log` / `.json`: Who watches → Add →
+actual adult numeric PIN → own-credential form → Cancel → Who watches →
+Continue, followed by existing recovery/cleanup/exact baseline restoration.
+`49uu` preserves explicit onboarding return intent through the deferred adult
+gate and prevents the Who watches dialog from replacing that gate. Current
+adult-gate cancellation also returns; retired gate callbacks cannot reopen it.
+Host regression evidence is `out/mrr-phone-add-continuation-confirmed-red.log`
+and `out/mrr-sync-phone-final-focused-host.log`. The corrected fixture was
+checked against the original two-argument handoff in an external temporary copy.
+This is not successful Add/Undo or Turn On qualification.
+
 One native onboarding run lost device access during cleanup/restoration.
 The exact baseline was manually restored and verified; a read-only native scan
 found no `AerioPickerLaunchProbe-*` sections. Evidence is

@@ -138,6 +138,10 @@ def build(output, base_url, registry=False, model_store=False):
         if model_store:
             package.write(ROOT / 'source/PhoneSetupProfileImport.brs', 'source/PhoneSetupProfileImport.brs')
             package.write(ROOT / 'source/PhoneSetupProfilePolicy.brs', 'source/PhoneSetupProfilePolicy.brs')
+            package.write(ROOT / 'source/DispatcharrSyncMapping.brs', 'source/DispatcharrSyncMapping.brs')
+            mapping_checks = (ROOT / 'tests/DispatcharrSyncMapping.test.brs').read_text().split('sub check(', 1)[0]
+            mapping_checks = mapping_checks.replace('sub main()', 'sub runDispatcharrSyncMappingChecks()').replace('check(', 'profileAssert(').replace('m.nativeSyncMapping = false', 'm.nativeSyncMapping = true')
+            package.writestr('source/DispatcharrSyncMappingProbeChecks.brs', mapping_checks)
             package.write(ROOT / 'components/PhoneSetupProfileNavigation.brs', 'source/PhoneSetupProfileNavigation.brs')
             phone_checks = (ROOT / 'tests/PhoneSetupProfiles.test.brs').read_text().split('sub check(', 1)[0]
             phone_checks = phone_checks.replace('sub main()', 'sub runPhoneSetupProfilesChecks()').replace('check(', 'profileAssert(')

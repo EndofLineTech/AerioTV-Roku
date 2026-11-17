@@ -36,6 +36,7 @@ suites.unshift('ProfileServerAdminNavigation');
 suites.unshift('PhoneSetupProfiles');
 suites.unshift('PhoneSetupProfileVerifyTask');
 suites.unshift('PhoneSetupOnboarding');
+suites.unshift('DispatcharrSyncMapping');
 suites.unshift('RequestGateModel');
 suites.unshift('RequestGateOwnCredential');
 suites.unshift('RequestGateTask');
@@ -187,6 +188,7 @@ for (const suite of suites) {
     ...(suite === 'PhoneSetupProfiles' ? ['components/PhoneSetupProfileNavigation.brs', 'source/PhoneSetupProfilePolicy.brs', 'source/PhoneSetupProfileImport.brs', 'source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs', 'source/UserProfileAddressPolicy.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/ConnectionStoreModel.brs', 'source/UserProfileModel.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs'] : []),
     ...(suite === 'PhoneSetupProfileVerifyTask' ? ['components/PhoneSetupProfileVerifyTask.brs', 'source/PhoneSetupProfilePolicy.brs', 'source/PhoneSetupModel.brs', 'source/UserProfileModel.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs'] : []),
     ...(suite === 'PhoneSetupOnboarding' ? ['source/StrictJson.brs', 'source/PhoneSetupOnboardingStore.brs', 'source/DispatcharrSyncSettingsStore.brs', 'source/UserProfileStore.brs', 'source/UserProfileModel.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs', 'source/ConnectionStoreModel.brs'] : []),
+    ...(suite === 'DispatcharrSyncMapping' ? ['source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncMapping.brs'] : []),
     ...(suite === 'ProfileSwitcherNavigation' ? ['components/ProfileSwitcherNavigation.brs', 'components/ProfileBaselineNavigation.brs', 'source/UserProfilePicker.brs', 'source/UserProfileScope.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'DispatcharrSyncAckStore' ? ['source/DispatcharrSyncSettingsStore.brs'] : []),
     ...(['ProfilePickerNavigation', 'UserProfileManagementPolicy', 'ProfileAdultPinNavigation', 'ProfileManagementNavigation', 'UserProfileSwitch', 'UserProfileOwnSignIn', 'UserProfileChildOwnSignIn'].includes(suite) ? ['source/UserProfileManagementPolicy.brs', 'source/UserProfilePinPolicy.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/ConnectionStoreModel.brs'] : []),
@@ -216,7 +218,7 @@ for (const suite of suites) {
     ...(suite === 'SettingsChildModel' ? ['source/SettingsModel.brs'] : []),
     ...(suite === 'SettingsChildNavigation' ? ['source/SettingsModel.brs', 'components/SettingsNavigation.brs'] : []),
     ...(['ProfileAdultPinNavigation', 'ProfileManagementNavigation'].includes(suite) ? ['components/ProfileAdultPinNavigation.brs'] : []),
-    ...(suite === 'ProfileManagementNavigation' ? ['components/ProfileManagementNavigation.brs'] : []),
+    ...(suite === 'ProfileManagementNavigation' ? ['components/ProfileManagementNavigation.brs', 'source/UserProfileScope.brs'] : []),
     ...(suite === 'HttpTransport' ? ['source/HttpTransport.brs'] : []),
     ...(suite === 'StrictJson' ? ['source/StrictJson.brs'] : []),
     ...(['PreferenceModel', 'LineupHistoryReconciliation', 'PlayerLifecycle', 'ConnectionNavigation', 'UserProfileNavigation', 'ProfileSetupFence', 'PhoneSetupNavigation', 'PhoneSetupAutoAdd'].includes(suite) ? ['source/StrictJson.brs'] : []),

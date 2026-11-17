@@ -109,7 +109,7 @@ sub onProfileBaselineChoice(event as object)
     end if
 end sub
 
-sub beginProfileBaselineAdd(admitted = false as boolean, returnToSwitcher = false as boolean)
+sub beginProfileBaselineAdd(admitted = false as boolean, returnToSwitcher = false as boolean, returnToPhoneOnboarding = false as boolean)
     context = profileBaselineContext()
     if context = invalid then return
     if context.store.profiles.count() >= 4 then showNotice("This playlist already has four profiles.") : return
@@ -123,7 +123,7 @@ sub beginProfileBaselineAdd(admitted = false as boolean, returnToSwitcher = fals
         m.profileManagementSlot = context.connection.id
         m.userProfileStore = context.store
         m.profileManagementGrant = invalid
-        m.profileManagementPending = {action: "baseline-add", scope: context.scope, connectionRoot: context.connectionRoot, returnToSwitcher: returnToSwitcher}
+        m.profileManagementPending = {action: "baseline-add", scope: context.scope, connectionRoot: context.connectionRoot, returnToSwitcher: returnToSwitcher, returnToPhoneOnboarding: returnToPhoneOnboarding}
         if not beginAdultProfilePinGate() then showNotice("This PIN type needs approved access on this Roku.")
         return
     end if
@@ -134,6 +134,7 @@ sub beginProfileBaselineAdd(admitted = false as boolean, returnToSwitcher = fals
     m.profileOwnSignInNonce = nonce
     m.profileOwnSignInContext = {adding: true, nonce: nonce, connection: context.connection, store: context.store, scope: context.scope, target: target, page: m.page, guideActive: m.guide.active, covered: m.profileGateCover.visible, closed: m.global.profilegateclosed, unlock: m.profileUnlockGrant, username: "", password: "", addGrant: m.profileManagementGrant, holds: {}}
     m.profileOwnSignInContext.returnToSwitcher = returnToSwitcher
+    m.profileOwnSignInContext.returnToPhoneOnboarding = returnToPhoneOnboarding
     if m.requestGate <> invalid then m.profileOwnSignInContext.holds = requestGateCopy(m.requestGate.snapshot.keys)
     m.global.profileownsigninpending = true
     m.global.profileownsigninnonce = nonce

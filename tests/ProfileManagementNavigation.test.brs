@@ -48,7 +48,24 @@ sub main()
     m.activeUserScope = {profileId: "own-holder"}
     reloadManagedUserProfile()
     check(m.fixtureReloadKey = "nondefault-own-key" and m.fixtureRecordingPreserved and m.profileRefreshReload, "managed active reload retains own credential and uses established no-autoplay authority refresh")
+    m.fixtureAddContext = {scope: {sessionId: "own"}, connectionRoot: "captured"}
+    m.profileManagementSlot = "slot-a"
+    m.profileManagementNonce = "00000000-0000-4000-8000-000000000090"
+    for each field in userProfileSessionFields()
+        m.fixtureAddContext.scope[field] = "own"
+    end for
+    m.profileManagementPending = {action: "baseline-add", scope: m.fixtureAddContext.scope, connectionRoot: "captured", returnToPhoneOnboarding: true}
+    onAdultProfileAuthorized()
+    check(m.fixturePhoneOnboarding = true, "adult PIN continuation retains explicit phone onboarding Add return intent")
     print "ALL TESTS PASSED"
+end sub
+
+function profileBaselineContext() as object
+    return m.fixtureAddContext
+end function
+
+sub beginProfileBaselineAdd(admitted = false as boolean, returnToSwitcher = false as boolean, returnToPhoneOnboarding = false as boolean)
+    m.fixturePhoneOnboarding = returnToPhoneOnboarding
 end sub
 
 sub preserveSubmittedRecording()

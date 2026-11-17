@@ -1,5 +1,5 @@
 sub main()
-    for each scenario in ["write", "creation-blocked-existing", "unchanged", "pull-clean", "pull-dirty", "disabled", "stale", "child", "profiles-off", "held", "key-changed", "identity", "authority", "legacy", "missing", "missing404", "missing-blocked", "listed404", "proxy404", "legacy-listed404", "me-denied", "list-denied", "key-denied", "put-denied", "too-large", "max-apps", "get-failed", "local-commit", "root-race", "cancel", "put-failed", "late-success"]
+    for each scenario in ["write", "creation-blocked-existing", "unchanged", "pull-clean", "pull-dirty", "disabled", "stale", "child", "profiles-off", "held", "key-changed", "identity", "authority", "legacy", "missing", "missing404", "missing-blocked", "listed404", "proxy404", "legacy-listed404", "me-denied", "list-denied", "key-denied", "put-denied", "too-large", "max-apps", "get-failed", "local-commit", "root-race", "cancel", "put-failed", "late-success", "advertised-cap"]
         syncWriterFixture(scenario)
         writeDispatcharrSync()
         check(m.key = "" and m.top.apiKey = "", "writer clears Task credentials on every terminal path: " + scenario)
@@ -27,6 +27,7 @@ sub main()
         if scenario = "me-denied" then check(m.top.result.state = "authorization-unavailable", "me authorization refusal ends quietly before App Data")
         if scenario = "key-denied" then check(m.top.result.state = "retry", "key authorization refusal is a failed read, not a sign-in pause")
         if scenario = "too-large" then check(m.top.result.state = "too-large", "typed413 stops repeated identical writes")
+        if scenario = "advertised-cap" then check(m.top.result.state = "storage-full" and not m.top.result.submitted and m.calls.count() = 3, "fresh smaller server budget prevents PUT without deleting or truncating peer data")
         if scenario = "max-apps" or scenario = "missing-blocked" then check(m.top.result.state = "storage-full", "capacity refusal never deletes legacy keys or creates another canonical")
     end for
     print "ALL TESTS PASSED"
@@ -105,6 +106,7 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
         if m.scenario = "missing" or m.scenario = "missing404" or m.scenario = "missing-blocked" or m.scenario = "proxy404" then apps = []
         if m.scenario = "legacy-listed404" then apps.push({key: "app.molinete.aerio", bytes: 100})
         response.body = FormatJson({apps: apps})
+        if m.scenario = "advertised-cap" then response.body = FormatJson({apps: apps, limits: {max_value_bytes: 20, max_total_bytes: 131072, max_apps: 25}})
         if m.scenario = "list-denied" then response.status = 403
     else
         response.body = "{""schemaVersion"":3,""deviceId"":""fixture"",""platform"":""android"",""appVersion"":""1"",""updatedAt"":""2026-11-14T17:00:00Z"",""categories"":{""profiles"":{""updatedAt"":""2026-11-14T17:00:00Z"",""data"":{""rows"":[]}}}}"
@@ -119,7 +121,7 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
 end function
 
 function dispatcharrSyncPrepareProfilesWrite(original as dynamic, store as object, enabled as boolean, now as integer, acknowledgedStamp as dynamic, deviceId as string, appVersion as string) as object
-    return {ok: true, allowWrite: false, body: "{""schemaVersion"":3,""synthetic"":true}", localPlan: {store: store}, needsLocalCommit: m.scenario = "local-commit", unchanged: m.scenario = "unchanged", maximumSentStamp: 100}
+    return {ok: true, allowWrite: false, body: "{""schemaVersion"":3,""synthetic"":true}", bytes: 36, localPlan: {store: store}, needsLocalCommit: m.scenario = "local-commit", unchanged: m.scenario = "unchanged", maximumSentStamp: 100}
 end function
 
 sub check(passed as boolean, message as string)

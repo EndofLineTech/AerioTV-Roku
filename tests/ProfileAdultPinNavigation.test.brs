@@ -35,6 +35,19 @@ sub main()
     store.profiles[0] = setCanonicalPreference(store.profiles[0], "pinSalt", "")
     m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
     check(beginAdultProfilePinGate() and m.authorized = 1 and m.profileManagementGrant.kind = "stranded", "only actual absence of both PIN types allows explicit stranded grant")
+    setupAdultControllerFixture()
+    m.profileManagementPending = {action: "baseline-add", returnToPhoneOnboarding: true}
+    beginAdultProfilePinGate()
+    event.node = m.adultPinDialog
+    onAdultProfilePinClosed(event)
+    check(m.phoneReturned and m.profileManagementPending = invalid and m.profileManagementGrant = invalid, "cancelled current adult Add gate returns to phone onboarding without granting access")
+    setupAdultControllerFixture()
+    m.profileManagementPending = {action: "baseline-add", returnToPhoneOnboarding: true}
+    beginAdultProfilePinGate()
+    event.node = m.adultPinDialog
+    m.profileManagementNonce = "00000000-0000-4000-8000-000000000091"
+    onAdultProfilePinClosed(event)
+    check(not m.phoneReturned, "retired adult gate cannot resurrect phone onboarding")
     print "ALL TESTS PASSED"
 end sub
 
@@ -71,6 +84,7 @@ sub setupAdultControllerFixture()
     m.profileGateCover = {visible: false}
     m.global = {profilegateclosed: false}
     m.authorized = 0
+    m.phoneReturned = false
     m.top = {createChild: function(kind as string) as object
         return {observeField: sub(field as string, callback as string)
         end sub, unobserveField: sub(field as string)
@@ -91,6 +105,10 @@ sub setupAdultControllerFixture()
         if normalized = "1234" then return string(64, "a")
         return string(64, "c")
     end function
+end sub
+
+sub continuePhoneProfileOnboarding()
+    m.phoneReturned = true
 end sub
 
 sub onAdultProfileAuthorized()

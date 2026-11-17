@@ -14,6 +14,50 @@ function dispatcharrSyncUserKey(username as string) as string
     return dispatcharrSyncKeyBytes(bytes)
 end function
 
+' Fresh own-list admission only; it does not authorize transport. Older servers
+' advertise smaller limits than the current schema reference deployment. Never
+' trim an unsupported category to fit. Absent limits use the older safe bounds.
+function dispatcharrSyncWriteBudget(listing as dynamic, key as string, bytes as dynamic) as object
+    denied = {ok: false, state: "storage-full", phase: "budget", submitted: false}
+    if not dispatcharrSyncInteger(bytes) then return denied
+    if bytes < 2 or bytes > 131072 then return denied
+    plan = dispatcharrSyncReadPlan(key, listing)
+    if plan.state <> "canonical" and plan.state <> "missing" then return denied
+    valueCap = 32768
+    totalCap = 131072
+    appsCap = 25
+    if listing.doesExist("limits")
+        limits = listing["limits"]
+        if type(limits) <> "roAssociativeArray" then return denied
+        for each name in ["max_value_bytes", "max_total_bytes", "max_apps"]
+            if not dispatcharrSyncInteger(limits[name]) then return denied
+            if limits[name] < 1 or limits[name] > 2147483647 then return denied
+        end for
+        valueCap = limits["max_value_bytes"]
+        totalCap = limits["max_total_bytes"]
+        appsCap = limits["max_apps"]
+    end if
+    total = 0&
+    previous = 0&
+    found = false
+    for each app in listing["apps"]
+        if app["bytes"] > 2147483647 then return denied
+        total += app["bytes"]
+        if app["key"] = key
+            previous = app["bytes"]
+            found = true
+        end if
+    end for
+    if listing.doesExist("total_bytes")
+        if not dispatcharrSyncInteger(listing["total_bytes"]) then return denied
+        if listing["total_bytes"] < total then return denied
+        total = listing["total_bytes"]
+    end if
+    if bytes > valueCap or total - previous + bytes > totalCap then return denied
+    if not found and listing["apps"].count() >= appsCap then return denied
+    return {ok: true}
+end function
+
 function dispatcharrSyncKeyBytes(bytes as object) as string
     if bytes.count() = 0 then return ""
     encoded = ""

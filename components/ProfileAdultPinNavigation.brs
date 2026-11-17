@@ -153,10 +153,16 @@ end sub
 sub onAdultProfilePinClosed(event as object)
     if m.adultPinDialog = invalid then return
     if not m.adultPinDialog.isSameNode(event.getRoSGNode()) then return
+    pending = m.profileManagementPending
+    returnToPhone = false
+    if type(pending) = "roAssociativeArray"
+        returnToPhone = pending.returnToPhoneOnboarding = true and adultProfilePinContextCurrent()
+    end if
     closeAdultProfilePinGate()
     m.profileManagementGrant = invalid
     m.profileManagementPending = invalid
     if m.page = "profile-unavailable" then showUnavailableChildProfile()
+    if returnToPhone then continuePhoneProfileOnboarding()
 end sub
 
 sub closeAdultProfilePinGate()

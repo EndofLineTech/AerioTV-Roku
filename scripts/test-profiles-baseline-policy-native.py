@@ -42,6 +42,7 @@ def main():
     runUserProfileOwnSignInChecks()
     runDispatcharrSyncSwitchRosterStoreChecks()
     runPhoneSetupProfilesChecks()
+    runDispatcharrSyncMappingChecks()
     print "[profile-probe] "; FormatJson({kind: "baseline-policy-result", passed: m.profileFailures = 0, failures: m.profileFailures})
 end sub
 ''' + text[end:]

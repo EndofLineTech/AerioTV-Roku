@@ -76,6 +76,17 @@ sub onPhoneProfileImportProbeTick()
             if m.phoneProfileOnboardingDialog = invalid then return
             choices = m.phoneProfileOnboardingChoices
             if choices[choices.count() - 1].action <> "continue" then return
+            if choices[choices.count() - 2].action <> "add" then return
+            onPhoneProfileOnboardingChoice(baselineProbeEvent(m.phoneProfileOnboardingDialog, choices.count() - 2))
+            if m.adultPinDialog = invalid or m.phoneProfileOnboardingDialog <> invalid then return
+            m.adultPinDialog.textEditBox.text = "1234"
+            onAdultProfilePinSubmit(baselineProbeEvent(m.adultPinDialog, 0))
+            if m.profileOwnSignInContext = invalid then return
+            if m.profileOwnSignInContext.returnToPhoneOnboarding <> true then return
+            cancelUserProfileOwnSignIn()
+            if m.phoneProfileOnboardingDialog = invalid or m.phoneProfileOnboarding.phase <> "who" then return
+            m.phoneImportAddReturn = true
+            choices = m.phoneProfileOnboardingChoices
             onPhoneProfileOnboardingChoice(baselineProbeEvent(m.phoneProfileOnboardingDialog, choices.count() - 1))
             choice = phoneSetupSyncOfferChoice(m.registry)
             m.phoneImportOnboardingValid = choice.ok and choice.declined and not choice.enabled and m.phoneProfileOnboarding = invalid
@@ -120,6 +131,6 @@ sub onPhoneProfileImportProbeTick()
         declineKept = choice.ok and choice.declined and not choice.enabled
         recovered = removed and rootKept and noActor and selected and declineKept
         m.pickerProbeClock.control = "stop"
-        print "[picker-launch] "; FormatJson({kind: "result", baseline: true, phoneImport: true, passed: m.phoneImportCorePassed and recovered, ownKeys: m.phoneImportCoreOwn, protectedAdmission: m.phoneImportCovered, sourceUnchanged: m.phoneImportCoreUnchanged, recoveryUi: recovered, onboarding: m.phoneImportOnboardingValid, removed: removed, rootKept: rootKept, noActor: noActor, selectedRestored: selected, recoveryFailure: m.phoneImportRecoveryFailure})
+        print "[picker-launch] "; FormatJson({kind: "result", baseline: true, phoneImport: true, passed: m.phoneImportCorePassed and recovered and m.phoneImportAddReturn = true, addReturn: m.phoneImportAddReturn, ownKeys: m.phoneImportCoreOwn, protectedAdmission: m.phoneImportCovered, sourceUnchanged: m.phoneImportCoreUnchanged, recoveryUi: recovered, onboarding: m.phoneImportOnboardingValid, removed: removed, rootKept: rootKept, noActor: noActor, selectedRestored: selected, recoveryFailure: m.phoneImportRecoveryFailure})
     end if
 end sub

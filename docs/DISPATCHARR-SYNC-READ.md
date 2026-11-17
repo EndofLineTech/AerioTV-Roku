@@ -1,5 +1,12 @@
 # Own-account App Data reads (in progress)
 
+Current category/ID/lane contracts and deployed read-only capability evidence:
+[Roku Sync mappings](DISPATCHARR-SYNC-MAPPING.md). The descriptions below retain
+the original incremental qualification history; later profile controller and
+writer integration is documented in [Profiles baseline](PROFILES-BASELINE.md)
+and [Sync writer](DISPATCHARR-SYNC-WRITER.md). Unimplemented categories are
+preserve-only under profile spec §13.8, not silently enabled adapters.
+
 `DispatcharrSyncKey.brs` implements the shared schema's UTF-8 byte key algorithm:
 ASCII uppercase only is folded, unsafe bytes become `-xx`, nonalphanumeric
 starts receive `u`, the encoded name is cut at 46 characters (even within an

@@ -31,7 +31,7 @@ sub onAdultProfileAuthorized()
             current = profileBaselineContext()
             if current = invalid then return
             if not userProfileSameSession(pending.scope, current.scope) or pending.connectionRoot <> current.connectionRoot then return
-            beginProfileBaselineAdd(true, pending.returnToSwitcher = true)
+            beginProfileBaselineAdd(true, pending.returnToSwitcher = true, pending.returnToPhoneOnboarding = true)
             return
         end if
         if pending.action = "remove-confirm"
