@@ -175,7 +175,33 @@ are now **Sync Test 1** and **Sync Test 2**. Sync remains Off.
 
 ## Verified developer handoff
 
-Current full verification passes in
+### Latest final-seven baseline
+
+Full `npm run verify` passes in `out/mrr-final-seven-full-verify.log`
+(380-file normal ZIP); the focused probe suite passes in
+`out/mrr-final-seven-tools-final.log`.
+The unsigned, fixture-free developer baseline now installed is:
+
+`out/profiles-final-seven/aeriotv-roku-v0.3.100-profiles-baseline.zip`
+
+SHA-256: `b68bde82735ed3bcd172dfff62284a1b6c30015d232c94700b76d761efb65b62`.
+Its sidecar checksum and every compiled file against the full-gate normal ZIP
+were verified before installation; only its developer manifest differs.
+`out/mrr-final-seven-baseline-installed.json` records the exact old-app preflight,
+successful launch and new installed checksum. The inspected
+`out/mrr-final-seven-baseline-ready.jpg` still shows **Sync Test 1**,
+**Sync Test 2** and Add Profile. No profiles or real-account Sync settings were
+changed by installation.
+
+This baseline adds qualified automatic default retirement to the previous
+checkpoint. Both outgoing-own-read and incoming-target-own-read synthetic native
+paths pass with actual readiness, cleanup and exact restoration of the then-current
+older baseline. It does not enable Directions, change shipping defaults, qualify
+public acceptance, or constitute a signed package/release.
+
+### Previous qualified checkpoint (preserved)
+
+Previous full verification passes in
 `out/mrr-real-sync-qualified-full-verify.log` (380-file normal ZIP). Latest
 focused tooling also passes in `out/mrr-vod-client-native-diagnostics-green.log`.
 `out/mrr-qualified-baseline-full-gate-match.json` verifies that all compiled
