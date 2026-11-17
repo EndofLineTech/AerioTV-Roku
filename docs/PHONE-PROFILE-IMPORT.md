@@ -199,8 +199,8 @@ This has a failing-before-fix actual scheduler regression in
 Host checks in `out/mrr-sync-enabled-add-integration-host.log` cover admission,
 own-form suspension/resumption, delayed receipt refusal and credential cleanup.
 The actual Add storage test also preserves Sync On, Profiles Off, unknown choices
-and both source accounts' private data. Compiler/build checks pass; full
-requalification is running in `out/mrr-sync-enabled-add-full-verify.log`.
+and both source accounts' private data. Compiler/build checks and full
+requalification pass in `out/mrr-sync-enabled-add-full-verify.log` (380-file ZIP).
 No readiness flag or persistent installed app was changed. Actual Turn On →
 Add/Undo native acceptance remains unverified while device access is unavailable.
 
