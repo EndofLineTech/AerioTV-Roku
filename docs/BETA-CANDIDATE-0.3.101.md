@@ -78,6 +78,10 @@ No public submission, signing-key generation or rekeying has occurred.
   documented open P1s. This does not close those findings or authorize Store
   submission. The existing key is present on the Roku; its Packager still
   requires the existing signing password, which is not available in this session.
+- One owner-authorized password attempt was rejected by the Roku with
+  `Failed: Invalid Password.` after the exact verified v0.3.101 ZIP was installed
+  and its MD5/Dev ID checked. No signed package was created. The accepted voice
+  baseline was restored and its installed MD5 and unchanged Dev ID/key verified.
 
 | Existing P1 | Scope and remaining evidence |
 | --- | --- |
