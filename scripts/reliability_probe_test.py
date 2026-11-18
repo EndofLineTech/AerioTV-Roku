@@ -64,6 +64,26 @@ class ReliabilityProbeTest(unittest.TestCase):
                     b'        logo.loadDisplayMode = "scaleToFit"\n',
                     b'        logo.loadDisplayMode = "limitSize"\n', 1))
 
+    def test_guide_page_scroll_experiment_changes_only_the_private_driver(self):
+        guide = load("guide", "test-live-guide-scroll-native.py")
+        with tempfile.TemporaryDirectory() as directory:
+            source, baseline, paged = (Path(directory) / name for name in ("source.zip", "baseline.zip", "paged.zip"))
+            view_path = "components/GuideView.brs"
+            original_view = (ROOT / view_path).read_bytes()
+            with zipfile.ZipFile(source, "w") as package:
+                package.writestr(view_path, original_view)
+                package.write(ROOT / "components/LogoCacheTask.brs", "components/LogoCacheTask.brs")
+            guide.build(baseline, source, "test-reliability")
+            with patch.object(guide, "page_scroll", True):
+                guide.build(paged, source, "test-reliability")
+            with zipfile.ZipFile(baseline) as a, zipfile.ZipFile(paged) as b:
+                self.assertEqual(set(a.namelist()), set(b.namelist()))
+                self.assertEqual([name for name in a.namelist() if a.read(name) != b.read(name)], [view_path])
+                self.assertTrue(b.read(view_path).startswith(original_view))
+                branch = b'        executeGuideRemoteAction("pageDown")'
+                self.assertIn(b"    if false\n" + branch, a.read(view_path)[len(original_view):])
+                self.assertIn(b"    if true\n" + branch, b.read(view_path)[len(original_view):])
+
     def test_saved_picker_probe_requires_exact_hash_and_private_main(self):
         runner = load("picker", "test-profile-picker-native.py")
         with tempfile.TemporaryDirectory() as directory:
