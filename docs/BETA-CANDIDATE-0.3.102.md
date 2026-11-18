@@ -36,6 +36,11 @@ the two approved test accounts; the Android adult variant passes separately in
 and restore the exact baseline. These are separate imports, not a fabricated
 three-account default/adult/Child batch.
 
+`out/phone-normal-beta102-source-equivalence.json` additionally checks **every
+shipping file** against all four saved native probe ZIPs, reversing only the
+disposable registry/cache redirect and appended driver. All shipping bytes match;
+ZIP timestamps/compression are not mistaken for source changes.
+
 Apple/Android protocol sources are hash-verified against their pinned commits;
 provenance is in `out/phone-normal-peer-encoders.json`. These encoder tests are
 **not physical phone UI acceptance**.
