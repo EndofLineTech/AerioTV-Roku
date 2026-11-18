@@ -87,7 +87,7 @@ With the existing authorized developer environment:
 ```sh
 python3 -m unittest scripts.voice_keyboard_probe_test
 python3 scripts/test-voice-keyboard-native.py \
-  --restore out/profiles-mrr19/aeriotv-roku-v0.3.100-profiles-baseline.zip \
+  --restore out/profiles-mrr19/aeriotv-roku-v0.3.100-profiles-voice-baseline.zip \
   --report out/mrr19-minimal-voice-native.json
 ```
 

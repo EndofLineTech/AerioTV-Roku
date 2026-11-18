@@ -22,11 +22,11 @@ epic-complete claim. Beads remains the status register.
 | --- | --- | --- |
 | `mrr.6` switching | **Completed approved implementation.** Explicit default-only slot persistence; fresh memory-only switch/cancel, actual-baseline address replacement and outgoing-flush native qualification; full regression passes and matching unsigned baseline is installed (see [scoped state](PROFILE-SCOPED-STATE.md)). | Public/epic acceptance and deferred native Directions qualification remain separate, not reasons to reopen this implementation. |
 | `mrr.8` PIN/Child | **Completed approved import-only/developer implementation.** Fresh 1,626-assertion native policy/storage run plus imported Directions D-pad lock/unlock and Directions adult-management smoke pass; see [PIN completion evidence](PROFILE-PIN-POLICY.md). | Public Directions access/voice/certification remains separately owned by `mrr.19`, not a reason to keep this implementation open. New salt creation stays disabled. |
-| `mrr.9` picker/management | Native picker/management, own switch, reorder, light/large presentation, startup beacons and OS 14.6 runtime guard. All direct implementation prerequisites are closed; status reconciled to in progress. | Physical-remote acceptance remains unverified; public native voice qualification is separate in `.19`. Dashboard verification belongs to `.11` and is not inferred. |
+| `mrr.9` picker/management | **Closed** on existing implementation/native evidence plus owner-reported standard physical-remote UI acceptance. | Owner clarified acceptance used iOS and excluded voice. Native voice qualification remains `.19`; physical Android integration and Dashboard verification are separate `.11` evidence. |
 | `mrr.10` local acceptance | **1,626 native policy/storage assertions + all 14 request-safety groups pass** at the `.10` checkpoint, with exact baseline restoration. [Local acceptance and all 18 specification §17 scenarios](PROFILE-LOCAL-ACCEPTANCE.md) distinguish native policy, synthetic integration, actual-account evidence and physical acceptance; 49 report verdicts/digests audited. Subsequent `.19` changes have their own qualification. | Physical-remote acceptance, `.19` native voice/access qualification and explicit owner acceptance remain unclaimed; no planning-only closure. |
 | `mrr.11` integrated acceptance | Both actual accounts' Sync/media progression plus named unmodified Apple/Android encoder imports. Owner confirmed the initial VOD startup incidents were provider-side; `unxg` is closed. | Human picture/audio, physical-phone integration, authenticated Dashboard floor, public certification and owner acceptance remain distinct verification requirements. Entropy assurance is non-blocking under the owner disposition below. |
 | `mrr.18` bounded admin | **Closed.** Native synthetic gates/transport/actions/UI and active-own reload: `mrr-admin-final-actions-native`, `mrr-admin-ui-own-reload-native`; admin and current full regression gates pass. | Last dependency `.6` is closed. No real server mutation, public release or owner acceptance is inferred or required for this bounded implementation closure. |
-| `mrr.19` native PIN keyboard | [Shared production controller integration](PROFILE-NATIVE-PIN-KEYBOARD.md) now exists under explicit developer-only opt-in: native Directions launch, chosen switch and all-Directions adult verification have bounded native evidence. Full regression passes; matching ordinary unsigned baseline is installed, with voice opt-in kept separate. Existing PIN/hash/lockout and purpose/session gates remain. | Native integration is not spoken-entry acceptance: observed `voiceEnabled` remains false, the physical check is deferred, and public voice/household qualification remains open. |
+| `mrr.19` native PIN keyboard | [Shared production controller integration](PROFILE-NATIVE-PIN-KEYBOARD.md) has bounded native launch/switch/all-Directions adult evidence and passing full regression. Owner explicitly requested actual-app testing; the verified fixture-free voice opt-in variant is now installed. Existing PIN/hash/lockout and purpose/session gates remain. | Owner explicitly did not test voice in the earlier acceptance report. Actual physical dictation/access qualification is pending; prior false voice observations are not erased by installation. |
 
 Native Directions details and preserved failed verdicts are in
 [PIN policy](PROFILE-PIN-POLICY.md). Earlier statements that baseline Sync is
@@ -195,7 +195,20 @@ are now **Sync Test 1** and **Sync Test 2**. Sync remains Off.
 
 ### Latest final-seven baseline
 
-The newer **`.19` implementation baseline** is now installed:
+**Current installed app: owner-authorized native keyboard variant.**
+
+`out/profiles-mrr19/aeriotv-roku-v0.3.100-profiles-voice-baseline.zip`
+
+SHA-256: `df85ea1fd0bdbf70270c684f1f615365590bf9d03360ce46a536461442c36203`.
+The owner requested testing the voice work in the actual app. Installation
+report `out/mrr19-owner-voice-baseline-installed.json` confirms exact old-app
+preflight, sidecar checksum, equal compiled contents, no fixture/probe files,
+launch and the new installed checksum. The inspected ready image retains both
+test profiles and Add. This is the new exact restore ZIP; ordinary and older
+artifacts below remain preserved. Actual speech, signing and release are not
+inferred.
+
+The earlier ordinary **`.19` implementation baseline** is preserved:
 
 `out/profiles-mrr19/aeriotv-roku-v0.3.100-profiles-baseline.zip`
 
@@ -207,10 +220,11 @@ preflight and the new installed checksum. The inspected ready screenshot retains
 Sync Test 1, Sync Test 2 and Add.
 
 This ordinary baseline includes the new PIN code but keeps both Directions
-opt-ins off. The separately verified, **not installed** developer native-keyboard
+opt-ins off. The separately verified, **initially not installed** developer native-keyboard
 variant is
 `out/profiles-mrr19/aeriotv-roku-v0.3.100-profiles-voice-baseline.zip`, SHA-256
 `df85ea1fd0bdbf70270c684f1f615365590bf9d03360ce46a536461442c36203`.
+The owner-authorized installation above supersedes that initial handoff.
 Neither is signed/released; speech/public acceptance is not inferred.
 
 The earlier **`.6` completion baseline** is preserved:
