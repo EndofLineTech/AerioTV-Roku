@@ -215,6 +215,16 @@ revisit timings, visible image quality and texture headroom before enabling
 it. Persistent retention and TimeGrid address different questions; neither
 is a substitute for smaller source artwork.
 
+The real-art comparison (`--real-logo-derivatives`) uses only numeric logo
+IDs returned by the selected live test account's authorized lineup. It
+prepares aspect-preserving PNG derivatives with a 116-pixel maximum edge
+for the Roku guide's existing 116×104 Poster load box. The probe still
+requires each original live download to succeed, uses the original if
+there is no matching derivative, and records how many derivatives actually
+reached the visible rows. It is a decode comparison, not a supported
+thumbnail endpoint. Private artwork is kept out of Git, and normal package
+verification rejects the artwork directory even without the probe marker.
+
 A later paired Roku sweep kept the live Dispatcharr download path and local
 Poster URIs unchanged. In the small-image run, the private probe replaced
 each downloaded file with a small packaged PNG just before assigning it.
