@@ -132,6 +132,12 @@ pointed to the correct cached URI. Non-ready Posters reported `loading`, not
 This isolates the observed scroll delay to after download and URI assignment;
 it does not identify a decoder failure or reproduce the original report.
 
+The held-viewport sweep (`out/guide-live-poster-held.log`) resampled each
+of the three partially ready viewports ten seconds later without scrolling.
+Each went from five ready Posters and one loading to six ready, with the same
+correct cached assignments. Across this 36-channel run, no sampled logo stayed
+missing after the extra wait.
+
 The existing guide reports missing logo IDs and download failures. Development
 v0.3.103 additionally reports **successful downloads that fail Poster decoding**,
 using aggregate counts only. It ignores uncached/hidden failures, deduplicates
