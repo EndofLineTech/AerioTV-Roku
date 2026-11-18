@@ -12,6 +12,7 @@ original_build = runner.build
 seed_logo_failure = False
 limit_poster_size = False
 page_scroll = False
+revisit_logos = False
 
 def build(output, *args, **kwargs):
     intermediate = output.with_suffix(".base.zip")
@@ -69,7 +70,7 @@ sub liveSweepMeasurePosters(elapsed as integer)
     if cached = expected and m.liveSweepAllCachedAt = invalid then m.liveSweepAllCachedAt = age
     if ready = expected or age >= 15000
         m.liveSweepTimingDone = true
-        print "[setup-phone-normal] "; FormatJson({kind: "live-guide-poster-timing", row_start: m.rowStart, eligible: expected, ready: ready, all_cached_ms: m.liveSweepAllCachedAt, sample_ms: age, settled: ready = expected, max_cached_logo_bytes: maxBytes, max_bitmap_pixels: maxBitmapPixels})
+        print "[setup-phone-normal] "; FormatJson({kind: "live-guide-poster-timing", row_start: m.rowStart, eligible: expected, ready: ready, all_cached_ms: m.liveSweepAllCachedAt, sample_ms: age, settled: ready = expected, max_cached_logo_bytes: maxBytes, max_bitmap_pixels: maxBitmapPixels, revisiting: m.liveSweepReturning = true})
     end if
 end sub
 
@@ -167,8 +168,16 @@ function liveGuideSweep() as boolean
     end if
     m.liveSweepSamples++
     ' Bound the run, but allow enough six-row viewports to cover a 91-row guide.
-    if m.selected >= m.filtered.count() - 1 or m.liveSweepSamples >= 20 then return true
-    if LIVE_SWEEP_PAGE
+    if m.liveSweepSamples >= 20 then return true
+    if m.selected >= m.filtered.count() - 1 and m.liveSweepReturning <> true
+        if not LIVE_SWEEP_REVISIT then return true
+        m.liveSweepReturning = true
+    end if
+    if m.liveSweepReturning = true
+        if m.selected = 0 then return true
+        executeGuideRemoteAction("pageUp")
+        finishGuideMappedAction()
+    else if LIVE_SWEEP_PAGE
         executeGuideRemoteAction("pageDown")
         finishGuideMappedAction()
     else
@@ -184,7 +193,8 @@ function liveGuideSweep() as boolean
     return false
 end function
 '''.replace(b"LIVE_SWEEP_FAULT", b"true" if seed_logo_failure else b"false").replace(
-                    b"LIVE_SWEEP_PAGE", b"true" if page_scroll else b"false")
+                    b"LIVE_SWEEP_PAGE", b"true" if page_scroll else b"false").replace(
+                    b"LIVE_SWEEP_REVISIT", b"true" if revisit_logos else b"false")
             if name == "components/GuideCache.brs":
                 data = data.replace(b'    result = event.getData()\n    m.top.metadataEvent = {ok: result.ok, stage: "mapping"', b'''    result = event.getData()
     count = 0
@@ -193,12 +203,16 @@ end function
     m.top.metadataEvent = {ok: result.ok, stage: "mapping"''', 1)
             updated.writestr(name, data)
 
-def assert_guide_sweep(events, expect_retry=False):
+def assert_guide_sweep(events, expect_retry=False, expect_revisit=False):
     samples = [row for row in events if row["kind"] == "live-guide-sweep"]
     if not samples or samples[-1]["lineup"] <= 0 or samples[-1]["covered_rows"] != samples[-1]["lineup"] or not all(
         row["mapping_ready"] and not row["mapping_warning"] and row["visible"] > 0 for row in samples
     ):
         raise SystemExit("Guide sweep did not cover the full lineup with mappings ready")
+    if expect_revisit:
+        revisits = [row for row in events if row["kind"] == "live-guide-poster-timing" and row.get("revisiting")]
+        if not revisits or samples[-1]["row_start"] != 0:
+            raise SystemExit("Guide sweep did not complete its artwork revisit")
     if expect_retry:
         seeded = [row for row in events if row["kind"] == "live-guide-seeded-failure"]
         retries = [row for row in events if row["kind"] == "live-guide-refresh-retry"]
@@ -211,13 +225,16 @@ if __name__ == "__main__":
     seed_logo_failure = "--seed-logo-failure" in sys.argv
     limit_poster_size = "--limit-poster-size" in sys.argv
     page_scroll = "--page-scroll" in sys.argv
+    revisit_logos = "--revisit-logos" in sys.argv
     if seed_logo_failure:
         sys.argv.remove("--seed-logo-failure")
     if limit_poster_size:
         sys.argv.remove("--limit-poster-size")
     if page_scroll:
         sys.argv.remove("--page-scroll")
+    if revisit_logos:
+        sys.argv.remove("--revisit-logos")
     runner.build = build
     report = runner.main()
-    assert_guide_sweep(report["events"], expect_retry=seed_logo_failure)
+    assert_guide_sweep(report["events"], expect_retry=seed_logo_failure, expect_revisit=revisit_logos)
     print("Guide sweep assertions passed", flush=True)

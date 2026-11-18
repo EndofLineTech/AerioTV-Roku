@@ -155,6 +155,26 @@ pixel counts matched at each position, and time to all ready differed by
 at most 24 ms per position in this pair. The initial viewport was not part
 of that comparison. These runs do not support changing the shipping mode.
 
+Page Down (`out/guide-poster-page-scroll.log`) also covered all 36 channels
+and restored v0.3.102. Compared with repeated Down at the same six scrolled
+positions, time to all ready varied in both directions, by at most 184 ms.
+That does not support changing the scroll handler.
+
+On a separate Page Down / Page Up round trip
+(`out/guide-poster-revisit.log`), the six forward scrolled viewports reached
+all-ready in 399–4,579 ms. Returning through six viewports in the same
+session, all six logos were already ready at the first sample, 52–88 ms
+after navigation. The return viewports overlap the forward viewports but
+do not all have the same starting row. This distinguishes first-display
+loading from rendering already-seen artwork; it does not separate the
+local-file cache from Roku's decoded-image cache. The run restored exact
+v0.3.102. No shipping performance change was made.
+
+This is consistent with the earlier small-image comparison in `dv1`:
+the supported avenue to investigate is smaller authorized artwork, rather
+than changing scaling mode, adding scroll redraws, or enlarging the disk
+cache to address first-display latency.
+
 The existing guide reports missing logo IDs and download failures. Development
 v0.3.103 additionally reports **successful downloads that fail Poster decoding**,
 using aggregate counts only. It ignores uncached/hidden failures, deduplicates

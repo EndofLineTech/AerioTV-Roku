@@ -29,6 +29,13 @@ class ReliabilityProbeTest(unittest.TestCase):
             runner.assert_guide_sweep([sample, seeded, dict(retry, downloaded=False)], expect_retry=True)
         with self.assertRaises(SystemExit):
             runner.assert_guide_sweep([dict(sample, covered_rows=35)])
+        first_page = dict(sample, row_start=0)
+        with self.assertRaises(SystemExit):
+            runner.assert_guide_sweep([first_page], expect_revisit=True)
+        warm_page = {"kind": "live-guide-poster-timing", "revisiting": True}
+        with self.assertRaises(SystemExit):
+            runner.assert_guide_sweep([dict(sample, row_start=1), warm_page], expect_revisit=True)
+        runner.assert_guide_sweep([first_page, warm_page], expect_revisit=True)
 
     def test_guide_probe_keeps_download_code_unchanged(self):
         guide = load("guide", "test-live-guide-scroll-native.py")
@@ -81,8 +88,8 @@ class ReliabilityProbeTest(unittest.TestCase):
                 self.assertEqual([name for name in a.namelist() if a.read(name) != b.read(name)], [view_path])
                 self.assertTrue(b.read(view_path).startswith(original_view))
                 branch = b'        executeGuideRemoteAction("pageDown")'
-                self.assertIn(b"    if false\n" + branch, a.read(view_path)[len(original_view):])
-                self.assertIn(b"    if true\n" + branch, b.read(view_path)[len(original_view):])
+                self.assertIn(b"    else if false\n" + branch, a.read(view_path)[len(original_view):])
+                self.assertIn(b"    else if true\n" + branch, b.read(view_path)[len(original_view):])
 
     def test_saved_picker_probe_requires_exact_hash_and_private_main(self):
         runner = load("picker", "test-profile-picker-native.py")
