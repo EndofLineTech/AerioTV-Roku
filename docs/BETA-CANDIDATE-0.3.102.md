@@ -153,6 +153,14 @@ development release link and owner-supplied Beta channel code **`GQMQGQL`**.
 This authorizes development-ZIP distribution, not Store submission, a Dashboard
 change or a new certification acceptance claim.
 
+Publication verified: GitHub tag `v0.3.102` targets
+`af595eb99cb863faa886bfc0865bc7ec7c259f7c`; the release is published, marked
+prerelease and not marked latest. Only the ZIP and its ZIP-only checksum were
+uploaded. A fresh GitHub download matches the verified local ZIP byte-for-byte
+and passes the downloaded checksum. Evidence:
+`out/beta102-published-dev-release.json`. The signed package is unchanged.
+The two Discord posts validate at 1,371 and 1,740 characters, respectively.
+
 ## Source and static analysis
 
 Compared with the immutable v0.3.101 source ZIP, only `manifest`,
