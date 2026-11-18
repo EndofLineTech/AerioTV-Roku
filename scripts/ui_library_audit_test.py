@@ -19,7 +19,7 @@ class LibraryAuditPackageTest(unittest.TestCase):
 
     def test_production_renderers_and_task_barrier(self):
         spec.loader.exec_module(builder)
-        with tempfile.TemporaryDirectory(dir=ROOT / "out", prefix="audit-package-test-") as folder:
+        with tempfile.TemporaryDirectory(prefix="audit-package-test-") as folder:
             base, output = Path(folder) / "base.zip", Path(folder) / "probe.zip"
             with zipfile.ZipFile(base, "w") as z:
                 for directory in ["source", "components"]:
