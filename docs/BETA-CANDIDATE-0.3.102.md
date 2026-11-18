@@ -80,8 +80,30 @@ The nine open original P1s and Dashboard minimum-firmware issue listed in
 Beta risk approval is not Store-submission or cloud-certification acceptance.
 v0.3.101's signed package and checksums must remain unchanged.
 
-Final package/checksum and remaining native variants are recorded below only
-after verification; this document alone is not a signed-package handoff.
+## Signed Beta handoff
+
+Full `npm run release:prepare` passes in
+`out/phone-normal-beta102-release-prepare.log`. Its 380-file versioned ZIP matches
+every shipping-file fingerprint from all four qualified live native runs.
+
+Upload **`out/release/aeriotv-roku-v0.3.102.pkg`** to the Beta Dashboard.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `aeriotv-roku-v0.3.102.pkg` | `27b0f8fc9b6544f0c2bb26dee36de09aeaaf3168c222465efe1677c87f8e6930` |
+| `aeriotv-roku-v0.3.102.zip` | `68ad35da6a076259aacf413be181dcce64af3db08d790d5d6d0d5af08f5ffaab` |
+
+The exact versioned ZIP was installed and its Packager MD5 verified before
+signing with the existing Dev ID `2c759fbb3556070e7eee7276265ae55566f427c7`.
+No key generation/rekey or credential change occurred. The original opaque Roku
+export is preserved; `npm run beta:package` created the versioned copy.
+`SHA256SUMS-v0.3.102` verifies both files. The immutable v0.3.101 `.pkg` and ZIP
+still pass their original versioned checksums.
+
+The exact v0.3.102 signing source remains installed on the Roku. Nothing was
+submitted to the Dashboard or Store. Discord-ready change notes are in
+`docs/DISCORD-0.3.102.txt` (one 1,247-character post); they have not been posted
+to a Discord channel by this session.
 
 ## Source and static analysis
 
@@ -99,8 +121,8 @@ to hide a scanner finding. Dashboard metadata/cloud certification is separate.
 The readiness check found no open P0 and no open PR targeting `dev`. No CI
 security workflow is configured; local compiler/package/tests and official
 Roku analysis supply this candidate's gates. Existing P1 scope is retained in
-Beads, not silently closed or converted into certification acceptance. Signing
-waits for all in-flight native and release-preparation verification to finish.
+Beads, not silently closed or converted into certification acceptance. All native
+and release-preparation verification finished before signing.
 
 `npm audit` reports zero critical/high and two moderate development-tool entries
 (`brs` and its `uuid` dependency, GHSA-w5hq-g745-h8pq), already tracked in
