@@ -19,6 +19,12 @@ sub main()
     check(metadataCacheState({schema: {}}, "account-A", "guide", "window-1", "lineup", 1100, true, 1024), "miss")
     entry = metadataCacheEnvelope("account-A", "guide", "window-1", "lineup", 1000, "bad")
     check(metadataCacheState(entry, "account-A", "guide", "window-1", "lineup", 1100, true, 1024), "miss")
+    program = {id: "5", title: "Event", poster: "https://art.example/private.png", artSource: "TMDB"}
+    cached = metadataCacheGuidePayload({station: [program]})
+    check(cached.station[0].poster, "")
+    check(textValue(cached.station[0].artSource), "")
+    check(cached.station[0].title, "Event")
+    check(program.poster, "https://art.example/private.png")
     print "ALL TESTS PASSED"
 end sub
 

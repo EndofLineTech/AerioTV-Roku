@@ -1,5 +1,6 @@
 """Private live Dispatcharr overlay probe; isolated registry and exact restore."""
 import importlib.util
+import os
 from pathlib import Path
 import zipfile
 
@@ -8,6 +9,7 @@ spec = importlib.util.spec_from_file_location("normal", root / "scripts/test-pho
 runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
 original = runner.build
+stale_airing = os.environ.get("AERIO_PROBE_STALE_AIRING") == "1"
 
 
 def build(path, *args, **kwargs):
@@ -36,7 +38,7 @@ sub validateLiveOverlays()
     if m.overlayStage = 0
         facts = m.guide.callFunc("probeLiveProgramDetails")
         if not facts.sampled and m.overlayClock.totalMilliseconds() < 12000 then return
-        print "[setup-phone-normal] "; FormatJson({kind: "live-program-details", sampled: facts.sampled, has_art: facts.hasArt, poster_status: facts.status})
+        print "[setup-phone-normal] "; FormatJson({kind: "live-program-details", sampled: facts.sampled, has_art: facts.hasArt, poster_status: facts.status, recovered: facts.recovered = true})
         model = m.guide.callFunc("playerBrowserData")
         if model.channels.count() = 0 then finishPhoneNormalProbe(false, "no-live-channel") : return
         startPlayback(model.channels[0])
@@ -75,7 +77,21 @@ function probeLiveProgramDetails() as object
         cell = selectedCell()
         if cell = invalid then return pending
         if cell.program = invalid then return pending
-        showDetails()
+        if PROBE_STALE_AIRING
+            if cell.program.id = "" then return pending
+            cancelProgramDetail()
+            m.detailProgram = {}
+            m.detailProgram.append(cell.program)
+            m.detailProgram.id = "9000000000000000000"
+            m.detailProgram.poster = ""
+            m.detailProgram.artSource = ""
+            m.detailChannel = m.filtered[m.selected]
+            updateRichDetails()
+            m.details.active = true
+            loadProgramDetail()
+        else
+            showDetails()
+        end if
         return pending
     end if
     if m.detailTask <> invalid then return pending
@@ -84,9 +100,9 @@ function probeLiveProgramDetails() as object
     if hasArt and status <> "ready" and status <> "failed" then return pending
     m.details.active = false
     m.top.setFocus(true)
-    return {sampled: true, hasArt: hasArt, status: status}
+    return {sampled: true, hasArt: hasArt, status: status, recovered: PROBE_STALE_AIRING and m.detailCache.doesExist("9000000000000000000")}
 end function
-'''
+'''.replace(b"PROBE_STALE_AIRING", b"true" if stale_airing else b"false")
             if name == "components/ProgramDetails.xml":
                 data = data.replace(b"<interface>", b'<interface>\\n    <function name="probePosterStatus" />', 1)
             if name == "components/ProgramDetails.brs":
@@ -99,6 +115,10 @@ if __name__ == "__main__":
     runner.build = build
     report = runner.main()
     events = {row["kind"]: row for row in report["events"]}
+    if stale_airing:
+        details = events.get("live-program-details", {})
+        if details.get("recovered") is not True or details.get("poster_status") != "ready":
+            raise SystemExit("Stale airing did not recover artwork from live Dispatcharr")
     for kind, required in {
         "live-player-info": ("visible", "playing"),
         "live-channel-browser": ("active", "focused", "playing"),

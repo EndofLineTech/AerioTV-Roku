@@ -33,13 +33,19 @@ sub loadProgramDetail()
         end for
     end if
     id = ""
+    explicit = m.details.active
     for each candidate in candidates
         available = CreateObject("roRegex", "^[0-9]+$", "").isMatch(candidate)
         if m.detailCache.doesExist(candidate)
-            if m.detailCache[candidate].fetchedAt > uiNow() - 300 then available = false
+            cached = m.detailCache[candidate]
+            matches = true
+            if explicit then matches = programDetailIdentityMatches(m.detailProgram, cached)
+            if matches and cached.fetchedAt > uiNow() - 300 then available = false
         end if
-        if m.detailFailures.doesExist(candidate)
-            if m.detailFailures[candidate] > uiNow() then available = false
+        failureKey = candidate
+        if explicit then failureKey = "selected:" + candidate
+        if m.detailFailures.doesExist(failureKey)
+            if m.detailFailures[failureKey] > uiNow() then available = false
         end if
         if available
             id = candidate
@@ -48,7 +54,7 @@ sub loadProgramDetail()
     end for
     if id = "" then return
     if m.detailTask <> invalid
-        if m.detailTask.programId = id then return
+        if m.detailTask.programId = id and (not explicit or m.detailTask.selectedAiring <> invalid) then return
         cancelProgramDetail()
     end if
     m.detailTask = CreateObject("roSGNode", "ProgramDetailTask")
@@ -56,6 +62,10 @@ sub loadProgramDetail()
     m.detailTask.baseUrl = m.base
     m.detailTask.apiKey = m.key
     m.detailTask.programId = id
+    if explicit
+        p = m.detailProgram
+        m.detailTask.selectedAiring = {id: p.id, title: p.title, key: p.key, startsAt: p.startsAt, endsAt: p.endsAt}
+    end if
     if m.settings.tmdbFallback then m.detailTask.tmdbKey = m.tmdbKey
     m.detailTask.observeField("result", "onProgramDetail")
     m.detailTask.control = "RUN"
@@ -64,6 +74,8 @@ end sub
 sub onProgramDetail(event as object)
     if not isCurrentTaskEvent(event, m.detailTask) then return
     result = event.getData()
+    failureKey = result.id
+    if result.explicit then failureKey = "selected:" + result.id
     m.detailTask.unobserveField("result")
     m.detailTask = invalid
     if result.ok
@@ -83,7 +95,7 @@ sub onProgramDetail(event as object)
         if m.top.active then drawGuide()
     else
         if m.detailFailures.count() >= 64 then m.detailFailures = {}
-        m.detailFailures[result.id] = uiNow() + 60
+        m.detailFailures[failureKey] = uiNow() + 60
     end if
 end sub
 

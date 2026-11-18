@@ -5,6 +5,7 @@
     <field id="baseUrl" type="string" />
     <field id="apiKey" type="string" />
     <field id="programId" type="string" />
+    <field id="selectedAiring" type="assocarray" />
     <field id="tmdbKey" type="string" />
     <field id="result" type="assocarray" alwaysNotify="true" />
   </interface>

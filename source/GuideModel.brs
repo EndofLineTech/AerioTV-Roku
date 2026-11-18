@@ -161,8 +161,12 @@ function programArtworkUri(baseUrl as string, raw as dynamic) as string
     return ""
 end function
 
+function programDetailIdentityMatches(base as object, details as object) as boolean
+    return details.id = base.id and details.startsAt = base.startsAt and details.endsAt = base.endsAt and details.key = base.key
+end function
+
 function mergeProgramFacts(base as object, details as object, baseUrl = "" as string) as object
-    if details.id <> base.id or details.startsAt <> base.startsAt or details.endsAt <> base.endsAt or details.key <> base.key then return base
+    if not programDetailIdentityMatches(base, details) then return base
     result = {}
     result.append(base)
     for each field in details

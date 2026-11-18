@@ -182,6 +182,11 @@ Dispatcharr detail response, then the guide-feed icon, then optional TMDB
 artwork. A dummy programme can supply `custom_properties.icon` as an object
 or bounded JSON object string. A detail result with the same programme ID
 but a different station or time range cannot replace the selected airing.
+If the selected programme ID returns 404 (for example, after a Teamarr feed
+refresh), Program Details makes one bounded grid request near the airing
+start. It accepts only a unique replacement with the same station, time
+range and title, then tries that ID once. Background prefetch does not run
+this recovery. Ambiguous matches leave the existing feed art alone.
 Artwork URLs are not written into the persistent guide cache. Same-origin
 artwork still uses the existing account request gate; public HTTPS artwork
 does not get provider headers. A syntactically valid URL may still fail to
