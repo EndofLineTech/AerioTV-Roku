@@ -1,4 +1,5 @@
 sub main()
+    check(userProfileReleaseFeaturesReady(), "accepted profiles capabilities are enabled in normal Beta builds without developer manifest flags")
     testProfileIdentity()
     testProfileRoles()
     testProfileOrder()

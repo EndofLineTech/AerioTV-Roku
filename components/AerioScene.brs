@@ -1,6 +1,6 @@
 sub init()
-    ' Remains false in shipping builds until Child own loading/recovery paths
-    ' and all required access/certification boundaries are qualified.
+    ' Initialize closed, then enable the qualified Beta capabilities below.
+    ' Per-account/PIN/Child/storage/request gates still own actual admission.
     m.profileChildAccessReady = false
     m.profilePhoneImportReady = false
     m.profileSwitchRosterReady = false
@@ -10,10 +10,12 @@ sub init()
     m.profileSyncControlsReady = false
     m.profilePickerReady = false
     m.profileNativePinKeyboardReady = false
-    m.profileBaselineReady = CreateObject("roAppInfo").getValue("aeriotv_profiles_baseline") = "1"
+    ' Legacy internal name retained for shared controllers and probe compatibility.
+    m.profileBaselineReady = userProfileReleaseFeaturesReady() or CreateObject("roAppInfo").getValue("aeriotv_profiles_baseline") = "1"
     if m.profileBaselineReady
         m.profilePhoneImportReady = true
-        m.profileNativePinKeyboardReady = CreateObject("roAppInfo").getValue("aeriotv_profile_voice_pin_test") = "1"
+        m.profileNativePinKeyboardReady = userProfileReleaseFeaturesReady() or CreateObject("roAppInfo").getValue("aeriotv_profile_voice_pin_test") = "1"
+        if CreateObject("roAppInfo").getValue("aeriotv_profile_directions_test") = "1" then m.profileNativePinKeyboardReady = false
         m.profilePickerReady = true
         m.profileSwitchRosterReady = true
         m.profileChildAccessReady = true

@@ -3,6 +3,15 @@
 This records the approved developer/import-and-verify phase, not a signed
 release, public feature enablement or owner acceptance.
 
+**Beta 0.3.101 preparation:** the owner requested a Roku upload candidate and
+change notes, deferring Android physical testing to users. Qualified profile,
+native PIN and opt-in Profiles Sync capabilities are now enabled in normal
+source without developer manifest flags. Full release preparation passes, but
+signing is pending the owner's review of the existing open P1 records.
+See [candidate notes and readiness](BETA-CANDIDATE-0.3.101.md).
+Direct setup receipt and new PIN creation remain disabled; no signed package
+or Store certification is claimed.
+
 | Main experience | Current evidence |
 | --- | --- |
 | Create, switch, manage, reorder and remove real-account profiles; isolated own credentials/data | `mrr-core-avatar-native`, `mrr-controls-canonical-native`, `mrr-picker-light-large-qualified-native` in `out/`; documented in [developer baseline](PROFILES-BASELINE.md). Do not repeat these completed flows as new prerequisites. |

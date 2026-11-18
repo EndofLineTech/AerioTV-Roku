@@ -1,8 +1,9 @@
-' Private own-canonical profiles writer. Shipping opt-in remains off until
-' Scene dirty/ack/protection settlement and native request-ledger tests qualify.
+' Qualified own-canonical profiles writer. Explicit user consent and live
+' Scene dirty/ack/protection/request gates remain mandatory.
 sub init()
     m.top.functionName = "writeDispatcharrSync"
     m.syncWriterReady = false
+    if userProfileReleaseFeaturesReady() then m.syncWriterReady = true
     if CreateObject("roAppInfo").getValue("aeriotv_profiles_baseline") = "1" then m.syncWriterReady = true
 end sub
 

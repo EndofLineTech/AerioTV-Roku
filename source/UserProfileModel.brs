@@ -1,5 +1,11 @@
 ' Real Dispatcharr users, distinct from server Channel Profile assignments.
 ' Pure rules: no registry, requests, runtime active scope or UUID generation.
+function userProfileReleaseFeaturesReady() as boolean
+    ' Beta 0.3.101: qualified imported-PIN/profile capabilities are enabled.
+    ' This grants no account/PIN/Child authority and never opts a user into Sync.
+    return true
+end function
+
 function userProfileLocalId(value as dynamic) as string
     if type(value) <> "String" and type(value) <> "roString" then return ""
     if not CreateObject("roRegex", "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", "").isMatch(value) then return ""

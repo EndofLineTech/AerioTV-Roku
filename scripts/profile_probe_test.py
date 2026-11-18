@@ -288,9 +288,11 @@ class ProfileProbeTest(unittest.TestCase):
             with zipfile.ZipFile(normal) as package:
                 self.assertEqual(package.read('components/ProfileServerAdminTask.brs').decode(), production)
 
-    def test_staged_switch_readiness_is_not_publicly_enabled(self):
+    def test_accepted_profiles_are_enabled_in_normal_beta_without_developer_markers(self):
         root = Path(__file__).resolve().parent.parent
         scene = (root / 'components/AerioScene.brs').read_text()
+        self.assertIn('m.profileBaselineReady = userProfileReleaseFeaturesReady() or ', scene)
+        self.assertIn('m.profileNativePinKeyboardReady = userProfileReleaseFeaturesReady() or ', scene)
         self.assertIn('    m.profileSwitchRosterReady = false', scene)
         self.assertNotIn('\n    m.profileSwitchRosterReady = true', scene)
         self.assertIn('    m.profileChildAccessReady = false', scene)
@@ -304,10 +306,11 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertIn('    m.profileNativePinKeyboardReady = false', scene)
         self.assertNotIn('m.profileNativePinKeyboardReady = true', scene)
         baseline_block = scene.split('    if m.profileBaselineReady\n', 1)[1].split('    end if', 1)[0]
-        self.assertIn('m.profileNativePinKeyboardReady = CreateObject("roAppInfo").getValue("aeriotv_profile_voice_pin_test") = "1"', baseline_block)
+        self.assertIn('m.profileNativePinKeyboardReady = userProfileReleaseFeaturesReady() or CreateObject("roAppInfo").getValue("aeriotv_profile_voice_pin_test") = "1"', baseline_block)
         self.assertNotIn('\n    m.profilePickerReady = true', scene)
         writer = (root / 'components/DispatcharrSyncWriteTask.brs').read_text()
         self.assertIn('    m.syncWriterReady = false', writer)
+        self.assertIn('if userProfileReleaseFeaturesReady() then m.syncWriterReady = true', writer)
 
     def test_private_startup_picker_archive_uses_only_disposable_registry_cache(self):
         root = Path(__file__).resolve().parent.parent

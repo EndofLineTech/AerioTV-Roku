@@ -3,6 +3,11 @@
 This is an unsigned, developer-only build, not a Beta/Store release or completed
 profiles/sync acceptance. Normal builds keep the new entry points off.
 
+That describes the earlier 0.3.100 developer baseline. Beta 0.3.101 preparation
+now enables the qualified profile/native PIN/opt-in Sync features in normal
+source; developer manifest flags are still rejected by upload-package checks.
+See [the candidate notes](BETA-CANDIDATE-0.3.101.md) for current scope and limits.
+
 ## Build
 
 ```sh
