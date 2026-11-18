@@ -10,6 +10,26 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 class PhoneNormalProbeTest(unittest.TestCase):
+    def test_overlay_probe_uses_the_rendered_poster_without_a_development_only_helper(self):
+        spec = importlib.util.spec_from_file_location("guide_overlays", ROOT / "scripts/test-guide-overlays-live-native.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as directory:
+            normal, probe = Path(directory) / "normal.zip", Path(directory) / "probe.zip"
+            guide = "components/GuideView.brs"
+            details = "components/ProgramDetails.brs"
+            with zipfile.ZipFile(normal, "w") as package:
+                package.writestr(guide, "")
+                package.writestr(details, "")
+            module.build(probe, normal, "PrivateOverlay")
+            with zipfile.ZipFile(probe) as package:
+                guide_probe = package.read(guide).decode()
+                details_probe = package.read(details).decode()
+                self.assertNotIn("programArtworkUri(", guide_probe)
+                self.assertIn('m.details.callFunc("probePosterState")', guide_probe)
+                self.assertIn('hasArt: m.poster.uri <> ""', details_probe)
+                self.assertIn("status: m.poster.loadStatus", details_probe)
+
     def test_package_fingerprints_ignore_zip_metadata_but_detect_changed_bytes(self):
         spec = importlib.util.spec_from_file_location("phone_normal", ROOT / "scripts/test-phone-setup-normal-native.py")
         module = importlib.util.module_from_spec(spec)

@@ -145,12 +145,11 @@ function probeLiveProgramDetails() as object
         return pending
     end if
     if m.detailTask <> invalid then return pending
-    hasArt = programArtworkUri(m.base, m.detailProgram.poster) <> ""
-    status = m.details.callFunc("probePosterStatus")
-    if hasArt and status <> "ready" and status <> "failed" then return pending
+    poster = m.details.callFunc("probePosterState")
+    if poster.hasArt and poster.status <> "ready" and poster.status <> "failed" then return pending
     m.details.active = false
     m.top.setFocus(true)
-    return {sampled: true, hasArt: hasArt, status: status, recovered: PROBE_STALE_AIRING and m.detailCache.doesExist("9000000000000000000")}
+    return {sampled: true, hasArt: poster.hasArt, status: poster.status, recovered: PROBE_STALE_AIRING and m.detailCache.doesExist("9000000000000000000")}
 end function
 
 function probeLiveGuideGroups() as object
@@ -172,9 +171,9 @@ function probeLiveGuideGroups() as object
 end function
 '''.replace(b"PROBE_STALE_AIRING", b"true" if stale_airing else b"false")
             if name == "components/ProgramDetails.xml":
-                data = data.replace(b"<interface>", b'<interface>\\n    <function name="probePosterStatus" />', 1)
+                data = data.replace(b"<interface>", b'<interface>\\n    <function name="probePosterState" />', 1)
             if name == "components/ProgramDetails.brs":
-                data += b'\nfunction probePosterStatus() as string\n    return m.poster.loadStatus\nend function\n'
+                data += b'\nfunction probePosterState() as object\n    return {hasArt: m.poster.uri <> "", status: m.poster.loadStatus}\nend function\n'
             target.writestr(name, data)
     intermediate.unlink()
 
