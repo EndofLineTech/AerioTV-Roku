@@ -74,8 +74,10 @@ No public submission, signing-key generation or rekeying has occurred.
   tests pass. Developer flags and fixture files remain rejected.
 - The candidate includes the existing guide/cache edits present in the accepted
   working tree; unrelated owner research and native probes are not packaged.
-- Owner approval of the documented open-item Beta risk is pending after the
-  owner requested the full P1 list. Do not interpret that request as a waiver.
+- Owner explicitly confirmed proceeding with the Beta package despite the nine
+  documented open P1s. This does not close those findings or authorize Store
+  submission. The existing key is present on the Roku; its Packager still
+  requires the existing signing password, which is not available in this session.
 
 | Existing P1 | Scope and remaining evidence |
 | --- | --- |
@@ -184,4 +186,5 @@ preserved historical failures or qualifies different cloud hardware/firmware;
 both reliability P1s remain open.
 
 Additional P1 qualification continues. These are targeted P1 checks, not signed/cloud certification or
-physical Android acceptance. Signing remains on hold.
+physical Android acceptance. Beta risk approval is confirmed; signing remains
+blocked only on supplying the existing key's required Packager password.
