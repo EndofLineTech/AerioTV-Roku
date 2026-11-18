@@ -1,5 +1,12 @@
 # Full-application pairing test build
 
+> **Historical workflow.** Beta 0.3.102 enables phone setup in the normal build.
+> Do not replace its enabled provider with this old builder: the builder refuses
+> enabled normal bases. Use the normal Beta and
+> [current phone-setup evidence/limitations](BETA-CANDIDATE-0.3.102.md).
+> The disabled-shipping-provider descriptions and commands below document the
+> earlier, explicitly isolated developer candidate, not current availability.
+
 This is the real AerioTV application with the normal Welcome/Manage entry,
 receiver, provider verification, confirmation, credential/connection transaction
 and Guide handoff. It is **not** the standalone probe, a fake provider scene or a

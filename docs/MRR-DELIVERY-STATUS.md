@@ -1,16 +1,21 @@
-# Profiles delivery status — November 17, 2026
+# Profiles delivery status — November 18, 2026
 
-This records the approved developer/import-and-verify phase, not a signed
-release, public feature enablement or owner acceptance.
+Historical developer/import qualification appears below. Current Beta delivery
+and its explicit acceptance boundaries are recorded in the versioned notes.
 
-**Beta 0.3.101 preparation:** the owner requested a Roku upload candidate and
+**Beta 0.3.101:** the owner requested a Roku upload candidate and
 change notes, deferring Android physical testing to users. Qualified profile,
 native PIN and opt-in Profiles Sync capabilities are now enabled in normal
-source without developer manifest flags. Full release preparation passes, but
-signing is pending the owner's review of the existing open P1 records.
+source without developer manifest flags. The owner approved the documented
+remaining P1 risk; the versioned package was signed with the existing identity.
 See [candidate notes and readiness](BETA-CANDIDATE-0.3.101.md).
-Direct setup receipt and new PIN creation remain disabled; no signed package
-or Store certification is claimed.
+**Beta 0.3.102:** normal direct phone setup is enabled. Actual unmodified peer
+encoders use the real receiver and live Dispatcharr test accounts, not substituted
+production crypto/controllers or a laptop-hosted provider. See
+[phone setup Beta evidence](BETA-CANDIDATE-0.3.102.md) for native results and package
+status. Same-LAN Bonjour and physical-phone UI are separate, unverified checks;
+multicast does not traverse the test VPN. New PIN creation remains unavailable.
+Neither Beta packaging nor native encoder tests claim Store certification.
 
 | Main experience | Current evidence |
 | --- | --- |

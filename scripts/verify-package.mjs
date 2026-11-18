@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = new URL('../', import.meta.url);
 
 export function assertPackageEntries(entries) {
+  if (entries.includes('phone-setup-normal-probe.json') || entries.some(entry => /(^|\/)(PhoneSetupNormalFixture|PhoneEntropyFaultProbe)[^/]*$/i.test(entry))) throw new Error('Package contains private phone/entropy qualification probe');
   if (entries.includes('profile-switch-fault-probe.json') || entries.some(entry => /(^|\/)Profile(?:Switch(?:Roster)?|StartupAuthority)FaultFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic switch fault probe');
   if (entries.includes('baseline-provision-private.json') || entries.some(entry => /(^|\/)ProfileBaselineProvisionFixture[^/]*$/i.test(entry))) throw new Error('Package contains private baseline provisioning material');
   if (entries.some(entry => /(^|\/)RequestGateOwnCredentialProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic own-key broker probe');

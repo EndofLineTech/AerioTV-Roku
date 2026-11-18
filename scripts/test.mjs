@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 const suites = ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel', 'XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'SceneUi', 'AerioSurface', 'RemoteHints', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'ConnectionStore', 'ConnectionNavigation', 'ConnectionAuthTask', 'CapabilityModel', 'ProgramSearchModel', 'GuideUnifiedSearch', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'PlayerRemoteInput', 'GuideRemoteInput', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'DvrRecordingModel', 'DvrPresentationModel', 'DvrNavigation', 'DvrView', 'GuideTaskCache', 'GuideMappingFallback', 'MappingTask', 'MappingDetailModel', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'VodSeriesTarget', 'VodSeriesTask', 'CatchupModel', 'DiagnosticModel', 'OnDemandPlayer', 'RecordingSeekModel', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask', 'RemoteMapModel', 'SettingsRail', 'SettingsHubInput'];
 suites.unshift('LaunchModel');
 suites.unshift('PhoneSetupModel');
+suites.unshift('PhoneSetupEntropy');
 suites.unshift('PhoneSetupTransport');
 suites.unshift('PhoneSetupMdns');
 suites.unshift('PhoneSetupApplyModel');
@@ -126,6 +127,7 @@ for (const suite of suites) {
     ...(suite === 'GuideHistory' ? ['components/GuideView.brs', 'components/GuideSettings.brs'] : []),
     ...(suite === 'BrowserHistory' ? ['components/ChannelBrowser.brs'] : []),
     ...(suite === 'RokuAuthModel' ? ['source/RokuAuthModel.brs'] : []),
+    ...(suite === 'PhoneSetupEntropy' ? ['source/PhoneSetupEntropy.brs'] : []),
     ...(suite === 'XmltvModel' ? ['source/XmltvModel.brs'] : []),
     ...(['PhoneSetupApplyModel', 'M3uModel', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/M3uModel.brs'] : []),
     ...(['PhoneSetupApplyModel', 'XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/XtreamModel.brs'] : []),
@@ -345,7 +347,7 @@ for (const args of [
   if (result.status !== 0) process.exit(1);
 }
 
-const pairingBuild = spawnSync('python3', ['-m', 'unittest', 'scripts/pairing_test_build_test.py', 'scripts/ui_library_audit_test.py', 'scripts/ui_assets_test.py', 'scripts/profile_probe_test.py'], { encoding: 'utf8' });
+const pairingBuild = spawnSync('python3', ['-m', 'unittest', 'scripts/pairing_test_build_test.py', 'scripts/phone_normal_probe_test.py', 'scripts/ui_library_audit_test.py', 'scripts/ui_assets_test.py', 'scripts/profile_probe_test.py'], { encoding: 'utf8' });
 process.stdout.write(pairingBuild.stdout ?? '');
 process.stderr.write(pairingBuild.stderr ?? '');
 if (pairingBuild.error) throw pairingBuild.error;

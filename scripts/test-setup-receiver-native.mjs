@@ -15,6 +15,7 @@ const restore = process.argv[2];
 const productionEntropy = process.argv.includes('--production-entropy');
 const expiryOnly = process.argv.includes('--expiry-only');
 const lifecycleOnly = process.argv.includes('--lifecycle-only');
+if (productionEntropy) throw Error('The old unavailable-provider check is retired. Use scripts/test-phone-setup-normal-native.py for production-provider acceptance.');
 if (!host || !password || !restore || !existsSync(restore)) throw Error('Supply developer environment and verified normal ZIP');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 function curl(args, auth = false) {

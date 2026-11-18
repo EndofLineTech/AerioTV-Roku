@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="PhoneEntropyFaultProbe" extends="Task">
+  <interface>
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupTransport.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupX25519.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupCrypto.brs" />
+  <script type="text/brightscript" uri="pkg:/source/PhoneSetupEntropy.brs" />
+  <script type="text/brightscript" uri="PhoneEntropyFaultProbe.brs" />
+</component>

@@ -80,11 +80,21 @@ final class DiscoveryProbe: @unchecked Sendable {
         b.start(queue: queue)
     }
     func apply(_ results: Set<NWBrowser.Result>) {
+        emit(["event": "browse-update", "count": results.count])
         var live = Set<String>()
         for result in results {
-            guard case let .service(service, _, _, _) = result.endpoint,
-                  case let .bonjour(txt) = result.metadata, txt["role"] != "source", txt["v"] == "1",
-                  let encoded = txt["pk"], let pk = Data(base64Encoded: encoded), pk.count == 32 else { continue }
+            guard case let .service(service, _, _, _) = result.endpoint else {
+                emit(["event": "reject-endpoint"]); continue
+            }
+            guard case let .bonjour(txt) = result.metadata else {
+                emit(["event": "reject-metadata"]); continue
+            }
+            guard txt["role"] != "source", txt["v"] == "1" else {
+                emit(["event": "reject-version-role"]); continue
+            }
+            guard let encoded = txt["pk"], let pk = Data(base64Encoded: encoded), pk.count == 32 else {
+                emit(["event": "reject-public-key"]); continue
+            }
             live.insert(service)
             if resolutions[service]?.pk == encoded { continue }
             connections.removeValue(forKey: service)?.cancel()

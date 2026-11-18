@@ -125,7 +125,12 @@ function phoneSetupProfileBatchPlan(connection as object, previous as object, ro
     end if
     base = phoneSetupProfileProof(connection, name, proofs)
     if base = invalid then return denied
-    facts = userProfileFromVerified(connection.id, lcase(textValue(ids.defaultId)), base.verifiedUser, now)
+    defaultId = lcase(textValue(ids.defaultId))
+    if store.profiles.count() = 0 and defaultRow <> invalid
+        suppliedId = userProfileLocalId(defaultRow.id)
+        if suppliedId <> "" then defaultId = suppliedId
+    end if
+    facts = userProfileFromVerified(connection.id, defaultId, base.verifiedUser, now)
     if facts = invalid or facts.userId.toStr() <> connection.accountId then return denied
     previousRole = facts.role
     for each profile in store.profiles

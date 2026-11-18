@@ -1,5 +1,15 @@
 # Phone-assisted setup: wire-v1 compatibility
 
+## Normal Beta receiver — November 18, 2026
+
+Version 0.3.102 enables the device-key-backed provider in the normal build,
+without replacing receiver/provider/controller code for acceptance. Live
+Dispatcharr QR/encrypted import, PIN, Child and explicit Sync evidence and
+remaining physical-phone/discovery boundaries are recorded in
+[the 0.3.102 Beta notes](BETA-CANDIDATE-0.3.102.md).
+The disabled-production-provider and developer-only language below is historical,
+not the current normal-build availability status.
+
 ## Current owner disposition — November 17, 2026
 
 The device-key pairing build works in testing; no randomness failure or

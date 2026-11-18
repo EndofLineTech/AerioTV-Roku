@@ -39,6 +39,16 @@ sub main()
     check(not planned.store.profiles[1].displayNameClaimed and not planned.store.profiles[1].avatarClaimed, "setup metadata is not an explicit local name/avatar claim")
     check(planned.store.profiles[0].pinLength = 0 and planned.store.profiles[1].pinType = "numbers" and planned.store.pendingRoster, "existing valid PIN material imports with unknown length and roster intent")
     check(not planned.keys.doesExist(ids.defaultId) and planned.keys[ids.byUsername.bob] = "Bob-own-key", "profile batch never writes a default-holder key or password")
+    suppliedDefault = copyJson(defaultRow)
+    suppliedDefault.id = "00000000-0000-4000-8000-0000000000AD"
+    suppliedRows = [child, adult, suppliedDefault]
+    freshIds = phoneSetupProfileBatchPlan(entry, empty, suppliedRows, proofs, ids, 100)
+    check(freshIds.ok and freshIds.store.profiles[0].id = lcase(suppliedDefault.id) and freshIds.store.active = lcase(suppliedDefault.id), "new phone playlist preserves supplied default UUID as well as nondefault UUIDs")
+    retainedIds = phoneSetupProfileBatchPlan(entry, planned.store, suppliedRows, proofs, ids, 101)
+    check(retainedIds.ok and retainedIds.store.profiles[0].id = ids.defaultId, "matched existing default keeps its local UUID despite a different sender UUID")
+    suppliedDefault.id = "../not-a-profile-id"
+    fallbackIds = phoneSetupProfileBatchPlan(entry, empty, [suppliedDefault], proofs, ids, 100)
+    check(fallbackIds.ok and fallbackIds.store.profiles[0].id = ids.defaultId, "invalid default sender UUID falls back to generated safe UUID")
     existing = planned.store
     repeated = phoneSetupProfileBatchPlan(entry, existing, rows, proofs, ids, 101)
     check(repeated.ok and repeated.store.profiles.count() = 3 and repeated.keys.count() = 0 and repeated.skipped.count() = 2, "existing nondefault usernames skip idempotently instead of replacing their keys")

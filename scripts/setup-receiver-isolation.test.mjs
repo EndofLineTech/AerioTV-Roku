@@ -22,7 +22,11 @@ with tempfile.TemporaryDirectory() as directory:
         assert 'fixture-materials.json' not in package.namelist()
         assert package.read('source/PhoneSetupEntropy.brs') == (root / 'source/PhoneSetupEntropy.brs').read_bytes()
     entropy = (root / 'source/PhoneSetupEntropy.brs').read_text()
-    assert 'function phoneSetupRandomBytes(count as integer) as dynamic\\n    return invalid\\nend function' in entropy
+    assert 'CreateObject("roDeviceCrypto")' in entropy
+    assert 'crypto.encrypt(input, "device")' in entropy
+    assert 'crypto.decrypt(encrypted, "device")' in entropy
+    assert 'phoneSetupAcceptDeviceDraw(hex, count)' in entropy
+    assert 'function phoneSetupRandomBytes(count as integer) as dynamic\\n    return invalid\\nend function' not in entropy
     assert 'fixture-materials' not in entropy
     assert '"task_"' not in (root / 'components/PhoneSetupTask.brs').read_text()
     config = (root / 'bsconfig.json').read_text()

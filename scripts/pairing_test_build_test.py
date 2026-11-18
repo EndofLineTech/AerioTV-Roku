@@ -1,4 +1,4 @@
-"""Full-app pairing artifacts must never alter the normal app or release ZIP."""
+"""Historical pairing builders stay isolated; enabled normal builds need no override."""
 import hashlib
 import importlib.util
 import json
@@ -24,7 +24,17 @@ class PairingTestBuild(unittest.TestCase):
             for folder in ["source", "components"]:
                 for path in (ROOT / folder).rglob("*"):
                     if path.is_file():
-                        package.write(path, path.relative_to(ROOT).as_posix())
+                        name = path.relative_to(ROOT).as_posix()
+                        if name == "source/PhoneSetupEntropy.brs":
+                            # Retain coverage of the historical, disabled-base tool.
+                            # Current enabled production input must be rejected below.
+                            text = path.read_text()
+                            start = text.index("function phoneSetupRandomBytes(")
+                            end = text.index("end function", start) + len("end function")
+                            text = text[:start] + "function phoneSetupRandomBytes(count as integer) as dynamic\n    return invalid\nend function" + text[end:]
+                            package.writestr(name, text)
+                        else:
+                            package.write(path, name)
             for name in ["LICENSE.txt", "NOTICE.txt", "material-icons-LICENSE.txt"]:
                 package.write(ROOT / "images" / name, "images/" + name)
         self.original = self.source.read_bytes()
@@ -85,6 +95,11 @@ class PairingTestBuild(unittest.TestCase):
     def test_rejects_a_modified_shipping_entropy_provider(self):
         source = (ROOT / "source/PhoneSetupEntropy.brs").read_bytes()
         self.replace_entry("source/PhoneSetupEntropy.brs", source.replace(b"    return invalid\nend function", b"    return 0\nend function", 1))
+        with self.assertRaisesRegex(ValueError, "unchanged fail-closed"):
+            self.build(enable_device_key_test=True)
+
+    def test_enabled_normal_provider_cannot_be_replaced_by_the_old_test_builder(self):
+        self.replace_entry("source/PhoneSetupEntropy.brs", (ROOT / "source/PhoneSetupEntropy.brs").read_bytes())
         with self.assertRaisesRegex(ValueError, "unchanged fail-closed"):
             self.build(enable_device_key_test=True)
 

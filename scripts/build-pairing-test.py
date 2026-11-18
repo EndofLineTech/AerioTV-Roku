@@ -1,4 +1,4 @@
-"""Build an explicitly opted-in full-app developer pairing ZIP, never a release."""
+"""Historical disabled-base pairing tests only; enabled builds use the normal app."""
 import argparse
 import hashlib
 import json
@@ -52,7 +52,7 @@ def build(input_path, output_directory=None, *, enable_device_key_test=False):
         entropy = package.read("source/PhoneSetupEntropy.brs").decode()
         gate = "function phoneSetupRandomBytes(count as integer) as dynamic\n    return invalid\nend function"
         if entropy.count(gate) != 1:
-            raise ValueError("Base does not contain the unchanged fail-closed shipping entropy provider")
+            raise ValueError("Base does not contain the unchanged fail-closed historical provider; enabled builds must use the normal app")
         if b"value = lcase(value)" not in package.read("source/PhoneSetupX25519.brs"):
             raise ValueError("Base is missing the native uppercase private-key encoding fix")
         candidate = (ROOT / "tests/pairing/DeviceKeyEntropy.brs").read_text()

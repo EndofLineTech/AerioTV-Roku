@@ -1,0 +1,17 @@
+**AerioTV for Roku — Beta 0.3.102**
+
+**Set up your Roku from your phone**
+• Direct encrypted phone setup is now enabled in the normal Beta—no special pairing build needed.
+• Open phone setup on your Roku, then use a compatible AerioTV phone app to scan the QR code and send your Dispatcharr playlist and selected profiles.
+• Imported profiles keep their own sign-ins, supported avatars and existing numeric/Directions PINs. Fresh imports preserve valid shared profile IDs.
+• Default-profile PIN protection and Child restrictions stay in place.
+• Profiles Sync is a separate choice. Sending setup from your phone does **not** turn Sync on.
+
+**Also fixed**
+• An empty optional verification proof no longer prevents a fresh account check.
+• New imports retain the sender's default-profile ID without changing an existing Roku default-profile ID.
+
+**Beta testing notes**
+Apple and Android protocol encoders were tested against the actual Roku receiver and live Dispatcharr accounts. Physical phone UI and same-network discovery still need Beta-user testing; these are not claimed as fully verified.
+
+Existing/imported PINs are supported. Creating new PINs or a Device Admin PIN is not included yet. Previously documented Beta limitations still apply.

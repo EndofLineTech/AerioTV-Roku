@@ -16,6 +16,15 @@ sub main()
     first = m.top.result
     check(first.ok and first.proofs.count() = 1 and m.calls.count() = 1, "default-only phase returns before other profile sign-ins so the slot can commit first")
     resetPhoneVerifyTask()
+    m.top.defaultOnly = true
+    m.top.verifiedDefault = {}
+    verifyPhoneSetupProfiles()
+    check(m.top.result.ok and m.calls.count() = 1 and m.calls[0].key = "alice-key", "empty native optional proof field still requires fresh own default authentication")
+    resetPhoneVerifyTask()
+    m.top.verifiedDefault = {ok: false}
+    verifyPhoneSetupProfiles()
+    check(not m.top.result.ok and m.calls.count() = 0, "nonempty invalid default proof fails closed without credential fallback")
+    resetPhoneVerifyTask()
     m.top.verifiedDefault = first.proofs.alice
     verifyPhoneSetupProfiles()
     check(m.top.result.ok and m.calls.count() = 4 and m.calls[0].key = "wrong-bob-key", "remaining phase reuses only the already verified default proof without a second default request")

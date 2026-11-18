@@ -1,9 +1,53 @@
-' Shipping gate: no documented CSPRNG callable by this BrightScript channel has
-' been established. Never substitute Rnd, UUIDs, fixture keys, or server entropy.
-' A supported local source must return exactly count bytes, or invalid on error.
-' Isolated native probes replace this file, never a flag on the shipping Task.
+' Owner-approved Beta device-key source, qualified by functional native tests.
+' This does not claim a vendor-documented CSPRNG guarantee. No network, signing
+' key changes, registry writes, UUID/Rnd or fixed-key fallback are permitted.
+' Ciphertext and its digest are secret material: never log or persist them.
 function phoneSetupRandomBytes(count as integer) as dynamic
-    return invalid
+    if count < 1 or count > 32 then return invalid
+    crypto = invalid
+    if m.phoneSetupDeviceCryptoFactory <> invalid
+        crypto = m.phoneSetupDeviceCryptoFactory()
+    else
+        crypto = CreateObject("roDeviceCrypto")
+    end if
+    if crypto = invalid then return invalid
+    input = CreateObject("roByteArray")
+    input.fromAsciiString("AerioTV/phone-setup/key-material/v1/" + count.toStr())
+    encrypted = crypto.encrypt(input, "device")
+    if type(encrypted) <> "roByteArray" then return invalid
+    if encrypted.count() < 32 then return invalid
+    recovered = crypto.decrypt(encrypted, "device")
+    crypto = invalid
+    if type(recovered) <> "roByteArray" then return invalid
+    if recovered.toHexString() <> input.toHexString() then return invalid
+    recovered = invalid
+    digest = CreateObject("roEVPDigest")
+    if digest.setup("sha256") <> 0 then return invalid
+    hex = digest.process(encrypted)
+    encrypted = invalid
+    digest = invalid
+    accepted = phoneSetupAcceptDeviceDraw(hex, count)
+    hex = ""
+    if accepted = invalid then return invalid
+    bytes = CreateObject("roByteArray")
+    bytes.fromHexString(accepted)
+    accepted = ""
+    return bytes
+end function
+
+function phoneSetupAcceptDeviceDraw(hex as dynamic, count as integer) as dynamic
+    if count < 1 or count > 32 then return invalid
+    if type(hex) <> "String" and type(hex) <> "roString" then return invalid
+    if len(hex) <> 64 then return invalid
+    if not CreateObject("roRegex", "^[0-9a-fA-F]{64}$", "").isMatch(hex) then return invalid
+    hex = lcase(hex)
+    if type(m.phoneSetupRecentDraws) <> "roArray" then m.phoneSetupRecentDraws = []
+    for each previous in m.phoneSetupRecentDraws
+        if previous = hex then return invalid
+    end for
+    m.phoneSetupRecentDraws.push(hex)
+    if m.phoneSetupRecentDraws.count() > 32 then m.phoneSetupRecentDraws.shift()
+    return left(hex, count * 2)
 end function
 
 function phoneSetupNewMaterial(cancelled = invalid as dynamic) as dynamic

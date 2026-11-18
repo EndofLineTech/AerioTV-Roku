@@ -36,6 +36,12 @@ sub verifyPhoneSetupProfiles()
     if ordered.defaultRow <> invalid then expected = ordered.defaultRow.username
     if ordered.defaultRow = invalid and m.rows.count() = 1 then expected = m.rows[0].username
     baseProof = m.top.verifiedDefault
+    ' A native optional assocarray field can be an empty map, not invalid.
+    ' Empty means no prior proof: authenticate the supplied own credential.
+    ' Nonempty but invalid proof still takes the strict refusal path below.
+    if type(baseProof) = "roAssociativeArray"
+        if baseProof.count() = 0 then baseProof = invalid
+    end if
     if type(baseProof) = "roAssociativeArray"
         facts = userProfileFromVerified("verified", "00000000-0000-4000-8000-000000000001", baseProof.verifiedUser, 1)
         if facts = invalid or baseProof.ok <> true or baseProof.verifiedBaseUrl <> m.base or textValue(baseProof.apiKey) = "" then finishPhoneProfileVerification({ok: false}) : return
