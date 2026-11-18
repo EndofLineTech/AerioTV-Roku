@@ -1146,6 +1146,7 @@ sub onPickerSelected(event as object)
             jumpTo(uiNow())
             return
         else if action = "refresh"
+            retryFailedGuideLogos()
             clearStoredGuideCache()
             cancelProgramDetail()
             m.detailCache = {}

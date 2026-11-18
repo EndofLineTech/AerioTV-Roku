@@ -6,6 +6,7 @@ sub initGuideLogos()
     m.guideLogoOrder = []
     m.guideLogoBytes = 0
     m.guideLogoFailed = {}
+    m.guideLogoIgnoreCurrentFailures = false
     m.guideLogoTask = invalid
     m.guideLogoCleanup = invalid
     m.guideLogoCleanupPaths = []
@@ -44,6 +45,7 @@ sub resetGuideLogos()
     m.guideLogoOrder = []
     m.guideLogoBytes = 0
     m.guideLogoFailed = {}
+    m.guideLogoIgnoreCurrentFailures = false
     m.guideLogoPrefix = "tmp:/aerio-guide-" + CreateObject("roDeviceInfo").getRandomUUID()
     m.guideLogoClock = invalid
     m.guideLogoFirstReported = false
@@ -217,6 +219,21 @@ sub onGuideLogoAsset(event as object)
     if isCurrentTaskEvent(event, m.guideLogoTask) then storeGuideLogo(event.getData())
 end sub
 
+sub retryFailedGuideLogos()
+    m.guideLogoFailed = {}
+    m.guideLogoIgnoreCurrentFailures = m.guideLogoTask <> invalid
+end sub
+
+sub rememberGuideLogoFailures(ids as object)
+    if m.guideLogoIgnoreCurrentFailures = true
+        m.guideLogoIgnoreCurrentFailures = false
+        return
+    end if
+    for each id in ids
+        m.guideLogoFailed[id] = true
+    end for
+end sub
+
 sub onGuideLogoBatch(event as object)
     if not isCurrentTaskEvent(event, m.guideLogoTask) then return
     result = event.getData()
@@ -231,9 +248,7 @@ sub onGuideLogoBatch(event as object)
     for each asset in result.assets
         storeGuideLogo(asset)
     end for
-    for each id in result.failed
-        m.guideLogoFailed[id] = true
-    end for
+    rememberGuideLogoFailures(result.failed)
     if result.failed.count() > 0
         reasons = ""
         for each reason in result.reasons

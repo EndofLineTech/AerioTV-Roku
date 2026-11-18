@@ -96,6 +96,34 @@ Neither is the affected 91-channel account. Existing detail-first mapping and
 bounded oversized-list fallback are not reimplemented or declared fixed by a
 smaller-account pass.
 
+Direct Roku validation then used the released 0.3.102 ZIP as the base for a
+private driver with isolated storage and live Dispatcharr. Mapping resolved
+36/36 links in 1,819 ms via per-ID details. After 20 seconds the initial viewport
+had six programmes-bearing rows and six ready logos. The sweep covered all
+36 channels; each sampled viewport had six populated rows and all six logo
+files downloaded. Ready Poster counts were 6/6/6/3/5/5/6 at the sampled
+positions, with no explicit `failed` status. Download completion is not the
+same as immediate rendering after a scroll, and these snapshots do not
+establish why every incomplete Poster was not ready. The exact release was
+restored (`out/guide-live-scroll-102.log`).
+
+Separately, the guide permanently suppressed repeat downloads after a logo
+failure for the lifetime of the connection. The **Refresh guide** action
+previously did not clear that suppression. The development fix resumes
+bounded attempts on explicit Refresh, keeps successful cached artwork, and
+does not allow an already-running batch to reinstate the pre-refresh
+suppression. A failed retry is suppressed again until the next explicit
+refresh. This is not an automatic retry loop or a claim about the original
+91-channel incident.
+
+The native refresh comparison seeded one previously failed logo locally,
+then invoked the real Refresh guide handler against live Dispatcharr. On
+0.3.102 the image remained suppressed; on development 0.3.103 the normal
+download task fetched it again. No server-side failure was injected.
+See `out/guide-live-refresh-102.log` and `out/guide-live-refresh-103-settled.log`.
+`scripts/test-live-guide-scroll-native.py` supports repeating the sweep with
+`--seed-logo-failure` and distinguishes an actual download from a cleared flag.
+
 The existing guide reports missing logo IDs and download failures. Development
 v0.3.103 additionally reports **successful downloads that fail Poster decoding**,
 using aggregate counts only. It ignores uncached/hidden failures, deduplicates

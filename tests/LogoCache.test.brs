@@ -67,6 +67,15 @@ sub main()
     m.rows[2].root.visible = true
     onGuideLogoStatus()
     assertEqual(m.top.metadataEvent, invalid, "inactive guide emits no stale decoder diagnostic")
+    m.guideLogoFailed = {"4": true}
+    m.guideLogoTask = {id: "in-flight"}
+    retryFailedGuideLogos()
+    assertEqual(m.guideLogoFailed.count(), 0, "explicit guide refresh allows failed downloads to be tried again")
+    assertEqual(m.guideLogoFiles.count(), 3, "refresh retains successful downloads")
+    rememberGuideLogoFailures(["4", "5"])
+    assertEqual(m.guideLogoFailed.count(), 0, "pre-refresh batch cannot restore the stale failure cache")
+    rememberGuideLogoFailures(["5"])
+    assertEqual(m.guideLogoFailed.doesExist("5"), true, "a retry that still fails is suppressed rather than looping")
     print "ALL TESTS PASSED"
 end sub
 

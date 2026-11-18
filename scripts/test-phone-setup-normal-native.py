@@ -335,6 +335,7 @@ def main():
             print(json.dumps({field: report.get(field) for field in ["peer", "passed", "cleaned", "restored"]}), flush=True)
     if not report["passed"]:
         raise SystemExit("Normal phone-setup native assertions failed; preserve report")
+    return report
 
 
 if __name__ == "__main__":

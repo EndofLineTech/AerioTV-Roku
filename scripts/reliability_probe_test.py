@@ -18,6 +18,18 @@ def load(name, filename):
 
 
 class ReliabilityProbeTest(unittest.TestCase):
+    def test_guide_sweep_distinguishes_cleared_suppression_from_recovery(self):
+        runner = load("guide", "test-live-guide-scroll-native.py")
+        sample = {"kind": "live-guide-sweep", "lineup": 36, "covered_rows": 36,
+                  "mapping_ready": True, "mapping_warning": False, "visible": 6}
+        seeded = {"kind": "live-guide-seeded-failure", "suppressed": True}
+        retry = {"kind": "live-guide-refresh-retry", "downloaded": True, "still_suppressed": False}
+        runner.assert_guide_sweep([sample, seeded, retry], expect_retry=True)
+        with self.assertRaises(SystemExit):
+            runner.assert_guide_sweep([sample, seeded, dict(retry, downloaded=False)], expect_retry=True)
+        with self.assertRaises(SystemExit):
+            runner.assert_guide_sweep([dict(sample, covered_rows=35)])
+
     def test_saved_picker_probe_requires_exact_hash_and_private_main(self):
         runner = load("picker", "test-profile-picker-native.py")
         with tempfile.TemporaryDirectory() as directory:
