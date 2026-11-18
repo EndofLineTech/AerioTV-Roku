@@ -138,6 +138,16 @@ Each went from five ready Posters and one loading to six ready, with the same
 correct cached assignments. Across this 36-channel run, no sampled logo stayed
 missing after the extra wait.
 
+The timed sweep (`out/guide-live-poster-timing.log`) sampled seven viewports,
+including the initial one. After scrolling, files were all cached in roughly
+0.4–0.7 seconds, while all six Posters were ready in roughly 0.4–4.4 seconds.
+The slowest sampled page spent about 3.8 seconds more waiting for its Posters
+after all files had been cached. These are viewport-level samples, not per-image
+decode benchmarks; compressed file size alone does not identify the slowdown.
+The native sweep can compare the default Poster mode with Roku's `limitSize`
+mode in an isolated probe. It records the reported bitmap pixel count and leaves
+the download logic and production package unchanged.
+
 The existing guide reports missing logo IDs and download failures. Development
 v0.3.103 additionally reports **successful downloads that fail Poster decoding**,
 using aggregate counts only. It ignores uncached/hidden failures, deduplicates

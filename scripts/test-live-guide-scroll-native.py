@@ -10,6 +10,7 @@ runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
 original_build = runner.build
 seed_logo_failure = False
+limit_poster_size = False
 
 def build(output, *args, **kwargs):
     intermediate = output.with_suffix(".base.zip")
@@ -26,6 +27,10 @@ def build(output, *args, **kwargs):
             if name == "components/GuideView.xml":
                 data = data.replace(b'<interface>', b'<interface>\n    <function name="liveGuideSweep" />', 1)
             if name == "components/GuideView.brs":
+                if limit_poster_size:
+                    anchor = b'        logo.loadDisplayMode = "scaleToFit"\n'
+                    assert data.count(anchor) == 1
+                    data = data.replace(anchor, b'        logo.loadDisplayMode = "limitSize"\n')
                 data += b'''
 
 function liveSweepMenuEvent(node as object, index as integer) as object
@@ -42,6 +47,7 @@ sub liveSweepMeasurePosters(elapsed as integer)
     cached = 0
     ready = 0
     maxBytes = 0
+    maxBitmapPixels = 0
     for each row in m.rows
         if row.root.visible and channelLogoCacheKeyValid(row.logoId)
             expected++
@@ -49,7 +55,11 @@ sub liveSweepMeasurePosters(elapsed as integer)
                 asset = m.guideLogoFiles[row.logoId]
                 cached++
                 if asset.bytes > maxBytes then maxBytes = asset.bytes
-                if row.logo.uri = asset.uri and row.logo.loadStatus = "ready" then ready++
+                if row.logo.uri = asset.uri and row.logo.loadStatus = "ready"
+                    ready++
+                    pixels = int(row.logo.bitmapWidth * row.logo.bitmapHeight)
+                    if pixels > maxBitmapPixels then maxBitmapPixels = pixels
+                end if
             end if
         end if
     end for
@@ -58,7 +68,7 @@ sub liveSweepMeasurePosters(elapsed as integer)
     if cached = expected and m.liveSweepAllCachedAt = invalid then m.liveSweepAllCachedAt = age
     if ready = expected or age >= 15000
         m.liveSweepTimingDone = true
-        print "[setup-phone-normal] "; FormatJson({kind: "live-guide-poster-timing", row_start: m.rowStart, eligible: expected, ready: ready, all_cached_ms: m.liveSweepAllCachedAt, sample_ms: age, settled: ready = expected, max_cached_logo_bytes: maxBytes})
+        print "[setup-phone-normal] "; FormatJson({kind: "live-guide-poster-timing", row_start: m.rowStart, eligible: expected, ready: ready, all_cached_ms: m.liveSweepAllCachedAt, sample_ms: age, settled: ready = expected, max_cached_logo_bytes: maxBytes, max_bitmap_pixels: maxBitmapPixels})
     end if
 end sub
 
@@ -192,8 +202,11 @@ def assert_guide_sweep(events, expect_retry=False):
 
 if __name__ == "__main__":
     seed_logo_failure = "--seed-logo-failure" in sys.argv
+    limit_poster_size = "--limit-poster-size" in sys.argv
     if seed_logo_failure:
         sys.argv.remove("--seed-logo-failure")
+    if limit_poster_size:
+        sys.argv.remove("--limit-poster-size")
     runner.build = build
     report = runner.main()
     assert_guide_sweep(report["events"], expect_retry=seed_logo_failure)

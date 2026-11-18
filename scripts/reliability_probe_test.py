@@ -46,6 +46,24 @@ class ReliabilityProbeTest(unittest.TestCase):
                 self.assertIn(b"live-guide-poster-timing", view)
                 self.assertIn(b"all_cached_ms", view)
 
+    def test_guide_probe_poster_size_experiment_changes_only_guide_view(self):
+        guide = load("guide", "test-live-guide-scroll-native.py")
+        with tempfile.TemporaryDirectory() as directory:
+            source, baseline, limited = (Path(directory) / name for name in ("source.zip", "baseline.zip", "limited.zip"))
+            view_path = "components/GuideView.brs"
+            with zipfile.ZipFile(source, "w") as package:
+                package.write(ROOT / view_path, view_path)
+                package.write(ROOT / "components/LogoCacheTask.brs", "components/LogoCacheTask.brs")
+            guide.build(baseline, source, "test-reliability")
+            with patch.object(guide, "limit_poster_size", True):
+                guide.build(limited, source, "test-reliability")
+            with zipfile.ZipFile(baseline) as a, zipfile.ZipFile(limited) as b:
+                self.assertEqual(set(a.namelist()), set(b.namelist()))
+                self.assertEqual([name for name in a.namelist() if a.read(name) != b.read(name)], [view_path])
+                self.assertEqual(b.read(view_path), a.read(view_path).replace(
+                    b'        logo.loadDisplayMode = "scaleToFit"\n',
+                    b'        logo.loadDisplayMode = "limitSize"\n', 1))
+
     def test_saved_picker_probe_requires_exact_hash_and_private_main(self):
         runner = load("picker", "test-profile-picker-native.py")
         with tempfile.TemporaryDirectory() as directory:
