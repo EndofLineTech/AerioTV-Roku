@@ -36,6 +36,32 @@ function liveSweepMenuEvent(node as object, index as integer) as object
     end function}
 end function
 
+sub liveSweepMeasurePosters(elapsed as integer)
+    if m.mappingState <> "ready" or m.liveSweepTimingDone = true then return
+    expected = 0
+    cached = 0
+    ready = 0
+    maxBytes = 0
+    for each row in m.rows
+        if row.root.visible and channelLogoCacheKeyValid(row.logoId)
+            expected++
+            if m.guideLogoFiles.doesExist(row.logoId)
+                asset = m.guideLogoFiles[row.logoId]
+                cached++
+                if asset.bytes > maxBytes then maxBytes = asset.bytes
+                if row.logo.uri = asset.uri and row.logo.loadStatus = "ready" then ready++
+            end if
+        end if
+    end for
+    if expected = 0 then return
+    age = elapsed - m.liveSweepViewportAt
+    if cached = expected and m.liveSweepAllCachedAt = invalid then m.liveSweepAllCachedAt = age
+    if ready = expected or age >= 15000
+        m.liveSweepTimingDone = true
+        print "[setup-phone-normal] "; FormatJson({kind: "live-guide-poster-timing", row_start: m.rowStart, eligible: expected, ready: ready, all_cached_ms: m.liveSweepAllCachedAt, sample_ms: age, settled: ready = expected, max_cached_logo_bytes: maxBytes})
+    end if
+end sub
+
 function liveGuideSweep() as boolean
     if not m.top.active or not m.ready then return false
     if m.liveSweepClock = invalid
@@ -43,10 +69,12 @@ function liveGuideSweep() as boolean
         m.liveSweepClock.mark()
         m.liveSweepSamples = 0
         m.liveSweepCoverage = {}
+        m.liveSweepViewportAt = 0
         return false
     end if
     elapsed = m.liveSweepClock.totalMilliseconds()
     if elapsed >= 280000 then return true
+    liveSweepMeasurePosters(elapsed)
     if m.liveSweepNextSampleAt = invalid then m.liveSweepNextSampleAt = 20000
     if elapsed < m.liveSweepNextSampleAt then return false
     if LIVE_SWEEP_FAULT and m.liveSweepSamples = 1 and m.liveSweepRetryId <> invalid
@@ -134,6 +162,9 @@ function liveGuideSweep() as boolean
         consumed = onKeyEvent("down", true)
         consumed = onKeyEvent("down", false)
     end for
+    m.liveSweepViewportAt = m.liveSweepClock.totalMilliseconds()
+    m.liveSweepAllCachedAt = invalid
+    m.liveSweepTimingDone = false
     return false
 end function
 '''.replace(b"LIVE_SWEEP_FAULT", b"true" if seed_logo_failure else b"false")

@@ -30,6 +30,22 @@ class ReliabilityProbeTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             runner.assert_guide_sweep([dict(sample, covered_rows=35)])
 
+    def test_guide_probe_keeps_download_code_unchanged(self):
+        guide = load("guide", "test-live-guide-scroll-native.py")
+        with tempfile.TemporaryDirectory() as directory:
+            source, output = (Path(directory) / name for name in ("base.zip", "probe.zip"))
+            logo_task = (ROOT / "components/LogoCacheTask.brs").read_bytes()
+            with zipfile.ZipFile(source, "w") as package:
+                package.writestr("components/GuideView.brs", "' Original guide code\n")
+                package.writestr("components/LogoCacheTask.brs", logo_task)
+            guide.build(output, source, "test-reliability")
+            with zipfile.ZipFile(output) as package:
+                self.assertEqual(package.read("components/LogoCacheTask.brs"), logo_task)
+                view = package.read("components/GuideView.brs")
+                self.assertTrue(view.startswith(b"' Original guide code\n"))
+                self.assertIn(b"live-guide-poster-timing", view)
+                self.assertIn(b"all_cached_ms", view)
+
     def test_saved_picker_probe_requires_exact_hash_and_private_main(self):
         runner = load("picker", "test-profile-picker-native.py")
         with tempfile.TemporaryDirectory() as directory:
