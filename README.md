@@ -14,14 +14,27 @@ records the original baseline. The feature table below describes this release.
 
 ## Download the testing build
 
-**[Download v0.3.88 — testing prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.88)**
+**[Download v0.3.102 — development prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.102)**
 
-Under **Assets**, download **`aeriotv-roku-v0.3.88.zip`**. Keep it zipped.
+Under **Assets**, download **`aeriotv-roku-v0.3.102.zip`**. Keep it zipped.
 Do **not** download GitHub's automatically generated **Source code (zip)** for
 installation; that is the repository, not the Roku application package.
 
 You do not need Node.js, npm, Git, or a compiler to install the release ZIP.
 This is a sideloaded testing preview, not a Roku Streaming Store release.
+
+For the Roku Beta channel, use code **`GQMQGQL`**
+([join the Beta](https://my.roku.com/account/add/GQMQGQL)).
+
+### Included in v0.3.102
+
+Multiple Dispatcharr profiles, profile picker/avatars/launch prompt, personal
+preferences, imported PIN/Child protection, supported native voice PIN entry,
+opt-in Profiles Sync and normal-build encrypted phone setup are included.
+Navigation, pill controls, large-text library layouts, light-mode/DVR captions
+and empty-guide transitions have also been improved. See the
+[development release notes](docs/DEV-RELEASE-0.3.102.md) for the complete
+cumulative summary, verification boundaries and remaining Beta limitations.
 
 ### New since v0.3.84
 
@@ -227,7 +240,7 @@ If Developer Mode is already enabled, proceed to the next step.
 
 ### 3. Upload and install the release ZIP
 
-1. Click **Upload** / **Choose File** and select **`aeriotv-roku-v0.3.88.zip`**.
+1. Click **Upload** / **Choose File** and select **`aeriotv-roku-v0.3.102.zip`**.
 2. Click **Install** or **Install with zip**, depending on the installer version.
    Some versions also offer **Install with squashfs**.
 3. Wait for **Install Success**. AerioTV should launch on the TV automatically.

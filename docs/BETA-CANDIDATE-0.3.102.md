@@ -138,6 +138,21 @@ submitted to the Dashboard or Store. Discord-ready change notes are in
 `docs/DISCORD-0.3.102.txt` (two posts, each under 2,000 characters); they have not been posted
 to a Discord channel by this session.
 
+## Developer Mode distribution
+
+The owner subsequently authorized a public GitHub development prerelease for
+self-installation:
+[v0.3.102](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.102).
+Its assets are the **same verified ZIP** above and a ZIP-only
+`aeriotv-roku-v0.3.102.zip.sha256`, not a rebuilt candidate or the signed package.
+See [development release notes](DEV-RELEASE-0.3.102.md) for sideloading steps,
+the one-development-app-slot warning and known limitations.
+
+Discord copy now uses native `#`/`##` headings. Post #2 includes the repository,
+development release link and owner-supplied Beta channel code **`GQMQGQL`**.
+This authorizes development-ZIP distribution, not Store submission, a Dashboard
+change or a new certification acceptance claim.
+
 ## Source and static analysis
 
 Compared with the immutable v0.3.101 source ZIP, only `manifest`,

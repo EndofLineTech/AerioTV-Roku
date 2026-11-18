@@ -1,42 +1,48 @@
-**AerioTV for Roku — Beta 0.3.102 • 1/2**
-**Profiles, phone setup and everyday use**
+# AerioTV for Roku — Beta 0.3.102 • 1/2
+## Profiles, phone setup and everyday use
 
 This Beta includes the recent profile and UI/UX improvements below—not just the latest phone-setup changes.
 
-**Multiple Dispatcharr profiles**
+## Multiple Dispatcharr profiles
 • A profile picker, quick switching, avatars, reordering and an optional “Who is watching?” prompt at launch.
 • Separate account sign-ins, permissions, favorites, appearance and supported player preferences.
 • Existing/imported numeric and Directions PIN protection, Child restrictions and protected adult management.
 • Native PIN entry, including Directions words/letters and voice input where supported by your Roku and remote.
 • Safer switching, cancellation, credential recovery and server-address changes.
 
-**New in 0.3.102: direct phone setup**
+## New in 0.3.102: direct phone setup
 • Use a compatible AerioTV phone app to scan the Roku setup QR and send your Dispatcharr playlist and selected profiles. No special pairing build is needed.
 • Profiles retain their own sign-ins and supported imported PINs. Fresh imports preserve valid shared profile IDs without changing an existing Roku default-profile ID.
 • Fixed an empty optional verification proof preventing a fresh account check.
 
-**Profiles Sync stays your choice**
+## Profiles Sync stays your choice
 • Opt-in Profiles-only Dispatcharr Sync, with pending-edit preservation and explicit Off behavior.
 • Receiving setup from a phone does **not** turn Sync on.
 
 ---
 
-**AerioTV for Roku — Beta 0.3.102 • 2/2**
-**UI/UX, guide and library fixes included in this Beta**
+# AerioTV for Roku — Beta 0.3.102 • 2/2
+## UI/UX, guide and library fixes
 
 • Better-centered navigation text and labels, with more consistent icon spacing.
 • Consistent rounded pill controls across navigation, channel-browser groups, search actions and compact library selectors.
 • Fixed visible pill seams/cap artifacts and oversized confirmation dialogs.
-• More readable large-text library tabs: compact tabs omit icons, while long category/provider/source labels wrap or truncate inside their controls instead of spilling out.
+• More readable large-text library tabs and contained long category/provider/source labels.
 • Improved Providers/Sources heading spacing to avoid collisions with library tabs.
 • Fixed appearance updates for scene backgrounds and DVR colors, plus light-mode guide subtitles, DVR captions and channel-browser surface readability.
 • Fixed stale programme subtitles/layout when switching to an empty channel group.
 • Shared remote-control hints in the search footer.
 • Detail-first EPG mapping for smaller lineups and larger bounded logo/metadata caches.
 
-These UI fixes were checked in production renderers on Roku, including normal/large text and light appearance. Existing affected-account guide/logo issues remain open; this is not a claim that every device or account is fixed.
+UI fixes were checked in Roku production renderers at normal/large text sizes and in light appearance. Some affected-account guide/logo issues remain open.
 
-**Beta testing notes**
+## Beta testing notes
 Apple and Android protocol encoders passed against the real Roku receiver and live Dispatcharr accounts. Physical phone UI and same-network discovery still need Beta-user testing.
 
 Existing/imported PINs are supported; new PIN/Device Admin creation is not included. Only Profiles Sync is supported. Previously documented Beta/certification limitations still apply.
+
+## Get AerioTV for Roku
+**Beta channel code:** `GQMQGQL`
+[Join the Beta](https://my.roku.com/account/add/GQMQGQL)
+[Repository](https://github.com/EndofLineTech/AerioTV-Roku)
+[Developer Mode ZIP + install instructions](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.102)
