@@ -48,18 +48,21 @@ sub validateLiveOverlays()
         m.overlayChannels = model.channels
         m.overlayTuneIndex = 0
         m.overlayTuneAt = m.overlayClock.totalMilliseconds()
+        m.overlaySawStart = false
         startPlayback(m.overlayChannels[m.overlayTuneIndex])
         m.overlayStage = 1
     else if m.overlayStage = 1
         if m.video.state <> "playing" or m.pendingChannel <> invalid
             age = m.overlayClock.totalMilliseconds() - m.overlayTuneAt
             terminal = m.video.state = "finished" or m.video.state = "error" or m.video.state = "stopped"
+            if m.video.state = "buffering" or m.video.state = "playing" or m.video.state = "paused" then m.overlaySawStart = true
             if age < 3000 or (not terminal and age < 12000) then return
-            print "[setup-phone-normal] "; FormatJson({kind: "live-tune-not-playing", attempt: m.overlayTuneIndex + 1, state: m.video.state, pending: m.pendingChannel <> invalid})
+            print "[setup-phone-normal] "; FormatJson({kind: "live-tune-not-playing", attempt: m.overlayTuneIndex + 1, state: m.video.state, pending: m.pendingChannel <> invalid, saw_start: m.overlaySawStart, error_code: m.video.errorCode, page: m.page, channel_active: m.playingChannel <> invalid})
             stopPlayback()
             m.overlayTuneIndex++
             if m.overlayTuneIndex < 3 and m.overlayTuneIndex < m.overlayChannels.count()
                 m.overlayTuneAt = m.overlayClock.totalMilliseconds()
+                m.overlaySawStart = false
                 startPlayback(m.overlayChannels[m.overlayTuneIndex])
             else
                 beginOverlayLibraryChecks()

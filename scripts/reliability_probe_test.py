@@ -69,6 +69,27 @@ class ReliabilityProbeTest(unittest.TestCase):
                 self.assertEqual([name for name in a.namelist() if a.read(name) != b.read(name)], [store])
                 self.assertIn(b'CopyFile("pkg:/images/profile-avatar-cat.png", asset.uri)', b.read(store))
 
+    def test_real_derivative_probe_keeps_private_images_out_of_baseline(self):
+        guide = load("guide", "test-live-guide-scroll-native.py")
+        with tempfile.TemporaryDirectory() as directory:
+            source, probe = (Path(directory) / name for name in ("source.zip", "probe.zip"))
+            store = "components/GuideLogos.brs"
+            download = "components/LogoCacheTask.brs"
+            with zipfile.ZipFile(source, "w") as package:
+                for name in (store, download):
+                    package.write(ROOT / name, name)
+            live = {"accounts": [{}, {"user": {"api_key": "fixture"}}]}
+            with patch.object(guide, "derivative_base", "https://provider.example"), \
+                 patch.object(guide, "prepare_derivatives", return_value={"7": b"fixture PNG"}) as prepare, \
+                 patch.object(guide, "original_build", side_effect=lambda output, base, *_args, **_kwargs: output.write_bytes(base.read_bytes())):
+                guide.build(probe, source, "test-reliability", live=live)
+            prepare.assert_called_once_with("https://provider.example", "fixture")
+            with zipfile.ZipFile(source) as a, zipfile.ZipFile(probe) as b:
+                self.assertEqual(b.read(download), a.read(download))
+                self.assertEqual(b.read("private-logo-derivatives/7.png"), b"fixture PNG")
+                self.assertIn(b"CopyFile(sourcePath, target)", b.read(store))
+            self.assertEqual(probe.stat().st_mode & 0o777, 0o600)
+
     def test_guide_probe_poster_size_experiment_changes_only_guide_view(self):
         guide = load("guide", "test-live-guide-scroll-native.py")
         with tempfile.TemporaryDirectory() as directory:

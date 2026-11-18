@@ -1,7 +1,14 @@
 """Disposable, live-account native guide sweep. No owner registry or provider writes."""
 import importlib.util
+import json
+import os
 import sys
 from pathlib import Path
+import re
+import subprocess
+import tempfile
+import urllib.error
+import urllib.request
 import zipfile
 
 root = Path(__file__).resolve().parents[1]
@@ -14,10 +21,71 @@ limit_poster_size = False
 page_scroll = False
 revisit_logos = False
 small_poster_probe = False
+derivative_base = ""
+
+
+def prepare_derivatives(base, key):
+    """Fetch only IDs from the tested account's lineup; never follow redirects."""
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None
+
+    opener = urllib.request.build_opener(NoRedirect)
+
+    def get(path, limit):
+        request = urllib.request.Request(base + path, headers={"X-API-Key": key})
+        with opener.open(request, timeout=10) as response:
+            data = response.read(limit + 1)
+        if len(data) > limit:
+            raise ValueError("Provider response exceeded probe limit")
+        return data
+
+    data = json.loads(get("/api/channels/channels/summary/?ordering=channel_number", 2_000_000))
+    rows = data if isinstance(data, list) else data.get("results", data.get("data", []))
+    if len(rows) > 48 or (isinstance(data, dict) and data.get("next")):
+        raise ValueError("Derivative probe requires a small, complete authorized lineup")
+    ids = sorted({str(row.get("logo_id")) for row in rows if re.fullmatch(r"[1-9][0-9]{0,9}", str(row.get("logo_id")))})
+    derivatives = {}
+    source_total = 0
+    with tempfile.TemporaryDirectory() as directory:
+        src = Path(directory) / "source.png"
+        dest = Path(directory) / "resized.png"
+        for logo_id in ids:
+            try:
+                body = get(f"/api/channels/logos/{logo_id}/cache/", 2_097_152)
+            except urllib.error.HTTPError as error:
+                if error.code != 404:
+                    raise
+                continue
+            except (urllib.error.URLError, ValueError):
+                continue
+            if len(body) < 24 or body[:16] != b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR":
+                continue
+            largest = max(int.from_bytes(body[16:20], "big"), int.from_bytes(body[20:24], "big"))
+            if not 116 < largest <= 4096:
+                continue
+            src.write_bytes(body)
+            dest.unlink(missing_ok=True)
+            result = subprocess.run(["sips", "-Z", "116", str(src), "--out", str(dest)],
+                                    capture_output=True, timeout=10)
+            if result.returncode == 0 and dest.is_file() and 0 < dest.stat().st_size < len(body):
+                derivatives[logo_id] = dest.read_bytes()
+                source_total += len(body)
+    if not derivatives:
+        raise ValueError("No authorized PNG derivatives were prepared")
+    print(json.dumps({"derivatives": len(derivatives), "original_bytes": source_total,
+                      "resized_bytes": sum(map(len, derivatives.values()))}), flush=True)
+    return derivatives
 
 def build(output, *args, **kwargs):
+    derivatives = {}
+    if derivative_base:
+        live = kwargs["live"]
+        derivatives = prepare_derivatives(derivative_base, live["accounts"][1]["user"]["api_key"])
     intermediate = output.with_suffix(".base.zip")
     original_build(intermediate, *args, **kwargs)
+    if derivatives:
+        os.close(os.open(output, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600))
     with zipfile.ZipFile(intermediate) as original, zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as updated:
         for name in original.namelist():
             data = original.read(name)
@@ -36,6 +104,19 @@ def build(output, *args, **kwargs):
     ' the local image before assigning the same URI to the same Poster.
     if not DeleteFile(asset.uri) then stop
     if not CopyFile("pkg:/images/profile-avatar-cat.png", asset.uri) then stop
+''' + anchor, 1)
+            if name == "components/GuideLogos.brs" and derivatives:
+                anchor = b"    m.guideLogoFiles[asset.id] = asset\n"
+                assert data.count(anchor) == 1
+                data = data.replace(anchor, b'''    ' Private experiment: the original live download still has to succeed.
+    sourcePath = "pkg:/private-logo-derivatives/" + asset.id + ".png"
+    if right(asset.uri, 4) = ".png"
+        target = left(asset.uri, len(asset.uri) - 4) + "-sized.png"
+        if CopyFile(sourcePath, target)
+            DeleteFile(asset.uri)
+            asset.uri = target
+        end if
+    end if
 ''' + anchor, 1)
             if name == "components/GuideView.brs":
                 if limit_poster_size:
@@ -57,6 +138,7 @@ sub liveSweepMeasurePosters(elapsed as integer)
     expected = 0
     cached = 0
     ready = 0
+    resized = 0
     maxBytes = 0
     maxBitmapPixels = 0
     for each row in m.rows
@@ -65,6 +147,7 @@ sub liveSweepMeasurePosters(elapsed as integer)
             if m.guideLogoFiles.doesExist(row.logoId)
                 asset = m.guideLogoFiles[row.logoId]
                 cached++
+                if right(asset.uri, 10) = "-sized.png" then resized++
                 if asset.bytes > maxBytes then maxBytes = asset.bytes
                 if row.logo.uri = asset.uri and row.logo.loadStatus = "ready"
                     ready++
@@ -79,7 +162,7 @@ sub liveSweepMeasurePosters(elapsed as integer)
     if cached = expected and m.liveSweepAllCachedAt = invalid then m.liveSweepAllCachedAt = age
     if ready = expected or age >= 15000
         m.liveSweepTimingDone = true
-        print "[setup-phone-normal] "; FormatJson({kind: "live-guide-poster-timing", row_start: m.rowStart, eligible: expected, ready: ready, all_cached_ms: m.liveSweepAllCachedAt, sample_ms: age, settled: ready = expected, max_cached_logo_bytes: maxBytes, max_bitmap_pixels: maxBitmapPixels, revisiting: m.liveSweepReturning = true})
+        print "[setup-phone-normal] "; FormatJson({kind: "live-guide-poster-timing", row_start: m.rowStart, eligible: expected, ready: ready, resized: resized, all_cached_ms: m.liveSweepAllCachedAt, sample_ms: age, settled: ready = expected, max_cached_logo_bytes: maxBytes, max_bitmap_pixels: maxBitmapPixels, revisiting: m.liveSweepReturning = true})
     end if
 end sub
 
@@ -211,6 +294,8 @@ end function
     print "[setup-phone-normal] "; FormatJson({kind: "live-guide-mapping", ok: result.ok, source: result.source, links: count, elapsed_ms: m.metadataElapsed.totalMilliseconds()})
     m.top.metadataEvent = {ok: result.ok, stage: "mapping"''', 1)
             updated.writestr(name, data)
+        for logo_id, content in derivatives.items():
+            updated.writestr(f"private-logo-derivatives/{logo_id}.png", content)
 
 def assert_guide_sweep(events, expect_retry=False, expect_revisit=False):
     samples = [row for row in events if row["kind"] == "live-guide-sweep"]
@@ -236,6 +321,12 @@ if __name__ == "__main__":
     page_scroll = "--page-scroll" in sys.argv
     revisit_logos = "--revisit-logos" in sys.argv
     small_poster_probe = "--small-poster-probe" in sys.argv
+    if "--real-logo-derivatives" in sys.argv:
+        sys.argv.remove("--real-logo-derivatives")
+        if small_poster_probe:
+            raise SystemExit("Choose only one artwork experiment")
+        credentials = Path(sys.argv[sys.argv.index("--dispatcharr-credentials") + 1])
+        derivative_base = json.loads(credentials.read_text())["baseUrl"].rstrip("/")
     if small_poster_probe:
         sys.argv.remove("--small-poster-probe")
     if seed_logo_failure:
@@ -249,4 +340,8 @@ if __name__ == "__main__":
     runner.build = build
     report = runner.main()
     assert_guide_sweep(report["events"], expect_retry=seed_logo_failure, expect_revisit=revisit_logos)
+    if derivative_base:
+        samples = [row for row in report["events"] if row["kind"] == "live-guide-poster-timing"]
+        if not any(row.get("resized", 0) > 0 and row["settled"] for row in samples):
+            raise SystemExit("No resized artwork was observed in a settled viewport")
     print("Guide sweep assertions passed", flush=True)
