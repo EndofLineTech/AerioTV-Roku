@@ -187,6 +187,18 @@ artwork still uses the existing account request gate; public HTTPS artwork
 does not get provider headers. A syntactically valid URL may still fail to
 load; this change does not retry through other sources after a Poster error.
 
+An isolated native run (`scripts/test-guide-overlays-live-native.py`,
+`out/guide-artwork-live-overlays-retry.log`) used the v0.3.102 release ZIP
+with only the artwork patch and private probe changes. On the authorized
+live Dispatcharr test account, the selected programme's Poster reached
+`ready`, Player Info appeared over a playing Video node, the channel browser
+took focus without stopping playback, and minimizing returned to the Guide
+with the mini-player still playing. The probe used controller calls, not a
+physical remote, and did not verify picture/audio externally or exercise
+every programme-art fallback on the provider. It cleaned its disposable
+state and restored exact v0.3.102. This is partial evidence for `dgt`, not
+owner-account, light appearance, empty-group, or VOD/DVR acceptance.
+
 For channel logos, the inspected Dispatcharr source (`f1a0bb2c`,
 `apps/channels/api_views.py`, `LogoViewSet.cache`) still streams original
 bytes and exposes no size option in that action. Roku cannot assume a
