@@ -166,16 +166,24 @@ Use this **voice variant** as the exact restore ZIP for subsequent probes until
 another installation is independently verified. The ordinary variant remains
 available for rollback. The earlier ordinary-install record above is historical.
 No PIN was created or changed by this deployment; existing/imported PINs remain
-required. Actual speech acceptance is still pending owner testing.
+required.
+
+After this actual-app installation and the launch/switch/adult voice testing
+instructions, the owner reported **“Passed.”** This supplies owner-reported
+physical voice/access acceptance and closes `.19`, alongside the existing
+implementation/native/full-regression evidence. It is not an independent new
+measurement of `voiceEnabled`, a diagnosis of the earlier false observations,
+or formal Roku certification. Those historical diagnostic results remain intact.
 
 ## Acceptance limits
 
 Native integration reports distinguish **entry integration**, observed voice
 availability and **actual spoken-entry verification**. A false voice field does
 not become a passing voice result, and ECP/callback text is never called speech.
-The full `.19` public acceptance remains open until actual voice/access
-qualification across the applicable gates. No vendor-outreach prerequisite or
-Directions exemption is assumed.
+Owner-reported physical voice acceptance is recorded separately from those
+automated reports; their `spoken_entry_verified=false` fields are not rewritten.
+Formal public certification, shipping enablement and release remain separate.
+No vendor-outreach prerequisite or Directions exemption is assumed.
 
 All probes use disposable synthetic records and exact checksum restoration.
 They do not change real server users, OS settings, pairing, networking, region

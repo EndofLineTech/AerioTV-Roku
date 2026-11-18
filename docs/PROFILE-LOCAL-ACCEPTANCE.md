@@ -5,15 +5,16 @@
 This is the acceptance record for the approved **unsigned developer,
 import-and-verify phase**, not public enablement, certification or a signed
 release. `.6`, `.7`, `.8`, `.14`, `.15`, `.17` and `.18` implementation evidence
-is available. `.9` still retains physical-remote acceptance; `.19` owns native
-voice-keyboard access qualification. Its subsequent
-[shared-controller implementation](PROFILE-NATIVE-PIN-KEYBOARD.md) now has
-developer-only native evidence, not spoken-entry acceptance.
+is available. `.9` is closed on standard physical-remote owner acceptance.
+After requesting the separate voice-enabled actual app, the owner also reported
+the voice tests **“Passed,”** completing `.19` access acceptance.
 
-The owner requested work on `.10`, **not final acceptance of it**. Keep `.10`
-open until its remaining acceptance conditions are actually met. Automated
-qualification does not substitute for the explicit owner acceptance required
-by this ticket.
+**`.10` is now closed:** the owner-reported Roku/iOS non-voice passes followed
+by the voice pass supply explicit local acceptance alongside implementation and
+automated/native evidence. This accepts the bounded developer/import-only phase,
+not formal certification, physical Android handoff or signed release. The earlier
+acceptance audit below retains its narrower evidence levels and limitations;
+owner reports do not retroactively turn synthetic tests into phone E2E tests.
 
 The controlling source is the November 12 specification, SHA-256
 `9f7c94873ec9b0f958f7aaf3f7cec7f0dafa129974264308dbb799e42b19ca1a`,
@@ -135,15 +136,11 @@ deliberate real-server throttling were not performed.
 
 Beads, not this document, tracks remaining work:
 
-- `.9`: physical-remote UI acceptance.
-- `.19`: finish native voice-keyboard access qualification across protected entry
-  points; developer-only shared controller integration is now implemented, but
-  the discriminating physical-remote check was deferred by the owner. Do not
-  report it as only paperwork or vendor approval.
-- `.10`: retain the explicit local acceptance decision and the above limitations;
-  do not force-close through its open dependencies.
-- `.11`: physical-phone integration, human media picture/audio, authenticated
-  Dashboard floor and integrated owner acceptance.
+- `.9`, `.19` and `.10` are closed on their bounded evidence and owner acceptance.
+- `.11` retains integrated acceptance, including physical Android handoff and
+  remaining named sender/build and authenticated Dashboard evidence. The owner
+  reported Roku/iOS non-voice and media passes; no Android UI result or formal
+  certification is inferred from those reports.
 
 Existing intermittent probe failures remain in their original Beads, including
 `667m`, `36eu`, `5fif` and `d43d`; no fresh pass establishes their root cause.
