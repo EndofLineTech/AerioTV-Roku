@@ -51,6 +51,10 @@ the 380-file unsigned source ZIP:
 
 SHA-256: `4601a443328efd3d2bcefe8271fb53959412cdb46d0ff098eea065796c3b0711`.
 
+This is the original prepared ZIP. The subsequent P1 own-profile email-consent
+fix is not in that artifact yet; do not sign it as the updated source.
+Regeneration and full verification are required before signing.
+
 This ZIP is **not** the Roku Dashboard upload package. The signed
 `out/release/aeriotv-roku-v0.3.101.pkg` has not yet been created.
 No public submission, signing-key generation or rekeying has occurred.
@@ -58,7 +62,8 @@ No public submission, signing-key generation or rekeying has occurred.
 ## Semantic release check
 
 - No open P0 bugs found; of the original 18 P1 records below, `6c39`,
-  `6oe4`, `3ynt`, `suad`, `178i`, and `ywtj` now have their missing native
+  `6oe4`, `3ynt`, `suad`, `j4fw`, `178i`, `ywtj`, `4skt`, and `fiz5`
+  now have their missing native or reconciled later
   qualification and are closed.
 - No open PRs targeting `dev`; no CI/security workflow/run found.
 - Release-prepare local verification passed; overnight P1 fixture regression
@@ -72,12 +77,12 @@ No public submission, signing-key generation or rekeying has occurred.
 
 | Existing P1 | Scope and remaining evidence |
 | --- | --- |
-| `fiz5` | Continuous own authority across auth/read/final lineup. Fix exists and final-authority native race passes; startup-race verification remains distinct. |
-| `4skt` | Outgoing tombstone must stay covered through default retirement. Simultaneous/cold native retirement passes; record needs reconciliation with later recovery/acceptance evidence. |
+| `fiz5` | **Closed:** separate actual startup/reconnect read/final authority races pass before new-wave channels; existing staged-final native race also passes. |
+| `4skt` | **Closed:** later simultaneous, separate-process cold, imported default PIN/Child and consented baseline retirement evidence reconciled against this stale-outgoing defect. |
 | `3ynt` | **Closed:** actual own-read cleanup, imported PIN cancellation, and real outgoing preference persistence do not resurrect the removed blob; foreign data survives. |
 | `suad` | **Closed:** authenticated Child's actual adult-purpose PIN is changed by own roster import; stale grant retires before another target PIN/lineup, with fresh Child rollback. |
 | `6oe4` | **Closed:** real-Scene full-access and unavailable-Child key-loss-during-PIN cases pass with zero target requests and unchanged settings. |
-| `j4fw` | Refuse unavailable-Child callbacks after no-session actor changes. Fix exists; exact successor-actor native replay remains unrecorded. |
+| `j4fw` | **Closed:** real SG Task failure notification and separate result-less terminal STOP retain changed no-session actor/key, context, grant, roots and captured flags. |
 | `178i` | **Closed:** native initial/staged-roster stale submit/close preserve successor admission; owned-widget retirement wipes and detaches its native dialog. |
 | `ywtj` | **Closed:** native unchanged rollback succeeds under a fresh session; saved PIN/role/key/root changes stay covered, including advanced working-roster snapshots. |
 | `6c39` | **Closed:** delayed synthetic recording commit/return, delayed-auth Back, and target-PIN Back matrix passes, one POST and owner-only outcome. |
@@ -89,7 +94,7 @@ No public submission, signing-key generation or rekeying has occurred.
 | `x1i` | Historical cloud-device reboot/screensaver reports remain unlocalized. |
 | `grq` | Cloud launch-beacon finding has mixed historical results; signed-candidate cloud acceptance remains. |
 | `e19` | Deep-link implementation/local playback tests exist; cloud reviewer/codec acceptance remains. |
-| `1is` | Manual setup requests consent; audit found own-profile Add/recovery credential forms bypass it. Nonce-bound coverage fix and final signed/cloud audit remain. |
+| `1is` | Own-profile shared form now requests nonce-bound consent too; host refusal/timeout/stale/root-change tests and native chosen/Add/Child command/continuation plus full startup flow pass. Full updated gate and signed/cloud audit remain. |
 
 These are existing tracker records, not 18 new defects discovered during this
 build. They must not be silently closed, described as all unresolved source bugs,
@@ -132,6 +137,38 @@ All these passing runs clean disposable storage and restore the exact baseline.
 qualification with real adult-purpose and target native PINs. The target's
 own read changes the authorizing adult's PIN; the old grant retires before
 another target PIN/lineup, returning only to the revalidated outgoing Child.
+
+`out/p1-switch-fault-unavailable-actor-{change,state}.json` separately
+qualifies actual SG failure and result-less terminal state callbacks after a
+synthetic runtime actor change. The network PIN gate remains at its captured
+value (false during incoming authentication); the visible content cover stays
+true. These are distinct flags, not an inferred access bypass.
+
+`out/p1-switch-fault-startup-{read,lineup}-authority.json` exercises the real
+startup/reconnect controller, separately from switching. Each same-identity
+authority race fences the actor before any new-wave channels. Previously
+queued admitted-Guide EPG requests are recorded separately before new `/me`.
+
+The `4skt` reconciliation uses existing simultaneous/cold/imported-default
+native reports and `out/mrr-final-seven-baseline-retirement-qualified-native.json`;
+it does not invent another owner acceptance or a new run.
+
+The own-profile consent source fix uses a separate ChannelStore bound to its
+credential admission nonce. Refusal or a 15-second unavailable-data timeout
+continues only the still-current form; retirement detaches the callback.
+Roku email is neither logged, retained nor substituted for a provider username.
+`out/p1-own-email-consent-native.log` proves actual native `getUserData`
+invocation and form continuation with source identity/preferences retained,
+zero target authentication and exact cleanup/restore. This is not proof that
+a sideload can satisfy signed/cloud consent certification.
+Additional native Add and Child cases are
+`out/p1-switch-fault-own-email-{add,child}.json`; Add retains a blank provider
+username and Child retains absent actor/key and its cover.
+`out/p1-own-consent-startup-native.json` separately passes actual native
+startup selection, own credential POST, read and Guide admission after consent
+continuation. No pre-selection/form requests or real account mutations occur.
+The updated full release-prepare run is in progress at
+`out/p1-updated-beta101-release-prepare.log`.
 
 Additional P1 qualification continues. These are targeted P1 checks, not signed/cloud certification or
 physical Android acceptance. Signing remains on hold.

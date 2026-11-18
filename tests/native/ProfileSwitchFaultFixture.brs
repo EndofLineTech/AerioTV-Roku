@@ -10,6 +10,11 @@ sub onManagementProbeTick()
         target.pinType = "numbers"
         target.pinSalt = string(32, "b")
         target.pinHash = userProfilePinHash(target.pinSalt, "1234")
+        if left(m.guardCase, 10) = "own-email-"
+            target.pinType = "none"
+            target.pinSalt = ""
+            target.pinHash = ""
+        end if
         store.profiles.push(target)
         if not m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store)) or not m.registry.write(userProfileKeyName("slot-a", target.id), "synthetic-b") or not m.registry.flush()
             reportSwitchFault(false)
@@ -19,6 +24,36 @@ sub onManagementProbeTick()
         m.guardSource = m.activeUserScope.profileId
         m.guardSettings = m.registry.read("settingsV1")
         m.guardSourceSession = currentUserSessionId()
+        if left(m.guardCase, 10) = "own-email-"
+            m.guardStage = "consent-request"
+            m.guardEmailUsername = "Synthetic8"
+            if m.guardCase = "own-email-add"
+                m.guardEmailUsername = ""
+                beginProfileBaselineAdd()
+                admitted = m.profileOwnSignInContext <> invalid
+            else if m.guardCase = "own-email-child"
+                store.profiles[0] = setCanonicalPreference(store.profiles[0], "role", "child")
+                m.registry.write(userProfileStoreKey("slot-a"), FormatJson(store))
+                m.registry.delete("connKey_slot-a")
+                m.registry.flush()
+                resetConnectionRuntime()
+                applySelectedConnection()
+                m.apiKey = ""
+                admitted = showUnavailableChildProfile()
+                if admitted then admitted = beginUserProfileOwnSignIn(m.guardSource, true, true)
+                m.guardEmailUsername = "Synthetic7"
+            else
+                admitted = beginUserProfileOwnSignIn(target.id)
+            end if
+            if not admitted
+                reportSwitchFault(false)
+                return
+            end if
+            m.guardEmailRequested = m.profileOwnSignInEmail <> invalid
+            if m.guardEmailRequested then m.guardEmailRequested = m.profileOwnSignInEmail.command = "getUserData" and m.profileOwnSignInEmail.requestedUserData = "email"
+            m.managementProbePhase = 4
+            return
+        end if
         if m.guardCase = "child-key-loss" or m.guardCase = "unavailable-actor-change" or m.guardCase = "unavailable-actor-state"
             m.guardStage = "unavailable"
             store.profiles[0] = setCanonicalPreference(store.profiles[0], "role", "child")
@@ -168,6 +203,22 @@ sub onManagementProbeTick()
         if m.guardCase = "unavailable-actor-state" then passed = passed and type(m.guardLateTask.result) <> "roAssociativeArray"
         passed = passed and m.registry.read(userProfileStoreKey("slot-a")) = m.guardLateRoot and m.registry.read("settingsV1") = m.guardLateSettings
         reportSwitchFault(passed)
+    else if phase = 4
+        if m.profileOwnSignInEmail <> invalid then return
+        m.guardStage = "consent-continuation"
+        passed = m.guardEmailRequested and m.profileOwnSignInDialog <> invalid and m.profileOwnSignInTask = invalid and m.profileOwnSignInContext <> invalid
+        if passed then passed = m.profileOwnSignInContext.username = m.guardEmailUsername and m.profileOwnSignInContext.rokuEmailOffered = true
+        if m.guardCase = "own-email-child"
+            passed = passed and m.activeUserScope = invalid and m.apiKey = "" and not m.registry.exists("connKey_slot-a") and m.profileGateCover.visible
+        else
+            passed = passed and m.activeUserScope <> invalid
+            if passed then passed = m.activeUserScope.profileId = m.guardSource and currentUserSessionId() = m.guardSourceSession
+            passed = passed and m.registry.read("connKey_slot-a") = "synthetic-a"
+        end if
+        passed = passed and m.registry.read("settingsV1") = m.guardSettings
+        m.guardEvidence = {requested: m.guardEmailRequested, username_retained: m.profileOwnSignInContext.username = m.guardEmailUsername, no_auth_task: m.profileOwnSignInTask = invalid}
+        cancelUserProfileOwnSignIn()
+        reportSwitchFault(passed and m.profileOwnSignInContext = invalid and m.profileOwnSignInEmail = invalid)
     end if
 end sub
 

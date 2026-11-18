@@ -149,7 +149,7 @@ function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as
         end if
     end if
     showProfileOwnSignInForm()
-    return m.profileOwnSignInDialog <> invalid
+    return m.profileOwnSignInDialog <> invalid or m.profileOwnSignInEmail <> invalid
 end function
 
 function profileOwnSignInPreservesSource(nonce as string) as boolean
@@ -232,6 +232,7 @@ end function
 sub showProfileOwnSignInForm(message = "" as string)
     closeProfileOwnSignInDialog()
     if not profileOwnSignInContextCurrent() then cancelUserProfileOwnSignIn() : return
+    if requestProfileOwnSignInEmail() then return
     context = m.profileOwnSignInContext
     dialog = newProfileOwnSignInDialog("form")
     dialog.title = "Sign in to Dispatcharr"
@@ -273,6 +274,58 @@ function userProfileOwnSignInAddressMessage(playlist as string) as string
     if playlist = "" then playlist = "this playlist"
     return "The server address for " + playlist + " changed. Sign in again to use this profile."
 end function
+
+' Separate ChannelStore ownership keeps setup and own-profile consent callbacks
+' from donating permission to a successor admission. Email is never a provider ID.
+function requestProfileOwnSignInEmail() as boolean
+    if m.profileOwnSignInEmail <> invalid then return true
+    context = m.profileOwnSignInContext
+    if context.rokuEmailOffered = true then return false
+    context.rokuEmailOffered = true
+    if m.profileOwnSignInEmailRequestFactory <> invalid
+        request = m.profileOwnSignInEmailRequestFactory()
+    else
+        store = CreateObject("roSGNode", "ChannelStore")
+        info = CreateObject("roSGNode", "ContentNode")
+        request = {store: store, info: info}
+    end if
+    if request.store = invalid or request.info = invalid then return false
+    request.info.addFields({context: "signin"})
+    m.profileOwnSignInEmail = request.store
+    m.profileOwnSignInEmailNonce = context.nonce
+    m.profileOwnSignInEmailClock = CreateObject("roTimespan")
+    m.profileOwnSignInEmailClock.mark()
+    m.profileOwnSignInEmail.observeField("userData", "onProfileOwnSignInRokuUserData")
+    m.profileOwnSignInEmail.requestedUserDataInfo = request.info
+    m.profileOwnSignInEmail.requestedUserData = "email"
+    m.profileOwnSignInEmail.command = "getUserData"
+    return true
+end function
+
+sub closeProfileOwnSignInEmail()
+    if m.profileOwnSignInEmail <> invalid then m.profileOwnSignInEmail.unobserveField("userData")
+    m.profileOwnSignInEmail = invalid
+    m.profileOwnSignInEmailClock = invalid
+    m.profileOwnSignInEmailNonce = ""
+end sub
+
+sub onProfileOwnSignInRokuUserData(event as object)
+    if m.profileOwnSignInEmail = invalid then return
+    if not m.profileOwnSignInEmail.isSameNode(event.getRoSGNode()) then return
+    resumeProfileOwnSignInAfterEmail()
+end sub
+
+sub resumeProfileOwnSignInAfterEmail()
+    nonce = m.profileOwnSignInEmailNonce
+    closeProfileOwnSignInEmail()
+    context = m.profileOwnSignInContext
+    if context = invalid then return
+    if context.nonce <> nonce then return
+    if not profileOwnSignInContextCurrent() then cancelUserProfileOwnSignIn() : return
+    ' Refusal/unavailable data has the same safe continuation as consent.
+    ' Do not retain or log the Roku email or overwrite a provider username.
+    showProfileOwnSignInForm()
+end sub
 
 function profileOwnSignInEventCurrent(event as object) as boolean
     if m.profileOwnSignInDialog = invalid then return false
@@ -607,6 +660,9 @@ function beginProfileOwnSignInHeldCredential(result as object, hash as string) a
 end function
 
 sub tickUserProfileOwnSignInHold()
+    if m.profileOwnSignInEmail <> invalid and m.profileOwnSignInEmailClock <> invalid
+        if m.profileOwnSignInEmailClock.totalMilliseconds() >= 15000 then resumeProfileOwnSignInAfterEmail()
+    end if
     if m.profileOwnSignInHold = invalid or m.profileOwnSignInHoldClock = invalid then return
     if m.profileOwnSignInHoldClock.totalMilliseconds() < 5000 then return
     current = profileOwnSignInContextCurrent()
@@ -782,6 +838,7 @@ sub closeProfileOwnSignInTask()
 end sub
 
 sub retireUserProfileOwnSignIn()
+    closeProfileOwnSignInEmail()
     if m.profileServerAdminContext <> invalid then retireProfileServerAdmin()
     if m.profileOwnSignInHold <> invalid then m.profileOwnSignInHold.unobserveField("result")
     m.profileOwnSignInHold = invalid

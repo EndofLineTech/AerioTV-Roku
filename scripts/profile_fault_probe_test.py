@@ -19,6 +19,11 @@ class ProfileFaultProbeTest(unittest.TestCase):
         self.assertIn('adult-purpose-change', probe.CASES)
         self.assertIn('unavailable-actor-change', probe.CASES)
         self.assertIn('unavailable-actor-state', probe.CASES)
+        self.assertIn('startup-read-authority', probe.CASES)
+        self.assertIn('startup-lineup-authority', probe.CASES)
+        self.assertIn('own-email-consent', probe.CASES)
+        self.assertIn('own-email-add', probe.CASES)
+        self.assertIn('own-email-child', probe.CASES)
         fixture = (ROOT / 'tests/native/ProfileSwitchRosterFaultFixture.brs').read_text()
         self.assertIn('onProfilePinClosed(managementProbeEvent', fixture)
         self.assertIn('persistCurrentUserProfilePreferences()', fixture)
@@ -30,7 +35,7 @@ class ProfileFaultProbeTest(unittest.TestCase):
         spec.loader.exec_module(probe)
         with tempfile.TemporaryDirectory() as folder:
             normal, output = Path(folder) / 'normal.zip', Path(folder) / 'fault.zip'
-            controllers = ['ProfilePinNavigation', 'ProfileSwitchNavigation', 'ProfileSwitchRosterNavigation']
+            controllers = ['ProfilePinNavigation', 'ProfileSwitchNavigation', 'ProfileSwitchRosterNavigation', 'ProfileRosterNavigation', 'DispatcharrTask', 'ProfileOwnSignInNavigation']
             with zipfile.ZipFile(normal, 'w') as package:
                 package.writestr('manifest', 'title=AerioTV\n')
                 for name in ['components/AerioScene.brs', 'source/MetadataCacheStore.brs'] + [f'components/{name}.brs' for name in controllers]:
@@ -42,7 +47,8 @@ class ProfileFaultProbeTest(unittest.TestCase):
                     self.assertIn('PrivateFaultSection', source)
                     self.assertNotIn('CreateObject("roRegistrySection", "AerioTV")', source)
                     self.assertNotIn('OWN_FAULT_CASE', source)
-                    self.assertIn('managementProbeEvent(m.profilePinDialog, 0)', source)
+                    if not case.startswith('startup-'):
+                        self.assertIn('managementProbeEvent(m.profilePinDialog, 0)', source)
                     self.assertIn('profile-switch-fault-probe.json', package.namelist())
                     for name in controllers:
                         self.assertEqual(package.read(f'components/{name}.brs'), (ROOT / f'components/{name}.brs').read_bytes())
@@ -54,7 +60,7 @@ class ProfileFaultProbeTest(unittest.TestCase):
 import assert from 'node:assert/strict';
 assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','components/Scene.xml',
 'images/LICENSE.txt','images/NOTICE.txt','images/material-icons-LICENSE.txt','source/ProfileSwitchFaultFixture.brs']), /fault/i);"""
-        for fixture in ['ProfileSwitchFaultFixture', 'ProfileSwitchRosterFaultFixture']:
+        for fixture in ['ProfileSwitchFaultFixture', 'ProfileSwitchRosterFaultFixture', 'ProfileStartupAuthorityFaultFixture']:
             subprocess.run(['node', '--input-type=module', '-e', script.replace('ProfileSwitchFaultFixture', fixture)], cwd=ROOT, check=True)
 
 

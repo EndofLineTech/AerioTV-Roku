@@ -18,7 +18,8 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 CASES = ['key-loss', 'child-key-loss', 'stale-pin', 'retire-pin', 'rollback-unchanged',
          'rollback-pin', 'rollback-role', 'rollback-key', 'rollback-root',
-         'cleanup-rollback', 'roster-stale-pin', 'adult-purpose-change', 'unavailable-actor-change', 'unavailable-actor-state']
+         'cleanup-rollback', 'roster-stale-pin', 'adult-purpose-change', 'unavailable-actor-change', 'unavailable-actor-state',
+         'startup-read-authority', 'startup-lineup-authority', 'own-email-consent', 'own-email-add', 'own-email-child']
 ROSTER_CASES = ['cleanup-rollback', 'roster-stale-pin', 'adult-purpose-change']
 HELD_CASES = [case for case in CASES if case.startswith('rollback-') or case.startswith('unavailable-actor-')]
 
@@ -39,6 +40,8 @@ def build(output, normal, section, base, case):
         fixture = (ROOT / 'tests/native/ProfileSwitchFaultFixture.brs').read_text().replace('OWN_FAULT_CASE', json.dumps(case))
         if case in ROSTER_CASES:
             fixture = (ROOT / 'tests/native/ProfileSwitchRosterFaultFixture.brs').read_text().replace('OWN_FAULT_CASE', json.dumps(case)) + '\n' + fixture[fixture.index('sub reportSwitchFault('):]
+        if case.startswith('startup-'):
+            fixture = (ROOT / 'tests/native/ProfileStartupAuthorityFaultFixture.brs').read_text().replace('OWN_FAULT_CASE', json.dumps(case)) + '\n' + fixture[fixture.index('sub reportSwitchFault('):]
         with zipfile.ZipFile(seed) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
             for name in original.namelist():
                 body = original.read(name)
@@ -101,6 +104,13 @@ def main():
                 return
             user = 8 if key == 'synthetic-b' else 7
             hits.append({'user': user, 'path': self.path})
+            if state.get('startup_race'):
+                if user == 7 and self.path == '/api/accounts/users/me/':
+                    state['race_me'] = state.get('race_me', 0) + 1
+                # The previous admitted Guide may have already queued EPG.
+                # Keep those separately; the new startup wave begins at /me.
+                bucket = 'race_requests' if state.get('race_me', 0) else 'pre_auth_requests'
+                state.setdefault(bucket, []).append({'user': user, 'path': self.path})
             if user == 8 and self.path == '/api/accounts/users/me/' and args.case in HELD_CASES:
                 state['auth_held'] = True
                 request = urllib.request.Request(f'http://{host}:8060/input?faultheld=1', data=b'', method='POST')
@@ -112,6 +122,9 @@ def main():
             path = self.path.split('?', 1)[0]
             if path == '/api/accounts/users/me/':
                 value = {'id': user, 'username': f'Synthetic{user}', 'user_level': 1}
+                threshold = 2 if args.case == 'startup-read-authority' else 3
+                if args.case.startswith('startup-') and state.get('startup_race') and state.get('race_me', 0) >= threshold:
+                    value['user_level'] = 10
             elif path == '/api/accounts/users/me/app-data/':
                 value = {'apps': [{'key': 'synthetic8.aeriotv', 'bytes': 600}]} if args.case in ROSTER_CASES and user == 8 else {'apps': []}
             elif path == '/api/accounts/users/me/app-data/synthetic8.aeriotv/' and args.case in ROSTER_CASES:
@@ -163,8 +176,15 @@ def main():
             for line in process.stdout:
                 print(line, end='', flush=True)
                 if '[switch-fault] {' in line:
-                    events.append(json.loads(line.split('[switch-fault] ', 1)[1]))
-                    release_auth.set()
+                    event = json.loads(line.split('[switch-fault] ', 1)[1])
+                    if event.get('kind') == 'startup-ready':
+                        state['startup_race'] = True
+                        request = urllib.request.Request(f'http://{host}:8060/input?faultheld=1', data=b'', method='POST')
+                        with urllib.request.urlopen(request, timeout=5) as response:
+                            state['startup_signal_status'] = response.status
+                    else:
+                        events.append(event)
+                        release_auth.set()
             code = process.wait(timeout=10)
         target = [r for r in hits if r.get('user') == 8]
         expected_target = [{'user': 8, 'path': '/api/accounts/users/me/'}] if args.case in HELD_CASES else []
@@ -176,6 +196,12 @@ def main():
         if args.case in HELD_CASES:
             released = auth_released.wait(timeout=5)
             report['passed'] = report['passed'] and released and state.get('auth_held') is True and state.get('signal_status') == 200 and state.get('released_after_verdict') is True
+        if args.case.startswith('startup-'):
+            expected_count = 2 if args.case == 'startup-read-authority' else 3
+            expected_paths = ['/api/accounts/users/me/', '/api/accounts/users/me/', '/api/accounts/users/me/app-data/']
+            if expected_count == 3:
+                expected_paths.append('/api/accounts/users/me/')
+            report['passed'] = report['passed'] and state.get('startup_signal_status') == 200 and state.get('race_me') == expected_count and state.get('race_requests') == [{'user': 7, 'path': path} for path in expected_paths]
     finally:
         release_auth.set()
         try:

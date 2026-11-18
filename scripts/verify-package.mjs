@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = new URL('../', import.meta.url);
 
 export function assertPackageEntries(entries) {
-  if (entries.includes('profile-switch-fault-probe.json') || entries.some(entry => /(^|\/)ProfileSwitch(?:Roster)?FaultFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic switch fault probe');
+  if (entries.includes('profile-switch-fault-probe.json') || entries.some(entry => /(^|\/)Profile(?:Switch(?:Roster)?|StartupAuthority)FaultFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic switch fault probe');
   if (entries.includes('baseline-provision-private.json') || entries.some(entry => /(^|\/)ProfileBaselineProvisionFixture[^/]*$/i.test(entry))) throw new Error('Package contains private baseline provisioning material');
   if (entries.some(entry => /(^|\/)RequestGateOwnCredentialProbe[^/]*$/i.test(entry))) throw new Error('Package contains synthetic own-key broker probe');
   if (entries.some(entry => /(^|\/)ProfileOwnHeldKeyCancelFixture[^/]*$/i.test(entry))) throw new Error('Package contains synthetic own-key cancellation probe');

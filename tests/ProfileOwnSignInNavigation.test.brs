@@ -1,4 +1,5 @@
 sub main()
+    ownEmailConsentChecks()
     ownFormFixture()
     m.playingChannel = {id: "source-live"}
     sourceScope = m.activeUserScope
@@ -404,6 +405,9 @@ function ownFormEvent(node as object, index as dynamic) as object
 end function
 
 sub ownFormFixture()
+    m.profileOwnSignInEmailRequestFactory = invalid
+    m.profileOwnSignInEmail = invalid
+    m.profileOwnSignInEmailClock = invalid
     m.profileBaselineReady = false
     m.fixtureStartupAllowed = false
     m.fixtureStartupAccepted = false
@@ -479,6 +483,66 @@ sub ownFormFixture()
         end sub, unobserveField: sub(field as string)
         end sub}
     end function
+end sub
+
+sub ownEmailConsentFactory()
+    m.profileOwnSignInEmailRequestFactory = function() as object
+        m.factorySequence++
+        node = {id: "consent-" + m.factorySequence.toStr(), isSameNode: function(other as object) as boolean
+            return other.id = m.id
+        end function, observeField: sub(field as string, callback as string)
+        end sub, unobserveField: sub(field as string)
+        end sub}
+        info = {addFields: sub(fields as object)
+            m.context = fields.context
+        end sub}
+        return {store: node, info: info}
+    end function
+end sub
+
+sub ownEmailConsentChecks()
+    ownFormFixture()
+    ownEmailConsentFactory()
+    check(beginUserProfileOwnSignIn(m.fixtureTarget), "own credential admission can await Roku permission")
+    node = m.profileOwnSignInEmail
+    check(node <> invalid and m.profileOwnSignInDialog = invalid and node.command = "getUserData" and node.requestedUserData = "email" and node.requestedUserDataInfo.context = "signin", "each own sign-in requests email before its credential form")
+    onProfileOwnSignInRokuUserData(ownFormEvent(node, {email: "roku@example.test"}))
+    check(m.profileOwnSignInDialog <> invalid and m.profileOwnSignInContext.username = "Bob" and m.profileOwnSignInEmail = invalid, "consented Roku email never replaces known provider identity")
+    showProfileOwnSignInForm()
+    check(m.profileOwnSignInEmail = invalid, "same own admission does not repeatedly request consent")
+    cancelUserProfileOwnSignIn()
+    ownFormFixture()
+    ownEmailConsentFactory()
+    beginUserProfileOwnSignIn(m.fixtureTarget)
+    old = m.profileOwnSignInEmail
+    cancelUserProfileOwnSignIn()
+    beginUserProfileOwnSignIn(m.fixtureTarget)
+    successor = m.profileOwnSignInEmail
+    nonce = m.profileOwnSignInContext.nonce
+    onProfileOwnSignInRokuUserData(ownFormEvent(old, {email: "stale@example.test"}))
+    check(m.profileOwnSignInEmail.isSameNode(successor) and m.profileOwnSignInContext.nonce = nonce and m.profileOwnSignInDialog = invalid, "retired consent callback cannot resume or clear successor admission")
+    onProfileOwnSignInRokuUserData(ownFormEvent(successor, invalid))
+    check(m.profileOwnSignInDialog <> invalid and m.profileOwnSignInContext.username = "Bob", "Roku refusal continues own provider sign-in without synthetic email")
+    cancelUserProfileOwnSignIn()
+    startupOwnFormFixture()
+    ownEmailConsentFactory()
+    check(beginUserProfileOwnSignIn(m.fixtureTarget, false, false, true), "startup consent fixture obtains own admission")
+    check(m.profileOwnSignInEmail <> invalid and m.profileGateCover.visible and m.activeUserScope = invalid, "covered startup recovery requests consent without opening access")
+    gate = m.global.profilegateclosed
+    m.profileOwnSignInEmailClock = {totalMilliseconds: function() as integer
+        return 16000
+    end function}
+    tickUserProfileOwnSignInHold()
+    check(m.profileOwnSignInEmail = invalid and m.profileOwnSignInDialog <> invalid and m.profileGateCover.visible and m.global.profilegateclosed = gate and m.activeUserScope = invalid, "unavailable consent times out into only the still-covered current own form")
+    cancelUserProfileOwnSignIn()
+    ownFormFixture()
+    ownEmailConsentFactory()
+    beginUserProfileOwnSignIn(m.fixtureTarget)
+    stale = m.profileOwnSignInEmail
+    m.registry.values["connectionsV1"] = ""
+    before = m.registry.flushes
+    onProfileOwnSignInRokuUserData(ownFormEvent(stale, invalid))
+    check(m.profileOwnSignInContext = invalid and m.profileOwnSignInEmail = invalid and m.profileOwnSignInDialog = invalid and m.registry.flushes = before and m.registry.values["connectionsV1"] = "", "consent cannot resume after canonical address/root admission changes or repair storage")
 end sub
 
 sub startupOwnFormFixture()
