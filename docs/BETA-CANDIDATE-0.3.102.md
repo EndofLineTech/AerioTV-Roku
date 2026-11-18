@@ -12,6 +12,39 @@
 - Treat an empty optional default-proof map as absent and authenticate normally;
   a nonempty invalid proof still fails closed.
 
+## Included profile and UI/UX improvements
+
+The bullets above describe the new v0.3.102 delta. The delivered Beta also
+contains the earlier profile and UI work; a phone-only changelog understates
+the cumulative release.
+
+- Profile picker, quick switching, avatars, reordering and optional
+  “Who is watching?” at launch; separate own-account permissions, favorites,
+  appearance and supported player preferences.
+- Native numeric/Directions PIN entry and supported voice input, protected adult
+  management, and safer switch/cancel/credential-recovery/address-change flows.
+- Better-centered navigation text and labels, balanced icon gutters and compact
+  icon-free library tabs that leave more room for large text.
+- Consistent rounded pill controls for navigation, channel-browser groups, search
+  actions and compact VOD selectors; fixed cap seams/artifacts and native-dialog
+  inflation.
+- Bounded multiline/ellipsized category/provider/source labels, shorter headings
+  and spacing that avoids library-tab collisions.
+- Correct appearance repainting for scene backgrounds/DVR colors, readable
+  light-mode guide subtitles/DVR captions and mapped channel-browser surfaces.
+- Cleared stale programme subtitles/layout when entering an empty channel group;
+  shared remote hints in the search footer.
+- Detail-first EPG mapping for smaller lineups and larger bounded logo/metadata
+  caches, as already included in v0.3.101.
+
+These are inherited fixes, not newly implemented in v0.3.102. See
+[UI audit fixes](UI-AUDIT-FIXES.md): all 409 captures across 146 starting cases
+were inspected in isolated production renderers, including normal/large text,
+light appearance, empty groups, search, browser groups, VOD selectors and DVR
+captions. This evidence is not a universal claim about live overlays, every
+account/device, or resolution of the remaining affected-account guide/logo
+issues. Native keyboard appearance remains system-owned.
+
 ## Evidence and boundaries
 
 The normal receiver/provider, encryption, profile verification/import, PIN and
@@ -102,7 +135,7 @@ still pass their original versioned checksums.
 
 The exact v0.3.102 signing source remains installed on the Roku. Nothing was
 submitted to the Dashboard or Store. Discord-ready change notes are in
-`docs/DISCORD-0.3.102.txt` (one 1,247-character post); they have not been posted
+`docs/DISCORD-0.3.102.txt` (two posts, each under 2,000 characters); they have not been posted
 to a Discord channel by this session.
 
 ## Source and static analysis
