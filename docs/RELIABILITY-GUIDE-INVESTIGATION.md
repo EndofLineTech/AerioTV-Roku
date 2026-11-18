@@ -34,6 +34,15 @@ the 0.3.103 development build pass against live Dispatcharr, with exact v0.3.102
 restoration after each. These whole-app regressions do not substitute for the
 native lowercase-key red/green test of the specific defect.
 
+Full `npm run verify` passes for v0.3.103 / 380 shipping files:
+`out/reliability-guide-103-full-verify.log`. Targeted logo/tool tests and the
+compiler also pass. Official Roku Static Analysis reports only the existing
+French-`des` false positive at `DescriptionModel.brs:6`.
+The final gate ZIP differs from the native-tested development ZIP only by one
+GuideLogos explanatory comment, not executable code; the explicit comparison is
+`out/reliability-103-final-source-comparison.json`. No v0.3.103 signed package or
+public release was created, and v0.3.102's original checksums remain valid.
+
 ## Missing key delivery: narrowed, not resolved
 
 `out/reliability-picker-no-capture-native.json` reproduces first Select timeout
@@ -57,6 +66,16 @@ controlled screenshot/no-capture and transport comparisons, and requires the
 exact eight-command sequence plus all six callbacks for acceptance. The policy
 runner preserves unique artifacts and can capture function-binding types and
 private refusal locations without contacting a provider or using owner storage.
+
+A subsequent A/B/A comparison reuses **one unchanged saved ZIP**, checks its
+SHA-256 before each run and verifies its installed MD5 after the key sequence:
+`out/reliability-same-zip-comparison.json`. Both urllib-trace runs and the curl
+run pass eight commands/six callbacks and exact restoration. This removes
+rebuilding/package identity as a difference between these three passing cases;
+it still does **not** explain the earlier failed key delivery. The new
+`--reuse-probe` option requires an expected SHA-256 and rejects non-picker
+archives. Its tests and these native runs pass separately after the full
+application verification above; no production source changed afterward.
 
 Fresh read-only device context verifies exact released v0.3.102 installed and
 active, no screensaver, 3820RW2 / OS 16.0.4 build 853:

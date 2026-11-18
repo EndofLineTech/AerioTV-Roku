@@ -1,5 +1,6 @@
 """Causal reliability diagnostics must not alter application behavior."""
 import importlib.util
+import hashlib
 from pathlib import Path
 import tempfile
 import unittest
@@ -17,6 +18,23 @@ def load(name, filename):
 
 
 class ReliabilityProbeTest(unittest.TestCase):
+    def test_saved_picker_probe_requires_exact_hash_and_private_main(self):
+        runner = load("picker", "test-profile-picker-native.py")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "saved.zip"
+            with zipfile.ZipFile(path, "w") as package:
+                package.writestr("manifest", "title=Aerio Profile Picker Probe\n")
+                package.write(ROOT / "tests/native/ProfilePickerProbe.brs", "source/Main.brs")
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            self.assertEqual(runner.verify_saved_picker_probe(path, digest), digest)
+            with self.assertRaises(ValueError):
+                runner.verify_saved_picker_probe(path, "0" * 64)
+            with zipfile.ZipFile(path, "w") as package:
+                package.writestr("manifest", "title=AerioTV\n")
+                package.writestr("source/Main.brs", "sub Main()\nend sub\n")
+            with self.assertRaises(ValueError):
+                runner.verify_saved_picker_probe(path, hashlib.sha256(path.read_bytes()).hexdigest())
+
     def test_native_logo_checks_use_current_callback_without_a_provider(self):
         runner = load("policy", "test-profiles-baseline-policy-native.py")
         with tempfile.TemporaryDirectory() as directory:

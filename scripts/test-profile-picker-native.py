@@ -34,6 +34,17 @@ def picker_passed(code, events, keys, capture=True, screenshot=False):
             and all(key.get("status") == 200 for key in keys))
 
 
+def verify_saved_picker_probe(path, expected_digest):
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    if digest != expected_digest:
+        raise ValueError("Saved picker probe SHA-256 differs; refusing replacement")
+    with zipfile.ZipFile(path) as package:
+        if (package.read("source/Main.brs") != (ROOT / "tests/native/ProfilePickerProbe.brs").read_bytes()
+                or b"title=Aerio Profile Picker Probe\n" not in package.read("manifest")):
+            raise ValueError("Saved ZIP is not the approved private picker probe")
+    return digest
+
+
 def send_picker_key(host, name, kind="keypress", transport="urllib"):
     attempt = {"key": name, "kind": kind, "transport": transport}
     started = time.monotonic()
@@ -117,6 +128,8 @@ def main():
                         help="Controlled diagnostic comparison; six real intent callbacks and all ECP acknowledgements remain mandatory")
     parser.add_argument("--key-transport", choices=["urllib", "urllib-trace", "curl"], default="urllib")
     parser.add_argument("--diagnostic-keys", action="store_true", help="Private enum-only picker key telemetry, never shipping code")
+    parser.add_argument("--reuse-probe", type=Path, help="Controlled comparison using exactly the same saved private ZIP")
+    parser.add_argument("--expected-probe-sha256", help="Required digest when reusing a saved probe")
     args = parser.parse_args()
     host = os.environ["ROKU_HOST"]
     password = os.environ["ROKU_DEV_PASSWORD"]
@@ -127,11 +140,17 @@ def main():
     digest = hashlib.md5(restore.read_bytes()).hexdigest()
     if primitives.installed_md5(host, password) != digest:
         raise RuntimeError("Exact restore ZIP does not match installed app; refusing replacement")
-    archive = ROOT / f"out/profile-picker-{uuid.uuid4().hex[:12]}-probe.zip"
-    build(archive, diagnostic_keys=args.diagnostic_keys)
+    if args.reuse_probe:
+        if not args.expected_probe_sha256:
+            parser.error("--reuse-probe requires --expected-probe-sha256")
+        archive = args.reuse_probe.resolve()
+        verify_saved_picker_probe(archive, args.expected_probe_sha256)
+    else:
+        archive = ROOT / f"out/profile-picker-{uuid.uuid4().hex[:12]}-probe.zip"
+        build(archive, diagnostic_keys=args.diagnostic_keys)
     report = {"restore_sha256": hashlib.sha256(restore.read_bytes()).hexdigest(), "events": [], "keys": [], "passed": False,
               "capture_policy": args.capture, "key_transport": args.key_transport, "diagnostic_keys": args.diagnostic_keys,
-              "archive": str(archive), "probe_sha256": hashlib.sha256(archive.read_bytes()).hexdigest()}
+              "reuse_probe": bool(args.reuse_probe), "archive": str(archive), "probe_sha256": hashlib.sha256(archive.read_bytes()).hexdigest()}
 
     def key(name, kind="keypress"):
         report["keys"].append(send_picker_key(host, name, kind, args.key_transport))
@@ -166,7 +185,8 @@ def main():
                     key("Back")
         code = process.wait(timeout=15)
         events = report["events"]
-        report["passed"] = picker_passed(code, events, report["keys"], capture=args.capture == "screenshot", screenshot=report.get("screenshot", False))
+        report["installed_probe_verified"] = primitives.installed_md5(host, password) == hashlib.md5(archive.read_bytes()).hexdigest()
+        report["passed"] = report["installed_probe_verified"] and picker_passed(code, events, report["keys"], capture=args.capture == "screenshot", screenshot=report.get("screenshot", False))
     finally:
         if process is not None and process.poll() is None:
             process.terminate()
