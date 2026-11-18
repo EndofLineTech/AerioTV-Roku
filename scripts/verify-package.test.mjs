@@ -79,6 +79,10 @@ test('rejects development files and a nested package root', () => {
   assert.throws(() => assertPackageEntries(withRootNotice), /excluded development file/);
 });
 
+test('rejects private artwork even without a probe marker', () => {
+  assert.throws(() => assertPackageEntries(['manifest', 'private-logo-derivatives/7.png']), /private logo derivatives/);
+});
+
 test('rejects renamed receiver probes and synthetic entropy exports in a shipping ZIP', () => {
   const normal = ['manifest', 'source/Main.brs', 'components/AerioScene.xml',
     'images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt'];
