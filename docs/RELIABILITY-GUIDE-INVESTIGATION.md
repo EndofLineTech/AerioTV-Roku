@@ -232,6 +232,15 @@ terminal Video state before overlay checks; that run did not reach the
 library checks. The probe now tries at most three authorized channels and
 can check VOD/DVR independently if none starts.
 
+That bounded rerun (`out/guide-live-overlay-bounded-tune.log`) again passed
+light appearance and empty Favorites. All three sampled live tunes reached
+`finished` before the overlay assertions; the probe did not establish why.
+The separate library checks did run: Movies loaded 20 items without a
+reported error, and Server DVR rendered its recordings summary. These
+are read-only library observations, not acceptance of item actions or
+live overlays. The probe cleaned its disposable state and restored exact
+v0.3.102.
+
 The existing guide reports missing logo IDs and download failures. Development
 v0.3.103 additionally reports **successful downloads that fail Poster decoding**,
 using aggregate counts only. It ignores uncached/hidden failures, deduplicates
