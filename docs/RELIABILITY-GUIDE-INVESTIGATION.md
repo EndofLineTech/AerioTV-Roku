@@ -124,6 +124,14 @@ See `out/guide-live-refresh-102.log` and `out/guide-live-refresh-103-settled.log
 `scripts/test-live-guide-scroll-native.py` supports repeating the sweep with
 `--seed-logo-failure` and distinguishes an actual download from a cleared flag.
 
+A follow-up sweep (`out/guide-live-poster-phases.log`) again recovered the
+seeded failure, covered all 36 channels, and restored the exact release. At
+every sampled viewport, all six files were downloaded and all six Posters
+pointed to the correct cached URI. Non-ready Posters reported `loading`, not
+`failed` or a stale assignment (one or two at four intermediate positions).
+This isolates the observed scroll delay to after download and URI assignment;
+it does not identify a decoder failure or reproduce the original report.
+
 The existing guide reports missing logo IDs and download failures. Development
 v0.3.103 additionally reports **successful downloads that fail Poster decoding**,
 using aggregate counts only. It ignores uncached/hidden failures, deduplicates
