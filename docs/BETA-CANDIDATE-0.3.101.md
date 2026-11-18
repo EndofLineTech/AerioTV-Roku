@@ -69,6 +69,24 @@ The original opaque Roku export is preserved alongside the versioned copy.
 The exact v0.3.101 signing source remains installed on the Roku.
 No public submission, signing-key generation or rekeying has occurred.
 
+## Post-upload local Static Analysis
+
+Roku's official `sca-cmd` 16.0.1 (library/config 16.0.1) reproduces the reported
+obsolete Blowfish/DES warning on the exact verified source ZIP. Its JSON report,
+`out/beta101-sca-full.json`, identifies `/source/DescriptionModel.brs:6`:
+the French word `des` in a language-detection array, not a cipher operation.
+The shipped cipher setup at `source/PhoneSetupCrypto.brs:37` uses `aes-256-gcm`.
+
+A diagnostic-only ZIP differing solely by removal of that French word produces
+zero findings (`out/beta101-sca-diagnostic-only.json`). This confirms a scanner
+false positive, rated Informational (0.0), with no obsolete-cipher vulnerability
+identified. No release source, signed package or cryptography was changed.
+The diagnostic ZIP is not a release candidate and must not be signed/uploaded.
+
+This local source scan cannot validate Developer Dashboard metadata, including
+the separately reported minimum-firmware requirement of 15.1 or greater. It is
+not a claim of Dashboard or cloud certification acceptance.
+
 ## Semantic release check
 
 - No open P0 bugs found; of the original 18 P1 records below, `6c39`,
