@@ -31,7 +31,8 @@ def build(path, *args, **kwargs):
         validateLiveOverlays()''')
                 data += b'''
 sub validateLiveOverlays()
-    if m.overlayClock.totalMilliseconds() > 45000
+    if m.overlayClock.totalMilliseconds() > 75000
+        print "[setup-phone-normal] "; FormatJson({kind: "overlay-timeout", video_state: m.video.state, pending: m.pendingChannel <> invalid})
         finishPhoneNormalProbe(false, "overlay-timeout-" + m.overlayStage.toStr())
         return
     end if
@@ -41,6 +42,9 @@ sub validateLiveOverlays()
         print "[setup-phone-normal] "; FormatJson({kind: "live-program-details", sampled: facts.sampled, has_art: facts.hasArt, poster_status: facts.status, recovered: facts.recovered = true})
         model = m.guide.callFunc("playerBrowserData")
         if model.channels.count() = 0 then finishPhoneNormalProbe(false, "no-live-channel") : return
+        m.devicePreferences.appearanceMode = "light"
+        applyDevicePreferences()
+        print "[setup-phone-normal] "; FormatJson(m.guide.callFunc("probeLiveGuideGroups"))
         startPlayback(model.channels[0])
         m.overlayStage = 1
     else if m.overlayStage = 1
@@ -63,12 +67,34 @@ sub validateLiveOverlays()
         if m.video.state <> "playing" or not m.guide.active or not m.guide.miniActive then return
         print "[setup-phone-normal] "; FormatJson({kind: "live-guide-mini", active: m.guide.active, mini: m.guide.miniActive, playing: m.video.state = "playing"})
         stopPlayback()
+        if m.capabilities.movies = "allowed" then openVodLibrary("movie")
+        m.overlayStage = 5
+    else if m.overlayStage = 5
+        if m.page = "library"
+            library = m.vod.callFunc("libraryStatus")
+            if library.loading then return
+            print "[setup-phone-normal] "; FormatJson({kind: "live-vod-controls", active: m.vod.active, loaded: library.loaded, failed: library.failure <> ""})
+            closeVodLibrary()
+        else
+            print "[setup-phone-normal] "; FormatJson({kind: "live-vod-controls", active: false})
+        end if
+        if m.capabilities.dvr = "view" or m.capabilities.dvr = "manage" then openDvrLibrary()
+        m.overlayStage = 6
+    else if m.overlayStage = 6
+        if m.page = "dvr"
+            status = m.dvr.findNode("status").text
+            if status = "" or instr(1, status, "Refreshing") = 1 then return
+            print "[setup-phone-normal] "; FormatJson({kind: "live-dvr-controls", active: m.dvr.active, listed: left(status, 14) = "Recording now:"})
+            closeDvrLibrary()
+        else
+            print "[setup-phone-normal] "; FormatJson({kind: "live-dvr-controls", active: false})
+        end if
         finishPhoneNormalProbe(true, "complete")
     end if
 end sub
 '''
             if name == "components/GuideView.xml":
-                data = data.replace(b"<interface>", b'<interface>\\n    <function name="probeLiveProgramDetails" />', 1)
+                data = data.replace(b"<interface>", b'<interface>\\n    <function name="probeLiveProgramDetails" />\\n    <function name="probeLiveGuideGroups" />', 1)
             if name == "components/GuideView.brs":
                 data += b'''
 function probeLiveProgramDetails() as object
@@ -102,6 +128,24 @@ function probeLiveProgramDetails() as object
     m.top.setFocus(true)
     return {sampled: true, hasArt: hasArt, status: status, recovered: PROBE_STALE_AIRING and m.detailCache.doesExist("9000000000000000000")}
 end function
+
+function probeLiveGuideGroups() as object
+    current = m.groupIndex
+    empty = false
+    for i = 0 to m.groups.count() - 1
+        if m.groups[i].id = "favorites"
+            m.groupIndex = i
+            filterLineup()
+            drawGuide()
+            empty = m.filtered.count() = 0 and not m.subtitle.visible
+            exit for
+        end if
+    end for
+    m.groupIndex = current
+    filterLineup()
+    drawGuide()
+    return {kind: "live-guide-groups", empty_clean: empty, restored: m.filtered.count() > 0, light: uiAppearance().appearanceMode = "light"}
+end function
 '''.replace(b"PROBE_STALE_AIRING", b"true" if stale_airing else b"false")
             if name == "components/ProgramDetails.xml":
                 data = data.replace(b"<interface>", b'<interface>\\n    <function name="probePosterStatus" />', 1)
@@ -121,6 +165,7 @@ if __name__ == "__main__":
             raise SystemExit("Stale airing did not recover artwork from live Dispatcharr")
     for kind, required in {
         "live-player-info": ("visible", "playing"),
+        "live-guide-groups": ("restored", "light", "empty_clean"),
         "live-channel-browser": ("active", "focused", "playing"),
         "live-guide-mini": ("active", "mini", "playing"),
     }.items():

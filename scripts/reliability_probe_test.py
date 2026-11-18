@@ -53,6 +53,22 @@ class ReliabilityProbeTest(unittest.TestCase):
                 self.assertIn(b"live-guide-poster-timing", view)
                 self.assertIn(b"all_cached_ms", view)
 
+    def test_small_poster_probe_changes_only_local_store_not_download(self):
+        guide = load("guide", "test-live-guide-scroll-native.py")
+        with tempfile.TemporaryDirectory() as directory:
+            source, baseline, smaller = (Path(directory) / name for name in ("source.zip", "baseline.zip", "small.zip"))
+            store = "components/GuideLogos.brs"
+            download = "components/LogoCacheTask.brs"
+            with zipfile.ZipFile(source, "w") as package:
+                for name in (store, download):
+                    package.write(ROOT / name, name)
+            guide.build(baseline, source, "test-reliability")
+            with patch.object(guide, "small_poster_probe", True):
+                guide.build(smaller, source, "test-reliability")
+            with zipfile.ZipFile(baseline) as a, zipfile.ZipFile(smaller) as b:
+                self.assertEqual([name for name in a.namelist() if a.read(name) != b.read(name)], [store])
+                self.assertIn(b'CopyFile("pkg:/images/profile-avatar-cat.png", asset.uri)', b.read(store))
+
     def test_guide_probe_poster_size_experiment_changes_only_guide_view(self):
         guide = load("guide", "test-live-guide-scroll-native.py")
         with tempfile.TemporaryDirectory() as directory:

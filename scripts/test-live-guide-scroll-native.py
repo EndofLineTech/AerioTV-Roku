@@ -13,6 +13,7 @@ seed_logo_failure = False
 limit_poster_size = False
 page_scroll = False
 revisit_logos = False
+small_poster_probe = False
 
 def build(output, *args, **kwargs):
     intermediate = output.with_suffix(".base.zip")
@@ -28,6 +29,14 @@ def build(output, *args, **kwargs):
         if m.guide.callFunc("liveGuideSweep") then finishPhoneNormalProbe(true, "complete")''').encode()
             if name == "components/GuideView.xml":
                 data = data.replace(b'<interface>', b'<interface>\n    <function name="liveGuideSweep" />', 1)
+            if name == "components/GuideLogos.brs" and small_poster_probe:
+                anchor = b"    m.guideLogoFiles[asset.id] = asset\n"
+                assert data.count(anchor) == 1
+                data = data.replace(anchor, b'''    ' Private decode control: fetch the real file first, then swap only
+    ' the local image before assigning the same URI to the same Poster.
+    if not DeleteFile(asset.uri) then stop
+    if not CopyFile("pkg:/images/profile-avatar-cat.png", asset.uri) then stop
+''' + anchor, 1)
             if name == "components/GuideView.brs":
                 if limit_poster_size:
                     anchor = b'        logo.loadDisplayMode = "scaleToFit"\n'
@@ -226,6 +235,9 @@ if __name__ == "__main__":
     limit_poster_size = "--limit-poster-size" in sys.argv
     page_scroll = "--page-scroll" in sys.argv
     revisit_logos = "--revisit-logos" in sys.argv
+    small_poster_probe = "--small-poster-probe" in sys.argv
+    if small_poster_probe:
+        sys.argv.remove("--small-poster-probe")
     if seed_logo_failure:
         sys.argv.remove("--seed-logo-failure")
     if limit_poster_size:
