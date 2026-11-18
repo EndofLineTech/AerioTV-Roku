@@ -44,16 +44,18 @@ for controller compatibility; no developer manifest flags are needed or allowed
 in the release ZIP. Per-user consent, own identity/permissions, PIN, Child,
 storage and request-safety admission checks remain mandatory.
 
-`npm run release:prepare` passes in `out/beta101-release-prepare.log`, producing
+Updated `npm run release:prepare` passes in
+`out/p1-updated-beta101-release-prepare.log`, producing
 the 380-file unsigned source ZIP:
 
 `out/release/aeriotv-roku-v0.3.101.zip`
 
-SHA-256: `4601a443328efd3d2bcefe8271fb53959412cdb46d0ff098eea065796c3b0711`.
+SHA-256: `42a143daf3f37815c40e7fef6c01f3653a1704d3babdc8b5d5378d730f5d8641`.
 
-This is the original prepared ZIP. The subsequent P1 own-profile email-consent
-fix is not in that artifact yet; do not sign it as the updated source.
-Regeneration and full verification are required before signing.
+This replaces the original unsigned `4601a443…` ZIP and includes the P1
+own-profile email-consent fix. The release ZIP's controller bytes match the
+verified source; `shasum -a 256 -c SHA256SUMS` passes inside `out/release`.
+The signed-package versioned checksum file is not created until signing.
 
 This ZIP is **not** the Roku Dashboard upload package. The signed
 `out/release/aeriotv-roku-v0.3.101.pkg` has not yet been created.
@@ -66,8 +68,8 @@ No public submission, signing-key generation or rekeying has occurred.
   now have their missing native or reconciled later
   qualification and are closed.
 - No open PRs targeting `dev`; no CI/security workflow/run found.
-- Release-prepare local verification passed; overnight P1 fixture regression
-  and additional native fault qualification are separate follow-up runs.
+- Updated full release-prepare verification passed after the consent fix;
+  51 private fixture tests and the targeted native P1 cases also pass.
 - Manifest/npm/lock versions agree at 0.3.101; shipping manifest and package
   tests pass. Developer flags and fixture files remain rejected.
 - The candidate includes the existing guide/cache edits present in the accepted
@@ -94,7 +96,7 @@ No public submission, signing-key generation or rekeying has occurred.
 | `x1i` | Historical cloud-device reboot/screensaver reports remain unlocalized. |
 | `grq` | Cloud launch-beacon finding has mixed historical results; signed-candidate cloud acceptance remains. |
 | `e19` | Deep-link implementation/local playback tests exist; cloud reviewer/codec acceptance remains. |
-| `1is` | Own-profile shared form now requests nonce-bound consent too; host refusal/timeout/stale/root-change tests and native chosen/Add/Child command/continuation plus full startup flow pass. Full updated gate and signed/cloud audit remain. |
+| `1is` | Own-profile shared form now requests nonce-bound consent too; host refusal/timeout/stale/root-change tests, native chosen/Add/Child command/continuation, full startup flow and updated full gate pass. Signed/cloud audit remains. |
 
 These are existing tracker records, not 18 new defects discovered during this
 build. They must not be silently closed, described as all unresolved source bugs,
@@ -167,8 +169,19 @@ username and Child retains absent actor/key and its cover.
 `out/p1-own-consent-startup-native.json` separately passes actual native
 startup selection, own credential POST, read and Guide admission after consent
 continuation. No pre-selection/form requests or real account mutations occur.
-The updated full release-prepare run is in progress at
-`out/p1-updated-beta101-release-prepare.log`.
+The updated full release-prepare run passed at
+`out/p1-updated-beta101-release-prepare.log`; its unsigned artifact checksum
+is recorded above.
+
+Bounded reliability follow-up did not reproduce the intermittent failures.
+`out/p1-d43d-current-model-store-native.json` passes with 1,623 explicit native
+PASS checks and exact baseline restoration. Whitelisted before/after snapshots
+show 3820RW2 OS 16.0.4 build 853 and increasing uptime, not a reboot.
+`out/p1-667m-isolated-picker-native.json` passes six actual intent callbacks and
+eight HTTP-200 key commands in 13–49 ms, with exact baseline restoration and no
+application startup/provider/registry. Neither passing repeat explains the
+preserved historical failures or qualifies different cloud hardware/firmware;
+both reliability P1s remain open.
 
 Additional P1 qualification continues. These are targeted P1 checks, not signed/cloud certification or
 physical Android acceptance. Signing remains on hold.
