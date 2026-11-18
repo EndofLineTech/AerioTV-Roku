@@ -46,7 +46,8 @@ function liveGuideSweep() as boolean
         return false
     end if
     elapsed = m.liveSweepClock.totalMilliseconds()
-    if elapsed < 20000 + m.liveSweepSamples * 5000 then return false
+    if m.liveSweepNextSampleAt = invalid then m.liveSweepNextSampleAt = 20000
+    if elapsed < m.liveSweepNextSampleAt then return false
     if LIVE_SWEEP_FAULT and m.liveSweepSamples = 1 and m.liveSweepRetryId <> invalid
         if m.liveSweepRefreshAt = invalid
             print "[setup-phone-normal] "; FormatJson({kind: "live-guide-seeded-failure", suppressed: m.guideLogoFailed.doesExist(m.liveSweepRetryId)})
@@ -108,6 +109,15 @@ function liveGuideSweep() as boolean
         end if
     end for
     print "[setup-phone-normal] "; FormatJson({kind: "live-guide-sweep", lineup: m.channels.count(), filtered: m.filtered.count(), row_start: m.rowStart, selected: m.selected, visible: visibleCount, eligible_logos: hasId, cached: cached, ready: ready, failed_decode: failed, loading: loading, other_poster_status: otherStatus, wrong_uri_count: wrongUri, mapping_ready: m.mappingState = "ready", mapping_warning: m.mappingWarning <> "", epg_keys: mapped, program_rows: populated, covered_rows: m.liveSweepCoverage.count(), active_logo_task: m.guideLogoTask <> invalid})
+    ' Hold the same viewport for one more bounded sample if its images are
+    ' still loading. Moving on would hide whether they ever settled.
+    if loading > 0 and m.liveSweepHeld <> true
+        m.liveSweepHeld = true
+        m.liveSweepNextSampleAt = elapsed + 10000
+        return false
+    end if
+    m.liveSweepHeld = false
+    m.liveSweepNextSampleAt = elapsed + 5000
     if LIVE_SWEEP_FAULT and m.liveSweepSamples = 0 and m.selected + 1 < m.filtered.count() and m.rowStart + visibleCount < m.filtered.count()
         retryId = channelLogoCacheId(m.filtered[m.rowStart + visibleCount])
         if channelLogoCacheKeyValid(retryId) and not m.guideLogoFiles.doesExist(retryId)
