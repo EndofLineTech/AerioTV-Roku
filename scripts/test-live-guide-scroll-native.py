@@ -46,6 +46,7 @@ function liveGuideSweep() as boolean
         return false
     end if
     elapsed = m.liveSweepClock.totalMilliseconds()
+    if elapsed >= 280000 then return true
     if m.liveSweepNextSampleAt = invalid then m.liveSweepNextSampleAt = 20000
     if elapsed < m.liveSweepNextSampleAt then return false
     if LIVE_SWEEP_FAULT and m.liveSweepSamples = 1 and m.liveSweepRetryId <> invalid
@@ -126,7 +127,8 @@ function liveGuideSweep() as boolean
         end if
     end if
     m.liveSweepSamples++
-    if m.selected >= m.filtered.count() - 1 or m.liveSweepSamples >= 12 then return true
+    ' Bound the run, but allow enough six-row viewports to cover a 91-row guide.
+    if m.selected >= m.filtered.count() - 1 or m.liveSweepSamples >= 20 then return true
     for stepIndex = 1 to visibleCount
         if m.selected >= m.filtered.count() - 1 then exit for
         consumed = onKeyEvent("down", true)
