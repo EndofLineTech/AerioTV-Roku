@@ -42,6 +42,31 @@ sub main()
     m.top.metadataEvent = invalid
     requestGuideLogos()
     assertEqual(m.top.metadataEvent, invalid, "repeat draws do not flood diagnostics")
+    m.ready = true
+    m.settings = {showLogos: true}
+    m.guideLogoClock = {totalMilliseconds: function() as integer
+        return 42
+    end function}
+    m.guideLogoFiles = {"1": {uri: "tmp:/private-logo.jpg"}}
+    m.guideLogoDecodeFailed = {}
+    m.rows = [{root: {visible: true}, logoId: "1", logo: {loadStatus: "failed"}},
+              {root: {visible: true}, logoId: "2", logo: {loadStatus: "failed"}},
+              {root: {visible: false}, logoId: "3", logo: {loadStatus: "failed"}}]
+    onGuideLogoStatus()
+    assertEqual(m.top.metadataEvent.source, "poster", "downloaded-image decoder failures are distinct from HTTP failures")
+    assertEqual(m.top.metadataEvent.message, "Downloaded logo decode failures: 1 visible posters, 1 unique logos this connection.", "decode diagnostic contains aggregate counts, not IDs or file paths")
+    m.top.metadataEvent = invalid
+    onGuideLogoStatus()
+    assertEqual(m.top.metadataEvent, invalid, "duplicate decoder notifications do not flood diagnostics")
+    m.guideLogoFiles["2"] = {uri: "tmp:/another-private-logo.webp"}
+    onGuideLogoStatus()
+    assertEqual(m.top.metadataEvent.message, "Downloaded logo decode failures: 2 visible posters, 2 unique logos this connection.", "new cached-image failures advance aggregate diagnostics")
+    m.top.active = false
+    m.top.metadataEvent = invalid
+    m.guideLogoFiles["3"] = {uri: "tmp:/hidden.jpg"}
+    m.rows[2].root.visible = true
+    onGuideLogoStatus()
+    assertEqual(m.top.metadataEvent, invalid, "inactive guide emits no stale decoder diagnostic")
     print "ALL TESTS PASSED"
 end sub
 

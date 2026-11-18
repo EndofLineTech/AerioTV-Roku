@@ -17,6 +17,7 @@ sub initGuideLogos()
     m.guideLogoFirstRendered = false
     m.guideLogoAllRendered = false
     m.guideLogoMissingReported = 0
+    m.guideLogoDecodeFailed = {}
     m.guideLogoDelay = m.top.createChild("Timer")
     m.guideLogoDelay.duration = 0.15
     m.guideLogoDelay.observeField("fire", "requestGuideLogos")
@@ -50,6 +51,7 @@ sub resetGuideLogos()
     m.guideLogoFirstRendered = false
     m.guideLogoAllRendered = false
     m.guideLogoMissingReported = 0
+    m.guideLogoDecodeFailed = {}
     cleanupGuideLogoFiles()
 end sub
 
@@ -176,18 +178,31 @@ sub storeGuideLogo(asset as object)
 end sub
 
 ' A successful download is not proof that the Poster has decoded its image.
-' Report only aggregate first/all visible timings without channel IDs or URIs.
+' Report aggregate timings and decoder failures without channel IDs or URIs.
 sub onGuideLogoStatus()
     if m.guideLogoClock = invalid or not m.ready or not m.top.active or not m.settings.showLogos then return
     expected = 0
     ready = 0
+    visibleFailed = 0
+    newFailure = false
+    if type(m.guideLogoDecodeFailed) <> "roAssociativeArray" then m.guideLogoDecodeFailed = {}
     for each row in m.rows
         id = textValue(row.logoId)
         if row.root.visible and channelLogoCacheKeyValid(id)
             expected++
             if m.guideLogoFiles.doesExist(id) and row.logo.loadStatus = "ready" then ready++
+            if m.guideLogoFiles.doesExist(id) and row.logo.loadStatus = "failed"
+                visibleFailed++
+                if not m.guideLogoDecodeFailed.doesExist(id)
+                    m.guideLogoDecodeFailed[id] = true
+                    newFailure = true
+                end if
+            end if
         end if
     end for
+    if newFailure
+        m.top.metadataEvent = {ok: false, stage: "logos", source: "poster", elapsedMs: 0, message: "Downloaded logo decode failures: " + visibleFailed.toStr() + " visible posters, " + m.guideLogoDecodeFailed.count().toStr() + " unique logos this connection."}
+    end if
     if ready > 0 and not m.guideLogoFirstRendered
         print "[guide-logos] first-poster-ready-ms="; m.guideLogoClock.totalMilliseconds()
         m.guideLogoFirstRendered = true

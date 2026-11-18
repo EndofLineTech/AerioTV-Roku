@@ -347,7 +347,7 @@ for (const args of [
   if (result.status !== 0) process.exit(1);
 }
 
-const pairingBuild = spawnSync('python3', ['-m', 'unittest', 'scripts/pairing_test_build_test.py', 'scripts/phone_normal_probe_test.py', 'scripts/ui_library_audit_test.py', 'scripts/ui_assets_test.py', 'scripts/profile_probe_test.py'], { encoding: 'utf8' });
+const pairingBuild = spawnSync('python3', ['-m', 'unittest', 'scripts/pairing_test_build_test.py', 'scripts/phone_normal_probe_test.py', 'scripts/reliability_probe_test.py', 'scripts/ui_library_audit_test.py', 'scripts/ui_assets_test.py', 'scripts/profile_probe_test.py'], { encoding: 'utf8' });
 process.stdout.write(pairingBuild.stdout ?? '');
 process.stderr.write(pairingBuild.stderr ?? '');
 if (pairingBuild.error) throw pairingBuild.error;

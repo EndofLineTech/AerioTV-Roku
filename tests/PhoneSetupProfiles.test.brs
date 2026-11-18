@@ -42,6 +42,11 @@ sub main()
     suppliedDefault = copyJson(defaultRow)
     suppliedDefault.id = "00000000-0000-4000-8000-0000000000AD"
     suppliedRows = [child, adult, suppliedDefault]
+    copiedMetadata = phoneSetupProfileMetadata(bootstrap.store.profiles[0], suppliedDefault, 100)
+    check(userProfilePinRecordValid(suppliedDefault) and copiedMetadata.pinType = suppliedDefault.pinType and copiedMetadata.pinHash = suppliedDefault.pinHash and copiedMetadata.pinSalt = suppliedDefault.pinSalt, "parsed lowercase-key PIN metadata retains the same valid protection as the literal row")
+    malformedPin = setCanonicalPreference(copyJson(suppliedDefault), "pinHash", "malformed")
+    retainedPin = phoneSetupProfileMetadata(copiedMetadata, malformedPin, 101)
+    check(retainedPin.pinType = copiedMetadata.pinType and retainedPin.pinHash = copiedMetadata.pinHash and retainedPin.pinSalt = copiedMetadata.pinSalt, "malformed parsed PIN metadata cannot erase existing valid protection")
     freshIds = phoneSetupProfileBatchPlan(entry, empty, suppliedRows, proofs, ids, 100)
     check(freshIds.ok and freshIds.store.profiles[0].id = lcase(suppliedDefault.id) and freshIds.store.active = lcase(suppliedDefault.id), "new phone playlist preserves supplied default UUID as well as nondefault UUIDs")
     retainedIds = phoneSetupProfileBatchPlan(entry, planned.store, suppliedRows, proofs, ids, 101)

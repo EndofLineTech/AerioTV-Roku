@@ -79,9 +79,12 @@ function phoneSetupProfileMetadata(profile as object, row as object, now as inte
         nextProfile = setCanonicalPreference(nextProfile, "avatar", userProfileNormalizeAvatar(row.avatar))
     end if
     if userProfilePinRecordValid(row)
-        for each field in ["pinType", "pinHash", "pinSalt"]
-            nextProfile = setCanonicalPreference(nextProfile, field, row[field])
-        end for
+        ' Native JSON maps can retain lowercase keys with case-sensitive dynamic
+        ' lookup. Copy the same named values that passed the PIN validator, not
+        ' row["pinType"] aliases that may be absent despite a valid row.pinType.
+        nextProfile = setCanonicalPreference(nextProfile, "pinType", row.pinType)
+        nextProfile = setCanonicalPreference(nextProfile, "pinHash", row.pinHash)
+        nextProfile = setCanonicalPreference(nextProfile, "pinSalt", row.pinSalt)
         nextProfile = setCanonicalPreference(nextProfile, "pinLength", 0)
     end if
     return setCanonicalPreference(nextProfile, "updatedAt", now)
