@@ -69,6 +69,9 @@ function liveGuideSweep() as boolean
     cached = 0
     ready = 0
     failed = 0
+    loading = 0
+    otherStatus = 0
+    wrongUri = 0
     mapped = 0
     populated = 0
     for each channel in m.channels
@@ -83,8 +86,17 @@ function liveGuideSweep() as boolean
                 hasId++
                 if m.guideLogoFiles.doesExist(row.logoId)
                     cached++
-                    if row.logo.loadStatus = "ready" then ready++
-                    if row.logo.loadStatus = "failed" then failed++
+                    if row.logo.uri <> m.guideLogoFiles[row.logoId].uri
+                        wrongUri++
+                    else if row.logo.loadStatus = "ready"
+                        ready++
+                    else if row.logo.loadStatus = "failed"
+                        failed++
+                    else if row.logo.loadStatus = "loading"
+                        loading++
+                    else
+                        otherStatus++
+                    end if
                 end if
             end if
             if idx < m.filtered.count()
@@ -95,7 +107,7 @@ function liveGuideSweep() as boolean
             end if
         end if
     end for
-    print "[setup-phone-normal] "; FormatJson({kind: "live-guide-sweep", lineup: m.channels.count(), filtered: m.filtered.count(), row_start: m.rowStart, selected: m.selected, visible: visibleCount, eligible_logos: hasId, cached: cached, ready: ready, failed_decode: failed, mapping_ready: m.mappingState = "ready", mapping_warning: m.mappingWarning <> "", epg_keys: mapped, program_rows: populated, covered_rows: m.liveSweepCoverage.count(), active_logo_task: m.guideLogoTask <> invalid})
+    print "[setup-phone-normal] "; FormatJson({kind: "live-guide-sweep", lineup: m.channels.count(), filtered: m.filtered.count(), row_start: m.rowStart, selected: m.selected, visible: visibleCount, eligible_logos: hasId, cached: cached, ready: ready, failed_decode: failed, loading: loading, other_poster_status: otherStatus, wrong_uri_count: wrongUri, mapping_ready: m.mappingState = "ready", mapping_warning: m.mappingWarning <> "", epg_keys: mapped, program_rows: populated, covered_rows: m.liveSweepCoverage.count(), active_logo_task: m.guideLogoTask <> invalid})
     if LIVE_SWEEP_FAULT and m.liveSweepSamples = 0 and m.selected + 1 < m.filtered.count() and m.rowStart + visibleCount < m.filtered.count()
         retryId = channelLogoCacheId(m.filtered[m.rowStart + visibleCount])
         if channelLogoCacheKeyValid(retryId) and not m.guideLogoFiles.doesExist(retryId)
