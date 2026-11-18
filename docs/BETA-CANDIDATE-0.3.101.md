@@ -55,10 +55,18 @@ SHA-256: `42a143daf3f37815c40e7fef6c01f3653a1704d3babdc8b5d5378d730f5d8641`.
 This replaces the original unsigned `4601a443…` ZIP and includes the P1
 own-profile email-consent fix. The release ZIP's controller bytes match the
 verified source; `shasum -a 256 -c SHA256SUMS` passes inside `out/release`.
-The signed-package versioned checksum file is not created until signing.
+Both signed-package and source-ZIP entries in `SHA256SUMS-v0.3.101` now verify.
 
-This ZIP is **not** the Roku Dashboard upload package. The signed
-`out/release/aeriotv-roku-v0.3.101.pkg` has not yet been created.
+This ZIP is **not** the Roku Dashboard upload package. Upload the signed
+`out/release/aeriotv-roku-v0.3.101.pkg`.
+
+Signed package SHA-256:
+`8438f3caf4b31d615cf98d05f42645000014dbb3c7ef4c9d0e37cc529d81fc9e`.
+The exact verified ZIP was installed and its MD5 checked in the Roku Packager;
+signing succeeded with the existing AerioTV Dev ID
+`2c759fbb3556070e7eee7276265ae55566f427c7`.
+The original opaque Roku export is preserved alongside the versioned copy.
+The exact v0.3.101 signing source remains installed on the Roku.
 No public submission, signing-key generation or rekeying has occurred.
 
 ## Semantic release check
@@ -76,12 +84,16 @@ No public submission, signing-key generation or rekeying has occurred.
   working tree; unrelated owner research and native probes are not packaged.
 - Owner explicitly confirmed proceeding with the Beta package despite the nine
   documented open P1s. This does not close those findings or authorize Store
-  submission. The existing key is present on the Roku; its Packager still
-  requires the existing signing password, which is not available in this session.
+  submission. The original signing password was recovered from the existing
+  local signing record and successfully used with the unchanged on-device key.
+  Credentials are now also saved in Git-ignored `.env.roku-signing`, mode `0600`;
+  no credential values are included in Git or these notes.
 - One owner-authorized password attempt was rejected by the Roku with
   `Failed: Invalid Password.` after the exact verified v0.3.101 ZIP was installed
-  and its MD5/Dev ID checked. No signed package was created. The accepted voice
+  and its MD5/Dev ID checked. That attempt created no signed package. The accepted voice
   baseline was restored and its installed MD5 and unchanged Dev ID/key verified.
+  The subsequent recovered-credential attempt succeeded, as documented above;
+  the original failure report is retained.
 
 | Existing P1 | Scope and remaining evidence |
 | --- | --- |
@@ -190,5 +202,6 @@ preserved historical failures or qualifies different cloud hardware/firmware;
 both reliability P1s remain open.
 
 Additional P1 qualification continues. These are targeted P1 checks, not signed/cloud certification or
-physical Android acceptance. Beta risk approval is confirmed; signing remains
-blocked only on supplying the existing key's required Packager password.
+physical Android acceptance. Beta risk approval is confirmed and the signed
+versioned upload package is complete. The nine remaining P1s are not closed by
+packaging or approval of the Beta risk.

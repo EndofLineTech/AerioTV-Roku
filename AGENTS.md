@@ -14,6 +14,12 @@ do not infer blocked owner approvals or claim acceptance that was not verified.
 
 ## Roku Beta Packages
 
+Existing signing credentials are saved locally in the Git-ignored
+`.env.roku-signing` (mode `0600`): `ROKU_SIGNING_DEV_ID` and
+`ROKU_SIGNING_PASSWORD`. Check this file before asking the owner for credentials;
+verify its Dev ID against the Roku. Never print or commit the password, and never
+generate/rekey merely because a credential was not found in session context.
+
 Always hand off a signed Beta/Store package as
 `out/release/aeriotv-roku-v<version>.pkg`, never Roku Packager's opaque
 `P<hash>.pkg` filename. After signing the exact verified versioned ZIP on the

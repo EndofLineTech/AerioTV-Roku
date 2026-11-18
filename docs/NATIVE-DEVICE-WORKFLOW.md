@@ -25,8 +25,14 @@ publish a release.
 
 For a Beta/Store upload, install that exact ZIP on a Roku holding the app's
 existing signing key. In the device Packager, confirm the established Dev ID
-and the installed ZIP's MD5, then download the signed `P<hash>.pkg`. Finish the
-local package with:
+and the installed ZIP's MD5, then download the signed `P<hash>.pkg`.
+
+Existing credentials are saved in local, Git-ignored `.env.roku-signing`
+(`ROKU_SIGNING_DEV_ID`, `ROKU_SIGNING_PASSWORD`, permissions `0600`). Check that
+record and match the Dev ID before asking for the password. Do not print the
+credential, commit the file, or generate/rekey to work around a missing password.
+
+Finish the local package with:
 
 ```sh
 npm run beta:package -- /path/to/P<hash>.pkg
