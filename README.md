@@ -43,6 +43,9 @@ cumulative summary, verification boundaries and remaining Beta limitations.
   playback follows the current time without losing deliberate time travel.
   Program details are directly accessible with paginated long descriptions;
   `*` now puts common actions first and the remainder in More guide actions.
+  Development builds retain feed artwork when details lack it and can recover
+  a stale Dispatcharr programme ID when the refreshed guide has one matching
+  airing. See [programme artwork and guide performance](docs/RELIABILITY-GUIDE-INVESTIGATION.md).
 - **Playback and connections:** bounded live startup retries/source failover,
   clearer stop controls and quieter successful audio fallback. Newly created
   Dispatcharr connections default to remembering a verified API key; existing

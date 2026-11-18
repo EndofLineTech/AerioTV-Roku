@@ -225,6 +225,17 @@ reached the visible rows. It is a decode comparison, not a supported
 thumbnail endpoint. Private artwork is kept out of Git, and normal package
 verification rejects the artwork directory even without the probe marker.
 
+On the 36-channel Roku run, all six scrolled viewports used six real
+derivatives. The 34 resized PNGs took 232,953 bytes combined instead of
+7,176,983 bytes. Median time to six ready Posters was **677 ms**, versus
+**4,636 ms** in the prior original-image control at the same positions.
+All viewports settled, with no wrong assignments or reported decode
+failures, and the probe restored exact v0.3.102. Median original-file
+availability in the derivative run was also 677 ms, so the measurement
+does not resolve a remaining decode interval at this sampling rate.
+This validates real images on the tested Roku, not a provider endpoint,
+visual quality across device models, or a released speedup.
+
 A later paired Roku sweep kept the live Dispatcharr download path and local
 Poster URIs unchanged. In the small-image run, the private probe replaced
 each downloaded file with a small packaged PNG just before assigning it.
