@@ -37,11 +37,11 @@ sub onManagementProbeTick()
     else if phase = 2
         if SWITCH_RECORD_PIN
             if m.profilePinDialog = invalid then failSwitchRecordingProbe() : return
-            if m.probeSwitchRecordNode.state <> "done" then return
+            if m.probeSwitchRecordNode.state <> "done" and m.probeSwitchRecordNode.state <> "stop" then return
             covered = m.global.profilegateclosed and m.profileGateCover.visible and m.probeRecordConfirmed <> true and m.recordTask <> invalid and m.recordSettlementTask = invalid
             if type(m.probeSwitchRecordNode.result) <> "roAssociativeArray" then covered = false
             if covered then covered = m.probeSwitchRecordNode.result.ok = true
-            print "[profile-management] "; FormatJson({kind: "record-covered", passed: covered})
+            print "[profile-management] "; FormatJson({kind: "record-covered", passed: covered, native_state: m.probeSwitchRecordNode.state})
             if not covered then failSwitchRecordingProbe() : return
             print "[profile-management] "; FormatJson({kind: "cancel-ready"})
             m.managementProbePhase = 3
@@ -63,6 +63,14 @@ sub onManagementProbeTick()
             m.managementProbePhase = 3
         end if
     else
+        if SWITCH_RECORD_CANCEL and m.probeRecordCancelObserved <> true
+            observed = m.profileSwitchContext = invalid and m.activeUserScope <> invalid
+            if observed then observed = m.activeUserScope.accountId = "8" and currentUserSessionId() <> m.probeRecordOldSession
+            if observed
+                m.probeRecordCancelObserved = true
+                print "[profile-management] "; FormatJson({kind: "switch-cancel-observed", observed: true})
+            end if
+        end if
         if m.busy or m.capabilityTask <> invalid or m.page <> "guide" or m.activeUserScope = invalid then return
         if m.activeUserScope.accountId <> "8" or m.profileSwitchContext <> invalid then return
         if m.recordSettlementTask <> invalid or m.probeRecordConfirmed <> true then return

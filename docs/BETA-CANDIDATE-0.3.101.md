@@ -57,9 +57,12 @@ No public submission, signing-key generation or rekeying has occurred.
 
 ## Semantic release check
 
-- No open P0 bugs found; 18 existing P1 records remain open, listed below.
+- No open P0 bugs found; of the original 18 P1 records below, `6c39`,
+  `6oe4`, `3ynt`, `suad`, `178i`, and `ywtj` now have their missing native
+  qualification and are closed.
 - No open PRs targeting `dev`; no CI/security workflow/run found.
-- Full local verification is complete, not in flight.
+- Release-prepare local verification passed; overnight P1 fixture regression
+  and additional native fault qualification are separate follow-up runs.
 - Manifest/npm/lock versions agree at 0.3.101; shipping manifest and package
   tests pass. Developer flags and fixture files remain rejected.
 - The candidate includes the existing guide/cache edits present in the accepted
@@ -71,13 +74,13 @@ No public submission, signing-key generation or rekeying has occurred.
 | --- | --- |
 | `fiz5` | Continuous own authority across auth/read/final lineup. Fix exists and final-authority native race passes; startup-race verification remains distinct. |
 | `4skt` | Outgoing tombstone must stay covered through default retirement. Simultaneous/cold native retirement passes; record needs reconciliation with later recovery/acceptance evidence. |
-| `3ynt` | Publish cleaned preference root before rollback to avoid resurrecting removed data. Fix exists; exact native cleanup-then-rollback replay remains unrecorded. |
-| `suad` | Revalidate Child adult-purpose authority after imported roster protection changes. Fix exists; exact changed-authority native replay remains unrecorded. |
-| `6oe4` | Recheck target's own key after PIN wait, before outgoing teardown. Fix exists; exact key-loss-during-PIN native replay remains unrecorded. |
+| `3ynt` | **Closed:** actual own-read cleanup, imported PIN cancellation, and real outgoing preference persistence do not resurrect the removed blob; foreign data survives. |
+| `suad` | **Closed:** authenticated Child's actual adult-purpose PIN is changed by own roster import; stale grant retires before another target PIN/lineup, with fresh Child rollback. |
+| `6oe4` | **Closed:** real-Scene full-access and unavailable-Child key-loss-during-PIN cases pass with zero target requests and unchanged settings. |
 | `j4fw` | Refuse unavailable-Child callbacks after no-session actor changes. Fix exists; exact successor-actor native replay remains unrecorded. |
-| `178i` | Bind PIN callbacks and retirement to their owning switch. Host fixes and later normal/native switch evidence exist; exact stale-widget fault qualification needs reconciliation. |
-| `ywtj` | Revalidate outgoing saved protection before rollback. Fix exists; targeted native changed-protection fault replay remains unrecorded. |
-| `6c39` | Preserve submitted DVR operation settlement during switch/rollback. Fix exists; dedicated delayed-operation native matrix remains unrecorded. |
+| `178i` | **Closed:** native initial/staged-roster stale submit/close preserve successor admission; owned-widget retirement wipes and detaches its native dialog. |
+| `ywtj` | **Closed:** native unchanged rollback succeeds under a fresh session; saved PIN/role/key/root changes stay covered, including advanced working-roster snapshots. |
+| `6c39` | **Closed:** delayed synthetic recording commit/return, delayed-auth Back, and target-PIN Back matrix passes, one POST and owner-only outcome. |
 | `d43d` | Intermittent function-lookup failure in repeatedly installed native probe packages; cause unresolved. |
 | `667m` | Intermittent native/ECP first-key or delayed-Back failures; later passing runs do not explain all preserved failures. |
 | `o7b` | Missing follow-up logos on the affected 91-channel account; affected-user verification still needed. |
@@ -86,8 +89,49 @@ No public submission, signing-key generation or rekeying has occurred.
 | `x1i` | Historical cloud-device reboot/screensaver reports remain unlocalized. |
 | `grq` | Cloud launch-beacon finding has mixed historical results; signed-candidate cloud acceptance remains. |
 | `e19` | Deep-link implementation/local playback tests exist; cloud reviewer/codec acceptance remains. |
-| `1is` | Roku email-consent sign-in implementation/native checks exist; final signed-candidate/cloud flow audit remains. |
+| `1is` | Manual setup requests consent; audit found own-profile Add/recovery credential forms bypass it. Nonce-bound coverage fix and final signed/cloud audit remain. |
 
 These are existing tracker records, not 18 new defects discovered during this
 build. They must not be silently closed, described as all unresolved source bugs,
 or waived without the owner's Beta release decision.
+
+## Overnight P1 qualification
+
+The recording reports are `out/p1-6c39-recording-commit-native.json`,
+`out/p1-6c39-recording-cancel-qualified-native.json`, and
+`out/p1-6c39-recording-pin-cancel-qualified-native.json`. Initial failures
+remain preserved: the private cancellation fixture released authentication
+before Back, and its PIN fixture assumed Task state `done` rather than native
+`stop`. The qualified fixture requires successful receipt/ownership as well
+as terminal state; production settlement code was not changed.
+
+The initial target-key-loss reports are `out/p1-switch-fault-key-loss.json`
+and `out/p1-switch-fault-child-key-loss.json`. They drive the actual Scene,
+PIN and switch controllers against disposable storage and synthetic HTTP.
+The Child fixture initially omitted clearing its runtime key after selecting
+the connection; its preserved failure is not a production admission defect.
+Every passing run reports cleanup and checksum-verified restoration of the
+accepted v0.3.100 voice baseline. No real account mutations occurred.
+
+`out/p1-switch-fault-roster-stale-pin.json` qualifies the imported-roster
+continuation separately from initial-switch stale submit/close and retirement.
+`out/p1-switch-fault-rollback-{unchanged,pin,role,key,root}.json` qualifies
+rollback at an explicitly held target authentication boundary, with the reply
+released only after the native verdict. Changed outgoing protection stays
+covered even when the working roster has advanced; the unchanged control
+gets a fresh session. The initial unchanged fixture incorrectly measured
+settings before the intentional outgoing save; the preserved failure and
+qualified held-boundary check are distinct.
+
+`out/p1-switch-fault-cleanup-rollback.json` qualifies real own-read third-holder
+cleanup followed by imported-PIN cancellation and an actual outgoing
+preference write, retaining foreign data without resurrecting removed data.
+All these passing runs clean disposable storage and restore the exact baseline.
+
+`out/p1-switch-fault-adult-purpose-change.json` adds authenticated-Child
+qualification with real adult-purpose and target native PINs. The target's
+own read changes the authorizing adult's PIN; the old grant retires before
+another target PIN/lineup, returning only to the revalidated outgoing Child.
+
+Additional P1 qualification continues. These are targeted P1 checks, not signed/cloud certification or
+physical Android acceptance. Signing remains on hold.

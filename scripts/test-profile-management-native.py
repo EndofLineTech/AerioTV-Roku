@@ -1099,7 +1099,8 @@ def main():
                     time.sleep(4)
             if args.switch_recording == 'cancel' and key == 'synthetic-a' and self.path == '/api/accounts/users/me/':
                 fixture_state['switch_auth_delayed'] = True
-                time.sleep(4)
+                fixture_state['cancel_auth_waiting'] = True
+                fixture_state['cancel_reply_released'] = cancel_reply_release.wait(timeout=15)
             failure = False
             if args.manual_refresh and args.manual_mode == 'transient' and fixture_state['changed'] and self.path == '/api/accounts/users/me/':
                 failure = True
@@ -1490,7 +1491,9 @@ def main():
             else:
                 report['passed'] = report['passed'] and report.get('back_count') == 1 and rows[-1].get('other_visited') is False
                 if args.switch_recording == 'cancel':
-                    report['passed'] = report['passed'] and fixture_state.get('switch_auth_delayed') is True
+                    report['cancel_auth_waiting'] = fixture_state.get('cancel_auth_waiting', False)
+                    report['cancel_reply_released'] = fixture_state.get('cancel_reply_released', False)
+                    report['passed'] = report['passed'] and fixture_state.get('switch_auth_delayed') is True and report.get('switch_cancel_observed') is True and report['cancel_auth_waiting'] and report['cancel_reply_released']
                 else:
                     report['passed'] = report['passed'] and all(hit['user'] == 8 for hit in hits) and any(row.get('kind') == 'record-covered' and row.get('passed') for row in rows)
         if args.child_escape:

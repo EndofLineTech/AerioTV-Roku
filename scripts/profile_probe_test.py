@@ -890,6 +890,10 @@ class ProfileProbeTest(unittest.TestCase):
                     self.assertIn('m.probeRecordConfirmed', package.read('components/DvrSettlementNavigation.brs').decode())
                     if mode == 'pin-cancel':
                         self.assertIn('userProfilePinHash(defaultHolder.pinSalt, "1234")', source)
+                        self.assertIn('m.probeSwitchRecordNode.state <> "done" and m.probeSwitchRecordNode.state <> "stop"', source)
+                    if mode == 'cancel':
+                        self.assertIn('kind: "switch-cancel-observed"', source)
+                        self.assertIn('m.profileSwitchContext = invalid', source)
             probe.build(output, normal, 'SyntheticChildEscapeSection', 'http://127.0.0.1:1234', child_escape=True)
             with zipfile.ZipFile(output) as package:
                 source = package.read('components/AerioScene.brs').decode()
