@@ -11,6 +11,7 @@ spec.loader.exec_module(runner)
 original_build = runner.build
 seed_logo_failure = False
 limit_poster_size = False
+page_scroll = False
 
 def build(output, *args, **kwargs):
     intermediate = output.with_suffix(".base.zip")
@@ -167,17 +168,23 @@ function liveGuideSweep() as boolean
     m.liveSweepSamples++
     ' Bound the run, but allow enough six-row viewports to cover a 91-row guide.
     if m.selected >= m.filtered.count() - 1 or m.liveSweepSamples >= 20 then return true
-    for stepIndex = 1 to visibleCount
-        if m.selected >= m.filtered.count() - 1 then exit for
-        consumed = onKeyEvent("down", true)
-        consumed = onKeyEvent("down", false)
-    end for
+    if LIVE_SWEEP_PAGE
+        executeGuideRemoteAction("pageDown")
+        finishGuideMappedAction()
+    else
+        for stepIndex = 1 to visibleCount
+            if m.selected >= m.filtered.count() - 1 then exit for
+            consumed = onKeyEvent("down", true)
+            consumed = onKeyEvent("down", false)
+        end for
+    end if
     m.liveSweepViewportAt = m.liveSweepClock.totalMilliseconds()
     m.liveSweepAllCachedAt = invalid
     m.liveSweepTimingDone = false
     return false
 end function
-'''.replace(b"LIVE_SWEEP_FAULT", b"true" if seed_logo_failure else b"false")
+'''.replace(b"LIVE_SWEEP_FAULT", b"true" if seed_logo_failure else b"false").replace(
+                    b"LIVE_SWEEP_PAGE", b"true" if page_scroll else b"false")
             if name == "components/GuideCache.brs":
                 data = data.replace(b'    result = event.getData()\n    m.top.metadataEvent = {ok: result.ok, stage: "mapping"', b'''    result = event.getData()
     count = 0
@@ -203,10 +210,13 @@ def assert_guide_sweep(events, expect_retry=False):
 if __name__ == "__main__":
     seed_logo_failure = "--seed-logo-failure" in sys.argv
     limit_poster_size = "--limit-poster-size" in sys.argv
+    page_scroll = "--page-scroll" in sys.argv
     if seed_logo_failure:
         sys.argv.remove("--seed-logo-failure")
     if limit_poster_size:
         sys.argv.remove("--limit-poster-size")
+    if page_scroll:
+        sys.argv.remove("--page-scroll")
     runner.build = build
     report = runner.main()
     assert_guide_sweep(report["events"], expect_retry=seed_logo_failure)

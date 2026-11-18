@@ -148,6 +148,13 @@ The native sweep can compare the default Poster mode with Roku's `limitSize`
 mode in an isolated probe. It records the reported bitmap pixel count and leaves
 the download logic and production package unchanged.
 
+The two isolated scaling runs (`out/guide-poster-size-baseline.log` and
+`out/guide-poster-size-limit.log`) both covered all 36 channels and restored
+the release. In the six scrolled viewports, the maximum reported bitmap
+pixel counts matched at each position, and time to all ready differed by
+at most 24 ms per position in this pair. The initial viewport was not part
+of that comparison. These runs do not support changing the shipping mode.
+
 The existing guide reports missing logo IDs and download failures. Development
 v0.3.103 additionally reports **successful downloads that fail Poster decoding**,
 using aggregate counts only. It ignores uncached/hidden failures, deduplicates
