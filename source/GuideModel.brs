@@ -30,7 +30,7 @@ function guideEpoch(value as dynamic) as dynamic
     return seconds
 end function
 
-function normalizeProgram(raw as dynamic) as dynamic
+function normalizeProgram(raw as dynamic, baseUrl = "" as string) as dynamic
     if type(raw) <> "roAssociativeArray" then return invalid
     startsAt = guideEpoch(raw.start_time)
     endsAt = guideEpoch(raw.end_time)
@@ -45,6 +45,9 @@ function normalizeProgram(raw as dynamic) as dynamic
         startsAt: startsAt, endsAt: endsAt, key: textValue(raw.tvg_id)
     }
     cp = raw.custom_properties
+    if GetInterface(cp, "ifString") <> invalid
+        if len(cp) <= 16384 and left(cp.trim(), 1) = "{" then cp = ParseJson(cp)
+    end if
     if type(cp) <> "roAssociativeArray" then cp = {}
     for each field in ["is_new", "is_live", "is_premiere", "is_finale", "is_previously_shown"]
         result[field] = invalid
@@ -60,9 +63,17 @@ function normalizeProgram(raw as dynamic) as dynamic
     result.language = left(textValue(raw.language), 40)
     result.country = left(textValue(raw.country), 60)
     result.quality = left(textValue(raw.video_quality), 40)
-    result.poster = textValue(raw.poster_url)
-    if result.poster = "" then result.poster = textValue(raw.icon)
-    if result.poster = "" then result.poster = textValue(cp.icon)
+    result.poster = ""
+    for each candidate in [raw.poster_url, raw.icon, cp.icon]
+        candidate = programArtworkCandidate(candidate)
+        if candidate <> "" and baseUrl <> ""
+            if programArtworkUri(baseUrl, candidate) = "" then candidate = ""
+        end if
+        if candidate <> ""
+            result.poster = candidate
+            exit for
+        end if
+    end for
     result.credits = ""
     if type(raw.credits) = "roAssociativeArray"
         actors = programTextList(raw.credits.actors, 8)
@@ -133,13 +144,43 @@ function programTextList(raw as dynamic, limit as integer) as object
     return result
 end function
 
-function mergeProgramFacts(base as object, details as object) as object
+function programArtworkCandidate(raw as dynamic) as string
+    if GetInterface(raw, "ifString") = invalid then return ""
+    uri = raw.trim()
+    if uri = "" or len(uri) > 4096 then return ""
+    if instr(1, uri, "@") > 0 or CreateObject("roRegex", "[\x00-\x20\x7f\\]", "").isMatch(uri) then return ""
+    if left(uri, 1) = "/" and left(uri, 2) <> "//" then return uri
+    return channelLogoUrl(uri)
+end function
+
+function programArtworkUri(baseUrl as string, raw as dynamic) as string
+    uri = programArtworkCandidate(raw)
+    same = trustedPageUrl(baseUrl, uri)
+    if same <> "" then return same
+    if left(uri, 8) = "https://" then return uri
+    return ""
+end function
+
+function mergeProgramFacts(base as object, details as object, baseUrl = "" as string) as object
+    if details.id <> base.id or details.startsAt <> base.startsAt or details.endsAt <> base.endsAt or details.key <> base.key then return base
     result = {}
     result.append(base)
     for each field in details
         lower = lcase(field)
-        if lower <> "id" and lower <> "startsat" and lower <> "endsat" and lower <> "key" then result[field] = details[field]
+        if lower <> "id" and lower <> "startsat" and lower <> "endsat" and lower <> "key" and lower <> "poster" and lower <> "artsource" then result[field] = details[field]
     end for
+    detailArt = programArtworkCandidate(details.poster)
+    feedArt = programArtworkCandidate(base.poster)
+    if baseUrl <> ""
+        if programArtworkUri(baseUrl, detailArt) = "" then detailArt = ""
+        if programArtworkUri(baseUrl, feedArt) = "" then feedArt = ""
+    end if
+    if detailArt <> "" and (details.artSource <> "TMDB" or feedArt = "")
+        result.poster = detailArt
+        result.artSource = textValue(details.artSource)
+    else
+        result.poster = feedArt
+    end if
     return result
 end function
 

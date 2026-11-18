@@ -17,6 +17,31 @@ sub main()
     assertEqual(guideWindowStart(base), 1704067200, "epoch window exact boundary")
     assertEqual(normalizeProgram({title: "Bad", start_time: "bad"}), invalid, "malformed program")
     assertEqual(normalizeProgram({start_time: 200, end_time: 100}), invalid, "reversed range")
+    feed = normalizeProgram({id: 5, title: "Feed", tvg_id: "Station", start_time: 100, end_time: 200, custom_properties: "{""icon"":""https://art.example/feed.png""}"})
+    assertEqual(feed.poster, "https://art.example/feed.png", "JSON-string dummy-program icon")
+    detail = normalizeProgram({id: 5, title: "Detail", tvg_id: "Station", start_time: 100, end_time: 200, poster_url: "//bad.example/p.png", icon: "/art/detail.png", custom_properties: {icon: "/art/fallback.png"}})
+    assertEqual(detail.poster, "/art/detail.png", "unusable poster does not hide a usable detail icon")
+    assertEqual(mergeProgramFacts(feed, detail).poster, "/art/detail.png", "valid detail art wins")
+    assertEqual(normalizeProgram({start_time: 100, end_time: 200, custom_properties: {icon: "/art/dummy.png"}}).poster, "/art/dummy.png", "object-shaped dummy-program icon")
+    assertEqual(normalizeProgram({start_time: 100, end_time: 200, custom_properties: "[]"}).poster, "", "non-object properties have no icon")
+    fallback = normalizeProgram({start_time: 100, end_time: 200, poster_url: "http://external.example/a.png", icon: "https://external.example/b.png"}, "https://provider.example")
+    assertEqual(fallback.poster, "https://external.example/b.png", "unusable off-origin HTTP primary does not hide HTTPS icon")
+    assertEqual(programArtworkUri("http://provider.example", "/art/dummy.png"), "http://provider.example/art/dummy.png", "same-origin relative artwork remains supported")
+    assertEqual(programArtworkUri("https://provider.example", "https://provider.example@external.example/art.png"), "", "credentialed URLs are refused")
+    detail.poster = ""
+    assertEqual(mergeProgramFacts(feed, detail).poster, feed.poster, "no detail art retains feed icon")
+    detail.poster = "https://image.tmdb.org/t/p/w342/mock.png"
+    detail.artSource = "TMDB"
+    assertEqual(mergeProgramFacts(feed, detail).poster, feed.poster, "feed icon beats fallback TMDB")
+    assertEqual(textValue(mergeProgramFacts(feed, detail).artSource), "", "retained feed icon is not labeled TMDB")
+    noArt = normalizeProgram({id: 5, tvg_id: "Station", start_time: 100, end_time: 200, icon: "http://public.example/invalid-for-off-origin.png"})
+    assertEqual(mergeProgramFacts(noArt, detail, "https://provider.example").poster, detail.poster, "off-origin HTTP feed cannot suppress usable TMDB")
+    assertEqual(mergeProgramFacts(feed, detail).title, "Detail", "matching detail can enrich title")
+    detail.startsAt = 101
+    assertEqual(mergeProgramFacts(feed, detail).title, "Feed", "reused ID at another airtime cannot replace selected program")
+    detail.startsAt = 100
+    detail.key = "station"
+    assertEqual(mergeProgramFacts(feed, detail).title, "Feed", "reused ID with case-distinct TVG key cannot replace program")
     football = normalizeProgram({title: "College Football", sub_title: "  Ole Miss at Florida  ", description: "The Rebels visit the Gators.", start_time: 100, end_time: 500})
     assertEqual(football.subtitle, "Ole Miss at Florida", "source subtitle retained without title invention")
     assertEqual(guideProgramSecondary(football, {showSubtitles: true}), "Ole Miss at Florida", "selected program shows matchup")

@@ -44,7 +44,7 @@ sub loadWindow()
         index = guideDictionary()
         count = 0
         for each row in rows
-            program = normalizeProgram(row)
+            program = normalizeProgram(row, m.base)
             if program <> invalid
                 if allowedKeys.doesExist(program.key)
                     if program.endsAt > windowStart and program.startsAt < windowStart + 10800

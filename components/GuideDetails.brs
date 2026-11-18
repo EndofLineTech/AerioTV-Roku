@@ -77,7 +77,7 @@ sub onProgramDetail(event as object)
         m.detailOrder.push(result.id)
         if m.detailOrder.count() > 32 then m.detailCache.delete(m.detailOrder.shift())
         if m.details.active and m.detailProgram.id = result.id
-            m.detailProgram = mergeProgramFacts(m.detailProgram, result.program)
+            m.detailProgram = mergeProgramFacts(m.detailProgram, result.program, m.base)
             updateRichDetails()
         end if
         if m.top.active then drawGuide()

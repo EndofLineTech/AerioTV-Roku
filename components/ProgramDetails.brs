@@ -74,14 +74,12 @@ sub render()
     if m.descriptionPages.count() > 1 then m.pageHint.text = "Left / Right  Description " + (m.descriptionPage + 1).toStr() + " of " + m.descriptionPages.count().toStr()
     m.credits.text = textValue(p.credits)
     if textValue(model.message) <> "" then m.credits.text = model.message
-    uri = textValue(p.poster)
+    uri = programArtworkUri(model.baseUrl, p.poster)
     same = trustedPageUrl(model.baseUrl, uri)
     scope = "public"
     if same <> ""
         uri = same
         scope = model.baseUrl + "|" + model.apiKey
-    else if left(uri, 8) <> "https://" or instr(1, uri, "@") > 0
-        uri = ""
     end if
     if uri <> m.poster.uri or scope <> m.posterScope
         m.poster.uri = ""

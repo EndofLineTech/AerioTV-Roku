@@ -175,6 +175,29 @@ the supported avenue to investigate is smaller authorized artwork, rather
 than changing scaling mode, adding scroll redraws, or enlarging the disk
 cache to address first-display latency.
 
+### Programme artwork versus channel-logo speed
+
+Development programme details prefer usable artwork from the matching
+Dispatcharr detail response, then the guide-feed icon, then optional TMDB
+artwork. A dummy programme can supply `custom_properties.icon` as an object
+or bounded JSON object string. A detail result with the same programme ID
+but a different station or time range cannot replace the selected airing.
+Artwork URLs are not written into the persistent guide cache. Same-origin
+artwork still uses the existing account request gate; public HTTPS artwork
+does not get provider headers. A syntactically valid URL may still fail to
+load; this change does not retry through other sources after a Poster error.
+
+For channel logos, the inspected Dispatcharr source (`f1a0bb2c`,
+`apps/channels/api_views.py`, `LogoViewSet.cache`) still streams original
+bytes and exposes no size option in that action. Roku cannot assume a
+thumbnail route. A compatible design would ask for a bounded size only on a
+provider that advertises support, serve a derivative of an existing
+account-authorized logo ID (never an arbitrary URL), and fall back to the
+original route for unsupported providers. Validate first-display and warm
+revisit timings, visible image quality and texture headroom before enabling
+it. Persistent retention and TimeGrid address different questions; neither
+is a substitute for smaller source artwork.
+
 The existing guide reports missing logo IDs and download failures. Development
 v0.3.103 additionally reports **successful downloads that fail Poster decoding**,
 using aggregate counts only. It ignores uncached/hidden failures, deduplicates

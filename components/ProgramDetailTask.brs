@@ -12,9 +12,9 @@ sub loadDetails()
     result = {id: id, ok: false, message: "No indexed details for this program."}
     if CreateObject("roRegex", "^[0-9]+$", "").isMatch(id)
         raw = requestJson(m.base + "/api/epg/programs/" + id + "/")
-        program = normalizeProgram(raw)
+        program = normalizeProgram(raw, m.base)
         if program <> invalid
-            if program.poster = "" and m.top.tmdbKey <> ""
+            if programArtworkUri(m.base, program.poster) = "" and m.top.tmdbKey <> ""
                 m.key = ""
                 encoder = CreateObject("roUrlTransfer")
                 matches = apiRows(requestJson("https://api.themoviedb.org/3/search/multi?api_key=" + encoder.escape(m.top.tmdbKey) + "&query=" + encoder.escape(program.title)))

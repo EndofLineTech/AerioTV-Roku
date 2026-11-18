@@ -459,7 +459,7 @@ function channelPrograms(channel as object) as object
     end for
     programs = guideCachePrograms(m.cache, key, m.viewStart, m.viewStart + m.span)
     for i = 0 to programs.count() - 1
-        if m.detailCache.doesExist(programs[i].id) then programs[i] = mergeProgramFacts(programs[i], m.detailCache[programs[i].id])
+        if m.detailCache.doesExist(programs[i].id) then programs[i] = mergeProgramFacts(programs[i], m.detailCache[programs[i].id], m.base)
     end for
     return programs
 end function
