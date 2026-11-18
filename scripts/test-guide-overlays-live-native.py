@@ -45,10 +45,27 @@ sub validateLiveOverlays()
         m.devicePreferences.appearanceMode = "light"
         applyDevicePreferences()
         print "[setup-phone-normal] "; FormatJson(m.guide.callFunc("probeLiveGuideGroups"))
-        startPlayback(model.channels[0])
+        m.overlayChannels = model.channels
+        m.overlayTuneIndex = 0
+        m.overlayTuneAt = m.overlayClock.totalMilliseconds()
+        startPlayback(m.overlayChannels[m.overlayTuneIndex])
         m.overlayStage = 1
     else if m.overlayStage = 1
-        if m.video.state <> "playing" or m.pendingChannel <> invalid then return
+        if m.video.state <> "playing" or m.pendingChannel <> invalid
+            age = m.overlayClock.totalMilliseconds() - m.overlayTuneAt
+            terminal = m.video.state = "finished" or m.video.state = "error" or m.video.state = "stopped"
+            if age < 3000 or (not terminal and age < 12000) then return
+            print "[setup-phone-normal] "; FormatJson({kind: "live-tune-not-playing", attempt: m.overlayTuneIndex + 1, state: m.video.state, pending: m.pendingChannel <> invalid})
+            stopPlayback()
+            m.overlayTuneIndex++
+            if m.overlayTuneIndex < 3 and m.overlayTuneIndex < m.overlayChannels.count()
+                m.overlayTuneAt = m.overlayClock.totalMilliseconds()
+                startPlayback(m.overlayChannels[m.overlayTuneIndex])
+            else
+                beginOverlayLibraryChecks()
+            end if
+            return
+        end if
         hideBanner()
         togglePlayerInfo()
         m.overlayStage = 2
@@ -67,8 +84,7 @@ sub validateLiveOverlays()
         if m.video.state <> "playing" or not m.guide.active or not m.guide.miniActive then return
         print "[setup-phone-normal] "; FormatJson({kind: "live-guide-mini", active: m.guide.active, mini: m.guide.miniActive, playing: m.video.state = "playing"})
         stopPlayback()
-        if m.capabilities.movies = "allowed" then openVodLibrary("movie")
-        m.overlayStage = 5
+        beginOverlayLibraryChecks()
     else if m.overlayStage = 5
         if m.page = "library"
             library = m.vod.callFunc("libraryStatus")
@@ -91,6 +107,11 @@ sub validateLiveOverlays()
         end if
         finishPhoneNormalProbe(true, "complete")
     end if
+end sub
+
+sub beginOverlayLibraryChecks()
+    if m.capabilities.movies = "allowed" then openVodLibrary("movie")
+    m.overlayStage = 5
 end sub
 '''
             if name == "components/GuideView.xml":

@@ -215,6 +215,23 @@ revisit timings, visible image quality and texture headroom before enabling
 it. Persistent retention and TimeGrid address different questions; neither
 is a substitute for smaller source artwork.
 
+A later paired Roku sweep kept the live Dispatcharr download path and local
+Poster URIs unchanged. In the small-image run, the private probe replaced
+each downloaded file with a small packaged PNG just before assigning it.
+Both runs covered all 36 rows and restored exact v0.3.102. Across six scrolled
+viewports, median time to all six Posters ready fell from **4.64 s to 0.75 s**;
+the median time to all files cached was essentially unchanged (**631 ms vs
+636 ms**). Five viewports improved materially; one was already fast. This
+isolates the cost after download in this comparison. It does not measure
+real resized-logo quality, a thumbnail endpoint, or a shipping improvement.
+See `out/guide-live-decode-original.log` and `out/guide-live-decode-small.log`.
+
+The expanded live overlay probe passed light appearance and the empty
+Favorites round-trip with no stale subtitle. The first feed reached a
+terminal Video state before overlay checks; that run did not reach the
+library checks. The probe now tries at most three authorized channels and
+can check VOD/DVR independently if none starts.
+
 The existing guide reports missing logo IDs and download failures. Development
 v0.3.103 additionally reports **successful downloads that fail Poster decoding**,
 using aggregate counts only. It ignores uncached/hidden failures, deduplicates
