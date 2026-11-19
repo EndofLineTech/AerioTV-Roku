@@ -257,6 +257,7 @@ sub completeEpgLaunch()
 end sub
 
 sub suspendGuide()
+    m.radioGuideOkUuid = ""
     m.primaryNavigation.active = false
     cancelGuideHold()
     if m.tmdbTask <> invalid
@@ -1083,13 +1084,7 @@ sub openOptions(advanced = false as boolean)
     if m.top.vodEnabled then label = "Disable VOD libraries for this connection"
     if m.providerType <> "m3u" and m.providerType <> "xtream" then items.push({title: label, action: "toggleVod"})
     if m.top.pendingTune then items.unshift({title: "Cancel pending channel tune", action: "cancelPendingTune"})
-    if m.filtered.count() > 0
-        defaultRadio = false
-        if m.top.remotePreferences <> invalid then defaultRadio = m.top.remotePreferences.radioDefault = true
-        if defaultRadio or channelDeclaredRadio(m.filtered[m.selected], m.top.channelFacts)
-            items.unshift({title: "Watch Video", action: "watchVideo"})
-        end if
-    end if
+    if guideSelectionOpensRadio() then items.unshift({title: "Watch Video", action: "watchVideo"})
     permittedItems = []
     for each item in items
         if guideProfileActionAllowed(m.userRole, item.action) then permittedItems.push(item)
@@ -1418,17 +1413,26 @@ sub moveGuideTime(key as string)
     end if
 end sub
 
-sub activateGuideSelection()
+function guideSelectionIsLive() as boolean
     cell = selectedCell()
     now = uiNow()
     if cell <> invalid and cell.program <> invalid
-        if cell.program.startsAt > now or cell.program.endsAt <= now
-            showDetails()
-            return
-        end if
+        return cell.program.startsAt <= now and cell.program.endsAt > now
     end if
-    watchLive()
+    return true
+end function
+
+sub activateGuideSelection()
+    if guideSelectionIsLive() then watchLive() else showDetails()
 end sub
+
+function guideSelectionOpensRadio() as boolean
+    if m.filtered.count() = 0 then return false
+    if m.top.remotePreferences <> invalid
+        if m.top.remotePreferences.radioDefault = true then return true
+    end if
+    return channelDeclaredRadio(m.filtered[m.selected], m.top.channelFacts)
+end function
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if key = "home" then return false
@@ -1439,7 +1443,18 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     if handleGuideHeldKey(key, press) then return true
+    if key = "OK" and textValue(m.radioGuideOkUuid) <> ""
+        if not press
+            uuid = m.radioGuideOkUuid
+            m.radioGuideOkUuid = ""
+            if m.picker = invalid and m.filtered.count() > 0 and guideRemoteAction("okShort") = "activateSelection"
+                if m.filtered[m.selected].uuid = uuid then handleGuideMappedKey("OK")
+            end if
+        end if
+        return true
+    end if
     if not press then return false
+    m.radioGuideOkUuid = ""
     if m.picker <> invalid
         if key = "back" or key = "options"
             closePicker()
@@ -1470,6 +1485,14 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     if m.filtered.count() = 0 then return true
+    ' The guide knows this OK would open a second OK-driven screen. Commit
+    ' only on release so the held gesture cannot select Watch Video there.
+    if key = "OK" and guideRemoteAction("okShort") = "activateSelection"
+        if guideSelectionOpensRadio() and guideSelectionIsLive()
+            m.radioGuideOkUuid = m.filtered[m.selected].uuid
+            return true
+        end if
+    end if
     if handleGuideMappedKey(key) then return true
     if len(key) = 1 and instr(1, "0123456789", key) > 0
         openGuideKeyboard("number", "Channel number in current list", key)

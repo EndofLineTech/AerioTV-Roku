@@ -9,6 +9,13 @@ sub main()
     if m.presentation <> "video" then stop
     onPlaybackFailureAction(event)
     if m.starts <> 1 then stop
+    resetFailure()
+    m.playbackRetry.radio = true
+    m.playbackRetry.mini = false
+    m.playbackRetry.presentation = "radio"
+    m.playbackRetry.channel.isRadio = true
+    onPlaybackFailureAction(failureEvent(m.playbackFailureDialog, 0))
+    if m.starts <> 1 or m.mini or m.presentation <> "radio" or m.playingChannel.isRadio <> true then stop
 
     resetFailure()
     onPlaybackFailureAction(failureEvent(m.playbackFailureDialog, 1))

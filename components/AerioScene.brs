@@ -1185,6 +1185,7 @@ sub onCapabilities(event as object)
         end if
     end if
     m.guide.channelFacts = m.channelFacts
+    captureLiveRadioDetail()
     applyLivePresentation()
     m.guide.catchupPermission = m.capabilities.catchup
     m.guide.dvrPermission = m.capabilities.dvr
@@ -1405,6 +1406,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     m.decoderKeysReported = false
     m.decoderSnapshot = {}
     m.playingChannel = channel
+    captureLiveRadioDetail()
     m.livePresentationIntent = presentation
     m.liveSession = mediaSession(m.accountIdentity, CreateObject("roDeviceInfo").getRandomUUID(), "live", channel.uuid, uiNow())
     if tuneStartedAt > 0 and tuneStartedAt <= uiNow() then m.liveSession.openedAt = tuneStartedAt
@@ -1905,7 +1907,14 @@ sub onBrowserSelected(event as object)
 end sub
 
 sub onBrowserClosed()
-    if m.page = "player" then focusPlaybackInput()
+    if m.page = "player" and not m.browser.active and not m.playerOptions.active and not m.transport.active
+        canRestore = not userProfileUiClosed()
+        if m.top.dialog <> invalid then canRestore = canRestore and m.top.dialog.wasClosed = true
+        if canRestore
+            if radioPresentationActive() then m.banner.visible = true
+            focusPlaybackInput()
+        end if
+    end if
     updateBufferingIndicator()
 end sub
 
@@ -3008,6 +3017,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         end if
         return true
     end if
+    if handleRadioKey(key, press) then return true
     if m.page = "player"
         if key = "back" and press and m.pendingAacTune <> invalid
             if m.vodDeepLinkTask <> invalid then cancelVodDeepLink()
@@ -3016,7 +3026,6 @@ function onKeyEvent(key as string, press as boolean) as boolean
             return true
         end if
     end if
-    if handleRadioKey(key, press) then return true
     if handlePlayerOkKey(key, press) then return true
     if not press then return false
     if m.page = "player"

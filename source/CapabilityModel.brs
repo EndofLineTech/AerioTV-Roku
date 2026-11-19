@@ -110,8 +110,8 @@ function normalizeChannelCapabilities(rows as dynamic) as object
     return result
 end function
 
-function channelDeclaredRadio(channel as dynamic, facts as dynamic) as boolean
-    if type(channel) <> "roAssociativeArray" then return false
+function channelRadioDetail(channel as dynamic, facts as dynamic) as dynamic
+    if type(channel) <> "roAssociativeArray" then return invalid
     uuid = textValue(channel.uuid)
     if type(facts) = "roAssociativeArray" and uuid <> ""
         fact = facts[textValue(channel.id)]
@@ -119,6 +119,13 @@ function channelDeclaredRadio(channel as dynamic, facts as dynamic) as boolean
             if fact.uuid = uuid and fact.isRadio <> invalid then return fact.isRadio
         end if
     end if
+    return invalid
+end function
+
+function channelDeclaredRadio(channel as dynamic, facts as dynamic) as boolean
+    if type(channel) <> "roAssociativeArray" then return false
+    detail = channelRadioDetail(channel, facts)
+    if detail <> invalid then return detail
     return channel.isRadio = true
 end function
 

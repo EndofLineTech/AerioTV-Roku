@@ -24,6 +24,18 @@ function radioForCurrentTune() as boolean
     return liveOpensRadio(declared, m.devicePreferences.radioDefault = true, textValue(m.livePresentationIntent))
 end function
 
+' Remember only an explicit, UUID-matched classification on the active
+' reader's channel snapshot. A partial refresh still clears global authority.
+sub captureLiveRadioDetail()
+    declared = channelRadioDetail(m.playingChannel, m.channelFacts)
+    if declared = invalid then return
+    if m.playingChannel.isRadio = declared then return
+    channel = {}
+    channel.append(m.playingChannel)
+    channel.isRadio = declared
+    m.playingChannel = channel
+end sub
+
 sub applyLivePresentation()
     if m.radioPanel = invalid or m.page <> "player" or m.mini or not radioForCurrentTune() then return
     if m.pictureCover.visible then return

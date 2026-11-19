@@ -9,6 +9,16 @@ sub cancelPlaybackFailure()
     m.playbackRetry = invalid
 end sub
 
+function livePlaybackFailureContext() as dynamic
+    if m.playingChannel <> invalid
+        activeRadio = radioPresentationActive()
+        presentation = m.livePresentationIntent
+        if activeRadio then presentation = "radio"
+        return {channel: m.playingChannel, account: m.accountIdentity, useAac: m.activeAudioProfile <> "", mini: m.mini, radio: activeRadio or radioForCurrentTune(), presentation: presentation}
+    end if
+    return invalid
+end function
+
 sub failLivePlayback(code as integer, detail as string)
     ' The outgoing mini reader does not own an independently admitted Guide
     ' link. Do not let its teardown or modal invalidate that continuation.
@@ -19,10 +29,7 @@ sub failLivePlayback(code as integer, detail as string)
             return
         end if
     end if
-    context = invalid
-    if m.playingChannel <> invalid
-        context = {channel: m.playingChannel, account: m.accountIdentity, useAac: m.activeAudioProfile <> "", mini: m.mini, radio: radioForCurrentTune(), presentation: m.livePresentationIntent}
-    end if
+    context = livePlaybackFailureContext()
     token = coldLiveReaderToken()
     if token <> "" then m.coldPlayback.failing = true
     stopPlayback()

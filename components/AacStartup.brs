@@ -40,6 +40,9 @@ end function
 sub processAacWait()
     request = m.pendingAacTune
     if request = invalid then return
+    ' Do not replace the station between Radio Back-down and Back-up. The
+    ' release stops the reader and retires the pending tune together.
+    if m.radioBackDown = true then return
     token = textValue(request.coldToken)
     if token <> "" and m.coldPlayback <> invalid
         if m.coldPlayback.token = token and not coldPlaybackCurrent(token)

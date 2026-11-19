@@ -121,6 +121,35 @@ sub main()
     if m.filtered[2].watchVideo <> invalid then stop
     watchLive()
     if m.top.watchChannel.watchVideo <> invalid then stop
+    m.ready = false
+    m.top.active = true
+    m.top.miniActive = false
+    m.top.remotePreferences = {}
+    m.cache = guideNewCache()
+    m.filtered[2].epgKey = ""
+    m.anchor = uiNow()
+    m.viewStart = m.anchor
+    m.span = 8928
+    m.filtered[2].id = "2"
+    for each declared in [false, true]
+        m.top.remotePreferences.radioDefault = not declared
+        rows = []
+        if declared then rows = [{id: 2, uuid: "2", effective_is_radio: true}]
+        m.top.channelFacts = normalizeChannelCapabilities(rows)
+        m.top.watchChannel = invalid
+        if not onKeyEvent("OK", true) or m.top.watchChannel <> invalid
+            print "FAIL: the Guide must retain the initiating Radio OK until release"
+            stop
+        end if
+        if not onKeyEvent("OK", true) or m.top.watchChannel <> invalid then stop
+        if not onKeyEvent("OK", false) or m.top.watchChannel.uuid <> "2" then stop
+        m.top.watchChannel = invalid
+        if onKeyEvent("OK", false) or m.top.watchChannel <> invalid then stop
+    end for
+    m.top.channelFacts = {}
+    m.top.remotePreferences.radioDefault = false
+    m.top.watchChannel = invalid
+    if not onKeyEvent("OK", true) or m.top.watchChannel.uuid <> "2" then stop
     print "ALL TESTS PASSED"
 end sub
 
