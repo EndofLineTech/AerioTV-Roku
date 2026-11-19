@@ -337,6 +337,17 @@ class ProfileProbeTest(unittest.TestCase):
                     self.assertIn('if deferUserProfileLaunch() then return', scene)
                     self.assertNotIn('"cachefs:/aeriotv-metadata-v1"', package.read('source/MetadataCacheStore.brs').decode())
 
+    def test_switch_back_probe_checks_the_dialog_before_confirming_removal(self):
+        root = Path(__file__).resolve().parent.parent
+        fixture = (root / 'tests/native/ProfilePickerLaunchFixture.brs').read_text()
+        stage = fixture.split('    if stage = 4\n', 1)[1].split('    if stage = 6\n', 1)[0]
+        self.assertIn('m.profileManagementChoices[0].action = "remove-confirm"', fixture)
+        self.assertIn('if offered = "remove-confirm"', stage)
+        for event in ('remove-callback', 'response-to-remove', 'confirm-callback-returned', 'wait-for-default'):
+            self.assertIn(f'recordBaselineSwitchBack("{event}"', stage)
+        production = (root / 'components/AerioScene.brs').read_text()
+        self.assertNotIn('recordBaselineSwitchBack', production)
+
     def test_startup_ready_is_signaled_only_after_screen_and_exit_observation(self):
         root = Path(__file__).resolve().parent.parent
         source = (root / 'source/Main.brs').read_text()

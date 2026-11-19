@@ -78,6 +78,58 @@ function baselineProbeEvent(node as object, choice as dynamic) as object
     end function}
 end function
 
+' Private evidence only: no identities, PIN values, keys, or dialog text.
+sub recordBaselineSwitchBack(boundary as string, offered = "" as string)
+    active = "none"
+    if m.activeUserScope <> invalid
+        active = "unexpected"
+        if m.activeUserScope.profileId = m.pickerProbeA then active = "default"
+        if m.activeUserScope.profileId = m.pickerProbeAdded then active = "added"
+    end if
+    pin = m.profilePinDialog
+    adminPin = m.adultPinDialog
+    dialog = m.profileManagementDialog
+    result = {kind: "switch-back", boundary: boundary, offered: offered, active: active, gateClosed: m.global.profilegateclosed, busy: m.busy, switchPending: m.global.profileswitchpending = true, removalPending: m.profileManagementRemovalContext <> invalid, recovery: m.userProfileRecoveryRequired = true}
+    result.management = dialog <> invalid
+    if dialog <> invalid
+        result.managementFocus = dialog.isInFocusChain()
+        result.managementCurrent = profileManagementEventCurrent(baselineProbeEvent(dialog, 0))
+        result.managementAuthorized = profileManagementAuthorized()
+    end if
+    result.adultPin = adminPin <> invalid
+    if adminPin <> invalid then result.adultPinFocus = adminPin.isInFocusChain()
+    result.profilePin = pin <> invalid
+    if pin <> invalid
+        result.profilePinFocus = pin.isInFocusChain()
+        result.pinLocked = false
+        if userProfileInteger(m.profilePinLockUntil) then result.pinLocked = m.profilePinLockUntil > CreateObject("roDateTime").asSeconds()
+        if m.profilePinContext <> invalid
+            result.pinForDefault = m.profilePinContext.profile.id = m.pickerProbeA
+            continuation = m.profilePinContext.continuation
+            if continuation = "switch" or continuation = "switch-roster"
+                result.pinCurrent = profileSwitchPinContextCurrent(m.profilePinContext)
+            end if
+        end if
+    end if
+    if m.profileSwitchContext <> invalid
+        result.switchPhase = textValue(m.profileSwitchContext.phase)
+        result.switchToDefault = m.profileSwitchContext.target.id = m.pickerProbeA
+        result.switchAfterRemoval = m.profileSwitchContext.afterRemoval <> invalid
+        result.switchActorCurrent = userProfileSwitchActorCurrent(m.profileSwitchContext)
+    end if
+    if m.profileSwitchTask <> invalid then result.taskState = m.profileSwitchTask.state
+    line = FormatJson(result)
+    if line = m.pickerProbeLastSwitchBack then return
+    m.pickerProbeLastSwitchBack = line
+    print "[picker-launch] "; line
+end sub
+
+function baselineProbeRemoveChoice() as string
+    if m.profileManagementDialog = invalid or m.profileManagementChoices.count() = 0 then return "none"
+    if m.profileManagementChoices[0].action = "remove-confirm" then return "remove-confirm"
+    return "other"
+end function
+
 sub openBaselineProbeSwitcher()
     navigation = m.guide.findNode("primaryNavigation")
     navigation.selected = "profiles"
@@ -351,15 +403,23 @@ sub onProfileBaselineProbeTick()
             if m.profileManagementChoices[i].action = "remove" then removeIndex = i
         end for
         if removeIndex < 0 then return
+        recordBaselineSwitchBack("remove-callback")
         onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, removeIndex))
-        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, 0))
+        offered = baselineProbeRemoveChoice()
+        recordBaselineSwitchBack("response-to-remove", offered)
+        if offered = "remove-confirm"
+            onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, 0))
+            recordBaselineSwitchBack("confirm-callback-returned")
+        end if
         m.pickerProbeBaselineStage = 5
         return
     end if
     if stage = 5
+        offered = baselineProbeRemoveChoice()
+        recordBaselineSwitchBack("wait-for-default", offered)
         if m.busy or m.profileSwitchContext <> invalid then return
         if m.activeUserScope = invalid or m.activeUserScope.profileId <> m.pickerProbeA then return
-        if m.profileManagementRemovalContext = invalid or m.profileManagementDialog = invalid then return
+        if m.profileManagementRemovalContext = invalid or offered <> "remove-confirm" then return
         onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, 0))
         m.pickerProbeBaselineStage = 6
         return
