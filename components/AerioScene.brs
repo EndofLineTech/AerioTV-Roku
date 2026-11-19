@@ -96,7 +96,6 @@ sub init()
     m.mediaPlayer.observeField("skipPreference", "onArchiveSkipPreference")
     m.screen = m.top.findNode("screen")
     m.guide = m.top.findNode("guide")
-    m.top.observeField("dialog", "onGuideSceneDialogChanged")
     m.dvr = m.top.findNode("dvrView")
     m.dvr.observeField("closed", "closeDvrLibrary")
     m.dvr.observeField("playRequested", "onDvrPlayRequested")
@@ -2954,10 +2953,6 @@ sub closeMessage(event as object)
     event.getRoSGNode().close = true
 end sub
 
-sub onGuideSceneDialogChanged()
-    m.guide.callFunc("trackGuideSceneDialog", m.top.dialog)
-end sub
-
 function onKeyEvent(key as string, press as boolean) as boolean
     if m.profileStartupSelectionContext <> invalid
         if press and key = "back"
@@ -3013,8 +3008,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if m.top.dialog <> invalid
         ' Some dialog types have no readable wasClosed value until closure.
         ' Let the dialog own input rather than applying not to Invalid.
-        if m.top.dialog.wasClosed = invalid then return false
-        if not m.top.dialog.wasClosed then return false
+        if m.top.dialog.wasClosed <> true
+            if key = "back" and m.page = "guide" then m.guide.callFunc("onGuideDialogBack", press)
+            return false
+        end if
     end if
     if m.page = "phoneSetup" then return true
     if m.page = "welcome"

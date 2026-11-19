@@ -494,15 +494,18 @@ sub runPlayerLifecycleChecks()
     assertEqual(onKeyEvent("back", true), true, "Scene owns Back during archive loading")
     assertEqual(m.guide.archiveBackHandoff, true, "Scene transfers Back ownership before Guide gets focus")
     assertEqual(m.guide.active, true, "archive cancellation activates Guide")
-    m.guide.callFunc = sub(name as string, dialog as dynamic)
-        if name = "trackGuideSceneDialog" then m.trackedDialog = dialog
+    m.page = "guide"
+    m.guide.callFunc = sub(name as string, press as boolean)
+        if name = "onGuideDialogBack" then m.dialogBackHandoff = press
     end sub
-    m.top.dialog = {wasClosed: false, id: "native"}
-    onGuideSceneDialogChanged()
-    assertEqual(m.guide.trackedDialog.id, "native", "Scene forwards dialog assignment to Guide")
+    m.top.dialog = {wasClosed: invalid}
+    assertEqual(onKeyEvent("OK", true), false, "Scene leaves OK to the native dialog")
+    assertEqual(m.guide.dialogBackHandoff, invalid, "OK does not arm the Guide Back handoff")
+    assertEqual(onKeyEvent("back", true), false, "Scene leaves native Back dismissal to the dialog")
+    assertEqual(m.guide.dialogBackHandoff, true, "only observed Back arms the Guide handoff")
+    assertEqual(onKeyEvent("back", false), false, "Scene leaves native Back release to the dialog")
+    assertEqual(m.guide.dialogBackHandoff, false, "an observed release ends the handoff")
     m.top.dialog = invalid
-    onGuideSceneDialogChanged()
-    assertEqual(m.guide.trackedDialog, invalid, "Scene forwards native dialog removal to Guide")
     oldTask = {id: "old", cancelRequested: false, unobserveField: sub(field as string)
         m.unobserved = true
     end sub, isSameNode: function(other as object) as boolean

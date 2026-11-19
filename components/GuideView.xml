@@ -42,7 +42,7 @@
     <function name="handleOptionsShortcut" />
     <function name="focusPrimaryNavigation" />
     <function name="suppressGuideBackForHandoff" />
-    <function name="trackGuideSceneDialog" />
+    <function name="onGuideDialogBack" />
     <function name="resumeUnifiedSearch" />
     <function name="cancelMappingLoad" />
     <function name="cancelMetadataLoads" />

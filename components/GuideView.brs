@@ -1535,7 +1535,7 @@ end function
 function handleGuideBack(press as boolean) as boolean
     owner = guideBackOwner()
     if owner = "dialog"
-        m.guideBackOwner = ""
+        onGuideDialogBack(press)
         return false
     end if
     if consumeGuideBackHandoff(press) then return true
@@ -1597,24 +1597,14 @@ function consumeGuideBackHandoff(press as boolean) as boolean
     return true
 end function
 
-sub trackGuideSceneDialog(dialog as dynamic)
-    old = m.guideSceneDialog
-    if old <> invalid
-        if dialog <> invalid and old.isSameNode(dialog) then return
-        old.unobserveFieldScoped("wasClosed")
-        m.guideSceneDialog = invalid
-        ' Some native dialogs leave Scene.dialog without a readable close event.
-        if m.top.active then suppressGuideBackForHandoff()
+sub onGuideDialogBack(press as boolean)
+    ' Roku's wasClosed event has no reason or key edge. Only a Back
+    ' that actually reaches app input can establish a handoff.
+    if press
+        suppressGuideBackForHandoff()
+    else
+        m.guideBackHandoff = invalid
     end if
-    if dialog = invalid or dialog.wasClosed = true then return
-    m.guideSceneDialog = dialog
-    dialog.observeFieldScoped("wasClosed", "onGuideSceneDialogClosed")
-end sub
-
-sub onGuideSceneDialogClosed(event as object)
-    if event.getData() <> true then return
-    if m.guideSceneDialog = invalid or not m.guideSceneDialog.isSameNode(event.getRoSGNode()) then return
-    trackGuideSceneDialog(invalid)
 end sub
 
 sub updatePrimaryTabs()

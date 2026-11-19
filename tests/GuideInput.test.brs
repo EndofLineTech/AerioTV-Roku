@@ -125,35 +125,31 @@ sub main()
     if not onKeyEvent("back", false) then stop
     if m.details.action <> "" or m.top.playerRequest <> invalid then stop
     m.details.active = false
-    dialog = {wasClosed: false, observeFieldScoped: sub(field as string, callback as string)
-        m.watcher = callback
-    end sub, unobserveFieldScoped: sub(field as string)
-        m.watcher = ""
-    end sub, isSameNode: function(node as object) as boolean
-        return m.id = node.id
-    end function, id: "native"}
+    dialog = {wasClosed: false, text: "Evening News"}
     m.top.scene.dialog = dialog
-    trackGuideSceneDialog(dialog)
-    if dialog.watcher <> "onGuideSceneDialogClosed" then stop
-    ' The platform dialog receives the initial press, not GuideView.
-    dialog.wasClosed = true
-    onGuideSceneDialogClosed({getData: function() as boolean
-        return true
+    ' Exercise the keyboard's normal, app-managed OK submit/close path. With
+    ' no initial Back to hand off, the next Back is an independent gesture.
+    onProgramSearchKeyboard({getData: function() as integer
+        return 0
     end function, getRoSGNode: function() as object
         return m.node
     end function, node: dialog})
-    tapBack() ' repeat + release delivered to newly focused GuideView
+    if dialog.close <> true or m.programQuery <> "Evening News" or not m.searchSubmitted then stop
+    m.top.scene.dialog = invalid
+    onDialogClosed()
+    tapBack()
+    if m.top.playerRequest <> "expandPlayer" then stop
+    m.top.playerRequest = invalid
+    m.top.scene.dialog = dialog
+    if onKeyEvent("back", true) then stop
+    m.top.scene.dialog = invalid
+    onDialogClosed()
+    tapBack() ' repeat and release from the Back seen above
+    if m.top.playerRequest <> invalid then stop
+    onKeyEvent("back", false) ' orphan release after a native dismissal has no action
     if m.top.playerRequest <> invalid then stop
     tapBack()
     if m.top.playerRequest <> "expandPlayer" then stop
-    ' Some native dialogs leave the field without a usable wasClosed event.
-    m.top.playerRequest = invalid
-    dialog.wasClosed = false
-    trackGuideSceneDialog(dialog)
-    m.top.scene.dialog = invalid
-    trackGuideSceneDialog(invalid)
-    tapBack()
-    if m.top.playerRequest <> invalid or dialog.watcher <> "" then stop
     m.top.playerRequest = invalid
     m.top.pendingTune = true
     if instr(1, guideRemoteHint(), "Back  Cancel tune") = 0 then stop
@@ -267,6 +263,10 @@ sub main()
     if not onKeyEvent("OK", true) or m.top.watchChannel <> invalid then stop
     if not onKeyEvent("OK", false) or m.top.watchChannel.uuid <> "3" then stop
     print "ALL TESTS PASSED"
+end sub
+
+sub loadUnifiedSearchPage()
+    m.searchSubmitted = true
 end sub
 
 sub tapBack()
