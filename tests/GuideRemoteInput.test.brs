@@ -106,6 +106,42 @@ sub main()
     check(instr(1, hint, "Play  None") > 0 and instr(1, hint, "Back  Stop playback") > 0, "mini Back advertises stop instead of duplicating Play")
     m.top.miniActive = false
     check(instr(1, guideRemoteHint(), "Back  Top menu") > 0, "guide Back advertises top-level navigation")
+    for each action in remoteActionChoices("guide", "backShort")
+        setupGuide()
+        m.anchor = 18000
+        m.top.remotePreferences.remoteMap = setRemoteAction(defaultRemoteMap(), "guide", "backShort", action)
+        executeGuideBack()
+        if action = "backLadder"
+            check(m.top.playerRequest = "stopPlayer", "default Back stops only an active mini-player")
+        else if action = "resumePlayer"
+            check(m.top.playerRequest = "expandPlayer", "Back expands without tuning")
+        else if action = "pageUp"
+            check(m.selected = 4, "Back pages up")
+        else if action = "pageDown"
+            check(m.selected = 16, "Back pages down")
+        else if action = "jumpToTop"
+            check(m.selected = 0, "Back jumps to top")
+        else if action = "openGroupSidebar"
+            check(m.navigator.active, "Back opens group navigation")
+        else if action = "timelineBack"
+            check(m.jumpEpoch = 9000, "Back jumps 2.5 hours earlier")
+        else if action = "timelineForward"
+            check(m.jumpEpoch = 27000, "Back jumps 2.5 hours later")
+        else if action = "none"
+            check(m.selected = 10 and m.observed = "" and m.top.playerRequest = "", "Back is unassigned")
+        else
+            check(m.observed = action, "Back executes " + action)
+        end if
+    end for
+    setupGuide()
+    m.top.miniActive = false
+    executeGuideBack()
+    check(m.observed = "topMenu", "default Back with playback stopped focuses top navigation")
+    m.filtered = []
+    m.observed = ""
+    m.top.remotePreferences.remoteMap = setRemoteAction(defaultRemoteMap(), "guide", "backShort", "play")
+    executeGuideBack()
+    check(m.observed = "" and instr(1, guideRemoteHint(), "Back  ") = 0, "empty grid does not advertise or dispatch a tune")
     setupGuide()
     m.ready = true
     m.settings.showSubtitles = true
@@ -129,6 +165,7 @@ end function
 sub setupGuide()
     m.top = {active: true, miniActive: true, playerRequest: "", remotePreferences: {remoteMap: defaultRemoteMap()}}
     m.navigator = {active: false}
+    m.primaryNavigation = {active: false}
     m.settings = {groupLayout: "sidebar"}
     m.groups = [{name: "All channels"}]
     m.searchView = {active: false}
@@ -159,7 +196,16 @@ sub scheduleLoad()
 end sub
 
 sub jumpTo(epoch as integer)
+    m.jumpEpoch = epoch
     m.observed = "jumpToNow"
+end sub
+
+sub focusPrimaryNavigation()
+    m.observed = "topMenu"
+end sub
+
+sub watchLive()
+    m.observed = "play"
 end sub
 
 sub moveGuideTime(key as string)

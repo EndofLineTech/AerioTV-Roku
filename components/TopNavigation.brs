@@ -106,6 +106,7 @@ sub drawNavigation()
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    if key = "back" and m.top.delegateBack = true then return false
     if not m.top.active or not press then return false
     if key = "left" then m.index = navigationMove(m.items, m.index, -1)
     if key = "right" then m.index = navigationMove(m.items, m.index, 1)

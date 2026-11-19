@@ -944,7 +944,8 @@ preventing accidental reuse at a different server.
 | Guide | OK on past/future program | Program details; explicit Watch channel live action |
 | Guide | `*` | Details, favorites, groups, search, date/time, Now, refresh, settings |
 | Guide | Instant Replay | Jump to Now |
-| Guide | Back | Cancel a pending AAC tune, expand an active mini-player, or otherwise open connection settings |
+| Guide grid | Back (default) | Cancel a pending tune, stop an active mini-player, or focus the top menu if playback is stopped |
+| Guide grid | Play/Pause (default) | Expand an active mini-player, or show program details if playback is stopped |
 | Menu | Back | Close and restore guide focus |
 | Player | OK | Show/hide now/next information without pausing |
 | Player | Hold OK | Open app player options; release before selecting an item |
@@ -959,6 +960,19 @@ preventing accidental reuse at a different server.
 | Archive / Restart / rewind | Hold Rew/FF, then release | Preview a target; OK/Play commits, Back cancels |
 | Archive / Restart / rewind | Up | Go Live, keep watching, or configure skip interval |
 | Guide header | Settings | Categorized Live TV, Player, Appearance, General and Connection settings |
+
+Use **Settings → Remote control → In the TV Guide → Back** to change what a
+single Back press does in the grid. Choices include watching the selected
+channel live, opening program details or groups, moving 2½ hours earlier or
+later, paging through channels, jumping to Now or the top channel, returning
+to fullscreen, and doing nothing. Return to fullscreen only acts when the
+mini-player is active; it does not start playback. If you change the default
+mapping, you can still stop the mini-player from the Guide's `*` menu.
+
+The assignment is saved on this Roku and reflected in the Guide hints when
+enabled. Back still dismisses an open menu or dialog first, and a pending tune
+takes priority in the grid. There is no separate held-Back assignment.
+Fullscreen player Back and Roku system keys such as Home are unchanged.
 
 The date picker displays local calendar days and half-hour times with a UTC
 reference to distinguish repeated daylight-saving hours. A missing spring-forward

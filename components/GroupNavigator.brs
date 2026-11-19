@@ -110,6 +110,7 @@ sub publishPreview()
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    if key = "back" and m.top.delegateBack = true then return false
     if not press or not m.top.active then return false
     if (key = "up" and (m.layout = "pills" or m.index = 0)) or (key = "left" and m.layout = "sidebar")
         m.delay.control = "stop"
@@ -125,8 +126,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
     end if
     if key = "back" or key = "OK" or (m.layout = "pills" and key = "down") or (m.layout = "sidebar" and key = "right")
         if key <> "back" then publishPreview()
-        m.top.active = false
-        m.top.closed = true
+        dismissGroups()
         return true
     end if
     delta = 0
@@ -146,3 +146,9 @@ function onKeyEvent(key as string, press as boolean) as boolean
     end if
     return true
 end function
+
+sub dismissGroups()
+    m.delay.control = "stop"
+    m.top.active = false
+    m.top.closed = true
+end sub

@@ -3060,7 +3060,12 @@ function onKeyEvent(key as string, press as boolean) as boolean
             return m.transport.callFunc("handlePlayerKey", key, press)
         end if
         if key = "back"
-            if m.userInfoOpen then hideBanner() else minimizePlayback(true)
+            if m.userInfoOpen
+                hideBanner()
+            else
+                minimizePlayback(true)
+                if m.page = "guide" then m.guide.callFunc("suppressGuideBackUntilRelease")
+            end if
             return true
         end if
         if key = "play"

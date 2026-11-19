@@ -259,6 +259,7 @@ end sub
 sub suspendGuide()
     m.guideTuneOkUuid = invalid
     m.primaryNavigation.active = false
+    m.guideBackOwner = ""
     cancelGuideHold()
     if m.tmdbTask <> invalid
         m.tmdbTask.unobserveField("result")
@@ -603,22 +604,7 @@ sub drawGuide()
     x = timeX + (now - m.viewStart) / 6
     m.nowLine.visible = x >= timeX and x < 1824
     if m.nowLine.visible then m.nowLine.translation = [x, 300]
-    m.footer.text = guideRemoteHint()
-    remote = m.top.remotePreferences
-    if type(remote) = "roAssociativeArray"
-        m.footer.visible = remote.infoHints <> false
-    end if
-    if m.query <> "" then m.footer.text = "Search ALL: " + m.query + "    * > Clear search to restore the selected group"
-    if m.connectionWarning <> "" then m.footer.text = m.connectionWarning
-    if m.message <> "" then m.footer.text = m.message
-    for each window in [guideWindowStart(m.viewStart), guideWindowStart(m.viewStart + m.span - 1)]
-        if m.cache.entries.doesExist(window.toStr()) and not guideCacheHas(m.cache, window, uiNow())
-            m.footer.text = "Cached guide (refresh pending). " + m.footer.text
-            exit for
-        end if
-    end for
-    if m.mappingState = "loading" then m.footer.text = "Loading guide mappings... Channels are ready to watch."
-    if m.mappingWarning <> "" then m.footer.text = m.mappingWarning
+    updateGuideFooter()
     clearGuideProgramSummary()
     if m.filtered.count() = 0
         m.title.text = "No matching channels"
@@ -648,6 +634,26 @@ sub drawGuide()
             if retention <> "" then m.description.text = retention + " (provider advertised)  |  " + m.description.text
         end if
     end if
+end sub
+
+sub updateGuideFooter()
+    if not m.ready or not m.top.active then return
+    m.footer.text = guideRemoteHint()
+    remote = m.top.remotePreferences
+    if type(remote) = "roAssociativeArray"
+        m.footer.visible = remote.infoHints <> false
+    end if
+    if m.query <> "" then m.footer.text = "Search ALL: " + m.query + "    * > Clear search to restore the selected group"
+    if m.connectionWarning <> "" then m.footer.text = m.connectionWarning
+    if m.message <> "" then m.footer.text = m.message
+    for each window in [guideWindowStart(m.viewStart), guideWindowStart(m.viewStart + m.span - 1)]
+        if m.cache.entries.doesExist(window.toStr()) and not guideCacheHas(m.cache, window, uiNow())
+            m.footer.text = "Cached guide (refresh pending). " + m.footer.text
+            exit for
+        end if
+    end for
+    if m.mappingState = "loading" then m.footer.text = "Loading guide mappings... Channels are ready to watch."
+    if m.mappingWarning <> "" then m.footer.text = m.mappingWarning
 end sub
 
 function gapText() as string
@@ -933,6 +939,7 @@ sub updateMiniLayout()
         m.description.width = 1180
         m.heading.width = 330
     end if
+    updateGuideFooter()
 end sub
 
 sub clearGuideProgramSummary()
@@ -1458,9 +1465,11 @@ function onKeyEvent(key as string, press as boolean) as boolean
         end if
         return true
     end if
+    if key = "back" then return handleGuideBack(press)
     if not press then return false
+    m.guideBackOwner = ""
     if m.picker <> invalid
-        if key = "back" or key = "options"
+        if key = "options"
             closePicker()
             m.top.setFocus(true)
         end if
@@ -1468,17 +1477,6 @@ function onKeyEvent(key as string, press as boolean) as boolean
     end if
     if key = "options"
         openOptions()
-        return true
-    else if key = "back"
-        if m.top.pendingTune = true
-            m.top.playerRequest = "cancelPendingTune"
-            return true
-        end if
-        if m.top.miniActive
-            m.top.playerRequest = "stopPlayer"
-            return true
-        end if
-        focusPrimaryNavigation()
         return true
     end if
     if key = "play" and m.top.miniActive
@@ -1518,6 +1516,56 @@ function onKeyEvent(key as string, press as boolean) as boolean
     m.saveDelay.control = "start"
     return true
 end function
+
+function guideBackOwner() as string
+    scene = m.top.getScene()
+    if scene <> invalid and scene.dialog <> invalid
+        if scene.dialog.wasClosed <> true then return "dialog"
+    end if
+    if m.picker <> invalid then return "picker"
+    if m.details.active then return "details"
+    if m.searchView.active then return "search"
+    if m.navigator.active then return "groups"
+    if m.primaryNavigation.active then return "navigation"
+    return "grid"
+end function
+
+function handleGuideBack(press as boolean) as boolean
+    owner = guideBackOwner()
+    if owner = "dialog"
+        if press then m.guideBackOwner = "blocked" else m.guideBackOwner = ""
+        return false
+    end if
+    if press
+        ' Capture the focus owner, ignoring repeats. Closing it only on release
+        ' keeps that same press from reaching the guide beneath it.
+        if textValue(m.guideBackOwner) = "" then m.guideBackOwner = owner
+        return true
+    end if
+    capturedOwner = m.guideBackOwner
+    m.guideBackOwner = ""
+    if owner <> capturedOwner then return true
+    if owner = "picker"
+        closePicker()
+        m.top.setFocus(true)
+    else if owner = "details"
+        m.details.action = "close"
+    else if owner = "search"
+        m.searchView.selection = {action: "close"}
+    else if owner = "groups"
+        m.navigator.callFunc("dismissGroups")
+    else if owner = "navigation"
+        m.primaryNavigation.active = false
+        m.primaryNavigation.exitRequested = "back"
+    else
+        executeGuideBack()
+    end if
+    return true
+end function
+
+sub suppressGuideBackUntilRelease()
+    m.guideBackOwner = "blocked"
+end sub
 
 sub updatePrimaryTabs()
     if m.primaryNavigation = invalid then return

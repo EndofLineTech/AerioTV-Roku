@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <component name="TopNavigation" extends="Group">
   <interface>
+    <field id="delegateBack" type="boolean" value="false" />
     <function name="configureNavigation" />
     <field id="availableWidth" type="float" value="0" />
     <field id="pillWidth" type="float" value="200" />

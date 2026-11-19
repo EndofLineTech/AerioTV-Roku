@@ -112,7 +112,8 @@ sub main()
     remotePlayer = settingsHubEntries("remotePlayer", model)
     if remotePlayer.count() <> 9 or remotePlayer[0].slot <> "okShort" then stop
     remoteGuide = settingsHubEntries("remoteGuide", model)
-    if remoteGuide.count() <> 8 or remoteGuide[0].slot <> "okShort" then stop
+    if remoteGuide.count() <> 9 or remoteGuide[0].slot <> "okShort" then stop
+    if remoteGuide[8].slot <> "backShort" or remoteGuide[8].title <> "Back" or remoteGuide[8].values[0] <> "backLadder" then stop
     if settingsHubEntries("remotePlayer", model)[0].values[0] <> "toggleInfo" then stop
     if not settingsHubChangeAllowed(model, "account", "startupBehavior", "mini") then stop
     if not settingsHubChangeAllowed(model, "device", "networkTimeoutSeconds", 30) then stop
@@ -152,8 +153,10 @@ sub main()
     m.saveOk = true
     m.applyCount = 0
     custom = setRemoteAction(defaultRemoteMap(), "guide", "replay", "openOptions")
+    custom = setRemoteAction(custom, "guide", "backShort", "resumePlayer")
     if not persistRemoteMap(custom) then stop
     if resolveRemoteAction(m.published.remoteMap, "guide", "replay") <> "openOptions" then stop
+    if resolveRemoteAction(normalizeDevicePreferences(ParseJson(FormatJson(m.preferenceStore.device))).remoteMap, "guide", "backShort") <> "resumePlayer" then stop
     if m.applyCount <> 1 then stop
     m.saveOk = false
     if persistRemoteMap(resetRemoteMap()) then stop
@@ -162,6 +165,7 @@ sub main()
     m.saveOk = true
     if not persistRemoteMap(resetRemoteMap()) then stop
     if resolveRemoteAction(m.published.remoteMap, "guide", "replay") <> "jumpToNow" then stop
+    if resolveRemoteAction(m.published.remoteMap, "guide", "backShort") <> "backLadder" then stop
     if m.applyCount <> 3 then stop
     m.preferenceStore.device = normalizeDevicePreferences({themePreset: "sunset"})
     m.devicePreferences = normalizeDevicePreferences({themePreset: "forest"})

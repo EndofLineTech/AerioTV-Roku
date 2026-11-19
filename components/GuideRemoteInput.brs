@@ -7,9 +7,13 @@ end function
 sub executeGuideRemoteAction(action as string)
     if action = "jumpToNow"
         jumpTo(uiNow())
+    else if action = "timelineBack" or action = "timelineForward"
+        stepSeconds = 150 * 60 ' Match the upstream 2½-hour guide jump.
+        if action = "timelineBack" then stepSeconds = -stepSeconds
+        jumpTo(m.anchor + stepSeconds)
     else if action = "jumpToTop"
         m.selected = 0
-    else if action = "openGroups"
+    else if action = "openGroups" or action = "openGroupSidebar"
         if m.settings.groupLayout = "modal"
             items = []
             for i = 0 to m.groups.count() - 1
@@ -33,6 +37,38 @@ sub executeGuideRemoteAction(action as string)
         showDetails()
     else if action = "activateSelection"
         activateGuideSelection()
+    else if action = "play"
+        watchLive()
+    end if
+end sub
+
+' Resolve the context-sensitive action once for both dispatch and hints.
+function effectiveGuideBackAction() as string
+    if m.top.pendingTune = true then return "cancelPendingTune"
+    action = guideRemoteAction("backShort")
+    if action = "backLadder"
+        if m.top.miniActive then return "stopPlayer"
+        return "topMenu"
+    end if
+    if action = "resumePlayer" and not m.top.miniActive then return "none"
+    if m.filtered.count() = 0 and action <> "resumePlayer" and action <> "openGroupSidebar" then return "none"
+    return action
+end function
+
+sub executeGuideBack()
+    action = effectiveGuideBackAction()
+    if action = "cancelPendingTune" or action = "stopPlayer"
+        m.top.playerRequest = action
+    else if action = "topMenu"
+        focusPrimaryNavigation()
+    else if action <> "none"
+        executeGuideRemoteAction(action)
+        ' Only row changes need the normal repaint/save here. Time jumps and
+        ' focus changes already refresh themselves; playback owns its transition.
+        if action = "jumpToTop" or action = "pageUp" or action = "pageDown"
+            finishGuideMappedAction()
+            announceGuidePosition()
+        end if
     end if
 end sub
 
@@ -171,7 +207,11 @@ function guideRemoteHint() as string
     else if guideRemoteAction("playPause") = "resumePlayer"
         hint += "    Play  Details"
     end if
-    hint += "    *  Options    Back  "
-    if m.top.miniActive then return hint + "Stop playback"
-    return hint + "Top menu"
+    hint += "    *  Options"
+    if m.navigator.active or m.primaryNavigation.active = true then return hint + "    Back  Guide grid"
+    back = effectiveGuideBackAction()
+    labels = {stopPlayer: "Stop playback", topMenu: "Top menu", cancelPendingTune: "Cancel tune"}
+    if back = "none" then return hint
+    if labels.doesExist(back) then return hint + "    Back  " + labels[back]
+    return hint + "    Back  " + remoteActionHint(back)
 end function

@@ -65,6 +65,7 @@ function remoteActionChoices(context as string, slot as string) as object
         if slot = "rewind" or slot = "fastforward" then return ["pageUp", "pageDown", "jumpToNow", "jumpToTop", "none"]
         if slot = "replay" then return ["jumpToNow", "openOptions", "none"]
         if slot = "playpause" then return ["resumePlayer", "none"]
+        if slot = "backshort" then return ["backLadder", "play", "programDetails", "openGroupSidebar", "timelineBack", "timelineForward", "pageUp", "pageDown", "jumpToNow", "jumpToTop", "resumePlayer", "none"]
     end if
     return []
 end function
@@ -90,6 +91,7 @@ function defaultRemoteAction(context as string, slot as string) as string
         if slot = "fastforward" then return "pageDown"
         if slot = "replay" then return "jumpToNow"
         if slot = "playpause" then return "resumePlayer"
+        if slot = "backshort" then return "backLadder"
     end if
     return ""
 end function
@@ -101,13 +103,22 @@ function remoteMapText(value as dynamic) as string
 end function
 
 function remoteActionText(action as string) as string
+    backLabels = {backLadder: "Default (stop playback / top menu)", play: "Watch selected channel live", openGroupSidebar: "Open groups", timelineBack: "Go back 2½ hours", timelineForward: "Go forward 2½ hours"}
+    if backLabels.doesExist(action) then return backLabels[action]
     labels = {toggleInfo: "Show/hide player info", openOptions: "Open options", channelUp: "Channel up", channelDown: "Channel down", recentChannels: "Recently watched", channelList: "Channel list", lastChannel: "Previous channel", minimizeToGuide: "Return to TV Guide", rewindHistory: "Rewind history", playPause: "Play/Pause", activateSelection: "Play selected channel", programDetails: "Program details", navigate: "Move focus", jumpToNow: "Jump to Now", jumpToTop: "Jump to top channel", openGroups: "Open groups", pageUp: "Page channels up", pageDown: "Page channels down", resumePlayer: "Fullscreen if playing / details otherwise", none: "Do nothing"}
     if labels.doesExist(action) then return labels[action]
     return action
 end function
 
+function remoteSlotActionText(slot as string, action as string) as string
+    if lcase(slot) = "backshort" and action = "resumePlayer" then return "Return to fullscreen (if playing)"
+    return remoteActionText(action)
+end function
+
 ' Compact labels for the single-line TV hints; settings retain full descriptions.
 function remoteActionHint(action as string) as string
+    backLabels = {play: "Watch live", openGroupSidebar: "Groups", timelineBack: "Earlier", timelineForward: "Later"}
+    if backLabels.doesExist(action) then return backLabels[action]
     labels = {toggleInfo: "Info", openOptions: "Options", channelUp: "Next channel", channelDown: "Prev channel", recentChannels: "Recent", channelList: "Channels", lastChannel: "Last channel", minimizeToGuide: "Guide", rewindHistory: "Rewind", playPause: "Pause/resume", activateSelection: "Watch/details", programDetails: "Details", navigate: "Move focus", jumpToNow: "Now", jumpToTop: "Top", openGroups: "Groups", pageUp: "Page up", pageDown: "Page down", resumePlayer: "Fullscreen", none: "None"}
     if labels.doesExist(action) then return labels[action]
     return ""

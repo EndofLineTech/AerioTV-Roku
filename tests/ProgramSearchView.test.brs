@@ -10,6 +10,7 @@ sub main()
     m.top.selection = invalid
     m.top.model.hasNext = false
     if not onKeyEvent("fastforward", true) or m.top.selection <> invalid then stop
+    if onKeyEvent("back", true) or onKeyEvent("back", false) or m.top.selection <> invalid then stop
     m.top.active = false
     if onKeyEvent("rewind", true) then stop
     print "ALL TESTS PASSED"

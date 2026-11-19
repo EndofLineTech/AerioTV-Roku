@@ -22,11 +22,11 @@
     <field id="playbackInfo" type="assocarray" alwaysNotify="true" />
     <field id="miniActive" type="boolean" onChange="updateMiniLayout" />
     <field id="sleepActive" type="boolean" />
-    <field id="pendingTune" type="boolean" />
+    <field id="pendingTune" type="boolean" onChange="updateGuideFooter" />
     <field id="playerRequest" type="string" alwaysNotify="true" />
     <field id="searchVodSelection" type="assocarray" alwaysNotify="true" />
     <field id="devicePreference" type="assocarray" alwaysNotify="true" />
-    <field id="remotePreferences" type="assocarray" />
+    <field id="remotePreferences" type="assocarray" onChange="updateGuideFooter" />
     <function name="adjacentPlayingChannel" />
     <function name="selectPlayingChannel" />
     <function name="cachedPlaybackInfo" />
@@ -41,6 +41,7 @@
     <function name="applyHubGuideSetting" />
     <function name="handleOptionsShortcut" />
     <function name="focusPrimaryNavigation" />
+    <function name="suppressGuideBackUntilRelease" />
     <function name="resumeUnifiedSearch" />
     <function name="cancelMappingLoad" />
     <function name="cancelMetadataLoads" />
@@ -78,8 +79,8 @@
   <script type="text/brightscript" uri="GuideDetails.brs" />
   <children>
     <Group id="canvas" />
-    <TopNavigation id="primaryNavigation" translation="[96,20]" availableWidth="1728" selected="live" />
-    <GroupNavigator id="groupNavigator" visible="false" />
+    <TopNavigation id="primaryNavigation" translation="[96,20]" availableWidth="1728" selected="live" delegateBack="true" />
+    <GroupNavigator id="groupNavigator" visible="false" delegateBack="true" />
     <ProgramSearchView id="programSearch" visible="false" />
     <ProgramDetails id="programDetails" visible="false" />
     <Timer id="detailDelay" duration="0.35" repeat="false" />

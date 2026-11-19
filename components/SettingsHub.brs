@@ -85,10 +85,11 @@ sub renderSettings()
     m.items = []
     if m.choice <> invalid and m.choice.action = "remoteSlot"
         m.heading.text = m.choice.title
-        m.note.text = "Applies immediately in this context. Back, Home and fullscreen * cannot be reassigned."
+        m.note.text = "Applies immediately in this context. Roku system keys cannot be reassigned."
+        if m.choice.slot = "backShort" then m.note.text = "While browsing the guide. Back still closes menus and cancels a pending tune first."
         current = resolveRemoteAction(model.device.remoteMap, m.choice.context, m.choice.slot)
         for each value in m.choice.values
-            title = remoteActionText(value)
+            title = remoteSlotActionText(m.choice.slot, value)
             if value = current then title = "[Selected] " + title
             m.items.push({title: title, value: value})
         end for
@@ -126,7 +127,7 @@ sub renderSettings()
             if accent = "" then accent = "Preset"
             label += ": " + accent
         end if
-        if item.action = "remoteSlot" then label += ": " + remoteActionText(resolveRemoteAction(model.device.remoteMap, item.context, item.slot))
+        if item.action = "remoteSlot" then label += ": " + remoteSlotActionText(item.slot, resolveRemoteAction(model.device.remoteMap, item.context, item.slot))
         if item.key <> invalid then label += ": " + settingsValueText(settingsHubValue(model, item.scope, item.key), item.key)
         child = content.createChild("ContentNode")
         child.title = label

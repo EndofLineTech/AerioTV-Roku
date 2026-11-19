@@ -12,6 +12,10 @@ sub main()
     m.layout = "sidebar"
     m.index = 8
     if not onKeyEvent("left", true) or not m.top.topRequested then stop
+    m.top = {active: true, delegateBack: true}
+    if onKeyEvent("back", true) or onKeyEvent("back", false) or not m.top.active then stop
+    dismissGroups()
+    if m.top.active or not m.top.closed or m.delay.control <> "stop" then stop
     window = groupPillWindow(35, 0, 5)
     if window.first <> 0 or window.last <> 5 or window.left or not window.right then stop
     window = groupPillWindow(35, 4, 5)

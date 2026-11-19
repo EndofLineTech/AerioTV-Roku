@@ -174,7 +174,7 @@ end function
 function remoteSlotEntries(context as string) as object
     slots = []
     if context = "player" then slots = ["okShort", "okLong", "upShort", "downShort", "leftShort", "rightShort", "replay", "playPause", "rewind"]
-    if context = "guide" then slots = ["okShort", "leftShort", "leftLong", "rightShort", "rewind", "fastForward", "replay", "playPause"]
+    if context = "guide" then slots = ["okShort", "leftShort", "leftLong", "rightShort", "rewind", "fastForward", "replay", "playPause", "backShort"]
     entries = []
     for each slot in slots
         entries.push({title: remoteSlotTitle(slot), action: "remoteSlot", context: context, slot: slot, values: remoteActionChoices(context, slot)})
@@ -192,6 +192,7 @@ function remoteSlotTitle(slot as string) as string
     if slot = "rightShort" then return "Right"
     if slot = "replay" then return "Replay"
     if slot = "playPause" then return "Play/Pause"
+    if slot = "backShort" then return "Back"
     if slot = "fastForward" then return "Fast Forward"
     if slot = "rewind" then return "Rewind"
     return slot

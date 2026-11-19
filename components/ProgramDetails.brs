@@ -137,10 +137,10 @@ sub render()
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
+    ' GuideView dispatches Back on release to the topmost guide surface.
+    if key = "back" then return false
     if not press or not m.top.active then return false
-    if key = "back"
-        m.top.action = "close"
-    else if key = "OK"
+    if key = "OK"
         m.top.action = m.actions[m.index]
     else if key = "up"
         if m.index > 0 then m.index--

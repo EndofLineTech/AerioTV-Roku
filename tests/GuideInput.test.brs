@@ -1,11 +1,17 @@
 sub main()
-    m.top = {active: true, miniActive: false, removeChild: sub(child as object)
+    m.top = {active: true, miniActive: false, getScene: function() as object
+        return m.scene
+    end function, scene: {}, removeChild: sub(child as object)
     end sub, setFocus: sub(focused as boolean)
     end sub}
     m.ready = false
     m.picker = invalid
     m.pickerWakeKey = ""
-    m.navigator = {active: false}
+    m.navigator = {active: false, callFunc: sub(name as string)
+        if name <> "dismissGroups" then stop
+        m.active = false
+        m.closed = true
+    end sub}
     m.searchView = {active: false}
     m.details = {active: false}
     m.holdTimer = {control: "stop"}
@@ -13,6 +19,7 @@ sub main()
     m.loadDelay = {control: "stop"}
     m.holdKey = ""
     m.settings = normalizeGuideSettings({groupLayout: "sidebar"})
+    m.rowCount = 6
     m.selected = 1
     m.filtered = []
     for i = 0 to 19
@@ -83,14 +90,79 @@ sub main()
     m.top.exitRequested = invalid
     m.top.playerRequest = invalid
     m.selected = 10
-    if not onKeyEvent("back", true) or not m.primaryNavigation.active then stop
+    if not onKeyEvent("back", true) or m.primaryNavigation.active then stop
+    if not onKeyEvent("back", true) or m.primaryNavigation.active then stop
+    if not onKeyEvent("back", false) or not m.primaryNavigation.active then stop
+    if instr(1, guideRemoteHint(), "Back  Guide grid") = 0 then stop
     if m.top.exitRequested <> invalid or m.selected <> 10 then stop
     m.primaryNavigation.active = false
     m.top.miniActive = true
-    if not onKeyEvent("back", true) or m.top.playerRequest <> "stopPlayer" then stop
+    tapBack()
+    if m.top.playerRequest <> "stopPlayer" then stop
     if m.top.exitRequested <> invalid then stop
     m.top.playerRequest = invalid
     if not onKeyEvent("play", true) or m.top.playerRequest <> "expandPlayer" then stop
+    m.top.playerRequest = invalid
+    setGuideBackForTest("resumePlayer")
+    m.picker = {}
+    if not onKeyEvent("back", true) or m.picker = invalid then stop
+    tapBack()
+    if m.picker <> invalid or m.top.playerRequest <> invalid then stop
+    if not onKeyEvent("back", false) or m.top.playerRequest <> invalid then stop
+    for each overlay in ["details", "searchView", "navigator", "primaryNavigation"]
+        m[overlay].active = true
+        tapBack()
+        if m.top.playerRequest <> invalid then stop
+        if overlay = "details" and m.details.action <> "close" then stop
+        if overlay = "searchView" and m.searchView.selection.action <> "close" then stop
+        if overlay = "navigator" and m.navigator.closed <> true then stop
+        if overlay = "primaryNavigation" and m.primaryNavigation.exitRequested <> "back" then stop
+        m[overlay].active = false
+    end for
+    if not onKeyEvent("back", true) then stop
+    m.details.active = true
+    m.details.action = ""
+    if not onKeyEvent("back", false) then stop
+    if m.details.action <> "" or m.top.playerRequest <> invalid then stop
+    m.details.active = false
+    m.top.scene.dialog = {wasClosed: false}
+    if onKeyEvent("back", true) then stop
+    m.top.scene.dialog = invalid
+    if not onKeyEvent("back", true) then stop ' repeat after platform dialog closes
+    onKeyEvent("back", false)
+    if m.top.playerRequest <> invalid then stop
+    tapBack()
+    if m.top.playerRequest <> "expandPlayer" then stop
+    m.top.playerRequest = invalid
+    m.top.pendingTune = true
+    if instr(1, guideRemoteHint(), "Back  Cancel tune") = 0 then stop
+    tapBack()
+    if m.top.playerRequest <> "cancelPendingTune" then stop
+    m.top.pendingTune = false
+    m.top.miniActive = false
+    m.top.playerRequest = invalid
+    tapBack()
+    if m.top.playerRequest <> invalid or m.primaryNavigation.active then stop
+    if instr(1, guideRemoteHint(), "Back  ") <> 0 then stop
+    setGuideBackForTest("pageDown")
+    m.selected = 1
+    tapBack()
+    if m.selected <> 7 or instr(1, guideRemoteHint(), "Back  Page down") = 0 then stop
+    m.top.miniActive = true
+    tapBack()
+    if m.selected <> 13 or m.top.playerRequest <> invalid then stop
+    m.top.miniActive = false
+    m.selected = 7
+    setGuideBackForTest("none")
+    tapBack()
+    if m.selected <> 7 or m.primaryNavigation.active then stop
+    setGuideBackForTest("pageDown")
+    suppressGuideBackUntilRelease()
+    tapBack()
+    if m.selected <> 7 then stop
+    tapBack()
+    if m.selected <> 13 then stop
+    if onKeyEvent("home", true) then stop
     m.top.beacons = []
     m.top.signalBeacon = sub(name as string)
         m.beacons.push(name)
@@ -158,6 +230,15 @@ sub main()
     if not onKeyEvent("OK", true) or m.top.watchChannel <> invalid then stop
     if not onKeyEvent("OK", false) or m.top.watchChannel.uuid <> "3" then stop
     print "ALL TESTS PASSED"
+end sub
+
+sub tapBack()
+    if not onKeyEvent("back", true) then stop
+    if not onKeyEvent("back", false) then stop
+end sub
+
+sub setGuideBackForTest(action as string)
+    m.top.remotePreferences = {remoteMap: setRemoteAction(defaultRemoteMap(), "guide", "backShort", action)}
 end sub
 
 function handleGuideSetting(kind as string, item as object) as boolean
