@@ -131,6 +131,7 @@ def build(output, base_url, registry=False, model_store=False):
         package.write(ROOT / 'source/UserProfileAddressStore.brs', 'source/UserProfileAddressStore.brs')
         package.write(ROOT / 'source/UserProfileChildAccess.brs', 'source/UserProfileChildAccess.brs')
         package.write(ROOT / 'source/SettingsModel.brs', 'source/SettingsModel.brs')
+        package.write(ROOT / 'source/VodDisplayScale.brs', 'source/VodDisplayScale.brs')
         package.write(ROOT / 'source/GuideModel.brs', 'source/GuideModel.brs')
         package.write(ROOT / 'tests/native/PhoneSetupProbe.xml', 'components/PhoneSetupProbe.xml')
         for name in ['DispatcharrModel', 'HttpPolicy', 'HttpTransport', 'DispatcharrHttp', 'RequestGateClient', 'RequestGateModel', 'StrictJson', 'UserProfilePin', 'UserProfileModel', 'UserProfileStore', 'UserProfileAvatar', 'UserProfileLifecycle', 'UserProfileCleanup', 'UserProfileScope', 'UserProfileScopeStore', 'PreferenceModel', 'ConnectionStoreModel', 'RemoteMapModel', 'GuideSettingsModel', 'ReminderModel']:

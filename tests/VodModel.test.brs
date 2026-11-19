@@ -1,4 +1,5 @@
 sub main()
+    testVodDisplayScaleGeometry()
     for focused = 0 to 19
         shown = 0
         for i = 0 to 19
@@ -81,4 +82,33 @@ sub main()
     if vodCatalogSortChoices("name", "catalog", "episode").count() <> 0 then stop
     if instr(1, vodCatalogSortChoices("invalid", "catalog", "series")[0].title, "[Selected]") <> 1 then stop
     print "ALL TESTS PASSED"
+end sub
+
+sub testVodDisplayScaleGeometry()
+    stock = vodTextLayout(100, 100, 24, 18)
+    if stock.posterHeight <> 288 or stock.posterWidth <> 192 or stock.posterX <> 72 then stop
+    if stock.titleY <> 304 or stock.titleHeight <> 52 or stock.factY <> 354 or stock.factHeight <> 26 then stop
+    large = vodTextLayout(100, 120, 29, 26)
+    if large.posterHeight <> 264 or large.posterWidth <> 176 or large.posterX <> 80 then stop
+    if large.titleY <> 282 or large.titleHeight <> 68 or large.factY <> 354 or large.factHeight <> 26 then stop
+    a11y = {textSize: 120, subtextSize: 120}
+    if uiScaledFontSize(24, 0, false, a11y, 150) <> 43 then stop
+    if uiScaledFontSize(18, 0, true, a11y, 150) <> 39 then stop
+    if uiScaledFontSize(18, 0, true, a11y, 100) <> 26 then stop
+    if uiScaledFontSize(24, 0, false, {}, 85) <> 20 then stop
+    if uiScaledFontSize(24, 32, false, a11y, 150) <> 28 then stop
+    for each scale in [85, 115, 125, 135, 150]
+        for each primary in [90, 100, 110, 120]
+            for each secondary in [90, 100, 110, 120]
+                prefs = {textSize: primary, subtextSize: secondary}
+                title = uiScaledFontSize(24, 0, false, prefs, scale)
+                fact = uiScaledFontSize(18, 0, true, prefs, scale)
+                layout = vodTextLayout(scale, primary, title, fact)
+                if layout.posterHeight + 8 > layout.titleY or layout.posterX * 2 + layout.posterWidth <> 336 then stop
+                if layout.titleHeight < 2 * title * 1.12 or layout.factY < layout.titleY + layout.titleHeight then stop
+                if layout.factHeight < fact * 1.12 or layout.factY + layout.factHeight > 380 then stop
+                if layout.compactLines * title * 1.12 + int(title / 5.0 + 0.5) / 2.0 > 116 then stop
+            end for
+        end for
+    end for
 end sub

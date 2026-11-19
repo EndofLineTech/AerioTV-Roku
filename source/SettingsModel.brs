@@ -91,6 +91,7 @@ function settingsHubAllEntries(page as string, model as object) as object
         return [
             {title: "VOD libraries for this account", scope: "account", key: "vodEnabled", values: [true, false]}
             {title: "Optional TMDB VOD enrichment", scope: "account", key: "vodTmdbEnabled", values: [true, false]}
+            {title: "Movies & TV Shows display scale", scope: "device", key: "vodDisplayScale", values: vodDisplayScaleChoices()}
         ]
     end if
     if page = "dvr"
@@ -197,7 +198,9 @@ end function
 function settingsHubValue(model as object, scope as string, key as string) as dynamic
     if scope = "account" then return model[lcase(key)]
     if type(model[scope]) <> "roAssociativeArray" then return invalid
-    return model[scope][lcase(key)]
+    values = model[scope]
+    if values.doesExist(lcase(key)) then return values[lcase(key)]
+    return values[key]
 end function
 
 function settingsHubChangeAllowed(model as object, scope as string, key as string, value as dynamic) as boolean
@@ -254,7 +257,7 @@ function settingsValueText(value as dynamic, key = "" as string) as string
         if value = "hls" then return "HLS (test server)"
         return "MPEG-TS"
     end if
-    if key = "textSize" or key = "subtextSize" then return value.toStr() + "%"
+    if key = "textSize" or key = "subtextSize" or key = "vodDisplayScale" then return value.toStr() + "%"
     if key = "themePreset"
         names = {aerio: "AerioTV", midnight: "Midnight", sunset: "Sunset", forest: "Forest", lavender: "Lavender", monochrome: "Monochrome", light: "Neutral"}
         if names.doesExist(textValue(value)) then return names[value]

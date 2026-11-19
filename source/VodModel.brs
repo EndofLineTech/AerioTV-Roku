@@ -159,6 +159,33 @@ function vodVisualTile(index as integer, focused as integer, total as integer, c
     return {x: 96 + (index mod 5) * 348, y: 210 + (row - first) * 380, visible: index < total and row >= first and row < first + 2}
 end function
 
+function vodTextLayout(scale as integer, primary as dynamic, titleFont as integer, factFont as integer) as object
+    layout = {posterX: 72, posterWidth: 192, posterHeight: 288, titleY: 304, titleHeight: 52, factY: 354, factHeight: 26, compactLines: 3}
+    if primary = 110 or primary = 120
+        layout.posterX = 80
+        layout.posterWidth = 176
+        layout.posterHeight = 264
+        layout.titleY = 282
+        layout.titleHeight = 68
+    end if
+    if scale = 100 then return layout
+    ' Keep the two-row viewport and D-pad grid. Give taller text room by
+    ' reducing the centered 2:3 artwork only when the text needs its space.
+    layout.factHeight = int(factFont * 1.12 + 0.9999)
+    if layout.factHeight < 26 then layout.factHeight = 26
+    layout.factY = 380 - layout.factHeight
+    layout.titleHeight = int(2 * titleFont * 1.12 + 0.9999)
+    if layout.titleY + layout.titleHeight > layout.factY then layout.titleY = layout.factY - layout.titleHeight
+    if layout.posterHeight + 8 > layout.titleY
+        layout.posterWidth = 2 * int((layout.titleY - 8) / 3)
+        layout.posterHeight = layout.posterWidth * 3 \ 2
+        layout.posterX = (336 - layout.posterWidth) \ 2
+    end if
+    ' Reserve up to 5 px for the shared label-centering offset at this scale.
+    if 3 * titleFont * 1.12 > 111 then layout.compactLines = 2
+    return layout
+end function
+
 function vodEnabledProviders(rows as object) as object
     enabled = {}
     for each row in rows

@@ -21,7 +21,32 @@ sub main()
     root = settingsHubEntries("", model)
     if root.count() <> 8 or root[3].page <> "movies" then stop
     if settingsHubEntries("general", model).count() <> 5 then stop
-    if settingsHubEntries("movies", model).count() <> 2 then stop
+    movies = settingsHubEntries("movies", model)
+    if movies.count() <> 3 then stop
+    scale = movies[2]
+    if scale.key <> "vodDisplayScale" or scale.scope <> "device" then stop
+    if FormatJson(scale.values) <> "[85,100,115,125,135,150]" then stop
+    if settingsHubValue(model, "device", scale.key) <> 100 then stop
+    for each value in scale.values
+        if not settingsHubChangeAllowed(model, "device", scale.key, value) then stop
+    end for
+    if settingsValueText(115, scale.key) <> "115%" then stop
+    if settingsHubChangeAllowed(model, "device", scale.key, 92) then stop
+    if settingsHubChangeAllowed(model, "device", scale.key, "115") then stop
+    if settingsHubChangeAllowed(model, "account", scale.key, 115) then stop
+    if settingsHubChangeAllowed({userRole: "child", movies: "allowed"}, "device", scale.key, 115) then stop
+    if settingsHubChangeAllowed({movies: "denied", series: "unknown"}, "device", scale.key, 115) then stop
+    if not settingsHubChangeAllowed({movies: "denied", series: "allowed"}, "device", scale.key, 115) then stop
+    store = defaultPreferenceStore()
+    store.device = setCanonicalPreference({textSize: 120, subtextSize: 110}, scale.key, 135)
+    restored = normalizePreferenceStore(ParseJson(FormatJson(store)))
+    if restored.device[scale.key] <> 135 or restored.device.textSize <> 120 or restored.device.subtextSize <> 110 then stop
+    restored.device.setModeCaseSensitive()
+    restored.device[scale.key] = 135
+    if settingsHubValue({device: restored.device}, "device", scale.key) <> 135 then stop
+    if normalizeDevicePreferences({vodDisplayScale: 120})[scale.key] <> 100 then stop
+    if normalizeDevicePreferences({vodDisplayScale: "135"})[scale.key] <> 100 then stop
+    if normalizeDevicePreferences({vodDisplayScale: true})[scale.key] <> 100 then stop
     model.dvr = "manage"
     root = settingsHubEntries("", model)
     if root.count() <> 9 or root[4].page <> "dvr" then stop

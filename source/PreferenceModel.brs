@@ -115,6 +115,7 @@ function normalizeDevicePreferences(raw as dynamic) as object
         end for
         result[field] = size
     end for
+    result["vodDisplayScale"] = normalizeVodDisplayScale(result["vodDisplayScale"])
     if result.contrastMode <> "high" then result.contrastMode = "standard"
     result.channelDirection = textValue(result.channelDirection)
     result.videoScale = textValue(result.videoScale)

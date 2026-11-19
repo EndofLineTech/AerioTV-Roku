@@ -14,6 +14,9 @@ committed Roku behavior with upstream TV and separates native evidence, fixture
 coverage and deferred work. The [September audit](docs/PARITY-AUDIT.md) records
 the original baseline.
 
+Development builds with the independent library text setting are covered in
+the [Movies & TV Shows display scale guide](docs/DISPLAY-SCALE.md).
+
 ## Download the testing build
 
 **[Download v0.3.102 — development prerelease](https://github.com/EndofLineTech/AerioTV-Roku/releases/tag/v0.3.102)**

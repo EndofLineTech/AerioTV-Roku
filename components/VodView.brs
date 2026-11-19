@@ -457,7 +457,26 @@ sub drawVod()
     if m.shelf = "versions" then m.heading.text = "Sources"
     headingSize = 32
     if m.shelf = "recent" or m.shelf = "continue" then headingSize = 24
-    uiSetFont(m.heading, headingSize, "font")
+    appearance = uiAppearance()
+    scale = normalizeVodDisplayScale(appearance["vodDisplayScale"])
+    titleSize = uiTypeSize("body")
+    factSize = uiTypeSize("caption")
+    layout = vodTextLayout(scale, appearance.textSize, uiScaledFontSize(titleSize, 0, false, appearance, scale), uiScaledFontSize(factSize, 0, true, appearance, scale))
+    compact = m.shelf = "categories" or m.shelf = "providers" or m.shelf = "versions"
+    typographyKey = scale.toStr() + "|" + textValue(appearance.textSize) + "|" + textValue(appearance.subtextSize)
+    if compact then typographyKey += "|compact"
+    m.heading.translation = [96, 91]
+    m.heading.width = 280
+    m.heading.height = 55
+    m.status.height = 40
+    if scale <> 100
+        m.heading.translation = [96, 88]
+        m.heading.width = 296
+        m.heading.height = 66
+        m.status.height = 54
+    end if
+    uiSetFont(m.heading, headingSize, "font", false, 0, scale)
+    uiSetFont(m.status, 24, "font", true, 0, scale)
     if m.task = invalid and m.tmdbTask = invalid
         m.status.text = "Page " + m.pageNumber.toStr() + "  |  " + m.items.count().toStr() + " titles loaded"
         if m.total <> invalid then m.status.text += " of " + m.total.toStr()
@@ -482,7 +501,6 @@ sub drawVod()
     if (m.shelf = "related" or m.shelf = "person") and m.failure = "" and textValue(m.discoveryMessage) <> "" then m.status.text = m.discoveryMessage
     for i = 0 to 19
         tile = m.tiles[i]
-        compact = m.shelf = "categories" or m.shelf = "providers" or m.shelf = "versions"
         placement = vodVisualTile(i, m.index, m.items.count(), compact)
         tile.root.translation = [placement.x, placement.y]
         tile.root.visible = placement.visible
@@ -505,7 +523,7 @@ sub drawVod()
                 borderColor = style.fill
                 uiSetColor(tile.border, borderColor)
                 tile.title.wrap = true
-                tile.title.maxLines = 3
+                tile.title.maxLines = layout.compactLines
                 uiCenterLabel(tile.title, 24, 0, 288, 116)
                 uiSetColor(tile.title, style.ink)
                 uiSetColor(tile.fact, style.ink)
@@ -514,30 +532,25 @@ sub drawVod()
             else
                 uiReleaseCenteredLabel(tile.title)
                 tile.title.maxLines = 2
-                tile.border.translation = [68, 0]
-                tile.border.width = 200
-                tile.border.height = 296
+                tile.border.translation = [layout.posterX - 4, 0]
+                tile.border.width = layout.posterWidth + 8
+                tile.border.height = layout.posterHeight + 8
                 tile.border.radius = 12
-                tile.title.translation = [4, 304]
+                tile.poster.translation = [layout.posterX, 4]
+                tile.poster.width = layout.posterWidth
+                tile.poster.height = layout.posterHeight
+                tile.title.translation = [4, layout.titleY]
                 tile.title.width = 328
-                tile.fact.translation = [4, 354]
+                tile.title.height = layout.titleHeight
+                tile.fact.translation = [4, layout.factY]
                 tile.fact.width = 328
+                tile.fact.height = layout.factHeight
                 uiSetColor(tile.fact, "0x9EB5C9FF")
-                if uiAppearance().textSize = 110 or uiAppearance().textSize = 120
-                    tile.border.translation = [76, 0]
-                    tile.border.width = 184
-                    tile.border.height = 272
-                    tile.poster.translation = [80, 4]
-                    tile.poster.width = 176
-                    tile.poster.height = 264
-                    tile.title.translation = [4, 282]
-                    tile.title.height = 68
-                else
-                    tile.poster.translation = [72, 4]
-                    tile.poster.width = 192
-                    tile.poster.height = 288
-                    tile.title.height = 52
-                end if
+            end if
+            if tile.typographyKey <> typographyKey
+                uiSetFont(tile.title, titleSize, "font", false, 0, scale)
+                uiSetFont(tile.fact, factSize, "font", true, 0, scale)
+                tile.typographyKey = typographyKey
             end if
             for j = 0 to tile.corners.count() - 1
                 corner = tile.corners[j]

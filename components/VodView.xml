@@ -23,6 +23,7 @@
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
+  <script type="text/brightscript" uri="pkg:/source/VodDisplayScale.brs" />
   <script type="text/brightscript" uri="pkg:/source/VodModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/VodState.brs" />

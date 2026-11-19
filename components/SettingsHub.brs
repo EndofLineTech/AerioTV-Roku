@@ -75,7 +75,7 @@ sub renderSettings()
     if m.page = "player" then m.note.text = "Archive skip uses whole minutes. Live startup retries apply on the next tune; each Dispatcharr attempt may wait up to 60 seconds."
     if m.page = "appearance" then m.note.text = "Appearance changes apply on this Roku without interrupting playback. Reset restores the default colors."
     if m.page = "general" then m.note.text = "Guide startup never plays automatically. Mini startup resumes only the last available channel after it starts."
-    if m.page = "movies" then m.note.text = "Library preferences apply only to this account. Optional artwork requires a configured TMDB key."
+    if m.page = "movies" then m.note.text = "Library and artwork preferences apply to this account. Display scale applies on this Roku."
     if m.page = "dvr" then m.note.text = "Recording padding applies to new schedules for this account."
     if m.page = "about" then m.note.text = "This is an independent Roku client. License and attribution text is included in the installed package."
     if m.page = "manage-profiles" then m.note.text = "Switch profiles, Admin PIN. Enter a PIN from an Admin or Standard profile to switch profiles."
@@ -99,6 +99,7 @@ sub renderSettings()
     else if m.choice <> invalid
         m.heading.text = m.choice.title
         if m.choice.key = "vodTmdbEnabled" then m.note.text = "Uses the key saved in Guide options > Guide settings > Optional TMDB artwork fallback. Optional: playback does not depend on TMDB."
+        if m.choice.key = "vodDisplayScale" then m.note.text = "Changes library text size on this Roku without a restart. 100% keeps the usual size."
         current = settingsHubValue(model, m.choice.scope, m.choice.key)
         for each value in m.choice.values
             title = settingsValueText(value, m.choice.key)
