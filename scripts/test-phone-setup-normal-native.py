@@ -110,6 +110,7 @@ def build(output, normal, section, diagnostic=False, live=None, guide_days=None)
         onProfilePinSubmit(phoneNormalEvent(m.profilePinDialog, 0))
         m.phoneNormalPhase = 91
     else if phase = 91
+        if m.profileSwitchContext = invalid and m.global.profilegateclosed = true and m.activeUserScope = invalid then finishPhoneNormalProbe(false, "guide-reconnect-profile-access-closed") : return
         if m.busy or m.page <> "guide" or m.activeUserScope = invalid or m.capabilityTask <> invalid then return
         if m.activeUserScope.profileId <> m.guideDaysDefaultId or m.activeUserScope.accountId <> m.phoneNormalDefaultUser.toStr() then finishPhoneNormalProbe(false, "guide-reconnect-identity") : return
         restored = accountPreferences(loadPreferenceStore(m.registry, true), m.accountIdentity)
@@ -138,6 +139,10 @@ def build(output, normal, section, diagnostic=False, live=None, guide_days=None)
         result.error = "invalid-request"
         return result
     end if
+''')
+                body = replace_once(body, b"    requestGateReport(permit, result)\n",
+                                    b'''    requestGateReport(permit, result)
+    if result.status = 429 then print "[setup-phone-normal] "; FormatJson({kind: "guide-probe-rate-limited"})
 ''')
             elif guide_days is not None and name == "components/DispatcharrSyncWriteTask.brs":
                 body = replace_once(body, b'    if m.syncWriterReady <> true then finishDispatcharrSyncWrite(denied) : return\n',
@@ -338,6 +343,9 @@ def main():
                         continue
                     event = json.loads(line.split("[setup-phone-normal] ", 1)[1])
                     events.append(event)
+                    if args.guide_days is not None and event.get("kind") == "guide-probe-rate-limited":
+                        process.terminate()
+                        break
                     if event.get("kind") != "ready":
                         continue
                     image = private / "qr.jpg"
