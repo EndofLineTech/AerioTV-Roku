@@ -543,6 +543,9 @@ sub main()
     checkRecoveryReadyRadioClassification()
     checkOwnedHlsRetryLifecycle()
     checkOwnedHlsStartupFailureBoundaries()
+    checkFocusedRecoveryResume()
+    checkPictureRecoveryPauseIsolation()
+    checkPictureRecoveryPauseCleanup()
     print "ALL TESTS PASSED"
 end sub
 
@@ -598,7 +601,7 @@ sub checkRecoveryReadyRadioClassification()
     ' Resume while the temporary bridge is still starting. A later callback
     ' must honor that command even before Video publishes its new state.
     m.recoveryIssued = false
-    m.recoveryPausePending = false
+    clearPictureRecoveryPause()
     m.recoveryContent = m.video.content
     m.video.state = "paused"
     togglePause()
@@ -607,6 +610,7 @@ sub checkRecoveryReadyRadioClassification()
     assertEqual(m.recoveryPausePending, false, "decoder replacement does not reapply stale pause")
 
     m.recoveryIssued = false
+    clearPictureRecoveryPause()
     m.recoveryContent = m.video.content
     m.video.state = "playing"
     togglePause()
@@ -625,7 +629,7 @@ sub checkRecoveryReadyRadioClassification()
         m.heldZap = ""
         m.profileSwitchContext = invalid
         m.recoveryIssued = false
-        m.recoveryPausePending = false
+        clearPictureRecoveryPause()
         m.video.state = "playing"
         m.recoveryPaused = false
         m.recoveryContent = m.video.content
@@ -637,6 +641,7 @@ sub checkRecoveryReadyRadioClassification()
         assertEqual(m.recoveryPausePending, false, "decoder replacement honors playonly before ack")
 
         m.recoveryIssued = false
+        clearPictureRecoveryPause()
         m.recoveryPaused = true
         m.video.state = "paused"
         m.recoveryContent = m.video.content
@@ -916,10 +921,97 @@ sub checkOwnedHlsStartupFailureBoundaries()
     end for
 end sub
 
-function hlsFixtureEvent(node as object, data as object) as object
+function startPictureRecoveryFixture() as object
+    resetOwnedHlsFixture()
+    m.playbackBridgeTaskFactory = m.hlsSessionTaskFactory
+    m.mini = false
+    m.video.state = "playing"
+    m.streamReady = true
+    recoverFrozenPicture()
+    bridge = m.recoveryTask
+    bridge.ready = true
+    return bridge
+end function
+
+sub checkFocusedRecoveryResume()
+    bridge = startPictureRecoveryFixture()
+    togglePause() ' Issued but not yet acknowledged by Video.
+    assertEqual(m.video.control, "pause", "Pause before focused Resume is outstanding")
+    onTransportAction({getData: function() as string
+        return "playonly"
+    end function})
+    assertEqual(m.video.control, "resume", "focused action reaches the latest manual intent setter")
+    onRecoveryReady(hlsFixtureEvent(bridge, true))
+    assertEqual(m.recoveryPausePending, false, "focused Resume supersedes pre-ack Pause in the bridge")
+end sub
+
+sub checkPictureRecoveryPauseIsolation()
+    bridge = startPictureRecoveryFixture()
+    onRecoveryReady(hlsFixtureEvent(bridge, true))
+    onRecoveryFinished(hlsFixtureEvent(bridge, {ok: true, source: "same", beforeCount: 1, afterCount: 1}))
+    m.video.state = "playing"
+    onVideoState()
+    assertEqual(m.video.control, "play", "the exact replacement starts resumed")
+
+    m.video.state = "finished"
+    onVideoState()
+    assertEqual(m.liveRetryCount, 1, "later unexpected finish starts an ordinary reconnect")
+    m.video.state = "buffering"
+    onTransportAction({getData: function() as string
+        return "play"
+    end function})
+    assertEqual(m.recoveryPausePending, false, "completed picture recovery cannot defer Pause into ordinary reconnect")
+    m.video.state = "playing"
+    onVideoState()
+    assertEqual(m.video.control, "play", "unrelated reconnect is not paused by the completed bridge")
+end sub
+
+sub checkPictureRecoveryPauseCleanup()
+    for each outcome in ["ready", "ready-after-bridge", "paused", "failure", "video-error", "abandoned", "stop"]
+        bridge = startPictureRecoveryFixture()
+        togglePause()
+        onRecoveryReady(hlsFixtureEvent(bridge, true))
+        replacement = m.video.content
+        onRecoveryReady(hlsFixtureEvent(bridge, true))
+        assertEqual(m.video.content.isSameNode(replacement), true, "ready callback still restarts only once")
+        assertEqual(m.recoveryPausePending, true, "pause initially belongs to the replacement")
+
+        if outcome = "failure"
+            onRecoveryFinished(hlsFixtureEvent(bridge, {ok: false, source: "unknown", beforeCount: 1, afterCount: 0}))
+        else if outcome = "stop"
+            stopPlayback()
+        else
+            if outcome = "ready-after-bridge"
+                onRecoveryFinished(hlsFixtureEvent(bridge, {ok: true, source: "same", beforeCount: 1, afterCount: 1}))
+                assertEqual(m.recoveryPausePending, true, "successful bridge exit does not clear its still-starting replacement")
+            end if
+            m.video.state = "playing"
+            if outcome = "paused" then m.video.state = "paused"
+            if outcome = "abandoned" then m.video.content = lifecycleRetryContent(99)
+            if outcome = "video-error"
+                m.video.state = "error"
+                m.video.errorCode = -1
+                m.video.errorStr = "reader failed"
+            end if
+            onVideoState()
+        end if
+        assertEqual(m.recoveryPauseContent, invalid, "reader-specific intent cleared on " + outcome)
+        assertEqual(m.recoveryPausePending, false, "pause flag cleared on " + outcome)
+        if outcome = "ready" or outcome = "ready-after-bridge"
+            assertEqual(m.video.control, "pause", "exact replacement honors Pause once")
+            if outcome = "ready" then assertEqual(bridge.release, true, "ordinary readiness still releases the bridge")
+            onVideoState()
+            assertEqual(m.recoveryPauseContent, invalid, "duplicate readiness does not rearm pause")
+        else if outcome <> "stop" and outcome <> "video-error"
+            assertEqual(m.video.control, "play", "no stale pause write on " + outcome)
+        end if
+    end for
+end sub
+
+function hlsFixtureEvent(node as object, data as dynamic) as object
     return {node: node, data: data, getRoSGNode: function() as object
         return m.node
-    end function, getData: function() as object
+    end function, getData: function() as dynamic
         return m.data
     end function}
 end function

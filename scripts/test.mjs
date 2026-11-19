@@ -107,6 +107,7 @@ suites.push('NetworkStatus');
 suites.push('DispatcharrSyncSettingsStore');
 suites.push('CatchupTask');
 suites.push('XtreamGuideOverride');
+suites.push('PlayerControls');
 for (const suite of suites) {
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
@@ -299,6 +300,7 @@ for (const suite of suites) {
     ...(['AacStartup', 'PlayerLifecycle'].includes(suite) ? ['components/AacStartup.brs'] : []),
     ...(suite === 'CapabilityTask' ? ['components/CapabilityTask.brs'] : []),
     ...(suite === 'PlayerOptionsInput' ? ['components/PlayerOptions.brs'] : []),
+    ...(suite === 'PlayerControls' ? ['components/PlayerControls.brs'] : []),
     ...(suite === 'HttpPolicy' ? ['source/DispatcharrHttp.brs'] : []),
     ...(suite === 'GuideTaskCache' ? ['components/GuideTask.brs', 'components/XmltvGuideTask.brs'] : []),
     ...(suite === 'GuideMappingFallback' ? ['components/GuideCache.brs'] : []),

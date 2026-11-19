@@ -96,6 +96,8 @@ function onKeyEvent(key as string, press as boolean) as boolean
         m.top.action = m.actions[m.index]
     else if key = "play"
         m.top.action = "play"
+    else if key = "playonly" and m.top.context = "live"
+        m.top.action = "playonly"
     else if key = "up"
         m.top.active = false
         m.top.infoFocus = true

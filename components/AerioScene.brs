@@ -129,6 +129,7 @@ sub init()
     m.sourceWatchState = invalid
     m.recoveryTask = invalid
     m.recoveryIssued = false
+    m.recoveryPauseContent = invalid
     m.recoveryPausePending = false
     m.pendingScale = ""
     m.banner = m.top.findNode("playerBanner")
@@ -1865,6 +1866,8 @@ sub onTransportAction(event as object)
     action = event.getData()
     if action = "play"
         togglePause()
+    else if action = "playonly"
+        setManualPlaybackPaused(false)
     else if action = "channels"
         openChannelBrowser()
     else if action = "recent"
@@ -1896,9 +1899,9 @@ end sub
 
 sub togglePause()
     paused = m.video.state = "paused"
-    if m.recoveryIssued = true and not m.streamReady
+    if pictureRecoveryReplacementCurrent()
         paused = m.recoveryPausePending
-    else if m.recoveryTask <> invalid and not m.recoveryIssued
+    else if pictureRecoveryBridgeCurrent()
         paused = m.recoveryPaused
     end if
     setManualPlaybackPaused(not paused)
@@ -1907,12 +1910,12 @@ end sub
 sub setManualPlaybackPaused(paused as boolean)
     ' During a guarded restart, the command is authoritative even if the old
     ' reader has not yet reported its pause/resume acknowledgement.
-    if m.recoveryIssued = true and not m.streamReady
+    if pictureRecoveryReplacementCurrent()
         m.recoveryPausePending = paused
         return ' Do not replace the pending reader's play command.
     end if
     supersedes = false
-    if m.recoveryTask <> invalid and not m.recoveryIssued
+    if pictureRecoveryBridgeCurrent()
         supersedes = paused <> m.recoveryPaused
         m.recoveryPaused = paused
     end if
@@ -1922,6 +1925,16 @@ sub setManualPlaybackPaused(paused as boolean)
         if paused then m.video.control = "pause" else m.video.control = "resume"
     end if
 end sub
+
+function pictureRecoveryReplacementCurrent() as boolean
+    if m.recoveryPauseContent = invalid or m.video.content = invalid then return false
+    return m.recoveryPauseContent.isSameNode(m.video.content)
+end function
+
+function pictureRecoveryBridgeCurrent() as boolean
+    if m.recoveryTask = invalid or m.recoveryIssued or m.recoveryContent = invalid or m.video.content = invalid then return false
+    return m.recoveryContent.isSameNode(m.video.content) and taskUserSessionCurrent(m.recoveryTask)
+end function
 
 sub openPlayerOptions(kind = "main" as string)
     cancelPlayerOkHold()
@@ -2262,13 +2275,18 @@ end sub
 sub cancelPictureRecovery()
     m.recoveryContent = invalid
     m.recoveryIssued = false
-    m.recoveryPausePending = false
+    clearPictureRecoveryPause()
     if m.recoveryTask <> invalid
         m.recoveryTask.unobserveField("ready")
         m.recoveryTask.unobserveField("result")
         m.recoveryTask.release = true
         m.recoveryTask = invalid
     end if
+end sub
+
+sub clearPictureRecoveryPause()
+    m.recoveryPauseContent = invalid
+    m.recoveryPausePending = false
 end sub
 
 sub clearServerStreamInfo()
@@ -2489,6 +2507,16 @@ sub onVideoState()
     ' reader we just stopped must not fail the replacement before mint completes.
     if m.hlsMintTask <> invalid then return
     if ignoreOutgoingOwnedHlsFinish() then return
+    pauseOnReady = false
+    if m.recoveryPauseContent <> invalid
+        state = m.video.state
+        if not pictureRecoveryReplacementCurrent()
+            clearPictureRecoveryPause()
+        else if state = "playing" or state = "paused" or state = "error" or state = "finished"
+            pauseOnReady = state = "playing" and m.recoveryPausePending
+            clearPictureRecoveryPause()
+        end if
+    end if
     if m.video.state = "buffering" and m.startupWatch <> invalid
         m.startupWatch.guardOwnedHlsFinish = false
     end if
@@ -2530,10 +2558,7 @@ sub onVideoState()
         end if
     else if m.video.state = "playing"
         if m.recoveryTask <> invalid and m.recoveryIssued then m.recoveryTask.release = true
-        if m.recoveryPausePending
-            m.recoveryPausePending = false
-            m.video.control = "pause"
-        end if
+        if pauseOnReady then m.video.control = "pause"
         m.audioCheck.control = "start"
         if m.playingChannel <> invalid
             if m.recordedChannel <> m.playingChannel.uuid
@@ -2593,6 +2618,7 @@ end function
 
 sub recoverFrozenPicture()
     if m.recoveryTask <> invalid or not pictureRecoveryAvailable() then return
+    clearPictureRecoveryPause()
     m.sourceWatch.control = "stop"
     m.sourceWatchState = invalid
     m.recoveryContent = m.video.content
@@ -2629,6 +2655,7 @@ sub onRecoveryReady(event as object)
     end if
     replacement = m.video.content.clone(false)
     m.recoveryIssued = true
+    m.recoveryPauseContent = replacement
     m.recoveryPausePending = m.recoveryPaused
     m.video.control = "stop"
     m.streamReady = false
@@ -2645,6 +2672,7 @@ sub onRecoveryFinished(event as object)
     m.recoveryTask.unobserveField("result")
     m.recoveryTask = invalid
     m.recoveryContent = invalid
+    if result.ok <> true then clearPictureRecoveryPause()
     if m.recoveryIssued
         print "[picture-recovery] source="; result.source; " clients="; result.beforeCount; "->"; result.afterCount
         message = "This player's decoder was restarted. No shared-source change was requested."
