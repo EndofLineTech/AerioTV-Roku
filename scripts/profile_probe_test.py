@@ -2,6 +2,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import re
 import tempfile
 import unittest
 import zipfile
@@ -336,6 +337,64 @@ class ProfileProbeTest(unittest.TestCase):
                     self.assertIn('m.profileChildAccessReady = ' + ('true' if mode.startswith('child-') else 'false'), scene)
                     self.assertIn('if deferUserProfileLaunch() then return', scene)
                     self.assertNotIn('"cachefs:/aeriotv-metadata-v1"', package.read('source/MetadataCacheStore.brs').decode())
+                    controller = package.read('components/ProfilePickerNavigation.brs').decode()
+                    self.assertNotIn('read_nonce:', controller)
+                    if mode == 'import-pin':
+                        self.assertIn('context.readNonce <> textValue(m.pickerProbeLastRead)', controller)
+                        self.assertIn('fresh_read: freshRead', controller)
+
+    def test_protected_child_probe_brackets_the_actual_task_and_request_gate(self):
+        root = Path(__file__).resolve().parent.parent
+        spec = importlib.util.spec_from_file_location('protected_child_probe', Path(__file__).with_name('test-profile-picker-launch-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        names = [
+            'manifest', 'components/AerioScene.brs', 'components/ProfilePickerNavigation.brs',
+            'components/DispatcharrTask.xml', 'components/DispatcharrTask.brs',
+            'source/UserProfileStartupSelection.brs', 'source/RequestGateClient.brs',
+            'source/HttpTransport.brs',
+        ]
+        with tempfile.TemporaryDirectory() as folder:
+            normal, control, child = (Path(folder) / f'{mode}.zip' for mode in ('normal', 'child-select', 'child-select-pin'))
+            with zipfile.ZipFile(normal, 'w') as package:
+                for name in names:
+                    package.write(root / name, name)
+            for archive in (control, child):
+                probe.build(archive, normal, 'DisposablePicker', 'http://fixture.test', archive.stem)
+            with zipfile.ZipFile(normal) as stock, zipfile.ZipFile(control) as plain, zipfile.ZipFile(child) as protected:
+                self.assertIn(b'aeriotv_picker_launch_probe=1', protected.read('manifest'))
+                self.assertIn(b'm.profilePickerReady = false', stock.read('components/AerioScene.brs'))
+                self.assertIn(b'm.profileChildAccessReady = false', stock.read('components/AerioScene.brs'))
+                self.assertIn(b'm.profilePickerReady = true', protected.read('components/AerioScene.brs'))
+                self.assertIn(b'm.profileChildAccessReady = true', protected.read('components/AerioScene.brs'))
+                for name in names:
+                    for uninstrumented in (stock, plain):
+                        self.assertNotIn(b'pickerProbe5fif', uninstrumented.read(name), name)
+                scene = protected.read('components/ProfilePickerNavigation.brs').decode()
+                start = scene.split('sub startStartupProfileTask', 1)[1].split('end sub', 1)[0]
+                checkpoints = ['"scene-admission"', 'task = CreateObject("roSGNode", kind)', '"task-created"',
+                               'task.pickerProbe5fif = true', '"before-run"', 'task.control = "RUN"', '"run-returned"']
+                self.assertEqual([start.index(label) for label in checkpoints], sorted(start.index(label) for label in checkpoints))
+                self.assertIn('"task-state"', scene)
+                self.assertNotIn('read_nonce:', scene)
+                self.assertIn(b'id="pickerProbe5fif" type="boolean" value="false"', protected.read('components/DispatcharrTask.xml'))
+                worker = protected.read('components/DispatcharrTask.brs').decode()
+                self.assertLess(worker.index('"task-entry"'), worker.index('if m.top.cancelRequested = true'))
+                self.assertIn(b'"storage-current"', protected.read('source/UserProfileStartupSelection.brs'))
+                gate = protected.read('source/RequestGateClient.brs').decode()
+                acquire = gate.split('function requestGateAcquire', 1)[1].split('end function', 1)[0]
+                self.assertLess(acquire.index('"broker-ready"'), acquire.index('requestGateExchange(broker, ticket)'))
+                self.assertLess(acquire.index('requestGateExchange(broker, ticket)'), acquire.index('"broker-no-reply"'))
+                self.assertIn('if reason = "rejected-key" then return "credential-held"', gate)
+                self.assertIn('return "other"', gate)
+                transport = protected.read('source/HttpTransport.brs').decode()
+                self.assertLess(transport.index('permit = requestGateAcquire'), transport.index('"permit-decision"'))
+                self.assertLess(transport.index('"permit-decision"'), transport.index('result = httpTransferPermitted'))
+                self.assertIn('"transfer-start", started: started', transport)
+                for name in names:
+                    for line in protected.read(name).decode().splitlines():
+                        if '"kind": "startup-diagnostic"' in line or 'kind: "startup-diagnostic"' in line:
+                            self.assertNotRegex(re.sub(r'"[^"]*"', '""', line), r'(?i)\b(?:url|hash|salt|pin|apiKey|password|nonce|username|userId|identity|ticket|snapshot|root)\b')
 
     def test_switch_back_probe_checks_the_dialog_before_confirming_removal(self):
         root = Path(__file__).resolve().parent.parent

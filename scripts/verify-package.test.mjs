@@ -68,6 +68,11 @@ test('developer profiles baseline cannot ship under any flag value', () => {
   assert.throws(() => assertPackageEntries(['manifest', 'baseline-provision-private.json']), /provision/i);
 });
 
+test('rejects the private startup picker diagnostic archive', () => {
+  assert.throws(() => assertShippingManifest('title=AerioTV\naeriotv_picker_launch_probe=1\n'), /private startup picker/i);
+  assert.throws(() => assertShippingManifest('title=Aerio Startup Picker Probe\n'), /private startup picker/i);
+});
+
 test('the packaged notices remain identical to the repository originals', () => {
   for (const name of ['LICENSE', 'NOTICE']) {
     assert.equal(

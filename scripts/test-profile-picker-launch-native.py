@@ -84,6 +84,145 @@ def vod_view_fixture(title, year):
     return view.replace('"Sintel"', json.dumps(title)).replace('"sintel"', json.dumps(title.lower())).replace('item.year = "2010"', f'item.year = {json.dumps(year)}')
 
 
+def instrument_protected_child_picker(name, body):
+    """Patch only the disposable ZIP. Emit literal labels, comparisons and flags."""
+    def edit(anchor, replacement):
+        nonlocal body
+        anchor = anchor.encode()
+        assert body.count(anchor) == 1, (name, anchor)
+        body = body.replace(anchor, replacement.encode(), 1)
+
+    if name == "components/ProfilePickerNavigation.brs":
+        edit('''    context = m.profileStartupSelectionContext
+    if context = invalid or m.profileStartupTask <> invalid then return
+    if not startupProfileTargetAllowed(context) then failStartupProfileSelection("This profile requires protected Child access.") : return''', '''    context = m.profileStartupSelectionContext
+    traceAuth = phase = "authenticate"
+    if traceAuth then print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "scene-admission", context_present: context <> invalid, task_present: m.profileStartupTask <> invalid, picker_owned: m.profilePickerContext <> invalid})
+    if context = invalid or m.profileStartupTask <> invalid then return
+    targetAllowed = startupProfileTargetAllowed(context)
+    if traceAuth then print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "target-role", allowed: targetAllowed})
+    if not targetAllowed then failStartupProfileSelection("This profile requires protected Child access.") : return''')
+        edit('    if task = invalid then task = CreateObject("roSGNode", kind)\n    tagTaskForCurrentUser(task)', '''    if task = invalid then task = CreateObject("roSGNode", kind)
+    if traceAuth
+        print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "task-created", created: task <> invalid})
+        if task <> invalid then task.pickerProbe5fif = true
+    end if
+    tagTaskForCurrentUser(task)''')
+        edit('    task.control = "RUN"\nend sub\n\nsub onStartupProfileState(event as object)\n    if not isCurrentTaskEvent(event, m.profileStartupTask) then return', '''    if traceAuth
+        ownerCurrent = taskUserSessionCurrent(task)
+        tagged = task.hasField("aeriosession")
+        contextCurrent = currentUserSessionId() = context.nonce
+        print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "before-run", owned: ownerCurrent and tagged, context_current: contextCurrent})
+    end if
+    task.control = "RUN"
+    if traceAuth then print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "run-returned"})
+end sub
+
+sub onStartupProfileState(event as object)
+    owned = isCurrentTaskEvent(event, m.profileStartupTask)
+    node = event.getRoSGNode()
+    if node <> invalid and node.hasField("pickerProbe5fif")
+        if node.pickerProbe5fif = true
+            observed = "other"
+            value = event.getData()
+            if value = "run" or value = "done" or value = "stop" or value = "init" then observed = value
+            print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "task-state", state: observed, owned: owned})
+        end if
+    end if
+    if not owned then return''')
+    elif name == "components/DispatcharrTask.xml":
+        edit('  <interface>', '  <interface>\n    <field id="pickerProbe5fif" type="boolean" value="false" />')
+    elif name == "components/DispatcharrTask.brs":
+        edit('sub loadChannels()\n', '''sub loadChannels()
+    if m.top.pickerProbe5fif = true then print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "task-entry", cancelled: m.top.cancelRequested = true})
+''')
+    elif name == "source/UserProfileStartupSelection.brs":
+        edit('''    if not userProfileStartupSelectionStorageCurrent(registry, context, activeNonce, activeScope, activeKey, memoryKeys, requirePin) then return false
+    return requestGateAccessAllowed(context.connection.url, context.key)''', '''    storageCurrent = userProfileStartupSelectionStorageCurrent(registry, context, activeNonce, activeScope, activeKey, memoryKeys, requirePin)
+    traceAccess = m.pickerProbeMode = "child-select-pin" and (context.phase = "pin" or context.phase = "authenticate")
+    if traceAccess then print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "storage-current", owned: storageCurrent, protected_check: requirePin})
+    if not storageCurrent then return false
+    return requestGateAccessAllowed(context.connection.url, context.key, traceAccess)''')
+    elif name == "source/RequestGateClient.brs":
+        edit('''function requestGateAccessAllowed(url as string, key as string) as boolean
+    if not requestGateTaskSessionCurrent() then return false
+    broker = requestGateBroker()
+    if broker = invalid then return not requestGateMandatory()
+    if not broker.ready then return false
+    state = broker.snapshot
+    if type(state) <> "roAssociativeArray" then return false
+    hash = requestGateCredentialHash(key)
+    if key <> "" and hash = "" then return false
+    permit = requestGatePermit(state, requestGateServer(url), hash, CreateObject("roDateTime").asSeconds(), false)
+    return permit.allowed
+end function''', '''function requestGateAccessAllowed(url as string, key as string, traceAccess = false as boolean) as boolean
+    if not requestGateTaskSessionCurrent() then return pickerProbe5fifAccess(traceAccess, false, "stale-session")
+    broker = requestGateBroker()
+    if broker = invalid then return pickerProbe5fifAccess(traceAccess, not requestGateMandatory(), "broker-missing")
+    if not broker.ready then return pickerProbe5fifAccess(traceAccess, false, "broker-not-ready")
+    state = broker.snapshot
+    if type(state) <> "roAssociativeArray" then return pickerProbe5fifAccess(traceAccess, false, "snapshot-unavailable")
+    hash = requestGateCredentialHash(key)
+    if key <> "" and hash = "" then return pickerProbe5fifAccess(traceAccess, false, "credential-digest-unavailable")
+    permit = requestGatePermit(state, requestGateServer(url), hash, CreateObject("roDateTime").asSeconds(), false)
+    return pickerProbe5fifAccess(traceAccess, permit.allowed, pickerProbe5fifGateReason(permit.allowed, permit.reason))
+end function
+
+function pickerProbe5fifAccess(traceAccess as boolean, allowed as boolean, verdict as string) as boolean
+    if traceAccess then print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "scene-broker-snapshot", allowed: allowed, verdict: verdict})
+    return allowed
+end function
+
+function pickerProbe5fifGateReason(allowed as boolean, reason as dynamic) as string
+    if allowed then return "allowed"
+    if GetInterface(reason, "ifString") = invalid then return "other"
+    if reason = "rejected-key" then return "credential-held"
+    if reason = "parked" then return "parked"
+    if reason = "capacity" then return "capacity"
+    if reason = "invalid-context" then return "invalid-context"
+    if reason = "stale-session" then return "stale-session"
+    if reason = "gate-unavailable" then return "gate-unavailable"
+    return "other"
+end function
+
+function pickerProbe5fifTask() as boolean
+    if type(m.top) <> "roSGNode" then return false
+    if not m.top.hasField("pickerProbe5fif") then return false
+    return m.top.pickerProbe5fif = true
+end function''')
+        edit('    if broker = invalid\n        if requestGateMandatory() then return denied', '''    if broker = invalid
+        if pickerProbe5fifTask() then print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "broker-missing"})
+        if requestGateMandatory() then return denied''')
+        edit('    if not broker.ready then return denied\n    hash = requestGateCredentialHash(key)', '''    if not broker.ready
+        if pickerProbe5fifTask() then print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "broker-not-ready"})
+        return denied
+    end if
+    if pickerProbe5fifTask() then print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "broker-ready"})
+    hash = requestGateCredentialHash(key)''')
+        edit('    if key <> "" and hash = "" then return denied\n    ticket = CreateObject("roSGNode", "RequestGateTicket")', '''    if key <> "" and hash = ""
+        if pickerProbe5fifTask() then print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "credential-digest-unavailable"})
+        return denied
+    end if
+    ticket = CreateObject("roSGNode", "RequestGateTicket")''')
+        edit('    result = requestGateExchange(broker, ticket)\n    if result = invalid then return denied', '''    result = requestGateExchange(broker, ticket)
+    if result = invalid
+        if pickerProbe5fifTask() then print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "broker-no-reply"})
+        return denied
+    end if''')
+    elif name == "source/HttpTransport.brs":
+        edit('    permit = requestGateAcquire(url, key)\n', '''    traceAcquire = pickerProbe5fifTask()
+    if traceAcquire then print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "acquire-enter"})
+    permit = requestGateAcquire(url, key)
+    if traceAcquire
+        verdict = pickerProbe5fifGateReason(permit.allowed, permit.reason)
+        print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "permit-decision", verdict: verdict})
+    end if
+''')
+        edit('    if not started then result.error = "network"', '''    if pickerProbe5fifTask() then print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "transfer-start", started: started})
+    if not started then result.error = "network"''')
+    return body
+
+
 def build(path, normal, section, base, mode="plain", baseline_accounts=None, admin_ui=False, phone_verify=False, phone_import=False, phone_import_add=False, profile_media=False, peer_envelope=None, peer_material=None, profile_vod=False, vod_title="Sintel", vod_year="2010"):
     if sum([admin_ui, phone_verify, phone_import, profile_media]) > 1:
         raise ValueError("Choose one focused native flow")
@@ -95,6 +234,7 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
             body = original.read(name)
             if name == "manifest":
                 body = body.replace(b"title=AerioTV\n", b"title=Aerio Startup Picker Probe\n")
+                body += b"\naeriotv_picker_launch_probe=1\n"
                 if mode == "baseline":
                     body += b"\naeriotv_profiles_baseline=1\n"
             elif name == "source/MetadataCacheStore.brs":
@@ -219,7 +359,16 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
                 body = body.replace(target, target + b"    m.pickerProbePickerCount++\n", 1)
                 target = b"    m.profileStartupTask = task\n"
                 assert body.count(target) == 1
-                body = body.replace(target, target + b'    m.pickerProbeTask = task\n    print "[picker-launch] "; FormatJson({kind: "phase", phase: phase, no_actor: m.activeUserScope = invalid, empty_key: m.apiKey = "", read_nonce: textValue(context.readNonce)})\n', 1)
+                phase_event = b'    print "[picker-launch] "; FormatJson({kind: "phase", phase: phase, no_actor: m.activeUserScope = invalid, empty_key: m.apiKey = ""})\n'
+                if mode == "import-pin":
+                    phase_event = b'''    freshRead = false
+    if phase = "read"
+        freshRead = textValue(context.readNonce) <> "" and context.readNonce <> textValue(m.pickerProbeLastRead)
+        m.pickerProbeLastRead = context.readNonce
+    end if
+    print "[picker-launch] "; FormatJson({kind: "phase", phase: phase, no_actor: m.activeUserScope = invalid, empty_key: m.apiKey = "", fresh_read: freshRead})
+'''
+                body = body.replace(target, target + b'    m.pickerProbeTask = task\n' + phase_event, 1)
                 if mode == "back":
                     target = b"        m.top.exitRequested = true\n"
                     assert body.count(target) == 1
@@ -268,6 +417,8 @@ function profileMediaAcceptanceState() as object
     return {state: m.video.state, position: m.video.position, duration: m.video.duration, visible: m.top.visible, session: m.session <> invalid, current: current, allowed: allowed, errorCode: m.video.errorCode, errorStr: sanitizePlaybackDiagnostic(m.video.errorStr, key), nativeError: diagnostic, memoryPercent: m.profileMediaAcceptanceMonitor.getMemoryLimitPercent()}
 end function
 '''
+            if mode == "child-select-pin":
+                body = instrument_protected_child_picker(name, body)
             package.writestr(name, body)
         if phone_verify or phone_import:
             second = baseline_accounts[1]
@@ -656,8 +807,8 @@ def main():
         if pin_count:
             pin_ok = pin_ok and len(before_pins) == pin_count and before_pins[0] == [] and all(not hit.get("path", "").startswith("/api/channels/") for boundary in before_pins for hit in boundary)
         if args.mode == "import-pin":
-            reads = [event["read_nonce"] for event in phases if event["phase"] == "read"]
-            pin_ok = pin_ok and len(set(reads)) == 2 and all(reads) and paths.count("/api/accounts/users/me/app-data/synthetic8.aeriotv/") == 2
+            reads = [event["fresh_read"] for event in phases if event["phase"] == "read"]
+            pin_ok = pin_ok and reads == [True, True] and paths.count("/api/accounts/users/me/app-data/synthetic8.aeriotv/") == 2
         wanted_keys = [200] if args.mode in ["own-default", "own-default-pin"] else [200, 200]
         report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and report.get("pre_selection_requests") == [] and report.get("screenshot") is True and [k.get("status") for k in report["keys"]] == wanted_keys and [p["phase"] for p in phases] == expected_phases and all(p["no_actor"] and p["empty_key"] for p in phases) and all(h.get("user") == target_user and h["method"] == "GET" for h in hits) and listing >= 2 and heavy > listing and paths.count("/api/accounts/users/me/") >= 3 and pin_ok
         if args.mode in ["child-select", "child-select-pin"]:

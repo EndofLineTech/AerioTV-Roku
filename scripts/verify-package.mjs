@@ -58,6 +58,9 @@ export function assertPackageEntries(entries) {
 }
 
 export function assertShippingManifest(manifest) {
+  if (/^\s*aeriotv_picker_launch_probe\s*=/mi.test(manifest) || /^\s*title\s*=\s*Aerio Startup Picker Probe\s*$/mi.test(manifest)) {
+    throw new Error('Private startup picker probe cannot be used as a shipping package');
+  }
   if (/^\s*aeriotv_profiles_baseline\s*=/mi.test(manifest) || /^\s*title\s*=.*profiles baseline/im.test(manifest)) {
     throw new Error('Developer profiles baseline cannot be used as Beta/Store packages');
   }

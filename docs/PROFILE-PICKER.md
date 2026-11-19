@@ -589,3 +589,12 @@ timeouts stay separate under `667m`. The first Child fixture also wrongly
 expected adult own-form admission for a Child; it now requires refusal.
 All runs cleaned and exact-restored the owner app. Remaining reliability and
 wider Child selection matrices stay tracked while core controls proceed.
+
+For the next authorized `child-select-pin` run, the private picker-launch
+runner emits `startup-diagnostic` checkpoints for target role and stored
+context ownership, Task creation/ownership/`RUN` and Task-thread entry,
+broker snapshot and acquisition outcomes, and whether the transfer started.
+These report only booleans and fixed labels; the imported-PIN check also
+reports read freshness without logging the actual read identifier. This is
+instrumentation, not a diagnosis. The normal build contains none of these
+checkpoints, and shipping package validation rejects the private archive.
