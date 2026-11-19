@@ -96,6 +96,7 @@ sub init()
     m.mediaPlayer.observeField("skipPreference", "onArchiveSkipPreference")
     m.screen = m.top.findNode("screen")
     m.guide = m.top.findNode("guide")
+    m.top.observeField("dialog", "onGuideSceneDialogChanged")
     m.dvr = m.top.findNode("dvrView")
     m.dvr.observeField("closed", "closeDvrLibrary")
     m.dvr.observeField("playRequested", "onDvrPlayRequested")
@@ -2953,6 +2954,10 @@ sub closeMessage(event as object)
     event.getRoSGNode().close = true
 end sub
 
+sub onGuideSceneDialogChanged()
+    m.guide.callFunc("trackGuideSceneDialog", m.top.dialog)
+end sub
+
 function onKeyEvent(key as string, press as boolean) as boolean
     if m.profileStartupSelectionContext <> invalid
         if press and key = "back"
@@ -2984,6 +2989,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         releaseArchive()
         hideNotice()
         m.page = "guide"
+        m.guide.callFunc("suppressGuideBackForHandoff")
         m.guide.active = true
         return true
     end if
@@ -3064,7 +3070,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
                 hideBanner()
             else
                 minimizePlayback(true)
-                if m.page = "guide" then m.guide.callFunc("suppressGuideBackUntilRelease")
+                if m.page = "guide" then m.guide.callFunc("suppressGuideBackForHandoff")
             end if
             return true
         end if

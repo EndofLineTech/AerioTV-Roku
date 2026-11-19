@@ -260,6 +260,7 @@ sub suspendGuide()
     m.guideTuneOkUuid = invalid
     m.primaryNavigation.active = false
     m.guideBackOwner = ""
+    m.guideBackHandoff = invalid
     cancelGuideHold()
     if m.tmdbTask <> invalid
         m.tmdbTask.unobserveField("result")
@@ -1468,6 +1469,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if key = "back" then return handleGuideBack(press)
     if not press then return false
     m.guideBackOwner = ""
+    m.guideBackHandoff = invalid
     if m.picker <> invalid
         if key = "options"
             closePicker()
@@ -1533,13 +1535,22 @@ end function
 function handleGuideBack(press as boolean) as boolean
     owner = guideBackOwner()
     if owner = "dialog"
-        if press then m.guideBackOwner = "blocked" else m.guideBackOwner = ""
+        m.guideBackOwner = ""
         return false
     end if
+    if consumeGuideBackHandoff(press) then return true
     if press
         ' Capture the focus owner, ignoring repeats. Closing it only on release
         ' keeps that same press from reaching the guide beneath it.
-        if textValue(m.guideBackOwner) = "" then m.guideBackOwner = owner
+        if textValue(m.guideBackOwner) <> "" then return true
+        if owner = "grid" and m.top.pendingTune = true
+            ' Cancelling on release races AAC discovery. Own both edges even if
+            ' the scene synchronously clears pendingTune on this request.
+            m.guideBackOwner = "cancelledTune"
+            m.top.playerRequest = "cancelPendingTune"
+        else
+            m.guideBackOwner = owner
+        end if
         return true
     end if
     capturedOwner = m.guideBackOwner
@@ -1563,8 +1574,47 @@ function handleGuideBack(press as boolean) as boolean
     return true
 end function
 
-sub suppressGuideBackUntilRelease()
-    m.guideBackOwner = "blocked"
+sub suppressGuideBackForHandoff()
+    m.guideBackOwner = ""
+    m.guideBackHandoff = CreateObject("roTimespan")
+    m.guideBackHandoff.mark()
+end sub
+
+function consumeGuideBackHandoff(press as boolean) as boolean
+    clock = m.guideBackHandoff
+    if clock = invalid then return false
+    if not press
+        m.guideBackHandoff = invalid
+        return true
+    end if
+    ' The original down (and sometimes the up) belonged to another surface.
+    ' Keep swallowing repeats, but recover after a quiet second with no up.
+    if clock.totalMilliseconds() >= 1000
+        m.guideBackHandoff = invalid
+        return false
+    end if
+    clock.mark()
+    return true
+end function
+
+sub trackGuideSceneDialog(dialog as dynamic)
+    old = m.guideSceneDialog
+    if old <> invalid
+        if dialog <> invalid and old.isSameNode(dialog) then return
+        old.unobserveFieldScoped("wasClosed")
+        m.guideSceneDialog = invalid
+        ' Some native dialogs leave Scene.dialog without a readable close event.
+        if m.top.active then suppressGuideBackForHandoff()
+    end if
+    if dialog = invalid or dialog.wasClosed = true then return
+    m.guideSceneDialog = dialog
+    dialog.observeFieldScoped("wasClosed", "onGuideSceneDialogClosed")
+end sub
+
+sub onGuideSceneDialogClosed(event as object)
+    if event.getData() <> true then return
+    if m.guideSceneDialog = invalid or not m.guideSceneDialog.isSameNode(event.getRoSGNode()) then return
+    trackGuideSceneDialog(invalid)
 end sub
 
 sub updatePrimaryTabs()

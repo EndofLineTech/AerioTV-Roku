@@ -484,6 +484,25 @@ sub runPlayerLifecycleChecks()
     m.guide.active = false
     minimizePlayback()
     assertEqual(m.guide.epgRequests, 1, "programmatic return does not invent an EPG keypress")
+    m.page = "archiveLoading"
+    m.guide.active = false
+    m.guide.callFunc = function(name as string) as boolean
+        if name <> "suppressGuideBackForHandoff" then return false
+        m.archiveBackHandoff = not m.active
+        return true
+    end function
+    assertEqual(onKeyEvent("back", true), true, "Scene owns Back during archive loading")
+    assertEqual(m.guide.archiveBackHandoff, true, "Scene transfers Back ownership before Guide gets focus")
+    assertEqual(m.guide.active, true, "archive cancellation activates Guide")
+    m.guide.callFunc = sub(name as string, dialog as dynamic)
+        if name = "trackGuideSceneDialog" then m.trackedDialog = dialog
+    end sub
+    m.top.dialog = {wasClosed: false, id: "native"}
+    onGuideSceneDialogChanged()
+    assertEqual(m.guide.trackedDialog.id, "native", "Scene forwards dialog assignment to Guide")
+    m.top.dialog = invalid
+    onGuideSceneDialogChanged()
+    assertEqual(m.guide.trackedDialog, invalid, "Scene forwards native dialog removal to Guide")
     oldTask = {id: "old", cancelRequested: false, unobserveField: sub(field as string)
         m.unobserved = true
     end sub, isSameNode: function(other as object) as boolean

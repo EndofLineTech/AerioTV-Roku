@@ -41,7 +41,8 @@
     <function name="applyHubGuideSetting" />
     <function name="handleOptionsShortcut" />
     <function name="focusPrimaryNavigation" />
-    <function name="suppressGuideBackUntilRelease" />
+    <function name="suppressGuideBackForHandoff" />
+    <function name="trackGuideSceneDialog" />
     <function name="resumeUnifiedSearch" />
     <function name="cancelMappingLoad" />
     <function name="cancelMetadataLoads" />

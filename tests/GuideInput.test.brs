@@ -125,20 +125,44 @@ sub main()
     if not onKeyEvent("back", false) then stop
     if m.details.action <> "" or m.top.playerRequest <> invalid then stop
     m.details.active = false
-    m.top.scene.dialog = {wasClosed: false}
-    if onKeyEvent("back", true) then stop
-    m.top.scene.dialog = invalid
-    if not onKeyEvent("back", true) then stop ' repeat after platform dialog closes
-    onKeyEvent("back", false)
+    dialog = {wasClosed: false, observeFieldScoped: sub(field as string, callback as string)
+        m.watcher = callback
+    end sub, unobserveFieldScoped: sub(field as string)
+        m.watcher = ""
+    end sub, isSameNode: function(node as object) as boolean
+        return m.id = node.id
+    end function, id: "native"}
+    m.top.scene.dialog = dialog
+    trackGuideSceneDialog(dialog)
+    if dialog.watcher <> "onGuideSceneDialogClosed" then stop
+    ' The platform dialog receives the initial press, not GuideView.
+    dialog.wasClosed = true
+    onGuideSceneDialogClosed({getData: function() as boolean
+        return true
+    end function, getRoSGNode: function() as object
+        return m.node
+    end function, node: dialog})
+    tapBack() ' repeat + release delivered to newly focused GuideView
     if m.top.playerRequest <> invalid then stop
     tapBack()
     if m.top.playerRequest <> "expandPlayer" then stop
+    ' Some native dialogs leave the field without a usable wasClosed event.
+    m.top.playerRequest = invalid
+    dialog.wasClosed = false
+    trackGuideSceneDialog(dialog)
+    m.top.scene.dialog = invalid
+    trackGuideSceneDialog(invalid)
+    tapBack()
+    if m.top.playerRequest <> invalid or dialog.watcher <> "" then stop
     m.top.playerRequest = invalid
     m.top.pendingTune = true
     if instr(1, guideRemoteHint(), "Back  Cancel tune") = 0 then stop
-    tapBack()
+    if not onKeyEvent("back", true) then stop
     if m.top.playerRequest <> "cancelPendingTune" then stop
     m.top.pendingTune = false
+    m.top.playerRequest = invalid
+    tapBack() ' repeat + release after cancellation cleared the pending flag
+    if m.top.playerRequest <> invalid then stop
     m.top.miniActive = false
     m.top.playerRequest = invalid
     tapBack()
@@ -157,11 +181,24 @@ sub main()
     tapBack()
     if m.selected <> 7 or m.primaryNavigation.active then stop
     setGuideBackForTest("pageDown")
-    suppressGuideBackUntilRelease()
+    suppressGuideBackForHandoff()
     tapBack()
     if m.selected <> 7 then stop
     tapBack()
     if m.selected <> 13 then stop
+    suppressGuideBackForHandoff()
+    m.guideBackHandoff = {elapsed: 900, marks: 0, totalMilliseconds: function() as integer
+        return m.elapsed
+    end function, mark: sub()
+        m.elapsed = 0
+        m.marks++
+    end sub}
+    if not onKeyEvent("back", true) or m.guideBackHandoff.marks <> 1 then stop
+    m.guideBackHandoff.elapsed = 900
+    if not onKeyEvent("back", true) or m.guideBackHandoff.marks <> 2 then stop
+    m.guideBackHandoff.elapsed = 1001
+    tapBack() ' a missing key-up cannot suppress later independent presses forever
+    if m.selected <> 19 then stop
     if onKeyEvent("home", true) then stop
     m.top.beacons = []
     m.top.signalBeacon = sub(name as string)
