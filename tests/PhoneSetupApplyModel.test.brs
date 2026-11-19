@@ -83,13 +83,24 @@ sub main()
     check(verified.ok and verified.entry.id = "received", "verified candidate retains its provisional slot identity")
     check(connectionPreferenceIdentity(verified.entry, "feed") <> "", "session-only feed has a non-secret preference identity")
     check(phoneSetupFeedIdentity("HTTPS://EXAMPLE.TEST:443?token=CaseSensitive") = "https://example.test/?token=CaseSensitive", "feed digest input normalizes origin but preserves query bytes")
-    payload.playlist.guideDays = 2
     payload.playlist.catchupOffsetMinutes = 60
-    limited = phoneSetupPrepareImport(payload, "received", string(64, "a"))
-    check(limited.ok and limited.entry.guideDays = 2 and limited.entry.catchupOffsetMinutes = 60, "unsupported runtime options retained without coercion")
-    check(limited.notes.count() >= 3, "session URL and unsupported options disclosed before saving")
-    prefs = phoneSetupImportedPreferences({guide: {futureDays: 14}, vodEnabled: true}, limited.entry)
-    check(prefs.guide.futureDays = 14 and not prefs.vodEnabled, "unsupported guide range never silently replaces existing setting")
+    for days = 0 to 14
+        payload.playlist.guideDays = days
+        prepared = phoneSetupPrepareImport(payload, "received", string(64, "a"))
+        check(prepared.ok and prepared.entry.guideDays = days and prepared.entry.catchupOffsetMinutes = 60, "wire days and unapplied offset retained in connection metadata")
+        check(prepared.notes[prepared.notes.count() - 1] = "Catch-up offset retained but not applied by this build.", "catch-up warning remains")
+        expected = days
+        if days = 0
+            expected = 30
+            check(prepared.notes.count() = 3 and instr(1, prepared.notes[1], "30") > 0, "All Available limit disclosed before saving")
+        else
+            check(prepared.notes.count() = 2, "supported day count is not described as unapplied")
+        end if
+        original = {guide: {futureDays: 14, historyDays: 3, showLogos: false}, vodEnabled: true}
+        prefs = phoneSetupImportedPreferences(original, prepared.entry)
+        check(prefs.guide.futureDays = expected and not prefs.vodEnabled, "import applies requested future horizon")
+        check(prefs.guide.historyDays = 3 and not prefs.guide.showLogos and original.guide.futureDays = 14, "import preserves history, other preferences and original input")
+    end for
     testInterimProfiles()
     print "ALL TESTS PASSED"
 end sub

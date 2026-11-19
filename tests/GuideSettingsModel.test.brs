@@ -97,6 +97,14 @@ sub main()
     assertEqual(guideResumeAnchor(1000000, true, 1000000 + 3600, settings), 1000000 + 3600, "return from playback follows current time after an hour")
     assertEqual(guideResumeAnchor(1000000, false, 1000000 + 3600, settings), 1000000, "explicit historical browsing stays anchored")
     now = guideEpoch("2026-09-18T12:00:00Z")
+    for days = 1 to 14
+        restored = normalizeAccountPreferences(ParseJson(FormatJson({guide: {futureDays: days, historyDays: 3}})))
+        assertEqual(restored.guide.futureDays, days, "exact future horizon survives a registry-shaped reload")
+        assertEqual(guideTimeClamp(now + 31 * 86400, now, restored.guide), now + days * 86400 - 1, "guide navigation clamps to configured future horizon")
+    end for
+    assertEqual(normalizeGuideSettings({futureDays: 30}).futureDays, 30, "existing 30-day setting still loads")
+    assertEqual(normalizeGuideSettings({futureDays: 0}).futureDays, 7, "wire sentinel is not a persisted zero-day window")
+    assertEqual(normalizeGuideSettings({futureDays: 15}).futureDays, 7, "unknown preference retains default")
     settings.historyDays = 30
     assertEqual(guideTimeClamp(now - 31 * 86400, now, settings), now - 30 * 86400, "bounded all-available horizon")
     p = normalizeProgram({id: 1, title: "Test", start_time: now, end_time: now + 600, is_live: "true", is_new: true, season: 2, episode: 3, categories: ["Kids", "Sports"]})

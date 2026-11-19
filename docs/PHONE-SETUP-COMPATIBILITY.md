@@ -247,9 +247,13 @@ keys are saved separately, never in the roster; API-key-only credentials require
 no username. A default/single-profile credential fallback is supported without
 importing household roles, profiles or PINs.
 
-VOD enablement and supported Guide Days (1, 3, 7, 14) are applied once after commit,
-then persisted through normal account preferences. Later reconnects do not undo
-the viewer's own setting changes. Other Guide Days, nonzero catch-up offsets,
+VOD enablement and Guide Days (1–14) are applied once after commit, then persisted
+through normal account preferences. Guide Days changes only the future horizon.
+The sender's `0` (All Available) uses Roku's existing 30-day future limit, disclosed
+in the duplicate confirmation or Diagnostics for auto-add. A longer horizon does
+not make unavailable programs appear. Change it under Settings > Live TV >
+Guide future days. Reconnects and upgrades do not reapply the saved transfer or
+undo the viewer's own setting changes. Nonzero catch-up offsets,
 local URL failover and provider-inapplicable options are explicitly disclosed
 before Save, not silently claimed as applied. These runtime gaps are tracked as
 `AerioTV-Roku-e3e.5.2`. Token-bearing/unsupported XMLTV URLs are rejected with an
@@ -257,6 +261,38 @@ explanation rather than persisted. Household profiles/PINs are not imported and
 Sync is never enabled from the payload. Multi-Channel-Profile selection is also
 retained during lineup refresh and no longer prunes history outside the selected
 view.
+
+### Qualifying imported Guide Days on Roku
+
+After the host package gate and explicit Roku handoff, run the following against
+the two approved Dispatcharr test users. Use the exact currently installed ZIP
+as `--restore` and the already-qualified peer encoder directory. Never substitute
+an owner login or change routing, authentication, or ECP policy for the probe.
+
+```sh
+python3 scripts/test-phone-setup-normal-native.py --peer apple \
+  --source out/aeriotv-roku.zip --restore /private/path/to/installed.zip \
+  --peer-directory /private/path/to/peer-encoders \
+  --dispatcharr-credentials /private/path/to/approved-logins.json --guide-days 2
+# Repeat with --guide-days 0.
+```
+
+The probe uses a fresh registry section, temporary metadata cache, and the existing
+peer transfer and Dispatcharr verification paths. It inhibits Sync scheduling
+and provider writes. It checks the retained wire value, reads back the stored account
+preference, checks the actual GuideView's future clamp, and waits for the real
+Guide Task window. A successful empty response establishes that the request worked,
+not that the server has programs through that horizon. Keep the counts distinct
+in the result. The probe also edits the future horizon to 6 through the Settings
+handler, switches away and back with fresh authorization, and checks the Guide
+handoff still receives 6. The harness removes only its test section and verifies
+the restore ZIP. Full receiver/peer interoperability remains separate from a
+Guide Days run.
+
+For a separate physical UI/cold-launch check, set **Guide future days** to 6 under
+Settings > Live TV in a disposable build and relaunch it without clearing that
+test registry. Expect 6, not the received 2 or 30. The guide history setting must
+stay unchanged. Do not perform these edits in the owner's registry.
 
 ### Isolated native controller acceptance
 
@@ -363,8 +399,9 @@ the saved/current connection, duplicate Cancel/Add Anyway/Replace, atomic slot
 commit, query-bearing M3U session handling, incoming settings application and
 explicit household-profile/sync omission messages. Preparatory metadata fields
 and authorized multi-Channel-Profile union helpers are present; retaining an
-option in metadata is **not** applying it. Guide Days and catch-up offset are
-not yet wired to runtime behavior. Household profile import and sync remain
+option in metadata is **not** applying it. Guide Days uses the future horizon
+described above; catch-up offset is not yet wired to runtime behavior.
+Household profile import and sync remain
 separate work, and sync must never be enabled just because a payload requests it.
 
 `PhoneSetupApplyModel.brs` also prepares deterministic credential selection and

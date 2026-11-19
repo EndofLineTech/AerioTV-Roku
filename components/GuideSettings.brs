@@ -144,7 +144,7 @@ sub openGuideSetting(kind as string)
             {title: "Group navigation: " + m.settings.groupLayout, field: "groupLayout", choices: ["modal", "pills", "sidebar"]}
             {title: "Collections position: " + m.settings.collectionsPosition, field: "collectionsPosition", choices: ["first", "last"]}
             {title: "History days: " + m.settings.historyDays.toStr(), field: "historyDays", choices: [1, 3, 7, 14, 30]}
-            {title: "Future days: " + m.settings.futureDays.toStr(), field: "futureDays", choices: [1, 3, 7, 14, 30]}
+            {title: "Future days: " + m.settings.futureDays.toStr(), field: "futureDays", choices: guideFutureDayChoices()}
             {title: "All available (bounded to 30 days each way)", action: "allAvailable"}
             {title: "Startup group", action: "startup"}
             {title: "Badges", action: "badges"}
@@ -210,8 +210,8 @@ function handleGuideSetting(kind as string, item as object) as boolean
             end for
             openPicker(item.title, items, "settingValue")
         else if item.action = "allAvailable"
-            m.settings.historyDays = 30
-            m.settings.futureDays = 30
+            m.settings.historyDays = guideAllAvailableDays()
+            m.settings.futureDays = guideAllAvailableDays()
             rebuildGuideGroups()
         else
             openGuideSetting(item.action)

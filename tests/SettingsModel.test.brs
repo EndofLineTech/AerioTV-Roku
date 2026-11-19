@@ -56,6 +56,11 @@ sub main()
     account = setCanonicalPreference(accountAlias, "vodEnabled", false)
     if account.keys().count() <> 1 or account["vodEnabled"] <> false then stop
     if settingsHubChangeAllowed(model, "guide", "historyDays", 365) then stop
+    for days = 1 to 14
+        if not settingsHubChangeAllowed(model, "guide", "futureDays", days) then stop
+    end for
+    if not settingsHubChangeAllowed(model, "guide", "futureDays", 30) then stop
+    if settingsHubChangeAllowed(model, "guide", "futureDays", 0) then stop
     live = settingsHubEntries("live", model)
     if live[7].key <> "showSubtitles" or live[7].values[0] <> true or live[7].values[1] <> false then stop
     if instr(1, live[7].title, "Preview") = 0 then stop

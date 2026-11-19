@@ -30,7 +30,7 @@ function normalizeGuideSettings(raw as dynamic) as object
     p.favoriteOrder = compactIds(p.favoriteOrder, 2000)
     if p.collectionsPosition <> "last" then p.collectionsPosition = "first"
     if p.historyDays <> 1 and p.historyDays <> 3 and p.historyDays <> 7 and p.historyDays <> 14 and p.historyDays <> 30 then p.historyDays = 3
-    if p.futureDays <> 1 and p.futureDays <> 3 and p.futureDays <> 7 and p.futureDays <> 14 and p.futureDays <> 30 then p.futureDays = 7
+    if (p.futureDays < 1 or p.futureDays > 14) and p.futureDays <> 30 then p.futureDays = 7
     if type(p.badges) <> "roAssociativeArray" then p.badges = {}
     for each key in ["new", "live", "premiere", "finale", "episode"]
         if type(p.badges[key]) <> "Boolean" and type(p.badges[key]) <> "roBoolean" then p.badges[key] = true

@@ -36,7 +36,13 @@ def package_fingerprints(path):
     with zipfile.ZipFile(path) as package:
         return {name: hashlib.sha256(package.read(name)).hexdigest() for name in sorted(package.namelist())}
 
-def build(output, normal, section, diagnostic=False, live=None):
+def replace_once(source, old, new):
+    if source.count(old) != 1:
+        raise RuntimeError("Private Guide Days probe hook no longer matches; refusing build")
+    return source.replace(old, new, 1)
+
+
+def build(output, normal, section, diagnostic=False, live=None, guide_days=None):
     fixture = (ROOT / "tests/native/PhoneSetupNormalFixture.brs").read_text()
     if live:
         initialization = "\n".join([
@@ -54,7 +60,10 @@ def build(output, normal, section, diagnostic=False, live=None):
                 source = body.decode()
                 target = 'CreateObject("roRegistrySection", "AerioTV")'
                 assert source.count(target) == 1
-                source = source.replace(target, f'CreateObject("roRegistrySection", "{section}")', 1)
+                isolated = f'CreateObject("roRegistrySection", "{section}")'
+                if guide_days is not None:
+                    isolated += "\n    m.profileSyncWriterReady = false\n    m.profileSyncSchedulingReady = false"
+                source = source.replace(target, isolated, 1)
                 target = "sub onLaunchRequest()\n"
                 assert source.count(target) == 1
                 source = source.replace(target, target + '''    if m.top.launchRequest.phoneNormalOpen = "1"
@@ -62,10 +71,77 @@ def build(output, normal, section, diagnostic=False, live=None):
         return
     end if
 ''', 1)
-                body = (source + "\n" + fixture).encode()
+                fixture_source = fixture
+                if guide_days is not None:
+                    expected = 30 if guide_days == 0 else guide_days
+                    fixture_source = replace_once(fixture_source, '        store = loadUserProfileStore(m.registry, m.selectedConnectionId)\n', f'''        if m.guideDaysProbeDone <> true
+            entry = connectionStoreEntry(loadConnectionStore(m.registry), m.selectedConnectionId)
+            restored = accountPreferences(loadPreferenceStore(m.registry, true), m.accountIdentity)
+            if entry = invalid then finishPhoneNormalProbe(false, "guide-slot-missing") : return
+            if entry.guideDays <> {guide_days} or m.phoneOptions <> invalid then finishPhoneNormalProbe(false, "guide-import-metadata") : return
+            if m.accountPreferences.guide.futureDays <> {expected} or restored.guide.futureDays <> {expected} or restored.guide.historyDays <> 3 then finishPhoneNormalProbe(false, "guide-preference-mismatch") : return
+            result = m.guide.callFunc("probeImportedGuideWindow", {expected})
+            if result.state = "waiting" then return
+            print "[setup-phone-normal] "; FormatJson({{kind: "guide-days", state: result.state, days: {expected}, window: result.window, programs: result.programs}})
+            if result.state <> "loaded" then finishPhoneNormalProbe(false, "guide-window") : return
+            openSettingsHub()
+            m.settingsHub.selection = userViewEvent({{scope: "guide", key: "futureDays", value: 6, account: m.accountIdentity}}, currentUserSessionId())
+            m.guideDaysProbeEditing = true
+            m.phoneNormalPhase = 70
+            return
+        end if
+        store = loadUserProfileStore(m.registry, m.selectedConnectionId)
+''')
+                    fixture_source = replace_once(fixture_source, '        finishPhoneNormalProbe(passed, "complete")\n', '''        if not passed then finishPhoneNormalProbe(false, "profile-switch") : return
+        if not beginUserProfileSwitch(m.guideDaysDefaultId) then finishPhoneNormalProbe(false, "guide-reconnect") : return
+        m.phoneNormalPhase = 90
+    else if phase = 70
+        if m.page <> "settings" or m.guideDaysProbeEditing <> true then finishPhoneNormalProbe(false, "guide-edit-admission") : return
+        restored = accountPreferences(loadPreferenceStore(m.registry, true), m.accountIdentity)
+        if restored.guide.futureDays <> 6 or m.accountPreferences.guide.futureDays <> 6 then return
+        m.guideDaysDefaultId = m.activeUserScope.profileId
+        closeSettingsHub()
+        m.guideDaysProbeEditing = false
+        m.phoneNormalPhase = 7
+        m.guideDaysProbeDone = true
+    else if phase = 90
+        if m.profilePinDialog = invalid then return
+        m.profilePinDialog.textEditBox.text = "1234"
+        onProfilePinSubmit(phoneNormalEvent(m.profilePinDialog, 0))
+        m.phoneNormalPhase = 91
+    else if phase = 91
+        if m.busy or m.page <> "guide" or m.activeUserScope = invalid or m.capabilityTask <> invalid then return
+        if m.activeUserScope.profileId <> m.guideDaysDefaultId or m.activeUserScope.accountId <> m.phoneNormalDefaultUser.toStr() then finishPhoneNormalProbe(false, "guide-reconnect-identity") : return
+        restored = accountPreferences(loadPreferenceStore(m.registry, true), m.accountIdentity)
+        passed = restored.guide.futureDays = 6 and m.accountPreferences.guide.futureDays = 6 and m.guide.config.preferences.guide.futureDays = 6 and restored.guide.historyDays = 3 and m.phoneOptions = invalid
+        print "[setup-phone-normal] "; FormatJson({kind: "guide-reconnect", kept_edit: passed})
+        finishPhoneNormalProbe(passed, "guide-reconnect")
+''')
+                body = (source + "\n" + fixture_source).encode()
             elif name == "source/MetadataCacheStore.brs":
                 assert body.count(b'"cachefs:/aeriotv-metadata-v1"') == 1
                 body = body.replace(b'"cachefs:/aeriotv-metadata-v1"', b'"tmp:/phone-normal-cache"')
+            elif guide_days is not None and name == "components/GuideView.xml":
+                body = replace_once(body, b'<interface>', b'<interface>\n    <function name="probeImportedGuideWindow" />')
+            elif guide_days is not None and name == "components/GuideView.brs":
+                target = b"    result = event.getData()\n    m.top.metadataEvent = {ok: result.ok, stage: \"window\","
+                body = replace_once(body, target, b'''    result = event.getData()
+    if m.guideDaysProbeWindow <> invalid and result.windowStart = m.guideDaysProbeWindow
+        m.guideDaysProbeSource = textValue(result.source)
+    end if
+    m.top.metadataEvent = {ok: result.ok, stage: "window",''')
+                body += b"\n" + (ROOT / "tests/native/PhoneSetupGuideDaysFixture.brs").read_bytes()
+            elif guide_days is not None and name == "source/HttpTransport.brs":
+                target = b"    method = ucase(method)\n"
+                body = replace_once(body, target, target + b'''    if method <> "GET"
+        print "[setup-phone-normal] "; FormatJson({kind: "non-read-blocked"})
+        result.error = "invalid-request"
+        return result
+    end if
+''')
+            elif guide_days is not None and name == "components/DispatcharrSyncWriteTask.brs":
+                body = replace_once(body, b'    if m.syncWriterReady <> true then finishDispatcharrSyncWrite(denied) : return\n',
+                                    b'    finishDispatcharrSyncWrite(denied) : return\n')
             elif diagnostic and name == "components/PhoneSetupProfileVerifyTask.brs":
                 text = body.decode()
                 anchor = '    if phoneProfileVerificationCancelled() or m.base = ""'
@@ -120,6 +196,7 @@ def main():
     parser.add_argument("--dispatcharr-credentials", type=Path, required=True, help="Private approved live test accounts; never a laptop-hosted provider")
     parser.add_argument("--secondary-role", choices=["user", "child"], default="child")
     parser.add_argument("--diagnostic", action="store_true", help="Private verification-stage logs; never counts as normal-byte acceptance")
+    parser.add_argument("--guide-days", type=int, choices=range(15), help="Read-only Guide Days probe; require the persisted preference, live guide clamp and provider response")
     parser.add_argument("--peer-directory", type=Path, default=TEMP / "mrr-peer-wire")
     args = parser.parse_args()
     primitives, recovery = load_module("primitives"), load_module("recovery")
@@ -135,7 +212,7 @@ def main():
     run_id = str(uuid.uuid4())[:8]
     archive = ROOT / f"out/phone-normal-{args.peer}-{run_id}-probe.zip"
     cleaner = ROOT / f"out/phone-normal-{args.peer}-{run_id}-cleanup.zip"
-    build(archive, args.source, section, diagnostic=args.diagnostic, live=live)
+    build(archive, args.source, section, diagnostic=args.diagnostic, live=live, guide_days=args.guide_days)
     # Compile the complete private app before touching the development slot.
     with tempfile.TemporaryDirectory(dir=TEMP) as folder:
         with zipfile.ZipFile(archive) as package:
@@ -150,7 +227,8 @@ def main():
     recovery.cleanup_package(cleaner, section)
     report = {"passed": False, "peer": args.peer, "secondary_role": args.secondary_role, "events": events,
               "live_dispatcharr": True, "approved_accounts": len(accounts), "discovery_transport": {},
-              "production_bytes_preserved": not args.diagnostic, "diagnostic_only": args.diagnostic,
+               "production_bytes_preserved": not args.diagnostic and args.guide_days is None, "diagnostic_only": args.diagnostic,
+               "guide_days": args.guide_days,
               "probe_archive": str(archive), "restore_sha256": hashlib.sha256(args.restore.read_bytes()).hexdigest(),
               "source_sha256": hashlib.sha256(args.source.read_bytes()).hexdigest(),
               "source_file_sha256": package_fingerprints(args.source),
@@ -183,7 +261,7 @@ def main():
     def encode_peer(session, folder, wrong=False):
         payload = {"playlist": {"id": "00000000-0000-4000-8000-000000000070", "type": "dispatcharr", "name": "Normal Phone Import",
                                "url": live_base, "credential": {"apiKey": accounts[0]["user"]["api_key"]},
-                               "vodEnabled": False, "guideDays": 3},
+                               "vodEnabled": False, "guideDays": 3 if args.guide_days is None else args.guide_days},
                    "profiles": [], "sync": {"provider": "dispatcharr", "enabled": True}}
         salt = "00112233445566778899aabbccddeeff"
         for index in [1, 0]:
@@ -316,6 +394,12 @@ def main():
         report["passed"] = report["passed"] and all(report.get(field) is True for field in [
             "native_qr", "wrong_code_refused", "setup_accepted", "replay_refused",
             "live_dispatcharr"])
+        if args.guide_days is not None:
+            guide = [event for event in events if event.get("kind") == "guide-days"]
+            report["guide_days_live"] = len(guide) == 1 and guide[0]["state"] == "loaded"
+            report["guide_days_reconnect"] = any(event.get("kind") == "guide-reconnect" and event.get("kept_edit") is True for event in events)
+            report["passed"] = report["passed"] and report["guide_days_live"] and report["guide_days_reconnect"] and not any(
+                event.get("kind") == "non-read-blocked" for event in events)
         report["acceptance_path"] = "QR/direct LAN endpoint over VPN; multicast discovery separately unverified" if not report.get("bonjour") else "QR and Bonjour"
     finally:
         if browser is not None:
@@ -329,6 +413,8 @@ def main():
             report["restored"] = restore.returncode == 0 and primitives.installed_md5(host, password) == expected
             report["passed"] = report["passed"] and report.get("cleaned", False) and report["restored"]
             suffix = "-diagnostic" if args.diagnostic else ""
+            if args.guide_days is not None:
+                suffix += f"-guide-days-{args.guide_days}"
             encoded_report = json.dumps(report, indent=2) + "\n"
             (ROOT / f"out/phone-normal-{args.peer}{suffix}-{run_id}.json").write_text(encoded_report)
             (ROOT / f"out/phone-normal-{args.peer}{suffix}-native.json").write_text(encoded_report)

@@ -23,7 +23,7 @@ def build(output, real_http=False):
                     continue
                 package.writestr(name, original.read(name))
             package.write(ROOT / 'tests/native/SetupApplyProbeMain.brs', 'source/Main.brs')
-            for name in ['DispatcharrModel', 'PreferenceModel', 'StrictJson', 'ConnectionStoreModel', 'MetadataCacheModel', 'M3uModel', 'XtreamModel', 'PhoneSetupApplyModel', 'PhoneSetupStore', 'TaskSupport', 'UserProfileModel', 'UserProfilePin', 'UserProfileAvatar', 'UserProfileStore', 'UserProfileLifecycle']:
+            for name in ['DispatcharrModel', 'PreferenceModel', 'StrictJson', 'ConnectionStoreModel', 'MetadataCacheModel', 'M3uModel', 'XtreamModel', 'PhoneSetupApplyModel', 'PhoneSetupStore', 'TaskSupport', 'GuideDayOptions', 'UserProfileModel', 'UserProfilePin', 'UserProfileAvatar', 'UserProfileStore', 'UserProfileLifecycle']:
                 package.write(ROOT / f'source/{name}.brs', f'source/{name}.brs')
             package.write(ROOT / 'components/PhoneSetupNavigation.brs', 'components/PhoneSetupNavigation.brs')
             package.write(ROOT / 'components/UserProfileNavigation.brs', 'components/UserProfileNavigation.brs')
@@ -46,7 +46,7 @@ def build(output, real_http=False):
             for case in ['reject', 'cancel', 'duplicate-cancel', 'duplicate-replace-full', 'duplicate-add', 'duplicate-full-add', 'm3u-query', 'xtream', 'default-profile', 'dispatcharr-password', 'multiple-profiles', 'protected-default-pin', 'protected-default-child', 'duplicate-profile-recovery', 'duplicate-profile-recovery-direct']:
                 playlist = {'type': 'dispatcharr', 'name': 'Received', 'url': 'HTTPS://EXAMPLE.TEST:443', 'userAgent': 'Fixture-Agent', 'credential': {'apiKey': 'fixture-api-key'}}
                 if case == 'm3u-query':
-                    playlist = {'type': 'm3u', 'name': 'Query', 'url': 'https://example.test/?token=session-token', 'userAgent': 'Fixture-Agent', 'guideDays': 3, 'vodEnabled': False}
+                    playlist = {'type': 'm3u', 'name': 'Query', 'url': 'https://example.test/?token=session-token', 'userAgent': 'Fixture-Agent', 'guideDays': 2, 'vodEnabled': False}
                 elif case in ['xtream', 'cancel']:
                     playlist = {'type': 'xtream', 'name': 'Xtream', 'url': 'https://example.test' + ('/slow' if case == 'cancel' else ''), 'userAgent': 'Fixture-Agent', 'credential': {'username': 'Viewer', 'password': 'fixture-password'}}
                 elif case == 'reject':

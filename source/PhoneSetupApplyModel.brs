@@ -81,7 +81,10 @@ function phoneSetupPrepareImport(payload as object, id as string, digest as stri
     if payload.sync <> invalid then notes.push("Dispatcharr Sync will not be enabled.")
     if sessionUrl then notes.push("The token-bearing or long playlist URL is session-only; send it again after restarting the app.")
     if entry.localUrl <> "" then notes.push("Local URL retained; automatic LAN failover is not applied by this build.")
-    if days <> 1 and days <> 3 and days <> 7 and days <> 14 then notes.push("Guide Days retained but not applied; this build supports 1, 3, 7 or 14 days.")
+    if days = 0
+        limit = guideAllAvailableDays()
+        notes.push("All Available Guide Days uses Roku's " + limit.toStr() + "-day future limit; guide history is unchanged.")
+    end if
     if offset <> 0 then notes.push("Catch-up offset retained but not applied by this build.")
     if entry.provider <> "dispatcharr" and entry.channelProfileIds.count() > 0 then notes.push("Channel Profile IDs are retained but only applied to Dispatcharr sources.")
     if entry.provider = "xtream" and epg <> "" then notes.push("Xtream uses its account guide; the supplied XMLTV override is not applied.")
@@ -121,7 +124,8 @@ function phoneSetupImportedPreferences(preferences as object, entry as object) a
     result = copyJson(preferences)
     result.vodEnabled = entry.vodEnabled
     days = entry.guideDays
-    if days = 1 or days = 3 or days = 7 or days = 14 then result.guide.futureDays = days
+    if days = 0 then days = guideAllAvailableDays()
+    result.guide.futureDays = days
     return result
 end function
 

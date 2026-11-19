@@ -9,6 +9,7 @@
   <script type="text/brightscript" uri="pkg:/source/XtreamModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/PhoneSetupModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/PhoneSetupApplyModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideDayOptions.brs" />
   <script type="text/brightscript" uri="pkg:/source/PhoneSetupStore.brs" />
   <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
   <script type="text/brightscript" uri="PhoneSetupNavigation.brs" />

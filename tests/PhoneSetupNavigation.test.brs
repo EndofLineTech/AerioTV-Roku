@@ -37,13 +37,15 @@ sub main()
     end function}
     onPhoneSetupChoice(choice)
     check(m.phonePending = invalid and m.connectionStore.selected = "old", "duplicate Cancel cannot save a candidate")
-    m.phoneOptions = {id: "imported", guideDays: 3, vodEnabled: false}
+    m.phoneOptions = {id: "imported", guideDays: 2, vodEnabled: false}
+    unchanged = takePhoneSetupPreferences({guide: {futureDays: 7}, vodEnabled: true}, {id: "other"})
+    check(unchanged.guide.futureDays = 7 and unchanged.vodEnabled and m.phoneOptions <> invalid, "another slot cannot consume the pending import settings")
     applied = takePhoneSetupPreferences({guide: {futureDays: 7}, vodEnabled: true}, {id: "imported"})
-    check(applied.guide.futureDays = 3 and not applied.vodEnabled and m.phoneOptions = invalid, "supported options applied exactly once after commit")
-    applied.guide.futureDays = 14
+    check(applied.guide.futureDays = 2 and not applied.vodEnabled and m.phoneOptions = invalid, "imported options applied exactly once after commit")
+    applied.guide.futureDays = 6
     applied.vodEnabled = true
-    retained = takePhoneSetupPreferences(applied, {id: "imported"})
-    check(retained.guide.futureDays = 14 and retained.vodEnabled, "later reconnect never overwrites the viewer's changed options")
+    retained = takePhoneSetupPreferences(normalizeAccountPreferences(ParseJson(FormatJson(applied))), {id: "imported"})
+    check(retained.guide.futureDays = 6 and retained.vodEnabled, "later reconnect reloads the viewer's changed options")
     print "ALL TESTS PASSED"
 end sub
 
