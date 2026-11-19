@@ -57,6 +57,7 @@ function retryStartupPlayback() as boolean
     if m.pendingChannel <> invalid or m.heldZap <> "" then return false
     waitForSources = m.startupWatch.waitForSources = true
     replacement = m.video.content.clone(false)
+    bindColdLiveReader(coldLiveReaderToken(), replacement)
     m.startupRetryCount++
     cancelStartupWatch()
     m.audioCheck.control = "stop"

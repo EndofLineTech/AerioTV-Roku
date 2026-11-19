@@ -1,12 +1,12 @@
 ' This is an authorization continuation, not a library selection. Recheck the
 ' same local holder, credential and protection at both ends of the Task.
-function vodDeepLinkOwner() as dynamic
+function vodDeepLinkOwner(checkPlayback = false as boolean) as dynamic
     if userProfileUiClosed() or m.userProfileRecoveryRequired = true then return invalid
     if m.profilePinDialog <> invalid or m.adultPinDialog <> invalid then return invalid
     if m.profileSwitchContext <> invalid or m.profileOwnSignInContext <> invalid then return invalid
-    if m.page <> "guide" and m.page <> "player" then return invalid
+    if m.page <> "guide" and m.page <> "player" and not (checkPlayback and m.page = "onDemand") then return invalid
     if m.accountPreferences.vodEnabled = false or m.apiKey = "" then return invalid
-    if m.top.dialog <> invalid or m.phoneProfileOnboarding <> invalid then return invalid
+    if (not checkPlayback and m.top.dialog <> invalid) or m.phoneProfileOnboarding <> invalid then return invalid
     scope = m.activeUserScope
     if type(scope) <> "roAssociativeArray" then return invalid
     if scope.sessionId = "" or scope.sessionId <> currentUserSessionId() then return invalid
@@ -66,15 +66,24 @@ sub resumePendingVodDeepLink()
 end sub
 
 sub beginVodDeepLink(request as object)
+    token = textValue(request.coldToken)
     owner = vodDeepLinkOwner()
     if owner = invalid
         showVodDeepLinkUnavailable()
+        settleColdPlayback(token, "unavailable")
         return
     end if
-    if textValue(request.session) <> "" and request.session <> owner.scope.sessionId then return
-    if textValue(request.playlist) <> "" and (request.playlist <> owner.scope.playlistId or request.base <> owner.base) then return
+    if textValue(request.session) <> "" and request.session <> owner.scope.sessionId
+        settleColdPlayback(token, "cancelled")
+        return
+    end if
+    if textValue(request.playlist) <> "" and (request.playlist <> owner.scope.playlistId or request.base <> owner.base)
+        settleColdPlayback(token, "cancelled")
+        return
+    end if
     if textValue(request.profile) <> "" and (request.profile <> owner.scope.profileId or request.account <> owner.scope.accountId)
         showVodDeepLinkUnavailable()
+        settleColdPlayback(token, "unavailable")
         return
     end if
     task = invalid
@@ -92,6 +101,7 @@ sub beginVodDeepLink(request as object)
     owner.request = request
     m.vodDeepLinkOwner = owner
     m.vodDeepLinkTask = task
+    if coldPlaybackCurrent(token) then m.coldPlayback.phase = "vod-resolver"
     ' Only hold the previous deferred tune, never the active renderer.
     if m.pendingAacTune <> invalid
         m.pendingAacTune.vodHold = {page: owner.page, session: owner.scope.sessionId, waiting: true}
@@ -128,6 +138,7 @@ sub cancelVodDeepLink(allowFallback = false as boolean)
         m.vodDeepLinkTask.unobserveField("result")
         cancelNetworkTask(m.vodDeepLinkTask)
         releaseVodDeepLinkAacWait(resumeTune)
+        if m.vodDeepLinkOwner <> invalid then settleColdPlayback(textValue(m.vodDeepLinkOwner.request.coldToken), "cancelled")
     end if
     m.vodDeepLinkTask = invalid
     m.vodDeepLinkOwner = invalid
@@ -143,7 +154,17 @@ sub onVodDeepLinkResult(event as object)
     m.vodDeepLinkOwner = invalid
     if not vodDeepLinkOwnerCurrent(task, owner)
         releaseVodDeepLinkAacWait(false)
+        if owner <> invalid then settleColdPlayback(textValue(owner.request.coldToken), "cancelled")
         return
+    end if
+    token = textValue(owner.request.coldToken)
+    if coldPlaybackCurrent(token)
+        if coldPlaybackExpired(m.coldPlayback)
+            releaseVodDeepLinkAacWait(false)
+            showVodDeepLinkUnavailable()
+            settleColdPlayback(token, "timeout")
+            return
+        end if
     end if
     allowed = requestGateAccessAllowed(owner.base, owner.key)
     result = event.getData()
@@ -154,12 +175,13 @@ sub onVodDeepLinkResult(event as object)
             matches = item.kind = request.kind and item.id = request.id
             if request.kind = "series" then matches = item.kind = "episode" and item.seriesId = request.id
             if matches and not vodItemHidden(m.accountPreferences.vod, item) and allowed
-                if startVodPlayback(item, "guide") then return
+                if startVodPlayback(item, "guide", owner) then return
             end if
         end if
     end if
     releaseVodDeepLinkAacWait(allowed)
     showVodDeepLinkUnavailable()
+    settleColdPlayback(token, "unavailable")
 end sub
 
 sub showVodDeepLinkUnavailable()

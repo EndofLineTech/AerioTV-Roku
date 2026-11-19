@@ -5,6 +5,7 @@
     <field id="networkLinkEvent" type="assocarray" alwaysNotify="true" />
     <field id="memoryPressure" type="string" alwaysNotify="true" onChange="onMemoryPressure" />
     <field id="launchRequest" type="assocarray" alwaysNotify="true" onChange="onLaunchRequest" />
+    <field id="launchFromMain" type="boolean" />
     <field id="exitRequested" type="boolean" alwaysNotify="true" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
@@ -94,6 +95,7 @@
   <script type="text/brightscript" uri="pkg:/source/DvrPresentationModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
   <script type="text/brightscript" uri="AerioScene.brs" />
+  <script type="text/brightscript" uri="ColdPlayback.brs" />
   <script type="text/brightscript" uri="PlayerOptionsShortcut.brs" />
   <script type="text/brightscript" uri="HlsSessionLifecycle.brs" />
   <script type="text/brightscript" uri="PlayerRemoteInput.brs" />

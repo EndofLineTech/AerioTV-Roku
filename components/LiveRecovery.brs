@@ -11,6 +11,7 @@ function retryInterruptedLive(state as string, code as integer, detail as string
     if state = "error" then supported = isStartupBufferingStall(code, detail) or code = -2
     if not supported then return false
     replacement = m.video.content.clone(false)
+    bindColdLiveReader(coldLiveReaderToken(), replacement)
     m.liveRetryCount++
     m.liveBufferWatch = invalid
     m.audioCheck.control = "stop"

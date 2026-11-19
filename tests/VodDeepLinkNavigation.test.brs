@@ -2,6 +2,7 @@ sub main()
     checkUnavailableSavedHolderDoesNotResolve()
     checkAacWaitDuringVodLink()
     checkAacExpiryDuringVodDenial()
+    checkColdVodContinuation()
     request = normalizeLaunchRequest({contentId: "12", mediaType: "movie", apiKey: "untrusted", url: "https://other.test"})
     fixture()
     m.global.profilegateclosed = true
@@ -77,6 +78,51 @@ sub main()
     beginVodDeepLink(request)
     check(m.created = 1 and m.vodDeepLinkTask.apiKey = "own-key", "Remember off uses the existing verified runtime credential without a disk key")
     print "ALL TESTS PASSED"
+end sub
+
+sub checkColdVodContinuation()
+    for each path in ["ready", "missing", "timeout", "late-result", "stale"]
+        fixture()
+        m.page = "guide"
+        m.coldPlaybackClock = {control: "stop"}
+        request = coldPlaybackLaunchRequest({contentID: "12", mediaType: "movie"}, true)
+        beginColdPlayback(request)
+        beginVodDeepLink(request)
+        task = m.vodDeepLinkTask
+        result = movieResult()
+        if path = "missing" then result = {ok: false}
+        if path = "timeout" or path = "late-result"
+            m.coldPlayback.clock = {totalMilliseconds: function() as integer
+                return 60000
+            end function}
+            if path = "timeout"
+                checkColdPlayback()
+                check(m.coldPlaybackOutcome.result = "timeout" and task.cancelRequested and task.detached, "resolver deadline cancels the exact task")
+            end if
+        else if path = "stale"
+            cancelVodDeepLink()
+            successor = coldPlaybackLaunchRequest({contentID: "12", mediaType: "movie"}, true)
+            beginColdPlayback(successor)
+            ' The adapter's serial is per fixture, not per request.
+            beginVodDeepLink(successor)
+        end if
+        onVodDeepLinkResult(linkEvent(task, result))
+        if path = "ready"
+            play = m.mediaPlayer.request
+            check(play.coldToken = request.coldToken and m.coldPlayback.identity = play.identity, "verified result transfers the exact token to the media player")
+            onMediaClosed(linkEvent(m.mediaPlayer, userViewEvent({closed: true, coldToken: request.coldToken, identity: "stale-renderer", coldResult: "denied"}, currentUserSessionId())))
+            check(m.page = "onDemand" and m.coldPlayback <> invalid, "a stale close cannot displace the current renderer")
+            onMediaClosed(linkEvent(m.mediaPlayer, userViewEvent({closed: true, coldToken: request.coldToken, identity: play.identity, coldResult: "denied"}, currentUserSessionId())))
+            check(m.page = "guide" and m.guide.active and m.coldPlaybackOutcome.result = "denied", "the exact no-session denial restores the Guide before settling")
+        else if path = "missing"
+            check(m.coldPlaybackOutcome.result = "unavailable" and m.page = "guide", "missing title settles on the existing Guide")
+        else if path = "stale"
+            check(m.coldPlayback.token = successor.coldToken and m.mediaPlayer.request = invalid, "a replaced resolver cannot affect its same-title successor")
+        else
+            check(m.mediaPlayer.request = invalid and m.page = "guide" and m.coldPlaybackOutcome.result = "timeout", "late timed-out resolver cannot displace the Guide")
+        end if
+    end for
+    m.coldPlayback = invalid
 end sub
 
 sub checkAacExpiryDuringVodDenial()

@@ -1,4 +1,5 @@
 sub main()
+    checkColdVodPlayer()
     m.session = mediaSession("account", "session", "vod", "item", 1000)
     mediaObserve(m.session, "playing", 5, 100, invalid)
     m.top = {request: {apiKey: "private"}, setFocus: sub(value)
@@ -130,4 +131,65 @@ sub main()
     m.top.request.growing = false
     if handleArchiveKey("rewind", true) then stop ' completed recording retains native path
     print "ALL TESTS PASSED"
+end sub
+
+sub checkColdVodPlayer()
+    m.global = {activeusersession: "holder"}
+    m.top = {visible: true, request: userViewEvent({coldToken: "cold-token", identity: "identity", mode: "vod"}, "holder")}
+    m.userSessionId = "holder"
+    m.session = mediaSession("account", "identity", "vod", "movie", 1000)
+    content = {serial: 1, isSameNode: function(other as dynamic) as boolean
+        return other <> invalid and m.serial = other.serial
+    end function}
+    m.video = {state: "playing", position: 0, duration: 600, visible: true, content: content, focused: true, hasFocus: function() as boolean
+        return m.focused
+    end function}
+    m.opening = false
+    m.startPaused = false
+    m.message = {}
+    m.coldVodContent = content
+    m.pendingResume = 0
+    m.coldVodResumeTarget = 0
+    if checkColdVodPlayback("cold-token", "identity", false) <> "" then stop
+    m.video.position = 1
+    if checkColdVodPlayback("cold-token", "identity", false) <> "ready" then stop
+    m.pendingResume = 85
+    m.coldVodPosition = invalid
+    if checkColdVodPlayback("old", "identity", true) <> "" then stop
+    if checkColdVodPlayback("cold-token", "identity", false) <> "" then stop
+    onMediaState()
+    if m.video.seek <> 85 or m.coldVodResumeTarget <> 85 then stop
+    m.video.position = 1
+    if checkColdVodPlayback("cold-token", "identity", false) <> "" then stop
+    m.video.position = 85
+    if checkColdVodPlayback("cold-token", "identity", false) <> "" then stop
+    m.video.position = 86
+    m.video.focused = false
+    if checkColdVodPlayback("cold-token", "identity", false) <> "" then stop
+    m.video.focused = true
+    if checkColdVodPlayback("cold-token", "identity", false) <> "" then stop
+    m.video.position = 87
+    if checkColdVodPlayback("cold-token", "identity", false) <> "ready" then stop
+    m.video.state = "buffering"
+    m.clock = {control: "start"}
+    m.elapsed = {totalSeconds: function() as integer
+        return 0
+    end function}
+    if checkColdVodPlayback("other-token", "identity", true) <> "" or m.session = invalid then stop
+    checkColdVodPlayback("cold-token", "identity", true)
+    if m.top.closedContext.coldResult <> "timeout" or m.top.closedContext.identity <> "identity" or m.top.visible then stop
+    m.session = invalid
+    m.video.hasField = function(field as string) as boolean
+        return true
+    end function
+    m.global.requestGateRequired = true
+    m.top.request = userViewEvent({coldToken: "cold-token", identity: "identity", mode: "vod"}, "holder")
+    m.top.request.url = "https://example.test/movie"
+    m.top.request.apiKey = ""
+    m.clock = {}
+    openMedia()
+    if m.top.closedContext.identity <> "identity" or m.top.closedContext.coldResult <> "denied" or m.top.visible then stop
+    m.global = invalid
+    m.session = invalid
+    m.coldVodContent = invalid
 end sub

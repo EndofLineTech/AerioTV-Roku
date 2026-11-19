@@ -43,7 +43,8 @@ sub onDeferredUserProfileLaunch()
     m.profileStartupDeferred = false
     m.profileStartupRoutingStarted = true
     raw = m.top.launchRequest
-    m.pendingLaunch = normalizeLaunchRequest(raw)
+    cold = m.top.launchFromMain = true and m.coldLaunchEligible = true
+    m.pendingLaunch = coldPlaybackLaunchRequest(raw, cold)
     m.profileLaunchPickerDeepLink = launchRequestHasMediaIntent(raw)
     m.startupVodIntent = launchRequestHasVodIntent(raw)
     entry = m.profileStartupLaunchConnection

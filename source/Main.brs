@@ -3,6 +3,7 @@ sub Main(args as dynamic)
     port = CreateObject("roMessagePort")
     screen.setMessagePort(port)
     scene = screen.createScene("AerioScene")
+    scene.launchFromMain = true
     if type(args) = "roAssociativeArray" then scene.launchRequest = args
     input = CreateObject("roInput")
     input.setMessagePort(port)
@@ -61,7 +62,10 @@ sub Main(args as dynamic)
         else if type(event) = "roInputEvent"
             if event.isInput()
                 request = event.getInfo()
-                if type(request) = "roAssociativeArray" then scene.launchRequest = request
+                if type(request) = "roAssociativeArray"
+                    scene.launchFromMain = false
+                    scene.launchRequest = request
+                end if
             end if
         end if
     end while

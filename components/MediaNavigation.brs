@@ -147,7 +147,7 @@ sub onVodPlay(event as object)
     started = startVodPlayback(event.getData(), "library")
 end sub
 
-function startVodPlayback(item as object, returnPage as string) as boolean
+function startVodPlayback(item as object, returnPage as string, linkOwner = invalid as dynamic) as boolean
     scope = normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId
     connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     directXtream = connection <> invalid and connection.provider = "xtream"
@@ -183,7 +183,16 @@ function startVodPlayback(item as object, returnPage as string) as boolean
     m.page = "onDemand"
     providerType = "dispatcharr"
     if directXtream then providerType = "xtream"
-    m.mediaPlayer.request = userViewEvent({account: m.accountIdentity, identity: identity, key: item.key, mode: "vod", providerType: providerType, url: url, title: item.title, apiKey: m.apiKey, streamFormat: item.streamFormat, resume: item.resume}, currentUserSessionId())
+    token = ""
+    if linkOwner <> invalid then token = textValue(linkOwner.request.coldToken)
+    if coldPlaybackCurrent(token)
+        m.coldPlayback.phase = "vod-renderer"
+        m.coldPlayback.identity = identity
+        m.coldPlayback.protection = linkOwner.protection
+    else
+        token = ""
+    end if
+    m.mediaPlayer.request = userViewEvent({account: m.accountIdentity, identity: identity, key: item.key, mode: "vod", providerType: providerType, url: url, title: item.title, apiKey: m.apiKey, streamFormat: item.streamFormat, resume: item.resume, coldToken: token}, currentUserSessionId())
     return true
 end function
 
@@ -191,6 +200,8 @@ sub onMediaClosed(event as object)
     if not m.mediaPlayer.isSameNode(event.getRoSGNode()) then return
     if not userEventCurrent(event.getData()) then return
     if m.page <> "onDemand" then return
+    closed = event.getData()
+    if textValue(closed.coldToken) <> "" and closed.identity <> m.mediaIdentity then return
     saveClosingArchiveBookmark()
     m.archiveSeeking = false
     cancelArchiveLoad()
@@ -206,6 +217,7 @@ sub onMediaClosed(event as object)
         m.page = "guide"
         m.guide.visible = true
         m.guide.active = true
+        if textValue(closed.coldToken) <> "" then settleColdPlayback(closed.coldToken, textValue(closed.coldResult))
         resumePendingVodDeepLink()
     end if
 end sub

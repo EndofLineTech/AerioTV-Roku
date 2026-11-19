@@ -17,6 +17,7 @@
     <function name="suspendArchive" />
     <function name="openArchiveActions" />
     <function name="handleArchiveKey" />
+    <function name="checkColdVodPlayback" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />

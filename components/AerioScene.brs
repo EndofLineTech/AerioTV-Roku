@@ -28,6 +28,10 @@ sub init()
     m.profileStartupScreenReady = false
     m.profileStartupRoutingStarted = false
     m.startupGuideReady = false
+    m.coldPlaybackClock = m.top.createChild("Timer")
+    m.coldPlaybackClock.duration = 0.5
+    m.coldPlaybackClock.repeat = true
+    m.coldPlaybackClock.observeField("fire", "checkColdPlayback")
     m.profileLaunchPickerResolved = false
     m.profileLaunchPickerDeepLink = false
     m.profileStartupIdentityRefusals = {}
@@ -277,6 +281,7 @@ sub init()
     m.page = "setup"
     m.pendingLaunch = invalid
     welcome = connectionWelcomeNeeded(m.connectionStore)
+    m.coldLaunchEligible = not welcome
     beginStartupBeacons(welcome)
     m.top.setFocus(true)
     if not welcome
@@ -331,14 +336,16 @@ function signalStartupComplete() as boolean
 end function
 
 sub onLaunchRequest()
+    raw = m.top.launchRequest
+    cold = m.top.launchFromMain = true and m.coldLaunchEligible = true
     if m.profileStartupDeferred = true then return
     if m.profileSwitcher <> invalid
-        if launchRequestHasMediaIntent(m.top.launchRequest) then closeUserProfileSwitcher()
+        if launchRequestHasMediaIntent(raw) then closeUserProfileSwitcher()
     end if
     if m.profileOwnSignInContext <> invalid
-        if m.profileOwnSignInContext.startupRecovery = true and launchRequestHasMediaIntent(m.top.launchRequest)
-            m.startupVodIntent = launchRequestHasVodIntent(m.top.launchRequest)
-            m.pendingLaunch = normalizeLaunchRequest(m.top.launchRequest)
+        if m.profileOwnSignInContext.startupRecovery = true and launchRequestHasMediaIntent(raw)
+            m.startupVodIntent = launchRequestHasVodIntent(raw)
+            m.pendingLaunch = normalizeLaunchRequest(raw)
             bindStartupVodDeepLink(m.pendingLaunch, m.profileStartupLaunchConnection)
             cancelUserProfileOwnSignIn()
             dismissStartupPickerForDeepLink()
@@ -346,12 +353,12 @@ sub onLaunchRequest()
         return
     end if
     if m.profileSwitchContext <> invalid then return
-    raw = m.top.launchRequest
     if not launchRequestHasMediaIntent(raw) then return
     beforeGuide = m.startupGuideReady <> true
     if beforeGuide then m.startupVodIntent = launchRequestHasVodIntent(raw)
+    retireColdPlayback("replaced")
     cancelVodDeepLink(true)
-    m.pendingLaunch = normalizeLaunchRequest(raw)
+    m.pendingLaunch = coldPlaybackLaunchRequest(raw, cold and beforeGuide)
     if m.pendingLaunch <> invalid
         if m.pendingLaunch.kind <> "live"
             if beforeGuide
@@ -394,6 +401,8 @@ function handlePendingLaunch() as boolean
         end if
     end if
     m.pendingLaunch = invalid
+    coldToken = textValue(request.coldToken)
+    if coldToken <> "" then beginColdPlayback(request)
     if request.kind <> "live"
         beginVodDeepLink(request)
         return false
@@ -401,10 +410,11 @@ function handlePendingLaunch() as boolean
     channel = m.guide.callFunc("channelByUuid", request.id)
     if channel = invalid
         showNotice("This channel is not available to your current connection.")
+        settleColdPlayback(coldToken, "unavailable")
         return false
     end if
     m.startMiniAfterPlayback = false
-    startPlayback(channel)
+    startPlayback(channel, false, false, false, 0, coldToken)
     return true
 end function
 
@@ -1300,8 +1310,9 @@ sub onWatchChannel(event as object)
     startPlayback(event.getData())
 end sub
 
-sub startPlayback(channel as object, forceRetune = false as boolean, useAac = false as boolean, preserveStartupBudget = false as boolean, tuneStartedAt = 0 as integer)
+sub startPlayback(channel as object, forceRetune = false as boolean, useAac = false as boolean, preserveStartupBudget = false as boolean, tuneStartedAt = 0 as integer, coldToken = "" as string)
     if userProfileGateClosed() then return
+    if coldToken = "" then retireColdPlayback("replaced")
     ' A same-channel automatic recovery is not a newer viewer tune.
     if not preserveStartupBudget
         if m.vodDeepLinkTask <> invalid then cancelVodDeepLink()
@@ -1322,6 +1333,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     if m.playingChannel <> invalid
         if not forceRetune and m.playingChannel.uuid = channel.uuid and m.video.state <> "error" and m.video.state <> "finished"
             expandPlayback()
+            settleColdPlayback(coldToken, "replaced")
             return
         end if
     end if
@@ -1341,10 +1353,11 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     end if
     if descriptor = invalid
         showPlaybackFailure(-4, "Channel or server information is missing or invalid.")
+        settleColdPlayback(coldToken, "unavailable")
         return
     end if
     cancelStartupWatch()
-    if deferRequiredAacTune(channel, forceRetune, useAac, preserveStartupBudget, tuneStartedAt) then return
+    if deferRequiredAacTune(channel, forceRetune, useAac, preserveStartupBudget, tuneStartedAt, coldToken) then return
     m.guide.active = false
     m.guide.visible = false
     m.screen.visible = false
@@ -1422,11 +1435,13 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     if not directM3u and not directXtream then playbackKey = m.apiKey
     if not requestGateTrackRenderer(m.video, content.url, playbackKey)
         m.video.content = invalid
+        if settleColdPlayback(coldToken, "denied") then stopPlayback()
         showNotice("Requests are paused for this account or server.")
         return
     end if
     m.page = "player"
     m.video.visible = true
+    bindColdLiveReader(coldToken, content)
     ' AerioVideo forwards keys to the Scene instead of native transport actions.
     print "[playback] tuning channel "; channel.number; " requested reader="; content.streamFormat
     focusPlaybackInput()
@@ -1624,6 +1639,9 @@ sub hideBanner()
 end sub
 
 sub stopPlayback(preserveGuideVod = false as boolean)
+    if m.coldPlayback <> invalid
+        if m.coldPlayback.failing <> true and (coldLiveReaderToken() <> "" or coldAacToken() <> "") then retireColdPlayback("cancelled")
+    end if
     if not preserveGuideVod and m.vodDeepLinkTask <> invalid then cancelVodDeepLink()
     cancelHlsMint()
     if m.settingsHub <> invalid then m.settingsHub.active = false
@@ -1684,6 +1702,7 @@ sub minimizePlayback(fromRemote = false as boolean)
     cancelHeldZap()
     restorePicture()
     if m.playingChannel = invalid then return
+    if coldLiveReaderToken() <> "" then retireColdPlayback("cancelled")
     m.channelTuneTimer.control = "stop"
     m.pendingChannel = invalid
     m.playerOptions.active = false
@@ -2734,7 +2753,7 @@ sub checkPlaybackAudio()
         wasHidden = m.pictureCover.visible
         wasInfo = m.userInfoOpen
         channel = m.playingChannel
-        startPlayback(channel, true, true, true)
+        startPlayback(channel, true, true, true, 0, coldLiveReaderToken())
         if wasMini then minimizePlayback()
         if wasHidden then hidePicture()
         if wasInfo then togglePlayerInfo()

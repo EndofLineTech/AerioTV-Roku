@@ -23,9 +23,12 @@ sub failLivePlayback(code as integer, detail as string)
     if m.playingChannel <> invalid
         context = {channel: m.playingChannel, account: m.accountIdentity, useAac: m.activeAudioProfile <> "", mini: m.mini}
     end if
+    token = coldLiveReaderToken()
+    if token <> "" then m.coldPlayback.failing = true
     stopPlayback()
     m.playbackRetry = context
     showPlaybackFailure(code, detail)
+    settleColdPlayback(token, "failed")
 end sub
 
 sub showPlaybackFailure(code as integer, detail as string)

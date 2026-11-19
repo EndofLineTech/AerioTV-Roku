@@ -10,7 +10,7 @@ live Dashboard or Beads status check.
 
 | Finding | Implemented at the baseline / local delta | Native or portal evidence already recorded | What is still needed |
 | --- | --- | --- | --- |
-| `z2l` — cold deep-link launch timing | `signalStartupComplete` emits at Welcome or the guide, **before** dispatching a playable cold link. The local patch fences live dispatch until guide readiness and prevents a saved mini tune replacing a matched live link; it does **not** move the beacon. | Historical live playback and launch beacons are separate observations, not proof of beacon order on direct-to-play. | On an already authorized cold link, correlate playback start, remote operation and beacon time. The baseline has a source-level ordering gap against the documented playback stop point. A separate change needs to track the actual linked player/attempt through retries, replacement, denial and exit, without delaying an unlinked Welcome or weakening PIN/Child gates. |
+| `z2l` — cold deep-link launch timing | `signalStartupComplete` still emits at Welcome or Guide, **before** dispatching a playable cold link. Local app-side tracking now distinguishes the cold attempt from warm input and checks current renderer, playback advance and focus. | Historical live playback and launch beacons are separate observations; host field adapters are not native Video or remote evidence. | On an authorized cold link, verify on the exact native build that the observed position advance belongs to the intended reader and that a remote action works. Beacon timing and certification remain pending. |
 | `grq` — `AppLaunchComplete` | `StartupBeaconModel` makes completion once per app session. Unattended Welcome completes; authorized guide completes if not already sent. A saved sign-in or protected startup can withhold completion until its real UI boundary. | 0.3.85 Welcome (1,641 ms); 0.3.89 saved-key guide, dialog pair then launch; 0.3.90 fresh Welcome and saved-key launches. The snapshot records a 0.3.89 launch-only cloud failure, 0.3.90 cloud **reboots** (not proof of a missing app call), and both a reported 0.3.92 cloud pass and a later reported missing-beacon error. | Exact candidate: unattended fresh Welcome, saved authorized launch, valid recovery/re-login and protected cancel/exit traces. For a cloud discrepancy collect run ID, exact script, starting sign-in/registry state, model/OS, logs and reboot reason if applicable. Do not move the beacon ahead of a usable screen to make the launch-only test green. |
 | `e19` — input launch | Manifest enables input launch. `Main(args)` and `roInputEvent.isInput()` feed `launchRequest`; the parser accepts case-insensitive `live`, `livefeed`/`liveFeed` and bounded private movie/episode/series IDs. Live uses the current lineup. VOD uses the authenticated Dispatcharr holder, rechecks ownership/protection and does not accept link-supplied URLs or credentials. `bfb0f9b` and private VOD commits `8d9214d`/`c06df16`/`49917e3` are in the baseline. | 0.3.85 malformed checks; 0.3.89 authorized liveFeed cold/warm native `play`; 0.3.94 exact cloud-shaped `contentID` + `mediatype=live` reached native `play` cold/warm and in a fresh setup replay. Later [picker evidence](PROFILE-PICKER.md) includes unavailable/guarded link cases, not successful protected VOD playback. 0.3.92 Cloud Deep Linking Basic reported no player events; the old alias rejection is known, but later cloud sample, authentication and codec questions are not resolved by that fix. | Exact-build cold/warm playback and remote checks with authorized samples, plus malformed/unavailable, no-credential and stale/PIN/Child cases. No verified new Dashboard pass, complete VOD/media-type acceptance or BYO exemption. |
 | `mw1` — EPG timing | `c236658` is in the baseline. Real remote return requests the first EPG interval; the guide signals completion after draw and focus. A guide on initial startup does not fake a keypress. | [0.3.91](EPG-BEACON-0.3.91.md) on 3820RW2 / OS 15.3.4 observed Launch → EPG Initiate → EPG Complete, with live video retained in mini; not a qualifying timing run. | Record eligible return-to-guide timing on the same candidate. The checked-in Roku performance reference limits eligibility to intervals initiated within five seconds of launch completion. If EPG-as-home applicability is unclear, record that separately; don't synthesize an interval. Signed/cloud outcome missing. |
@@ -148,19 +148,24 @@ HTTP 200 cannot stand in for playback. A first-run Welcome must remain an
 operable fallback with one beacon; neither a locked PIN/Child screen nor a
 cancelled launch should be marked as successful playback.
 
-The relevant checked-in seams are:
+The app treats only normalized media arguments from `Main` on an existing
+connection as eligible for cold tracking. An `roInput` request, even with
+identical IDs during startup, supersedes rather than inherits that identity.
+The deadline starts at authorized Guide dispatch, not while waiting for setup,
+PIN, protected Child access, or user onboarding.
 
-| Path | What the code actually observes | What is missing for a cold-link beacon |
-| --- | --- | --- |
-| Live | `AerioScene.onVideoState` reads native `Video.state` and `startPlayback` gives the Video focus. `HlsSessionLifecycle` associates the mint with an exact Task and ContentNode. `StartupRecovery` tracks the current ContentNode and has bounded buffering recovery. | `playing` isn't published to launch accounting with an attempt identity, current holder, and confirmed input ownership. AAC can defer before a ContentNode exists; retunes/retries replace the content. A guard for the exact linked attempt must not be satisfied by an older or unrelated player. |
-| VOD | `VodDeepLinkNavigation` checks the account and current scope at both ends. `OnDemandPlayer` reports session-tagged progress and an error diagnostic; it handles the resume seek before normal progress. | The periodic progress report is not a dedicated ready event. The Scene filters it for bookmarking, which has different requirements. `openMedia` can refuse the renderer before creating a session; this branch returns without a session-tagged terminal outcome. There is no corresponding bounded VOD opener that reports a usable fallback if media never starts. |
-| Fallback | An unknown live ID leaves Guide; a VOD miss can show an unavailable notice. Live AAC/HLS/video failure has several separate exit paths; VOD native errors expose Retry/Back, and close returns to Guide. | Publish a terminal result from the *matching* attempt only after an actual navigable fallback is present. A deadline can terminate a stuck attempt if the player establishes that behavior, but elapsed time alone must never complete launch. |
+| Path | Local evidence and fallback |
+| --- | --- |
+| Live | The attempt is bound to the current holder and passed through mandatory AAC discovery to the exact ContentNode. HLS mint blocks readiness until the existing Task/content fence releases it. Local startup/midstream retries replace the tracked ContentNode and reset position evidence. The 390-second outer ceiling preserves the existing AAC, mint and startup retry budgets and falls back through the existing Guide/Retry dialog only while the linked tune still owns playback. |
+| Dispatcharr VOD | The authorized resolver Task hands off to a tagged media request and playback identity; the player checks the current ContentNode and waits for an advancing position at or beyond a requested resume seek. The 60-second ceiling includes resolution and can cancel the exact resolver or close the linked renderer to Guide. Renderer denial before a media session still reports a tagged close, and existing focused Retry/Back counts as terminal failure, not playback. |
 
-Before changing accounting, require a host red/green test for a single exact
-attempt through resolution, buffering, first playing with foreground input
-ownership, duplicate events, replacement/retry, and terminal fallback. Include
-no-session request denial; initial/resume VOD; live AAC/HLS failure; unrelated
-stream events; Back/Home; ordinary Guide and Welcome; and locked/refused Child
-and PIN recovery. Then validate the resulting event order and an actual remote
-action on the exact native candidate. No new beacon, timeout-based completion,
-or recovery/player lifecycle change is made by the local prep patch.
+`ColdLivePlayback`, `VodDeepLinkNavigation` and `OnDemandPlayer` exercise
+production handlers with host adapters: focus and progress, replacement,
+missing media, pre-session renderer denial, and bounded fallback. This does not
+establish that Roku's untagged native Video state/playhead fields always describe
+the replacement reader immediately after a retune. Focus is not proof that a
+physical remote action works. On the exact native candidate, verify the live
+and supported VOD event order across retry/retune and resume, actual remote
+operation, Back/Home, and gated/no-media fallback; also check ordinary launch
+and warm input. Until then, the app-side outcome is diagnostic only and never
+emits or defers `AppLaunchComplete`.

@@ -96,6 +96,7 @@ suites.unshift('UserProfileDefaultReplacement');
 suites.unshift('UserProfileLiveDefault');
 suites.unshift('UserProfileStore');
 suites.unshift('StartupBeaconModel');
+suites.unshift('ColdLivePlayback');
 suites.splice(suites.indexOf('GuideUnifiedSearch'), 0, 'ProgramSearchView');
 suites.push('DispatcharrSyncWriteBody');
 suites.push('DispatcharrSyncRosterWrite');
@@ -109,11 +110,16 @@ suites.push('CatchupTask');
 suites.push('XtreamGuideOverride');
 suites.push('PlayerControls');
 suites.push('MemoryCleanup');
-for (const suite of suites) {
+const requested = process.argv.slice(2);
+for (const name of requested) {
+  if (!suites.includes(name)) throw new Error(`Unknown suite: ${name}`);
+}
+for (const name of requested.length ? requested : suites) {
+  const suite = name === 'ColdLivePlayback' ? 'PlayerLifecycle' : name;
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', ...(suite === 'MemoryCleanup' ? [] : ['source/SceneUi.brs']), 'source/TaskSupport.brs',
-    'components/VodDeepLinkNavigation.brs',
+    'components/VodDeepLinkNavigation.brs', 'components/ColdPlayback.brs',
     ...(suite === 'ProgramDetailRecovery' ? ['components/ProgramDetailTask.brs'] : []),
     ...(['LaunchModel', 'VodSeriesTask', 'PlayerLifecycle', 'VodDeepLinkNavigation'].includes(suite) ? ['source/LaunchModel.brs'] : []),
     ...(suite === 'VodDeepLinkNavigation' ? ['components/MediaNavigation.brs', 'components/UserProfileNavigation.brs', 'source/UserProfileScope.brs', 'source/ConnectionStoreModel.brs', 'source/UserProfileModel.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileCredential.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/UserProfileStore.brs', 'source/StrictJson.brs'] : []),
@@ -309,15 +315,17 @@ for (const suite of suites) {
     ...(suite === 'MappingTask' ? ['components/MappingTask.brs'] : []),
     ...(suite === 'MappingDetailModel' ? ['components/MappingDetailFetch.brs'] : []),
     `tests/${suite}.test.brs`,
+    ...(suite === 'PlayerLifecycle' ? [`tests/entries/${name}.brs`] : []),
   ], { encoding: 'utf8' });
   process.stdout.write(result.stdout ?? '');
   process.stderr.write(result.stderr ?? '');
   if (result.error) throw result.error;
   if (result.status !== 0 || !result.stdout.includes('ALL TESTS PASSED')) {
-    process.stderr.write(`Failed suite: ${suite}\n`);
+    process.stderr.write(`Failed suite: ${name}\n`);
     process.exit(1);
   }
 }
+if (requested.length) process.exit(0);
 
 const profileSuite = spawnSync(process.execPath, [
   'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',

@@ -49,11 +49,15 @@ sub openMedia()
     if request = invalid then return
     if not userEventCurrent(request) then return
     m.userSessionId = userViewSession(request)
+    m.coldVodContent = invalid
+    m.coldVodPosition = invalid
+    m.coldVodResumeTarget = 0
     if not requestGateTrackRenderer(m.video, request.url, request.apiKey)
         m.video.control = "stop"
         m.video.content = invalid
         m.message.visible = true
         m.message.text = "Requests are paused for this account or server. Back returns."
+        if textValue(request.coldToken) <> "" then closeMedia("denied")
         return
     end if
     cancelArchiveScrub()
@@ -89,6 +93,7 @@ sub openMedia()
     m.resumeWatch = invalid
     if request.resume <> invalid then m.pendingResume = int(request.resume)
     m.video.content = content
+    if textValue(request.coldToken) <> "" then m.coldVodContent = content
     print "[on-demand] reader="; content.streamFormat; " mode="; request.mode
     appControls = request.mode = "catchup" or (request.mode = "recording" and request.growing = true)
     m.video.enableUI = not appControls
@@ -118,6 +123,7 @@ sub onMediaState()
             target = m.pendingResume
             m.pendingResume = 0
             if m.video.duration > target
+                if m.coldVodContent <> invalid then m.coldVodResumeTarget = target
                 m.message.text = "Resuming..."
                 if m.session.mode = "recording" then print "[dvr-resume] seeking saved second="; target
                 if m.session.mode = "recording"
@@ -361,7 +367,45 @@ sub renderRecordingProgress()
     end if
 end sub
 
-sub closeMedia()
+function checkColdVodPlayback(token as string, identity as string, expired as boolean, foreground = true as boolean) as string
+    request = m.top.request
+    if request = invalid or token = "" then return ""
+    if request.coldToken <> token or request.identity <> identity or not userEventCurrent(request) then return ""
+    if m.session = invalid or m.session.identity <> identity then return ""
+    if m.video.content <> invalid and m.coldVodContent <> invalid
+        if not m.coldVodContent.isSameNode(m.video.content) then return "replaced"
+    end if
+    if expired or m.video.content = invalid
+        result = "timeout"
+        if not expired then result = "denied"
+        closeMedia(result)
+        ' onMediaClosed settles only once the Guide has been restored.
+        return ""
+    end if
+    if not foreground
+        m.coldVodPosition = invalid
+        return ""
+    end if
+    if m.mediaFailed = true and m.top.visible and m.top.hasFocus() then return "failed"
+    if m.coldVodContent = invalid then return ""
+    if m.top.visible and m.video.visible and m.video.state = "playing" and m.opening <> true and requestGateRendererAllowed(m.video)
+        if m.video.hasFocus() and m.pendingResume = 0 and mediaNumber(m.video.position)
+            position = m.video.position
+            if position >= m.coldVodResumeTarget
+                previous = m.coldVodPosition
+                m.coldVodPosition = position
+                if mediaNumber(previous)
+                    if position > previous then return "ready"
+                end if
+                return ""
+            end if
+        end if
+    end if
+    m.coldVodPosition = invalid
+    return ""
+end function
+
+sub closeMedia(coldResult = "cancelled" as string)
     cancelArchiveScrub()
     hideRecordingOverlay()
     closeArchiveActions()
@@ -377,17 +421,30 @@ sub closeMedia()
         m.top.closed = true
         return
     end if
-    if m.session = invalid then return
-    m.closing = true
-    reportProgress()
-    mediaEnd(m.session)
+    closed = {closed: true}
+    request = m.top.request
+    if request <> invalid
+        if textValue(request.coldToken) <> ""
+            closed.coldToken = request.coldToken
+            closed.identity = request.identity
+            closed.coldResult = coldResult
+            if m.finished = true and m.session <> invalid and coldResult = "cancelled" then closed.coldResult = "finished"
+        end if
+    end if
+    if m.session = invalid and closed.coldToken = invalid then return
+    if m.session <> invalid
+        m.closing = true
+        reportProgress()
+        mediaEnd(m.session)
+    end if
     m.session = invalid
     m.clock.control = "stop"
     m.video.control = "stop"
     m.video.content = invalid
+    m.coldVodContent = invalid
     m.top.request = invalid
     m.top.visible = false
-    m.top.closedContext = userViewEvent({closed: true}, m.userSessionId)
+    m.top.closedContext = userViewEvent(closed, m.userSessionId)
     m.top.closed = true
 end sub
 

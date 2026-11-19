@@ -1,5 +1,5 @@
 ' Gate mandatory AAC before constructing/opening any new media request.
-function deferRequiredAacTune(channel as object, forceRetune as boolean, useAac as boolean, preserveBudget as boolean, tuneStartedAt = 0 as integer) as boolean
+function deferRequiredAacTune(channel as object, forceRetune as boolean, useAac as boolean, preserveBudget as boolean, tuneStartedAt = 0 as integer, coldToken = "" as string) as boolean
     if m.devicePreferences.audioMode <> "aac" and not useAac then return false
     if m.aacProfile <> invalid then return false
     if m.devicePreferences.audioMode = "auto" and m.ac3Profile <> invalid then return false
@@ -8,8 +8,12 @@ function deferRequiredAacTune(channel as object, forceRetune as boolean, useAac 
     m.pendingAacTune = {
         channel: channel, forceRetune: forceRetune, preserveBudget: preserveBudget
         account: m.accountIdentity, mode: m.devicePreferences.audioMode, clock: clock
-        tuneStartedAt: tuneStartedAt
+        tuneStartedAt: tuneStartedAt, coldToken: coldToken
     }
+    if coldPlaybackCurrent(coldToken)
+        m.coldPlayback.phase = "aac"
+        m.coldPlayback.waitPage = m.page
+    end if
     m.guide.pendingTune = true
     m.aacWaitingMessage = "Waiting for the existing AAC profile... Back or Stop cancels this tune."
     showNotice(m.aacWaitingMessage)
@@ -36,6 +40,17 @@ end function
 sub processAacWait()
     request = m.pendingAacTune
     if request = invalid then return
+    token = textValue(request.coldToken)
+    if token <> "" and m.coldPlayback <> invalid
+        if m.coldPlayback.token = token and not coldPlaybackCurrent(token)
+            cancelAacWait()
+            settleColdPlayback(token, "cancelled")
+            return
+        end if
+    end if
+    ' A warm replacement can retain a deferred tune under the existing VOD
+    ' hold policy. It must not inherit cold readiness or the cold deadline.
+    if not coldPlaybackCurrent(token) then token = ""
     if request.account <> m.accountIdentity or request.mode <> m.devicePreferences.audioMode
         cancelAacWait()
         return
@@ -61,7 +76,11 @@ sub processAacWait()
         return
     else if m.aacProfile <> invalid
         cancelAacWait()
-        startPlayback(request.channel, request.forceRetune, true, request.preserveBudget, request.tuneStartedAt)
+        if token <> ""
+            startPlayback(request.channel, request.forceRetune, true, request.preserveBudget, request.tuneStartedAt, token)
+        else
+            startPlayback(request.channel, request.forceRetune, true, request.preserveBudget, request.tuneStartedAt)
+        end if
         return
     else if m.aacDiscoveryState = "unavailable" or m.aacDiscoveryState = "error"
         message = m.aacDiscoveryMessage
@@ -69,6 +88,7 @@ sub processAacWait()
     if message <> ""
         cancelAacWait()
         showAacUnavailable(request, message)
+        settleColdPlayback(token, "failed")
     end if
 end sub
 
@@ -88,7 +108,12 @@ function retryUnsupportedAacDecode(code as integer, detail as string) as boolean
     m.aacDecodeRetried = true
     channel = m.playingChannel
     tuneStartedAt = m.liveSession.openedAt
-    startPlayback(channel, true, true, true, tuneStartedAt)
+    token = coldLiveReaderToken()
+    if token <> ""
+        startPlayback(channel, true, true, true, tuneStartedAt, token)
+    else
+        startPlayback(channel, true, true, true, tuneStartedAt)
+    end if
     print "[audio-recovery] local compatible profile 1/1"
     return true
 end function

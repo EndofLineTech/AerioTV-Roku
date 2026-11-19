@@ -1,4 +1,4 @@
-sub main()
+sub runPlayerLifecycleChecks()
     ' Exercise the actual Scene handlers with field adapters. This proves control
     ' routing and lack of retune writes, not native video-plane/audio behavior.
     m.top = {dialog: invalid, setFocus: function(value as boolean) as boolean
@@ -547,7 +547,6 @@ sub main()
     checkFocusedRecoveryResume()
     checkPictureRecoveryPauseIsolation()
     checkPictureRecoveryPauseCleanup()
-    print "ALL TESTS PASSED"
 end sub
 
 sub checkRecoveryReadyRadioClassification()
@@ -1118,6 +1117,168 @@ sub runStartupLiveLinkChecks()
     assertEqual(task.cancelRequested and task.detached, true, "Back retires the warm VOD task")
     assertEqual(m.pendingAacTune, invalid, "Back discards held AAC instead of restoring it")
     assertEqual(m.page, "player", "Back with a held tune preserves existing player surface")
+end sub
+
+sub runColdLiveAttemptChecks()
+    resetOwnedHlsFixture()
+    m.startupBeaconSent = false
+    m.startupDialogOpen = false
+    m.top.beacons = []
+    m.top.signalBeacon = sub(name as string)
+        m.beacons.push(name)
+    end sub
+    m.coldPlaybackClock = {control: "stop"}
+    for each landing in ["welcome", "guide"]
+        beginStartupBeacons(landing = "welcome")
+        m.page = landing
+        signalStartupComplete()
+        signalStartupComplete()
+        assertEqual(m.top.beacons.pop(), "AppLaunchComplete", "ordinary landing keeps its one launch beacon")
+        expected = 0
+        if landing = "guide" then expected = 2
+        assertEqual(m.top.beacons.count(), expected, "ordinary launch never emits another completion")
+        assertEqual(m.coldPlaybackClock.control, "stop", "ordinary startup never arms the media deadline")
+        m.top.beacons = []
+    end for
+    beginStartupBeacons(true)
+    m.heldZap = ""
+    m.pictureWakeKey = ""
+    m.accountPreferences.videoAspects = {}
+    m.startupGuideReady = false
+    m.page = "setup"
+    m.top.exitRequested = false
+    m.coldLaunchEligible = true
+    m.top.launchFromMain = true
+    m.top.launchRequest = {contentID: "a", mediaType: "live"}
+    onLaunchRequest()
+    assertEqual(m.coldPlayback = invalid, true, "cold input cannot start the deadline before admission")
+    m.page = "guide"
+    m.guide.visible = true
+    m.guide.active = true
+    m.guide.callFunc = function(name as string, id as dynamic, now = 0 as integer) as dynamic
+        if name = "channelByUuid" and id = "a" then return {uuid: "a", name: "Exact title"}
+        return invalid
+    end function
+    m.playingChannel = invalid
+    m.devicePreferences.audioMode = "aac"
+    m.aacDiscoveryState = "pending"
+    m.capabilityTask = {}
+    m.aacProfile = invalid
+    m.aacWaitTimer = {control: "stop"}
+    m.hlsAvailable = false
+    m.screen = {visible: false}
+    m.videoViewport = {}
+    m.video.setFocus = function(focused as boolean) as boolean
+        m.focused = focused
+        return true
+    end function
+    if m.accountPreferences.videoAspects = invalid then m.accountPreferences.videoAspects = {}
+    m.global.profilegateclosed = true
+    m.startupGuideReady = true
+    handlePendingLaunch()
+    assertEqual(m.coldPlayback, invalid, "closed protection gate cannot start cold playback")
+    m.global.profilegateclosed = false
+    signalStartupComplete()
+    assertEqual(m.top.beacons[0], "AppLaunchComplete", "prerequisite does not move the existing startup beacon")
+    assertEqual(m.coldPlayback.kind, "live", "matched cold link owns a real Scene tune")
+    assertEqual(m.pendingAacTune.coldToken, m.coldPlayback.token, "AAC continuation carries the exact attempt")
+    assertEqual(m.coldPlaybackClock.control, "start", "watchdog includes pre-render AAC")
+    checkColdPlayback()
+    assertEqual(m.coldPlayback <> invalid, true, "AAC wait is not foreground readiness")
+    m.aacProfile = {id: "7"}
+    processAacWait()
+    assertEqual(m.coldPlayback.reader.isSameNode(m.video.content), true, "AAC transfers ownership to the reader")
+    m.video.state = "playing"
+    m.video.hasFocus = function() as boolean
+        return m.focused
+    end function
+    m.video.focused = true
+    m.video.position = 10
+    checkColdPlayback()
+    assertEqual(m.coldPlayback <> invalid, true, "one playing sample cannot settle startup")
+    m.video.focused = false
+    m.video.position = 11
+    checkColdPlayback()
+    assertEqual(m.coldPlayback <> invalid, true, "unfocused playback cannot settle startup")
+    m.video.focused = true
+    m.video.state = "buffering"
+    ' The host ContentNode adapter does not implement clone(). Use the same
+    ' fake cloneable node as the existing HLS/TS retry tests.
+    m.video.content = lifecycleRetryContent(220)
+    bindColdLiveReader(m.coldPlayback.token, m.video.content)
+    beginStartupWatch(m.video.content)
+    assertEqual(retryStartupPlayback(), true, "real startup retry creates a replacement reader")
+    m.video.state = "playing"
+    m.video.position = 12
+    checkColdPlayback()
+    assertEqual(m.coldPlayback <> invalid, true, "new reader cannot reuse an outgoing position sample")
+    m.video.position = 13
+    checkColdPlayback()
+    assertEqual(m.coldPlaybackOutcome.result, "ready", "only the focused advancing replacement settles the attempt")
+    checkColdPlayback()
+    assertEqual(m.coldPlaybackClock.control, "stop", "settling is one-shot")
+
+    resetOwnedHlsFixture()
+    request = coldPlaybackLaunchRequest({contentId: "a", mediaType: "live"}, true)
+    beginColdPlayback(request)
+    bindColdLiveReader(request.coldToken, m.video.content)
+    beginOwnedHlsPlayback(m.video.content)
+    m.video.state = "playing"
+    m.video.visible = true
+    checkColdPlayback()
+    assertEqual(m.coldPlayback.position, invalid, "outgoing playing state during HLS mint supplies no readiness evidence")
+    onHlsSessionOpened(hlsFixtureEvent(m.hlsMintTask, {ok: false, status: 503}))
+    assertEqual(m.coldPlaybackOutcome.result, "failed", "exact failed HLS mint settles with Guide fallback")
+
+    for each terminal in ["failed", "replaced", "cancelled"]
+        resetOwnedHlsFixture()
+        m.coldPlaybackClock = {control: "stop"}
+        request = coldPlaybackLaunchRequest({contentId: "a", mediaType: "live"}, true)
+        beginColdPlayback(request)
+        bindColdLiveReader(request.coldToken, m.video.content)
+        m.coldPlayback.clock = {totalMilliseconds: function() as integer
+            return 390000
+        end function}
+        if terminal = "replaced" then m.video.content = lifecycleRetryContent(99)
+        if terminal = "cancelled" then m.global.profilegateclosed = true
+        checkColdPlayback()
+        assertEqual(m.coldPlaybackOutcome.result, terminal, "deadline settles only still-owned playback")
+        if terminal = "failed"
+            assertEqual(m.guide.active and m.guide.visible, true, "expired cold reader returns to usable Guide and Retry/Back")
+        else
+            assertEqual(m.video.content <> invalid, true, "deadline does not tear down a replaced or protected renderer")
+        end if
+    end for
+    resetOwnedHlsFixture()
+    m.startupBeaconSent = true
+    m.startupGuideReady = false
+    m.page = "setup"
+    m.top.launchFromMain = true
+    m.top.launchRequest = {contentId: "missing", mediaType: "live"}
+    onLaunchRequest()
+    m.page = "guide"
+    m.guide.visible = true
+    m.guide.active = true
+    m.guide.callFunc = function(name as string, id as dynamic) as dynamic
+        return invalid
+    end function
+    signalStartupComplete()
+    assertEqual(m.coldPlaybackOutcome.result, "unavailable", "unavailable link settles on the Guide")
+    assertEqual(m.guide.active, true, "unavailable link leaves the Guide usable")
+    m.startupGuideReady = false
+    m.page = "setup"
+    m.top.launchFromMain = true
+    m.top.launchRequest = {contentId: "a", mediaType: "live"}
+    onLaunchRequest()
+    assertEqual(textValue(m.pendingLaunch.coldToken) <> "", true, "Main args mark an eligible cold request")
+    m.top.launchFromMain = false
+    onLaunchRequest()
+    assertEqual(textValue(m.pendingLaunch.coldToken), "", "identical warm input supersedes, not inherits, the cold attempt")
+    m.top.launchFromMain = true
+    m.coldLaunchEligible = false
+    m.page = "welcome"
+    onLaunchRequest()
+    assertEqual(textValue(m.pendingLaunch.coldToken), "", "Welcome never defers startup or starts the deadline for credentials")
 end sub
 
 sub runProvisionalVodLaunchChecks()
