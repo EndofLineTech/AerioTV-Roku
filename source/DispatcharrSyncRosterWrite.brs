@@ -100,7 +100,12 @@ function dispatcharrSyncProfilesWritePlan(store as object, data as dynamic, enab
         if profile.updatedAt > newestLocal then newestLocal = profile.updatedAt
     end for
     maxSentStamp = 0&
-    localProfiles = userProfileSorted(merged.store.profiles)
+    localProfiles = []
+    for each profile in userProfileSorted(merged.store.profiles)
+        ' Keep any existing peer row in the write base, but do not publish
+        ' provisional local metadata or protection for a deferred Add.
+        if profile.addOrigin <> "paused" then localProfiles.push(profile)
+    end for
     for localIndex = 0 to localProfiles.count() - 1
         profile = localProfiles[localIndex]
         remote = invalid

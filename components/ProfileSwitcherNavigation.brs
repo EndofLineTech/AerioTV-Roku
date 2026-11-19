@@ -186,7 +186,7 @@ sub startUserProfileSwitcherSelection(targetId as string)
     if not userProfileSwitcherCurrent() then return
     for each profile in m.profileSwitcherContext.store.profiles
         if profile.id = targetId and profile.addOrigin = "paused"
-            m.profileSwitcher.message = "This profile is waiting for its saved protection to sync."
+            m.profileSwitcher.message = "Remove this pending profile, then add it again after resolving saved addresses."
             return
         end if
     end for

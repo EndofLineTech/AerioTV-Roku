@@ -53,16 +53,14 @@ function dispatcharrSyncRosterMerge(store as object, decoded as object, enabled 
             row = remoteRows[name]
             usable = false
             if row <> invalid then usable = row.updatedAt > removedAt
-            if usable
+            ' A playlist roster can contribute a candidate row to a normal
+            ' Add, but cannot replace the deferred holder's own safety read.
+            if usable and profile.addOrigin <> "paused"
                 if row.userId > 0 and row.userId <> profile.userId then return denied
-                if profile.addOrigin = "paused" and row.pinAction = "keep" then return denied
                 if dispatcharrSyncShouldRepairProfile(profile, row) then cleaned = setCanonicalPreference(cleaned, "pendingRoster", true)
                 profile = dispatcharrSyncMergeProfile(profile, row, now)
-            else if profile.addOrigin = "paused"
-                profile = setCanonicalPreference(profile, "addOrigin", "plain")
-                cleaned = setCanonicalPreference(cleaned, "pendingRoster", true)
             end if
-            if removedAt >= 0 and profile.updatedAt > removedAt then tombstones.delete(name)
+            if profile.addOrigin <> "paused" and removedAt >= 0 and profile.updatedAt > removedAt then tombstones.delete(name)
             retained.push(profile)
         end if
     end for
@@ -107,29 +105,26 @@ function dispatcharrSyncMergeProfile(profile as object, row as object, now as in
     if dispatcharrSyncShouldRepairProfile(profile, row)
         return setCanonicalPreference(profile, "updatedAt", now)
     end if
-    settlement = profile.addOrigin = "paused"
-    full = row.updatedAt > profile.updatedAt or (localStripped and not remoteStripped and profile.updatedAt >= row.updatedAt) or settlement
+    if profile.addOrigin = "paused" then return profile
+    full = row.updatedAt > profile.updatedAt or (localStripped and not remoteStripped and profile.updatedAt >= row.updatedAt)
     result = copyJson(profile)
     if full
         if row.displayName.trim() <> "" then result = setCanonicalPreference(result, "displayName", userProfileDisplayName(row.displayName))
         if row.role <> "" then result = setCanonicalPreference(result, "role", userProfileResolveRole(profile.userLevel, row.role))
         if row.avatarPresent then result = setCanonicalPreference(result, "avatar", row.avatar)
         if row.order >= 0 then result = setCanonicalPreference(result, "order", row.order)
-        if row.pinAction <> "keep" and (not settlement or row.pinAction = "replace")
+        if row.pinAction <> "keep"
             if row.pinType <> profile.pinType or row.pinHash <> profile.pinHash or row.pinSalt <> profile.pinSalt then result = setCanonicalPreference(result, "pinLength", 0)
             result = setCanonicalPreference(result, "pinType", row.pinType)
             result = setCanonicalPreference(result, "pinHash", row.pinHash)
             result = setCanonicalPreference(result, "pinSalt", row.pinSalt)
         end if
-        stamp = row.updatedAt
-        if settlement and stamp = 0 then stamp = now
-        result = setCanonicalPreference(result, "updatedAt", stamp)
+        result = setCanonicalPreference(result, "updatedAt", row.updatedAt)
     end if
     if not remoteStripped
         if not profile.displayNameClaimed and row.displayName.trim() <> "" then result = setCanonicalPreference(result, "displayName", userProfileDisplayName(row.displayName))
         if not profile.avatarClaimed and row.avatarPresent then result = setCanonicalPreference(result, "avatar", row.avatar)
     end if
-    if settlement then result = setCanonicalPreference(result, "addOrigin", "roster")
     return result
 end function
 

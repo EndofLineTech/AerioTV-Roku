@@ -53,10 +53,12 @@ The focused source-row regression is
   During Add, a safety read may refuse a protected holder when Profiles is Off;
   it never applies the target roster. During an address pause, Add verifies its
   own credentials without the App Data read and records a durable paused
-  origin. That holder cannot launch or switch in while its protection is
-  unresolved. Undo remains local and does not acknowledge other edits. The
-  first applying pull settles the origin if the matching row is usable, or
-  marks a plain Add pending if there is no matching row. A keyless sibling
+  origin. That holder cannot launch, switch in, or be published by Sync. A
+  roster read under a different holder is not the deferred holder's required
+  own-protection check, whether or not the read contains a matching row.
+  Undo remains local and does not acknowledge other edits. After resolving
+  the address holds, Undo and use normal Add to read the holder's own
+  protection. A keyless sibling
   still pauses the entire slot. After the final hold lifts, the durable write
   fence survives failed reads, backoff, and session changes until a current
   own pull commits. Pending edits still require a separate acknowledgement.
@@ -133,7 +135,7 @@ fixture or modify the Roku registry.
 | Explicit adoption; manual match keeps stamp and protection | `ProfileOwnSignInNavigation`, `UserProfileOwnSignIn` and `out/mrr-delivery-source-roster-onboarding-native.json`. Choosing a suggestion only prefills the username. A newer valid matching peer row can restore a removed user; imported Child Add still requires all existing adults to have PINs. | The complete peer-controlled Add/Undo and PIN-required continuation on physical clients. |
 | Strict merge, stamps, claims, cap, tails | `DispatcharrSyncMerge`, `DispatcharrSyncRoster`, `DispatcharrSyncRosterWrite`, `UserProfileModel`, `UserProfileManagementPolicy`, `PhoneSetupProfiles`, and the native §16.4 JSON fixture. The §16.7 split case retires a tombstoned local holder but keeps a newer peer row as a suggestion. | No literal timing assertion from a phone. |
 | Tombstones, stale-device guard, cleanup, re-add and pending | `DispatcharrSyncRosterWrite`, `DispatcharrSyncAckStore`, `out/mrr-sync-own-retirement-native.log` and `out/mrr-sync-unchanged-settled-native.log`. Successful acknowledgement clears only removal intent from its exact snapshot; failure and stale receipts keep it. | No fresh deployed PUT or real peer-driven delete/re-add in this qualification. |
-| Held slot, Undo, resume | `UserProfileOwnSignIn`, `UserProfileLifecycle`, `DispatcharrSyncMerge` and `DispatcharrSyncAckStore`. A held profile need not have a key to gate the slot. A matching row may settle a paused Add without removing a local PIN when the peer has none. Held failures do not acknowledge or clear pending changes. | Combined physical peer/server address-replacement scenario. |
+| Held slot, Undo, resume | `UserProfileOwnSignIn`, `UserProfileLifecycle`, `DispatcharrSyncMerge` and `DispatcharrSyncAckStore`. A held profile need not have a key to gate the slot. Another holder's roster does not resolve deferred Add protection. Held failures do not acknowledge or clear pending changes. | Combined physical peer/server address-replacement scenario. |
 | Cadence and pull-before-PUT | `DispatcharrSyncSchedule`, `DispatcharrSyncWriteTask`, `out/mrr-sync-session-scheduler-final-native.log`, and `out/mrr-sync-network-events-native.log`. The authenticated switcher queues picker work against the actual session and refreshes its idle snapshot safely. | Cold/no-session picker has no authenticated actor; Add's credential form suspends background work. Timing arithmetic is not a physical 15-minute soak. |
 | Unowned and Off categories/settings | `DispatcharrSyncMapping` selects `v`/`tv`/Off with no fallback; `DispatcharrSyncWriteBody`/`DispatcharrSyncRosterWrite` exercise checked, typed pass-through of `v`, `tv`, `mobile`, future rows and milliseconds on peer-shaped payloads. | There are no active settings lanes, lane-seeding transitions or per-item Shared/TV/Off controls; the general engine remains `e3e.6`. |
 | UI/status/focus and peer round trips | Native control and cold-restoration reports above; the read-only live driver checks actual ECP focus and pending state on the approved test Roku. Peer-shaped native fixture round trips prove Roku's wire behavior only. | Named Apple/Android Sync clients producing, consuming and applying these writes were not exercised. Setup encoders are not Sync readers. |

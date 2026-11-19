@@ -63,7 +63,7 @@ sub main()
     pausedStore = copyJson(store)
     pausedStore.profiles[1].addressHeld = true
     pausedAdd = userProfileAddPlan(entry, pausedStore, newId, "Cara", addedProof, invalid, 300, sourceRows)
-    check(pausedAdd.ok and pausedAdd.target.addOrigin = "paused" and pausedAdd.target.updatedAt = 300 and pausedAdd.target.pinType = "none" and not pausedAdd.store.pendingRoster, "held sibling allows own-verified Add and keeps only a deferred mark until a valid pull settles it")
+    check(pausedAdd.ok and pausedAdd.target.addOrigin = "paused" and pausedAdd.target.updatedAt = 300 and pausedAdd.target.pinType = "none" and not pausedAdd.store.pendingRoster, "held sibling allows own-verified provisional Add without granting protection or queueing a write")
     undone = userProfileRemovalPlan(pausedAdd.store, newId, 310, "undo")
     check(undone.ok and not undone.pushRequired and undone.store.removed.count() = 0 and not undone.store.pendingRoster and undone.store.profiles[1].addressHeld, "undoing an otherwise clean paused Add cannot leave a future mutation queued")
     pendingPaused = setCanonicalPreference(pausedAdd.store, "pendingRoster", true)

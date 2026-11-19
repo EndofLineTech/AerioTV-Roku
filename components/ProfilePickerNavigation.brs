@@ -353,7 +353,7 @@ sub beginStartupProfileSelection(targetId as string, ownPin = invalid as dynamic
         if profile.id = targetId then target = profile
     end for
     if target = invalid then return
-    if target.addOrigin = "paused" then m.profilePicker.message = "This profile is waiting for its saved protection to sync." : return
+    if target.addOrigin = "paused" then m.profilePicker.message = "This profile needs to be removed and added again after resolving saved addresses." : return
     selected = setCanonicalPreference(picker.store, "active", targetId)
     memory = {}
     if type(m.profileSessionKeys) = "roAssociativeArray"

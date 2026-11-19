@@ -63,7 +63,8 @@ function userProfileAddPlan(connection as object, previous as object, id as stri
     end if
     if paused
         ' No App Data from any user, including the newly authenticated holder.
-        ' The saved credential cannot activate this holder until an applying pull.
+        ' Another holder's pull cannot resolve this Add; Undo and use the normal
+        ' own-protection Add after address verification.
         candidate = setCanonicalPreference(candidate, "addOrigin", "paused")
     else if read.state = "ready"
         if read.profilesState <> "ready" and read.profilesState <> "absent" then return denied

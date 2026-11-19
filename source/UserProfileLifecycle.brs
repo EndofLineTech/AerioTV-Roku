@@ -78,8 +78,8 @@ function userProfileRemovalPlan(store as object, id as string, now as integer, r
         denied.needsDefaultSwitch = true
         return denied
     end if
-    localOnly = reason = "pull" or found.addressHeld
-    if reason = "undo" and (found.addOrigin = "roster" or found.addOrigin = "paused") then localOnly = true
+    localOnly = reason = "pull" or found.addressHeld or found.addOrigin = "paused"
+    if reason = "undo" and found.addOrigin = "roster" then localOnly = true
     if not localOnly and now <= 0 then return denied
     if not localOnly and now < found.updatedAt
         denied.reason = "clock-not-ready"

@@ -89,6 +89,7 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
         raise ValueError("Choose one focused native flow")
     if (phone_verify or phone_import or profile_media) and not baseline_accounts:
         raise ValueError("Phone verification needs private authorized test accounts")
+    ordinary_live = baseline_accounts and not (admin_ui or phone_verify or phone_import or profile_media)
     with zipfile.ZipFile(normal) as original, zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
@@ -99,6 +100,19 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
             elif name == "source/MetadataCacheStore.brs":
                 assert body.count(b'"cachefs:/aeriotv-metadata-v1"') == 1
                 body = body.replace(b'"cachefs:/aeriotv-metadata-v1"', b'"tmp:/picker-launch-cache"')
+            elif name == "source/HttpTransport.brs" and ordinary_live:
+                anchor = b"    method = ucase(method)"
+                assert body.count(anchor) == 1
+                body = body.replace(anchor, anchor + b'''
+    ' Private qualification permits authenticating only at the token route.
+    if method <> "GET" or body <> invalid or checkedJson <> invalid
+        if (method <> "GET" and method <> "POST") or right(url, 20) <> "/api/accounts/token/"
+            print "[picker-launch] "; "{""kind"":""blocked-network-mutation""}"
+            result.error = "qualification-read-only"
+            return result
+        end if
+    end if
+''', 1)
             elif name == "components/AerioScene.brs":
                 source = body.decode()
                 if mode.startswith("child-"):
@@ -738,7 +752,8 @@ def main():
             else:
                 report["passed"] = report["passed"] and report.get("switcher_screenshot") is True and report.get("switcher_visual_ack") == 200
                 report["real_dispatcharr"] = True
-        report["passed"] = report["passed"] and report["ready_events_valid"]
+        report["passed"] = report["passed"] and report["ready_events_valid"] and not any(
+            event.get("kind") == "blocked-network-mutation" for event in events)
     finally:
         report["requests"] = hits.copy()
         if process is not None and process.poll() is None:
