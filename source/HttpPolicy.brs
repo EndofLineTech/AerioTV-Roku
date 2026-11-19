@@ -101,8 +101,12 @@ function httpDispatcharrKeyRejected(status as integer, body as string) as boolea
 end function
 
 function httpResponseSizeBucket(responseBytes as dynamic, maxBytes as dynamic) as string
-    if type(responseBytes) <> "Integer" and type(responseBytes) <> "roInt" then return ""
-    if type(maxBytes) <> "Integer" and type(maxBytes) <> "roInt" then return ""
+    ' Roku can box transport results and task caps as roInteger in an AA.
+    ' This is diagnostic only; transport enforces the byte limit separately.
+    responseKind = type(responseBytes)
+    capKind = type(maxBytes)
+    if responseKind <> "Integer" and responseKind <> "roInt" and responseKind <> "roInteger" then return ""
+    if capKind <> "Integer" and capKind <> "roInt" and capKind <> "roInteger" then return ""
     if responseBytes <= maxBytes or maxBytes < 1048576 then return ""
     if maxBytes = 16000000 then return "at-least-16-mb"
     return "at-least-" + int(maxBytes / 1048576).toStr() + "-mib"

@@ -25,6 +25,18 @@ sub main()
     if httpFailure(409, {}, 1000).retryable then stop
     tooLarge = httpFailure(0, {}, 1000, "too-large", 8388609, 8388608)
     if tooLarge.category <> "response-too-large" or tooLarge.sizeBucket <> "at-least-8-mib" then stop
+    ' Native AA fields can report roInteger; the host covers the contract
+    ' and the dedicated native matrix verifies the exact Roku alias.
+    boxed = {bytes: 1048577, cap: 1048576}
+    if httpFailure(0, {}, 1000, "too-large", boxed.bytes, boxed.cap).sizeBucket <> "at-least-1-mib" then stop
+    for each value in [1048577&, 1048577.0!, 1048577.0#, "1048577", true, invalid]
+        if httpFailure(0, {}, 1000, "too-large", value, 1048576).sizeBucket <> "" then stop
+    end for
+    for each value in [1048576&, 1048576.0!, 1048576.0#, "1048576", true, invalid]
+        if httpFailure(0, {}, 1000, "too-large", 1048577, value).sizeBucket <> "" then stop
+    end for
+    if httpFailure(0, {}, 1000, "too-large", boxed.cap, boxed.cap).sizeBucket <> "" then stop
+    if httpFailure(0, {}, 1000, "too-large", 65537, 65536).sizeBucket <> "" then stop
     if httpFailure(0, {}, 1000, "memory").category <> "memory-pressure" then stop
     if httpRetryAfter({"Retry-After": "17"}, 1000) <> 17 then stop
     if httpRetryAfter({"retry-after": "-1"}, 1000) <> -1 then stop
@@ -64,6 +76,10 @@ sub main()
     resetHttpTest([{status: 200, body: "", error: "too-large", bytes: 16000001}])
     if requestJson("https://example.test/api") <> invalid then stop
     if m.httpFailure.category <> "response-too-large" or m.httpFailure.sizeBucket <> "at-least-16-mb" then stop
+    resetHttpTest([{status: 200, body: "", error: "too-large", bytes: 1048577}])
+    m.maxResponseBytes = 1048576
+    if requestJson("https://example.test/api") <> invalid or m.observedLimit <> 1048576 then stop
+    if m.httpFailure.category <> "response-too-large" or m.httpFailure.sizeBucket <> "at-least-1-mib" then stop
     resetHttpTest([{status: 200, body: "", error: "memory"}])
     if requestJson("https://example.test/api") <> invalid then stop
     if m.httpFailure.category <> "memory-pressure" then stop
