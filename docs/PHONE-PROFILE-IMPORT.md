@@ -1,9 +1,11 @@
 # Phone profile import — Profiles-only Beta
 
 The bounded Dispatcharr profile-import implementation (`e3e.4`) is closed.
-The [integrated Profiles-only Beta decision](MRR-DELIVERY-STATUS.md#integrated-owner-acceptance-checklist-mrr11)
-still requires explicit owner acceptance. Full phone setup and Sync parity
-(`e3e.8` / `e3e.7`) remain separate and are not Beta acceptance prerequisites.
+The owner explicitly accepted the
+[bounded Profiles-only Beta](MRR-DELIVERY-STATUS.md#integrated-owner-acceptance-checklist-mrr11),
+not full phone setup or peer Sync parity (`e3e.8` / `e3e.7`), release, or Store
+submission. Live changed-server replacement was not verified; physical Android
+is deferred to Beta users, and current same-LAN Bonjour is unverified.
 This page does not establish Xtream/M3U playlist-option parity; see
 [wire compatibility](PHONE-SETUP-COMPATIBILITY.md) for those behaviors.
 

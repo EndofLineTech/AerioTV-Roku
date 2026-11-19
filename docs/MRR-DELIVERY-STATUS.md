@@ -1,11 +1,11 @@
 # Profiles delivery status — November 19, 2026
 
-`AerioTV-Roku-mrr.11` is the **Profiles-only Beta acceptance** decision. The
-owner selected that scope; explicit acceptance of the integrated evidence is
-still pending. It is separate from full phone-setup and Dispatcharr Sync parity
-(`e3e.7` / `e3e.8`), Store readiness and release execution. The bounded
-profile-import implementation (`e3e.4`) is closed; the parity tracks are not
-prerequisites for this Beta decision.
+The owner explicitly accepted the **Profiles-only Beta** scope for
+`AerioTV-Roku-mrr.11` with the limits below. That acceptance does not cover
+full phone-setup or peer Dispatcharr Sync parity (`e3e.7` / `e3e.8`), and
+does not authorize release or Store submission. The bounded profile-import
+implementation (`e3e.4`) is closed; the parity tracks were not prerequisites
+for this Beta decision.
 
 **Beta 0.3.101:** the owner requested a Roku upload candidate and
 change notes, deferring Android physical testing to users. Qualified profile,
@@ -31,37 +31,51 @@ Store certification.
 
 ## Integrated owner acceptance checklist (`mrr.11`)
 
-Review the existing evidence; completed local flows do not need to be repeated.
+This checklist records the evidence and limits of the owner's acceptance.
 
-1. **Profiles and protection.** Use the closed `.9`/`.10`/`.19` evidence for
+1. **Profiles and protection.** The closed `.9`/`.10`/`.19` evidence covers
    picker, own-account switching, local recovery and imported PIN/Child
    protection; standard Roku/iOS and later fixture-free voice passes were
    owner-reported. Bounded `.18` admin authorization, wrong-user refusal, and
    active-own reload use controlled native evidence, not live admin mutations.
-2. **Phone and onboarding.** Review the named live encoder results for fresh
-   protected imports, the controlled Add/Undo and explicit consent paths, and
-   `ajp9` for the tested saved same-origin edit and cold relaunch. Do not infer
-   a live changed-origin/recovery matrix, physical sender versions, or Bonjour.
-3. **Profiles-only Sync.** Review explicit On → both own writes and readbacks →
-   A/B/A → Off, with unsupported categories preserved. The phone payload never
-   enables Sync. This is not full settings/roster parity.
-4. **Media and overlays.** Review native populated VOD/DVR progression before
-   and after switching and the separate owner-reported media pass. `dgt`
-   provides live Dispatcharr native evidence for Player Info, channel browser
-   and mini-player during playback, light appearance and empty Favorites
-   recovery, plus read-only Movies/DVR views (`out/dgt-os16-release.log`,
-   `out/dgt-os16-candidate-retry.log`). It is not a physical-remote or
-   picture/audio capture, a VOD/DVR item-action matrix, or owner Xtream proof.
-5. **Record the decision explicitly.** Confirm acceptance of this bounded
-   Profiles-only Beta, or name any in-scope gap that still needs evidence.
-   Physical Android is deferred by the owner to Beta users, not passed. The
-   owner reported iOS use, but the exact physical sender build and current
-   same-LAN Bonjour result were not recorded; multicast does not cross the
-   test VPN. These, wider provider/phone/Sync parity, new PIN/Device Admin
-   creation, authenticated Dashboard firmware verification, and public
-   Directions/Store certification are not accepted by this checklist.
-   Runtime Roku OS 14.6 enforcement is not Dashboard verification. This
-   decision does not authorize provider work, signing, submission or release.
+2. **Phone and onboarding.** The named live encoder runs cover fresh protected
+   imports, the controlled runs cover Add/Undo and explicit consent, and `ajp9`
+   covers the saved same-origin edit and cold relaunch. Live replacement with a
+   changed server was not verified.
+3. **Profiles-only Sync.** The live evidence covers explicit On → both own
+   writes and readbacks → A/B/A → Off, with unsupported categories preserved.
+   The phone payload never enables Sync. This is not full settings/roster parity.
+4. **Media and overlays.** Native populated VOD/DVR progression before and
+   after switching is separate from the owner-reported media pass. Earlier
+   `dgt` live Dispatcharr runs cover Player Info, channel browser, mini-player,
+   light appearance, and empty Favorites recovery (`out/dgt-os16-release.log`,
+   `out/dgt-os16-candidate-retry.log`). Subsequent Roku ECP keypress runs add:
+   - `out/dgt-native/apple-1.log`: Movie detail opened with focus and Play
+     available; Down moved focus and Back restored the same catalog item.
+     A completed DVR recording opened the matching dialog with focus and Play;
+     Back restored the same recording in the grid. One movie and one recording
+     played with native position advances of 2.524 s and 2.503 s respectively;
+     Back from playback returned to the catalog or grid.
+   - `out/dgt-native/apple-remote-1.log`: Back from Guide focused Live in
+     primary navigation; Right traversed VOD → DVR → Settings. Guide and
+     player group navigation moved and restored focus as expected. Back from
+     the channel browser returned to the focused player; Back to Guide kept
+     the mini-player on the same playback, and Play returned to the focused
+     full player without replacing playback.
+
+   Both runs passed, cleaned up and restored the baseline. These are
+   representative Dispatcharr actions and Roku telemetry, not a full item
+   matrix, physical remote or picture/audio verification, or Xtream evidence.
+5. **Acceptance limits.** Physical Android is deferred by the owner to Beta
+   users, not passed. The owner reported iOS use, but the exact physical sender
+   build and current same-LAN Bonjour result were not recorded; multicast
+   does not cross the test VPN. These, live changed-server replacement, wider
+   provider/phone and peer Sync parity, new PIN/Device Admin creation,
+   authenticated Dashboard firmware verification, and public Directions/Store
+   certification are outside the accepted scope. The developer build enforces
+   Roku OS 14.6 at runtime; the Developer Dashboard firmware floor was not
+   verified. This decision does not authorize provider work, signing,
+   submission or release.
 
 The earlier integrated plan also included a broader live import and roster
 matrix (address changes, partial failures, Remember/no-key cases, duplicate
@@ -83,7 +97,7 @@ epic-complete claim. Beads remains the status register.
 | `mrr.8` PIN/Child | **Completed approved import-only/developer implementation.** Fresh 1,626-assertion native policy/storage run plus imported Directions D-pad lock/unlock and Directions adult-management smoke pass; see [PIN completion evidence](PROFILE-PIN-POLICY.md). | `.19` now has owner-reported native voice/access acceptance, not formal certification. New salt creation stays disabled. |
 | `mrr.9` picker/management | **Closed** on existing implementation/native evidence plus owner-reported standard physical-remote UI acceptance. | Owner clarified phone testing used iOS and the initial pass excluded voice. Later owner-reported voice acceptance is recorded in `.19`. |
 | `mrr.10` local acceptance | **Closed.** Owner-reported standard Roku/iOS and subsequent voice passes complete bounded local acceptance. [All 18 specification scenarios](PROFILE-LOCAL-ACCEPTANCE.md), 1,626 native assertions, 14 request groups, 49 report audit and later `.19` full gate retain their precise evidence limits. | Not physical Android handoff, formal certification, shipping enablement or release approval. |
-| `mrr.11` integrated acceptance | Both actual accounts' Sync/media progression, named peer imports, saved same-origin cold admission, live overlay evidence and owner-reported Roku/iOS/media passes. Owner confirmed initial VOD incidents were provider-side; `unxg` is closed. | Explicit Profiles-only Beta acceptance remains pending. Deferred and unverified evidence is listed above; entropy assurance is non-blocking. |
+| `mrr.11` integrated acceptance | **Explicitly accepted by the owner for Profiles-only Beta.** Both actual accounts' Sync/media progression, named peer imports, saved same-origin cold admission, live overlays and representative ECP item actions, and owner-reported Roku/iOS/media passes. Owner confirmed initial VOD incidents were provider-side; `unxg` is closed. | Limits are listed above; entropy assurance is non-blocking. No release or Store authorization. |
 | `mrr.18` bounded admin | **Closed.** Native synthetic gates/transport/actions/UI and active-own reload: `mrr-admin-final-actions-native`, `mrr-admin-ui-own-reload-native`; admin and current full regression gates pass. | Last dependency `.6` is closed. No real server mutation, public release or owner acceptance is inferred or required for this bounded implementation closure. |
 | `mrr.19` native PIN keyboard | **Closed.** Shared controller/native/full-regression evidence plus owner-reported **“Passed”** after installation of the actual fixture-free voice variant and voice test instructions. Existing PIN/hash/lockout and purpose/session gates remain. | Owner physical acceptance is distinct from independent telemetry or formal Roku certification. Prior false voice observations remain historical evidence; no cause, OS setting change or public release is inferred. |
 
