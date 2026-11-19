@@ -1,12 +1,13 @@
 // Controlled full-app UI smoke: no Save/Replace/Forget, no real imported account.
 // QR links/codes, screenshots, raw console and account text are never retained.
 import { spawn, spawnSync } from 'node:child_process';
-import { createHash, createCipheriv, createPublicKey, diffieHellman, generateKeyPairSync, hkdfSync, randomBytes, randomUUID } from 'node:crypto';
-import { mkdirSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from 'node:fs';
+import { createHash, createCipheriv, createPublicKey, diffieHellman, generateKeyPairSync, hkdfSync, randomBytes } from 'node:crypto';
+import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import assert from 'node:assert/strict';
+import { PairingImageError, readPairingImage, withPairingScreenshot } from './pairing-image-worker.mjs';
 
 const [candidate, restore] = process.argv.slice(2);
 const discovery = process.argv.includes('--discovery');
@@ -24,6 +25,7 @@ const candidateSha256 = createHash('sha256').update(readFileSync(candidate)).dig
 const temporaryBase = process.env.OPENCODE_TMP_DIR ?? join(tmpdir(), 'opencode');
 mkdirSync(temporaryBase, { recursive: true });
 const temporary = realpathSync(temporaryBase);
+const swiftCache = join(temporary, 'pairing-swift-cache-canonical');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const results = [];
 let consoleProcess, browserProcess, connected = false, closing = false, armed = false, pending = '', runtimeError = false, entryRoute, completed = false;
@@ -47,37 +49,33 @@ function install(path) {
   assert.ok(/Install Success|Identical/.test(result), 'Installer reported success');
   return /Identical/.test(result);
 }
-function swift(script, image) {
-  const result = spawnSync('swift', ['-module-cache-path', join(temporary, 'pairing-swift-cache-canonical'), script, image], { encoding: 'utf8', timeout: 60000 });
-  if (result.status !== 0) console.log(JSON.stringify({ diagnostic: 'image-inspection', script, exit: result.status, signal: result.signal, cacheConflict: /defined in both|cannot load underlying module/.test(result.stderr ?? ''), classificationFailed: /Pairing UI classification failed/.test(result.stderr ?? ''), imageBytes: readFileSync(image).length }));
-  assert.ok(result.status === 0, 'Offline image inspection succeeded');
-  return result.stdout.trim();
-}
-function snapshot(withQr = false) {
+async function snapshot(withQr = false) {
   if (runtimeError) throw Error('Native compiler/runtime failure');
-  const image = join(temporary, `pairing-app-${randomUUID()}.jpg`);
-  try {
+  return withPairingScreenshot(temporary, async image => {
     curl(['--digest', '--config', '-', '--fail', '-F', 'mysubmit=Screenshot', `http://${host}/plugin_inspect`], true);
     curl(['--digest', '--config', '-', '--fail', '-o', image, `http://${host}/pkgs/dev.jpg`], true);
-    const state = JSON.parse(swift('scripts/read-pairing-ui.swift', image));
-    if (withQr && state.pairingReady) state.link = swift('scripts/read-setup-probe-qr.swift', image);
+    const state = await readPairingImage('classify-ui', image, swiftCache);
+    if (runtimeError || browserFailed) throw Error('Native test process failed');
+    if (withQr && state.pairingReady) state.link = await readPairingImage('decode-qr', image, swiftCache);
+    if (runtimeError || browserFailed) throw Error('Native test process failed');
     return state;
-  } finally { try { unlinkSync(image); } catch {} }
+  });
 }
 async function waitUi(predicate, timeout = 25000) {
   const start = performance.now();
   let state;
   while (performance.now() - start < timeout) {
-    state = snapshot();
+    state = await snapshot();
     if (predicate(state)) return state;
     await delay(700);
   }
   console.log(JSON.stringify({ diagnostic: 'ui-timeout', state }));
   throw Error('Expected full-app screen did not appear');
 }
-function readSession(state = snapshot(true)) {
+async function readSession(state) {
+  state ??= await snapshot(true);
   assert.ok(state.pairingReady && state.warning, 'Full-app pairing screen carries visible test warning');
-  const link = new URL(state.link);
+  const link = state.link;
   assert.ok(link.protocol === 'aeriotv:' && link.hostname === 'setup' && link.searchParams.get('v') === '1', 'Wire-v1 QR');
   assert.ok(link.searchParams.get('ip') === host, 'QR targets selected Roku');
   const session = { pk: Buffer.from(link.searchParams.get('pk'), 'base64url'), code: link.searchParams.get('code'), port: Number(link.searchParams.get('port')), name: link.searchParams.get('name') };
@@ -103,7 +101,7 @@ async function waitDiscovery(predicate, after = 0, timeout = 20000) {
   }
   const counts = {};
   for (const row of discoveryEvents) counts[row.event] = (counts[row.event] ?? 0) + 1;
-  console.log(JSON.stringify({ diagnostic: 'discovery-timeout', events: counts, browse: discoveryEvents.filter(row => ['browse', 'srv-result', 'address-result'].includes(row.event)), transport: discoveryTransport }));
+  console.log(JSON.stringify({ diagnostic: 'discovery-timeout', events: counts, transport: discoveryTransport }));
   throw Error('Expected Bonjour discovery event did not arrive');
 }
 async function resolved(session) {
@@ -115,9 +113,9 @@ async function resolved(session) {
 async function freshSession(previous) {
   const started = performance.now();
   while (performance.now() - started < 30000) {
-    const state = snapshot(true);
+    const state = await snapshot(true);
     if (state.pairingReady && state.warning) {
-      const next = readSession(state);
+      const next = await readSession(state);
       if (!next.pk.equals(previous.pk)) return next;
     }
     await delay(500);
@@ -148,7 +146,7 @@ function request(session, body) {
 }
 try {
   if (discovery) {
-    browserProcess = spawn('swift', ['-module-cache-path', join(temporary, 'pairing-swift-cache-canonical'), 'scripts/browse-pairing-service.swift', host], { stdio: ['ignore', 'pipe', 'pipe'] });
+    browserProcess = spawn('swift', ['-module-cache-path', swiftCache, 'scripts/browse-pairing-service.swift', host], { stdio: ['ignore', 'pipe', 'pipe'] });
     browserProcess.on('error', () => { browserFailed = true; });
     browserProcess.on('exit', () => { if (!closing) browserFailed = true; });
     browserProcess.stderr.resume();
@@ -185,7 +183,7 @@ try {
   armed = true;
   if (install(candidate)) ecp('launch/dev');
   await delay(5000);
-  let state = snapshot();
+  let state = await snapshot();
   if (state.welcome) {
     entryRoute = 'welcome';
     await key('Down'); await key('Select');
@@ -200,7 +198,7 @@ try {
     await openFromSetup();
   }
   await waitUi(row => row.pairingReady && row.warning);
-  const firstSession = readSession();
+  const firstSession = await readSession();
   pass('full-app-entry-and-live-qr');
   let firstAdvert;
   if (discovery) {
@@ -221,7 +219,7 @@ try {
       try {
         await waitDiscovery(row => row.event === 'removed' && row.service === advert.service, after, 615000);
       } catch (error) {
-        console.log(JSON.stringify({ diagnostic: 'expiry-timeout', httpStatus: request(session, '{}').status, ui: snapshot() }));
+        console.log(JSON.stringify({ diagnostic: 'expiry-timeout', httpStatus: request(session, '{}').status, ui: await snapshot() }));
         throw error;
       }
       assert.ok(performance.now() - started >= 590000, 'Real ten-minute session, not accelerated');
@@ -261,7 +259,7 @@ try {
     await key('Back'); // Manual setup without selecting or creating a slot.
     await openFromSetup();
     await waitUi(row => row.pairingReady && row.warning);
-    const managed = readSession();
+    const managed = await readSession();
     assert.ok(!managed.pk.equals(session.pk), 'Manage entry generated a fresh session');
     await key('Back');
     await waitUi(row => row.setup && !row.pairing);
@@ -271,7 +269,7 @@ try {
   if (discovery) {
     await openFromSetup();
     await waitUi(row => row.pairingReady && row.warning);
-    const cancelled = readSession();
+    const cancelled = await readSession();
     const advert = await resolved(cancelled);
     const after = discoveryEvents.length;
     await key('Back');
@@ -284,7 +282,7 @@ try {
   if (leaveInstalled) {
     await openFromSetup();
     await waitUi(row => row.pairingReady && row.warning);
-    await resolved(readSession());
+    await resolved(await readSession());
     const active = curl(['--fail', `http://${host}:8060/query/active-app`]);
     assert.ok(/id="dev"[^>]*>AerioTV Pairing Test<\/app>/.test(active), 'Exact installed test app active');
     pass('fresh-discoverable-pairing-session-left-on-tv');
@@ -297,6 +295,10 @@ try {
   } : undefined;
   writeFileSync(evidence, JSON.stringify({ passed: true, version: testBuild.version, candidateSha256, baseZipSha256: testBuild.baseZipSha256, entryRoute, savedOrReplaced: false, realPhoneSenderTested: false, leftInstalled: leaveInstalled, bonjourVerification, results }, null, 2) + '\n');
   completed = true;
+} catch (error) {
+  if (!(error instanceof PairingImageError)) throw error;
+  console.error(JSON.stringify(error.diagnostic));
+  process.exitCode = 1;
 } finally {
   closing = true;
   consoleProcess?.kill('SIGTERM');
