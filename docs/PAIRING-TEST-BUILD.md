@@ -178,8 +178,13 @@ The UI harness now checks the actual setup QR instead of OCR of the random key
 fingerprint. Run its offline synthetic-image regressions on macOS with
 `node scripts/test-pairing-ui.mjs`. Run the worker timeout and redaction
 regressions without Vision using `node --test scripts/pairing-image-worker.test.mjs`.
-The stalled-worker test verifies the runner's deadline, not the cause of any
-earlier Vision hang. No screenshots or QR payloads are logged.
+On timeout the runner closes its output pipe, attempts to kill the isolated
+process group, and waits up to one additional second for the direct child to
+close and the original group to become unobservable. If that cannot be
+confirmed, the redacted diagnostic includes `"cleanup":"unconfirmed"`.
+This is best effort, not a guarantee that every descendant exits (a descendant
+can leave the group). The stalled-worker test verifies these bounds, not the
+cause of any earlier Vision hang. No screenshots or QR payloads are logged.
 
 ## Automatic guide handoff candidate — 2026-11-11
 

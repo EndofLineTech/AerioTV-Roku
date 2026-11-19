@@ -3,7 +3,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 const timeoutMsDefault = 60_000;
-const reapGraceMs = 1_000;
+const cleanupGraceMs = 1_000;
+const cleanupPollMs = 25;
 const outputLimit = 16 * 1024;
 const scripts = new Map([
   ['classify-ui', 'scripts/read-pairing-ui.swift'],
@@ -26,34 +27,50 @@ function runWorker(operation, input, cache, { executable = 'swift', timeoutMs = 
   const script = scripts.get(operation);
   return new Promise((resolve, reject) => {
     const child = spawn(executable, ['-module-cache-path', cache, script, input], {
-      // macOS/Unix: isolate the group so descendants cannot hold the pipe open
-      // past the deadline. Never collect or print Swift/Vision stderr.
+      // macOS/Unix: isolate the group for best-effort termination on failure.
+      // Never collect or print Swift/Vision stderr.
       detached: true, stdio: ['ignore', 'pipe', 'ignore'],
     });
-    let deadline, reapDeadline, failure, chunks = [], bytes = 0;
+    let deadline, cleanupDeadline, cleanupPoll, failure, settled = false, chunks = [], bytes = 0;
     function finish(error, output) {
+      if (settled) return;
+      settled = true;
       clearTimeout(deadline);
-      clearTimeout(reapDeadline);
+      clearTimeout(cleanupDeadline);
+      clearInterval(cleanupPoll);
       chunks = [];
       if (error) reject(error);
       else resolve(output);
     }
+    function checkGroupGone() {
+      if (!child.pid) return;
+      try { process.kill(-child.pid, 0); }
+      catch (error) {
+        // A successful signal or the direct child's close does not prove
+        // group absence. Only ESRCH makes that observation at this instant.
+        if (error.code === 'ESRCH') finish(failure);
+      }
+    }
     function stop(error) {
-      if (failure) return;
+      if (failure || settled) return;
       failure = error;
       clearTimeout(deadline);
       chunks = [];
       try { if (child.pid) process.kill(-child.pid, 'SIGKILL'); } catch {}
       child.stdout.destroy();
-      // Normally 'close' reaps the worker promptly. Never let even a stuck
-      // kernel wait prevent the parent from cleaning up and reporting failure.
-      reapDeadline = setTimeout(() => {
+      // Bound the wait for both the direct child and observable group
+      // absence. This cannot establish cleanup of descendants that left the
+      // group, and an unreaped zombie can keep the group observable.
+      cleanupDeadline = setTimeout(() => {
         child.unref();
+        failure.diagnostic.cleanup = 'unconfirmed';
         finish(failure);
-      }, reapGraceMs);
+      }, cleanupGraceMs);
     }
     deadline = setTimeout(() => stop(new PairingImageError(operation, 'timeout', { timeoutMs })), timeoutMs);
-    child.on('error', () => finish(failure ?? new PairingImageError(operation, 'launch')));
+    child.on('error', () => {
+      if (!failure) finish(new PairingImageError(operation, 'launch'));
+    });
     child.stdout.on('error', () => stop(new PairingImageError(operation, 'output-read')));
     child.stdout.on('data', chunk => {
       if (failure) return;
@@ -62,8 +79,11 @@ function runWorker(operation, input, cache, { executable = 'swift', timeoutMs = 
       else chunks.push(chunk);
     });
     child.on('close', (exitCode, signal) => {
-      if (failure) finish(failure);
-      else if (signal) finish(new PairingImageError(operation, 'signal', { signal }));
+      if (settled) return;
+      if (failure) {
+        checkGroupGone();
+        if (!settled) cleanupPoll = setInterval(checkGroupGone, cleanupPollMs);
+      } else if (signal) finish(new PairingImageError(operation, 'signal', { signal }));
       else if (exitCode !== 0) finish(new PairingImageError(operation, 'exit', { exitCode }));
       else finish(null, Buffer.concat(chunks).toString('utf8').trim());
     });
