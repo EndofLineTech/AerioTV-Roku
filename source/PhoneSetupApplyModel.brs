@@ -144,7 +144,13 @@ end function
 ' New imports show these in Diagnostics without another confirmation step.
 function phoneSetupImportNotices(prepared as object) as object
     result = []
-    if prepared.entry.provider = "dispatcharr" then result.push("The verified API key is saved on this Roku.")
+    if prepared.entry.provider = "dispatcharr"
+        if prepared.entry.remember
+            result.push("The verified API key is saved on this Roku.")
+        else
+            result.push("Remember is off. The verified API key is available for this session only.")
+        end if
+    end if
     if prepared.entry.provider = "xtream" then result.push("Xtream credentials are session-only; send them again after restarting.")
     for each note in prepared.notes
         result.push(note)
@@ -154,7 +160,7 @@ end function
 
 ' Stage a verified candidate only; registry/credential persistence is a separate
 ' transaction owned by the future apply controller. No input object is changed.
-function phoneSetupStageVerifiedConnection(store as object, candidate as object, choice as string, matchedId as string, matchedPlaylistId = false as boolean) as dynamic
+function phoneSetupStageVerifiedConnection(store as object, candidate as object, choice as string, matchedId as string, matchedPlaylistId = false as boolean, addressEdited = false as boolean) as dynamic
     if store.readOnly = true or choice = "cancel" then return invalid
     staged = normalizeConnectionStore(store)
     if staged.readOnly = true then return invalid
@@ -173,6 +179,9 @@ function phoneSetupStageVerifiedConnection(store as object, candidate as object,
         if not matched then return invalid
         for i = 0 to staged.entries.count() - 1
             if staged.entries[i].id = matchedId
+                ' Keep the existing policy for an in-place reimport. A held
+                ' address edit already changed its staged persistence state.
+                if entry.provider = "dispatcharr" and not addressEdited then entry.remember = staged.entries[i].remember
                 entry.id = matchedId
                 staged.entries[i] = entry
                 staged.selected = matchedId

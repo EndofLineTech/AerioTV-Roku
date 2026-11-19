@@ -329,7 +329,7 @@ sub showPhoneSetupConfirmation()
     else
         if matches.count() = 1 then m.phoneMatchedId = matches[0]
         message = "Verified live channels. "
-        if m.phonePending.entry.provider = "dispatcharr" then message += "The verified API key will be saved on this Roku. "
+        if m.phonePending.entry.provider = "dispatcharr" then message += "Replace keeps this connection's Remember choice. Add Anyway remembers the key in a new slot. "
         if m.phonePending.entry.provider = "xtream" then message += "Xtream credentials are session-only; enter or send them again after restarting. "
         for each note in m.phonePending.notes
             message += note + " "
@@ -400,8 +400,12 @@ sub commitPhoneSetup(choice as string)
         return
     end if
     matchedById = false
-    if type(m.phoneProfileImport) = "roAssociativeArray" then matchedById = m.phoneProfileImport.matchedId <> "" and m.phoneProfileImport.matchedId = m.phoneMatchedId
-    staged = phoneSetupStageVerifiedConnection(m.connectionStore, m.phonePending.entry, choice, m.phoneMatchedId, matchedById)
+    addressEdited = false
+    if type(m.phoneProfileImport) = "roAssociativeArray"
+        matchedById = m.phoneProfileImport.matchedId <> "" and m.phoneProfileImport.matchedId = m.phoneMatchedId
+        addressEdited = m.phoneProfileImport.addressEdited = true
+    end if
+    staged = phoneSetupStageVerifiedConnection(m.connectionStore, m.phonePending.entry, choice, m.phoneMatchedId, matchedById, addressEdited)
     if staged = invalid
         failPhoneSetup("Could not stage this connection. Saved connections were not changed.")
         return
@@ -446,7 +450,7 @@ sub commitPhoneSetup(choice as string)
     m.connectionElapsed = m.phoneElapsed
     if entry.provider = "m3u" then result.scope = metadataCacheDigest("m3u|" + pending.url + "|" + entry.id)
     if entry.provider = "xtream" then result.scope = metadataCacheDigest("xc|" + pending.url + "|" + m.username + "|" + entry.id)
-    notices = phoneSetupImportNotices(pending)
+    notices = phoneSetupImportNotices({entry: entry, notes: pending.notes})
     summary = "Playlist added."
     if notices.count() > 0
         summary = "Playlist added. Setup notes: Settings > Diagnostics."

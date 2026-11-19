@@ -111,6 +111,7 @@ sub main()
     check(not failed.ok and registry.exists(userProfileImportKey(entry.id)) and loadUserProfileStore(registry, entry.id).readOnly = true, "failed metadata Flush retains the protection fence")
     recovered = commitPhoneSetupProfileBatch(registry, context, 100, nonce)
     check(recovered.ok and not registry.exists(userProfileImportKey(entry.id)) and loadUserProfileStore(registry, entry.id).profiles[0].pinType = "numbers", "metadata own keys and fence removal share the second Flush")
+    checkPhoneSetupRememberOffCommit(registry, entry, ids, rows, proofs, nonce)
     currentConnections = loadConnectionStore(registry)
     held = phoneSetupHoldMatchedAddress(registry, currentConnections, entry.id, "https://other.example.test")
     check(held.ok and held.store.addressChangeSnapshot.userId = 1 and held.store.profiles[1].addressHeld, "matched new origin snapshots the old recorded default and holds nondefault users before authentication")
@@ -141,6 +142,39 @@ sub main()
     discarded = phoneSetupDiscardIncompleteImport(registry, loadConnectionStore(registry), entry.id, interrupted.importRoot)
     check(discarded.ok and discarded.connections.entries.count() = 0 and registry.read("connKey_slot-a") = "", "discard of an incomplete new slot removes that slot and its key: " + textValue(discarded.reason))
     print "ALL TESTS PASSED"
+end sub
+
+sub checkPhoneSetupRememberOffCommit(registry as object, entry as object, ids as object, rows as object, proofs as object, nonce as string)
+    originalValues = registry.values
+    registry.values = {}
+    priorPlan = phoneSetupProfileBatchPlan(entry, defaultUserProfileStore(entry.id), [rows[1], rows[2]], proofs, ids, 100)
+    check(priorPlan.ok, "Remember Off fixture starts with a protected default and existing Adult")
+    prior = priorPlan.store
+    off = setCanonicalPreference(copyJson(entry), "remember", false)
+    previous = {schema: 1, selected: off.id, entries: [off]}
+    registry.values["connectionsV1"] = FormatJson(previous)
+    registry.values[userProfileStoreKey(off.id)] = FormatJson(prior)
+    staged = copyJson(previous)
+    staged.entries[0].name = "Reimported"
+    fenced = phoneSetupCommitFencedConnection(registry, previous, staged, proofs.alice.apiKey, nonce)
+    check(fenced.ok and not registry.exists(connectionRegistryKey(off.id)), "first save of a Remember Off replacement does not persist the new default key")
+    savedEntry = connectionStoreEntry(loadConnectionStore(registry), off.id)
+    context = {nonce: nonce, connection: savedEntry, connectionRoot: registry.read("connectionsV1"), store: prior, rows: rows, proofs: proofs, ids: ids, deviceAdmin: invalid, importRoot: fenced.importRoot}
+    applied = commitPhoneSetupProfileBatch(registry, context, 101, nonce)
+    check(applied.ok and not savedEntry.remember and not registry.exists(userProfileImportKey(off.id)), "profile save settles the fence without turning Remember back on")
+    check(not registry.exists(userProfileKeyName(off.id, ids.byUsername.bob)) and not registry.exists(userProfileKeyName(off.id, ids.byUsername.kid)), "neither old nor new nondefault keys are persisted")
+    prefix = off.url + "|" + off.id + "|"
+    adultBucket = preferenceScope(prefix + ids.byUsername.bob)
+    defaultBucket = preferenceScope(prefix + ids.defaultId)
+    kidBucket = preferenceScope(prefix + ids.byUsername.kid)
+    m.profileSessionKeys = {}
+    m.profileSessionKeys[adultBucket] = "existing-own-lease"
+    adoptPhoneProfileSessionKeys(savedEntry, applied.store, proofs.alice.apiKey, applied.keys)
+    check(m.profileSessionKeys[defaultBucket] = proofs.alice.apiKey and m.profileSessionKeys[kidBucket] = proofs.kid.apiKey, "current-session default and newly accepted profile receive only their own keys")
+    check(m.profileSessionKeys[adultBucket] = "existing-own-lease", "a skipped duplicate cannot replace its existing session-only lease")
+    check(loadUserProfileStore(registry, off.id).profiles[0].pinType = "numbers", "Remember Off does not weaken the default PIN")
+    m.profileSessionKeys = invalid
+    registry.values = originalValues
 end sub
 
 sub check(passed as boolean, message as string)

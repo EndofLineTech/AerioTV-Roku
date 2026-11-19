@@ -6,6 +6,7 @@ sub beginPhoneProfileVerification(payload as object, prepared as object)
     if not identity.ok then failPhoneSetup("Could not match the playlist ID. Saved connections were not changed.") : return
     prepared.entry.id = identity.id
     heldSelectedAddress = false
+    addressEdited = false
     previous = connectionStoreEntry(m.connectionStore, identity.matchedId)
     if previous <> invalid
         if previous.provider <> "dispatcharr"
@@ -22,6 +23,10 @@ sub beginPhoneProfileVerification(payload as object, prepared as object)
                 failPhoneSetup("Could not safely hold profiles before changing the saved address.")
                 return
             end if
+            addressEdited = true
+            ' The hold clears stored keys for any base-URL edit, but path
+            ' and default-port edits do not change the server origin.
+            if not held.changed then prepared.entry.remember = previous.remember
             if type(m.profileSessionKeys) = "roAssociativeArray"
                 for each profile in held.previous.profiles
                     m.profileSessionKeys.delete(preferenceScope(previous.url + "|" + previous.id + "|" + profile.id))
@@ -40,6 +45,7 @@ sub beginPhoneProfileVerification(payload as object, prepared as object)
     nonce = CreateObject("roDeviceInfo").getRandomUUID()
     m.phoneProfileImport = {nonce: nonce, phase: "default", matchedId: identity.matchedId, connectionRoot: m.registry.read("connectionsV1"), rows: [], proofs: {}, privateProfiles: copyJson(payload.profiles), incomingSync: payload.sync}
     m.phoneProfileImport.heldSelectedAddress = heldSelectedAddress
+    m.phoneProfileImport.addressEdited = addressEdited
     task = CreateObject("roSGNode", "PhoneSetupProfileVerifyTask")
     tagTaskForCurrentUser(task)
     task.baseUrl = prepared.url
@@ -204,6 +210,7 @@ sub finishPhoneProfileCommit()
     applied = commitPhoneSetupProfileBatch(m.registry, batch, CreateObject("roDateTime").asSeconds(), context.nonce)
     if not applied.ok then failPhoneProfileImport("Profile import did not finish.") : return
     context.skipped = applied.skipped
+    context.sessionKeys = applied.keys
     context.saved.profiles = applied.store
     continuePhoneProfileImport(context.saved, m.phonePending, m.phoneResult)
 end sub
@@ -211,17 +218,6 @@ end sub
 sub continuePhoneProfileImport(saved as object, pending as object, result as object)
     context = m.phoneProfileImport
     entry = connectionStoreEntry(saved.store, saved.store.selected)
-    ' Retain only verified nondefault session keys when Remember is off.
-    if not entry.remember
-        if type(m.profileSessionKeys) <> "roAssociativeArray" then m.profileSessionKeys = {}
-        for each profile in saved.profiles.profiles
-            proof = context.proofs[lcase(profile.username)]
-            if type(proof) = "roAssociativeArray"
-                bucket = preferenceScope(entry.url + "|" + entry.id + "|" + profile.id)
-                m.profileSessionKeys[bucket] = proof.apiKey
-            end if
-        end for
-    end if
     summary = "Profiles imported."
     if context.skipped.count() > 0 then summary = "Profiles imported. Some supplied profiles could not be added."
     if context.rateLimited = true then summary = "Profiles imported partially. The server asked us to wait."
@@ -233,8 +229,19 @@ sub continuePhoneProfileImport(saved as object, pending as object, result as obj
     m.connectionStore = saved.store
     m.selectedConnectionId = entry.id
     applySelectedConnection()
-    m.apiKey = result.apiKey
     m.userProfileStore = saved.profiles
+    if not entry.remember
+        adoptPhoneProfileSessionKeys(entry, saved.profiles, result.apiKey, context.sessionKeys)
+        for each profile in saved.profiles.profiles
+            if profile.id = saved.profiles.active
+                own = phoneSetupOwnCredential(entry, saved.profiles, profile)
+                m.apiKey = own.key
+            end if
+        end for
+        summary += " Remember is off; keys are session-only."
+    else
+        m.apiKey = result.apiKey
+    end if
     m.phoneOptions = entry
     m.phoneCommittedId = entry.id
     m.phoneProfileOnboarding = {slot: entry.id, phase: "offer", incomingSync: context.incomingSync, addedIds: [], connectionRoot: m.registry.read("connectionsV1")}
@@ -246,6 +253,20 @@ sub continuePhoneProfileImport(saved as object, pending as object, result as obj
     ' the phone's verified credential is never treated as a PIN grant.
     if not beginUserProfileLaunchPicker(false) then connectServer(true)
     showNotice(summary)
+end sub
+
+' Use the committed batch's accepted ID/key pairs, not the raw proof map:
+' skipped duplicate or held profiles must not acquire replacement leases.
+sub adoptPhoneProfileSessionKeys(entry as object, store as object, defaultKey as string, addedKeys as object)
+    if type(m.profileSessionKeys) <> "roAssociativeArray" then m.profileSessionKeys = {}
+    for each profile in store.profiles
+        bucket = preferenceScope(entry.url + "|" + entry.id + "|" + profile.id)
+        if profile.isDefault
+            m.profileSessionKeys[bucket] = defaultKey
+        else if addedKeys.doesExist(profile.id)
+            m.profileSessionKeys[bucket] = addedKeys[profile.id]
+        end if
+    end for
 end sub
 
 sub closePhoneProfileVerificationTask()

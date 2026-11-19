@@ -4,6 +4,7 @@ sub main()
     identified = {schema: 1, selected: oldEntry.id, entries: [oldEntry]}
     check(phoneSetupStageVerifiedConnection(identified, newEntry, "replace", oldEntry.id) = invalid, "ordinary duplicate replacement cannot invent an unrelated account match")
     check(phoneSetupStageVerifiedConnection(identified, newEntry, "replace", oldEntry.id, true).entries[0].accountId = "9", "explicit matched playlist ID updates in place independently of account or URL duplicate matching")
+    checkPhoneSetupReplaceRememberPolicy()
     payload = {playlist: {credential: {apiKey: "fixture-key"}}, profiles: []}
     credential = phoneSetupEffectiveCredential(payload)
     check(credential.apiKey = "fixture-key" and credential.username = "", "API-key-only default needs no username")
@@ -112,6 +113,28 @@ sub main()
     testXtreamXmltvImport()
     testInterimProfiles()
     print "ALL TESTS PASSED"
+end sub
+
+sub checkPhoneSetupReplaceRememberPolicy()
+    old = normalizeConnectionEntry({id: "saved", name: "Saved", provider: "dispatcharr", url: "https://example.test", accountId: "7", remember: false})
+    saved = {schema: 1, selected: old.id, entries: [old]}
+    payload = {playlist: {type: "dispatcharr", name: "Received", url: old.url, guideDays: 7, catchupOffsetMinutes: 0, credential: {apiKey: "fixture-key"}}, profiles: []}
+    candidate = phoneSetupPrepareImport(payload, "received", "")
+    verified = phoneSetupVerifiedImport(candidate, {ok: true, channels: [{uuid: "one"}], apiKey: "fixture-key", accountId: "7", accountUsername: "Owner"})
+    check(verified.ok and verified.entry.remember, "new Dispatcharr phone candidate defaults to Remember On")
+    replaced = phoneSetupStageVerifiedConnection(saved, verified.entry, "replace", old.id)
+    check(not replaced.entries[0].remember, "same-server duplicate Replace retains the existing slot's explicit Remember Off")
+    check(instr(1, phoneSetupImportNotices({entry: replaced.entries[0], notes: []})[0], "session only") > 0, "replacement disclosure reflects the saved policy, not the new-slot default")
+    matched = copyJson(verified.entry)
+    matched.id = old.id
+    check(not phoneSetupStageVerifiedConnection(saved, matched, "replace", old.id, true).entries[0].remember, "same-server matched-ID replacement also preserves Remember Off")
+    old.remember = true
+    check(phoneSetupStageVerifiedConnection(saved, matched, "replace", old.id, true).entries[0].remember, "same-server replacement also preserves Remember On")
+    old.remember = false
+    check(phoneSetupStageVerifiedConnection(saved, verified.entry, "addAnyway", old.id).entries[1].remember, "Add Anyway is a new slot and retains the default On")
+    check(phoneSetupStageVerifiedConnection(saved, matched, "replace", old.id, true, true).entries[0].remember, "pre-applied address change keeps its existing import policy")
+    matched.remember = false
+    check(not phoneSetupStageVerifiedConnection(saved, matched, "replace", old.id, true, true).entries[0].remember, "pre-applied URL hold can carry forward the original Off policy for the same origin")
 end sub
 
 sub testXtreamXmltvImport()
