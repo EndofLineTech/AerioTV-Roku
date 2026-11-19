@@ -31,6 +31,14 @@ test('accepts a normal Roku package layout', () => {
   ]));
 });
 
+test('rejects the credential-bearing native Sync controls archive', () => {
+  const normal = ['manifest', 'source/Main.brs', 'components/AerioScene.xml',
+    'images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt'];
+  for (const marker of ['sync-controls-private.json', 'fixtures/SYNC-CONTROLS-PRIVATE.JSON']) {
+    assert.throws(() => assertPackageEntries([...normal, marker]), /private Sync controls/i);
+  }
+});
+
 test('rejects full-app pairing test artifacts as shipping packages', () => {
   const normal = ['manifest', 'source/Main.brs', 'components/AerioScene.xml',
     'images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt'];

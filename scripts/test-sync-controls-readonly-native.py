@@ -15,6 +15,15 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 PREFIX = "[sync-controls-readonly]"
+PRIVATE_MARKER = "sync-controls-private.json"
+
+
+def private_output(path):
+    # Credentials must never be written through a symlink, into a checkout or
+    # over an existing file. Restrict permissions from the first byte.
+    if path.parent.resolve().is_relative_to(ROOT):
+        raise RuntimeError("Private qualification archive must stay outside this checkout")
+    return os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb")
 
 
 def helper(filename):
@@ -33,11 +42,12 @@ def insert(data, anchor, replacement):
 def build(candidate, archive, section, config):
     registry = b'CreateObject("roRegistrySection", "AerioTV")'
     isolated = f'CreateObject("roRegistrySection", "{section}")'.encode()
-    with zipfile.ZipFile(candidate) as source, zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as target:
+    with zipfile.ZipFile(candidate) as source, private_output(archive) as output, zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as target:
         required = {"components/AerioScene.brs", "components/DispatcharrSyncWriteTask.brs",
                     "components/ProfileSyncSessionNavigation.brs", "source/HttpTransport.brs",
                     "source/MetadataCacheStore.brs"}
-        if any(source.namelist().count(name) != 1 for name in required):
+        if any(source.namelist().count(name) != 1 for name in required) or any(
+                name.rsplit("/", 1)[-1].lower() == PRIVATE_MARKER for name in source.namelist()):
             raise RuntimeError("Candidate lacks required unique isolation/transport modules")
         for name in source.namelist():
             body = source.read(name)
@@ -60,8 +70,7 @@ def build(candidate, archive, section, config):
             elif name == "source/MetadataCacheStore.brs":
                 body = insert(body, b"cachefs:/aeriotv-metadata-v1", b"tmp:/sync-controls-native")
             target.writestr(name, body)
-        target.writestr("sync-controls-private.json", json.dumps(config))
-    archive.chmod(0o600)
+        target.writestr(PRIVATE_MARKER, json.dumps(config))
 
 
 def native_command(archive, prefix, marker, timeout):
@@ -78,8 +87,8 @@ def drive(archive, host, report):
         try:
             for line in process.stdout:
                 if not line.startswith(PREFIX + " "):
-                    if line.strip():
-                        report.setdefault("diagnostics", []).append(line.strip())
+                    # Never persist arbitrary native console lines alongside a
+                    # fixture that seeds credentials.
                     continue
                 row = json.loads(line[len(PREFIX) + 1:])
                 if row["phase"] == "diagnostic":

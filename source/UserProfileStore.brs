@@ -54,7 +54,7 @@ end function
 function normalizeUserProfileStore(raw as dynamic, slotId as string) as object
     failure = userProfileStoreRecovery(slotId)
     if userProfileStoreKey(slotId) = "" then return failure
-    raw = userProfileCanonicalFields(raw, ["schema", "playlistId", "active", "askAtLaunch", "profiles", "removed", "pendingRoster", "knownDefault", "addressChangeSnapshot", "verifiedDefaultAtAddress", "retirementPending"])
+    raw = userProfileCanonicalFields(raw, ["schema", "playlistId", "active", "askAtLaunch", "profiles", "removed", "pendingRoster", "knownDefault", "addressChangeSnapshot", "verifiedDefaultAtAddress", "retirementPending", "rosterPullRequired"])
     if raw = invalid then return failure
     if not userProfileInteger(raw.schema) then return failure
     if raw.schema <> 1 then return failure
@@ -114,6 +114,14 @@ function normalizeUserProfileStore(raw as dynamic, slotId as string) as object
         if not userProfileBoolean(raw.pendingRoster) then return failure
         result.pendingRoster = raw.pendingRoster
     end if
+    ' Carry the pause across final hold removal, actor changes and cold starts.
+    ' Normalize pre-existing held roots before any transaction can lift a hold.
+    pullRequired = userProfileRosterAddressPaused(result)
+    if raw.doesExist("rosterPullRequired")
+        if not userProfileBoolean(raw.rosterPullRequired) or raw.rosterPullRequired <> true then return failure
+        pullRequired = true
+    end if
+    if pullRequired then result = setCanonicalPreference(result, "rosterPullRequired", true)
     return result
 end function
 

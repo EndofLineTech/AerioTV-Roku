@@ -53,6 +53,7 @@ function beginOutgoingUserProfileSync(context as object) as boolean
     task.connectionRoot = m.registry.read("connectionsV1")
     task.storeRoot = m.registry.read(userProfileStoreKey(entry.id))
     task.profilesEnabled = m.profileRosterEnabled <> false
+    task.pullOnly = current.rosterPullRequired = true
     task.expectedAuthorizationSignature = m.profileAuthorizationSignature
     task.deviceId = device.id
     task.appVersion = version
@@ -152,7 +153,7 @@ sub settleOutgoingUserProfileSyncRead(context as object, receipt as object)
         end for
     end if
     saved = commitDispatcharrSyncRosterRead(m.registry, context.connection, context.store, receipt, m.activeUserScope, m.apiKey, memory, textValue(m.profileAuthorizationSignature), m.profileRosterEnabled <> false, CreateObject("roDateTime").asSeconds())
-    if not saved.ok
+    if not saved.ok or saved.readCommitted <> true
         if saved.needsDefaultSwitch = true
             if beginOwnSyncDefaultRetirement(context, receipt, memory) then return
         end if

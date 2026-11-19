@@ -66,7 +66,7 @@ function dispatcharrSyncSwitchRosterContentPlan(connection as object, store as o
         end if
     end for
     if target = invalid or originalOutgoing = invalid then return denied
-    if target.id = originalOutgoing.id or target.addressHeld then return denied
+    if target.id = originalOutgoing.id or target.addressHeld or target.addOrigin = "paused" then return denied
     if verified.ok <> true or verified.phase <> "verified" or verified.verifiedBaseUrl <> connection.url then return denied
     if GetInterface(verified.apiKey, "ifString") = invalid then return denied
     if verified.apiKey = "" or len(verified.apiKey) > 512 then return denied

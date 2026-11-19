@@ -15,6 +15,12 @@ sub main()
     planned = userProfileSwitchPlan(connection, store, b.id, verified, invalid, invalid, invalid, session, session)
     check(planned.ok and planned.store.active = b.id and planned.scope.profileId = b.id and planned.scope.accountId = "8", "own verified lineup stages a target-bound immutable scope")
     check(store.active = a.id and connection.accountId = "7", "switch planning never adopts early or replaces default connection identity")
+    deferred = copyJson(store)
+    deferred.profiles[1].addOrigin = "paused"
+    check(not userProfileSwitchPlan(connection, deferred, b.id, verified, invalid, invalid, invalid, session, session).ok, "deferred Add cannot be activated from a verified lineup without settled protection")
+    check(userProfileRemovalPlan(deferred, b.id, 3, "undo").ok, "deferred Add still permits local Undo")
+    deferred.active = b.id
+    check(not userProfileStartupGate(deferred, true).allowed, "cold or deep-linked launch cannot activate the deferred holder with a saved key")
     wrong = copyJson(verified)
     wrong.verifiedUser.id = 7
     check(not userProfileSwitchPlan(connection, store, b.id, wrong, invalid, invalid, invalid, session, session).ok, "a default credential cannot authenticate a non-default target")

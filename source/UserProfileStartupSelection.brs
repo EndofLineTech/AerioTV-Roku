@@ -3,6 +3,7 @@
 ' neither selects a persisted holder nor creates a session or a PIN grant.
 function userProfileStartupTargetRoleAllowed(context as object, target as dynamic) as boolean
     if type(target) <> "roAssociativeArray" then return false
+    if target.addOrigin = "paused" then return false
     if userProfileFullAccess(target.role) then return true
     return target.role = "child" and userProfileTrue(context.childAccessReady)
 end function

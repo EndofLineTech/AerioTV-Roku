@@ -30,6 +30,13 @@ sub main()
         if scenario = "advertised-cap" then check(m.top.result.state = "storage-full" and not m.top.result.submitted and m.calls.count() = 3, "fresh smaller server budget prevents PUT without deleting or truncating peer data")
         if scenario = "max-apps" or scenario = "missing-blocked" then check(m.top.result.state = "storage-full", "capacity refusal never deletes legacy keys or creates another canonical")
     end for
+    syncWriterFixture("write")
+    rootKey = userProfileStoreKey("slot-a")
+    fenced = setCanonicalPreference(ParseJson(m.top.storeRoot), "rosterPullRequired", true)
+    m.top.storeRoot = FormatJson(fenced)
+    m.syncWriterRegistry.values[rootKey] = m.top.storeRoot
+    writeDispatcharrSync()
+    check(not m.top.result.ok and m.calls.count() = 0, "writer entry point refuses a write attempt against a released but unsynchronized roster")
     print "ALL TESTS PASSED"
 end sub
 

@@ -1,7 +1,7 @@
 ' Commit a captured own-session read plan atomically with scoped key/blob
 ' cleanup. Active removal is refused until the controller authenticates and
 ' commits the default switch, then re-plans against that new active store.
-function commitDispatcharrRosterPull(registry as object, connection as object, previous as object, decoded as object, enabled as boolean, now as integer, captured as dynamic, active as dynamic) as object
+function commitDispatcharrRosterPull(registry as object, connection as object, previous as object, decoded as object, enabled as boolean, now as integer, captured as dynamic, active as dynamic, settleRequiredRead = false as boolean) as object
     denied = {ok: false, recoveryRequired: false, needsDefaultSwitch: false}
     if not userProfileSameSession(captured, active) then return denied
     if connection.provider <> "dispatcharr" or connection.id <> previous.playlistId then return denied
@@ -19,6 +19,7 @@ function commitDispatcharrRosterPull(registry as object, connection as object, p
         return denied
     end if
     if not plan.applied then return {ok: true, applied: false, recoveryRequired: false, needsDefaultSwitch: false, store: previous, suggestions: []}
+    if settleRequiredRead then plan.store.delete("rosterPullRequired")
     prepared = userProfileStoreChanges(registry, previous, plan.store, {}, connection.remember)
     if not prepared.ok then return denied
     for each profile in plan.removed

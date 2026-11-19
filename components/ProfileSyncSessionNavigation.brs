@@ -74,14 +74,7 @@ end sub
 
 sub onProfileSyncScheduleTick()
     scope = m.activeUserScope
-    if not userProfileSameSession(m.profileSyncAddressPauseScope, scope) then m.profileSyncAddressPauseScope = invalid
     if not scheduledProfileSyncAllowed()
-        if scope <> invalid and m.profileSyncEnabled = true and m.profileRosterEnabled <> false and m.profileSyncAddressPauseScope = invalid
-            current = loadUserProfileStore(m.registry, scope.playlistId)
-            if current.readOnly <> true and current.active = scope.profileId
-                if userProfileRosterAddressPaused(current) then m.profileSyncAddressPauseScope = scope
-            end if
-        end if
         if m.profileScheduledSyncTask <> invalid
             context = m.profileScheduledSyncContext
             if context <> invalid and m.profileSyncSchedule <> invalid
@@ -102,15 +95,9 @@ sub onProfileSyncScheduleTick()
     store = loadUserProfileStore(m.registry, scope.playlistId)
     root = m.registry.read(userProfileStoreKey(scope.playlistId))
     m.profileSyncSchedule = dispatcharrSyncScheduleDirty(m.profileSyncSchedule, scope, requestGateCredentialHash(root), store.pendingRoster = true, now)
-    if userProfileSameSession(m.profileSyncAddressPauseScope, scope)
-        m.profileSyncAddressPauseScope = invalid
-        ' Do not open a transport exception to broker parks/sign-in pauses.
-        ' Once admitted, pull before releasing queued local roster mutations.
-        m.profileSyncSchedule.dueAt = now
-        if m.profileSyncSchedule.retryAt > now and m.profileSyncSchedule.pause = "" then m.profileSyncSchedule.retryAt = 0
-        if store.pendingRoster then m.profileSyncSchedule.dirtyAt = now + 1
-    end if
-    nextWork = dispatcharrSyncScheduleTake(m.profileSyncSchedule, scope, now, true)
+    ' Absence of held siblings admits transport, not writes. Keep the durable
+    ' fence through failure/backoff until the exact own pull commits.
+    nextWork = dispatcharrSyncScheduleTake(m.profileSyncSchedule, scope, now, true, store.rosterPullRequired = true)
     m.profileSyncSchedule = nextWork.state
     if not nextWork.run then return
     if not startScheduledProfileSync(store, nextWork.ticket, nextWork.push)
@@ -209,6 +196,7 @@ sub finishScheduledProfileSync(result as dynamic)
         saved = commitDispatcharrSyncRosterAck(m.registry, context.connection, context.store, result, m.activeUserScope, m.apiKey, memory)
     else if result.state = "local-commit"
         saved = commitDispatcharrSyncRosterRead(m.registry, context.connection, context.store, result, m.activeUserScope, m.apiKey, memory, m.profileAuthorizationSignature, true, CreateObject("roDateTime").asSeconds())
+        if saved.readCommitted <> true then saved.ok = false
     end if
     m.profileSyncSchedule = dispatcharrSyncScheduleComplete(m.profileSyncSchedule, context.ticket, saved.ok = true, profileSyncSchedulingNow(), textValue(result.state))
     if saved.needsDefaultSwitch = true
@@ -241,6 +229,7 @@ sub finishScheduledProfileSync(result as dynamic)
 end sub
 
 sub coverScheduledProfileSync()
+    if m.profileSwitcher <> invalid then retireUserProfileSwitcher()
     coverProfileRosterAuthorityChange()
     m.apiKey = ""
 end sub

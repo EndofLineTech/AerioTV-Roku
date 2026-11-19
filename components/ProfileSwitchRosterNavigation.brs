@@ -31,6 +31,7 @@ function handleUserProfileSwitchRosterResult(result as object) as boolean
 end function
 
 function userProfileSwitchRosterAccessCurrent(context as object, verified as object) as boolean
+    if context.target.addOrigin = "paused" then return false
     now = CreateObject("roDateTime").asSeconds()
     memory = userProfileSwitchRosterMemory(context)
     if context.unavailableChild = true

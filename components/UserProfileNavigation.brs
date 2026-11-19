@@ -273,6 +273,7 @@ function selectedUserProfileGate() as object
 end function
 
 function userProfileGateMessage(gate as object) as string
+    if gate.reason = "protection-pending" then return "This profile cannot connect until its saved protection has been checked."
     if gate.reason = "child" then return "Could not reach your Dispatcharr server. Protected profiles cannot connect until profile access is available on this build."
     if gate.reason = "recovery" then return "Saved profiles need recovery. This connection will not send requests or overwrite them; use Forget to remove this Roku's copy."
     return "This saved profile requires a protected profile sign-in flow. This build will not connect it using the default account's key."

@@ -61,7 +61,7 @@ function userProfileVerifiedSwitchContentPlan(connection as object, previous as 
             index = i
         end if
     end for
-    if incoming = invalid or incoming.addressHeld then return denied
+    if incoming = invalid or incoming.addressHeld or incoming.addOrigin = "paused" then return denied
     if type(verified) <> "roAssociativeArray" then return denied
     if verified.ok <> true then return {ok: false, reason: "authentication-failed"}
     if type(verified.apiKey) <> "String" and type(verified.apiKey) <> "roString" then return denied

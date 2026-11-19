@@ -79,9 +79,9 @@ sub tickSyncControlsReadOnly()
         m.syncControlsProbeStage = 5
         syncControlsProbeSignal("back", m.connectionDialog.buttonFocused = 0 and m.connectionDialog.isInFocusChain())
     else if stage = 5
-        if m.connectionDialog <> invalid or m.profileSyncAddressPauseScope = invalid then return
+        if m.connectionDialog <> invalid then return
         store = loadUserProfileStore(m.registry, "sync-test")
-        if not store.pendingRoster or m.profileScheduledSyncTask <> invalid then syncControlsProbeSignal("result", false) : return
+        if not store.pendingRoster or store.rosterPullRequired <> true or m.profileScheduledSyncTask <> invalid then syncControlsProbeSignal("result", false) : return
         nextStore = copyPreferenceValue(store)
         nextStore.profiles[1] = setCanonicalPreference(nextStore.profiles[1], "addressHeld", false)
         saved = commitUserProfileStore(m.registry, store, nextStore, {}, true)
@@ -105,7 +105,7 @@ end sub
 
 sub recordSyncControlsReadOnly(result as object, saved as object, context as object)
     if m.syncControlsProbeStage <> 6 or context.ticket.push <> false then syncControlsProbeSignal("result", false) : return
-    if result.state <> "local-commit" or not saved.ok then syncControlsProbeSignal("result", false) : return
+    if result.state <> "local-commit" or not saved.ok or saved.readCommitted <> true then syncControlsProbeSignal("result", false) : return
     m.profileSyncClock.control = "stop"
     m.syncControlsProbeRead = true
 end sub

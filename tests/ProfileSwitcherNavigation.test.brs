@@ -45,6 +45,35 @@ sub main()
     check(not userProfileSwitcherCurrent(), "A/B/A re-adoption cannot reuse an old switcher context")
     m.activeUserScope = original
     m.global.activeusersession = original.sessionId
+    m.profileSwitcher.focusIndex = 1
+    m.profileSwitcher.busy = true
+    m.profileSwitcher.setFocus = sub(value as boolean)
+        m.focused = value
+    end sub
+    m.profileSwitcherMoveDialog = {id: "old-move", close: false, unobserveField: sub(field as string)
+    end sub, isSameNode: function(other as object) as boolean
+        return m.id = other.id
+    end function}
+    m.top.dialog = m.profileSwitcherMoveDialog
+    oldMove = m.profileSwitcherMoveDialog
+    m.profileSwitcherMoveTarget = b.id
+    m.profileSwitcherNonceFactory = function() as string
+        return "00000000-0000-4000-8000-000000000093"
+    end function
+    store.profiles[1].displayName = "Updated Bob"
+    m.registry.values[userProfileStoreKey(entry.id)] = FormatJson(store)
+    m.userProfileStore = loadUserProfileStore(m.registry, entry.id)
+    refreshUserProfileSwitcherAfterSync()
+    check(oldMove.close and m.top.dialog = invalid and m.profileSwitcherMoveDialog = invalid, "changed Sync root closes stale Move dialog")
+    check(userProfileSwitcherCurrent() and m.profileSwitcherContext.nonce <> nonce and m.profileSwitcher.focused and not m.profileSwitcher.busy and m.profileSwitcher.model.focus = 1, "Move interruption rebuilds picker from current roots and restores focus by holder")
+    before = FormatJson(m.registry.values)
+    event.node = oldMove
+    event.getData = function() as integer
+        return 0
+    end function
+    onUserProfileSwitcherMove(event)
+    onUserProfileSwitcherMoveClosed(event)
+    check(FormatJson(m.registry.values) = before and userProfileSwitcherCurrent(), "queued callbacks from the closed Move cannot apply old positions or retire the rebuilt picker")
     m.registry.values[userProfileStoreKey(entry.id)] = "{invalid"
     check(not userProfileSwitcherCurrent(), "unreadable current roster prevents a new switch intent")
     m.profileBaselineMenu = {id: "closed-menu", close: false, isSameNode: function(other as object) as boolean

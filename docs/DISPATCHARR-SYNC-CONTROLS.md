@@ -53,11 +53,13 @@ The focused source-row regression is
   During Add, a safety read may refuse a protected holder when Profiles is Off;
   it never applies the target roster. During an address pause, Add verifies its
   own credentials without the App Data read and records a durable paused
-  origin. Undo removes that deferred intent locally without queueing a write
-  or acknowledging unrelated edits. The first applying pull settles the origin
-  and marks a plain Add pending if the peer had no matching row. A hold on a keyless
-  sibling still pauses the entire slot; after the last hold lifts the admitted
-  session reads first and leaves pending changes intact until acknowledgement.
+  origin. That holder cannot launch or switch in while its protection is
+  unresolved. Undo remains local and does not acknowledge other edits. The
+  first applying pull settles the origin if the matching row is usable, or
+  marks a plain Add pending if there is no matching row. A keyless sibling
+  still pauses the entire slot. After the final hold lifts, the durable write
+  fence survives failed reads, backoff, and session changes until a current
+  own pull commits. Pending edits still require a separate acknowledgement.
 
 `DispatcharrSyncSettingsStore.brs` commits only those device members in one
 bounded transaction. Admission independently verifies the actual adopted scope,

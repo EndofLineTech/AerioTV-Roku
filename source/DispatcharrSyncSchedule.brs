@@ -59,16 +59,16 @@ function dispatcharrSyncScheduleRequest(previous as object, scope as dynamic, ev
     return state
 end function
 
-function dispatcharrSyncScheduleTake(previous as object, scope as dynamic, now as integer, allowed as boolean) as object
+function dispatcharrSyncScheduleTake(previous as object, scope as dynamic, now as integer, allowed as boolean, pullRequired = false as boolean) as object
     denied = {run: false, state: previous}
     if not allowed or now <= 0 or not userProfileSameSession(previous.scope, scope) then return denied
     if previous.flight <> invalid or now < previous.retryAt then return denied
-    due = previous.dueAt > 0 and now >= previous.dueAt
+    due = pullRequired or (previous.dueAt > 0 and now >= previous.dueAt)
     due = due or (previous.rereadAt > 0 and now >= previous.rereadAt) or now >= previous.periodicAt
     due = due or (previous.pending and previous.writeBlockedRoot = "" and previous.dirtyAt > 0 and now >= previous.dirtyAt)
     if not due then return denied
     state = copyPreferenceValue(previous)
-    push = state.pending and state.writeBlockedRoot = "" and (state.dirtyAt = 0 or now >= state.dirtyAt)
+    push = not pullRequired and state.pending and state.writeBlockedRoot = "" and (state.dirtyAt = 0 or now >= state.dirtyAt)
     if state.dueAt > 0 and now >= state.dueAt then state.dueAt = 0
     if state.rereadAt > 0 and now >= state.rereadAt then state.rereadAt = 0
     if push then state.dirtyAt = 0

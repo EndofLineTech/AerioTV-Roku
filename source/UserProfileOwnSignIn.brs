@@ -15,7 +15,7 @@ function userProfileOwnSignInPlan(connection as object, previous as object, targ
             index = i
         end if
     end for
-    if target = invalid then return denied
+    if target = invalid or target.addOrigin = "paused" then return denied
     if startupRecovery
         if childRecovery or not userProfileFullAccess(target.role) then return denied
         if type(verified) <> "roAssociativeArray" then return denied

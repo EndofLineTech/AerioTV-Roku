@@ -113,6 +113,7 @@ function userProfileStartupGate(store as object, ownProfileCredential = false as
     end if
     for each profile in cleaned.profiles
         if profile.id = cleaned.active
+            if profile.addOrigin = "paused" then return {allowed: false, reason: "protection-pending"}
             if pickerFirst and userProfileFullAccess(profile.role) and cleaned.askAtLaunch and cleaned.profiles.count() > 1 and not pickerResolved and not deepLink then return {allowed: false, reason: "picker"}
             ' Even a keyless/held Child must finish its own launch PIN before
             ' seeing unavailable controls. The controller retains the Child

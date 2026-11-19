@@ -57,6 +57,7 @@ function commitDispatcharrSyncRosterAck(registry as object, connection as object
     access = dispatcharrSyncOwnReceiptAccess(registry, connection, previous, receipt, activeScope, activeKey, memoryKeys)
     if not access.ok then return denied
     actual = access.store
+    if actual.rosterPullRequired = true then return denied
     entry = access.connection
     if not userProfileInteger(receipt.maximumSentStamp) then return denied
     if receipt.maximumSentStamp < 0 or receipt.maximumSentStamp > 9007199254740991& then return denied
@@ -135,8 +136,8 @@ function commitDispatcharrSyncRosterRead(registry as object, connection as objec
     decoded = access.decoded
     plan = dispatcharrSyncRosterMerge(access.store, decoded, enabled, now)
     if not plan.ok then return denied
-    saved = commitDispatcharrRosterPull(registry, access.connection, access.store, decoded, enabled, now, receipt.scope, activeScope)
-    if saved.ok
+    saved = commitDispatcharrRosterPull(registry, access.connection, access.store, decoded, enabled, now, receipt.scope, activeScope, true)
+    if saved.ok and saved.applied
         saved.readCommitted = true
         saved.removed = plan.removed
         if registry.exists("settingsV1") then saved.preferenceStore = saved.preferences

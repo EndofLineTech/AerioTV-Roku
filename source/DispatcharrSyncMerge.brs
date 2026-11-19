@@ -55,11 +55,12 @@ function dispatcharrSyncRosterMerge(store as object, decoded as object, enabled 
             if row <> invalid then usable = row.updatedAt > removedAt
             if usable
                 if row.userId > 0 and row.userId <> profile.userId then return denied
-                if dispatcharrSyncShouldRepairProfile(profile, row) then cleaned.pendingRoster = true
+                if profile.addOrigin = "paused" and row.pinAction = "keep" then return denied
+                if dispatcharrSyncShouldRepairProfile(profile, row) then cleaned = setCanonicalPreference(cleaned, "pendingRoster", true)
                 profile = dispatcharrSyncMergeProfile(profile, row, now)
             else if profile.addOrigin = "paused"
                 profile = setCanonicalPreference(profile, "addOrigin", "plain")
-                cleaned.pendingRoster = true
+                cleaned = setCanonicalPreference(cleaned, "pendingRoster", true)
             end if
             if removedAt >= 0 and profile.updatedAt > removedAt then tombstones.delete(name)
             retained.push(profile)

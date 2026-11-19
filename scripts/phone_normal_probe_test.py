@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+import stat
 import subprocess
 import tempfile
 import unittest
@@ -10,6 +11,27 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 class PhoneNormalProbeTest(unittest.TestCase):
+    def test_sync_controls_probe_archive_is_private_at_creation(self):
+        spec = importlib.util.spec_from_file_location("sync_controls", ROOT / "scripts/test-sync-controls-readonly-native.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as directory:
+            candidate = Path(directory) / "candidate.zip"
+            archive = Path(directory) / "sync-controls.zip"
+            with zipfile.ZipFile(candidate, "w") as package:
+                for name in ["components/AerioScene.brs", "components/DispatcharrSyncWriteTask.brs",
+                             "components/ProfileSyncSessionNavigation.brs", "source/HttpTransport.brs",
+                             "source/MetadataCacheStore.brs"]:
+                    package.write(ROOT / name, name)
+            module.build(candidate, archive, "PrivateFixture", {"key": "synthetic-test-key"})
+            self.assertEqual(stat.S_IMODE(archive.stat().st_mode), 0o600)
+            with self.assertRaises(FileExistsError):
+                module.private_output(archive)
+            with zipfile.ZipFile(archive) as package:
+                self.assertIn(b"synthetic-test-key", package.read("sync-controls-private.json"))
+        with self.assertRaisesRegex(RuntimeError, "outside this checkout"):
+            module.private_output(ROOT / "sync-controls.zip")
+
     def test_overlay_probe_uses_the_rendered_poster_without_a_development_only_helper(self):
         spec = importlib.util.spec_from_file_location("guide_overlays", ROOT / "scripts/test-guide-overlays-live-native.py")
         module = importlib.util.module_from_spec(spec)

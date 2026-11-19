@@ -19,6 +19,7 @@ function userProfileCredential(registry as object, connection as object, store a
     if profile <> invalid
         profileId = profile.id
         isDefault = profile.isDefault
+        if profile.addOrigin = "paused" then return {ok: false, key: "", keyName: "", profileId: profileId, isDefault: isDefault, reason: "protection-pending"}
         if profile.addressHeld then return {ok: false, key: "", keyName: "", profileId: profileId, isDefault: false, reason: "address-held"}
         if not isDefault then keyName = userProfileKeyName(connection.id, profileId)
     end if

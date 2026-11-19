@@ -100,6 +100,7 @@ function syncWriterAccessCurrent() as boolean
     if m.writerRegistry.read(userProfileStoreKey(entry.id)) <> m.top.storeRoot then return false
     store = loadUserProfileStore(m.writerRegistry, entry.id)
     if store.readOnly = true or store.active <> scope.profileId then return false
+    if store.rosterPullRequired = true and m.top.pullOnly <> true then return false
     if store.pendingRoster <> true and m.top.pullOnly <> true then return false
     target = invalid
     for each profile in store.profiles

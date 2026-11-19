@@ -61,11 +61,32 @@ sub main()
     m.syncTestNow = 101
     onProfileSyncScheduleTick()
     check(m.profileScheduledSyncTask = invalid and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "a held slot sends nothing and keeps pending")
-    held.profiles[1] = setCanonicalPreference(held.profiles[1], "addressHeld", false)
-    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(held)
+    held = loadUserProfileStore(m.registry, "slot-a")
+    released = copyPreferenceValue(held)
+    released.profiles[1] = setCanonicalPreference(released.profiles[1], "addressHeld", false)
+    check(commitUserProfileStore(m.registry, held, released, {}, true).ok, "releasing the last hold preserves the durable read fence in the same transaction")
+    m.profileSyncSchedule = invalid
     m.syncTestNow = 102
     onProfileSyncScheduleTick()
     check(m.profileScheduledSyncTask <> invalid and m.profileScheduledSyncTask.pullOnly, "releasing the final hold pulls immediately before flushing dirty edits")
+    onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, {ok: false, state: "unavailable"}))
+    m.syncTestNow = 132
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask <> invalid and m.profileScheduledSyncTask.pullOnly, "expired retry backoff must still run pull-only after a failed post-hold read")
+    staleReceipt = syncFlushReadReceipt({rows: []})
+    onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, staleReceipt))
+    check(loadUserProfileStore(m.registry, "slot-a").rosterPullRequired = true, "a stale-root read cannot release the durable fence")
+    m.syncTestNow = 252
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask <> invalid and m.profileScheduledSyncTask.pullOnly, "stale read publication leaves the next retry read-only")
+    currentReceipt = syncFlushReadReceipt({rows: []})
+    currentReceipt.storeRoot = m.profileScheduledSyncTask.storeRoot
+    onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, currentReceipt))
+    currentStore = loadUserProfileStore(m.registry, "slot-a")
+    check(currentStore.rosterPullRequired <> true and currentStore.pendingRoster, "only current committed read releases the durable fence without acknowledging the edit")
+    m.syncTestNow = 253
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask <> invalid and not m.profileScheduledSyncTask.pullOnly, "only after committed read can the current session schedule a write")
     closeScheduledProfileSync()
     syncScheduledFixture()
     m.profileSyncEnabled = false
@@ -236,6 +257,12 @@ sub main()
     before = FormatJson(m.registry.values)
     check(not commitDispatcharrSyncRosterRead(m.registry, m.connection, m.store, m.receipt, m.scope, m.key, {}, "new-own-authority", true, 500).ok and FormatJson(m.registry.values) = before, "read publication requires the actual current own authority signature, not just matching user IDs")
     syncFlushFixture()
+    m.store = setCanonicalPreference(m.store, "rosterPullRequired", true)
+    m.profileSwitchContext.store = m.store
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.store)
+    check(beginOutgoingUserProfileSync(m.profileSwitchContext) and m.profileSyncWriteTask.pullOnly, "outgoing switch cannot bypass a persisted post-hold fence without a scheduled session")
+    closeOutgoingUserProfileSync()
+    syncFlushFixture()
     m.profileScheduledSyncTask = {}
     check(not beginOutgoingUserProfileSync(m.profileSwitchContext), "outgoing flush cannot race an already scheduled own operation")
     m.profileScheduledSyncTask = invalid
@@ -295,7 +322,6 @@ sub syncScheduledFixture()
     m.profileSyncSchedulingReady = true
     m.profileSyncEnabled = true
     m.profileSyncSchedule = invalid
-    m.profileSyncAddressPauseScope = invalid
     m.profileScheduledSyncTask = invalid
     m.profileScheduledSyncContext = invalid
     m.profileSyncSettingsContext = invalid

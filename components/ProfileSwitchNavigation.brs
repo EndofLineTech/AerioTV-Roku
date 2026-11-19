@@ -24,6 +24,7 @@ function beginUserProfileSwitch(targetId as string, unavailableChild = false as 
     end if
     for each profile in store.profiles
         if profile.id = store.active
+            if profile.addOrigin = "paused" then return false
             childSource = profile.role = "child"
             if not unavailableChild
                 if profile.userId.toStr() <> m.activeUserScope.accountId then return false
@@ -47,7 +48,7 @@ function beginUserProfileSwitch(targetId as string, unavailableChild = false as 
     for each profile in store.profiles
         if profile.id = targetId then target = profile
     end for
-    if target = invalid or target.addressHeld then return false
+    if target = invalid or target.addressHeld or target.addOrigin = "paused" then return false
     ' The private Child controller must be qualified before live selection.
     if target.role = "child" and m.profileChildAccessReady <> true then return false
     admin = userProfileLoadDeviceAdminPin(m.registry, connection.id)
@@ -93,6 +94,7 @@ end function
 sub onUserProfileSwitchPin(nonce as string)
     context = m.profileSwitchContext
     if context = invalid or context.nonce <> nonce then return
+    if context.target.addOrigin = "paused" then rollbackUserProfileSwitch("Profile protection is still pending sync.") : return
     if userProfileTrue(context.localOnly)
         if m.profileBaselineReady <> true or not dispatcharrSyncLocalPendingAllowed(m.registry, context) then rollbackUserProfileSwitch("Sync choices changed. Switch cancelled.") : return
     end if
@@ -111,6 +113,7 @@ end sub
 sub startUserProfileSwitchTask(nonce as string)
     context = m.profileSwitchContext
     if context = invalid or context.nonce <> nonce then return
+    if context.target.addOrigin = "paused" then rollbackUserProfileSwitch("Profile protection is still pending sync.") : return
     if userProfileTrue(context.localOnly)
         if m.profileBaselineReady <> true or not dispatcharrSyncLocalPendingAllowed(m.registry, context) then rollbackUserProfileSwitch("Sync choices changed. Switch cancelled.") : return
     end if

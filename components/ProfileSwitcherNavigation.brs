@@ -38,17 +38,26 @@ function openUserProfileSwitcher(focusId = "" as string, message = "" as string)
 end function
 
 ' A read triggered by this picker may change names, order or protection.
-' Replace the snapshot only on the same idle picker. Rotate its UI nonce so
-' a queued index from the previous layout cannot select a different holder.
+' A Move choice belongs to the old ordering. Retire it before rebuilding and
+' rotate the picker nonce so a queued index cannot select a different holder.
 sub refreshUserProfileSwitcherAfterSync()
     context = m.profileSwitcherContext
     picker = m.profileSwitcher
     if context = invalid or picker = invalid then return
-    if picker.busy or m.profileSwitcherMoveDialog <> invalid or m.profileManagementDialog <> invalid then return
+    if m.profileManagementDialog <> invalid then return
+    moving = m.profileSwitcherMoveDialog <> invalid
+    if picker.busy and not moving then return
     current = profileBaselineContext()
-    if current = invalid or context.page <> m.page then return
-    if not userProfileSameSession(context.scope, current.scope) or context.connectionRoot <> current.connectionRoot then return
+    if context.page <> m.page or not userProfileSameSession(context.scope, m.activeUserScope)
+        if moving then retireUserProfileSwitcher()
+        return
+    end if
+    if current = invalid or context.connectionRoot <> current.connectionRoot
+        if moving then closeUserProfileSwitcher()
+        return
+    end if
     if context.storeRoot = current.storeRoot then return
+    closeUserProfileSwitcherMove()
     before = picker.model
     model = userProfilePickerPlan(current.store, "switcher", current.connection.provider, false)
     if not model.ok or not model.show then closeUserProfileSwitcher() : return
@@ -61,9 +70,17 @@ sub refreshUserProfileSwitcherAfterSync()
     end if
     context.store = current.store
     context.storeRoot = current.storeRoot
-    context.nonce = CreateObject("roDeviceInfo").getRandomUUID()
+    if m.profileSwitcherNonceFactory <> invalid
+        context.nonce = m.profileSwitcherNonceFactory()
+    else
+        context.nonce = CreateObject("roDeviceInfo").getRandomUUID()
+    end if
     model.uiNonce = context.nonce
     picker.model = model
+    if moving
+        picker.busy = false
+        picker.setFocus(true)
+    end if
 end sub
 
 function userProfileSwitcherCurrent() as boolean
@@ -167,6 +184,12 @@ end sub
 
 sub startUserProfileSwitcherSelection(targetId as string)
     if not userProfileSwitcherCurrent() then return
+    for each profile in m.profileSwitcherContext.store.profiles
+        if profile.id = targetId and profile.addOrigin = "paused"
+            m.profileSwitcher.message = "This profile is waiting for its saved protection to sync."
+            return
+        end if
+    end for
     settings = loadDispatcharrSyncSettings(m.registry)
     if not settings.ok then m.profileSwitcher.message = "Sync settings need recovery." : return
     if settings.enabled and m.profileSyncWriterReady <> true then m.profileSwitcher.message = "Finish Dispatcharr Sync before switching." : return

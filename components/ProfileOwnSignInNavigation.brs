@@ -94,7 +94,7 @@ function beginUserProfileOwnSignIn(targetId as string, activeRecovery = false as
     for each profile in store.profiles
         if profile.id = targetId then target = profile
     end for
-    if target = invalid then return false
+    if target = invalid or target.addOrigin = "paused" then return false
     chosenChild = not activeRecovery and not startupRecovery and target.role = "child" and m.profileChildAccessReady = true
     if childRecovery
         if target.role <> "child" then return false
