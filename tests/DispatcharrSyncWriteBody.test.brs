@@ -5,6 +5,9 @@ sub main()
     end function
     original = syncWriteBodyFixture()
     candidate = syncWriteBodyFixture()
+    recents = "{""updatedAt"":""2026-11-14T17:00:00Z"",""data"":{""rows"":[[101,1794675600],[102,1794675500]]}}"
+    original["categories"]["recents"] = ParseJson(recents)
+    candidate["categories"]["recents"] = ParseJson(recents)
     candidate["updatedAt"] = "2026-11-14T18:00:00Z"
     candidate["categories"]["profiles"]["updatedAt"] = candidate["updatedAt"]
     candidate["categories"]["profiles"]["deviceId"] = "roku-device"
@@ -19,6 +22,10 @@ sub main()
     end if
     check(dispatcharrSyncPreservedMembers({kept: [1, true, invalid]}, {kept: [1, true, invalid]}, []), "unchanged typed unsupported data is retained")
     check(not dispatcharrSyncPreservedMembers({kept: 1}, {kept: 2}, []), "changed unsupported data is refused")
+    check(dispatcharrSyncPreservedMembers(original["categories"], candidate["categories"], ["profiles"]), "Profiles write preserves shared recents")
+    candidate["categories"]["recents"].data.rows = []
+    check(not dispatcharrSyncPreservedMembers(original["categories"], candidate["categories"], ["profiles"]), "Profiles write cannot clear shared recents")
+    candidate["categories"]["recents"] = ParseJson(recents)
     check(strictJsonEncode(original).text = before, "wire verification never mutates the freshly read original")
     if not m.syncWriteHostInterpreter
         precision = ParseJson("{""MixedCase"":[1.3,1.0,1794675600000,null,""😀""],""case"":1,""Case"":2}", "d")

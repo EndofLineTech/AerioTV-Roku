@@ -1,12 +1,14 @@
 # Live Recently Watched management
 
-Development implementation for `AerioTV-Roku-e3e.18`; not yet device-accepted
-or included in a newly published release.
+From fullscreen live playback, press **Replay** (default mapping), or choose
+**Recent** in the on-screen player controls. Use **Up/Down** to highlight the
+channel you want to remove. Press **Right** to focus **Manage History**, then
+press **OK**. **Left** returns to the highlighted channel, **OK** on a channel
+watches it, and **Back** closes the browser. Fullscreen **\*** belongs to Roku.
 
 In the guide's **Recently Watched** group, open **\* → Manage Recently Watched**.
-In the player's **Recently Watched** channel browser, press **\***. The dialog
-offers Cancel, removal of the selected channel when it is in history, and
-clearing all live history for the current account.
+Both routes offer **Cancel**, **Remove selected channel from history** when
+applicable, and **Clear all live Recently Watched**.
 
 Removing a channel preserves the order of other entries. Clearing removes the
 live recent ring and previous/last-watched recall targets. Favorites, VOD history,
@@ -15,17 +17,15 @@ adds it back; pausing or rebuffering the current recorded tune does not reset
 its recorded marker merely because history was cleared.
 
 Both surfaces update together. The selected row stays on the same channel when
-possible, otherwise moves to the adjacent remaining row; clearing leaves an
-empty list with Back available. Edits use existing account-scoped preference
+possible, otherwise moves to the adjacent remaining row. Clearing leaves the
+guide group empty and focuses **Manage History** in the fullscreen browser;
+**Back** still closes the browser. Edits use account-scoped preference
 storage. If persistence fails, the standard on-TV notice explains that the
 change is session-only. Cancel and stale-dialog/account callbacks do not write.
 
-Automated model/controller tests cover order, recall, current-playback state,
-account changes, stale callbacks, cancellation, storage-failure behavior and
-updates to both views. Native validation remains required for physical **\***
-routing, dialog focus, empty-list navigation, storage across a real relaunch and
-picture/audio continuity. On 2026-10-28 device access became available and the
-normal 0.3.100 candidate containing these controls was installed after the crypto
-probe; ECP confirmed AerioTV active. This is installation evidence, not completion
-of the history acceptance checks. Cross-device deletion behavior belongs to the sync
-engine's merge integration; sync is not enabled by this change.
+**Sync scope:** Removing or clearing live history affects this account on this
+Roku only. Dispatcharr Sync currently syncs profiles, not the shared `recents`
+category. Sync neither imports shared history into Roku nor publishes Roku
+removals; it preserves any existing shared `recents` data. These edits do not
+delete history on the server or another device. Cross-device deletion and its
+merge rules are not implemented or qualified.

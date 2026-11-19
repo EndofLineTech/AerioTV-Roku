@@ -17,6 +17,10 @@ sub main()
     restored = normalizePreferenceStore(parseJson(formatJson(store)))
     check(accountPreferences(restored, "account-a").recent.count() = 0, "cleared history survives stored JSON round trip")
     check(accountPreferences(restored, "account-b").recent.count() = 3, "other account history survives unchanged")
+    restored.accounts[preferenceScope("account-b")] = changeRecentHistory(accountPreferences(restored, "account-b"), "remove", "b")
+    restored = normalizePreferenceStore(parseJson(formatJson(restored)))
+    check(formatJson(accountPreferences(restored, "account-b").recent) = formatJson(["c", "a"]), "removed history survives stored JSON round trip")
+    check(accountPreferences(restored, "account-a").recent.count() = 0, "editing the other account does not refill cleared history")
 
     m.accountIdentity = "account-a"
     m.accountPreferences = original
@@ -31,6 +35,12 @@ sub main()
     m.historyContext = {account: "account-a", uuid: "b", actions: ["cancel", "remove", "clear"], origin: "guide"}
     onRecentHistoryChoice(fakeEvent(fakeDialog("stale"), 1))
     check(m.saveCount = 0, "stale dialog event rejected")
+    m.global = {activeusersession: "session-b"}
+    m.historyContext = userViewEvent(m.historyContext, "session-a")
+    onRecentHistoryChoice(fakeEvent(m.historyDialog, 1))
+    check(m.saveCount = 0 and m.accountPreferences.recent.count() = 3, "same account in a new session rejects previous dialog")
+    m.global = invalid
+    m.historyContext = {account: "account-a", uuid: "b", actions: ["cancel", "remove", "clear"], origin: "guide"}
     m.historyContext.account = "other-account"
     onRecentHistoryChoice(fakeEvent(m.historyDialog, 1))
     check(m.saveCount = 0 and m.accountPreferences.recent.count() = 3, "account switch rejects stale edit")

@@ -286,6 +286,10 @@ connection screen:
 - **Up/Down** change channels in fullscreen (default: Up next, Down previous).
   **Left** opens Channels, **Right** returns to the last channel, and **Replay**
   opens Recently Watched.
+- In the fullscreen **Recently Watched** browser, highlight a channel, then press
+  **Right → OK** on **Manage History**. In the guide, use **Recently Watched →
+  \* → Manage Recently Watched**. [Live history edits](docs/RECENT-HISTORY.md)
+  affect only the active account on this Roku, even with Profiles Sync on.
 - In pills/sidebar guide layouts, **hold Left** to focus groups from any row.
 - To reach the guide header: hold Left directly in Modal; in Sidebar, then Left
   from groups; in Pills, then Up from groups. Select **VOD**, **DVR** (on permitted

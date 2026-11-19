@@ -71,8 +71,9 @@ end sub
 
 sub buildBrowserCanvas()
     m.backdrop = uiRect(m.canvas, 0, 0, 890, 1080, "0x0A1628F0")
-    m.title = uiLabel(m.canvas, "", 60, 70, 740, 58, 36)
+    m.title = uiLabel(m.canvas, "", 60, 70, 470, 58, 36)
     m.summary = uiLabel(m.canvas, "", 60, 133, 740, 36, 23, "0x1AC4D8FF")
+    m.historyButton = uiButton(m.canvas, "Manage History", 550, 75, 270, 48, 23, "0x0D1E35F0")
     m.empty = uiLabel(m.canvas, "No channels in this list", 80, 270, 730, 70, 28)
     m.rows = []
     m.groupRows = []
@@ -114,6 +115,7 @@ sub filterList()
     for i = 0 to m.filtered.count() - 1
         if m.filtered[i].uuid = m.top.playingUuid then m.selected = i
     end for
+    if m.mode = "recent" and m.filtered.count() = 0 then m.focus = "history"
 end sub
 
 sub onActive()
@@ -182,12 +184,26 @@ sub draw()
             if m.focus = "channels" and m.start + i = m.selected
                 uiSetColor(row.border, "0x1AC4D8FF")
                 uiSetColor(row.fill, "0x10344AFF")
+            else if m.focus = "history" and m.start + i = m.selected
+                ' Keep the target visible while focus is on Manage History.
+                uiSetColor(row.fill, "0x10344AFF")
             end if
         end if
     end for
     m.hint.text = "OK  Watch    Left  Groups    Back  Close"
     if m.groupsOpen then m.hint.text = "Up/Down  Browse    Right  Channels    Back  Close groups"
-    if m.mode = "recent" then m.hint.text = "OK  Watch    *  Manage history    Back  Close"
+    historyVisible = m.mode = "recent"
+    m.historyButton.bg.visible = historyVisible
+    m.historyButton.label.visible = historyVisible
+    if historyVisible
+        historyFocused = m.focus = "history"
+        style = uiControlStyle("action", false, historyFocused)
+        uiSetColor(m.historyButton.bg, style.fill)
+        uiSetColor(m.historyButton.label, style.ink)
+        m.hint.text = "Up/Down  Browse    OK  Watch    Right  Manage History    Back  Close"
+        if historyFocused then m.hint.text = "OK  Open    Left  Channels    Back  Close"
+        if m.filtered.count() = 0 then m.hint.text = "OK  Open    Back  Close"
+    end if
     updateTitles()
     requestInfo()
     m.resetFailed = false
@@ -402,13 +418,9 @@ end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if not press or not m.top.active then return false
-    if key = "options" and m.mode = "recent"
-        uuid = ""
-        if m.filtered.count() > 0 then uuid = m.filtered[m.selected].uuid
-        m.top.historyRequest = userViewEvent({account: m.historyAccount, uuid: uuid}, m.userSessionId)
-        return true
-    end if
-    if key = "back" or key = "options"
+    ' Fullscreen Star belongs to Roku even when an app overlay has focus.
+    if key = "options" then return false
+    if key = "back"
         if m.groupsOpen
             m.groupsOpen = false
             m.focus = "channels"
@@ -419,11 +431,20 @@ function onKeyEvent(key as string, press as boolean) as boolean
         end if
         return true
     end if
-    if key = "left" and m.mode <> "recent"
-        m.groupsOpen = true
-        m.focus = "groups"
+    if key = "left"
+        if m.mode <> "recent"
+            m.groupsOpen = true
+            m.focus = "groups"
+        else if m.filtered.count() > 0
+            m.focus = "channels"
+        end if
     else if key = "right"
-        m.focus = "channels"
+        if m.mode = "recent"
+            if m.focus <> "history" then uiAnnounce("Manage History")
+            m.focus = "history"
+        else
+            m.focus = "channels"
+        end if
     else if key = "up" or key = "down"
         delta = 1
         if key = "up" then delta = -1
@@ -433,13 +454,19 @@ function onKeyEvent(key as string, press as boolean) as boolean
                 m.groupIndex = target
                 filterList()
             end if
-        else
+        else if m.filtered.count() > 0
+            m.focus = "channels"
             target = m.selected + delta
             if target >= 0 and target < m.filtered.count() then m.selected = target
         end if
     else if key = "OK"
         if m.focus = "groups"
             m.focus = "channels"
+        else if m.focus = "history"
+            uuid = ""
+            if m.filtered.count() > 0 then uuid = m.filtered[m.selected].uuid
+            m.top.historyRequest = userViewEvent({account: m.historyAccount, uuid: uuid}, m.userSessionId)
+            return true
         else if m.filtered.count() > 0
             m.top.channelSelected = userViewEvent(m.filtered[m.selected], m.userSessionId)
             return true
@@ -450,10 +477,6 @@ function onKeyEvent(key as string, press as boolean) as boolean
     draw()
     return true
 end function
-
-sub handleOptionsShortcut()
-    onKeyEvent("options", true)
-end sub
 
 sub updateRecentHistory()
     if not m.ready then return
@@ -471,6 +494,10 @@ sub updateRecentHistory()
         for i = 0 to m.filtered.count() - 1
             if m.filtered[i].uuid = selectedUuid then m.selected = i
         end for
+    end if
+    if m.mode = "recent"
+        m.focus = "channels"
+        if m.filtered.count() = 0 then m.focus = "history"
     end if
     if m.top.active then draw()
 end sub

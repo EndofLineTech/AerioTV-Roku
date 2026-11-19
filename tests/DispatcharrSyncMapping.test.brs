@@ -21,6 +21,8 @@ sub main()
     check(dispatcharrSyncCategoryMapping("reminders").identity = "channel-pk+start", "reminders never use unstable XMLTV program IDs")
     check(dispatcharrSyncCategoryMapping("profiles").rowTime = "unix-seconds" and dispatcharrSyncCategoryMapping("profiles").cap = 25, "wire roster cap is separate from four local profiles")
     check(dispatcharrSyncCategoryMapping("remoteMap").mode = "preserve" and dispatcharrSyncCategoryMapping("settings").mode = "preserve", "unimplemented/locally scoped categories are explicitly preserved, not advertised as active")
+    recents = dispatcharrSyncCategoryMapping("recents")
+    check(recents.known and recents.mode = "preserve", "shared recents are recognized but not synced to local history")
     check(dispatcharrSyncCategoryMapping("FutureCategory").mode = "preserve" and not dispatcharrSyncCategoryMapping("FutureCategory").known, "future categories are never dropped or treated as empty")
     localIds = ["channel-a", "unresolved", "channel-b", "channel-a"]
     channels = [{uuid: "channel-a", id: "1042", number: "77"}, {uuid: "channel-b", id: "77", number: "1042"}]

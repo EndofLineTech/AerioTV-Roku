@@ -29,7 +29,7 @@ sub onRecentHistoryRequested(event as object)
     end if
     dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = "Manage Recently Watched"
-    dialog.message = "Changes affect this account's live channel history and previous-channel recall. Playback and favorites are kept. Watching a channel again adds it back."
+    dialog.message = "Changes affect this account's live channel history and previous-channel recall on this Roku. Playback and favorites are kept. Watching a channel again adds it back."
     if actions.count() = 1 then dialog.message = "There are no recently watched live channels in this account."
     dialog.buttons = buttons
     dialog.observeField("buttonSelected", "onRecentHistoryChoice")
