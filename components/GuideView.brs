@@ -549,23 +549,30 @@ sub drawGuide()
             row.name.width = channelLayout.nameWidth
             row.name.height = channelLayout.nameHeight
             row.name.maxLines = channelLayout.nameLines
-            row.number.translation = [channelLayout.textX, 4]
+            lineHeight = channelLayout.nameHeight / channelLayout.nameLines
+            if row.nameLineHeight <> lineHeight
+                row.nameLineHeight = lineHeight
+                uiSetFont(row.name, 21, "font", false, lineHeight)
+            end if
+            row.number.translation = [channelLayout.numberX, 4]
             channel = m.filtered[index]
             row.uuid = channel.uuid
             row.logoId = ""
             if m.settings.showLogos then row.logoId = channelLogoCacheId(channel)
             row.number.text = channel.number
             row.catchup.visible = catchupChannelDays(m.top.catchupPermission, m.top.channelFacts, channel.id) > 0
-            numberWidth = 176 - channelLayout.textX
+            numberWidth = channelLayout.numberWidth
             if row.catchup.visible and m.settings.showNumbers
                 ' Measure the resolved Label font so the icon follows the digits.
                 row.number.width = 0
                 measuredWidth = row.number.localBoundingRect().width
-                if measuredWidth < numberWidth - 26 then numberWidth = measuredWidth else numberWidth -= 26
+                numberWidth = 154 - channelLayout.numberX
+                if numberWidth > 128 then numberWidth = 128
+                if measuredWidth < numberWidth then numberWidth = measuredWidth
             end if
             row.number.width = numberWidth
             row.catchup.translation = [154, 4]
-            if m.settings.showNumbers then row.catchup.translation = [channelLayout.textX + numberWidth + 6, 4]
+            if m.settings.showNumbers then row.catchup.translation = [channelLayout.numberX + numberWidth + 6, 4]
             row.name.text = channel.name
             row.badge.text = ""
             if m.favorites.doesExist(channel.uuid) then row.badge.text = "FAV"

@@ -51,33 +51,46 @@ end function
 function guideChannelGeometry(row as object, settings as object) as object
     stockWidth = 58
     stockHeight = 58
+    logoY = 40
     maxWidth = 98
     maxHeight = row.tileHeight - 8
-    nameY = 32
+    nameY = 40
+    nameHeight = 62
     nameLines = 2
     if row.basic
         stockWidth = 32
         stockHeight = 30
+        logoY = 27
         maxWidth = 66
         nameY = 26
+        nameHeight = 32
         nameLines = 1
     end if
-    if not settings.showNumbers then nameY = 4
-    layout = {textX: 12, nameY: nameY, nameHeight: row.tileHeight - nameY - 2, nameLines: nameLines}
+    ' Keep the indicator lane reserved even when the number is hidden.
+    if not settings.showNumbers and nameY < 31 then nameY = 31
+    if nameY + nameHeight > row.tileHeight then nameHeight = row.tileHeight - nameY
+    layout = {textX: 12, numberX: 12, numberWidth: 170, nameY: nameY, nameHeight: nameHeight, nameLines: nameLines}
     if settings.showLogos
         layout.logo = boundedChannelLogo(12, row.tileHeight, settings.channelLogoSize, stockWidth, stockHeight, maxWidth, maxHeight)
+        if settings.channelLogoSize <= 100
+            layout.logo.y = logoY
+            if logoY + layout.logo.h > row.tileHeight then layout.logo.y = row.tileHeight - layout.logo.h
+        end if
         layout.textX = layout.logo.x + layout.logo.w + 10
-        if not settings.showNames and not settings.showNumbers
-            layout.logo.x = int((239 - layout.logo.w) / 2)
+        if settings.channelLogoSize > 100 and layout.logo.y < 31
+            layout.numberX = layout.textX
+            layout.numberWidth = 182 - layout.numberX
         end if
     end if
-    layout.nameWidth = 229 - layout.textX
+    layout.nameWidth = 230 - layout.textX
+    if settings.showLogos and settings.channelLogoSize = 100 then layout.nameWidth = 150
     return layout
 end function
 
 function browserChannelGeometry(size as integer, showLogo as boolean) as object
     if not showLogo then return {textX: 10}
     logo = boundedChannelLogo(10, 84, size, 76, 54, 112, 72)
+    if size = 100 then logo.y = 14
     return {logo: logo, textX: logo.x + logo.w + 19}
 end function
 

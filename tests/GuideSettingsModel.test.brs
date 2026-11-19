@@ -36,20 +36,40 @@ sub main()
             end for
         end for
     end for
-    for each mode in [{density: "basic", subtitles: false}, {density: "preview", subtitles: false}, {density: "preview", subtitles: true}]
+    for each mode in [
+        {density: "basic", subtitles: false, logoY: 27, nameX: 54, nameY: 26, nameWidth: 150, nameHeight: 32}
+        {density: "preview", subtitles: false, logoY: 37, nameX: 80, nameY: 40, nameWidth: 150, nameHeight: 55}
+        {density: "preview", subtitles: true, logoY: 40, nameX: 80, nameY: 40, nameWidth: 150, nameHeight: 62}
+    ]
         geometry = guidePresentationGeometry(mode.density, mode.subtitles)
+        stock = guideChannelGeometry(geometry, {showLogos: true, showNumbers: true, showNames: true, channelLogoSize: 100})
+        assertEqual(stock.logo.x, 12, "default logo keeps its stock x")
+        assertEqual(stock.logo.y, mode.logoY, "default logo keeps its stock y except where it crosses the row edge")
+        assertEqual(stock.numberX, 12, "default number stays at the stock x")
+        assertEqual(stock.numberWidth, 170, "default number keeps its stock width")
+        assertEqual(stock.textX, mode.nameX, "default name keeps its stock x")
+        assertEqual(stock.nameY, mode.nameY, "default name keeps its stock y")
+        assertEqual(stock.nameWidth, mode.nameWidth, "default name keeps its stock width")
+        assertEqual(stock.nameHeight, mode.nameHeight, "default name only loses height when it crosses the row edge")
         for each size in [25, 50, 100, 150, 200, 250]
             layout = guideChannelGeometry(geometry, {showLogos: true, showNumbers: true, showNames: true, channelLogoSize: size})
             assertEqual(layout.logo.y >= 0 and layout.logo.y + layout.logo.h <= geometry.tileHeight, true, "logo stays inside all guide row modes")
-            assertEqual(layout.logo.x + layout.logo.w < layout.textX, true, "logo cannot overlap number or name")
-            assertEqual(layout.textX + layout.nameWidth, 229, "even the widest logo retains a text gutter")
+            assertEqual(layout.logo.x + layout.logo.w < layout.textX, true, "logo cannot overlap the name")
+            assertEqual(layout.textX + layout.nameWidth <= 230, true, "even the widest logo retains a text gutter")
             assertEqual(layout.nameY + layout.nameHeight <= geometry.tileHeight, true, "label fits in the tile")
+            if size > 100 and layout.logo.y < 31 then assertEqual(layout.logo.x + layout.logo.w < layout.numberX, true, "grown logos clear the number and indicator lane")
             for each scale in [90, 100, 110, 120]
-                font = uiScaledFontSize(21, layout.nameHeight, false, {textSize: scale})
+                font = uiScaledFontSize(21, layout.nameHeight / layout.nameLines, false, {textSize: scale})
                 assertEqual(font * 1.12 * layout.nameLines <= layout.nameHeight, true, "scaled channel name fits the line box")
             end for
+            for each showLogo in [true, false]
+                noNumber = guideChannelGeometry(geometry, {showLogos: showLogo, showNumbers: false, showNames: true, channelLogoSize: size})
+                assertEqual(noNumber.nameY >= 4 + 27, true, "long names cannot enter the catch-up and FAV lane without numbers")
+                assertEqual(noNumber.nameY + noNumber.nameHeight <= geometry.tileHeight, true, "names below the indicator lane still fit")
+                font = uiScaledFontSize(21, noNumber.nameHeight / noNumber.nameLines, false, {textSize: 120})
+                assertEqual(font * 1.12 * noNumber.nameLines <= noNumber.nameHeight, true, "largest channel name stays inside the reserved row area")
+            end for
         end for
-        stock = guideChannelGeometry(geometry, {showLogos: true, showNumbers: true, showNames: true, channelLogoSize: 100})
         small = guideChannelGeometry(geometry, {showLogos: true, showNumbers: true, showNames: true, channelLogoSize: 25})
         large = guideChannelGeometry(geometry, {showLogos: true, showNumbers: true, showNames: true, channelLogoSize: 250})
         hidden = guideChannelGeometry(geometry, {showLogos: false, showNumbers: true, showNames: true, channelLogoSize: 250})
@@ -57,6 +77,10 @@ sub main()
         assertEqual(hidden.textX, 12, "hidden logos return their column to text")
     end for
     browser = browserChannelGeometry(250, true)
+    browserStock = browserChannelGeometry(100, true)
+    assertEqual(browserStock.logo.x, 10, "player list keeps the original stock logo x")
+    assertEqual(browserStock.logo.y, 14, "player list keeps the original stock logo y")
+    assertEqual(browserStock.textX, 105, "player list keeps the original stock text x")
     assertEqual(browser.logo.y + browser.logo.h < 84, true, "browser logo fits the recycled row")
     assertEqual(browser.logo.x + browser.logo.w < browser.textX and browser.textX < 614, true, "browser logo clears text and WATCHING label")
     assertEqual(browserChannelGeometry(250, false).textX, 10, "hidden browser logos return their column to text")
