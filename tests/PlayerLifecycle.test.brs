@@ -515,7 +515,57 @@ sub main()
     assertEqual(m.top.exitRequested, false, "outgoing flush Back must not fall through to protected-launch app exit")
     assertEqual(m.profileSyncWriteTask, invalid, "outgoing flush cancellation retires its actual Task")
     assertEqual(flushTask.apiKey, "", "cancelled outgoing flush clears captured own credentials")
+    checkRecoveryReadyRadioClassification()
     print "ALL TESTS PASSED"
+end sub
+
+sub checkRecoveryReadyRadioClassification()
+    m.global = {activeusersession: "recovery-session"}
+    m.playingChannel = {id: "4", uuid: "a", isRadio: false}
+    for each declaredRadio in [true, false]
+        bridge = {id: "bridge", aeriosession: "recovery-session", ready: true, release: false, detached: [], isSameNode: function(other as object) as boolean
+            return m.id = other.id
+        end function, unobserveField: sub(field as string)
+            m.detached.push(field)
+        end sub}
+        ready = {node: bridge, getRoSGNode: function() as object
+            return m.node
+        end function, getData: function() as boolean
+            return true
+        end function}
+        m.channelFacts = {}
+        m.video = {content: lifecycleRetryContent(10), control: "pause"}
+        m.streamReady = true
+        m.decoderSnapshot = {renderCount: 12}
+        m.recoveryContent = m.video.content
+        m.recoveryPaused = true
+        m.recoveryPausePending = false
+        m.recoveryIssued = false
+        m.recoveryTask = bridge
+        ' Metadata arrives after recovery has acquired its own temporary bridge.
+        m.channelFacts = normalizeChannelCapabilities([{id: 4, uuid: "a", effective_is_radio: declaredRadio}])
+        onRecoveryReady(ready)
+        if declaredRadio
+            assertEqual(m.video.content.serial, 10, "late radio classification keeps original content")
+            assertEqual(m.video.control, "pause", "late radio classification does not write playback controls")
+            assertEqual(m.streamReady, true, "late radio classification preserves stream readiness")
+            assertEqual(m.decoderSnapshot.renderCount, 12, "late radio classification preserves decoder state")
+            assertEqual(m.recoveryIssued, false, "late radio classification does not issue restart")
+            assertEqual(m.recoveryPausePending, false, "late radio classification does not queue a pause")
+            assertEqual(bridge.release, true, "owned bridge is released for task-side cleanup")
+            assertEqual(bridge.detached.join(","), "ready,result", "release detaches both bridge callbacks")
+            assertEqual(m.recoveryTask, invalid, "released bridge is no longer current")
+            assertEqual(m.recoveryContent, invalid, "released recovery drops content reference")
+        else
+            assertEqual(m.video.content.serial, 11, "ordinary video still clones and restarts content")
+            assertEqual(m.video.control, "play", "ordinary video restarts the local decoder")
+            assertEqual(m.streamReady, false, "ordinary video waits for new readiness")
+            assertEqual(m.recoveryIssued, true, "ordinary video issues restart")
+            assertEqual(m.recoveryPausePending, true, "ordinary video preserves requested pause")
+            assertEqual(bridge.release, false, "ordinary video holds bridge until replacement is playing")
+            assertEqual(bridge.detached.count(), 0, "ordinary video keeps its bridge callbacks")
+        end if
+    end for
 end sub
 
 function vodProgressEvent(value as object) as object

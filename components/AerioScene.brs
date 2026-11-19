@@ -2190,6 +2190,16 @@ end sub
 sub cancelSourceOperation()
     m.sourceWatch.control = "stop"
     m.sourceWatchState = invalid
+    cancelPictureRecovery()
+    clearServerStreamInfo()
+    if m.sourceTask <> invalid
+        m.sourceTask.unobserveField("result")
+        cancelNetworkTask(m.sourceTask)
+        m.sourceTask = invalid
+    end if
+end sub
+
+sub cancelPictureRecovery()
     m.recoveryContent = invalid
     m.recoveryPausePending = false
     if m.recoveryTask <> invalid
@@ -2197,12 +2207,6 @@ sub cancelSourceOperation()
         m.recoveryTask.unobserveField("result")
         m.recoveryTask.release = true
         m.recoveryTask = invalid
-    end if
-    clearServerStreamInfo()
-    if m.sourceTask <> invalid
-        m.sourceTask.unobserveField("result")
-        cancelNetworkTask(m.sourceTask)
-        m.sourceTask = invalid
     end if
 end sub
 
@@ -2535,6 +2539,11 @@ sub onRecoveryReady(event as object)
     if not event.getData() or not m.recoveryTask.ready or m.recoveryIssued then return
     if m.playingChannel = invalid then return
     if not m.recoveryContent.isSameNode(m.video.content) then return
+    ' Channel details may declare radio while the temporary bridge starts.
+    if channelDeclaredRadio(m.playingChannel, m.channelFacts)
+        cancelPictureRecovery()
+        return
+    end if
     replacement = m.video.content.clone(false)
     m.recoveryIssued = true
     m.recoveryPausePending = m.recoveryPaused
