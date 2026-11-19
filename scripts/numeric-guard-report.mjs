@@ -174,7 +174,7 @@ const consoleError = /(?:\bERROR\s*:|\berror &h|\bSyntax Error\b|\bCompile Error
 
 export function checkNumericGuardReport(log, native, { fixedHttp = false } = {}) {
   const inventory = numericGuardInventory(native, fixedHttp);
-  const seen = new Set();
+  const rows = new Map();
   const mismatches = [];
   let observations = 0;
   let sawPrimitives = false;
@@ -207,8 +207,8 @@ export function checkNumericGuardReport(log, native, { fixedHttp = false } = {})
     const key = keyFor(row.target, row.name);
     const spec = inventory.get(key);
     assert(spec, `Unexpected case: ${key}`);
-    assert(!seen.has(key), `Duplicate case: ${key}`);
-    seen.add(key);
+    assert(!rows.has(key), `Duplicate case: ${key}`);
+    rows.set(key, row);
     assert(!['fixture-error', 'runtime-exception', 'bad-category', 'bad-result'].includes(row.actual),
       `Fixture or runtime error: ${key}: ${row.actual}`);
     assert.equal(row.lane, spec.lane, `Wrong lane: ${key}`);
@@ -227,7 +227,7 @@ export function checkNumericGuardReport(log, native, { fixedHttp = false } = {})
   }
   assert(summary, 'Missing terminal marker');
   assert(sawPrimitives, 'Missing primitive control');
-  const missing = [...inventory.keys()].filter(key => !seen.has(key));
+  const missing = [...inventory.keys()].filter(key => !rows.has(key));
   assert(!missing.length, `Missing cases: ${missing.join(', ')}`);
   const caller = mismatches.filter(row => row.lane === 'caller').length;
   const callerShape = mismatches.filter(row => row.lane === 'caller-shape').length;
@@ -235,7 +235,7 @@ export function checkNumericGuardReport(log, native, { fixedHttp = false } = {})
     native, rows: inventory.size, mismatches: mismatches.length,
     callermismatches: caller, callershapemismatches: callerShape, observations,
   }, 'Wrong terminal summary');
-  return { summary, mismatches };
+  return { summary, mismatches, rows };
 }
 
 // Keep the contract mismatches and their original lanes in the report. These
@@ -257,11 +257,19 @@ const httpBaseline = [
   ['native-byte-array-count', 'roInteger/Integer', 'caller-shape'],
 ].map(([name, kinds, lane]) => ({ target: 'http/failure', name, kinds, actual: '', lane }));
 
-export function assertNumericGuardNativeVerdict({ summary, mismatches }, phase) {
+export function assertNumericGuardNativeVerdict({ summary, mismatches, rows }, phase) {
   assert(summary.native, 'Native verdict requires native evidence');
   assert(['pre-fix', 'post-fix'].includes(phase), 'Unknown native phase');
   const expected = phase === 'pre-fix' ? [...syntheticBaseline, ...httpBaseline] : syntheticBaseline;
   const signature = ({ target, name, kinds, actual, lane }) => JSON.stringify([target, name, kinds.toLowerCase(), actual, lane]);
+  if (phase === 'post-fix') {
+    for (const baseline of httpBaseline) {
+      const row = rows.get(keyFor(baseline.target, baseline.name));
+      assert(row, `Missing post-fix HTTP case: ${baseline.name}`);
+      assert.equal(signature(row), signature({ ...baseline, actual: 'at-least-1-mib' }),
+        `Post-fix HTTP case must preserve the boxed type pair and report the size bucket: ${baseline.name}`);
+    }
+  }
   assert.deepEqual(mismatches.map(signature).sort(), expected.map(signature).sort(), `Unexpected ${phase} mismatch set`);
   return { knownSynthetic: syntheticBaseline.length, reproducedHttp: expected.length - syntheticBaseline.length };
 }

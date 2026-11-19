@@ -33,6 +33,29 @@ function lines({ rows, summary }) {
 const report = sample => lines(sample).join('\n');
 const find = (sample, target, name) => sample.rows.find(row => row.target === target && row.name === name);
 
+function postFixFixture() {
+  const sample = fixture(true);
+  for (const [name, kinds] of [
+    ['primitive-assigned/schema', 'roInteger/Integer/Integer'],
+    ['primitive-assigned/fetched', 'Integer/roInteger/Integer'],
+    ['constructed-envelope', 'roInteger/roInteger/Integer'],
+    ['aa-int/schema', 'roInteger/Integer/Integer'],
+    ['aa-int/fetched', 'Integer/roInteger/Integer'],
+  ]) Object.assign(find(sample, 'metadata/state', name), { kinds, actual: 'miss' });
+  for (const name of ['primitive-assigned', 'aa-int']) {
+    Object.assign(find(sample, 'preferences/model', name), { kinds: 'roInteger', actual: 'default' });
+  }
+  for (const [name, kinds] of [
+    ['aa-int/response', 'roInteger/Integer'],
+    ['aa-int/cap', 'Integer/roInteger'],
+    ['transport-aa-shape', 'roInteger/Integer'],
+    ['task-cap-shape', 'Integer/roInteger'],
+    ['native-byte-array-count', 'roInteger/Integer'],
+  ]) find(sample, 'http/failure', name).kinds = kinds;
+  sample.summary.mismatches = 7;
+  return sample;
+}
+
 test('recognizes the separate exact host and native inventories', () => {
   for (const [native, rows, observations] of [[false, 210, 18], [true, 231, 14]]) {
     const sample = fixture(native);
@@ -174,25 +197,47 @@ test('only HTTP parser observations change with the fix; no synthetic or caller 
   assert.throws(() => checkNumericGuardReport(report(sample), true, { fixedHttp: true }), /Unexpected observation/);
   row.actual = 'at-least-1-mib';
 
-  for (const [name, kinds] of [
-    ['primitive-assigned/schema', 'roInteger/Integer/Integer'],
-    ['primitive-assigned/fetched', 'Integer/roInteger/Integer'],
-    ['constructed-envelope', 'roInteger/roInteger/Integer'],
-    ['aa-int/schema', 'roInteger/Integer/Integer'],
-    ['aa-int/fetched', 'Integer/roInteger/Integer'],
-  ]) Object.assign(find(sample, 'metadata/state', name), { kinds, actual: 'miss' });
-  for (const name of ['primitive-assigned', 'aa-int']) {
-    Object.assign(find(sample, 'preferences/model', name), { kinds: 'roInteger', actual: 'default' });
-  }
-  sample.summary.mismatches = 7;
-  const accepted = checkNumericGuardReport(report(sample), true, { fixedHttp: true });
+  assert.doesNotThrow(() => checkNumericGuardReport(report(sample), true, { fixedHttp: true }));
+  const postFix = postFixFixture();
+  const accepted = checkNumericGuardReport(report(postFix), true, { fixedHttp: true });
   assert.equal(accepted.mismatches.length, 7);
   assert.deepEqual(assertNumericGuardNativeVerdict(accepted, 'post-fix'), { knownSynthetic: 7, reproducedHttp: 0 });
   assert.throws(() => assertNumericGuardNativeVerdict(accepted, 'pre-fix'), /Unexpected pre-fix mismatch set/);
 
-  find(sample, 'metadata/state', 'aa-int/schema').actual = 'fresh';
-  find(sample, 'metadata/state', 'epoch-roundtrip').actual = 'miss';
-  sample.summary.callermismatches = 1;
-  const regressed = checkNumericGuardReport(report(sample), true, { fixedHttp: true });
+  find(postFix, 'metadata/state', 'aa-int/schema').actual = 'fresh';
+  find(postFix, 'metadata/state', 'epoch-roundtrip').actual = 'miss';
+  postFix.summary.callermismatches = 1;
+  const regressed = checkNumericGuardReport(report(postFix), true, { fixedHttp: true });
   assert.throws(() => assertNumericGuardNativeVerdict(regressed, 'post-fix'), /Unexpected post-fix mismatch set/);
+});
+
+test('all five post-fix HTTP rows must prove the same boxed pair recovered', () => {
+  const sample = postFixFixture();
+  const cases = ['aa-int/response', 'aa-int/cap', 'transport-aa-shape', 'task-cap-shape', 'native-byte-array-count'];
+  for (const name of cases) {
+    const row = find(sample, 'http/failure', name);
+    const boxed = row.kinds;
+    const wrongPair = error => error.message.startsWith(
+      `Post-fix HTTP case must preserve the boxed type pair and report the size bucket: ${name}\n`,
+    );
+    assert.equal(row.actual, 'at-least-1-mib');
+    for (const kinds of ['Integer/Integer', boxed.replace('roInteger', 'roInt')]) {
+      row.kinds = kinds;
+      const result = checkNumericGuardReport(report(sample), true, { fixedHttp: true });
+      assert.equal(result.mismatches.length, 7);
+      assert.throws(() => assertNumericGuardNativeVerdict(result, 'post-fix'), wrongPair);
+    }
+    row.kinds = boxed;
+    row.actual = '';
+    sample.summary.mismatches += 1;
+    if (row.lane === 'caller-shape') sample.summary.callershapemismatches += 1;
+    const result = checkNumericGuardReport(report(sample), true, { fixedHttp: true });
+    assert.throws(() => assertNumericGuardNativeVerdict(result, 'post-fix'), wrongPair);
+    row.actual = 'at-least-1-mib';
+    sample.summary.mismatches -= 1;
+    if (row.lane === 'caller-shape') sample.summary.callershapemismatches -= 1;
+  }
+  assert.doesNotThrow(() => assertNumericGuardNativeVerdict(
+    checkNumericGuardReport(report(sample), true, { fixedHttp: true }), 'post-fix',
+  ));
 });
