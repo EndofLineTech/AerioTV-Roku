@@ -150,6 +150,39 @@ assert.throws(() => assertPackageEntries(['manifest','source/Main.brs','componen
 }"""
         subprocess.run(["node", "--input-type=module", "-e", script], cwd=ROOT, check=True)
 
+    def test_guide_days_probe_isolates_storage_and_blocks_provider_writes(self):
+        spec = importlib.util.spec_from_file_location("phone_normal", ROOT / "scripts/test-phone-setup-normal-native.py")
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        paths = runner.PRODUCTION_FILES + [
+            "components/AerioScene.brs", "components/GuideView.brs", "components/GuideView.xml",
+            "components/GuideTask.brs", "components/DispatcharrSyncWriteTask.brs",
+            "source/HttpTransport.brs", "source/MetadataCacheStore.brs", "source/PhoneSetupApplyModel.brs",
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            normal, probe = Path(directory) / "normal.zip", Path(directory) / "guide.zip"
+            with zipfile.ZipFile(normal, "w") as package:
+                for name in paths:
+                    package.writestr(name, (ROOT / name).read_bytes())
+            for wire, expected in [(2, 2), (0, 30)]:
+                runner.build(probe, normal, "PrivateGuideDays", guide_days=wire)
+                with zipfile.ZipFile(probe) as package:
+                    scene = package.read("components/AerioScene.brs").decode()
+                    self.assertIn('CreateObject("roRegistrySection", "PrivateGuideDays")', scene)
+                    self.assertNotIn('CreateObject("roRegistrySection", "AerioTV")', scene)
+                    self.assertIn("m.profileSyncSchedulingReady = false", scene)
+                    self.assertIn(f"if entry.guideDays <> {wire}", scene)
+                    self.assertIn(f'callFunc("probeImportedGuideWindow", {expected})', scene)
+                    writers = package.read("components/DispatcharrSyncWriteTask.brs").decode()
+                    self.assertIn("\n    finishDispatcharrSyncWrite(denied) : return\n", writers)
+                    transfer = package.read("source/HttpTransport.brs").decode()
+                    guard = transfer.index('if method <> "GET"')
+                    self.assertLess(guard, transfer.index("transfer = CreateObject"))
+                    self.assertIn("return result", transfer[guard:transfer.index("transfer = CreateObject")])
+                    self.assertIn('"tmp:/phone-normal-cache"', package.read("source/MetadataCacheStore.brs").decode())
+                    for name in runner.PRODUCTION_FILES + ["components/GuideTask.brs", "source/PhoneSetupApplyModel.brs"]:
+                        self.assertEqual(package.read(name), (ROOT / name).read_bytes(), name)
+
 
 if __name__ == "__main__":
     unittest.main()
