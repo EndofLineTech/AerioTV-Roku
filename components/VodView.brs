@@ -468,12 +468,18 @@ sub drawVod()
     m.heading.translation = [96, 91]
     m.heading.width = 280
     m.heading.height = 55
+    m.status.translation = [96, 154]
+    m.status.width = 1728
     m.status.height = 40
     if scale <> 100
-        m.heading.translation = [96, 88]
-        m.heading.width = 296
+        ' Keep both labels on a dedicated line below the tabs and above the
+        ' first tile. Size-to-fit headings no longer compete with tab pills.
+        m.heading.translation = [96, 143]
+        m.heading.width = 680
         m.heading.height = 66
-        m.status.height = 54
+        m.status.translation = [800, 143]
+        m.status.width = 1024
+        m.status.height = 66
     end if
     uiSetFont(m.heading, headingSize, "font", false, 0, scale)
     uiSetFont(m.status, 24, "font", true, 0, scale)
@@ -510,6 +516,9 @@ sub drawVod()
         tile.fact.visible = i < m.items.count()
         if i < m.items.count()
             item = m.items[i]
+            sourceVersion = compact and m.shelf = "versions" and item.kind = "version"
+            tileTypographyKey = typographyKey
+            if sourceVersion then tileTypographyKey += "|version"
             borderColor = "0x263549FF"
             if i = m.index then borderColor = "0x1AC4D8FF"
             uiSetColor(tile.border, borderColor)
@@ -523,14 +532,11 @@ sub drawVod()
                 borderColor = style.fill
                 uiSetColor(tile.border, borderColor)
                 tile.title.wrap = true
-                tile.title.maxLines = layout.compactLines
-                uiCenterLabel(tile.title, 24, 0, 288, 116)
                 uiSetColor(tile.title, style.ink)
                 uiSetColor(tile.fact, style.ink)
-                tile.fact.translation = [16, 78]
-                tile.fact.width = 304
             else
                 uiReleaseCenteredLabel(tile.title)
+                uiReleaseCenteredLabel(tile.fact)
                 tile.title.maxLines = 2
                 tile.border.translation = [layout.posterX - 4, 0]
                 tile.border.width = layout.posterWidth + 8
@@ -547,10 +553,10 @@ sub drawVod()
                 tile.fact.height = layout.factHeight
                 uiSetColor(tile.fact, "0x9EB5C9FF")
             end if
-            if tile.typographyKey <> typographyKey
+            if not compact and tile.typographyKey <> tileTypographyKey
                 uiSetFont(tile.title, titleSize, "font", false, 0, scale)
                 uiSetFont(tile.fact, factSize, "font", true, 0, scale)
-                tile.typographyKey = typographyKey
+                tile.typographyKey = tileTypographyKey
             end if
             for j = 0 to tile.corners.count() - 1
                 corner = tile.corners[j]
@@ -574,10 +580,14 @@ sub drawVod()
                 tile.fact.text = "Unavailable — * to remove"
                 uri = ""
             end if
-            if compact
+            if sourceVersion
+                tile.title.text = textValue(item.sourceName)
+                tile.fact.text = "Version " + item.id
+            else if compact
                 if tile.fact.text.trim() <> "" then tile.title.text += chr(10) + tile.fact.text.trim()
                 tile.fact.visible = false
             end if
+            if compact then layoutVodCompactCard(tile, scale, sourceVersion, tileTypographyKey)
             if placement.visible and not compact and uri = "" and tmdbImagePath(item.tmdbPosterPath) <> "" then uri = "https://image.tmdb.org/t/p/w185" + item.tmdbPosterPath
             if placement.visible and not compact and uri = "" and item.unavailable <> true then uri = "pkg:/images/channel-icon-hd.png"
             if tile.poster.uri <> uri
@@ -593,6 +603,44 @@ sub drawVod()
             tile.poster.uri = ""
         end if
     end for
+end sub
+
+sub layoutVodCompactCard(tile as object, scale as integer, sourceVersion as boolean, typographyKey as string)
+    cardHeight = 116
+    ' Keep the optical ink offset inside each lane, not below the cap edge.
+    titleY = 5
+    titleHeight = cardHeight - 2 * titleY - 5
+    factHeight = 0
+    factFont = 0
+    if sourceVersion
+        factFont = uiScaledFontSize(16, 0, true, uiAppearance(), scale)
+        ' Leave a full line for the stable discriminator even when the name
+        ' wraps or truncates. Digits use less than one em; fit long IDs too.
+        maxFactFont = int(264 / (len(tile.fact.text) * 0.7))
+        if factFont > maxFactFont then factFont = maxFactFont
+        factHeight = int(factFont * 1.12 + 0.9999)
+        titleHeight -= factHeight + 8
+    end if
+    titleBase = uiTypeSize("body")
+    titleFont = uiScaledFontSize(titleBase, titleHeight, false, uiAppearance(), scale)
+    lines = int(titleHeight / (titleFont * 1.12))
+    if lines > 3 then lines = 3
+    tile.title.maxLines = lines
+    uiCenterLabel(tile.title, 36, titleY, 264, titleHeight)
+    if sourceVersion
+        tile.fact.wrap = false
+        tile.fact.maxLines = 1
+        uiCenterLabel(tile.fact, 36, cardHeight - factHeight - 9, 264, factHeight)
+    end if
+    if sourceVersion then typographyKey += "|" + factFont.toStr()
+    if tile.typographyKey <> typographyKey
+        uiSetFont(tile.title, titleBase, "font", false, titleHeight, scale)
+        if sourceVersion then uiSetFont(tile.fact, 16, "font", true, factHeight, scale)
+        tile.typographyKey = typographyKey
+    end if
+    ' The same production centering path also gives host fixtures final bounds.
+    uiPositionCenteredLabel(tile.title)
+    if sourceVersion then uiPositionCenteredLabel(tile.fact)
 end sub
 
 sub refreshAppearance()

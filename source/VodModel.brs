@@ -118,7 +118,8 @@ function vodVersionPage(payload as dynamic, page as integer) as object
         providerId = textValue(row.m3u_account.id)
         numeric = CreateObject("roRegex", "^[0-9]+$", "")
         if not numeric.isMatch(id) or not numeric.isMatch(providerId) then return result
-        result.items.push({id: id, providerId: providerId, uuid: "version-" + id, key: "version:" + id, kind: "version", title: left(textValue(row.m3u_account.name), 120) + " — version " + id, year: "", rating: "", logoId: "", season: "", episode: ""})
+        sourceName = left(textValue(row.m3u_account.name), 120)
+        result.items.push({id: id, providerId: providerId, uuid: "version-" + id, key: "version:" + id, kind: "version", title: sourceName + " — version " + id, sourceName: sourceName, year: "", rating: "", logoId: "", season: "", episode: ""})
     end for
     if rows.count() > offset + 20 then result.next = "next"
     result.ok = true
@@ -160,7 +161,7 @@ function vodVisualTile(index as integer, focused as integer, total as integer, c
 end function
 
 function vodTextLayout(scale as integer, primary as dynamic, titleFont as integer, factFont as integer) as object
-    layout = {posterX: 72, posterWidth: 192, posterHeight: 288, titleY: 304, titleHeight: 52, factY: 354, factHeight: 26, compactLines: 3}
+    layout = {posterX: 72, posterWidth: 192, posterHeight: 288, titleY: 304, titleHeight: 52, factY: 354, factHeight: 26}
     if primary = 110 or primary = 120
         layout.posterX = 80
         layout.posterWidth = 176
@@ -181,8 +182,6 @@ function vodTextLayout(scale as integer, primary as dynamic, titleFont as intege
         layout.posterHeight = layout.posterWidth * 3 \ 2
         layout.posterX = (336 - layout.posterWidth) \ 2
     end if
-    ' Reserve up to 5 px for the shared label-centering offset at this scale.
-    if 3 * titleFont * 1.12 > 111 then layout.compactLines = 2
     return layout
 end function
 

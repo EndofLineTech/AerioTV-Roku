@@ -21,7 +21,10 @@ the active account has a Movies or TV Shows library and can edit its settings.
 **Text size** and **Secondary text size**. Other values multiply those global
 settings for library headings, status, and catalog tiles. The D-pad grid
 keeps its column and page counts; larger text can reduce the poster footprint
-to give titles and captions room. The change takes effect without restarting.
+to give titles and captions room. Outside 100%, the heading and status sit
+below the tabs. Source-version cards reserve a separate line for the version
+ID, so an abbreviated source name does not hide the distinction. The change
+takes effect without restarting.
 It is saved on this Roku, does not change Guide density or player text, and
 does not sync to other clients. Details screens and shared navigation controls
 continue to use the global appearance settings.
@@ -58,7 +61,11 @@ the unmodified build. Then select 85% and 150%, including with both global
 text sizes at 120%. Move D-pad focus through both visible rows, to the last
 tile, and back; verify the focused border, wrapped titles, and captions stay
 visible without overlap. Also check text-only category/source cards, shelves,
-and a long title. Return to 100%, and verify the default layout returns.
+and a long title. In Sources, check two versions with the same long name and
+different IDs; both IDs and the focused card should remain distinct. Check
+Continue Watching and related-title headings and the status line at 150% with
+global text sizes at 120%, including switching secondary text between 110%
+and 120%. Return to 100% and verify the stock heading, status, and poster grid.
 Relaunch with a nondefault choice to confirm persistence, and verify the Guide
 and global appearance settings were not changed.
 

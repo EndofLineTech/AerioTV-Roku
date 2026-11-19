@@ -107,7 +107,6 @@ sub testVodDisplayScaleGeometry()
                 if layout.posterHeight + 8 > layout.titleY or layout.posterX * 2 + layout.posterWidth <> 336 then stop
                 if layout.titleHeight < 2 * title * 1.12 or layout.factY < layout.titleY + layout.titleHeight then stop
                 if layout.factHeight < fact * 1.12 or layout.factY + layout.factHeight > 380 then stop
-                if layout.compactLines * title * 1.12 + int(title / 5.0 + 0.5) / 2.0 > 116 then stop
             end for
         end for
     end for
