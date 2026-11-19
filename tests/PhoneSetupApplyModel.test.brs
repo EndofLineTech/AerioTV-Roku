@@ -109,8 +109,36 @@ sub main()
     playlist.catchupOffsetMinutes = 45
     prepared = phoneSetupPrepareImport({playlist: playlist}, "received", "")
     check(prepared.ok and prepared.entry.catchupOffsetMinutes = 45 and prepared.notes.count() = 1 and instr(1, prepared.notes[0], "UTC") > 0, "Xtream confirmation names the supported archive path")
+    testXtreamXmltvImport()
     testInterimProfiles()
     print "ALL TESTS PASSED"
+end sub
+
+sub testXtreamXmltvImport()
+    playlist = {type: "xtream", name: "Panel", url: "https://panel.example.test", localUrl: "http://lan.example.test", xmltvUrl: "https://guide.example.test/Feed/", credential: {username: "viewer", password: "fixture"}, guideDays: 7, catchupOffsetMinutes: 0, vodEnabled: true, channelProfileIds: []}
+    payload = {playlist: playlist}
+    prepared = phoneSetupPrepareImport(payload, "panel", "")
+    check(prepared.ok and prepared.entry.epgUrl = playlist.xmltvUrl, "explicit external XMLTV URL retained independently of panel address")
+    check(prepared.notes.count() = 1 and instr(1, prepared.notes[0], "automatic LAN failover is not applied") > 0, "deferred LAN behavior still disclosed; no false XMLTV omission notice")
+    check(prepared.url = playlist.url, "verification stays on the configured Xtream panel")
+    verified = phoneSetupVerifiedImport(prepared, {ok: true, channels: [{uuid: "xc-1"}]})
+    staged = phoneSetupStageVerifiedConnection(defaultConnectionStore(), verified.entry, "add", "")
+    restored = normalizeConnectionStore(ParseJson(FormatJson(staged)))
+    check(restored.entries[0].epgUrl = playlist.xmltvUrl and not restored.entries[0].remember, "verified override survives roster reload without remembering credentials")
+    check(instr(1, FormatJson(restored), "fixture") = 0, "Xtream password is not serialized with the override")
+    changed = connectionStoreUpdate(restored, "panel", {url: "https://changed.example.test"})
+    check(changed.entries[0].epgUrl = "", "server address edit does not inherit the old override")
+    playlist.xmltvUrl = ""
+    prepared = phoneSetupPrepareImport(payload, "panel", "")
+    verified = phoneSetupVerifiedImport(prepared, {ok: true, channels: [{uuid: "xc-1"}]})
+    replaced = phoneSetupStageVerifiedConnection(restored, verified.entry, "replace", "panel")
+    check(replaced.entries[0].epgUrl = "", "verified reimport with a blank override restores the account guide")
+    for each badUrl in ["https://guide.example.test/feed.xml?token=secret", "https://viewer:secret@guide.example.test/feed.xml", "https://guide.example.test/feed.xml#fragment", "file:///feed.xml", "https://guide.example.test/" + string(256, "a")]
+        playlist.xmltvUrl = badUrl
+        rejected = phoneSetupPrepareImport(payload, "panel", "")
+        check(not rejected.ok and rejected.entry = invalid and instr(1, rejected.message, "XMLTV URL") > 0, "unsupported guide URL is rejected before verification or persistence")
+        check(instr(1, rejected.message, badUrl) = 0, "XMLTV rejection does not echo the supplied URL")
+    end for
 end sub
 
 sub testInterimProfiles()

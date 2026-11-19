@@ -1,18 +1,23 @@
 sub loadXmltvWindow()
     start = m.top.windowStart
-    if m.top.providerType = "xtream"
-        origin = urlOrigin(m.top.baseUrl)
-        expected = origin + "/xmltv.php?username="
-        if origin = "" or left(m.top.guideUrl, len(expected)) <> expected or instr(1, m.top.guideUrl, "&password=") = 0
+    url = m.top.guideUrl
+    if normalizeBaseUrl(url) = ""
+        if m.top.providerType <> "xtream"
+            publishXmltvResult({ok: false, windowStart: start, message: "Set an XMLTV guide URL for this connection."})
+            return
+        end if
+        base = normalizeBaseUrl(m.top.baseUrl)
+        expected = base + "/xmltv.php?"
+        query = mid(url, len(expected) + 1)
+        escapedValue = "([A-Za-z0-9_.~-]|%[0-9A-F]{2}){1,64}"
+        accountQuery = CreateObject("roRegex", "^username=" + escapedValue + "&password=" + escapedValue + "$", "")
+        if base = "" or left(url, len(expected)) <> expected or not accountQuery.isMatch(query)
             publishXmltvResult({ok: false, windowStart: start, message: "Invalid Xtream guide endpoint."})
             return
         end if
-    else if normalizeBaseUrl(m.top.guideUrl) = ""
-        publishXmltvResult({ok: false, windowStart: start, message: "Set an XMLTV guide URL for this connection."})
-        return
     end if
     path = "tmp:/aeriotv-xmltv-" + CreateObject("roDeviceInfo").getRandomUUID() + ".xml"
-    download = xmltvDownloadToFile(m.top.guideUrl, path)
+    download = xmltvDownloadToFile(url, path, m.top.providerType <> "xtream")
     if not download.ok
         publishXmltvResult({ok: false, windowStart: start, message: download.message})
         return

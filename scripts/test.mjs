@@ -106,6 +106,7 @@ suites.push('DispatcharrSyncPolicy');
 suites.push('NetworkStatus');
 suites.push('DispatcharrSyncSettingsStore');
 suites.push('CatchupTask');
+suites.push('XtreamGuideOverride');
 for (const suite of suites) {
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
@@ -134,8 +135,8 @@ for (const suite of suites) {
     ...(suite === 'BrowserHistory' ? ['components/ChannelBrowser.brs'] : []),
     ...(suite === 'RokuAuthModel' ? ['source/RokuAuthModel.brs'] : []),
     ...(suite === 'PhoneSetupEntropy' ? ['source/PhoneSetupEntropy.brs'] : []),
-    ...(suite === 'XmltvModel' ? ['source/XmltvModel.brs'] : []),
-    ...(['PhoneSetupApplyModel', 'M3uModel', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/M3uModel.brs'] : []),
+    ...(['XmltvModel', 'GuideTaskCache', 'XtreamGuideOverride'].includes(suite) ? ['source/XmltvModel.brs'] : []),
+    ...(['PhoneSetupApplyModel', 'M3uModel', 'PlayerLifecycle', 'ConnectionNavigation', 'XtreamGuideOverride'].includes(suite) ? ['source/M3uModel.brs'] : []),
     ...(['PhoneSetupApplyModel', 'XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'PlayerLifecycle', 'ConnectionNavigation', 'ArchiveController'].includes(suite) ? ['source/XtreamModel.brs'] : []),
     ...(['XtreamArchiveModel', 'PlayerLifecycle', 'ConnectionNavigation', 'ArchiveController'].includes(suite) ? ['source/XtreamArchiveModel.brs'] : []),
     ...(['XtreamVodModel', 'XtreamVodTask', 'XtreamTask', 'PlayerLifecycle'].includes(suite) ? ['source/XtreamVodModel.brs'] : []),
@@ -153,7 +154,7 @@ for (const suite of suites) {
     'source/VideoGeometry.brs',
     'source/GuideSettingsModel.brs', 'source/GuideDayOptions.brs', 'source/GuideLogoSize.brs',
     'source/ReminderModel.brs',
-    ...(['TmdbTask', 'VodShelfTask', 'VodSeriesTask', 'XtreamTask', 'XtreamVodTask', 'ConnectionAuthTask'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
+    ...(['TmdbTask', 'VodShelfTask', 'VodSeriesTask', 'XtreamTask', 'XtreamVodTask', 'ConnectionAuthTask', 'XtreamGuideOverride'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
     'source/HttpPolicy.brs',
     'source/RequestGateModel.brs', ...(['PhoneSetupNavigation', 'ProfileSetupCredentialNavigation', 'ProfileSwitchRollbackProtection', 'DispatcharrSyncSwitchRosterStore', 'DispatcharrSyncWriteTask', 'DispatcharrSyncAckStore', 'DispatcharrSyncSettingsStore'].includes(suite) ? [] : ['source/RequestGateClient.brs']), ...(['ProfileSwitchRollbackProtection', 'DispatcharrSyncSwitchRosterStore', 'DispatcharrSyncAckStore'].includes(suite) ? [] : ['source/RequestGateRenderer.brs']),
     ...(['ProfileSetupCredentialNavigation', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['components/ProfileSetupCredentialNavigation.brs'] : []),
@@ -289,7 +290,7 @@ for (const suite of suites) {
     ...(suite === 'CatchupTask' ? ['components/CatchupTask.brs'] : []),
     ...(suite === 'OnDemandPlayer' ? ['components/OnDemandPlayer.brs'] : []),
     ...(suite === 'PlayerInfoClock' ? ['components/PlayerInfo.brs'] : []),
-    ...(suite === 'ArchiveController' ? ['components/MediaNavigation.brs'] : []),
+    ...(['ArchiveController', 'XtreamGuideOverride'].includes(suite) ? ['components/MediaNavigation.brs'] : []),
     ...(['VodSeriesLoader', 'VodSeriesTask', 'VodShelfTask'].includes(suite) ? ['source/VodSeriesLoader.brs'] : []),
     ...(suite === 'VodSeriesTask' ? ['components/VodTask.brs'] : []),
     ...(suite === 'VodDescriptionInput' ? ['components/VodView.brs', 'components/VodMetadata.brs'] : []),
@@ -299,8 +300,9 @@ for (const suite of suites) {
     ...(suite === 'CapabilityTask' ? ['components/CapabilityTask.brs'] : []),
     ...(suite === 'PlayerOptionsInput' ? ['components/PlayerOptions.brs'] : []),
     ...(suite === 'HttpPolicy' ? ['source/DispatcharrHttp.brs'] : []),
-    ...(suite === 'GuideTaskCache' ? ['components/GuideTask.brs'] : []),
+    ...(suite === 'GuideTaskCache' ? ['components/GuideTask.brs', 'components/XmltvGuideTask.brs'] : []),
     ...(suite === 'GuideMappingFallback' ? ['components/GuideCache.brs'] : []),
+    ...(suite === 'XtreamGuideOverride' ? ['components/ConnectionNavigation.brs', 'components/GuideCache.brs', 'source/ConnectionStoreModel.brs', 'source/XtreamModel.brs', 'source/XtreamArchiveModel.brs'] : []),
     ...(suite === 'MappingTask' ? ['components/MappingTask.brs'] : []),
     ...(suite === 'MappingDetailModel' ? ['components/MappingDetailFetch.brs'] : []),
     `tests/${suite}.test.brs`,

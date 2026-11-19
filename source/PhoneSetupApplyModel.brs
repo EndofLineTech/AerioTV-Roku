@@ -64,7 +64,7 @@ function phoneSetupPrepareImport(payload as object, id as string, digest as stri
     storedUrl = url
     if sessionUrl then storedUrl = ""
     epg = textValue(playlist.xmltvUrl)
-    if epg <> "" and normalizeBaseUrl(epg) = "" then return {ok: false, message: "This XMLTV URL is not supported by this build. Edit it on the sending device and send setup again. Saved connections were not changed."}
+    if epg <> "" and (len(epg) > 256 or normalizeBaseUrl(epg) = "") then return {ok: false, message: "This XMLTV URL is not supported by this build. Edit it on the sending device and send setup again. Saved connections were not changed."}
     days = int(playlist.guideDays)
     offset = playlist.catchupOffsetMinutes
     if GetInterface(offset, "ifInt") = invalid
@@ -98,7 +98,6 @@ function phoneSetupPrepareImport(payload as object, id as string, digest as stri
         end if
     end if
     if entry.provider <> "dispatcharr" and entry.channelProfileIds.count() > 0 then notes.push("Channel Profile IDs are retained but only applied to Dispatcharr sources.")
-    if entry.provider = "xtream" and epg <> "" then notes.push("Xtream uses its account guide; the supplied XMLTV override is not applied.")
     return {ok: true, entry: entry, url: url, credential: credential, notes: notes, multipleProfiles: multipleProfiles}
 end function
 

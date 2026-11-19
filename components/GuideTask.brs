@@ -14,6 +14,7 @@ sub loadWindow()
     if m.top.cancelRequested
         m.key = ""
         m.top.apiKey = ""
+        m.top.guideUrl = ""
         return
     end if
     if cached.state <> "miss"
@@ -21,6 +22,7 @@ sub loadWindow()
         if cached.state = "fresh"
             m.key = ""
             m.top.apiKey = ""
+            m.top.guideUrl = ""
             m.top.result = restored
             return
         end if

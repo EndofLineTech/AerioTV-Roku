@@ -595,7 +595,13 @@ sub completeDirectConnection(result as object, entry as object, xcUsername = "" 
     m.xcUsername = xcUsername
     m.xcPassword = xcPassword
     m.xcTimezone = textValue(result.timezone)
-    if entry.provider = "xtream" then m.guideUrl = result.guideUrl
+    guideUrl = m.guideUrl
+    guideBase = urlOrigin(m.baseUrl)
+    if entry.provider = "xtream"
+        ' Keep the account URL volatile and out of the saved/setup guide field.
+        if guideUrl = "" then guideUrl = textValue(result.guideUrl)
+        guideBase = m.baseUrl
+    end if
     m.accountIdentity = connectionPreferenceIdentity(entry, result.accountId)
     m.accountPreferences = reconcileWatchHistory(accountPreferences(m.preferenceStore, m.accountIdentity), result.channels)
     m.accountPreferences = takePhoneSetupPreferences(m.accountPreferences, entry)
@@ -619,7 +625,7 @@ sub completeDirectConnection(result as object, entry as object, xcUsername = "" 
     m.guide.config = {
         userRole: "user"
         channels: result.channels, groups: result.groups, warning: result.warning
-        baseUrl: urlOrigin(m.baseUrl), apiKey: "", providerType: entry.provider, guideUrl: m.guideUrl
+        baseUrl: guideBase, apiKey: "", providerType: entry.provider, guideUrl: guideUrl
         preferences: m.accountPreferences, tmdbKey: ""
         scope: result.scope, generation: result.generation
     }

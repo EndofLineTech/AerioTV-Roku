@@ -1,5 +1,5 @@
 ' Task-thread-only bounded download. The caller owns and deletes the tmp file.
-function xmltvDownloadToFile(url as string, path as string, maxBytes = 75497472 as integer, timeoutMs = 45000 as integer) as object
+function xmltvDownloadToFile(url as string, path as string, sendSourceReferer = true as boolean, maxBytes = 75497472 as integer, timeoutMs = 45000 as integer) as object
     fs = CreateObject("roFileSystem")
     transfer = CreateObject("roUrlTransfer")
     port = CreateObject("roMessagePort")
@@ -7,7 +7,11 @@ function xmltvDownloadToFile(url as string, path as string, maxBytes = 75497472 
     transfer.setCertificatesFile("common:/certs/ca-bundle.crt")
     transfer.setUrl(url)
     transfer.addHeader("User-Agent", dispatcharrUserAgent(textValue(m.global.httpUserAgent)))
-    if textValue(m.global.httpReferer) <> "" then transfer.addHeader("Referer", m.global.httpReferer)
+    if not sendSourceReferer
+        transfer.addHeader("Referer", "") ' Suppress Roku's automatic redirect referrer.
+    else if textValue(m.global.httpReferer) <> ""
+        transfer.addHeader("Referer", m.global.httpReferer)
+    end if
     transfer.enableEncodings(true)
     if not transfer.asyncGetToFile(path) then return {ok: false, message: "Could not start XMLTV download."}
     monitor = CreateObject("roAppMemoryMonitor")

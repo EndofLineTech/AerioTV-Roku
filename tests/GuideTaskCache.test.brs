@@ -33,7 +33,43 @@ sub main()
     m.top.providerType = "dispatcharr"
     m.top.guideUrl = "https://guide.example.test/feed.xml"
     loadWindow()
-    check(m.xml and m.requests = 0, "opt-in Dispatcharr XMLTV uses external file Task, never server JSON guide")
+    check(m.downloadUrl = "https://guide.example.test/feed.xml" and m.requests = 0, "opt-in Dispatcharr XMLTV uses external file Task, never server JSON guide")
+
+    resetTask()
+    m.top.providerType = "xtream"
+    m.top.guideUrl = "https://guide.example.test/Feed/"
+    m.cached = {state: "fresh", payload: {}, fetched: 1700000000}
+    m.top.bypassCache = true
+    loadWindow()
+    check(m.downloadUrl = "https://guide.example.test/Feed/" and m.downloads = 1 and m.requests = 0, "Xtream guide refresh requests only the exact explicit override")
+    check(not m.sendSourceReferer and not m.top.result.ok and m.top.apiKey = "" and m.top.guideUrl = "", "failed override neither falls back nor publishes credential inputs")
+
+    resetTask()
+    m.top.providerType = "xtream"
+    m.top.baseUrl = "http://fixture.invalid/panel"
+    m.top.guideUrl = "http://fixture.invalid/panel/xmltv.php?username=viewer&password=fixture%21"
+    loadWindow()
+    check(m.downloadUrl = "http://fixture.invalid/panel/xmltv.php?username=viewer&password=fixture%21", "account guide credentials go only to the configured panel endpoint")
+    check(not m.sendSourceReferer, "account URL cannot be used as a redirect referrer")
+
+    for each cancelled in [false, true]
+        resetTask()
+        m.top.providerType = "xtream"
+        m.top.guideUrl = "http://fixture.invalid/xmltv.php?username=viewer&password=fixture"
+        m.cached = {state: "fresh", payload: {}, fetched: 1700000000}
+        m.top.cancelRequested = cancelled
+        loadWindow()
+        check(m.top.guideUrl = "" and m.downloadUrl = "", "cache hit or pre-cancel clears volatile account URL without requesting it")
+    end for
+
+    for each badUrl in ["http://foreign.invalid/xmltv.php?username=viewer&password=fixture", "http://fixture.invalid.evil/xmltv.php?username=viewer&password=fixture", "http://fixture.invalid/xmltv.php?username=viewer&password=fixture&other=1", "http://fixture.invalid/xmltv.php?username=viewer&password=fixture#fragment"]
+        resetTask()
+        m.top.providerType = "xtream"
+        m.top.guideUrl = badUrl
+        loadWindow()
+        check(m.downloadUrl = "" and m.requests = 0 and not m.top.result.ok, "untrusted credential-bearing guide URL is never requested")
+        check(instr(1, FormatJson(m.top.result), "fixture") = 0, "guide rejection is secret-free")
+    end for
     print "ALL TESTS PASSED"
 end sub
 
@@ -41,7 +77,9 @@ sub resetTask()
     m.top = {baseUrl: "http://fixture.invalid", apiKey: "test-only", windowStart: "1700000000".toInt(), allowedKeys: {Station: true}, scope: "account", generation: "lineup", bypassCache: false, cancelRequested: false}
     m.cached = {state: "miss"}
     m.requests = 0
-    m.xml = false
+    m.downloadUrl = ""
+    m.downloads = 0
+    m.sendSourceReferer = true
     m.writes = 0
     m.cancelDuringRequest = false
     m.failure = "Unavailable"
@@ -51,10 +89,12 @@ sub resetTask()
     ]
 end sub
 
-sub loadXmltvWindow()
-    m.xml = true
-    m.top.apiKey = ""
-end sub
+function xmltvDownloadToFile(url, path, sendSourceReferer = true as boolean)
+    m.downloads++
+    m.downloadUrl = url
+    m.sendSourceReferer = sendSourceReferer
+    return {ok: false, message: "Fixture download failure."}
+end function
 
 function metadataCacheRead(scope, kind, key, generation, now, authorized)
     return m.cached

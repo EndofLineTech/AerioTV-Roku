@@ -40,8 +40,10 @@ function normalizeConnectionEntry(raw as dynamic) as dynamic
     if raw.provider = "m3u" then storedUrl = url
     epgUrl = textValue(raw.epgUrl)
     if len(epgUrl) > 256 then return invalid
-    if epgUrl <> "" and normalizeBaseUrl(epgUrl) = "" then return invalid
-    if raw.provider = "xtream" then epgUrl = ""
+    normalizedEpgUrl = normalizeBaseUrl(epgUrl)
+    if epgUrl <> "" and normalizedEpgUrl = "" then return invalid
+    ' An explicit Xtream XMLTV feed is an endpoint, not a server base.
+    if raw.provider = "xtream" then normalizedEpgUrl = epgUrl.trim()
     localUrl = textValue(raw.localUrl)
     if len(localUrl) > 256 then return invalid
     if localUrl <> "" and normalizeBaseUrl(localUrl) = "" then return invalid
@@ -84,7 +86,7 @@ function normalizeConnectionEntry(raw as dynamic) as dynamic
     if sourceDigest <> "" and not CreateObject("roRegex", "^[0-9a-f]{64}$", "").isMatch(sourceDigest) then return invalid
     return {
         id: id, name: name, provider: raw.provider, url: storedUrl
-        epgUrl: normalizeBaseUrl(epgUrl)
+        epgUrl: normalizedEpgUrl
         localUrl: normalizeBaseUrl(localUrl), userAgent: agent, referer: referer, authMode: mode
         accountId: accountId, profileId: profileId, remember: raw.remember = true and raw.provider = "dispatcharr"
         channelProfileIds: ids, guideDays: days, catchupOffsetMinutes: offset, vodEnabled: raw.vodEnabled <> false

@@ -254,12 +254,17 @@ of 30 days each way, disclosed in the duplicate confirmation or Diagnostics for
 auto-add. Roku fetches windows as needed; it does not scan the provider for the last
 available program. Change the two settings independently under Settings > Live TV.
 Reconnects and upgrades do not reapply the saved transfer or
-undo the viewer's own setting changes. Local URL failover and
-provider-inapplicable options are explicitly disclosed
-before Save, not silently claimed as applied. These runtime gaps are tracked as
-`AerioTV-Roku-e3e.5.2`. Token-bearing/unsupported XMLTV URLs are rejected with an
-explanation rather than persisted. Household profiles/PINs are not imported and
-Sync is never enabled from the payload. Multi-Channel-Profile selection is also
+undo the viewer's own setting changes. A verified Xtream import can save a
+separate, non-secret HTTP(S) XMLTV URL. The override supplies programme data
+using the lineup's Xtream EPG channel IDs; live channels and sign-in still use
+the configured Xtream server. Refresh guide retries the chosen feed and does
+not fall back to the account guide on failure. Reimport without an override to
+restore the account guide. Local URL failover and provider-inapplicable options
+are explicitly disclosed before Save, not silently claimed as applied. These
+runtime gaps are tracked as `AerioTV-Roku-e3e.5.2`. Token-bearing or unsupported
+XMLTV URLs are rejected with an explanation rather than persisted. Household
+profiles/PINs are not imported and Sync is never enabled from the payload.
+Multi-Channel-Profile selection is also
 retained during lineup refresh and no longer prunes history outside the selected
 view.
 

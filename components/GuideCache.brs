@@ -42,7 +42,12 @@ end function
 sub loadMappings(bypass = false as boolean)
     cancelMappingLoad()
     if m.providerType = "m3u" or m.providerType = "xtream" or (m.providerType = "dispatcharr" and m.guideUrl <> "")
-        if m.providerType = "dispatcharr" then m.cacheGeneration = metadataCacheDigest(m.lineupGeneration + "|xmltv|" + m.guideUrl)
+        m.cacheGeneration = m.lineupGeneration
+        ' A public override must not read or populate the account guide's cache.
+        ' Never incorporate the generated, credential-bearing Xtream URL.
+        if (m.providerType = "dispatcharr" or m.providerType = "xtream") and normalizeBaseUrl(m.guideUrl) <> ""
+            m.cacheGeneration = metadataCacheDigest(m.lineupGeneration + "|xmltv|" + m.guideUrl)
+        end if
         m.mappingState = "ready"
         m.mappingWarning = ""
         m.allowedKeys = guideDictionary()
