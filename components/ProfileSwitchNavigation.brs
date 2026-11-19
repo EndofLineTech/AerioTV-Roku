@@ -439,7 +439,9 @@ function profileSwitchOutgoingProtectionCurrent(context as object) as boolean
     if holder = invalid then return false
     ' The working roster may later advance after a target-owned import. It is
     ' never a replacement for the outgoing admission captured before staging.
-    if textValue(context.outgoingProtection) = "" or FormatJson(holder) <> context.outgoingProtection then return false
+    capturedHolder = ParseJson(textValue(context.outgoingProtection))
+    if type(capturedHolder) <> "roAssociativeArray" then return false
+    if userProfileSwitchProtectionSnapshot(holder) <> userProfileSwitchProtectionSnapshot(capturedHolder) then return false
     if holder.addressHeld or textValue(holder.userId) <> context.outgoing.accountId then return false
     keyName = userProfileKeyName(entry.id, holder.id)
     if holder.isDefault then keyName = connectionRegistryKey(entry.id)

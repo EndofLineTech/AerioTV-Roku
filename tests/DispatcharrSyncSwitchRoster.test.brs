@@ -78,6 +78,10 @@ sub main()
     remote = dispatcharrSyncRosterDecode({rows: [[7, "alice", "Alice", "none", "", "", "child", 500]]})
     plan = switchRosterPlan(remote)
     check(plan.ok and plan.outgoingProtectionChanged and plan.store.active = m.store.active, "changed outgoing protection is surfaced rather than blessed as a new rollback snapshot")
+    switchRosterFixture()
+    remote = dispatcharrSyncRosterDecode({rows: [[7, "alice", "New display name", "none", "", "", "user", 500, {icon: "star"}, 1]]})
+    plan = switchRosterPlan(remote)
+    check(plan.ok and not plan.outgoingProtectionChanged and plan.store.profiles[0].displayName = "New display name", "presentation and its roster timestamp do not change the outgoing holder's protection")
     print "ALL TESTS PASSED"
 end sub
 

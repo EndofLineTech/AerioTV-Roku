@@ -128,7 +128,7 @@ function dispatcharrSyncSwitchRosterContentPlan(connection as object, store as o
     end if
     for each profile in merged.store.profiles
         if profile.id = target.id then target = profile
-        if profile.id = originalOutgoing.id then result.outgoingProtectionChanged = FormatJson(profile) <> FormatJson(originalOutgoing)
+        if profile.id = originalOutgoing.id then result.outgoingProtectionChanged = userProfileSwitchProtectionSnapshot(profile) <> userProfileSwitchProtectionSnapshot(originalOutgoing)
     end for
     result.store = merged.store
     result.targetRemoved = targetRemoved

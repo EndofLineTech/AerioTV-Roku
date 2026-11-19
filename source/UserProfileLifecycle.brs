@@ -7,6 +7,16 @@ function userProfileRosterAddressPaused(store as object) as boolean
     return false
 end function
 
+' Snapshot the outgoing admission, not its presentation. Keep every other
+' field (including PIN, role, authority, address and preference ownership).
+function userProfileSwitchProtectionSnapshot(profile as object) as string
+    protection = copyPreferenceValue(profile)
+    for each field in ["displayName", "displayNameClaimed", "avatar", "avatarClaimed", "order", "updatedAt"]
+        protection.delete(field)
+    end for
+    return FormatJson(protection)
+end function
+
 function userProfileNormalizeTombstones(raw as dynamic) as dynamic
     if type(raw) <> "roArray" then return invalid
     if raw.count() > 256 then return invalid

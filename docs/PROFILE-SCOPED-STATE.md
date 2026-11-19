@@ -589,7 +589,8 @@ cover changed role, PIN, identity, address, key and Remember-off leases. Native
 qualification remains pending, separate from the passing host contracts.
 Outgoing protection is captured as an immutable value separate from the working
 roster: advancing a staged import can never bless a changed outgoing role/PIN
-as though it were the original admission.
+as though it were the original admission. A staged presentation update (name,
+avatar, order, claims, or the roster timestamp) does not change that protection.
 
 The staged switch/roster boundary has a pure planning primitive in
 `source/DispatcharrSyncSwitchRoster.brs`. It binds a verified target identity and
