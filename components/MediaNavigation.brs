@@ -217,8 +217,12 @@ sub onMediaClosed(event as object)
         m.page = "guide"
         m.guide.visible = true
         m.guide.active = true
-        if textValue(closed.coldToken) <> "" then settleColdPlayback(closed.coldToken, textValue(closed.coldResult))
-        resumePendingVodDeepLink()
+        if textValue(closed.coldToken) <> ""
+            settleColdPlayback(closed.coldToken, textValue(closed.coldResult))
+            if m.pendingLaunch <> invalid then handlePendingLaunch()
+        else
+            resumePendingVodDeepLink()
+        end if
     end if
 end sub
 

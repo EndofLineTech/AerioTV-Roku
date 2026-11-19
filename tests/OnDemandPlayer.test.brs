@@ -176,6 +176,12 @@ sub checkColdVodPlayer()
         return 0
     end function}
     if checkColdVodPlayback("other-token", "identity", true) <> "" or m.session = invalid then stop
+    m.video.content = {serial: 2}
+    if checkColdVodPlayback("cold-token", "identity", true) <> "replaced" or m.video.content.serial <> 2 then stop
+    m.video.content = content
+    m.global.profilegateclosed = true
+    if checkColdVodPlayback("cold-token", "identity", true) <> "" or m.session = invalid then stop
+    m.global.profilegateclosed = false
     checkColdVodPlayback("cold-token", "identity", true)
     if m.top.closedContext.coldResult <> "timeout" or m.top.closedContext.identity <> "identity" or m.top.visible then stop
     m.session = invalid

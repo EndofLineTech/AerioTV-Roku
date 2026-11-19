@@ -1281,6 +1281,175 @@ sub runColdLiveAttemptChecks()
     assertEqual(textValue(m.pendingLaunch.coldToken), "", "Welcome never defers startup or starts the deadline for credentials")
 end sub
 
+sub checkColdPictureRecovery()
+    for each path in ["ready", "timeout", "changed-holder", "retired-holder", "stale-reader"]
+        resetOwnedHlsFixture()
+        m.top.exitRequested = false
+        m.coldPlaybackClock = {control: "stop"}
+        m.video.visible = true
+        m.video.hasFocus = function() as boolean
+            return true
+        end function
+        request = coldPlaybackLaunchRequest({contentId: "a", mediaType: "live"}, true)
+        beginColdPlayback(request)
+        bindColdLiveReader(request.coldToken, m.video.content)
+        elapsed = {ms: 389999, totalMilliseconds: function() as integer
+            return m.ms
+        end function}
+        m.coldPlayback.clock = elapsed
+        m.video.state = "playing"
+        m.video.position = 10
+        checkColdPlayback()
+        assertEqual(m.coldPlayback.position, 10, "old reader has one readiness sample")
+        m.playbackBridgeTaskFactory = m.hlsSessionTaskFactory
+        recoverFrozenPicture()
+        bridge = m.recoveryTask
+        bridge.ready = true
+        holderChanged = path = "changed-holder" or path = "retired-holder"
+        if holderChanged then m.accountIdentity = "new-holder"
+        if path = "retired-holder" then checkColdPlayback()
+        if path = "stale-reader" then m.video.content = lifecycleRetryContent(99)
+        onRecoveryReady(hlsFixtureEvent(bridge, true))
+        if holderChanged or path = "stale-reader"
+            expected = 10
+            if path = "stale-reader" then expected = 99
+            assertEqual(m.video.content.serial, expected, "stale bridge must not restart a reader: " + path)
+            assertEqual(bridge.release, true, "unowned bridge is released")
+            checkColdPlayback()
+            assertEqual(m.video.content.serial, expected, "obsolete deadline cannot stop a different owner's reader")
+        else
+            assertEqual(m.video.content.serial, 11, "authorized picture recovery restarts the exact reader")
+            assertEqual(coldLiveReaderToken(), request.coldToken, "picture recovery transfers the same cold token")
+            assertEqual(m.coldPlayback.position, invalid, "picture recovery clears outgoing advancement")
+            m.video.position = 11
+            checkColdPlayback()
+            assertEqual(m.coldPlayback <> invalid, true, "first replacement sample is not readiness")
+            if path = "timeout" then elapsed.ms = 390000
+            m.video.position = 12
+            checkColdPlayback()
+            expected = "ready"
+            if path = "timeout" then expected = "failed"
+            assertEqual(m.coldPlaybackOutcome.result, expected, "replacement preserves original deadline: " + path)
+        end if
+    end for
+end sub
+
+sub checkColdVodQueuedInput()
+    for each path in ["timeout", "ready", "back", "superseded", "protected", "live", "live-holder-changed"]
+        resetOwnedHlsFixture()
+        m.startupGuideReady = true
+        m.coldPlaybackClock = {control: "stop"}
+        m.page = "onDemand"
+        m.mediaReturn = "guide"
+        m.mediaIdentity = "cold-media"
+        m.top.launchFromMain = false
+        m.top.launchRequest = {contentId: "34", mediaType: "movie"}
+        live = path = "live" or path = "live-holder-changed"
+        if live then m.top.launchRequest = {contentId: "gone", mediaType: "live"}
+        setupColdQueuedVodHolder()
+        m.mediaPlayer = {id: "on-demand", calls: 0, status: "", isSameNode: function(other as object) as boolean
+            return m.id = other.id
+        end function, callFunc: function(name as string, token as string, identity as string, expired as boolean, foreground as boolean) as string
+            m.calls++
+            m.checkedToken = token
+            m.checkedIdentity = identity
+            m.expired = expired
+            return m.status
+        end function}
+        request = coldPlaybackLaunchRequest({contentId: "12", mediaType: "movie"}, true)
+        beginColdPlayback(request)
+        m.coldPlayback.phase = "vod-renderer"
+        m.coldPlayback.identity = m.mediaIdentity
+        m.coldPlayback.protection = vodDeepLinkOwner(true).protection
+        elapsed = {ms: 59999, totalMilliseconds: function() as integer
+            return m.ms
+        end function}
+        m.coldPlayback.clock = elapsed
+        onLaunchRequest()
+        if path = "timeout"
+            m.top.launchRequest = {contentId: "35", mediaType: "movie"}
+            onLaunchRequest()
+        end if
+        assertEqual(m.coldPlayback <> invalid, true, "queued warm input cannot retire the still-owned renderer")
+        assertEqual(m.coldPlayback.token, request.coldToken, "warm input preserves the exact fallback owner")
+        assertEqual(m.vodDeepLinkTask, invalid, "warm input remains queued on the active media page")
+        if path = "ready" then m.mediaPlayer.status = "ready"
+        checkColdPlayback()
+        assertEqual(m.mediaPlayer.expired, false, "queued input cannot trigger fallback before the original deadline")
+        if path = "protected" then m.global.profilegateclosed = true
+        if path = "superseded" then m.mediaIdentity = "new-renderer"
+        elapsed.ms = 60000
+        if path <> "back" then checkColdPlayback()
+        if path = "superseded" or path = "protected"
+            assertEqual(m.mediaPlayer.calls, 1, "timeout cannot reach a superseding or protected renderer")
+            assertEqual(m.pendingLaunch.id, "34", "no wrong-owner fallback consumes the queued link")
+        else
+            reason = "cancelled"
+            if path = "timeout" or live
+                reason = "timeout"
+                assertEqual(m.mediaPlayer.expired, true, "queued input cannot extend the original deadline")
+                assertEqual(m.mediaPlayer.checkedToken, request.coldToken, "deadline requests teardown of only the old token")
+                assertEqual(m.mediaPlayer.checkedIdentity, "cold-media", "deadline targets only the old media identity")
+            else if path = "ready"
+                assertEqual(m.coldPlaybackOutcome.result, "ready", "ready media is not interrupted for queued input")
+                assertEqual(m.mediaPlayer.calls, 1, "settled ready renderer is not timed out")
+            end if
+            closed = userViewEvent({closed: true, coldToken: request.coldToken, identity: "cold-media", coldResult: reason}, currentUserSessionId())
+            if path = "live-holder-changed"
+                ' Simulate a same-session holder change before the still-tagged close.
+                m.accountIdentity = "changed-holder"
+            end if
+            onMediaClosed(hlsFixtureEvent(m.mediaPlayer, closed))
+            assertEqual(m.pendingLaunch, invalid, "actual renderer close dispatches the queued input from Guide")
+            if path = "live"
+                assertEqual(m.notice.visible, true, "queued live link is handled by Guide's normal unavailable route")
+            else if path = "live-holder-changed"
+                assertEqual(m.notice.visible, false, "queued live link cannot be dispatched for a different holder")
+            else
+                expected = "34"
+                if path = "timeout" then expected = "35"
+                assertEqual(m.vodDeepLinkTask.itemId, expected, "queued warm VOD keeps the latest requested title: " + path)
+                cancelVodDeepLink()
+            end if
+        end if
+    end for
+end sub
+
+sub setupColdQueuedVodHolder()
+    slot = "cold-vod"
+    entry = normalizeConnectionEntry({id: slot, name: "Fixture", provider: "dispatcharr", url: "https://example.test", remember: true})
+    profile = userProfileFromVerified(slot, "00000000-0000-4000-8000-000000000001", {id: 7, username: "alice", user_level: 1}, 1)
+    store = defaultUserProfileStore(slot)
+    store.profiles = [profile]
+    store.active = profile.id
+    values = {}
+    values["connectionsV1"] = FormatJson({schema: 1, selected: slot, entries: [entry]})
+    values[userProfileStoreKey(slot)] = FormatJson(store)
+    values[connectionRegistryKey(slot)] = "own-key"
+    m.registry = {values: values, read: function(key as string) as string
+        if m.values.doesExist(key) then return m.values[key]
+        return ""
+    end function, exists: function(key as string) as boolean
+        return m.values.doesExist(key)
+    end function}
+    m.connectionStore = loadConnectionStore(m.registry)
+    session = "00000000-0000-4000-8000-000000000002"
+    scope = userProfileSessionScope(entry, profile.id, "7", "verified", session)
+    m.global.activeusersession = session
+    m.activeUserScope = scope
+    m.selectedConnectionId = slot
+    m.baseUrl = entry.url
+    m.apiKey = "own-key"
+    m.serverAccountId = "7"
+    m.accountIdentity = scope.preferenceIdentity
+    m.accountPreferences = {vodEnabled: true, vod: []}
+    m.guide.config = userViewEvent({providerType: "dispatcharr", accountId: "7", baseUrl: entry.url, apiKey: m.apiKey}, session)
+    m.guide.callFunc = function(name as string, id as string) as dynamic
+        return invalid
+    end function
+    m.vodDeepLinkTaskFactory = m.hlsSessionTaskFactory
+end sub
+
 sub runProvisionalVodLaunchChecks()
     m.startupGuideReady = false
     m.page = "setup"

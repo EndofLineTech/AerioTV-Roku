@@ -356,7 +356,9 @@ sub onLaunchRequest()
     if not launchRequestHasMediaIntent(raw) then return
     beforeGuide = m.startupGuideReady <> true
     if beforeGuide then m.startupVodIntent = launchRequestHasVodIntent(raw)
-    retireColdPlayback("replaced")
+    ' onDemand cannot dispatch the new input yet. Keep the old renderer's
+    ' fallback until it actually becomes ready, closes, or loses ownership.
+    if not coldVodRendererOwnsPage() then retireColdPlayback("replaced")
     cancelVodDeepLink(true)
     m.pendingLaunch = coldPlaybackLaunchRequest(raw, cold and beforeGuide)
     if m.pendingLaunch <> invalid
@@ -370,6 +372,10 @@ sub onLaunchRequest()
             else
                 m.pendingLaunch.session = currentUserSessionId()
             end if
+        else if not beforeGuide and m.page = "onDemand"
+            m.pendingLaunch.liveHolder = m.accountIdentity
+            m.pendingLaunch.liveSession = currentUserSessionId()
+            m.pendingLaunch.livePlaylist = m.selectedConnectionId
         end if
     end if
     if m.profilePickerReady = true
@@ -406,6 +412,9 @@ function handlePendingLaunch() as boolean
     if request.kind <> "live"
         beginVodDeepLink(request)
         return false
+    end if
+    if request.liveSession <> invalid
+        if request.liveSession <> currentUserSessionId() or request.liveHolder <> m.accountIdentity or request.livePlaylist <> m.selectedConnectionId then return false
     end if
     channel = m.guide.callFunc("channelByUuid", request.id)
     if channel = invalid
@@ -2304,6 +2313,7 @@ end sub
 
 sub cancelPictureRecovery()
     m.recoveryContent = invalid
+    m.recoveryColdAttempt = invalid
     m.recoveryIssued = false
     clearPictureRecoveryPause()
     if m.recoveryTask <> invalid
@@ -2648,6 +2658,16 @@ end function
 
 sub recoverFrozenPicture()
     if m.recoveryTask <> invalid or not pictureRecoveryAvailable() then return
+    m.recoveryColdAttempt = invalid
+    attempt = m.coldPlayback
+    if attempt <> invalid
+        if attempt.reader <> invalid
+            if attempt.reader.isSameNode(m.video.content)
+                if coldLiveReaderToken() = "" then return
+                m.recoveryColdAttempt = attempt
+            end if
+        end if
+    end if
     clearPictureRecoveryPause()
     m.sourceWatch.control = "stop"
     m.sourceWatchState = invalid
@@ -2679,11 +2699,20 @@ sub onRecoveryReady(event as object)
     if not event.getData() or not m.recoveryTask.ready or m.recoveryIssued then return
     ' The ownership/reader state or radio classification can change while
     ' the bridge is starting; do not restart a replaced or unowned reader.
-    if not pictureRecoveryAvailable() or m.recoveryContent = invalid or not m.recoveryContent.isSameNode(m.video.content)
+    if userProfileUiClosed() or not requestGateRendererAllowed(m.video) or not pictureRecoveryAvailable() or m.recoveryContent = invalid or not m.recoveryContent.isSameNode(m.video.content)
         cancelPictureRecovery()
         return
     end if
+    ' If this reader was the cold owner, a holder change must not turn its
+    ' stale bridge callback into an ordinary (untracked) restart.
+    if m.recoveryColdAttempt <> invalid
+        if not coldPlaybackAuthorityCurrent(m.recoveryColdAttempt)
+            cancelPictureRecovery()
+            return
+        end if
+    end if
     replacement = m.video.content.clone(false)
+    bindColdLiveReader(coldLiveReaderToken(), replacement)
     m.recoveryIssued = true
     m.recoveryPauseContent = replacement
     m.recoveryPausePending = m.recoveryPaused
@@ -2702,6 +2731,7 @@ sub onRecoveryFinished(event as object)
     m.recoveryTask.unobserveField("result")
     m.recoveryTask = invalid
     m.recoveryContent = invalid
+    m.recoveryColdAttempt = invalid
     if result.ok <> true then clearPictureRecoveryPause()
     if m.recoveryIssued
         print "[picture-recovery] source="; result.source; " clients="; result.beforeCount; "->"; result.afterCount

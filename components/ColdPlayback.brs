@@ -21,9 +21,19 @@ end sub
 function coldPlaybackCurrent(token as string) as boolean
     attempt = m.coldPlayback
     if token = "" or attempt = invalid or token <> attempt.token then return false
+    return coldPlaybackAuthorityCurrent(attempt)
+end function
+
+function coldPlaybackAuthorityCurrent(attempt as object) as boolean
     if m.top.exitRequested = true or userProfileUiClosed() or m.userProfileRecoveryRequired = true then return false
     if m.profilePinDialog <> invalid or m.adultPinDialog <> invalid then return false
     return attempt.session = currentUserSessionId() and attempt.holder = m.accountIdentity and attempt.playlist = m.selectedConnectionId and attempt.base = m.baseUrl and attempt.key = m.apiKey
+end function
+
+function coldVodRendererOwnsPage() as boolean
+    attempt = m.coldPlayback
+    if attempt = invalid or attempt.phase <> "vod-renderer" or m.page <> "onDemand" then return false
+    return m.mediaIdentity = attempt.identity
 end function
 
 function settleColdPlayback(token as string, result as string) as boolean
@@ -102,7 +112,7 @@ sub checkColdPlayback()
         end if
         attempt.position = invalid
     else if attempt.phase = "vod-renderer"
-        if m.page <> "onDemand" or m.mediaIdentity <> attempt.identity
+        if not coldVodRendererOwnsPage()
             settleColdPlayback(token, "replaced")
             return
         end if
