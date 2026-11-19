@@ -77,6 +77,15 @@ sub main()
     runCatchup()
     if m.top.result.ok or m.calls.count() <> 0 then stop
     resetTask()
+    m.user = invalid
+    m.httpFailure = {status: 404}
+    runCatchup()
+    if m.top.result.ok or m.top.result.status <> 404 or m.top.result.archiveStatus <> invalid or m.calls.count() <> 0 then stop
+    resetTask()
+    m.response = {status: 404, data: invalid}
+    runCatchup()
+    if m.top.result.ok or m.top.result.status <> 404 or m.top.result.archiveStatus <> 404 or m.calls.count() <> 1 then stop
+    resetTask()
     m.top.operation = "delete"
     m.top.sessionId = "abcdefghijklmnop"
     runCatchup()
@@ -115,6 +124,7 @@ sub resetTask()
     now = CreateObject("roDateTime").asSeconds()
     m.top = {baseUrl: "https://host.test", apiKey: "test-only", operation: "create", cancelRequested: false, accountId: "1", channelUuid: "channel", requestShiftMinutes: 0, retentionDays: 30, program: {startsAt: now - 7200, endsAt: now - 6900}}
     m.user = {id: 1}
+    m.httpFailure = invalid
     m.response = {status: 201, data: {session_id: "abcdefghijklmnop", channel_uuid: "channel", expires_at: now + 60, playback_url: "/proxy/catchup/channel?session_id=abcdefghijklmnop"}}
     m.calls = []
     m.cancelDuringCreate = false

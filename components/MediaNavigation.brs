@@ -244,7 +244,7 @@ sub onArchiveRequested(event as object)
             showNotice("The requested archive window is outside provider history. Check the catch-up offset or try again later.")
             return
         end if
-        plan = catchupBookmarkPlan(m.accountPreferences.archiveBookmarks, channel.uuid, program, textValue(selected.bookmarkAction), now)
+        plan = catchupBookmarkPlan(m.accountPreferences.archiveBookmarks, channel.uuid, program, textValue(selected.bookmarkAction), now, directXtream)
         if plan = invalid
             showNotice("The saved position is no longer available. Reopen Program details to play from the beginning.")
             return
@@ -252,8 +252,8 @@ sub onArchiveRequested(event as object)
         requestedProgram = plan.program
         playhead = plan.offset
         if directXtream
-            url = xtreamArchiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, m.xcTimezone, channel, requestedProgram, now, requestShiftMinutes)
-            if url = ""
+            archiveRequest = xtreamArchiveRequest(m.baseUrl, m.xcUsername, m.xcPassword, m.xcTimezone, channel, requestedProgram, now, requestShiftMinutes)
+            if archiveRequest = invalid
                 showNotice("Xtream archive request is not supported for this programme or timezone.")
                 return
             end if
@@ -277,7 +277,7 @@ sub onArchiveRequested(event as object)
         m.page = "onDemand"
         m.mediaPlayer.skipSeconds = m.devicePreferences.archiveSkipSeconds
         m.mediaPlayer.broadcastInfo = invalid
-        openXtreamArchiveMedia(url)
+        openXtreamArchiveMedia(archiveRequest)
         return
     end if
     m.archiveTask = CreateObject("roSGNode", "CatchupTask")
@@ -298,11 +298,14 @@ sub onArchiveRequested(event as object)
     if restarting then showNotice("Opening Restart Program... Archive may not yet be available. Back cancels.") else showNotice("Opening archive... Back cancels.")
 end sub
 
-sub openXtreamArchiveMedia(url as string)
+sub openXtreamArchiveMedia(archiveRequest as object)
     program = m.archiveContext.program
     identity = CreateObject("roDeviceInfo").getRandomUUID()
     beginArchiveBookmarkPlayback(identity)
-    m.mediaPlayer.request = userViewEvent({account: m.accountIdentity, identity: identity, key: textValue(program.id), mode: "catchup", providerType: "xtream", url: url, title: program.title, apiKey: "", streamFormat: "ts", programStart: program.startsAt, program: program, offset: m.archiveOffset, startPaused: m.archiveStartPaused, restart: false, rewind: false}, currentUserSessionId())
+    ' UTC whole-minute rounding still affects the playhead after removing the
+    ' configured correction; use the same wire window that generated the URL.
+    m.archiveContext.bookmarkOffset = archiveRequest.guideStart - program.startsAt
+    m.mediaPlayer.request = userViewEvent({account: m.accountIdentity, identity: identity, key: textValue(program.id), mode: "catchup", providerType: "xtream", url: archiveRequest.url, title: program.title, apiKey: "", streamFormat: "ts", programStart: program.startsAt, program: program, offset: m.archiveOffset, startPaused: m.archiveStartPaused, restart: false, rewind: false}, currentUserSessionId())
 end sub
 
 sub openLiveRewind()
@@ -359,7 +362,7 @@ sub onArchiveCreated(event as object)
             if m.archiveContext.restart = true or m.archiveContext.rewind = true
                 if result.status = 400 or result.status = 404 or result.status = 500 or result.status = 502 or result.status = 503 or result.status = 504 then message = "Archive not yet available. The provider may be delayed or busy. Try again later or choose Watch channel LIVE."
             else if archiveBookmarkContextCurrent()
-                if catchupBookmarkUnavailableStatus(result.status)
+                if catchupBookmarkUnavailableStatus(result.archiveStatus)
                     clearArchiveBookmark(m.archiveContext.channel.uuid, m.archiveContext.program)
                 end if
             end if
@@ -445,6 +448,7 @@ end function
 sub beginArchiveBookmarkPlayback(identity as string)
     if not archiveBookmarkContextCurrent() then return
     m.archiveContext.playbackIdentity = identity
+    m.archiveContext.bookmarkOffset = m.archiveOffset
     m.archiveContext.lastBookmarkWrite = 0
     m.archiveContext.lastBookmarkState = ""
 end sub
@@ -496,6 +500,10 @@ sub saveArchiveBookmarkProgress(progress as dynamic, force = false as boolean)
     context = m.archiveContext
     if textValue(context.playbackIdentity) = "" or progress.identity <> context.playbackIdentity then return
     if progress.account <> context.account or progress.mode <> "catchup" then return
+    if progress.finished = true
+        clearArchiveBookmark(context.channel.uuid, context.program)
+        return
+    end if
     ' The player only commits native playing/paused samples to progress.position.
     ' A reopen request or failed start cannot replace a previously saved position.
     if not mediaNumber(progress.position) then return
@@ -507,8 +515,8 @@ sub saveArchiveBookmarkProgress(progress as dynamic, force = false as boolean)
     xc = context.providerType = "xtream"
     program = context.program
     if catchupRequestWindow(program, days, now, context.requestShiftMinutes, xc) = invalid then return
-    position = int(progress.position + m.archiveOffset)
-    completed = progress.finished = true or position >= program.endsAt - program.startsAt
+    position = int(progress.position + context.bookmarkOffset)
+    completed = position >= program.endsAt - program.startsAt
     if not (force or completed or progress.closing = true)
         if progress.state = context.lastBookmarkState and context.lastBookmarkWrite > now - 15 then return
     end if
@@ -616,8 +624,8 @@ sub onArchiveSeek(event as object)
             if plan = invalid then return
             channel = m.guide.callFunc("channelByUuid", m.archiveContext.channel.uuid)
             if channel = invalid then return
-            url = xtreamArchiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, m.xcTimezone, channel, plan.program, uiNow(), m.archiveContext.requestShiftMinutes)
-            if url = ""
+            archiveRequest = xtreamArchiveRequest(m.baseUrl, m.xcUsername, m.xcPassword, m.xcTimezone, channel, plan.program, uiNow(), m.archiveContext.requestShiftMinutes)
+            if archiveRequest = invalid
                 showNotice("Provider archive seek is no longer available. Return to the guide.")
                 return
             end if
@@ -626,7 +634,7 @@ sub onArchiveSeek(event as object)
             saveArchiveBookmarkProgress(m.mediaPlayer.progress, true)
             m.archiveOffset = plan.offset
             m.archiveStartPaused = state.paused
-            openXtreamArchiveMedia(url)
+            openXtreamArchiveMedia(archiveRequest)
             return
         end if
     end if

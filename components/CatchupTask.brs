@@ -47,6 +47,7 @@ sub runCatchup()
                 stamp.fromSeconds(window.start)
                 response = sessionMutation(root, "POST", {channel_uuid: m.top.channelUuid, start: stamp.toISOString(), duration: window.duration})
                 result.status = response.status
+                result.archiveStatus = response.status
                 url = catchupSessionUrl(m.base, m.top.channelUuid, response.data, CreateObject("roDateTime").asSeconds())
                 if m.top.rewind = true and type(response.data) = "roAssociativeArray"
                     if guideEpoch(textValue(response.data.start)) <> window.start then url = ""

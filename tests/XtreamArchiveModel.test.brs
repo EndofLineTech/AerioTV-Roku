@@ -14,6 +14,10 @@ sub main()
     shifted = catchupSeekPlan(program, 125, "1700007200".toInt())
     assertEqual(shifted.offset, 120, "seek rounds to provider minute")
     assertEqual(xtreamArchiveUrl("https://example.test", "viewer", "test-only", "UTC", channel, shifted.program, "1700007200".toInt()), "https://example.test/timeshift/viewer/test-only/58/2023-11-14:22-15/19.ts", "seek reopens remaining archive")
+    for each shift in [-30, 0, 30]
+        request = xtreamArchiveRequest("https://example.test", "viewer", "test-only", "UTC", channel, shifted.program, "1700007200".toInt(), shift)
+        assertEqual(request.guideStart, guideEpoch("2023-11-14T22:15:00Z"), "bookmark origin removes only the configured correction, not UTC minute rounding")
+    end for
     program = {id: "midnight", startsAt: guideEpoch("2026-11-01T00:20:00Z"), endsAt: guideEpoch("2026-11-01T01:20:00Z")}
     now = guideEpoch("2026-11-01T05:00:00Z")
     assertEqual(xtreamArchiveUrl("https://example.test", "viewer", "test-only", "UTC", channel, program, now, -30), "https://example.test/timeshift/viewer/test-only/60/2026-10-31:23-50/19.ts", "negative shift crosses UTC midnight")

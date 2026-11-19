@@ -118,11 +118,8 @@ sub updateRichDetails()
     if m.providerType = "xtream" then restart = false
     resumeLabel = ""
     if eligible
-        bookmark = catchupFindBookmark(m.top.archiveBookmarks, m.detailChannel.uuid, m.detailProgram, now)
-        if bookmark <> invalid
-            plan = catchupSeekPlan(m.detailProgram, bookmark.position, now)
-            resumeLabel = catchupElapsedText(plan.offset)
-        end if
+        plan = catchupBookmarkPlan(m.top.archiveBookmarks, m.detailChannel.uuid, m.detailProgram, "resume", now, m.providerType = "xtream")
+        if plan <> invalid then resumeLabel = catchupElapsedText(plan.resumePosition)
     end if
     m.details.model = {program: m.detailProgram, channel: m.detailChannel, baseUrl: m.base, apiKey: m.key, settings: m.settings, reminded: hasReminder(m.reminders, m.detailChannel.uuid, m.detailProgram.id), catchupAvailable: eligible, catchupResumeLabel: resumeLabel, restartAvailable: restart, catchupRetention: catchupRetentionLabel(days), dvrPermission: m.top.dvrPermission}
 end sub

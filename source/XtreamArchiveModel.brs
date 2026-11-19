@@ -16,19 +16,26 @@ function xtreamArchiveFacts(channels as dynamic, timezone as string) as object
 end function
 
 function xtreamArchiveUrl(base as string, username as string, password as string, timezone as string, channel as dynamic, program as dynamic, now as integer, shiftMinutes = 0 as integer) as string
+    request = xtreamArchiveRequest(base, username, password, timezone, channel, program, now, shiftMinutes)
+    if request = invalid then return ""
+    return request.url
+end function
+
+function xtreamArchiveRequest(base as string, username as string, password as string, timezone as string, channel as dynamic, program as dynamic, now as integer, shiftMinutes = 0 as integer) as dynamic
     base = normalizeBaseUrl(base)
-    if base = "" or timezone <> "UTC" or not xtreamCredentialsValid(username, password) then return ""
-    if type(channel) <> "roAssociativeArray" then return ""
+    if base = "" or timezone <> "UTC" or not xtreamCredentialsValid(username, password) then return invalid
+    if type(channel) <> "roAssociativeArray" then return invalid
     id = textValue(channel.streamId)
-    if not CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(id) then return ""
+    if not CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(id) then return invalid
     days = channel.archiveDays
-    if not mediaNumber(days) or days < 1 or days > 30 then return ""
+    if not mediaNumber(days) or days < 1 or days > 30 then return invalid
     window = catchupRequestWindow(program, int(days), now, shiftMinutes, true)
-    if window = invalid then return ""
+    if window = invalid then return invalid
     stamp = CreateObject("roDateTime")
     stamp.fromSeconds(window.start)
     utc = stamp.toISOString()
-    if len(utc) < 16 then return ""
+    if len(utc) < 16 then return invalid
     start = left(utc, 10) + ":" + mid(utc, 12, 2) + "-" + mid(utc, 15, 2)
-    return base + "/timeshift/" + xtreamEscape(username) + "/" + xtreamEscape(password) + "/" + window.duration.toStr() + "/" + start + "/" + id + ".ts"
+    url = base + "/timeshift/" + xtreamEscape(username) + "/" + xtreamEscape(password) + "/" + window.duration.toStr() + "/" + start + "/" + id + ".ts"
+    return {url: url, guideStart: window.start - catchupOffsetMinutes(shiftMinutes) * 60}
 end function

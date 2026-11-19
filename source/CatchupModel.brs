@@ -80,11 +80,18 @@ function catchupBookmarkUnavailableMediaError(detail as string) as boolean
     return CreateObject("roRegex", "(http[^0-9]{0,24}|response code[^0-9]{0,16})(401|403|404|410)([^0-9]|$)", "i").isMatch(detail)
 end function
 
-function catchupBookmarkPlan(raw as dynamic, channelUuid as string, program as object, action as string, now as integer) as dynamic
+function catchupBookmarkPlan(raw as dynamic, channelUuid as string, program as object, action as string, now as integer, minuteStart = false as boolean) as dynamic
     if action = "resume"
         row = catchupFindBookmark(raw, channelUuid, program, now)
         if row = invalid then return invalid
-        return catchupSeekPlan(program, row.position, now)
+        rounding = 0
+        ' The correction is in whole minutes. Compensate for the UTC start
+        ' flooring so Resume picks the latest requestable minute at or before
+        ' the saved guide playhead, rather than rounding twice.
+        if minuteStart then rounding = program.startsAt mod 60
+        plan = catchupSeekPlan(program, row.position + rounding, now)
+        if plan <> invalid then plan.resumePosition = plan.offset - rounding
+        return plan
     end if
     return {program: program, offset: 0}
 end function

@@ -113,7 +113,10 @@ sub testXtreamSlotArchive()
             return {paused: false}
         end function
     }
-    program = {id: "test", title: "Test", startsAt: uiNow() - 7200, endsAt: uiNow() - 3700}
+    ' Use a non-minute airing so an artificial stream-relative position
+    ' exposes the difference between the requested and actual start.
+    startAt = (uiNow() \ 60) * 60 - 7200 + 43
+    program = {id: "test", title: "Test", startsAt: startAt, endsAt: startAt + 3500}
     archiveEvent = {node: m.guide, value: {scope: "playlist", channel: {uuid: "xc-19"}, program: program}}
     archiveEvent.getData = function()
         return m.value
@@ -150,13 +153,13 @@ sub testXtreamSlotArchive()
     progress.value.account = "account"
     onMediaProgress(progress)
     row = catchupFindBookmark(m.accountPreferences.archiveBookmarks, "xc-19", program, uiNow())
-    if row.position <> 219 then stop
+    if row.position <> 176 then stop
     progress.value.position = 111
     progress.value.state = "stopped"
     progress.value.closing = true
     onMediaProgress(progress)
     row = catchupFindBookmark(m.accountPreferences.archiveBookmarks, "xc-19", program, uiNow())
-    if row.position <> 231 then stop
+    if row.position <> 188 then stop
     if instr(1, m.registry.data, "/timeshift/") <> 0 or instr(1, m.registry.data, "fixture") <> 0 then stop
 
     ' Simulate relaunch from the serialized account bucket and refreshed EPG IDs.
@@ -166,12 +169,43 @@ sub testXtreamSlotArchive()
     program.id = "reloaded"
     archiveEvent.value.program = program
     archiveEvent.value.bookmarkAction = "resume"
+    m.connectionStore.entries[1].catchupOffsetMinutes = -30
     m.page = "guide"
     onArchiveRequested(archiveEvent)
-    plan = catchupSeekPlan(program, 231, uiNow())
-    expected = xtreamArchiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, m.xcTimezone, m.archiveContext.channel, plan.program, uiNow(), 30)
+    plan = catchupSeekPlan(program, 188, uiNow())
+    expected = xtreamArchiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, m.xcTimezone, m.archiveContext.channel, plan.program, uiNow(), -30)
     if m.mediaPlayer.request.offset <> 180 or m.mediaPlayer.request.url <> expected then stop
     if m.mediaPlayer.request.programStart <> program.startsAt then stop
+    progress.value.identity = m.mediaPlayer.request.identity
+    progress.value.position = 66
+    progress.value.state = "playing"
+    progress.value.closing = false
+    onMediaProgress(progress)
+    if catchupFindBookmark(m.accountPreferences.archiveBookmarks, "xc-19", program, uiNow()).position <> 203 then stop
+
+    ' A new reader can reach native EOF without reporting a playhead.
+    m.page = "guide"
+    onArchiveRequested(archiveEvent)
+    plan = catchupBookmarkPlan(m.accountPreferences.archiveBookmarks, "xc-19", program, "resume", uiNow(), true)
+    if plan.resumePosition <> 197 or m.mediaPlayer.request.offset <> 240 then stop
+    progress.value.identity = m.mediaPlayer.request.identity
+    progress.value.position = invalid
+    progress.value.state = "finished"
+    progress.value.finished = true
+    progress.value.closing = true
+    onMediaProgress(progress)
+    if catchupFindBookmark(m.accountPreferences.archiveBookmarks, "xc-19", program, uiNow()) <> invalid then stop
+    m.page = "guide"
+    onArchiveRequested(archiveEvent)
+    if m.page <> "guide" then stop
+    progress.value.position = 120
+    progress.value.state = "playing"
+    progress.value.finished = false
+    progress.value.closing = false
+    archiveEvent.value.bookmarkAction = "catchup"
+    onArchiveRequested(archiveEvent)
+    progress.value.identity = m.mediaPlayer.request.identity
+    onMediaProgress(progress)
 
     archiveEvent.value.bookmarkAction = "startOver"
     m.page = "guide"
@@ -262,6 +296,22 @@ sub testDispatcharrBookmarkPlayback()
     onMediaClosed(closeEvent)
     if catchupFindBookmark(m.accountPreferences.archiveBookmarks, "dispatch-uuid", program, now).position <> 263 then stop
     if m.page <> "guide" or not m.guide.active or not m.guide.visible then stop
+
+    ' HTTP 404 from /me is not evidence that this archive is gone.
+    for each archiveStatus in [invalid, 404]
+        m.page = "archiveLoading"
+        m.archiveContext = {account: "account", connectionId: "playlist", program: program, channel: {id: "d-1", uuid: "dispatch-uuid"}}
+        m.archiveTask = {aeriosession: "new-profile-session", isSameNode: function(other)
+            return true
+        end function, unobserveField: sub(field)
+        end sub}
+        event.node = m.archiveTask
+        event.value = {ok: false, status: 404, archiveStatus: archiveStatus, message: "HTTP 404"}
+        onArchiveCreated(event)
+        row = catchupFindBookmark(m.accountPreferences.archiveBookmarks, "dispatch-uuid", program, now)
+        if archiveStatus = invalid and row = invalid then stop
+        if archiveStatus = 404 and row <> invalid then stop
+    end for
 end sub
 
 sub stopPlayback()
