@@ -30,6 +30,9 @@ sub main()
     assertEqual(launchRequestHasMediaIntent({CONTENTID: 7}), true, "malformed media intent grants no playback but is not ordinary launch")
     assertEqual(launchRequestHasMediaIntent({contentId: "", mediaType: ""}), false, "empty launch fields are not a media selection")
     assertEqual(launchRequestHasMediaIntent({source: "homescreen"}), false, "ordinary app launch preserves picker")
+    assertEqual(launchRequestHasVodIntent({mediaType: "MoViE", contentId: "bad"}), true, "malformed but recognized cold VOD still declares intent")
+    assertEqual(launchRequestHasVodIntent({mediaType: "episode"}), true, "missing ID does not erase recognized VOD intent")
+    assertEqual(launchRequestHasVodIntent({mediaType: "liveFeed", contentId: "bad"}), false, "live intents do not change VOD autoplay policy")
     print "ALL TESTS PASSED"
 end sub
 

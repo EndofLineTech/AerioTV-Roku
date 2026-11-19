@@ -72,6 +72,27 @@ sub main()
     check(m.pendingLaunch.id = "42" and m.pendingLaunch.profile = m.a.id and m.pendingLaunch.account = "7" and m.apiKey = "default-key" and m.global.profilegateclosed, "validated VOD link waits behind restored own-key PIN, bound to that holder")
     pickerNavigationFixture()
     store = loadUserProfileStore(m.registry, "slot-a")
+    missing = store.profiles[1]
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(setCanonicalPreference(store, "active", missing.id))
+    m.registry.values.delete(userProfileKeyName("slot-a", missing.id))
+    entry = connectionStoreEntry(m.connectionStore, "slot-a")
+    check(prepareUserProfileLaunchRestore(entry) and loadUserProfileStore(m.registry, "slot-a").active = m.a.id, "ordinary cold restoration may still select the default")
+    check(deferUserProfileLaunch(), "fallback fixture follows normal deferred startup")
+    m.top.launchRequest = {contentId: "12", mediaType: "movie"}
+    m.top.startupReady = true
+    onSceneStartupReady()
+    onDeferredUserProfileLaunch()
+    check(m.routeConnectCalls = 1 and m.apiKey = "default-key", "default can still load its normal guide")
+    check(m.pendingLaunch.profile = missing.id and m.pendingLaunch.account = missing.userId.toStr(), "fallback must not transfer the cold title to the default")
+    pickerNavigationFixture()
+    check(deferUserProfileLaunch(), "malformed cold fixture follows normal deferred startup")
+    m.top.launchRequest = {contentId: "https://other.test", mediaType: "series"}
+    m.top.startupReady = true
+    onSceneStartupReady()
+    onDeferredUserProfileLaunch()
+    check(m.pendingLaunch = invalid and m.startupVodIntent and m.routeConnectCalls = 1 and m.pickerCreates = 0, "malformed recognized series gets the guide without picker or live startup selection")
+    pickerNavigationFixture()
+    store = loadUserProfileStore(m.registry, "slot-a")
     store.profiles[0] = setCanonicalPreference(store.profiles[0], "pinType", "numbers")
     store.profiles[0] = setCanonicalPreference(store.profiles[0], "pinHash", string(64, "a"))
     store.profiles[0] = setCanonicalPreference(store.profiles[0], "pinSalt", string(32, "b"))
@@ -333,6 +354,8 @@ sub pickerNavigationFixture()
     m.profileStartupLaunchConnection = invalid
     m.profileLaunchPickerResolved = false
     m.profileLaunchPickerDeepLink = false
+    m.startupVodFallbackHolder = invalid
+    m.startupVodIntent = false
     m.pendingLaunch = invalid
     m.startupDialogOpen = true
     m.startupBeaconSent = false

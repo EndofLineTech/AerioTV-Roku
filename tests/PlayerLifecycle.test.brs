@@ -57,6 +57,18 @@ sub main()
     assertEqual(m.pendingLaunch.id, "27", "PIN cover defers an otherwise valid VOD link")
     m.pendingLaunch = invalid
     m.global = invalid
+    m.page = "welcome"
+    m.top.launchRequest = {mediaType: "MoViE", contentId: "not-numeric"}
+    onLaunchRequest()
+    assertEqual(m.pendingLaunch, invalid, "malformed movie does not become a pending request")
+    m.accountPreferences = {startupBehavior: "mini", lastChannel: "startup-channel"}
+    m.notice.visible = false
+    startConfiguredMiniPlayback([])
+    assertEqual(m.notice.visible, false, "malformed cold VOD does not enter unrelated startup channel selection")
+    m.startupVodIntent = false
+    startConfiguredMiniPlayback([])
+    assertEqual(m.notice.visible, true, "ordinary mini startup still looks up the saved channel")
+    runFirstRunVodOnboardingChecks()
     m.page = "guide"
     m.heldZap = ""
     m.heldZapTimer = {control: "stop"}
@@ -607,4 +619,84 @@ sub assertEqual(actual as dynamic, expected as dynamic, label as string)
         print "FAIL: "; label; " expected="; expected; " actual="; actual
         stop
     end if
+end sub
+
+sub runFirstRunVodOnboardingChecks()
+    for each finishAction in ["continue", "back"]
+        m.page = "welcome"
+        m.top.launchRequest = {mediaType: "episode", contentId: "27"}
+        onLaunchRequest()
+        m.page = "guide"
+        slot = "first-slot"
+        entry = normalizeConnectionEntry({id: slot, name: "First setup", provider: "dispatcharr", url: "https://example.test", accountId: "7", remember: true})
+        profile = userProfileFromVerified(slot, "00000000-0000-4000-8000-000000000001", {id: 7, username: "alice", user_level: 1}, 1)
+        store = defaultUserProfileStore(slot)
+        store.profiles = [profile]
+        store.active = profile.id
+        values = {}
+        values["connectionsV1"] = FormatJson({schema: 1, selected: slot, entries: [entry]})
+        values[userProfileStoreKey(slot)] = FormatJson(store)
+        values[connectionRegistryKey(slot)] = "own-key"
+        scope = userProfileSessionScope(entry, profile.id, "7", "generation", "00000000-0000-4000-8000-000000000003")
+        m.global = {activeusersession: scope.sessionId, profilegateclosed: false}
+        m.activeUserScope = scope
+        m.selectedConnectionId = scope.playlistId
+        m.busy = false
+        m.registry = {values: values, read: function(key as string) as string
+            if m.values.doesExist(key) then return m.values[key]
+            return ""
+        end function, exists: function(key as string) as boolean
+            return m.values.doesExist(key)
+        end function}
+        m.connectionStore = loadConnectionStore(m.registry)
+        m.apiKey = "own-key"
+        m.baseUrl = entry.url
+        m.serverAccountId = scope.accountId
+        m.accountIdentity = scope.preferenceIdentity
+        m.accountPreferences = {vodEnabled: true, vod: []}
+        m.guide.config = userViewEvent({providerType: "dispatcharr", accountId: scope.accountId, baseUrl: m.baseUrl, apiKey: m.apiKey}, scope.sessionId)
+        m.phoneProfileOnboarding = {phase: "offer", slot: slot, addedIds: []}
+        m.vodDeepLinkTaskFactory = function() as object
+            return {observeField: sub(field as string, callback as string)
+            end sub, unobserveField: sub(field as string)
+            end sub}
+        end function
+        m.phoneProfileOnboardingDialogFactory = function() as object
+            return {tag: "onboarding", isSameNode: function(other as object) as boolean
+                return other.tag = m.tag
+            end function, observeField: sub(field as string, callback as string)
+            end sub, unobserveField: sub(field as string)
+            end sub, setFocus: sub(focus as boolean)
+            end sub}
+        end function
+        m.notice.visible = false
+        ' Imported accounts reach the first guide before the dialog is shown.
+        signalStartupComplete()
+        assertEqual(m.pendingLaunch.id, "27", "authenticated guide must keep the deep link through onboarding")
+        assertEqual(m.pendingLaunch.session, scope.sessionId, "first-run pending link is now owned by the authenticated session")
+        assertEqual(m.vodDeepLinkTask, invalid, "no premature resolver before onboarding")
+        continuePhoneProfileOnboarding()
+        dialog = m.phoneProfileOnboardingDialog
+        assertEqual(m.phoneProfileOnboarding.phase, "who", "normal onboarding shows profile setup")
+        event = {node: dialog, choice: m.phoneProfileOnboardingChoices.count() - 1, getRoSGNode: function() as object
+            return m.node
+        end function, getData: function() as integer
+            return m.choice
+        end function}
+        if finishAction = "continue" then onPhoneProfileOnboardingChoice(event) else onPhoneProfileOnboardingClosed(event)
+        assertEqual(m.phoneProfileOnboarding, invalid, "onboarding settles for " + finishAction)
+        assertEqual(m.top.dialog, invalid, "retry happens after close for " + finishAction)
+        assertEqual(m.pendingLaunch, invalid, "guide consumes pending request after " + finishAction)
+        assertEqual(m.vodDeepLinkTask.itemId, "27", "resolver dispatches the original item after " + finishAction)
+        assertEqual(m.vodDeepLinkTask.apiKey, "own-key", "continuation still uses only own credential")
+        cancelVodDeepLink()
+    end for
+    m.global = invalid
+    m.activeUserScope = invalid
+    m.registry = invalid
+    m.selectedConnectionId = ""
+    m.connectionStore = invalid
+    m.apiKey = ""
+    m.accountIdentity = ""
+    m.profileLaunchResolvedConnection = invalid
 end sub

@@ -6,7 +6,7 @@ function vodDeepLinkOwner() as dynamic
     if m.profileSwitchContext <> invalid or m.profileOwnSignInContext <> invalid then return invalid
     if m.page <> "guide" and m.page <> "player" then return invalid
     if m.accountPreferences.vodEnabled = false or m.apiKey = "" then return invalid
-    if m.top.dialog <> invalid then return invalid
+    if m.top.dialog <> invalid or m.phoneProfileOnboarding <> invalid then return invalid
     scope = m.activeUserScope
     if type(scope) <> "roAssociativeArray" then return invalid
     if scope.sessionId = "" or scope.sessionId <> currentUserSessionId() then return invalid
@@ -43,6 +43,14 @@ sub bindStartupVodDeepLink(request as dynamic, entry as dynamic)
     if request.kind = "live" or entry.provider <> "dispatcharr" then return
     request.playlist = entry.id
     request.base = entry.url
+    original = m.startupVodFallbackHolder
+    if original <> invalid
+        if original.playlist = entry.id and original.base = entry.url
+            request.profile = original.profile
+            request.account = original.account
+            return
+        end if
+    end if
     store = loadUserProfileStore(m.registry, entry.id)
     for each profile in store.profiles
         if profile.id = store.active
@@ -65,7 +73,10 @@ sub beginVodDeepLink(request as object)
     end if
     if textValue(request.session) <> "" and request.session <> owner.scope.sessionId then return
     if textValue(request.playlist) <> "" and (request.playlist <> owner.scope.playlistId or request.base <> owner.base) then return
-    if textValue(request.profile) <> "" and (request.profile <> owner.scope.profileId or request.account <> owner.scope.accountId) then return
+    if textValue(request.profile) <> "" and (request.profile <> owner.scope.profileId or request.account <> owner.scope.accountId)
+        showVodDeepLinkUnavailable()
+        return
+    end if
     task = invalid
     if m.vodDeepLinkTaskFactory <> invalid then task = m.vodDeepLinkTaskFactory()
     if task = invalid then task = CreateObject("roSGNode", "VodTask")

@@ -1,4 +1,5 @@
 sub main()
+    checkUnavailableSavedHolderDoesNotResolve()
     request = normalizeLaunchRequest({contentId: "12", mediaType: "movie", apiKey: "untrusted", url: "https://other.test"})
     fixture()
     m.global.profilegateclosed = true
@@ -76,6 +77,38 @@ sub main()
     print "ALL TESTS PASSED"
 end sub
 
+sub checkUnavailableSavedHolderDoesNotResolve()
+    for each variant in ["missing-key", "address-held"]
+        fixture()
+        request = normalizeLaunchRequest({contentId: "12", mediaType: "movie"})
+        entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+        store = loadUserProfileStore(m.registry, entry.id)
+        original = store.active
+        if variant = "missing-key"
+            m.registry.values.delete(m.ownKeyName)
+        else
+            store.profiles[1] = setCanonicalPreference(store.profiles[1], "addressHeld", true)
+            m.registry.values[userProfileStoreKey(entry.id)] = FormatJson(store)
+        end if
+        m.activeUserScope = invalid
+        session = currentUserSessionId()
+        m.global.activeusersession = ""
+        check(prepareUserProfileLaunchRestore(entry), "local startup restoration succeeds for " + variant)
+        bindStartupVodDeepLink(request, entry)
+        store = loadUserProfileStore(m.registry, entry.id)
+        check(request.profile = original and store.active <> original, "saved holder is stamped even after fallback for " + variant)
+        m.global.activeusersession = session
+        m.activeUserScope = userProfileSessionScope(entry, store.active, "7", "verified", session)
+        m.serverAccountId = "7"
+        m.accountIdentity = m.activeUserScope.preferenceIdentity
+        m.apiKey = "default-key"
+        m.guide.config = userViewEvent({providerType: "dispatcharr", accountId: "7", apiKey: m.apiKey, baseUrl: m.baseUrl}, currentUserSessionId())
+        check(vodDeepLinkOwner() <> invalid, "fallback default has a usable authenticated guide")
+        beginVodDeepLink(request)
+        check(m.created = 0 and m.stops = 0, "fallback default never resolves original holder's title for " + variant)
+    end for
+end sub
+
 sub fixture()
     slot = "slot-a"
     alice = userProfileFromVerified(slot, "00000000-0000-4000-8000-000000000001", {id: 7, username: "alice", user_level: 1}, 1)
@@ -96,6 +129,14 @@ sub fixture()
     end function, read: function(key as string) as string
         if m.values.doesExist(key) then return m.values[key]
         return ""
+    end function, write: function(key as string, value as string) as boolean
+        m.values[key] = value
+        return true
+    end function, delete: function(key as string) as boolean
+        m.values.delete(key)
+        return true
+    end function, flush: function() as boolean
+        return true
     end function}
     m.connectionStore = loadConnectionStore(m.registry)
     m.selectedConnectionId = slot
@@ -118,6 +159,7 @@ sub fixture()
     m.stops = 0
     m.created = 0
     m.profilePinDialog = invalid
+    m.startupVodFallbackHolder = invalid
     m.vodDeepLinkTaskFactory = function() as object
         m.created++
         return {tag: m.created, isSameNode: function(other as object) as boolean

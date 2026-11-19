@@ -332,6 +332,7 @@ sub onLaunchRequest()
     end if
     if m.profileOwnSignInContext <> invalid
         if m.profileOwnSignInContext.startupRecovery = true and launchRequestHasMediaIntent(m.top.launchRequest)
+            m.startupVodIntent = launchRequestHasVodIntent(m.top.launchRequest)
             m.pendingLaunch = normalizeLaunchRequest(m.top.launchRequest)
             bindStartupVodDeepLink(m.pendingLaunch, m.profileStartupLaunchConnection)
             cancelUserProfileOwnSignIn()
@@ -342,12 +343,17 @@ sub onLaunchRequest()
     if m.profileSwitchContext <> invalid then return
     raw = m.top.launchRequest
     if not launchRequestHasMediaIntent(raw) then return
+    if m.page <> "guide" and m.page <> "player" and currentUserSessionId() = "" then m.startupVodIntent = launchRequestHasVodIntent(raw)
     cancelVodDeepLink()
     m.pendingLaunch = normalizeLaunchRequest(raw)
     if m.pendingLaunch <> invalid
         if m.pendingLaunch.kind <> "live"
             m.pendingLaunch.session = currentUserSessionId()
-            if m.pendingLaunch.session = "" then bindStartupVodDeepLink(m.pendingLaunch, m.profileStartupLaunchConnection)
+            if m.pendingLaunch.session = ""
+                entry = m.profileStartupLaunchConnection
+                if entry = invalid and m.startupVodFallbackHolder <> invalid then entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+                bindStartupVodDeepLink(m.pendingLaunch, entry)
+            end if
         end if
     end if
     if m.profilePickerReady = true
@@ -368,6 +374,12 @@ sub handlePendingLaunch()
     if m.pendingLaunch = invalid then return
     if m.page <> "guide" and m.page <> "player" then return
     request = m.pendingLaunch
+    if request.kind <> "live" and m.phoneProfileOnboarding <> invalid
+        ' The flow may temporarily open other forms. Keep the link pending,
+        ' bound to this adopted session, until the onboarding continuation.
+        if textValue(request.session) = "" then request.session = currentUserSessionId()
+        return
+    end if
     m.pendingLaunch = invalid
     if request.kind <> "live"
         beginVodDeepLink(request)
@@ -986,8 +998,6 @@ sub completeConnection(result as dynamic)
         m.profileGateCover.visible = false
         m.global.profileswitchpending = false
     end if
-    suppressMini = false
-    if m.pendingLaunch <> invalid then suppressMini = m.pendingLaunch.kind <> "live"
     signalStartupComplete()
     print "[startup] authorized lineup ms="; m.connectionElapsed.totalMilliseconds(); " channels="; result.channels.count()
     refreshCapabilities()
@@ -995,7 +1005,9 @@ sub completeConnection(result as dynamic)
     m.reminderClock.control = "start"
     version = CreateObject("roAppInfo").getValue("major_version") + "." + CreateObject("roAppInfo").getValue("minor_version") + "." + CreateObject("roAppInfo").getValue("build_version")
     if m.accountPreferences.whatsNewVersion <> version then showNotice("What's New in " + version + ". Open Settings > About > What's New.")
-    if not suppressMini and m.profileRefreshReload <> true then startConfiguredMiniPlayback(result.channels)
+    if m.profileRefreshReload <> true then startConfiguredMiniPlayback(result.channels)
+    m.startupVodIntent = false
+    m.startupVodFallbackHolder = invalid
     m.profileRefreshReload = false
     activateProfileSyncScheduling()
     if m.phoneProfileOnboarding <> invalid then continuePhoneProfileOnboarding()
@@ -1003,6 +1015,7 @@ end sub
 
 sub startConfiguredMiniPlayback(channels as object)
     m.startMiniAfterPlayback = false
+    if m.startupVodIntent = true then return
     if m.accountPreferences.startupBehavior <> "mini" then return
     if m.accountPreferences.lastChannel = "" then return
     for each channel in channels

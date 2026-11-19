@@ -7,12 +7,16 @@ Search identifier. The app ignores link fields other than `contentId` and
 `mediaType`; a link cannot supply a server, profile, credential, or stream.
 The existing `live` / `liveFeed` route remains separate.
 
-On first run, a valid link waits through setup and sign-in. On a saved
-Dispatcharr launch, it skips optional profile selection but not the saved
-holder's PIN or own-key sign-in. A warm request resolves from the authenticated
-Guide or Live Player. In Settings, DVR, the library, or on-demand playback, it
-waits for a return to the guide in the same session. A replacement or account
-teardown retires work already in flight. A failed link never tunes a substitute.
+On first run, a valid link waits through setup, sign-in, and any phone profile
+onboarding. On a saved Dispatcharr launch, it skips optional profile selection
+but not the saved holder's PIN or own-key sign-in. If startup restores the
+default because the saved holder is unavailable, the default guide can open
+but cannot resolve that holder's link. Even a malformed VOD request prevents
+the saved live channel from starting automatically. A warm request resolves
+from the authenticated Guide or Live Player. In Settings, DVR, the library, or
+on-demand playback, it waits for a return to the guide in the same session.
+A replacement or account teardown retires work already in flight. A failed
+link never tunes a substitute.
 
 The resolver uses the checked-in [media/provider contract](MEDIA-PROVIDER-CONTRACT.md):
 

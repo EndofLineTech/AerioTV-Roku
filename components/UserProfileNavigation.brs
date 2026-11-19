@@ -36,6 +36,9 @@ function prepareUserProfileLaunchRestore(entry as dynamic) as boolean
     ownKey = ""
     if entry.remember then ownKey = m.registry.read(userProfileKeyName(entry.id, selected.id))
     if not selected.addressHeld and ownKey <> "" then return true
+    ' Main supplies the cold launch arguments after init. Preserve the original
+    ' VOD holder before restoring the default for ordinary guide navigation.
+    m.startupVodFallbackHolder = {playlist: entry.id, base: entry.url, profile: selected.id, account: selected.userId.toStr()}
     candidate = setCanonicalPreference(store, "active", defaultId)
     saved = commitUserProfileStore(m.registry, store, candidate, {}, entry.remember)
     if not saved.ok

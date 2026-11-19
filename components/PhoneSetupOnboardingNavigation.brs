@@ -46,7 +46,9 @@ end sub
 
 sub showPhoneProfileOnboardingDialog(title as string, message as string, choices as object)
     closePhoneProfileOnboardingDialog()
-    dialog = CreateObject("roSGNode", "AerioDialog")
+    dialog = invalid
+    if m.phoneProfileOnboardingDialogFactory <> invalid then dialog = m.phoneProfileOnboardingDialogFactory()
+    if dialog = invalid then dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = title
     dialog.message = message
     buttons = []
@@ -140,7 +142,7 @@ sub onPhoneProfileOnboardingChoice(event as object)
             end if
         end if
     else if action = "continue"
-        m.phoneProfileOnboarding = invalid
+        finishPhoneProfileOnboarding()
         return
     end if
     continuePhoneProfileOnboarding()
@@ -159,8 +161,13 @@ sub onPhoneProfileOnboardingClosed(event as object)
         context.phase = "who"
         continuePhoneProfileOnboarding()
     else
-        m.phoneProfileOnboarding = invalid
+        finishPhoneProfileOnboarding()
     end if
+end sub
+
+sub finishPhoneProfileOnboarding()
+    m.phoneProfileOnboarding = invalid
+    resumePendingVodDeepLink()
 end sub
 
 sub closePhoneProfileOnboardingDialog()

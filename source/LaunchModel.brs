@@ -13,6 +13,19 @@ function launchRequestHasMediaIntent(raw as dynamic) as boolean
     return false
 end function
 
+' Intent is deliberately looser than validation. An invalid or missing ID
+' for a recognized VOD type must not trigger unrelated live autoplay.
+function launchRequestHasVodIntent(raw as dynamic) as boolean
+    if type(raw) <> "roAssociativeArray" then return false
+    for each key in raw
+        if lcase(key) = "mediatype" and GetInterface(raw[key], "ifString") <> invalid
+            kind = lcase(raw[key])
+            if kind = "movie" or kind = "episode" or kind = "series" then return true
+        end if
+    end for
+    return false
+end function
+
 function normalizeLaunchRequest(raw as dynamic) as dynamic
     if type(raw) <> "roAssociativeArray" then return invalid
     id = ""

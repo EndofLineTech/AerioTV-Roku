@@ -45,6 +45,7 @@ sub onDeferredUserProfileLaunch()
     raw = m.top.launchRequest
     m.pendingLaunch = normalizeLaunchRequest(raw)
     m.profileLaunchPickerDeepLink = launchRequestHasMediaIntent(raw)
+    m.startupVodIntent = launchRequestHasVodIntent(raw)
     entry = m.profileStartupLaunchConnection
     if entry = invalid then coverDeferredProfileLaunch("Saved connection access changed.") : return
     if m.profileStartupLaunchConnectionRoot <> m.registry.read("connectionsV1") or m.profileStartupLaunchConnectionRootPresent <> m.registry.exists("connectionsV1")
