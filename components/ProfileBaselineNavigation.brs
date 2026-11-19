@@ -141,7 +141,7 @@ sub beginProfileBaselineAdd(admitted = false as boolean, returnToSwitcher = fals
     m.profileOwnSignInContext.returnToPhoneOnboarding = returnToPhoneOnboarding
     m.profileOwnSignInContext.addRosterRows = []
     m.profileOwnSignInContext.addRosterScope = context.scope
-    if userProfileSameSession(m.profileRosterSuggestionScope, context.scope) and settings.profiles
+    if not userProfileRosterAddressPaused(context.store) and userProfileSameSession(m.profileRosterSuggestionScope, context.scope) and settings.profiles
         if type(m.profileRosterSuggestions) = "roArray"
             for each row in m.profileRosterSuggestions
                 if type(row) = "roAssociativeArray"

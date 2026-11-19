@@ -33,8 +33,38 @@ function openUserProfileSwitcher(focusId = "" as string, message = "" as string)
     m.settingsHub.active = false
     m.top.appendChild(picker)
     picker.setFocus(true)
+    requestScheduledProfileSync("picker")
     return true
 end function
+
+' A read triggered by this picker may change names, order or protection.
+' Replace the snapshot only on the same idle picker. Rotate its UI nonce so
+' a queued index from the previous layout cannot select a different holder.
+sub refreshUserProfileSwitcherAfterSync()
+    context = m.profileSwitcherContext
+    picker = m.profileSwitcher
+    if context = invalid or picker = invalid then return
+    if picker.busy or m.profileSwitcherMoveDialog <> invalid or m.profileManagementDialog <> invalid then return
+    current = profileBaselineContext()
+    if current = invalid or context.page <> m.page then return
+    if not userProfileSameSession(context.scope, current.scope) or context.connectionRoot <> current.connectionRoot then return
+    if context.storeRoot = current.storeRoot then return
+    before = picker.model
+    model = userProfilePickerPlan(current.store, "switcher", current.connection.provider, false)
+    if not model.ok or not model.show then closeUserProfileSwitcher() : return
+    focus = picker.focusIndex
+    if userProfileInteger(focus) and focus >= 0 and focus < before.tiles.count()
+        tile = before.tiles[focus]
+        for i = 0 to model.tiles.count() - 1
+            if tile.kind = model.tiles[i].kind and tile.id = model.tiles[i].id then model.focus = i
+        end for
+    end if
+    context.store = current.store
+    context.storeRoot = current.storeRoot
+    context.nonce = CreateObject("roDeviceInfo").getRandomUUID()
+    model.uiNonce = context.nonce
+    picker.model = model
+end sub
 
 function userProfileSwitcherCurrent() as boolean
     context = m.profileSwitcherContext

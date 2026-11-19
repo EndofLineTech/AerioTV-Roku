@@ -1,5 +1,12 @@
 ' Pure lifecycle plans. The controller owns authorization, stopping outgoing
 ' tasks/video, and committing scoped preference cleanup before adopting a plan.
+function userProfileRosterAddressPaused(store as object) as boolean
+    for each profile in store.profiles
+        if profile.addressHeld then return true
+    end for
+    return false
+end function
+
 function userProfileNormalizeTombstones(raw as dynamic) as dynamic
     if type(raw) <> "roArray" then return invalid
     if raw.count() > 256 then return invalid

@@ -31,9 +31,6 @@ function dispatcharrSyncRosterMerge(store as object, decoded as object, enabled 
         name = lcase(row.username)
         if remoteRows.doesExist(name) then ambiguous[name] = true
         remoteRows[name] = row
-        if tombstones.doesExist(name)
-            if row.updatedAt > tombstones[name] then tombstones.delete(name)
-        end if
     end for
     ' A local username must never inherit two different users' PIN/role rows.
     if ambiguous.count() > 0 then return denied
@@ -41,29 +38,30 @@ function dispatcharrSyncRosterMerge(store as object, decoded as object, enabled 
     known = {}
     for each profile in cleaned.profiles
         name = lcase(profile.username)
-        known[name] = true
-        stamp = profile.updatedAt
-        if remoteRows.doesExist(name)
-            row = remoteRows[name]
-            if row.userId > 0 and row.userId <> profile.userId then return denied
-            if row.updatedAt > stamp then stamp = row.updatedAt
-        end if
-        if tombstones.doesExist(name) and not profile.isDefault and tombstones[name] >= stamp
+        removedAt = -1
+        if tombstones.doesExist(name) then removedAt = tombstones[name]
+        ' Judge the local and remote rows independently. A peer re-add does
+        ' not revive the old local holder (or its key and preference blob).
+        if not profile.isDefault and removedAt >= profile.updatedAt
             result.removed.push(profile)
             if profile.id = cleaned.active
                 result.needsDefaultSwitch = true
                 cleaned.active = defaultId
             end if
         else
-            if remoteRows.doesExist(name)
-                row = remoteRows[name]
-                if not tombstones.doesExist(name)
-                    if dispatcharrSyncShouldRepairProfile(profile, row) then cleaned.pendingRoster = true
-                    profile = dispatcharrSyncMergeProfile(profile, row, now)
-                end if
+            known[name] = true
+            row = remoteRows[name]
+            usable = false
+            if row <> invalid then usable = row.updatedAt > removedAt
+            if usable
+                if row.userId > 0 and row.userId <> profile.userId then return denied
+                if dispatcharrSyncShouldRepairProfile(profile, row) then cleaned.pendingRoster = true
+                profile = dispatcharrSyncMergeProfile(profile, row, now)
             else if profile.addOrigin = "paused"
                 profile = setCanonicalPreference(profile, "addOrigin", "plain")
+                cleaned.pendingRoster = true
             end if
+            if removedAt >= 0 and profile.updatedAt > removedAt then tombstones.delete(name)
             retained.push(profile)
         end if
     end for
@@ -73,6 +71,12 @@ function dispatcharrSyncRosterMerge(store as object, decoded as object, enabled 
         name = lcase(row[0])
         keep = row[1] >= now - 7776000
         if not tombstones.doesExist(name) then keep = false
+        peer = remoteRows[name]
+        if peer <> invalid
+            if tombstones.doesExist(name)
+                if peer.updatedAt > tombstones[name] then keep = false
+            end if
+        end if
         if remoteRemoved.doesExist(name)
             if remoteRemoved[name] >= row[1] then keep = false
         end if
@@ -81,7 +85,9 @@ function dispatcharrSyncRosterMerge(store as object, decoded as object, enabled 
     cleaned.removed = localRemoved
     for each row in decoded.rows
         name = lcase(row.username)
-        if row.userId > 0 and row.username <> "" and not known.doesExist(name) and not tombstones.doesExist(name) then result.suggestions.push(row)
+        survives = not tombstones.doesExist(name)
+        if not survives then survives = row.updatedAt > tombstones[name]
+        if row.userId > 0 and row.username <> "" and not known.doesExist(name) and survives then result.suggestions.push(row)
     end for
     validated = normalizeUserProfileStore(cleaned, cleaned.playlistId)
     if validated.readOnly = true then return denied
@@ -108,7 +114,7 @@ function dispatcharrSyncMergeProfile(profile as object, row as object, now as in
         if row.role <> "" then result = setCanonicalPreference(result, "role", userProfileResolveRole(profile.userLevel, row.role))
         if row.avatarPresent then result = setCanonicalPreference(result, "avatar", row.avatar)
         if row.order >= 0 then result = setCanonicalPreference(result, "order", row.order)
-        if row.pinAction <> "keep"
+        if row.pinAction <> "keep" and (not settlement or row.pinAction = "replace")
             if row.pinType <> profile.pinType or row.pinHash <> profile.pinHash or row.pinSalt <> profile.pinSalt then result = setCanonicalPreference(result, "pinLength", 0)
             result = setCanonicalPreference(result, "pinType", row.pinType)
             result = setCanonicalPreference(result, "pinHash", row.pinHash)

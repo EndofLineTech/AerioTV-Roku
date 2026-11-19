@@ -64,6 +64,7 @@ def main():
     parser.add_argument('--report', default='out/profile-primitives-native.json')
     parser.add_argument('--registry', action='store_true', help='Measure disposable registry fixtures and clean up before restoring')
     parser.add_argument('--model-store', action='store_true', help='Run profile model and fake-registry transaction tests on native Roku')
+    parser.add_argument('--offline-model-store', action='store_true', help='Run model/typed round-trip assertions without any network fixture or registry mutation')
     args = parser.parse_args()
     host = os.environ['ROKU_HOST']
     password = os.environ['ROKU_DEV_PASSWORD']
@@ -71,6 +72,11 @@ def main():
     restore_md5 = hashlib.md5(restore.read_bytes()).hexdigest()
     if installed_md5(host, password) != restore_md5:
         raise RuntimeError('Restore ZIP does not match installed app; refusing replacement')
+    if args.offline_model_store:
+        if args.registry:
+            parser.error('--offline-model-store does not use the Roku registry')
+        run_offline_model_store(host, password, restore, restore_md5, Path(args.report))
+        return
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as discovery:
         discovery.connect((host, 8060))
         local = discovery.getsockname()[0]
@@ -175,6 +181,45 @@ def main():
             raise RuntimeError('Restore failed; owner app needs recovery')
     if not report['passed']:
         raise SystemExit('Native primitive assertions failed; inspect sanitized report')
+
+
+def run_offline_model_store(host, password, restore, restore_md5, report_path):
+    spec = importlib.util.spec_from_file_location('profile_builder', ROOT / 'scripts/build-profile-probe.py')
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    original = builder.build(ROOT / 'out/profile-model-unfiltered.zip', 'http://127.0.0.1', model_store=True)
+    archive = ROOT / 'out/profile-model-offline.zip'
+    with zipfile.ZipFile(original) as source, zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as target:
+        for name in source.namelist():
+            body = source.read(name)
+            if name == 'source/Main.brs':
+                start = body.index(b'    refusal = httpTransferOnce(')
+                end = body.index(b'    profileAssert(profilePinVector(', start)
+                body = body[:start] + body[end:]
+                body = body.replace(b'    if config.registry = true then profileProbeRegistry()\n', b'')
+                body = body.replace(b'        profileProbeStoreRegistry()\n', b'')
+                if any(name in body for name in (b'httpTransferOnce(', b'profileProbeRegistry()', b'profileProbeStoreRegistry()')):
+                    raise RuntimeError('Native offline model fixture still contains a network or registry call')
+            target.writestr(name, body)
+    report = {'restore_sha256': hashlib.sha256(restore.read_bytes()).hexdigest(),
+              'probe_sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
+              'offline': True, 'passed': False, 'restored': False}
+    try:
+        result = subprocess.run(['python3', 'scripts/run-native-probe.py', str(archive),
+                                 '--prefix', '[profile-probe]', '--marker', '[profile-probe] complete',
+                                 '--timeout', '60'], cwd=ROOT, capture_output=True, text=True, timeout=110)
+        report['evidence'] = result.stdout.splitlines()
+        print(result.stdout, end='', flush=True)
+        report['passed'] = result.returncode == 0 and re.search(r'complete failed=\s*0\b', result.stdout) is not None
+    finally:
+        result = subprocess.run(['python3', 'scripts/run-native-probe.py', str(restore),
+                                 '--marker', 'Running dev', '--prefix', '[profile-restore]',
+                                 '--timeout', '30'], cwd=ROOT, capture_output=True, text=True, timeout=80)
+        report['restored'] = result.returncode == 0 and installed_md5(host, password) == restore_md5
+        report_path.write_text(json.dumps(report, indent=2) + '\n')
+        print('Exact prior developer app restored:', report['restored'], flush=True)
+    if not report['passed'] or not report['restored']:
+        raise SystemExit('Native offline model assertions require attention')
 
 
 if __name__ == '__main__':

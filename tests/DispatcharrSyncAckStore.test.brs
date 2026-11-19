@@ -53,6 +53,21 @@ sub main()
     onProfileSyncScheduleTick()
     check(m.profileScheduledSyncTask = invalid, "clean acknowledged snapshot does not produce a write loop")
     syncScheduledFixture()
+    onProfileSyncScheduleTick()
+    onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, syncFlushReadReceipt({rows: []})))
+    held = loadUserProfileStore(m.registry, "slot-a")
+    held.profiles[1] = setCanonicalPreference(held.profiles[1], "addressHeld", true)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(held)
+    m.syncTestNow = 101
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask = invalid and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "a held slot sends nothing and keeps pending")
+    held.profiles[1] = setCanonicalPreference(held.profiles[1], "addressHeld", false)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(held)
+    m.syncTestNow = 102
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask <> invalid and m.profileScheduledSyncTask.pullOnly, "releasing the final hold pulls immediately before flushing dirty edits")
+    closeScheduledProfileSync()
+    syncScheduledFixture()
     m.profileSyncEnabled = false
     onProfileSyncScheduleTick()
     check(m.profileScheduledSyncTask = invalid, "device-wide opt-in is required even behind private scheduler readiness")
@@ -145,6 +160,9 @@ sub main()
     end for
     for each fault in ["", "write", "flush", "rollback"]
         syncAckFixture()
+        m.store = setCanonicalPreference(m.store, "removed", [["removed-example", 200]])
+        m.receipt.storeRoot = FormatJson(m.store)
+        m.registry.values[userProfileStoreKey("slot-a")] = m.receipt.storeRoot
         m.registry.fault = fault
         before = FormatJson(m.registry.values)
         result = ensureDispatcharrSyncDeviceIdentity(m.registry, "00000000-0000-4000-8000-000000000080")
@@ -166,7 +184,7 @@ sub main()
         before = FormatJson(m.registry.values)
         result = commitDispatcharrSyncRosterAck(m.registry, m.connection, m.store, m.receipt, m.scope, m.key, {})
         if fault = ""
-            check(result.ok and not result.store.pendingRoster and m.registry.flushes = 1, "successful own 200 clears pending and stores highwater in one atomic transaction")
+            check(result.ok and not result.store.pendingRoster and result.store.removed.count() = 0 and m.registry.flushes = 1, "successful own 200 clears pending and carried local tombstone intent and stores highwater in one atomic transaction")
             ack = loadDispatcharrSyncRosterAck(m.registry, m.connection)
             check(ack.ok and ack.stamp = 100 and instr(1, m.registry.read(userProfileSyncAckKey("slot-a")), "synthetic-own") = 0 and m.registry.read("connKey_slot-a") = "synthetic-own", "ack records metadata only, never credentials, and retains the own key")
         else
@@ -277,6 +295,7 @@ sub syncScheduledFixture()
     m.profileSyncSchedulingReady = true
     m.profileSyncEnabled = true
     m.profileSyncSchedule = invalid
+    m.profileSyncAddressPauseScope = invalid
     m.profileScheduledSyncTask = invalid
     m.profileScheduledSyncContext = invalid
     m.profileSyncSettingsContext = invalid

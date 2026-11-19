@@ -73,7 +73,15 @@ sub onProfileSyncNetworkLink(event as object)
 end sub
 
 sub onProfileSyncScheduleTick()
+    scope = m.activeUserScope
+    if not userProfileSameSession(m.profileSyncAddressPauseScope, scope) then m.profileSyncAddressPauseScope = invalid
     if not scheduledProfileSyncAllowed()
+        if scope <> invalid and m.profileSyncEnabled = true and m.profileRosterEnabled <> false and m.profileSyncAddressPauseScope = invalid
+            current = loadUserProfileStore(m.registry, scope.playlistId)
+            if current.readOnly <> true and current.active = scope.profileId
+                if userProfileRosterAddressPaused(current) then m.profileSyncAddressPauseScope = scope
+            end if
+        end if
         if m.profileScheduledSyncTask <> invalid
             context = m.profileScheduledSyncContext
             if context <> invalid and m.profileSyncSchedule <> invalid
@@ -84,7 +92,6 @@ sub onProfileSyncScheduleTick()
         return
     end if
     now = profileSyncSchedulingNow()
-    scope = m.activeUserScope
     if m.profileSyncSchedule = invalid
         m.profileSyncSchedule = dispatcharrSyncScheduleBind(invalid, scope, now)
     else if not userProfileSameSession(m.profileSyncSchedule.scope, scope)
@@ -95,6 +102,14 @@ sub onProfileSyncScheduleTick()
     store = loadUserProfileStore(m.registry, scope.playlistId)
     root = m.registry.read(userProfileStoreKey(scope.playlistId))
     m.profileSyncSchedule = dispatcharrSyncScheduleDirty(m.profileSyncSchedule, scope, requestGateCredentialHash(root), store.pendingRoster = true, now)
+    if userProfileSameSession(m.profileSyncAddressPauseScope, scope)
+        m.profileSyncAddressPauseScope = invalid
+        ' Do not open a transport exception to broker parks/sign-in pauses.
+        ' Once admitted, pull before releasing queued local roster mutations.
+        m.profileSyncSchedule.dueAt = now
+        if m.profileSyncSchedule.retryAt > now and m.profileSyncSchedule.pause = "" then m.profileSyncSchedule.retryAt = 0
+        if store.pendingRoster then m.profileSyncSchedule.dirtyAt = now + 1
+    end if
     nextWork = dispatcharrSyncScheduleTake(m.profileSyncSchedule, scope, now, true)
     m.profileSyncSchedule = nextWork.state
     if not nextWork.run then return
@@ -105,9 +120,15 @@ end sub
 
 sub requestScheduledProfileSync(event as string)
     if not scheduledProfileSyncAllowed() then return
-    if m.profileSyncSchedule = invalid then onProfileSyncScheduleTick()
+    now = profileSyncSchedulingNow()
+    if m.profileSyncSchedule = invalid
+        m.profileSyncSchedule = dispatcharrSyncScheduleBind(invalid, m.activeUserScope, now)
+    else if not userProfileSameSession(m.profileSyncSchedule.scope, m.activeUserScope)
+        closeScheduledProfileSync()
+        m.profileSyncSchedule = dispatcharrSyncScheduleBind(m.profileSyncSchedule, m.activeUserScope, now)
+    end if
     if m.profileSyncSchedule = invalid then return
-    m.profileSyncSchedule = dispatcharrSyncScheduleRequest(m.profileSyncSchedule, m.activeUserScope, event, profileSyncSchedulingNow())
+    m.profileSyncSchedule = dispatcharrSyncScheduleRequest(m.profileSyncSchedule, m.activeUserScope, event, now)
 end sub
 
 function startScheduledProfileSync(store as object, ticket as object, push as boolean) as boolean
@@ -216,6 +237,7 @@ sub finishScheduledProfileSync(result as dynamic)
     for each profile in saved.store.profiles
         if profile.id = saved.store.active and not userProfileFullAccess(profile.role) then coverScheduledProfileSync()
     end for
+    if m.profileSwitcher <> invalid then refreshUserProfileSwitcherAfterSync()
 end sub
 
 sub coverScheduledProfileSync()

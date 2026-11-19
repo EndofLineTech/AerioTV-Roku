@@ -36,6 +36,12 @@ sub main()
     store.pendingRoster = false
     repaired = dispatcharrSyncRosterMerge(store, stripped, true, 300)
     check(repaired.store.profiles[0].displayName = "Claimed" and repaired.store.profiles[0].updatedAt = 300 and repaired.store.pendingRoster, "recently stripped remote row repaired without losing local metadata")
+    edge = dispatcharrSyncRosterDecode({rows: [[7, "alice", "alice", "none", "", "", "user", 700, {}]]})
+    check(dispatcharrSyncRosterMerge(store, edge, true, 900).store.profiles[0].updatedAt = 900, "stripped-row repair includes the exact 600-second boundary")
+    outside = dispatcharrSyncRosterDecode({rows: [[7, "alice", "alice", "none", "", "", "user", 701, {}]]})
+    check(dispatcharrSyncRosterMerge(store, outside, true, 900).store.profiles[0].updatedAt = 701, "a peer edit beyond 600 seconds is not re-stamped as a repair")
+    tied = dispatcharrSyncRosterDecode({rows: [[7, "ALICE", "Different rich name", "none", "", "", "user", 100, {icon: "paw"}, 2]]})
+    check(dispatcharrSyncRosterMerge(store, tied, true, 300).store.profiles[0].displayName = "Claimed", "fixture 16.7: equal nonstripped stamps keep claimed local metadata")
     store = syncMergeFixture()
     store.profiles[0].updatedAt = 300
     olderRich = dispatcharrSyncRosterDecode({rows: [[7, "alice", "Rich name", "directions", string(64, "a"), string(32, "b"), "child", 200, {icon: "paw"}, 0]]})
@@ -48,19 +54,34 @@ sub main()
     store.active = store.profiles[1].id
     plan = dispatcharrSyncRosterMerge(store, removed, true, 600)
     check(plan.needsDefaultSwitch and plan.store.active = store.profiles[0].id, "active removal requires authenticated default retirement before commit")
+    readded = dispatcharrSyncRosterDecode({rows: [[8, "BOB", "Peer Bob", "none", "", "", "user", 250]], removed: [["bob", 200]]})
+    plan = dispatcharrSyncRosterMerge(store, readded, true, 600)
+    check(plan.needsDefaultSwitch and plan.removed.count() = 1 and plan.suggestions.count() = 1, "fixture 16.7: a tombstone retires the old local holder but the newer peer row is offered as a suggestion")
+    store = syncMergeFixture()
+    store.profiles[1].updatedAt = 300
+    store.profiles[1].displayNameClaimed = false
+    store.removed = [["bob", 200]]
+    superseded = dispatcharrSyncRosterDecode({rows: [[8, "BOB", "Deleted peer name", "none", "", "", "user", 200]]})
+    plan = dispatcharrSyncRosterMerge(store, superseded, true, 600)
+    check(plan.removed.count() = 0 and plan.store.removed.count() = 0 and plan.store.profiles[1].displayName = "Bob local", "newer local re-add clears local intent but never imports the tombstoned peer row")
     store = syncMergeFixture()
     store.profiles[1].addressHeld = true
     plan = dispatcharrSyncRosterMerge(store, removed, true, 600)
     check(not plan.applied and plan.removed.count() = 0 and plan.suggestions.count() = 0, "any held profile pauses rows tombstones and suggestions")
     store = syncMergeFixture()
     store.profiles[1].addOrigin = "paused"
+    store.pendingRoster = false
+    store.profiles[1].pinType = "numbers"
+    store.profiles[1].pinHash = string(64, "a")
+    store.profiles[1].pinSalt = string(32, "b")
+    store.profiles[1].pinLength = 4
     plan = dispatcharrSyncRosterMerge(store, data, true, 300)
-    check(plan.store.profiles[1].addOrigin = "roster" and plan.store.profiles[1].updatedAt = 50, "first applying pull settles paused add from its roster row")
+    check(plan.store.profiles[1].addOrigin = "roster" and plan.store.profiles[1].updatedAt = 50 and plan.store.profiles[1].pinLength = 4, "first applying pull settles paused add without erasing a locally set PIN when the peer has none")
     pausedStripped = dispatcharrSyncRosterDecode({rows: [[8, "bob", "bob", "none", "", "", "user", 200, {}]]})
     plan = dispatcharrSyncRosterMerge(store, pausedStripped, true, 300)
     check(plan.store.profiles[1].addOrigin = "roster" and plan.store.profiles[1].updatedAt = 200, "stripped repair cannot indefinitely postpone paused-add settlement")
     plan = dispatcharrSyncRosterMerge(store, dispatcharrSyncRosterDecode({rows: []}), true, 300)
-    check(plan.store.profiles[1].addOrigin = "plain", "paused add without row becomes plain only after actual applying pull")
+    check(plan.store.profiles[1].addOrigin = "plain" and plan.store.pendingRoster, "paused add without row becomes a dirty plain Add only after actual applying pull")
     check(not dispatcharrSyncRosterMerge(store, data, false, 300).applied, "Profiles-Off never applies")
     print "ALL TESTS PASSED"
 end sub

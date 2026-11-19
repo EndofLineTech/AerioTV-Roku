@@ -119,6 +119,10 @@ sub applyDispatcharrSyncChoices()
     m.profileSyncEnabled = settings.enabled = true
     m.profileRosterEnabled = settings.profiles = true
     m.profileSyncSettingsValid = settings.ok = true
+    if not m.profileRosterEnabled
+        m.profileRosterSuggestions = []
+        m.profileRosterSuggestionScope = invalid
+    end if
     if not m.profileSyncEnabled or not m.profileRosterEnabled
         closeScheduledProfileSync()
         if m.profileSyncClock <> invalid then m.profileSyncClock.control = "stop"

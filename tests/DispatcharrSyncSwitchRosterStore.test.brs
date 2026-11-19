@@ -150,7 +150,11 @@ sub main()
     m.registry.values[newKey] = "new-own-key"
     result = resumeUserProfileRetirement(m.registry, m.context.connection, invalid, "")
     check(result.ok and not m.registry.exists(m.outgoingKey) and not m.registry.exists(m.outgoingBackoff) and m.registry.read(newKey) = "new-own-key" and result.preferenceStore.accounts.doesExist(m.outgoingAccount), "orphan cleanup removes only old journal-named key/backoff while a newer different local profile retains its owned account blob")
-    for each change in ["key", "root", "nonce", "actor", "profiles-off", "target-only", "newer-readd", "held-source", "pending"]
+    switchDefaultRetirementFixture()
+    m.decoded = dispatcharrSyncRosterDecode({rows: [[7, "alice", "Peer Alice", "none", "", "", "user", 501]], removed: [["alice", 500]]})
+    result = switchDefaultRetirementSelect()
+    check(result.ok and result.selected and result.store.active <> m.context.store.active and m.registry.exists(m.outgoingKey), "fixture 16.7 permits system selection but retains old holder data until teardown despite a newer peer re-add")
+    for each change in ["key", "root", "nonce", "actor", "profiles-off", "target-only", "held-source", "pending"]
         switchDefaultRetirementFixture()
         if change = "key" then m.registry.values[m.ownKeyName] = ""
         if change = "root" then m.registry.values["connectionsV1"] = ""
@@ -158,7 +162,6 @@ sub main()
         if change = "actor" then m.outgoing = invalid
         if change = "profiles-off" then m.enabled = false
         if change = "target-only" then m.decoded = dispatcharrSyncRosterDecode({rows: [], removed: [["bob", 500]]})
-        if change = "newer-readd" then m.decoded = dispatcharrSyncRosterDecode({rows: [[7, "alice", "Alice", "none", "", "", "user", 501]], removed: [["alice", 500]]})
         if change = "held-source" then m.fixtureHeld = true
         if change = "pending"
             m.context.store = setCanonicalPreference(m.context.store, "pendingRoster", true)
@@ -416,7 +419,11 @@ sub main()
             check(not result.ok and result.recoveryRequired = (fault = "rollback") and FormatJson(m.registry.values) = before, "target retirement write/flush faults restore exact metadata/credentials/settings/backoff without actor replacement")
         end if
     end for
-    for each change in ["key", "root", "nonce", "identity", "outgoing-tombstone", "child", "profiles-off", "newer-readd"]
+    switchRosterTargetRetirementFixture()
+    m.decoded = dispatcharrSyncRosterDecode({rows: [[8, "bob", "Peer Bob", "none", "", "", "user", 501]], removed: [["bob", 500]]})
+    result = switchRosterTargetRetirementCommit()
+    check(result.ok and result.targetRemoved and not m.registry.exists(m.ownKeyName) and result.store.active = m.context.store.active, "fixture 16.7 deletes covered old inactive ownership even when the peer has already re-added its row")
+    for each change in ["key", "root", "nonce", "identity", "outgoing-tombstone", "child", "profiles-off"]
         switchRosterTargetRetirementFixture()
         if change = "key" then m.registry.values[m.ownKeyName] = ""
         if change = "root" then m.registry.values["connectionsV1"] = ""
@@ -436,7 +443,6 @@ sub main()
             m.context.target = m.context.store.profiles[1]
         end if
         if change = "profiles-off" then m.enabled = false
-        if change = "newer-readd" then m.decoded = dispatcharrSyncRosterDecode({rows: [[8, "bob", "Bob", "none", "", "", "user", 501]], removed: [["bob", 500]]})
         before = FormatJson(m.registry.values)
         result = switchRosterTargetRetirementCommit()
         check(not result.ok and m.registry.flushes = 0 and FormatJson(m.registry.values) = before, "target retirement refuses " + change + " without deleting a live actor, paused category or intentionally newer target")

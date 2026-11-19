@@ -126,13 +126,20 @@ function dispatcharrSyncProfilesWritePlan(store as object, data as dynamic, enab
                 end if
             end if
             if not stale
-                if stamp = 0 then stamp = now
+                if stamp = 0 and remote = invalid then stamp = now
                 role = profile.role
                 if role <> "admin" and role <> "user" and role <> "child" then role = "user"
                 outgoing = [profile.userId, profile.username, userProfileDisplayName(profile.displayName), profile.pinType, profile.pinHash, profile.pinSalt, role, stamp, profile.avatar, localIndex]
                 if remote <> invalid
+                    avatar = invalid
                     if not profile.avatarClaimed and remote.raw.count() > 8 and not dispatcharrSyncProfileStripped(remote.displayName, remote.username, remote.avatar)
                         if type(remote.raw[8]) = "roAssociativeArray" then outgoing[8] = remote.raw[8]
+                    end if
+                    if dispatcharrSyncKeepFreshRosterPresentation(store.profiles, profile, remote, now)
+                        outgoing[2] = userProfileDisplayName(remote.displayName)
+                        if remote.raw.count() > 8 then avatar = remote.raw[8]
+                        if type(avatar) = "roAssociativeArray" then outgoing[8] = avatar
+                        if remote.order >= 0 then outgoing[9] = remote.order
                     end if
                     for i = 10 to remote.raw.count() - 1
                         outgoing.push(remote.raw[i])
@@ -164,4 +171,20 @@ function dispatcharrSyncProfilesWritePlan(store as object, data as dynamic, enab
     output["rows"] = rows
     output["removed"] = tombstones
     return {ok: true, allowWrite: false, data: output, localPlan: merged, maximumSentStamp: maxSentStamp}
+end function
+
+function dispatcharrSyncKeepFreshRosterPresentation(previous as object, profile as object, remote as object, now as integer) as boolean
+    if profile.addOrigin <> "roster" or profile.createdAt <= 0 or now < profile.createdAt or now > profile.createdAt + 60 then return false
+    if dispatcharrSyncProfileStripped(remote.displayName, remote.username, remote.avatar) then return false
+    for each old in previous
+        if old.id = profile.id
+            if dispatcharrSyncProfileStripped(old.displayName, old.username, old.avatar) then return true
+            ' A fresh read can settle and persist the rescue before the next
+            ' GET/PUT. Keep the peer order on that retry, but never override
+            ' a subsequent explicit local move or presentation edit.
+            if old.updatedAt <> remote.updatedAt or old.order <> remote.order then return false
+            return old.displayName = userProfileDisplayName(remote.displayName) and FormatJson(old.avatar) = FormatJson(remote.avatar)
+        end if
+    end for
+    return false
 end function

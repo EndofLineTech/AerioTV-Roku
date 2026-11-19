@@ -65,6 +65,9 @@ function commitDispatcharrSyncRosterAck(registry as object, connection as object
     stamp = receipt.maximumSentStamp
     if old.stamp > stamp then stamp = old.stamp
     staged = setCanonicalPreference(actual, "pendingRoster", false)
+    ' This exact snapshot was carried in the checked plan (or superseded or
+    ' expired during merge). Never clear intent from a newer roster root.
+    staged = setCanonicalPreference(staged, "removed", [])
     prepared = userProfileStoreChanges(registry, actual, staged, {}, true)
     if not prepared.ok then return denied
     ack = ParseJson("{}")

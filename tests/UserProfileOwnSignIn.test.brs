@@ -60,6 +60,27 @@ sub main()
     sourceRows = importedRead.data.categories.profiles.data.rows
     sourceAdd = userProfileAddPlan(entry, store, newId, "Cara", addedProof, addedRead, 300, sourceRows)
     check(sourceAdd.ok and sourceAdd.target.pinType = "numbers" and sourceAdd.target.displayName = "Imported Cara" and sourceAdd.target.updatedAt = 200 and sourceAdd.target.addOrigin = "roster", "suggested or manual Add retains the source roster row even when the new account has no own envelope")
+    pausedStore = copyJson(store)
+    pausedStore.profiles[1].addressHeld = true
+    pausedAdd = userProfileAddPlan(entry, pausedStore, newId, "Cara", addedProof, invalid, 300, sourceRows)
+    check(pausedAdd.ok and pausedAdd.target.addOrigin = "paused" and pausedAdd.target.updatedAt = 300 and pausedAdd.target.pinType = "none" and not pausedAdd.store.pendingRoster, "held sibling allows own-verified Add and keeps only a deferred mark until a valid pull settles it")
+    undone = userProfileRemovalPlan(pausedAdd.store, newId, 310, "undo")
+    check(undone.ok and not undone.pushRequired and undone.store.removed.count() = 0 and not undone.store.pendingRoster and undone.store.profiles[1].addressHeld, "undoing an otherwise clean paused Add cannot leave a future mutation queued")
+    pendingPaused = setCanonicalPreference(pausedAdd.store, "pendingRoster", true)
+    undone = userProfileRemovalPlan(pendingPaused, newId, 310, "undo")
+    check(undone.ok and undone.store.pendingRoster, "paused Add Undo does not acknowledge another pending edit")
+    check(not userProfileAddPlan(entry, store, newId, "Cara", addedProof, invalid, 300).ok, "ordinary Add still requires a fresh protection read")
+    richChild = [[9, "Cara", "Imported Child", "numbers", string(64, "a"), string(32, "b"), "child", 200, {}, 0]]
+    check(not userProfileAddPlan(entry, store, newId, "Cara", addedProof, addedRead, 300, richChild).ok, "protected roster Child cannot be added while an adult lacks a PIN")
+    protectedStore = copyJson(store)
+    protectedStore.profiles[0].pinType = "numbers"
+    protectedStore.profiles[0].pinHash = string(64, "a")
+    protectedStore.profiles[0].pinSalt = string(32, "b")
+    protectedStore.removed = [["cara", 199]]
+    readd = userProfileAddPlan(entry, protectedStore, newId, "Cara", addedProof, addedRead, 300, richChild)
+    check(readd.ok and readd.target.role = "child" and readd.target.pinType = "numbers" and readd.target.updatedAt = 200 and readd.target.addOrigin = "roster", "intentional newer peer re-add keeps source Child role, PIN and stamp when all local adults are protected")
+    protectedStore.removed = [["cara", 200]]
+    check(not userProfileAddPlan(entry, protectedStore, newId, "Cara", addedProof, addedRead, 300, richChild).ok, "equal removal stamp still blocks re-add")
     wrongAdd = copyJson(addedProof)
     wrongAdd.verifiedBaseUrl = "https://foreign.test"
     check(not userProfileAddPlan(entry, store, newId, "Cara", wrongAdd, addedRead, 300).ok, "Add refuses foreign-address proof")
@@ -79,6 +100,11 @@ sub main()
     check(savedAdd.ok and addRegistry.read(userProfileKeyName(entry.id, newId)) = "cara-own-key" and addRegistry.read("connKey_slot-a") = "default-key" and addRegistry.read("settingsV1") = oldAddSettings, "Sync-enabled Add saves only its own credential/record, preserving opt-outs and source private data")
     check(savedAdd.store.pendingRoster, "Sync-enabled Add retains dirty intent for the scheduler instead of acknowledging an unsent row")
     check(savedAdd.target.pinType = "none" and savedAdd.target.addOrigin = "plain", "Profiles Off does not adopt source roster hints during Add")
+    blockedAdd = ownSignInRegistry(entry, store)
+    blockedAdd.write("settingsV1", oldAddSettings)
+    protectedBefore = FormatJson(blockedAdd.values)
+    blocked = commitUserProfileAdd(blockedAdd, addContext, addedProof, importedRead, 300, addNonce, sourceScope, managementNonce)
+    check(not blocked.ok and FormatJson(blockedAdd.values) = protectedBefore, "Profiles Off cannot apply a target roster or install a known protected roster holder without its protection")
     registry = ownSignInRegistry(entry, store)
     nonce = "00000000-0000-4000-8000-000000000090"
     startupResult = {ok: true, apiKey: "startup-default-key", verifiedBaseUrl: entry.url, verifiedUser: {id: 7, username: "ALICE", user_level: 1}}

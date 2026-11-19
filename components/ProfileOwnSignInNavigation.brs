@@ -546,7 +546,7 @@ sub onProfileOwnSignInResult(event as object)
         sourceRows = invalid
         settings = loadDispatcharrSyncSettings(m.registry)
         if settings.ok and settings.profiles then sourceRows = context.addRosterRows
-        planned = userProfileAddPlan(context.connection, context.store, context.target.id, context.username, context.addVerified, result, CreateObject("roDateTime").asSeconds(), sourceRows)
+        planned = userProfileAddPlan(context.connection, context.store, context.target.id, context.username, context.addVerified, result, CreateObject("roDateTime").asSeconds(), sourceRows, settings.profiles = true)
         if not planned.ok
             context.addVerified.apiKey = ""
             context.addPhase = ""
@@ -579,6 +579,11 @@ sub onProfileOwnSignInResult(event as object)
         context.addVerified = {ok: true, apiKey: result.apiKey, verifiedBaseUrl: result.verifiedBaseUrl, verifiedUser: {id: facts.userId, username: facts.username, user_level: facts.userLevel, is_staff: facts.isStaff, is_superuser: facts.isSuperuser}}
         result.apiKey = ""
         result.verifiedUser = invalid
+        if userProfileRosterAddressPaused(context.store)
+            context.addRead = invalid
+            finishUserProfileOwnSignIn(context.addVerified)
+            return
+        end if
         context.addPhase = "read"
         task = invalid
         if m.profileOwnSignInReadTaskFactory <> invalid then task = m.profileOwnSignInReadTaskFactory()
