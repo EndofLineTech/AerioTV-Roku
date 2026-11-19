@@ -39,6 +39,14 @@ test('rejects the credential-bearing native Sync controls archive', () => {
   }
 });
 
+test('rejects numeric guard probe sources in a shipping ZIP', () => {
+  const normal = ['manifest', 'source/Main.brs', 'components/AerioScene.xml',
+    'images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt'];
+  for (const probe of ['source/NumericGuardProbe.brs', 'components/NUMERICGUARDPROBEMAIN.BRS']) {
+    assert.throws(() => assertPackageEntries([...normal, probe]), /developer numeric guard probe/);
+  }
+});
+
 test('rejects full-app pairing test artifacts as shipping packages', () => {
   const normal = ['manifest', 'source/Main.brs', 'components/AerioScene.xml',
     'images/LICENSE.txt', 'images/NOTICE.txt', 'images/material-icons-LICENSE.txt'];

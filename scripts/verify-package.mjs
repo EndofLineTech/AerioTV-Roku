@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = new URL('../', import.meta.url);
 
 export function assertPackageEntries(entries) {
+  if (entries.some(entry => /(^|\/)NumericGuardProbe[^/]*$/i.test(entry))) throw new Error('Package contains developer numeric guard probe');
   if (entries.some(entry => /(^|\/)sync-controls-private\.json$/i.test(entry))) throw new Error('Package contains private Sync controls qualification material');
   if (entries.includes('phone-setup-normal-probe.json') || entries.some(entry => /(^|\/)(PhoneSetupNormalFixture|PhoneEntropyFaultProbe)[^/]*$/i.test(entry))) throw new Error('Package contains private phone/entropy qualification probe');
   if (entries.some(entry => /(^|\/)private-logo-derivatives\//i.test(entry))) throw new Error('Package contains private logo derivatives');

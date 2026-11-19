@@ -1,0 +1,25 @@
+{
+  "rootDir": "../..",
+  "files": [
+    { "src": "tests/native/NumericGuardProbe.manifest", "dest": "manifest" },
+    { "src": "tests/native/NumericGuardProbeMain.brs", "dest": "source/NumericGuardProbeMain.brs" },
+    { "src": "tests/native/NumericGuardProbe.brs", "dest": "source/NumericGuardProbe.brs" },
+    "source/DispatcharrModel.brs",
+    "source/GuideDayOptions.brs",
+    "source/GuideLogoSize.brs",
+    "source/GuideModel.brs",
+    "source/GuideSettingsModel.brs",
+    "source/HttpPolicy.brs",
+    "source/MetadataCacheModel.brs",
+    "source/PhoneSetupModel.brs",
+    "source/PlaybackModel.brs",
+    "source/PreferenceModel.brs",
+    "source/ReminderModel.brs",
+    "source/RemoteMapModel.brs",
+    "source/StrictJson.brs"
+  ],
+  "stagingDir": "../../out/numeric-guard-probe-staging",
+  "outFile": "../../out/numeric-guard-probe.zip",
+  "createPackage": true,
+  "sourceMap": false
+}
