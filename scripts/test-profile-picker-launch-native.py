@@ -412,7 +412,14 @@ def write_picker_archive(path, original, section, base, mode, baseline_accounts,
                     anchor = f'    seedProfilePickerLaunchProbe({json.dumps(base)}, {json.dumps(mode)})'
                     require_patch_anchor(name, source, anchor)
                     source = source.replace(anchor, anchor + '\n    m.profileSyncWriterReady = false\n    m.profileSyncSchedulingReady = false', 1)
-                target = "sub onLaunchRequest()\n    if m.profileStartupDeferred = true then return\n"
+                # Keep private input interception after the deferred startup
+                # guard, without changing cold/warm classification or routing.
+                target = (
+                    "sub onLaunchRequest()\n"
+                    "    raw = m.top.launchRequest\n"
+                    "    cold = m.top.launchFromMain = true and m.coldLaunchEligible = true\n"
+                    "    if m.profileStartupDeferred = true then return\n"
+                )
                 require_patch_anchor(name, source, target)
                 source = source.replace(target, target + '''    if m.top.launchRequest.pickerProbeSubmit = "1"
         m.pickerProbeSubmit = true

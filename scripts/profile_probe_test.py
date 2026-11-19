@@ -350,6 +350,22 @@ class ProfileProbeTest(unittest.TestCase):
                     self.assertIn('m.profilePickerReady = true', scene)
                     self.assertIn('m.profileChildAccessReady = ' + ('true' if mode.startswith('child-') else 'false'), scene)
                     self.assertIn('if deferUserProfileLaunch() then return', scene)
+                    handler = scene.split('sub onLaunchRequest()\n', 1)[1].split('\nend sub', 1)[0]
+                    launch_steps = [
+                        'raw = m.top.launchRequest',
+                        'cold = m.top.launchFromMain = true and m.coldLaunchEligible = true',
+                        'if m.profileStartupDeferred = true then return',
+                        'if m.top.launchRequest.pickerProbeSubmit = "1"',
+                        'if m.top.launchRequest.pickerProbeVisualCaptured = "1"',
+                        'if m.profileSwitcher <> invalid',
+                    ]
+                    offsets = [handler.index(step) for step in launch_steps]
+                    self.assertEqual(offsets, sorted(offsets))
+                    self.assertIn(b'aeriotv_picker_launch_probe=1', package.read('manifest'))
+                    if mode == 'cold-link':
+                        main = package.read('source/Main.brs').decode()
+                        self.assertIn('scene.launchFromMain = true\n    scene.launchRequest = {contentId: "missing-fixture-id", mediaType: "live"}', main)
+                        self.assertIn('scene.launchFromMain = false\n                    scene.launchRequest = request', main)
                     self.assertNotIn('"cachefs:/aeriotv-metadata-v1"', package.read('source/MetadataCacheStore.brs').decode())
                     controller = package.read('components/ProfilePickerNavigation.brs').decode()
                     self.assertNotIn('read_nonce:', controller)
@@ -422,17 +438,26 @@ class ProfileProbeTest(unittest.TestCase):
             'runpy.run_path(sys.argv[1])["build"](Path(sys.argv[2]), Path(sys.argv[3]), '
             '"DisposablePicker", "http://fixture.test", "child-select-pin")'
         )
-        entry = 'source/HttpTransport.brs'
-        anchor = b'    if not started then result.error = "network"'
+        transport = 'source/HttpTransport.brs'
+        transport_anchor = b'    if not started then result.error = "network"'
+        scene = 'components/AerioScene.brs'
+        scene_anchor = (
+            b'sub onLaunchRequest()\n'
+            b'    raw = m.top.launchRequest\n'
+            b'    cold = m.top.launchFromMain = true and m.coldLaunchEligible = true\n'
+            b'    if m.profileStartupDeferred = true then return\n'
+        )
         with tempfile.TemporaryDirectory() as folder:
             normal, output = (Path(folder) / name for name in ('normal.zip', 'probe.zip'))
-            for case, expected in [
-                ('missing entry', b'required ZIP entry'),
-                ('duplicate entry', b'required ZIP entry'),
-                ('missing anchor', b'found 0'),
-                ('duplicate anchor', b'found 2'),
+            for entry, anchor, case, expected in [
+                (transport, transport_anchor, 'missing entry', b'required ZIP entry'),
+                (transport, transport_anchor, 'duplicate entry', b'required ZIP entry'),
+                (transport, transport_anchor, 'missing anchor', b'found 0'),
+                (transport, transport_anchor, 'duplicate anchor', b'found 2'),
+                (scene, scene_anchor, 'missing anchor', b'found 0'),
+                (scene, scene_anchor, 'duplicate anchor', b'found 2'),
             ]:
-                with self.subTest(case=case):
+                with self.subTest(entry=entry, case=case):
                     with zipfile.ZipFile(normal, 'w') as package:
                         for name in PICKER_BASE_ENTRIES + PICKER_DIAGNOSTIC_ENTRIES:
                             body = (root / name).read_bytes()
@@ -444,6 +469,7 @@ class ProfileProbeTest(unittest.TestCase):
                                         package.writestr(name, body)
                                         package.writestr(name, body)
                                     continue
+                                self.assertEqual(body.count(anchor), 1)
                                 body = body.replace(anchor, b'' if case == 'missing anchor' else anchor + b'\n' + anchor)
                             package.writestr(name, body)
                     output.write_bytes(b'prior artifact')
