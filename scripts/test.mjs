@@ -104,6 +104,7 @@ suites.push('DispatcharrSyncSchedule');
 suites.push('DispatcharrSyncPolicy');
 suites.push('NetworkStatus');
 suites.push('DispatcharrSyncSettingsStore');
+suites.push('CatchupTask');
 for (const suite of suites) {
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
@@ -132,8 +133,8 @@ for (const suite of suites) {
     ...(suite === 'PhoneSetupEntropy' ? ['source/PhoneSetupEntropy.brs'] : []),
     ...(suite === 'XmltvModel' ? ['source/XmltvModel.brs'] : []),
     ...(['PhoneSetupApplyModel', 'M3uModel', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/M3uModel.brs'] : []),
-    ...(['PhoneSetupApplyModel', 'XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/XtreamModel.brs'] : []),
-    ...(['XtreamArchiveModel', 'PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['source/XtreamArchiveModel.brs'] : []),
+    ...(['PhoneSetupApplyModel', 'XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'PlayerLifecycle', 'ConnectionNavigation', 'ArchiveController'].includes(suite) ? ['source/XtreamModel.brs'] : []),
+    ...(['XtreamArchiveModel', 'PlayerLifecycle', 'ConnectionNavigation', 'ArchiveController'].includes(suite) ? ['source/XtreamArchiveModel.brs'] : []),
     ...(['XtreamVodModel', 'XtreamVodTask', 'XtreamTask', 'PlayerLifecycle'].includes(suite) ? ['source/XtreamVodModel.brs'] : []),
     'source/PlaybackModel.brs',
     ...(suite === 'RemoteHints' ? ['components/RemoteHints.brs'] : []),
@@ -143,7 +144,7 @@ for (const suite of suites) {
     'source/RemoteMapModel.brs', 'source/PreferenceModel.brs',
     'components/RecentHistoryNavigation.brs',
     ...(suite === 'ConnectionAuthTask' ? ['source/ChannelProfileModel.brs'] : []),
-    ...(['PhoneSetupStore', 'PhoneSetupApplyModel', 'PhoneSetupAutoAdd', 'PhoneSetupNavigation', 'ConnectionStore', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['source/ConnectionStoreModel.brs'] : []),
+    ...(['PhoneSetupStore', 'PhoneSetupApplyModel', 'PhoneSetupAutoAdd', 'PhoneSetupNavigation', 'ConnectionStore', 'ConnectionNavigation', 'PlayerLifecycle', 'ArchiveController'].includes(suite) ? ['source/ConnectionStoreModel.brs'] : []),
     'source/CapabilityModel.brs',
     'source/ProgramSearchModel.brs',
     'source/VideoGeometry.brs',

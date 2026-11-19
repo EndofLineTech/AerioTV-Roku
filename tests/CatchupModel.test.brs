@@ -1,4 +1,9 @@
 sub main()
+    if catchupOffsetInput("+45") <> 45 or catchupOffsetInput("-180") <> -180 or catchupOffsetInput("0") <> 0 then stop
+    for each bad in ["", "-", "181", "-181", "1.5", "1x"]
+        if catchupOffsetInput(bad) <> invalid then stop
+    end for
+    if catchupOffsetMinutes(181) <> 180 or catchupOffsetMinutes(-181) <> -180 or catchupOffsetMinutes(invalid) <> 0 then stop
     epoch = "1789946400".toInt()
     bounds = rewindBounds(epoch - 7200, epoch)
     if bounds.start <> epoch - 3600 or bounds.finish <> epoch - 60 then stop
@@ -56,6 +61,18 @@ sub main()
     if plan.offset <> 60 or plan.program.startsAt <> 1060 or plan.remaining <> 240 then stop
     if catchupSeekPlan(p, -30).offset <> 0 then stop
     if catchupSeekPlan(p, 9999).offset <> 240 then stop
+    ' Repeated local wall hour on US fall-back day. Both guide epochs remain
+    ' distinct; the correction works on elapsed UTC minutes, not device time.
+    early = guideEpoch("2026-11-01T01:30:00-04:00")
+    late = guideEpoch("2026-11-01T01:30:00-05:00")
+    if late - early <> 3600 then stop
+    now = guideEpoch("2026-11-01T08:00:00Z")
+    for each start in [early, late]
+        guide = {id: "a", startsAt: start, endsAt: start + 3599}
+        window = catchupRequestWindow(guide, 1, now, -30)
+        if window = invalid or window.start <> start - 1800 or window.duration <> 60 then stop
+        if guide.startsAt <> start or guide.id <> "a" then stop
+    end for
     context = {account: "account-a", channel: {uuid: "channel"}}
     if not catchupLiveReturnAllowed(context, "account-a", {uuid: "channel"}) then stop
     if catchupLiveReturnAllowed(context, "account-b", {uuid: "channel"}) then stop

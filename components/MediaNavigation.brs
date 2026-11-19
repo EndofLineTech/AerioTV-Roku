@@ -206,28 +206,38 @@ sub onArchiveRequested(event as object)
     channel = m.guide.callFunc("channelByUuid", selected.channel.uuid)
     if channel = invalid then return
     connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    requestShiftMinutes = 0
     if connection <> invalid
+        if catchupOffsetSupported(connection.provider) then requestShiftMinutes = catchupOffsetMinutes(connection.catchupOffsetMinutes)
         if connection.provider = "xtream"
-            startXtreamArchive(channel, selected.program, selected.restart = true)
+            startXtreamArchive(channel, selected.program, selected.restart = true, requestShiftMinutes)
             return
         end if
     end if
     days = catchupChannelDays(m.capabilities.catchup, m.channelFacts, channel.id)
     program = selected.program
     restarting = selected.restart = true
+    now = uiNow()
     if restarting
-        plan = catchupRestartPlan(program, days, uiNow())
+        requestShiftMinutes = 0 ' Upstream only corrects the completed-program archive path.
+        plan = catchupRestartPlan(program, days, now)
         if plan = invalid
             showNotice("Restart is no longer available for this program. Reopen its details.")
             return
         end if
         program = plan.program
-    else if not catchupEligible(program, days, uiNow())
+    else if not catchupEligible(program, days, now)
         showNotice("Archive is no longer available for this program. Reopen its details.")
         return
     end if
+    if not restarting
+        if catchupRequestWindow(program, days, now, requestShiftMinutes) = invalid
+            showNotice("The requested archive window is outside provider history. Check the catch-up offset or try again later.")
+            return
+        end if
+    end if
     stopPlayback()
-    m.archiveContext = {baseUrl: m.baseUrl, apiKey: m.apiKey, account: m.accountIdentity, channel: channel, program: program, restart: restarting}
+    m.archiveContext = {baseUrl: m.baseUrl, apiKey: m.apiKey, account: m.accountIdentity, connectionId: m.selectedConnectionId, channel: channel, program: program, restart: restarting, requestShiftMinutes: requestShiftMinutes, retentionDays: days}
     m.archiveOffset = 0
     m.archiveStartPaused = false
     m.archiveSeeking = false
@@ -239,6 +249,8 @@ sub onArchiveRequested(event as object)
     m.archiveTask.channelUuid = channel.uuid
     m.archiveTask.program = program
     m.archiveTask.restart = restarting
+    m.archiveTask.requestShiftMinutes = requestShiftMinutes
+    m.archiveTask.retentionDays = days
     m.archiveTask.observeField("result", "onArchiveCreated")
     m.archiveTask.control = "RUN"
     m.page = "archiveLoading"
@@ -247,7 +259,7 @@ sub onArchiveRequested(event as object)
     if restarting then showNotice("Opening Restart Program... Archive may not yet be available. Back cancels.") else showNotice("Opening archive... Back cancels.")
 end sub
 
-sub startXtreamArchive(channel as object, program as object, restarting as boolean)
+sub startXtreamArchive(channel as object, program as object, restarting as boolean, requestShiftMinutes as integer)
     if restarting
         showNotice("Restart of an in-progress Xtream programme is not available. Choose a completed programme.")
         return
@@ -257,7 +269,7 @@ sub startXtreamArchive(channel as object, program as object, restarting as boole
         showNotice("The provider no longer advertises an archive for this completed programme.")
         return
     end if
-    url = xtreamArchiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, m.xcTimezone, channel, program, uiNow())
+    url = xtreamArchiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, m.xcTimezone, channel, program, uiNow(), requestShiftMinutes)
     if url = ""
         showNotice("Xtream archive request is not supported for this programme or timezone.")
         return
@@ -265,7 +277,7 @@ sub startXtreamArchive(channel as object, program as object, restarting as boole
     stopPlayback()
     cancelArchiveLoad()
     releaseArchive()
-    m.archiveContext = {baseUrl: m.baseUrl, apiKey: "", account: m.accountIdentity, channel: channel, program: program, providerType: "xtream", restart: false}
+    m.archiveContext = {baseUrl: m.baseUrl, apiKey: "", account: m.accountIdentity, connectionId: m.selectedConnectionId, channel: channel, program: program, providerType: "xtream", restart: false, requestShiftMinutes: requestShiftMinutes}
     m.archiveOffset = 0
     m.archiveStartPaused = false
     m.archiveSeeking = false
@@ -300,7 +312,7 @@ sub openLiveRewind()
     paused = m.video.state = "paused"
     stopPlayback()
     cancelArchiveLoad()
-    m.archiveContext = {baseUrl: m.baseUrl, apiKey: m.apiKey, account: m.accountIdentity, channel: channel, program: origin, rewind: true, tuneStart: tunedAt, restart: false}
+    m.archiveContext = {baseUrl: m.baseUrl, apiKey: m.apiKey, account: m.accountIdentity, connectionId: m.selectedConnectionId, channel: channel, program: origin, rewind: true, tuneStart: tunedAt, restart: false}
     m.archiveOffset = plan.offset
     m.archiveStartPaused = paused
     m.archiveSeeking = false
@@ -491,13 +503,15 @@ sub onArchiveSeek(event as object)
     end if
     if not mediaNumber(target) then return
     if m.archiveContext <> invalid
+        if m.archiveContext.account <> m.accountIdentity then return
+        if m.archiveContext.connectionId <> m.selectedConnectionId then return
         if m.archiveContext.providerType = "xtream"
             program = m.archiveContext.program
             plan = catchupSeekPlan(program, target, uiNow())
             if plan = invalid then return
             channel = m.guide.callFunc("channelByUuid", m.archiveContext.channel.uuid)
-            if channel = invalid or m.archiveContext.account <> m.accountIdentity then return
-            url = xtreamArchiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, m.xcTimezone, channel, plan.program, uiNow())
+            if channel = invalid then return
+            url = xtreamArchiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, m.xcTimezone, channel, plan.program, uiNow(), m.archiveContext.requestShiftMinutes)
             if url = ""
                 showNotice("Provider archive seek is no longer available. Return to the guide.")
                 return
@@ -510,9 +524,17 @@ sub onArchiveSeek(event as object)
         end if
     end if
     if m.archiveSeeking = true or m.archiveSession = invalid or m.archiveContext = invalid then return
-    plan = catchupSeekPlan(m.archiveContext.program, target, uiNow())
-    if m.archiveContext.rewind = true then plan = rewindSeekPlan(m.archiveContext.program, m.archiveContext.tuneStart, target, uiNow())
+    now = uiNow()
+    plan = catchupSeekPlan(m.archiveContext.program, target, now)
+    if m.archiveContext.rewind = true then plan = rewindSeekPlan(m.archiveContext.program, m.archiveContext.tuneStart, target, now)
     if plan = invalid then return
+    shiftMinutes = catchupOffsetMinutes(m.archiveContext.requestShiftMinutes)
+    if m.archiveContext.restart <> true and m.archiveContext.rewind <> true
+        if catchupRequestWindow(plan.program, m.archiveContext.retentionDays, now, shiftMinutes) = invalid
+            showNotice("The requested archive window is outside provider history. Check the catch-up offset or try again later.")
+            return
+        end if
+    end if
     m.archiveSeeking = true
     m.archiveSeekPlan = plan
     state = m.mediaPlayer.callFunc("suspendArchive")
@@ -555,6 +577,7 @@ sub onArchiveSeekReleased(event as object)
     if not isCurrentTaskEvent(event, m.archiveCleanupTask) then return
     m.archiveCleanupTask.unobserveField("result")
     if m.archiveSeeking <> true or m.page <> "onDemand" or m.archiveContext = invalid then return
+    if m.archiveContext.account <> m.accountIdentity or m.archiveContext.connectionId <> m.selectedConnectionId then return
     result = event.getData()
     if not result.ok
         m.mediaPlayer.callFunc("closeMedia")
@@ -572,6 +595,8 @@ sub onArchiveSeekReleased(event as object)
     m.archiveTask.program = m.archiveSeekPlan.program
     m.archiveTask.restart = m.archiveContext.restart = true
     m.archiveTask.rewind = m.archiveContext.rewind = true
+    if m.archiveContext.requestShiftMinutes <> invalid then m.archiveTask.requestShiftMinutes = m.archiveContext.requestShiftMinutes
+    if m.archiveContext.retentionDays <> invalid then m.archiveTask.retentionDays = m.archiveContext.retentionDays
     if m.archiveContext.rewind = true then m.archiveTask.tuneStart = m.archiveContext.tuneStart
     m.archiveTask.observeField("result", "onArchiveCreated")
     m.archiveTask.control = "RUN"

@@ -130,7 +130,35 @@ sub main()
     before = FormatJson(m.registry.values)
     assertEqual(rememberConnectedUserProfileAccount("88", "Bob"), false, "remembering a recreated nondefault ID requires its own recovery transaction")
     assertEqual(FormatJson(m.registry.values), before, "wrong nondefault persistence changes no keys or metadata")
+    testOffsetEditor()
     print "ALL TESTS PASSED"
+end sub
+
+sub testOffsetEditor()
+    m.connectionStore = connectionStoreAdd(defaultConnectionStore(), "archive", "Archive")
+    m.connectionStore = connectionStoreAdd(m.connectionStore, "other", "Other", "xtream")
+    m.connectionStore = connectionStoreSelect(m.connectionStore, "archive")
+    m.selectedConnectionId = "archive"
+    m.noticeText = {}
+    m.notice = {}
+    m.noticeTimer = {}
+    m.top = {setFocus: sub(focused)
+    end sub}
+    m.connectionCatchupOffsetSlot = "archive"
+    m.connectionDialog = {text: "-45", isSameNode: function(node)
+        return node.owner = "editor"
+    end function, unobserveField: sub(name)
+    end sub}
+    event = {getRoSGNode: function()
+        return {owner: "editor"}
+    end function, getData: function()
+        return 0
+    end function}
+    onConnectionCatchupOffsetSaved(event)
+    saved = loadConnectionStore(m.registry)
+    assertEqual(connectionStoreEntry(saved, "archive").catchupOffsetMinutes, -45, "manual edit persists only in its playlist slot")
+    assertEqual(connectionStoreEntry(saved, "other").catchupOffsetMinutes, 0, "manual edit leaves the other playlist unchanged")
+    assertEqual(m.apiKey, "bob-new-verified-key", "offset edit does not touch active credentials")
 end sub
 
 sub assertEqual(actual as dynamic, expected as dynamic, label as string)

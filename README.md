@@ -310,6 +310,13 @@ connection screen:
   files retain Roku's native FF/REW transport.
 - For catch-up/Restart, open **Program details** and select the separate archive
   or Restart action. **Watch channel LIVE** remains a distinct choice.
+- If a completed archive plays the wrong time, set **Catch-Up Time Offset**
+  under **Manage saved connections → Request identity and header settings**.
+  Enter signed minutes from −180 to +180 (0 is off). Positive values request a
+  later archive time. This setting is per playlist and affects completed
+  Dispatcharr archives and supported UTC Xtream panels, including archive
+  minute skips. It does not change guide times, live playback, Restart Program
+  or live rewind. A correction outside advertised history is refused.
 - During live playback, **Rew** or player options → **Rewind history (provider)**
   opens available history since tuning. Unsupported/too-early entry leaves live
   playback running. Provider delay or failure can produce **Archive not yet available**.

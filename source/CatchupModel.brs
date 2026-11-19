@@ -4,6 +4,42 @@ function catchupEligible(program as dynamic, days as integer, now as integer) as
     return program.startsAt >= now - days * 86400 and program.endsAt <= now and program.endsAt > program.startsAt and program.endsAt - program.startsAt <= 86400
 end function
 
+function catchupOffsetSupported(provider as string) as boolean
+    return provider = "dispatcharr" or provider = "xtream"
+end function
+
+' Pinned AerioTV CatchupSupport clamps the stored playlist value at use time.
+function catchupOffsetMinutes(value as dynamic) as integer
+    if GetInterface(value, "ifInt") = invalid then return 0
+    if value < -180 then return -180
+    if value > 180 then return 180
+    return value
+end function
+
+function catchupOffsetInput(value as string) as dynamic
+    value = value.trim()
+    if not CreateObject("roRegex", "^[+-]?[0-9]{1,3}$", "").isMatch(value) then return invalid
+    minutes = value.toInt()
+    if minutes <> catchupOffsetMinutes(minutes) then return invalid
+    return minutes
+end function
+
+' Input is always a guide-time window (possibly shortened for a seek).
+' Recheck the translated completed window and exact wire interval against
+' Roku's archive bounds. Xtream serializes a whole UTC minute; Dispatcharr
+' sessions serialize seconds. Both send duration rounded up to minutes.
+' Never clamp the translated start: that could select a different programme.
+function catchupRequestWindow(program as dynamic, days as integer, now as integer, shiftMinutes as dynamic, minuteStart = false as boolean) as dynamic
+    if not catchupEligible(program, days, now) then return invalid
+    shift = catchupOffsetMinutes(shiftMinutes) * 60
+    start = program.startsAt + shift
+    if start < 0 or program.endsAt + shift > now then return invalid
+    if minuteStart then start -= start mod 60
+    duration = int((program.endsAt - program.startsAt + 59) / 60)
+    if start < now - days * 86400 or start + duration * 60 > now then return invalid
+    return {start: start, duration: duration}
+end function
+
 function catchupRestartPlan(program as dynamic, days as integer, now as integer) as dynamic
     if type(program) <> "roAssociativeArray" or days <= 0 then return invalid
     if not mediaNumber(program.startsAt) or not mediaNumber(program.endsAt) then return invalid

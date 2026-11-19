@@ -15,7 +15,7 @@ function xtreamArchiveFacts(channels as dynamic, timezone as string) as object
     return result
 end function
 
-function xtreamArchiveUrl(base as string, username as string, password as string, timezone as string, channel as dynamic, program as dynamic, now as integer) as string
+function xtreamArchiveUrl(base as string, username as string, password as string, timezone as string, channel as dynamic, program as dynamic, now as integer, shiftMinutes = 0 as integer) as string
     base = normalizeBaseUrl(base)
     if base = "" or timezone <> "UTC" or not xtreamCredentialsValid(username, password) then return ""
     if type(channel) <> "roAssociativeArray" then return ""
@@ -23,14 +23,12 @@ function xtreamArchiveUrl(base as string, username as string, password as string
     if not CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(id) then return ""
     days = channel.archiveDays
     if not mediaNumber(days) or days < 1 or days > 30 then return ""
-    if not catchupEligible(program, int(days), now) then return ""
-    duration = program.endsAt - program.startsAt
-    minutes = int((duration + 59) / 60)
-    if minutes < 1 or minutes > 1440 then return ""
+    window = catchupRequestWindow(program, int(days), now, shiftMinutes, true)
+    if window = invalid then return ""
     stamp = CreateObject("roDateTime")
-    stamp.fromSeconds(program.startsAt)
+    stamp.fromSeconds(window.start)
     utc = stamp.toISOString()
     if len(utc) < 16 then return ""
     start = left(utc, 10) + ":" + mid(utc, 12, 2) + "-" + mid(utc, 15, 2)
-    return base + "/timeshift/" + xtreamEscape(username) + "/" + xtreamEscape(password) + "/" + minutes.toStr() + "/" + start + "/" + id + ".ts"
+    return base + "/timeshift/" + xtreamEscape(username) + "/" + xtreamEscape(password) + "/" + window.duration.toStr() + "/" + start + "/" + id + ".ts"
 end function

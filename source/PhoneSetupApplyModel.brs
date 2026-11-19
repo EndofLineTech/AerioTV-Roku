@@ -85,7 +85,18 @@ function phoneSetupPrepareImport(payload as object, id as string, digest as stri
         limit = guideAllAvailableDays()
         notes.push("All Available Guide Days uses Roku's limit of " + limit.toStr() + " days each way.")
     end if
-    if offset <> 0 then notes.push("Catch-up offset retained but not applied by this build.")
+    if offset <> 0
+        if catchupOffsetSupported(entry.provider)
+            effectiveOffset = catchupOffsetMinutes(offset)
+            archiveKind = "completed Dispatcharr archives"
+            if entry.provider = "xtream" then archiveKind = "completed Xtream archives on UTC panels"
+            lead = "Catch-up time offset: "
+            if effectiveOffset <> offset then lead = "Catch-up time offset limited to "
+            notes.push(lead + effectiveOffset.toStr() + " minutes for " + archiveKind + ".")
+        else
+            notes.push("Catch-up offset retained but not applied by this build.")
+        end if
+    end if
     if entry.provider <> "dispatcharr" and entry.channelProfileIds.count() > 0 then notes.push("Channel Profile IDs are retained but only applied to Dispatcharr sources.")
     if entry.provider = "xtream" and epg <> "" then notes.push("Xtream uses its account guide; the supplied XMLTV override is not applied.")
     return {ok: true, entry: entry, url: url, credential: credential, notes: notes, multipleProfiles: multipleProfiles}

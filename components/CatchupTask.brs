@@ -34,20 +34,25 @@ sub runCatchup()
                 program = invalid
                 if plan <> invalid then program = plan.program
             end if
-            eligible = catchupEligible(program, 30, now)
-            if m.top.restart then eligible = eligible or catchupRestartPlan(program, 30, now) <> invalid
-            if textValue(user.id) = m.top.accountId and not m.top.cancelRequested and eligible
+            window = invalid
+            if m.top.restart = true or m.top.rewind = true
+                eligible = catchupEligible(program, 30, now)
+                if m.top.restart then eligible = eligible or catchupRestartPlan(program, 30, now) <> invalid
+                if eligible then window = {start: program.startsAt, duration: int((program.endsAt - program.startsAt + 59) / 60)}
+            else
+                window = catchupRequestWindow(program, m.top.retentionDays, now, m.top.requestShiftMinutes)
+            end if
+            if textValue(user.id) = m.top.accountId and not m.top.cancelRequested and window <> invalid
                 stamp = CreateObject("roDateTime")
-                stamp.fromSeconds(program.startsAt)
-                duration = int((program.endsAt - program.startsAt + 59) / 60)
-                response = sessionMutation(root, "POST", {channel_uuid: m.top.channelUuid, start: stamp.toISOString(), duration: duration})
+                stamp.fromSeconds(window.start)
+                response = sessionMutation(root, "POST", {channel_uuid: m.top.channelUuid, start: stamp.toISOString(), duration: window.duration})
                 result.status = response.status
                 url = catchupSessionUrl(m.base, m.top.channelUuid, response.data, CreateObject("roDateTime").asSeconds())
                 if m.top.rewind = true and type(response.data) = "roAssociativeArray"
-                    if guideEpoch(textValue(response.data.start)) <> program.startsAt then url = ""
+                    if guideEpoch(textValue(response.data.start)) <> window.start then url = ""
                 end if
                 if response.status = 201 and url <> ""
-                    result = {ok: true, url: url, sessionId: response.data.session_id, expiresAt: response.data.expires_at, start: textValue(response.data.start), requestedStart: program.startsAt, requestedAt: now}
+                    result = {ok: true, url: url, sessionId: response.data.session_id, expiresAt: response.data.expires_at, start: textValue(response.data.start), requestedStart: window.start, requestedAt: now}
                     if m.top.cancelRequested then sessionMutation(root + result.sessionId + "/", "DELETE")
                 else
                     if response.status = 201 and type(response.data) = "roAssociativeArray"

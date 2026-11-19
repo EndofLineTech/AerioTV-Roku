@@ -673,6 +673,50 @@ sub openConnectionManager()
     openConnectionDialog("Manage saved connections", "At most four. Forget affects only the selected connection.", choices)
 end sub
 
+sub openConnectionCatchupOffset(id as string)
+    if not userProfileConnectionSetupAllowed() or m.selectedConnectionId <> id then return
+    entry = connectionStoreEntry(m.connectionStore, id)
+    if entry = invalid then return
+    if not catchupOffsetSupported(entry.provider) then return
+    dialog = CreateObject("roSGNode", "StandardKeyboardDialog")
+    dialog.title = "Catch-Up Time Offset (-180 to 180 minutes)"
+    minutes = catchupOffsetMinutes(entry.catchupOffsetMinutes)
+    dialog.text = minutes.toStr()
+    dialog.buttons = ["Save", "Cancel"]
+    dialog.observeField("buttonSelected", "onConnectionCatchupOffsetSaved")
+    dialog.observeField("wasClosed", "onConnectionDialogClosed")
+    m.connectionCatchupOffsetSlot = id
+    m.connectionDialog = dialog
+    m.top.dialog = dialog
+end sub
+
+sub onConnectionCatchupOffsetSaved(event as object)
+    if not userProfileConnectionSetupAllowed() then return
+    if m.connectionDialog = invalid or not m.connectionDialog.isSameNode(event.getRoSGNode()) then return
+    slot = m.connectionCatchupOffsetSlot
+    minutes = catchupOffsetInput(m.connectionDialog.text)
+    saved = event.getData() = 0
+    closeConnectionDialog()
+    if saved and slot = m.selectedConnectionId
+        entry = connectionStoreEntry(m.connectionStore, slot)
+        if entry <> invalid
+            if catchupOffsetSupported(entry.provider)
+                updated = invalid
+                if minutes <> invalid then updated = connectionStoreUpdate(m.connectionStore, slot, {catchupOffsetMinutes: minutes})
+                if minutes = invalid
+                    showNotice("Enter a whole number of minutes from -180 to 180. Previous value retained.")
+                else if updated = invalid or not saveConnectionStore(m.registry, updated)
+                    showNotice("Could not save the catch-up time offset. Previous value retained.")
+                else
+                    m.connectionStore = updated
+                    showNotice("Catch-up time offset saved for this playlist. Live TV and guide times are unchanged.")
+                end if
+            end if
+        end if
+    end if
+    m.top.setFocus(true)
+end sub
+
 sub openConnectionAdvanced()
     if not userProfileConnectionSetupAllowed() then return
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
@@ -692,6 +736,10 @@ sub openConnectionAdvanced()
         if entry.authMode = "compatible" then name = "Compatible dual API-key headers"
         if entry.authMode = "authorization" then name = "Authorization: ApiKey only"
         choices.push({title: "API auth header: " + name, action: "authModes"})
+    end if
+    if catchupOffsetSupported(entry.provider)
+        minutes = catchupOffsetMinutes(entry.catchupOffsetMinutes)
+        choices.push({title: "Catch-Up Time Offset: " + minutes.toStr() + " min", action: "catchupOffset", id: entry.id})
     end if
     choices.push({title: "Back", action: "cancel"})
     openConnectionDialog("Connection request settings", "User-Agent applies to APIs, artwork and media. JWT Bearer is not an API-key mode.", choices)
@@ -800,6 +848,7 @@ end sub
 
 sub closeConnectionDialog()
     m.profileSyncSettingsContext = invalid
+    m.connectionCatchupOffsetSlot = invalid
     if m.connectionDialog = invalid then return
     m.connectionDialog.unobserveField("buttonSelected")
     m.connectionDialog.unobserveField("wasClosed")
@@ -839,6 +888,8 @@ sub onConnectionChoice(event as object)
         openConnectionRename()
     else if choice.action = "advanced"
         openConnectionAdvanced()
+    else if choice.action = "catchupOffset"
+        openConnectionCatchupOffset(choice.id)
     else if choice.action = "syncControls"
         openDispatcharrSyncControls()
     else if choice.action = "syncEnabled"

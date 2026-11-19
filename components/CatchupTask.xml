@@ -4,6 +4,8 @@
     <field id="restart" type="boolean" value="false" />
     <field id="rewind" type="boolean" value="false" />
     <field id="tuneStart" type="integer" />
+    <field id="requestShiftMinutes" type="integer" value="0" />
+    <field id="retentionDays" type="integer" value="30" />
     <field id="baseUrl" type="string" />
     <field id="apiKey" type="string" />
     <field id="accountId" type="string" />

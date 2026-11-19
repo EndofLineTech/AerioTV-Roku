@@ -117,6 +117,12 @@ sub main()
     assertEqual(imported.guideDays, 0, "all available guide choice retained")
     assertEqual(imported.catchupOffsetMinutes, -60, "negative catchup offset retained")
     assertEqual(imported.vodEnabled, false, "incoming VOD switch retained")
+    roster = normalizeConnectionStore({schema: 1, selected: imported.id, entries: [imported, xc.entries[0]]})
+    updated = connectionStoreUpdate(roster, "xc-one", {catchupOffsetMinutes: 45})
+    reloaded = normalizeConnectionStore(ParseJson(FormatJson(updated)))
+    assertEqual(connectionStoreEntry(reloaded, reloaded.selected).catchupOffsetMinutes, -60, "playlist offset stays with the selected slot across relaunch")
+    switched = connectionStoreSelect(reloaded, "xc-one")
+    assertEqual(connectionStoreEntry(switched, switched.selected).catchupOffsetMinutes, 45, "another playlist uses only its own offset")
     print "ALL TESTS PASSED"
 end sub
 

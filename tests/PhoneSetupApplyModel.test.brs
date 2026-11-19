@@ -101,6 +101,14 @@ sub main()
         check(prefs.guide.futureDays = expected and prefs.guide.historyDays = expected and not prefs.vodEnabled, "import applies requested horizon in both directions")
         check(not prefs.guide.showLogos and original.guide.futureDays = 14 and original.guide.historyDays = 3, "import preserves other preferences and original input")
     end for
+    playlist = {type: "dispatcharr", name: "Archive", url: "https://example.test", credential: {apiKey: "fixture"}, guideDays: 7, catchupOffsetMinutes: -181, vodEnabled: true, channelProfileIds: []}
+    prepared = phoneSetupPrepareImport({playlist: playlist, profiles: []}, "received", "")
+    check(prepared.ok and prepared.notes.count() = 1 and instr(1, prepared.notes[0], "-180") > 0, "upstream application clamp disclosed")
+    playlist.type = "xtream"
+    playlist.credential = {username: "viewer", password: "fixture"}
+    playlist.catchupOffsetMinutes = 45
+    prepared = phoneSetupPrepareImport({playlist: playlist}, "received", "")
+    check(prepared.ok and prepared.entry.catchupOffsetMinutes = 45 and prepared.notes.count() = 1 and instr(1, prepared.notes[0], "UTC") > 0, "Xtream confirmation names the supported archive path")
     testInterimProfiles()
     print "ALL TESTS PASSED"
 end sub

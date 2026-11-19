@@ -254,14 +254,33 @@ of 30 days each way, disclosed in the duplicate confirmation or Diagnostics for
 auto-add. Roku fetches windows as needed; it does not scan the provider for the last
 available program. Change the two settings independently under Settings > Live TV.
 Reconnects and upgrades do not reapply the saved transfer or
-undo the viewer's own setting changes. Nonzero catch-up offsets,
-local URL failover and provider-inapplicable options are explicitly disclosed
+undo the viewer's own setting changes. Local URL failover and
+provider-inapplicable options are explicitly disclosed
 before Save, not silently claimed as applied. These runtime gaps are tracked as
 `AerioTV-Roku-e3e.5.2`. Token-bearing/unsupported XMLTV URLs are rejected with an
 explanation rather than persisted. Household profiles/PINs are not imported and
 Sync is never enabled from the payload. Multi-Channel-Profile selection is also
 retained during lineup refresh and no longer prunes history outside the selected
 view.
+
+The handoff catch-up offset is saved in the verified playlist slot, including an
+explicit zero, and applies to completed-program archive requests on Dispatcharr
+and UTC Xtream panels. The effective signed offset is limited to ±180 minutes,
+matching the [pinned upstream resolver][catchup-offset-source]. M3U offsets are
+retained but not applied. Archive seek reopens from the original guide timeline
+and adds the correction once without changing guide IDs, clock labels or
+remaining request duration. The serialized start and whole-minute duration
+must fit within advertised retention and not pass the live edge. The shift is
+not used for Restart Program or
+since-tune live rewind: the pinned upstream resolver has no offset contract for
+those Roku paths. Dispatcharr Sync's settings allowlist does not include this
+playlist option; the device handoff is the relevant import contract.
+
+Host tests verify request timestamps and slot metadata, not playable archives.
+The two approved Dispatcharr lineups had no playable catch-up in prior checks;
+corrected picture and archive seeks have not been verified on Roku.
+
+[catchup-offset-source]: https://github.com/jonzey231/AerioTV/blob/fe7ad4c1968a193efb7a55d68b2b3bd32d03b17a/Networking/StreamingAPIs.swift#L6538-L6941
 
 ### Qualifying imported Guide Days on Roku
 
@@ -400,8 +419,8 @@ the saved/current connection, duplicate Cancel/Add Anyway/Replace, atomic slot
 commit, query-bearing M3U session handling, incoming settings application and
 explicit household-profile/sync omission messages. Preparatory metadata fields
 and authorized multi-Channel-Profile union helpers are present; retaining an
-option in metadata is **not** applying it. Guide Days uses the future horizon
-described above; catch-up offset is not yet wired to runtime behavior.
+option in metadata is **not** applying it. Guide Days and the catch-up offset
+use the bounded runtime behavior described above.
 Household profile import and sync remain
 separate work, and sync must never be enabled just because a payload requests it.
 
