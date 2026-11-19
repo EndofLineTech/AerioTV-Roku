@@ -53,6 +53,15 @@ No external requirements were re-fetched for this pass.
      mini channel and a delayed tune (AAC or HLS). Verify the requested player
      remains foreground, Back returns to guide, and warm input doesn't emit
      another startup beacon. Repeat with `live`, `livefeed`, and `liveFeed`.
+   - With live playback already active, leave a different live tune waiting for
+     AAC. Send an authorized warm VOD input, then let AAC discovery finish before
+     the VOD resolver. The current player must continue during resolution and
+     the old tune must not take over. A playable result replaces it once; a
+     missing/denied title may return the still-owned, unexpired tune to normal
+     processing. An unadmitted link must not hold it. Repeat with a second
+     input, a later explicit tune, Back/Stop, navigation, profile/session
+     change, an account request hold, and an AAC deadline crossed before the
+     resolver result. Confirm stale results don't change the active player.
    - Authorized Dispatcharr movie, episode and series separately, cold and
      warm; assert the expected title/episode/resume, Back and remote operability.
      Separately run malformed/URL-shaped/unsupported, unavailable, locked,
@@ -73,3 +82,31 @@ No external requirements were re-fetched for this pass.
    (never credentials, actual content IDs, URLs, secrets or private screenshots
    in Git). A skipped test, device reboot, old signed artifact, local SCA
    detection or transport-level success is not a pass on this candidate.
+
+## `z2l`: why the beacon is still unchanged
+
+The checked-in requirement distinguishes a regular launch (fully rendered,
+operable initial UI) from an explicit, valid cold media link (the requested
+video starts and responds to the remote). `signalStartupComplete` currently
+signals before `handlePendingLaunch`; authorizing a request, setting
+`control="play"`, creating a ContentNode, minting an HLS session, or receiving
+HTTP 200 cannot stand in for playback. A first-run Welcome must remain an
+operable fallback with one beacon; neither a locked PIN/Child screen nor a
+cancelled launch should be marked as successful playback.
+
+The relevant checked-in seams are:
+
+| Path | What the code actually observes | What is missing for a cold-link beacon |
+| --- | --- | --- |
+| Live | `AerioScene.onVideoState` reads native `Video.state` and `startPlayback` gives the Video focus. `HlsSessionLifecycle` associates the mint with an exact Task and ContentNode. `StartupRecovery` tracks the current ContentNode and has bounded buffering recovery. | `playing` isn't published to launch accounting with an attempt identity, current holder, and confirmed input ownership. AAC can defer before a ContentNode exists; retunes/retries replace the content. A guard for the exact linked attempt must not be satisfied by an older or unrelated player. |
+| VOD | `VodDeepLinkNavigation` checks the account and current scope at both ends. `OnDemandPlayer` reports session-tagged progress and an error diagnostic; it handles the resume seek before normal progress. | The periodic progress report is not a dedicated ready event. The Scene filters it for bookmarking, which has different requirements. `openMedia` can refuse the renderer before creating a session; this branch returns without a session-tagged terminal outcome. There is no corresponding bounded VOD opener that reports a usable fallback if media never starts. |
+| Fallback | An unknown live ID leaves Guide; a VOD miss can show an unavailable notice. Live AAC/HLS/video failure has several separate exit paths; VOD native errors expose Retry/Back, and close returns to Guide. | Publish a terminal result from the *matching* attempt only after an actual navigable fallback is present. A deadline can terminate a stuck attempt if the player establishes that behavior, but elapsed time alone must never complete launch. |
+
+Before changing accounting, require a host red/green test for a single exact
+attempt through resolution, buffering, first playing with foreground input
+ownership, duplicate events, replacement/retry, and terminal fallback. Include
+no-session request denial; initial/resume VOD; live AAC/HLS failure; unrelated
+stream events; Back/Home; ordinary Guide and Welcome; and locked/refused Child
+and PIN recovery. Then validate the resulting event order and an actual remote
+action on the exact native candidate. No new beacon, timeout-based completion,
+or recovery/player lifecycle change is made by the local prep patch.
