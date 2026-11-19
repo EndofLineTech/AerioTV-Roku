@@ -708,15 +708,22 @@ sub onConnectionCatchupOffsetSaved(event as object)
         entry = connectionStoreEntry(m.connectionStore, slot)
         if entry <> invalid
             if catchupOffsetSupported(entry.provider)
-                updated = invalid
-                if minutes <> invalid then updated = connectionStoreUpdate(m.connectionStore, slot, {catchupOffsetMinutes: minutes})
                 if minutes = invalid
                     showNotice("Enter a whole number of minutes from -180 to 180. Previous value retained.")
-                else if updated = invalid or not saveConnectionStore(m.registry, updated)
-                    showNotice("Could not save the catch-up time offset. Previous value retained.")
                 else
-                    m.connectionStore = updated
-                    showNotice("Catch-up time offset saved for this playlist. Live TV and guide times are unchanged.")
+                    updated = connectionStoreUpdate(m.connectionStore, slot, {catchupOffsetMinutes: minutes})
+                    if updated = invalid or not saveConnectionStore(m.registry, updated)
+                        showNotice("Could not save the catch-up time offset. Previous value retained.")
+                    else
+                        persisted = loadConnectionStore(m.registry)
+                        savedEntry = connectionStoreEntry(persisted, slot)
+                        if savedEntry = invalid or savedEntry.catchupOffsetMinutes <> minutes
+                            showNotice("Could not verify the saved catch-up time offset. Reopen the editor and try again.")
+                        else
+                            m.connectionStore = persisted
+                            showNotice("Catch-up time offset saved for this playlist. Live TV and guide times are unchanged.")
+                        end if
+                    end if
                 end if
             end if
         end if

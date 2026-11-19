@@ -2,6 +2,7 @@ sub main()
     m.registry = {
         values: {serverUrl: "https://example.test", accountIdentity: "https://example.test|7", apiKey: "old-key", rememberApiKey: "true"}
         failKeyWrite: false
+        ignoreRosterWrite: false
         exists: function(key as string) as boolean
             return m.values.doesExist(key)
         end function
@@ -12,6 +13,7 @@ sub main()
         end function
         write: function(key as string, value as string) as boolean
             if m.failKeyWrite and left(key, 8) = "connKey_" then return false
+            if m.ignoreRosterWrite and key = "connectionsV1" then return true
             m.values[key] = value
             return true
         end function
@@ -144,8 +146,31 @@ sub testOffsetEditor()
     m.noticeTimer = {}
     m.top = {setFocus: sub(focused)
     end sub}
+    saveTestCatchupOffset("-1")
+    saved = loadConnectionStore(m.registry)
+    assertEqual(connectionStoreEntry(saved, "archive").catchupOffsetMinutes, -1, "first edit persists in the selected playlist")
+    saveTestCatchupOffset("+1")
+    saved = loadConnectionStore(m.registry)
+    assertEqual(connectionStoreEntry(saved, "archive").catchupOffsetMinutes, 1, "replacement of a saved negative offset persists")
+    assertEqual(connectionStoreEntry(m.connectionStore, "archive").catchupOffsetMinutes, 1, "the offset read by playback changes to the committed value")
+    assertEqual(connectionStoreEntry(saved, "other").catchupOffsetMinutes, 0, "manual edit leaves the other playlist unchanged")
+    assertEqual(m.apiKey, "bob-new-verified-key", "offset edit does not touch active credentials")
+    assertEqual(instr(1, m.noticeText.text, "Catch-up time offset saved"), 1, "success reported after readback")
+
+    ' Model the observed stale value even when Write and Flush report success.
+    m.connectionStore = connectionStoreUpdate(saved, "archive", {catchupOffsetMinutes: -1})
+    assertEqual(saveConnectionStore(m.registry, m.connectionStore), true, "reset the saved negative value")
+    m.registry.ignoreRosterWrite = true
+    saveTestCatchupOffset("+1")
+    m.registry.ignoreRosterWrite = false
+    assertEqual(connectionStoreEntry(m.connectionStore, "archive").catchupOffsetMinutes, -1, "unverified write is not adopted by playback")
+    assertEqual(connectionStoreEntry(loadConnectionStore(m.registry), "archive").catchupOffsetMinutes, -1, "readback still contains the previous signed value")
+    assertEqual(instr(1, m.noticeText.text, "Could not verify"), 1, "stale readback never reports success")
+end sub
+
+sub saveTestCatchupOffset(text as string)
     m.connectionCatchupOffsetSlot = "archive"
-    m.connectionDialog = {text: "-45", isSameNode: function(node)
+    m.connectionDialog = {text: text, isSameNode: function(node)
         return node.owner = "editor"
     end function, unobserveField: sub(name)
     end sub}
@@ -155,10 +180,6 @@ sub testOffsetEditor()
         return 0
     end function}
     onConnectionCatchupOffsetSaved(event)
-    saved = loadConnectionStore(m.registry)
-    assertEqual(connectionStoreEntry(saved, "archive").catchupOffsetMinutes, -45, "manual edit persists only in its playlist slot")
-    assertEqual(connectionStoreEntry(saved, "other").catchupOffsetMinutes, 0, "manual edit leaves the other playlist unchanged")
-    assertEqual(m.apiKey, "bob-new-verified-key", "offset edit does not touch active credentials")
 end sub
 
 sub assertEqual(actual as dynamic, expected as dynamic, label as string)

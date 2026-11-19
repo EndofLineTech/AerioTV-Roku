@@ -176,9 +176,14 @@ end function
 function connectionStoreUpdate(store as object, id as string, patch as object) as dynamic
     previous = connectionStoreEntry(store, id)
     if previous = invalid or store.readOnly = true then return invalid
+    ' Patch a fresh case-insensitive row, not the native case-sensitive JSON
+    ' copy. Merging a normalized row back into that copy can leave the old
+    ' camel-case key beside the replacement and read the old choice on Save.
+    entry = normalizeConnectionEntry(previous)
+    if entry = invalid then return invalid
     result = copyJson(store)
-    for each entry in result.entries
-        if entry.id = id
+    for i = 0 to result.entries.count() - 1
+        if result.entries[i].id = id
             for each key in ["url", "epgUrl", "localUrl", "userAgent", "referer", "authMode", "accountId", "profileId", "remember", "channelProfileIds", "guideDays", "catchupOffsetMinutes", "vodEnabled", "accountUsername", "sourceDigest", "sessionUrl"]
                 if patch.doesExist(key) then entry[key] = patch[key]
             end for
@@ -199,7 +204,7 @@ function connectionStoreUpdate(store as object, id as string, patch as object) a
             end if
             normalized = normalizeConnectionEntry(entry)
             if normalized = invalid then return invalid
-            entry.append(normalized)
+            result.entries[i] = normalized
             return result
         end if
     end for
