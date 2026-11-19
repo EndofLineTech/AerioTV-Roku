@@ -4,6 +4,7 @@ sub runNumericGuardProbe(native as boolean)
     m.numericGuardRows = 0
     m.numericGuardMismatches = 0
     m.numericGuardCallerMismatches = 0
+    m.numericGuardCallerShapeMismatches = 0
     m.numericGuardObservations = 0
 
     numericHttp("primitive-int", 1048577, 1048576, "at-least-1-mib")
@@ -51,9 +52,7 @@ sub runNumericGuardProbe(native as boolean)
     entry = metadataCacheEnvelope("scope", "channels", "key", "gen", 1700000, [])
     numericCache("constructed-envelope", entry, "fresh", "synthetic")
     numericCache("persisted-roundtrip", ParseJson(FormatJson(entry)), "fresh", "caller")
-    epoch = "1700000000".toInt()
-    entry = metadataCacheEnvelope("scope", "channels", "key", "gen", epoch, [])
-    numericCache("epoch-roundtrip", ParseJson(FormatJson(entry)), "fresh", "caller", epoch + 1)
+    numericEpochRoundTrip("1700000000".toInt(), "1700000001".toInt())
 
     for each row in [
         {name: "aa-int", value: 1, fetched: 1700000, expected: true},
@@ -131,8 +130,29 @@ sub runNumericGuardProbe(native as boolean)
         numericPhoneVersion(row.name, row.token, row.version)
         numericPhoneFields("wire", row.name, row.token, row.payload, native)
     end for
+    ' Probe these exact wire boundaries on guideDays only.
+    for each row in [
+        {name: "guide-below-min", token: "-1", expected: "refused"},
+        {name: "guide-min", token: "0", expected: "accepted"},
+        {name: "guide-max", token: "14", expected: "accepted"}
+    ]
+        raw = ParseJson("{""playlist"":{""type"":""m3u"",""name"":""Probe"",""url"":""probe"",""guideDays"":" + row.token + "}}")
+        numericPhoneFieldResult(raw, raw.playlist.guideDays, "guideDays", "wire", row.name, row.expected)
+    end for
 
-    print "[numeric-guard] COMPLETE "; FormatJson({native: native, rows: m.numericGuardRows, mismatches: m.numericGuardMismatches, callerMismatches: m.numericGuardCallerMismatches, observations: m.numericGuardObservations})
+    print "[numeric-guard] COMPLETE "; FormatJson({native: native, rows: m.numericGuardRows, mismatches: m.numericGuardMismatches, callermismatches: m.numericGuardCallerMismatches, callershapemismatches: m.numericGuardCallerShapeMismatches, observations: m.numericGuardObservations})
+end sub
+
+sub numericEpochRoundTrip(epoch as integer, now as integer)
+    if now - epoch <> 1
+        numericGuardReport("metadata/state", "epoch-roundtrip", type(now), "fixture-error", "fresh", "fixture")
+        return
+    end if
+    entry = metadataCacheEnvelope("scope", "channels", "key", "gen", epoch, [])
+    numericCache("epoch-roundtrip", ParseJson(FormatJson(entry)), "fresh", "caller", now)
+    numericCache("fetched-at-now", ParseJson(FormatJson(entry)), "fresh", "wire", epoch)
+    future = metadataCacheEnvelope("scope", "channels", "key", "gen", now, [])
+    numericCache("fetched-at-now-plus-one", ParseJson(FormatJson(future)), "miss", "wire", epoch)
 end sub
 
 sub numericPrimitiveControls(one as integer, fetched as integer, native as boolean)
@@ -157,7 +177,8 @@ sub numericGuardReport(target as string, name as string, kinds as string, actual
         m.numericGuardObservations++
     else if actual <> expected
         m.numericGuardMismatches++
-        if lane = "caller" or lane = "caller-shape" then m.numericGuardCallerMismatches++
+        if lane = "caller" then m.numericGuardCallerMismatches++
+        if lane = "caller-shape" then m.numericGuardCallerShapeMismatches++
     end if
     print "[numeric-guard] "; FormatJson({target: target, name: name, kinds: kinds, actual: actual, expected: expected, lane: lane})
 end sub
@@ -204,7 +225,7 @@ sub numericCache(name as string, entry as dynamic, expected as string, lane as s
         numericGuardReport("metadata/state", name, type(entry), "fixture-error", expected, "fixture")
         return
     end if
-    numericGuardReport("metadata/state", name, type(entry.schema) + "/" + type(entry.fetched), metadataCacheState(entry, "scope", "channels", "key", "gen", now, true, 256), expected, lane)
+    numericGuardReport("metadata/state", name, type(entry.schema) + "/" + type(entry.fetched) + "/" + type(now), metadataCacheState(entry, "scope", "channels", "key", "gen", now, true, 256), expected, lane)
 end sub
 
 function numericPreferenceExpected(accepted as boolean) as string
@@ -226,7 +247,7 @@ end function
 sub numericPreferenceLoad(name as string, schema as string, expected as string, strictExpected as string, native as boolean)
     registry = numericPreferenceRegistry("{""schema"":" + schema + ",""device"":{},""accounts"":{""probe"":{""favoriteIds"":[""probe""]}}}")
     decoded = ParseJson(registry.value)
-    numericGuardReport("preferences/load", name, type(decoded.schema), numericPreferenceState(loadPreferenceStore(registry)), expected, "wire")
+    numericGuardReport("preferences/load", name, type(decoded.schema), numericPreferenceState(loadPreferenceStore(registry)), expected, "comparison")
     if native
         precise = ParseJson(registry.value, "d")
         kind = type(precise.schema)
@@ -252,7 +273,9 @@ sub numericPreferenceRoundTrip(native as boolean)
     end if
     decoded = ParseJson(registry.value)
     if native then decoded = ParseJson(registry.value, "d")
-    numericGuardReport("preferences/roundtrip", "writer", type(store.schema) + "/" + type(decoded.schema), numericPreferenceState(loadPreferenceStore(registry, native)), "kept", "caller")
+    lane = "comparison"
+    if native then lane = "caller"
+    numericGuardReport("preferences/roundtrip", "writer", type(store.schema) + "/" + type(decoded.schema), numericPreferenceState(loadPreferenceStore(registry, native)), "kept", lane)
 end sub
 
 function numericPreferenceRegistry(raw as string) as object
