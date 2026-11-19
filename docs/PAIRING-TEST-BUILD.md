@@ -115,9 +115,10 @@ no longer sufficient to make an arbitrary valid-payload test non-mutating.
 The runner requires the previously verified normal 0.3.100 restore ZIP SHA256
 `eb09f4b9705262d11efba05a7b27281ff6272f2b22ff0f003805d9e20224a610` and restores
 it in `finally`. UI recognition emits only allowlisted state booleans/counts.
-Each classifier or QR decoder invocation has a 60-second deadline. A timeout
-force-kills the local worker process group, fails the run without retrying, and
-reports only the operation, failure category, and safe timing/status fields.
+Each classifier or QR decoder invocation has a 60-second deadline. On timeout,
+the runner attempts to force-kill the local worker process group, fails without
+retrying, and reports only the operation, failure category, and safe timing/status
+fields.
 Screenshots are removed from private temporary storage on success or failure;
 worker output, OCR/account text, and QR links/codes are never logged. Successful
 results are in `out/pairing-app-native-results.json`.
