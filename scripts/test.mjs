@@ -108,10 +108,11 @@ suites.push('DispatcharrSyncSettingsStore');
 suites.push('CatchupTask');
 suites.push('XtreamGuideOverride');
 suites.push('PlayerControls');
+suites.push('MemoryCleanup');
 for (const suite of suites) {
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
-    'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
+    'source/DispatcharrModel.brs', 'source/GuideModel.brs', ...(suite === 'MemoryCleanup' ? [] : ['source/SceneUi.brs']), 'source/TaskSupport.brs',
     'components/VodDeepLinkNavigation.brs',
     ...(suite === 'ProgramDetailRecovery' ? ['components/ProgramDetailTask.brs'] : []),
     ...(['LaunchModel', 'VodSeriesTask', 'PlayerLifecycle', 'VodDeepLinkNavigation'].includes(suite) ? ['source/LaunchModel.brs'] : []),
@@ -256,7 +257,7 @@ for (const suite of suites) {
     ...(['TmdbModel', 'TmdbTask', 'VodDescriptionInput'].includes(suite) ? ['source/TmdbModel.brs'] : []),
     ...(suite === 'TmdbTask' ? ['components/TmdbTask.brs'] : []),
     ...(suite === 'VodShelfTask' ? ['components/VodShelfTask.brs'] : []),
-    ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/AerioScene.brs'] : []),
+    ...(['PlayerLifecycle', 'ConnectionNavigation', 'MemoryCleanup'].includes(suite) ? ['components/AerioScene.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/SettingsNavigation.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileRosterNavigation.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/ProfileAdultPinNavigation.brs', 'components/ProfileManagementNavigation.brs'] : []),
@@ -303,7 +304,7 @@ for (const suite of suites) {
     ...(suite === 'PlayerControls' ? ['components/PlayerControls.brs'] : []),
     ...(suite === 'HttpPolicy' ? ['source/DispatcharrHttp.brs'] : []),
     ...(suite === 'GuideTaskCache' ? ['components/GuideTask.brs', 'components/XmltvGuideTask.brs'] : []),
-    ...(suite === 'GuideMappingFallback' ? ['components/GuideCache.brs'] : []),
+    ...(['GuideMappingFallback', 'MemoryCleanup'].includes(suite) ? ['components/GuideCache.brs'] : []),
     ...(suite === 'XtreamGuideOverride' ? ['components/ConnectionNavigation.brs', 'components/GuideCache.brs', 'source/ConnectionStoreModel.brs', 'source/XtreamModel.brs', 'source/XtreamArchiveModel.brs'] : []),
     ...(suite === 'MappingTask' ? ['components/MappingTask.brs'] : []),
     ...(suite === 'MappingDetailModel' ? ['components/MappingDetailFetch.brs'] : []),

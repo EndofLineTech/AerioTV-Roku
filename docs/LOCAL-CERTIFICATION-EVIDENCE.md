@@ -83,6 +83,60 @@ No external requirements were re-fetched for this pass.
    in Git). A skipped test, device reboot, old signed artifact, local SCA
    detection or transport-level success is not a pass on this candidate.
 
+### Offline beacon trace check (`mw1`, `grq`)
+
+For one approved, uninterrupted run of the exact candidate, keep a local
+sanitized TSV under ignored `out/`: one observed marker per row, with elapsed
+integer milliseconds from the same clock, then a tab, then the exact beacon
+name. Keep all occurrences of `AppLaunchComplete`, `EPGLaunchInitiate` and
+`EPGLaunchComplete` in capture order; omit unrelated lines (including dialog
+beacons), not duplicates. No headers, account values or raw console text.
+Use capture timestamps, not the duration printed by a beacon or guessed
+timestamps from an order-only log. If only host receipt times are available,
+label them as estimates; buffering near the boundary can make eligibility
+inconclusive.
+
+```bash
+node scripts/check-roku-beacon-trace.mjs launch out/saved-launch.tsv
+node scripts/check-roku-beacon-trace.mjs epg out/return-to-guide.tsv
+```
+
+`launch` expects exactly one `AppLaunchComplete` and no EPG markers in a
+successful launch-only run. Check fresh Welcome, saved authorized launch and
+successful recovery separately. Review protected cancel/exit separately
+against the observed UI; it is not a successful-launch input to this tool.
+`epg` expects exactly one Launch → Initiate → Complete sequence and reports
+both intervals. A valid pair with initiation >5,000 ms still reports both
+intervals but exits 1; malformed/missing/duplicate/out-of-order markers also
+exit 1. This checks the record only: confirm the real remote return,
+focused/navigable grid and retained playback separately. It does not infer
+EPG-as-home applicability, a certification duration limit or a Dashboard pass.
+The historical `rasp/AerioTVEpgLaunch.rasp` includes a 10-second pause between
+Select and Back; use it for path/order regression, not as a plan for a
+qualifying interval.
+
+### Native memory evidence (`67c`, `54n`, `lmy`)
+
+The deterministic `MemoryCleanup` host suite calls the production Scene handler
+and guide cleanup directly with a fixed clock and stand-ins for SceneGraph
+nodes. It checks that current and selected guide data survive, detail state
+is released, and logo invalidation is requested only for an inactive browser.
+It does not dispatch an OS notification or measure Roku memory or playback.
+
+Keep the foreground-limit query, app-warning delivery and fallback delivery
+as three separate observations. For `67c`, record the `[memory] foreground
+limit KB=` value from `Main.brs`, not a substituted ECP counter. For `54n`,
+observe a native notification and its numeric `MemoryUsagePercent` (the app
+acts at `>=80`); for `lmy`, establish that app-monitor registration was
+unavailable or unsuccessful and observe a native `low` or `critical` device
+event. On either warning path, verify that cleanup retains the current and
+selected guide windows, preserves navigation and does not interrupt active
+playback. The normal console logs the foreground limit but has no dedicated
+registration or event-receipt marker. A missing marker or an ECP counter
+change therefore cannot establish delivery; if it cannot be observed safely,
+record it as unverified. Do not induce memory pressure or substitute a
+simulated event. Signed-package scan evidence is separate for all three.
+
 ## `z2l`: why the beacon is still unchanged
 
 The checked-in requirement distinguishes a regular launch (fully rendered,
