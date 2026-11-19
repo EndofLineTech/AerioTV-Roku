@@ -37,6 +37,7 @@ sub main()
     end function}
     onPhoneSetupChoice(choice)
     check(m.phonePending = invalid and m.connectionStore.selected = "old", "duplicate Cancel cannot save a candidate")
+    checkPhoneSetupBackAfterPartialSave()
     m.phoneOptions = {id: "imported", guideDays: 2, vodEnabled: false}
     unchanged = takePhoneSetupPreferences({guide: {futureDays: 7}, vodEnabled: true}, {id: "other"})
     check(unchanged.guide.futureDays = 7 and unchanged.vodEnabled and m.phoneOptions <> invalid, "another slot cannot consume the pending import settings")
@@ -49,6 +50,47 @@ sub main()
     checkPhoneReopenAfterPinAdmission()
     print "ALL TESTS PASSED"
 end sub
+
+sub checkPhoneSetupBackAfterPartialSave()
+    resetImportTest()
+    ' Failed phase two has discarded the transient context, but the successful
+    ' first Flush left a selected fenced slot in the durable registry.
+    m.phoneOriginPage = "welcome"
+    m.phoneProfileImport = invalid
+    m.phoneRecoveryRequired = true
+    entry = normalizeConnectionEntry({id: "new", name: "Imported", provider: "dispatcharr", url: "https://new.example.test", remember: true})
+    values = {connectionsV1: FormatJson({schema: 1, selected: entry.id, entries: [entry]})}
+    values[userProfileImportKey(entry.id)] = "fixture-journal"
+    m.registry = {values: values, read: function(key as string) as string
+        return textValue(m.values[key])
+    end function, exists: function(key as string) as boolean
+        return m.values.doesExist(key)
+    end function}
+    m.recoverySlot = ""
+    onPhoneSetupClosed()
+    check(m.recoverySlot = entry.id and m.connectionStore.selected = entry.id and m.apiKey = "", "Back after a failed profile save retires old runtime and offers recovery for the durable fenced slot")
+    check(m.registry.exists(userProfileImportKey(entry.id)) and not m.phoneSetup.active, "opening recovery never discards the fence or leaves the receiver running")
+
+    resetImportTest()
+    m.registry.values.delete(userProfileImportKey(entry.id))
+    m.recoverySlot = ""
+    onPhoneSetupClosed()
+    check(m.recoverySlot = "" and m.page = "setup" and m.apiKey = "old-runtime-key", "non-import recovery flag alone does not trigger incomplete-import recovery")
+    m.phoneRecoveryRequired = false
+end sub
+
+sub resetConnectionRuntime()
+    m.apiKey = ""
+    m.page = "setup"
+end sub
+
+sub applySelectedConnection()
+end sub
+
+function showIncompletePhoneImportRecovery() as boolean
+    m.recoverySlot = m.selectedConnectionId
+    return true
+end function
 
 sub checkPhoneReopenAfterPinAdmission()
     resetImportTest()

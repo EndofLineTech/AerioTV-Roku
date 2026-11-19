@@ -265,6 +265,13 @@ sub onPhoneSetupClosed()
     m.phoneSetup.visible = false
     m.phonePending = invalid
     m.phoneResult = invalid
+    if not incomplete and m.phoneRecoveryRequired = true and m.page = "phoneSetup"
+        ' Phase-two failure can retire the in-memory import before Back. The
+        ' selected slot's durable journal still owns incomplete-save recovery.
+        savedConnections = loadConnectionStore(m.registry)
+        key = userProfileImportKey(savedConnections.selected)
+        if key <> "" then incomplete = m.registry.exists(key)
+    end if
     if incomplete
         resetConnectionRuntime()
         m.connectionStore = loadConnectionStore(m.registry)
