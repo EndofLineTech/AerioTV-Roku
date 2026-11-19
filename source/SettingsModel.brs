@@ -58,8 +58,8 @@ function settingsHubAllEntries(page as string, model as object) as object
         return []
     end if
     if page = "live" then return [
-        {title: "Guide history days", scope: "guide", key: "historyDays", values: [1, 3, 7, 14, 30]}
-        {title: "Guide future days", scope: "guide", key: "futureDays", values: guideFutureDayChoices()}
+        {title: "Guide history days", scope: "guide", key: "historyDays", values: guideDayChoices()}
+        {title: "Guide future days", scope: "guide", key: "futureDays", values: guideDayChoices()}
         {title: "Channel sort", scope: "guide", key: "channelSort", values: ["number", "name", "id"]}
         {title: "Guide density", scope: "guide", key: "guideDensity", values: ["preview", "basic"]}
         {title: "Show channel logos", scope: "guide", key: "showLogos", values: [true, false]}

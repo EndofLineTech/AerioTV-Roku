@@ -182,7 +182,7 @@ sub completeConnection(result as object)
         if m.httpMode then expectedUrl = m.fixtureBase + "/feed?token=session-token"
         if entry.url <> "" or m.baseUrl <> expectedUrl then stop
         prefs = takePhoneSetupPreferences({guide: {futureDays: 7}, vodEnabled: true}, entry)
-        if prefs.vodEnabled <> false or prefs.guide.futureDays <> 2 then stop
+        if prefs.vodEnabled <> false or prefs.guide.futureDays <> 2 or prefs.guide.historyDays <> 2 then stop
     end if
     if m.runtimeResets <> 1 then stop
     if instr(1, m.case, "duplicate") = 0 and m.confirmations <> 0 then stop

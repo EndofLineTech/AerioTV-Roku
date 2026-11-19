@@ -248,11 +248,12 @@ no username. A default/single-profile credential fallback is supported without
 importing household roles, profiles or PINs.
 
 VOD enablement and Guide Days (1–14) are applied once after commit, then persisted
-through normal account preferences. Guide Days changes only the future horizon.
-The sender's `0` (All Available) uses Roku's existing 30-day future limit, disclosed
-in the duplicate confirmation or Diagnostics for auto-add. A longer horizon does
-not make unavailable programs appear. Change it under Settings > Live TV >
-Guide future days. Reconnects and upgrades do not reapply the saved transfer or
+through normal account preferences. The sender's Guide Days applies to both history
+and future navigation. The sender's `0` (All Available) uses Roku's existing limit
+of 30 days each way, disclosed in the duplicate confirmation or Diagnostics for
+auto-add. Roku fetches windows as needed; it does not scan the provider for the last
+available program. Change the two settings independently under Settings > Live TV.
+Reconnects and upgrades do not reapply the saved transfer or
 undo the viewer's own setting changes. Nonzero catch-up offsets,
 local URL failover and provider-inapplicable options are explicitly disclosed
 before Save, not silently claimed as applied. These runtime gaps are tracked as
@@ -280,7 +281,7 @@ python3 scripts/test-phone-setup-normal-native.py --peer apple \
 The probe uses a fresh registry section, temporary metadata cache, and the existing
 peer transfer and Dispatcharr verification paths. It inhibits Sync scheduling
 and provider writes. It checks the retained wire value, reads back the stored account
-preference, checks the actual GuideView's future clamp, and waits for the real
+preference, checks the actual GuideView's past and future clamps, and waits for the real
 Guide Task window. A successful empty response establishes that the request worked,
 not that the server has programs through that horizon. Keep the counts distinct
 in the result. The probe also edits the future horizon to 6 through the Settings

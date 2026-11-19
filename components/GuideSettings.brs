@@ -143,8 +143,8 @@ sub openGuideSetting(kind as string)
             {title: "Channel sort: " + m.settings.channelSort, field: "channelSort", choices: ["number", "name", "id"]}
             {title: "Group navigation: " + m.settings.groupLayout, field: "groupLayout", choices: ["modal", "pills", "sidebar"]}
             {title: "Collections position: " + m.settings.collectionsPosition, field: "collectionsPosition", choices: ["first", "last"]}
-            {title: "History days: " + m.settings.historyDays.toStr(), field: "historyDays", choices: [1, 3, 7, 14, 30]}
-            {title: "Future days: " + m.settings.futureDays.toStr(), field: "futureDays", choices: guideFutureDayChoices()}
+            {title: "History days: " + m.settings.historyDays.toStr(), field: "historyDays", choices: guideDayChoices()}
+            {title: "Future days: " + m.settings.futureDays.toStr(), field: "futureDays", choices: guideDayChoices()}
             {title: "All available (bounded to 30 days each way)", action: "allAvailable"}
             {title: "Startup group", action: "startup"}
             {title: "Badges", action: "badges"}

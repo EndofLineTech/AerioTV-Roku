@@ -41,11 +41,11 @@ sub main()
     unchanged = takePhoneSetupPreferences({guide: {futureDays: 7}, vodEnabled: true}, {id: "other"})
     check(unchanged.guide.futureDays = 7 and unchanged.vodEnabled and m.phoneOptions <> invalid, "another slot cannot consume the pending import settings")
     applied = takePhoneSetupPreferences({guide: {futureDays: 7}, vodEnabled: true}, {id: "imported"})
-    check(applied.guide.futureDays = 2 and not applied.vodEnabled and m.phoneOptions = invalid, "imported options applied exactly once after commit")
+    check(applied.guide.futureDays = 2 and applied.guide.historyDays = 2 and not applied.vodEnabled and m.phoneOptions = invalid, "imported options applied exactly once after commit")
     applied.guide.futureDays = 6
     applied.vodEnabled = true
     retained = takePhoneSetupPreferences(normalizeAccountPreferences(ParseJson(FormatJson(applied))), {id: "imported"})
-    check(retained.guide.futureDays = 6 and retained.vodEnabled, "later reconnect reloads the viewer's changed options")
+    check(retained.guide.futureDays = 6 and retained.guide.historyDays = 2 and retained.vodEnabled, "later reconnect reloads the viewer's changed options")
     print "ALL TESTS PASSED"
 end sub
 

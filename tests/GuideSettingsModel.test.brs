@@ -98,8 +98,10 @@ sub main()
     assertEqual(guideResumeAnchor(1000000, false, 1000000 + 3600, settings), 1000000, "explicit historical browsing stays anchored")
     now = guideEpoch("2026-09-18T12:00:00Z")
     for days = 1 to 14
-        restored = normalizeAccountPreferences(ParseJson(FormatJson({guide: {futureDays: days, historyDays: 3}})))
+        restored = normalizeAccountPreferences(ParseJson(FormatJson({guide: {futureDays: days, historyDays: days}})))
+        assertEqual(restored.guide.historyDays, days, "exact history horizon survives a registry-shaped reload")
         assertEqual(restored.guide.futureDays, days, "exact future horizon survives a registry-shaped reload")
+        assertEqual(guideTimeClamp(now - 31 * 86400, now, restored.guide), now - days * 86400, "guide navigation clamps to configured history horizon")
         assertEqual(guideTimeClamp(now + 31 * 86400, now, restored.guide), now + days * 86400 - 1, "guide navigation clamps to configured future horizon")
     end for
     assertEqual(normalizeGuideSettings({futureDays: 30}).futureDays, 30, "existing 30-day setting still loads")

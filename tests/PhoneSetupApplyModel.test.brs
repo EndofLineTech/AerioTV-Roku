@@ -98,8 +98,8 @@ sub main()
         end if
         original = {guide: {futureDays: 14, historyDays: 3, showLogos: false}, vodEnabled: true}
         prefs = phoneSetupImportedPreferences(original, prepared.entry)
-        check(prefs.guide.futureDays = expected and not prefs.vodEnabled, "import applies requested future horizon")
-        check(prefs.guide.historyDays = 3 and not prefs.guide.showLogos and original.guide.futureDays = 14, "import preserves history, other preferences and original input")
+        check(prefs.guide.futureDays = expected and prefs.guide.historyDays = expected and not prefs.vodEnabled, "import applies requested horizon in both directions")
+        check(not prefs.guide.showLogos and original.guide.futureDays = 14 and original.guide.historyDays = 3, "import preserves other preferences and original input")
     end for
     testInterimProfiles()
     print "ALL TESTS PASSED"

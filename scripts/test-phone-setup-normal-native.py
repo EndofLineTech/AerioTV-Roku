@@ -79,10 +79,10 @@ def build(output, normal, section, diagnostic=False, live=None, guide_days=None)
             restored = accountPreferences(loadPreferenceStore(m.registry, true), m.accountIdentity)
             if entry = invalid then finishPhoneNormalProbe(false, "guide-slot-missing") : return
             if entry.guideDays <> {guide_days} or m.phoneOptions <> invalid then finishPhoneNormalProbe(false, "guide-import-metadata") : return
-            if m.accountPreferences.guide.futureDays <> {expected} or restored.guide.futureDays <> {expected} or restored.guide.historyDays <> 3 then finishPhoneNormalProbe(false, "guide-preference-mismatch") : return
+            if m.accountPreferences.guide.futureDays <> {expected} or restored.guide.futureDays <> {expected} or restored.guide.historyDays <> {expected} then finishPhoneNormalProbe(false, "guide-preference-mismatch") : return
             result = m.guide.callFunc("probeImportedGuideWindow", {expected})
             if result.state = "waiting" then return
-            print "[setup-phone-normal] "; FormatJson({{kind: "guide-days", state: result.state, days: {expected}, window: result.window, programs: result.programs}})
+            print "[setup-phone-normal] "; FormatJson({{kind: "guide-days", state: result.state, days: {expected}, window: result.window, programs: result.programs, history_window: result.historyWindow, history_programs: result.historyPrograms}})
             if result.state <> "loaded" then finishPhoneNormalProbe(false, "guide-window") : return
             openSettingsHub()
             m.settingsHub.selection = userViewEvent({{scope: "guide", key: "futureDays", value: 6, account: m.accountIdentity}}, currentUserSessionId())
@@ -113,7 +113,7 @@ def build(output, normal, section, diagnostic=False, live=None, guide_days=None)
         if m.busy or m.page <> "guide" or m.activeUserScope = invalid or m.capabilityTask <> invalid then return
         if m.activeUserScope.profileId <> m.guideDaysDefaultId or m.activeUserScope.accountId <> m.phoneNormalDefaultUser.toStr() then finishPhoneNormalProbe(false, "guide-reconnect-identity") : return
         restored = accountPreferences(loadPreferenceStore(m.registry, true), m.accountIdentity)
-        passed = restored.guide.futureDays = 6 and m.accountPreferences.guide.futureDays = 6 and m.guide.config.preferences.guide.futureDays = 6 and restored.guide.historyDays = 3 and m.phoneOptions = invalid
+        passed = restored.guide.futureDays = 6 and m.accountPreferences.guide.futureDays = 6 and m.guide.config.preferences.guide.futureDays = 6 and restored.guide.historyDays = m.guide.config.preferences.guide.historyDays and m.phoneOptions = invalid
         print "[setup-phone-normal] "; FormatJson({kind: "guide-reconnect", kept_edit: passed})
         finishPhoneNormalProbe(passed, "guide-reconnect")
 ''')

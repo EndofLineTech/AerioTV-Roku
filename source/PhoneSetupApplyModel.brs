@@ -83,7 +83,7 @@ function phoneSetupPrepareImport(payload as object, id as string, digest as stri
     if entry.localUrl <> "" then notes.push("Local URL retained; automatic LAN failover is not applied by this build.")
     if days = 0
         limit = guideAllAvailableDays()
-        notes.push("All Available Guide Days uses Roku's " + limit.toStr() + "-day future limit; guide history is unchanged.")
+        notes.push("All Available Guide Days uses Roku's limit of " + limit.toStr() + " days each way.")
     end if
     if offset <> 0 then notes.push("Catch-up offset retained but not applied by this build.")
     if entry.provider <> "dispatcharr" and entry.channelProfileIds.count() > 0 then notes.push("Channel Profile IDs are retained but only applied to Dispatcharr sources.")
@@ -125,6 +125,7 @@ function phoneSetupImportedPreferences(preferences as object, entry as object) a
     result.vodEnabled = entry.vodEnabled
     days = entry.guideDays
     if days = 0 then days = guideAllAvailableDays()
+    result.guide.historyDays = days
     result.guide.futureDays = days
     return result
 end function

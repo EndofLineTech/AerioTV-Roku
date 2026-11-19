@@ -58,6 +58,7 @@ sub main()
     if settingsHubChangeAllowed(model, "guide", "historyDays", 365) then stop
     for days = 1 to 14
         if not settingsHubChangeAllowed(model, "guide", "futureDays", days) then stop
+        if not settingsHubChangeAllowed(model, "guide", "historyDays", days) then stop
     end for
     if not settingsHubChangeAllowed(model, "guide", "futureDays", 30) then stop
     if settingsHubChangeAllowed(model, "guide", "futureDays", 0) then stop
