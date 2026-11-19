@@ -4,13 +4,21 @@ sub continuePhoneProfileOnboarding()
     context = m.phoneProfileOnboarding
     if type(context) <> "roAssociativeArray" then return
     if m.busy or m.activeUserScope = invalid or userProfileGateClosed() then return
-    if m.selectedConnectionId <> context.slot or not userProfileFullAccess(currentUserSettingsRole())
+    if m.selectedConnectionId <> context.slot
         m.phoneProfileOnboarding = invalid
         return
     end if
     if context.scope <> invalid
         if not userProfileSameSession(context.scope, m.activeUserScope) then m.phoneProfileOnboarding = invalid : return
     end if
+    role = currentUserSettingsRole()
+    if role = "child"
+        ' No adult onboarding UI. Settle the pending link through the same
+        ' guide, session, own-key and catalog gates as any other launch.
+        finishPhoneProfileOnboarding()
+        return
+    end if
+    if not userProfileFullAccess(role) then retirePhoneProfileOnboarding() : return
     context.scope = m.activeUserScope
     context.connectionRoot = m.registry.read("connectionsV1")
     context.storeRoot = m.registry.read(userProfileStoreKey(context.slot))
@@ -166,7 +174,7 @@ sub onPhoneProfileOnboardingClosed(event as object)
 end sub
 
 sub finishPhoneProfileOnboarding()
-    m.phoneProfileOnboarding = invalid
+    retirePhoneProfileOnboarding()
     resumePendingVodDeepLink()
 end sub
 

@@ -46,6 +46,7 @@ sub main()
     assertEqual(m.top.beacons.count(), 1, "later sign-in does not emit a second launch beacon")
     assertEqual(m.pendingLaunch, invalid, "authorized guide consumes the pending link after sign-in")
     assertEqual(m.notice.visible, true, "unavailable link falls back safely to the guide")
+    m.startupGuideReady = false
     m.page = "welcome"
     m.top.launchRequest = {contentId: "27", mediaType: "movie"}
     onLaunchRequest()
@@ -68,6 +69,7 @@ sub main()
     m.startupVodIntent = false
     startConfiguredMiniPlayback([])
     assertEqual(m.notice.visible, true, "ordinary mini startup still looks up the saved channel")
+    runProvisionalVodLaunchChecks()
     runFirstRunVodOnboardingChecks()
     m.page = "guide"
     m.heldZap = ""
@@ -621,8 +623,43 @@ sub assertEqual(actual as dynamic, expected as dynamic, label as string)
     end if
 end sub
 
+sub runProvisionalVodLaunchChecks()
+    m.startupGuideReady = false
+    m.page = "setup"
+    entry = normalizeConnectionEntry({id: "first-slot", name: "Saved", provider: "dispatcharr", url: "https://example.test", accountId: "7"})
+    m.profileStartupLaunchConnection = entry
+    m.startupVodFallbackHolder = {playlist: entry.id, base: entry.url, profile: "original-profile", account: "8"}
+    m.global = {activeusersession: "provisional-default-session"}
+    m.top.launchRequest = {mediaType: "live", contentId: "live-channel"}
+    onLaunchRequest()
+    m.page = "guide" ' page published, but guide-ready continuation hasn't run
+    m.top.launchRequest = {mediaType: "movie", contentId: "12"}
+    onLaunchRequest()
+    assertEqual(m.pendingLaunch.profile, "original-profile", "replacement stays bound to saved holder after provisional default scope publishes")
+    assertEqual(m.pendingLaunch.session, invalid, "replacement does not adopt provisional default session")
+    assertEqual(m.vodDeepLinkTask, invalid, "page name alone cannot dispatch a startup replacement")
+    m.top.launchRequest = {mediaType: "episode", contentId: "invalid-id"}
+    onLaunchRequest()
+    assertEqual(m.pendingLaunch, invalid, "malformed replacement retires previous valid link")
+    assertEqual(m.startupVodIntent, true, "malformed recognized replacement keeps live startup suppressed")
+    m.notice.visible = false
+    startConfiguredMiniPlayback([])
+    assertEqual(m.notice.visible, false, "provisional session does not let unrelated startup autoplay")
+    m.page = "library"
+    m.startupGuideReady = true
+    m.top.launchRequest = {mediaType: "episode", contentId: "25"}
+    onLaunchRequest()
+    assertEqual(m.pendingLaunch.session, "provisional-default-session", "after guide readiness a new warm request binds the actual active session")
+    assertEqual(m.pendingLaunch.profile, invalid, "warm intent does not inherit the retired startup holder")
+    m.pendingLaunch = invalid
+    m.global = invalid
+    m.profileStartupLaunchConnection = invalid
+    m.startupVodFallbackHolder = invalid
+end sub
+
 sub runFirstRunVodOnboardingChecks()
-    for each finishAction in ["continue", "back"]
+    for each finishAction in ["continue", "back", "child-skip", "child-skip-before-guide", "child-vod-disabled"]
+        m.startupGuideReady = false
         m.page = "welcome"
         m.top.launchRequest = {mediaType: "episode", contentId: "27"}
         onLaunchRequest()
@@ -630,6 +667,8 @@ sub runFirstRunVodOnboardingChecks()
         slot = "first-slot"
         entry = normalizeConnectionEntry({id: slot, name: "First setup", provider: "dispatcharr", url: "https://example.test", accountId: "7", remember: true})
         profile = userProfileFromVerified(slot, "00000000-0000-4000-8000-000000000001", {id: 7, username: "alice", user_level: 1}, 1)
+        child = finishAction = "child-skip" or finishAction = "child-skip-before-guide" or finishAction = "child-vod-disabled"
+        if child then profile = setCanonicalPreference(profile, "role", "child")
         store = defaultUserProfileStore(slot)
         store.profiles = [profile]
         store.active = profile.id
@@ -649,11 +688,13 @@ sub runFirstRunVodOnboardingChecks()
             return m.values.doesExist(key)
         end function}
         m.connectionStore = loadConnectionStore(m.registry)
+        m.scopedPreferencesRequired = true
+        m.userProfileStore = loadUserProfileStore(m.registry, slot)
         m.apiKey = "own-key"
         m.baseUrl = entry.url
         m.serverAccountId = scope.accountId
         m.accountIdentity = scope.preferenceIdentity
-        m.accountPreferences = {vodEnabled: true, vod: []}
+        m.accountPreferences = {vodEnabled: finishAction <> "child-vod-disabled", vod: []}
         m.guide.config = userViewEvent({providerType: "dispatcharr", accountId: scope.accountId, baseUrl: m.baseUrl, apiKey: m.apiKey}, scope.sessionId)
         m.phoneProfileOnboarding = {phase: "offer", slot: slot, addedIds: []}
         m.vodDeepLinkTaskFactory = function() as object
@@ -670,26 +711,47 @@ sub runFirstRunVodOnboardingChecks()
             end sub}
         end function
         m.notice.visible = false
-        ' Imported accounts reach the first guide before the dialog is shown.
-        signalStartupComplete()
-        assertEqual(m.pendingLaunch.id, "27", "authenticated guide must keep the deep link through onboarding")
-        assertEqual(m.pendingLaunch.session, scope.sessionId, "first-run pending link is now owned by the authenticated session")
-        assertEqual(m.vodDeepLinkTask, invalid, "no premature resolver before onboarding")
-        continuePhoneProfileOnboarding()
-        dialog = m.phoneProfileOnboardingDialog
-        assertEqual(m.phoneProfileOnboarding.phase, "who", "normal onboarding shows profile setup")
-        event = {node: dialog, choice: m.phoneProfileOnboardingChoices.count() - 1, getRoSGNode: function() as object
-            return m.node
-        end function, getData: function() as integer
-            return m.choice
-        end function}
-        if finishAction = "continue" then onPhoneProfileOnboardingChoice(event) else onPhoneProfileOnboardingClosed(event)
-        assertEqual(m.phoneProfileOnboarding, invalid, "onboarding settles for " + finishAction)
-        assertEqual(m.top.dialog, invalid, "retry happens after close for " + finishAction)
-        assertEqual(m.pendingLaunch, invalid, "guide consumes pending request after " + finishAction)
-        assertEqual(m.vodDeepLinkTask.itemId, "27", "resolver dispatches the original item after " + finishAction)
-        assertEqual(m.vodDeepLinkTask.apiKey, "own-key", "continuation still uses only own credential")
-        cancelVodDeepLink()
+        if finishAction = "child-skip-before-guide"
+            ' Startup picker adoption can run onboarding just before the guide
+            ' continuation. Skipping must not dispatch into an unready guide.
+            continuePhoneProfileOnboarding()
+            assertEqual(m.pendingLaunch.id, "27", "early Child skip leaves the link for guide readiness")
+            assertEqual(m.vodDeepLinkTask, invalid, "early Child skip cannot start resolution")
+            signalStartupComplete()
+        else
+            signalStartupComplete()
+            assertEqual(m.pendingLaunch.id, "27", "authenticated guide must keep the deep link through onboarding")
+            assertEqual(m.pendingLaunch.session, scope.sessionId, "first-run pending link is now owned by the authenticated session")
+            assertEqual(m.vodDeepLinkTask, invalid, "no premature resolver before onboarding")
+            continuePhoneProfileOnboarding()
+        end if
+        if child
+            assertEqual(m.phoneProfileOnboarding, invalid, "Child finishes without adult profile setup")
+            assertEqual(m.phoneProfileOnboardingDialog, invalid, "Child never sees adult onboarding dialog")
+            assertEqual(m.pendingLaunch, invalid, "terminal Child skip settles the deferred link")
+            if finishAction <> "child-vod-disabled"
+                assertEqual(m.vodDeepLinkTask.apiKey, "own-key", "authorized Child continuation uses only its own key")
+                cancelVodDeepLink()
+            else
+                assertEqual(m.vodDeepLinkTask, invalid, "disabled VOD for Child does not start resolver")
+                assertEqual(m.notice.visible, true, "disabled VOD for Child explicitly declines the link")
+            end if
+        else
+            dialog = m.phoneProfileOnboardingDialog
+            assertEqual(m.phoneProfileOnboarding.phase, "who", "normal onboarding shows profile setup")
+            event = {node: dialog, choice: m.phoneProfileOnboardingChoices.count() - 1, getRoSGNode: function() as object
+                return m.node
+            end function, getData: function() as integer
+                return m.choice
+            end function}
+            if finishAction = "continue" then onPhoneProfileOnboardingChoice(event) else onPhoneProfileOnboardingClosed(event)
+            assertEqual(m.phoneProfileOnboarding, invalid, "onboarding settles for " + finishAction)
+            assertEqual(m.top.dialog, invalid, "retry happens after close for " + finishAction)
+            assertEqual(m.pendingLaunch, invalid, "guide consumes pending request after " + finishAction)
+            assertEqual(m.vodDeepLinkTask.itemId, "27", "resolver dispatches the original item after " + finishAction)
+            assertEqual(m.vodDeepLinkTask.apiKey, "own-key", "continuation still uses only own credential")
+            cancelVodDeepLink()
+        end if
     end for
     m.global = invalid
     m.activeUserScope = invalid
@@ -698,5 +760,7 @@ sub runFirstRunVodOnboardingChecks()
     m.connectionStore = invalid
     m.apiKey = ""
     m.accountIdentity = ""
+    m.scopedPreferencesRequired = false
+    m.userProfileStore = invalid
     m.profileLaunchResolvedConnection = invalid
 end sub

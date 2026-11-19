@@ -27,6 +27,7 @@ sub init()
     m.profileStartupDeferred = false
     m.profileStartupScreenReady = false
     m.profileStartupRoutingStarted = false
+    m.startupGuideReady = false
     m.profileLaunchPickerResolved = false
     m.profileLaunchPickerDeepLink = false
     m.profileStartupIdentityRefusals = {}
@@ -317,6 +318,7 @@ sub signalStartupComplete()
     if m.profilePickerReady = true and m.activeUserScope <> invalid then m.profileLaunchPickerResolved = true
     completeStartupBeacons()
     ' A later authenticated guide still resolves links without a second beacon.
+    if m.page = "guide" then m.startupGuideReady = true
     handlePendingLaunch()
     if m.profileBaselineReady = true and m.profileBaselinePendingAdd = true
         m.profileBaselinePendingAdd = false
@@ -343,16 +345,20 @@ sub onLaunchRequest()
     if m.profileSwitchContext <> invalid then return
     raw = m.top.launchRequest
     if not launchRequestHasMediaIntent(raw) then return
-    if m.page <> "guide" and m.page <> "player" and currentUserSessionId() = "" then m.startupVodIntent = launchRequestHasVodIntent(raw)
+    beforeGuide = m.startupGuideReady <> true
+    if beforeGuide then m.startupVodIntent = launchRequestHasVodIntent(raw)
     cancelVodDeepLink()
     m.pendingLaunch = normalizeLaunchRequest(raw)
     if m.pendingLaunch <> invalid
         if m.pendingLaunch.kind <> "live"
-            m.pendingLaunch.session = currentUserSessionId()
-            if m.pendingLaunch.session = ""
+            if beforeGuide
+                ' Published scope may still be provisional. A pre-guide input
+                ' replaces the cold intent, not the saved holder it targets.
                 entry = m.profileStartupLaunchConnection
                 if entry = invalid and m.startupVodFallbackHolder <> invalid then entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
                 bindStartupVodDeepLink(m.pendingLaunch, entry)
+            else
+                m.pendingLaunch.session = currentUserSessionId()
             end if
         end if
     end if
@@ -363,7 +369,7 @@ sub onLaunchRequest()
         end if
     end if
     if m.pendingLaunch = invalid
-        if m.page = "guide" then showNotice("This link is not available. Browse your guide instead.")
+        if m.page = "guide" and not beforeGuide then showNotice("This link is not available. Browse your guide instead.")
         return
     end if
     handlePendingLaunch()
@@ -374,11 +380,14 @@ sub handlePendingLaunch()
     if m.pendingLaunch = invalid then return
     if m.page <> "guide" and m.page <> "player" then return
     request = m.pendingLaunch
-    if request.kind <> "live" and m.phoneProfileOnboarding <> invalid
-        ' The flow may temporarily open other forms. Keep the link pending,
-        ' bound to this adopted session, until the onboarding continuation.
-        if textValue(request.session) = "" then request.session = currentUserSessionId()
-        return
+    if request.kind <> "live"
+        if m.startupGuideReady <> true then return
+        if m.phoneProfileOnboarding <> invalid
+            ' The flow may temporarily open other forms. Keep the link pending,
+            ' bound to this adopted session, until the onboarding continuation.
+            if textValue(request.session) = "" then request.session = currentUserSessionId()
+            return
+        end if
     end if
     m.pendingLaunch = invalid
     if request.kind <> "live"
