@@ -90,10 +90,15 @@ function userProfileAddPlan(connection as object, previous as object, id as stri
                         ' Profiles is Off, but cannot import any of its metadata.
                         if row.pinAction <> "clear" or row.role = "child" then return {ok: false, reason: "Turn on Profiles sync to add this protected profile."}
                     else
-                        if rosterRow = invalid
+                        if row.pinAction = "keep" then return denied
+                        if rosterRow = invalid or row.updatedAt >= rosterRow.updatedAt
                             rosterRow = row
-                        else if row.updatedAt > rosterRow.updatedAt
-                            rosterRow = row
+                        else
+                            ' Newer shared metadata is useful only when it
+                            ' agrees with protection from this holder's own read.
+                            samePin = rosterRow.pinAction = row.pinAction and rosterRow.pinType = row.pinType and rosterRow.pinHash = row.pinHash and rosterRow.pinSalt = row.pinSalt
+                            sameRole = userProfileResolveRole(candidate.userLevel, rosterRow.role) = userProfileResolveRole(candidate.userLevel, row.role)
+                            if not samePin or not sameRole then return {ok: false, reason: "Saved profile protection differs between accounts. Update this profile on your other device first."}
                         end if
                     end if
                 end if

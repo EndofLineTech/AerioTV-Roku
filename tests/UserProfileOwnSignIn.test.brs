@@ -60,12 +60,19 @@ sub main()
     sourceRows = importedRead.data.categories.profiles.data.rows
     sourceAdd = userProfileAddPlan(entry, store, newId, "Cara", addedProof, addedRead, 300, sourceRows)
     check(sourceAdd.ok and sourceAdd.target.pinType = "numbers" and sourceAdd.target.displayName = "Imported Cara" and sourceAdd.target.updatedAt = 200 and sourceAdd.target.addOrigin = "roster", "suggested or manual Add retains the source roster row even when the new account has no own envelope")
+    newerUnprotected = [[9, "Cara", "Cached Cara", "none", "", "", "user", 250, {}, 0]]
+    check(not userProfileAddPlan(entry, store, newId, "Cara", addedProof, importedRead, 300, newerUnprotected).ok, "newer cached row cannot replace the target's verified own PIN")
+    matchingProtection = [[9, "Cara", "Cached Cara", "numbers", string(64, "a"), string(32, "b"), "user", 250, {}, 0]]
+    agreed = userProfileAddPlan(entry, store, newId, "Cara", addedProof, importedRead, 300, matchingProtection)
+    check(agreed.ok and agreed.target.pinHash = importedAdd.target.pinHash and agreed.target.updatedAt = 250, "agreeing protection keeps the existing newer-row metadata policy")
     pausedStore = copyJson(store)
     pausedStore.profiles[1].addressHeld = true
     pausedAdd = userProfileAddPlan(entry, pausedStore, newId, "Cara", addedProof, invalid, 300, sourceRows)
     check(pausedAdd.ok and pausedAdd.target.addOrigin = "paused" and pausedAdd.target.updatedAt = 300 and pausedAdd.target.pinType = "none" and not pausedAdd.store.pendingRoster, "held sibling allows own-verified provisional Add without granting protection or queueing a write")
     undone = userProfileRemovalPlan(pausedAdd.store, newId, 310, "undo")
     check(undone.ok and not undone.pushRequired and undone.store.removed.count() = 0 and not undone.store.pendingRoster and undone.store.profiles[1].addressHeld, "undoing an otherwise clean paused Add cannot leave a future mutation queued")
+    removedPending = userProfileRemovalPlan(pausedAdd.store, newId, 310, "normal")
+    check(removedPending.ok and not removedPending.pushRequired and removedPending.store.removed.count() = 0, "Manage Profiles removes the deferred holder on this Roku only")
     pendingPaused = setCanonicalPreference(pausedAdd.store, "pendingRoster", true)
     undone = userProfileRemovalPlan(pendingPaused, newId, 310, "undo")
     check(undone.ok and undone.store.pendingRoster, "paused Add Undo does not acknowledge another pending edit")
@@ -77,6 +84,9 @@ sub main()
     protectedStore.profiles[0].pinHash = string(64, "a")
     protectedStore.profiles[0].pinSalt = string(32, "b")
     protectedStore.removed = [["cara", 199]]
+    ownChildRead = copyJson(importedRead)
+    ownChildRead.data.categories.profiles.data.rows = richChild
+    check(not userProfileAddPlan(entry, protectedStore, newId, "Cara", addedProof, ownChildRead, 300, matchingProtection).ok, "newer cached Standard role cannot override the target's verified Child protection on re-Add")
     readd = userProfileAddPlan(entry, protectedStore, newId, "Cara", addedProof, addedRead, 300, richChild)
     check(readd.ok and readd.target.role = "child" and readd.target.pinType = "numbers" and readd.target.updatedAt = 200 and readd.target.addOrigin = "roster", "intentional newer peer re-add keeps source Child role, PIN and stamp when all local adults are protected")
     protectedStore.removed = [["cara", 200]]

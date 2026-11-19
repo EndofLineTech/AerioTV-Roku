@@ -23,8 +23,10 @@ current roster metadata and PIN before committing Add. Existing roster-add Undo
 semantics remain unchanged. This also works through onboarding's Add action.
 The Add lifecycle also retains the current source session's received row for
 manual username matches. An absent target envelope cannot turn that roster user
-into a newer unprotected plain Add. A newer target row wins; unverifiable PIN
-material or a mismatched live user ID refuses. The source stamp is retained
+into a newer unprotected plain Add. An equally recent or newer target row wins.
+A newer source row is usable only when it agrees with the target's own PIN and
+role. Conflicting protection, unverifiable PIN material, or a mismatched live
+user ID refuses. The selected row's stamp is retained
 (zero becomes now), and roster Undo remains local without a tombstone.
 
 Focused actual-controller evidence:
@@ -56,8 +58,9 @@ The focused source-row regression is
   origin. That holder cannot launch, switch in, or be published by Sync. A
   roster read under a different holder is not the deferred holder's required
   own-protection check, whether or not the read contains a matching row.
-  Undo remains local and does not acknowledge other edits. After resolving
-  the address holds, Undo and use normal Add to read the holder's own
+  Undo and Manage Profiles → **Remove from this Roku** remain local and do not
+  acknowledge other edits. After resolving the address holds, remove this entry
+  and use normal Add to read the holder's own
   protection. A keyless sibling
   still pauses the entire slot. After the final hold lifts, the durable write
   fence survives failed reads, backoff, and session changes until a current

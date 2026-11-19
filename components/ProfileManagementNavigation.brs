@@ -68,6 +68,7 @@ sub showProfileManagementRoster()
     for each profile in userProfileSorted(m.userProfileStore.profiles)
         label = profile.displayName
         if profile.id = m.userProfileStore.active then label += " (Active)"
+        if profile.addOrigin = "paused" then label += " — Pending protection"
         if profile.pinType <> "none" then label += " — PIN"
         choices.push({title: label, action: "edit", id: profile.id})
     end for
@@ -82,6 +83,13 @@ sub showProfileManagementEditor(id as string)
         if profile.id = id
             m.userProfileStore = store
             m.profileManagementTarget = id
+            if profile.addOrigin = "paused"
+                choices = []
+                if not profile.isDefault and m.activeUserScope <> invalid then choices.push({title: "Remove from this Roku", action: "remove"})
+                choices.push({title: "Back", action: "roster"})
+                openProfileManagementChoices(profile.displayName, "Pending protection. Remove this local profile, then add it again after resolving saved addresses.", choices)
+                return
+            end if
             choices = [{title: "Rename", action: "name"}]
             if m.activeUserScope <> invalid and profile.id <> store.active then choices.unshift({title: "Switch to this profile", action: "switch"})
             if profile.userLevel < 10 and m.profileChildAccessReady = true then choices.push({title: "Role: " + profile.role, action: "role"})
@@ -353,6 +361,7 @@ sub showProfileManagementRemoveConfirmation(id as string)
     m.userProfileStore = store
     m.profileManagementRemovalContext = {connection: entry, connectionRoot: m.registry.read("connectionsV1"), store: store, targetId: id, scope: m.activeUserScope, nonce: m.profileManagementNonce, page: m.page}
     message = "Remove this profile from this playlist? Its local data will be removed. Other profiles stay unchanged."
+    if target.addOrigin = "paused" then message = "Remove this pending profile from this Roku only? Other devices stay unchanged."
     if id = store.active then message = "Stop playback and switch to the default profile before removing this profile? The default profile's own access and PIN are required."
     openProfileManagementChoices("Remove " + target.displayName + "?", message, [{title: "Remove", action: "remove-confirm"}, {title: "Cancel", action: "edit", id: id}])
 end sub
