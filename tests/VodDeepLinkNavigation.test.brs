@@ -1,6 +1,7 @@
 sub main()
     checkUnavailableSavedHolderDoesNotResolve()
     checkAacWaitDuringVodLink()
+    checkAacExpiryDuringVodDenial()
     request = normalizeLaunchRequest({contentId: "12", mediaType: "movie", apiKey: "untrusted", url: "https://other.test"})
     fixture()
     m.global.profilegateclosed = true
@@ -76,6 +77,30 @@ sub main()
     beginVodDeepLink(request)
     check(m.created = 1 and m.vodDeepLinkTask.apiKey = "own-key", "Remember off uses the existing verified runtime credential without a disk key")
     print "ALL TESTS PASSED"
+end sub
+
+sub checkAacExpiryDuringVodDenial()
+    for each order in ["expired-before-result", "expired-before-timer", "released-before-expiry"]
+        for each denial in ["missing", "wrong-title"]
+            fixture()
+            deferRequiredAacTune({uuid: "old-live"}, false, false, false)
+            beginVodDeepLink(normalizeLaunchRequest({contentId: "12", mediaType: "movie"}))
+            task = m.vodDeepLinkTask
+            m.aacProfile = {id: "7"}
+            clock = {elapsed: 20000, totalMilliseconds: function() as integer
+                return m.elapsed
+            end function}
+            m.pendingAacTune.clock = clock
+            if order = "released-before-expiry" then clock.elapsed = 19999
+            if order = "expired-before-timer" then processAacWait()
+            result = movieResult()
+            if denial = "missing" then result = {ok: false} else result.item.id = "13"
+            onVodDeepLinkResult(linkEvent(task, result))
+            clock.elapsed = 20000
+            processAacWait()
+            check(m.pendingAacTune = invalid and m.failures = 0 and m.starts = 0 and m.stops = 0, "expired held AAC never restarts or shows a dialog after " + denial + ": " + order)
+        end for
+    end for
 end sub
 
 sub checkAacWaitDuringVodLink()

@@ -10,6 +10,15 @@ sub cancelPlaybackFailure()
 end sub
 
 sub failLivePlayback(code as integer, detail as string)
+    ' The outgoing mini reader does not own an independently admitted Guide
+    ' link. Do not let its teardown or modal invalidate that continuation.
+    if m.mini = true and m.page = "guide" and m.vodDeepLinkTask <> invalid
+        if vodDeepLinkOwnerCurrent(m.vodDeepLinkTask, m.vodDeepLinkOwner)
+            stopPlayback(true)
+            showNotice("Live mini-player stopped while opening this link.")
+            return
+        end if
+    end if
     context = invalid
     if m.playingChannel <> invalid
         context = {channel: m.playingChannel, account: m.accountIdentity, useAac: m.activeAudioProfile <> "", mini: m.mini}

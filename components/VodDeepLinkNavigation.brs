@@ -111,7 +111,7 @@ end function
 sub releaseVodDeepLinkAacWait(allowFallback as boolean)
     if m.pendingAacTune = invalid or m.pendingAacTune.vodHold = invalid then return
     if not m.pendingAacTune.vodHold.waiting then return
-    if allowFallback
+    if allowFallback and not aacWaitExpired(m.pendingAacTune)
         m.pendingAacTune.vodHold.waiting = false
     else
         cancelAacWait()

@@ -1623,8 +1623,8 @@ sub hideBanner()
     updateBufferingIndicator()
 end sub
 
-sub stopPlayback()
-    if m.vodDeepLinkTask <> invalid then cancelVodDeepLink()
+sub stopPlayback(preserveGuideVod = false as boolean)
+    if not preserveGuideVod and m.vodDeepLinkTask <> invalid then cancelVodDeepLink()
     cancelHlsMint()
     if m.settingsHub <> invalid then m.settingsHub.active = false
     m.startMiniAfterPlayback = false

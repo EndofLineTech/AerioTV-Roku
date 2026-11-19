@@ -1248,6 +1248,7 @@ sub runFirstRunVodOnboardingChecks()
             assertEqual(m.vodDeepLinkTask.itemId, "27", "resolver dispatches the original item after " + finishAction)
             assertEqual(m.vodDeepLinkTask.apiKey, "own-key", "continuation still uses only own credential")
             cancelVodDeepLink()
+            if finishAction = "continue" then runGuideVodDuringMiniFailure()
         end if
     end for
     m.global = invalid
@@ -1260,4 +1261,78 @@ sub runFirstRunVodOnboardingChecks()
     m.scopedPreferencesRequired = false
     m.userProfileStore = invalid
     m.profileLaunchResolvedConnection = invalid
+end sub
+
+sub runGuideVodDuringMiniFailure()
+    m.miniFrame = {visible: true}
+    m.playerClock = {control: "start"}
+    m.videoViewport = {}
+    m.transport = {active: false}
+    m.banner = {visible: false}
+    m.bannerTimer = {control: "stop"}
+    m.browser = {active: false}
+    m.playerOptions = {active: false}
+    m.channelTuneTimer = {control: "stop"}
+    m.audioCheck = {control: "stop"}
+    m.sourceWatch = {control: "stop"}
+    m.pictureCover = {visible: false}
+    m.pictureHintTimer = {control: "stop"}
+    m.pictureWakeKey = ""
+    m.heldZap = ""
+    m.heldZapTimer = {control: "stop"}
+    m.activeAudioProfile = ""
+    m.streamReady = false
+    m.guide.isSameNode = function(other as object) as boolean
+        return true
+    end function
+    m.vodDeepLinkTaskFactory = function() as object
+        return {tag: "link", isSameNode: function(other as object) as boolean
+            return other.tag = m.tag
+        end function, observeField: sub(field as string, callback as string)
+        end sub, unobserveField: sub(field as string)
+            m.detached = true
+        end sub}
+    end function
+    for each path in ["reader-error", "viewer-stop", "authority-stop"]
+        m.page = "guide"
+        m.mini = true
+        m.guide.active = true
+        m.guide.visible = true
+        m.playingChannel = {uuid: "old-live", name: "Old live"}
+        m.video = {state: "error", control: "play", content: {programId: "old-live"}, visible: true, errorCode: -4, errorStr: "test reader failure"}
+        m.top.launchRequest = {contentID: "12", mediatype: "movie"}
+        onLaunchRequest()
+        task = m.vodDeepLinkTask
+        assertEqual(task.itemId, "12", "authorized warm input resolves while Guide has a mini-player")
+        if path = "reader-error"
+            onVideoState()
+            assertEqual(task.cancelRequested, invalid, "outgoing mini reader failure cannot cancel a newer owned Guide link")
+            assertEqual(m.vodDeepLinkTask.itemId, "12", "the active resolver survives teardown of the outgoing reader")
+            assertEqual(m.top.dialog, invalid, "outgoing error cannot open a modal that invalidates Guide VOD admission")
+            assertEqual(vodDeepLinkOwnerCurrent(task, m.vodDeepLinkOwner), true, "surviving resolver still passes the original holder and page checks")
+        else
+            if path = "viewer-stop"
+                onGuidePlayerRequest({getRoSGNode: function() as object
+                    return {}
+                end function, getData: function() as string
+                    return "stopPlayer"
+                end function})
+            else
+                m.global.profilegateclosed = true
+                stopPlayback()
+                m.global.profilegateclosed = false
+            end if
+            assertEqual(task.cancelRequested and task.detached, true, "Stop/authority teardown still cancels the resolver")
+            assertEqual(m.vodDeepLinkTask, invalid, "cancelled resolver cannot reclaim Guide")
+        end if
+        assertEqual(m.video.content, invalid, "outgoing live renderer is released in every case")
+        assertEqual(m.page, "guide", "Guide remains active after native reader teardown")
+        onVodDeepLinkResult({node: task, getRoSGNode: function() as object
+            return m.node
+        end function, getData: function() as object
+            return {ok: false}
+        end function})
+        assertEqual(m.vodDeepLinkTask, invalid, "missing or retired callback cannot start anything")
+        assertEqual(m.page, "guide", "missing or retired callback leaves Guide usable")
+    end for
 end sub

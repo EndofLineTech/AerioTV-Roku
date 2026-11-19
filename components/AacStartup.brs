@@ -29,6 +29,10 @@ sub cancelAacWait()
     end if
 end sub
 
+function aacWaitExpired(request as object) as boolean
+    return request.clock.totalMilliseconds() >= 20000
+end function
+
 sub processAacWait()
     request = m.pendingAacTune
     if request = invalid then return
@@ -45,10 +49,10 @@ sub processAacWait()
     end if
     ' Deadline wins over a late result, even if the timer callback was delayed.
     message = ""
-    if request.clock.totalMilliseconds() >= 20000
-        if hold <> invalid and hold.waiting = true
-            ' The older attempt still expires on its original budget, but
-            ' must not open a failure dialog over the newer link.
+    if aacWaitExpired(request)
+        if hold <> invalid
+            ' Even after release, an expired older attempt must not open a
+            ' failure dialog over the link outcome.
             cancelAacWait()
             return
         end if
