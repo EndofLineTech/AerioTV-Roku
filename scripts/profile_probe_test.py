@@ -13,6 +13,18 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 
+PICKER_BASE_ENTRIES = [
+    'manifest', 'source/StartupBeaconModel.brs', 'source/MetadataCacheStore.brs',
+    'components/AerioScene.brs', 'components/ProfilePickerNavigation.brs',
+    'components/GuideView.xml', 'components/GuideView.brs',
+]
+PICKER_DIAGNOSTIC_ENTRIES = [
+    'components/ProfilePinNavigation.brs', 'components/DispatcharrTask.xml',
+    'components/DispatcharrTask.brs', 'source/UserProfileStartupSelection.brs',
+    'source/RequestGateClient.brs', 'source/HttpTransport.brs',
+]
+
+
 class ProfileProbeTest(unittest.TestCase):
     def test_native_keyboard_management_driver_does_not_replace_production_gates(self):
         spec = importlib.util.spec_from_file_location('voice_management', Path(__file__).with_name('test-profile-management-native.py'))
@@ -275,7 +287,8 @@ class ProfileProbeTest(unittest.TestCase):
             normal, output = Path(folder) / 'normal.zip', Path(folder) / 'private.zip'
             with zipfile.ZipFile(normal, 'w') as package:
                 package.writestr('manifest', 'title=AerioTV\n')
-                package.writestr('components/AerioScene.brs', (root / 'components/AerioScene.brs').read_bytes())
+                for name in PICKER_BASE_ENTRIES[1:] + ['components/ProfileServerAdminNavigation.brs']:
+                    package.write(root / name, name)
                 package.writestr('components/ProfileServerAdminTask.brs', production)
             probe.build(output, normal, 'PrivateAdminUiProbe', 'http://example.test', mode='baseline', admin_ui=True)
             with zipfile.ZipFile(output) as package:
@@ -318,8 +331,9 @@ class ProfileProbeTest(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('startup_picker_probe', Path(__file__).with_name('test-profile-picker-launch-native.py'))
         probe = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(probe)
-        names = ['manifest', 'source/Main.brs', 'source/StartupBeaconModel.brs', 'components/AerioScene.xml', 'components/AerioScene.brs', 'components/ProfilePickerNavigation.brs', 'components/ProfilePickerManagementNavigation.brs',
-                 'components/GuideView.xml', 'components/GuideView.brs', 'source/MetadataCacheStore.brs']
+        names = PICKER_BASE_ENTRIES + PICKER_DIAGNOSTIC_ENTRIES + [
+            'source/Main.brs', 'components/AerioScene.xml', 'components/ProfilePickerManagementNavigation.brs',
+        ]
         with tempfile.TemporaryDirectory() as folder:
             normal = Path(folder) / 'normal.zip'
             with zipfile.ZipFile(normal, 'w') as package:
@@ -348,12 +362,7 @@ class ProfileProbeTest(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('protected_child_probe', Path(__file__).with_name('test-profile-picker-launch-native.py'))
         probe = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(probe)
-        names = [
-            'manifest', 'components/AerioScene.brs', 'components/ProfilePickerNavigation.brs',
-            'components/DispatcharrTask.xml', 'components/DispatcharrTask.brs',
-            'source/UserProfileStartupSelection.brs', 'source/RequestGateClient.brs',
-            'source/HttpTransport.brs',
-        ]
+        names = PICKER_BASE_ENTRIES + PICKER_DIAGNOSTIC_ENTRIES
         with tempfile.TemporaryDirectory() as folder:
             normal, control, child = (Path(folder) / f'{mode}.zip' for mode in ('normal', 'child-select', 'child-select-pin'))
             with zipfile.ZipFile(normal, 'w') as package:
@@ -370,6 +379,13 @@ class ProfileProbeTest(unittest.TestCase):
                 for name in names:
                     for uninstrumented in (stock, plain):
                         self.assertNotIn(b'pickerProbe5fif', uninstrumented.read(name), name)
+                        self.assertNotIn(b'"pin-accepted"', uninstrumented.read(name), name)
+                pin = protected.read('components/ProfilePinNavigation.brs').decode()
+                submit = pin.split('sub onProfilePinSubmit', 1)[1].split('end sub', 1)[0]
+                self.assertLess(submit.index('if not checked.verified'), submit.index('m.profileUnlockGrant = {'))
+                self.assertLess(submit.index('m.profileUnlockGrant = {'), submit.index('"pin-accepted"'))
+                self.assertLess(submit.index('"pin-accepted"'), submit.index('onStartupProfilePin(context.resume)'))
+                self.assertIn('if startupSelection and m.pickerProbeMode = "child-select-pin" then print', submit)
                 scene = protected.read('components/ProfilePickerNavigation.brs').decode()
                 start = scene.split('sub startStartupProfileTask', 1)[1].split('end sub', 1)[0]
                 checkpoints = ['"scene-admission"', 'task = CreateObject("roSGNode", kind)', '"task-created"',
@@ -395,6 +411,87 @@ class ProfileProbeTest(unittest.TestCase):
                     for line in protected.read(name).decode().splitlines():
                         if '"kind": "startup-diagnostic"' in line or 'kind: "startup-diagnostic"' in line:
                             self.assertNotRegex(re.sub(r'"[^"]*"', '""', line), r'(?i)\b(?:url|hash|salt|pin|apiKey|password|nonce|username|userId|identity|ticket|snapshot|root)\b')
+
+    def test_optimized_picker_builder_rejects_bad_inputs_before_publishing(self):
+        import sys
+
+        root = Path(__file__).resolve().parent.parent
+        script = root / 'scripts/test-profile-picker-launch-native.py'
+        command = (
+            'import runpy, sys; from pathlib import Path; '
+            'runpy.run_path(sys.argv[1])["build"](Path(sys.argv[2]), Path(sys.argv[3]), '
+            '"DisposablePicker", "http://fixture.test", "child-select-pin")'
+        )
+        entry = 'source/HttpTransport.brs'
+        anchor = b'    if not started then result.error = "network"'
+        with tempfile.TemporaryDirectory() as folder:
+            normal, output = (Path(folder) / name for name in ('normal.zip', 'probe.zip'))
+            for case, expected in [
+                ('missing entry', b'required ZIP entry'),
+                ('duplicate entry', b'required ZIP entry'),
+                ('missing anchor', b'found 0'),
+                ('duplicate anchor', b'found 2'),
+            ]:
+                with self.subTest(case=case):
+                    with zipfile.ZipFile(normal, 'w') as package:
+                        for name in PICKER_BASE_ENTRIES + PICKER_DIAGNOSTIC_ENTRIES:
+                            body = (root / name).read_bytes()
+                            if name == entry:
+                                if case == 'missing entry':
+                                    continue
+                                if case == 'duplicate entry':
+                                    with self.assertWarns(UserWarning):
+                                        package.writestr(name, body)
+                                        package.writestr(name, body)
+                                    continue
+                                body = body.replace(anchor, b'' if case == 'missing anchor' else anchor + b'\n' + anchor)
+                            package.writestr(name, body)
+                    output.write_bytes(b'prior artifact')
+                    args = [sys.executable, '-O', '-c', command, str(script), str(output), str(normal)]
+                    failed = subprocess.run(args, capture_output=True)
+                    self.assertNotEqual(failed.returncode, 0)
+                    self.assertIn(expected, failed.stderr)
+                    self.assertIn(entry.encode(), failed.stderr)
+                    self.assertEqual(output.read_bytes(), b'prior artifact')
+                    output.unlink()
+                    failed = subprocess.run(args, capture_output=True)
+                    self.assertNotEqual(failed.returncode, 0)
+                    self.assertFalse(output.exists())
+                    self.assertCountEqual(Path(folder).iterdir(), [normal])
+
+    def test_protected_picker_diagnostics_are_filtered_before_echo_and_report(self):
+        spec = importlib.util.spec_from_file_location('protected_child_output', Path(__file__).with_name('test-profile-picker-launch-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        valid = {'kind': 'startup-diagnostic', 'stage': 'task-state', 'state': 'done', 'owned': True}
+        dirty = {**valid, 'other': {'arbitrary': 'DO_NOT_RETAIN'}}
+        broker = {'kind': 'startup-diagnostic', 'stage': 'scene-broker-snapshot', 'allowed': False, 'verdict': 'broker-not-ready'}
+        legacy = {'kind': 'phase', 'phase': 'authenticate', 'no_actor': True}
+        def line(event):
+            return '[picker-launch] ' + json.dumps(event) + '\n'
+        samples = [
+            'untrusted leader ' + line(dirty), line(legacy), line(broker),
+            line({**broker, 'verdict': 'DO_NOT_RETAIN'}),
+            line({**broker, 'stage': 'permit-decision'}),
+            line({**valid, 'stage': 'DO_NOT_RETAIN'}),
+            line({**valid, 'state': ['DO_NOT_RETAIN']}),
+            line({**valid, 'state': 'DO_NOT_RETAIN'}),
+            line({**valid, 'owned': 1}),
+            line({k: v for k, v in valid.items() if k != 'owned'}),
+            '[picker-launch] {"kind":"startup-diagnostic","stage":DO_NOT_RETAIN}\n',
+            '[picker-launch]{"kind":"startup-diagnostic","stage":"DO_NOT_RETAIN"}\n',
+            '[picker-launch] {"kind":"startup-diagnostic","kind":"phase","other":"DO_NOT_RETAIN"}\n',
+            line({'kind': 'startup-diagnostic', 'stage': 'pin-accepted', 'other': 'DO_NOT_RETAIN'}),
+        ]
+        report = {'events': []}
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            for sample in samples:
+                probe.record_picker_output(report, sample, protected=True)
+        self.assertEqual(report['events'], [valid, legacy, broker, {'kind': 'startup-diagnostic', 'stage': 'pin-accepted'}])
+        self.assertEqual(output.getvalue().splitlines(), report['output'])
+        self.assertNotIn('DO_NOT_RETAIN', json.dumps(report))
+        self.assertNotIn('untrusted leader', output.getvalue())
+        self.assertIn(line(legacy).strip(), report['output'])
 
     def test_switch_back_probe_checks_the_dialog_before_confirming_removal(self):
         root = Path(__file__).resolve().parent.parent

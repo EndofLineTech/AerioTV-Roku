@@ -1,5 +1,6 @@
 """Qualify private normal-app startup selection with isolated HTTP and registry."""
 import argparse
+from collections import Counter
 import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib.util
@@ -19,6 +20,104 @@ import uuid
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
+PICKER_PREFIX = "[picker-launch] "
+PICKER_ENTRIES = (
+    "manifest", "components/AerioScene.brs", "components/ProfilePickerNavigation.brs",
+    "components/GuideView.brs", "components/GuideView.xml", "source/MetadataCacheStore.brs",
+    "source/StartupBeaconModel.brs",
+)
+PROTECTED_PICKER_ENTRIES = (
+    "components/ProfilePinNavigation.brs", "components/DispatcharrTask.brs",
+    "components/DispatcharrTask.xml", "source/UserProfileStartupSelection.brs",
+    "source/RequestGateClient.brs", "source/HttpTransport.brs",
+)
+GATE_VERDICTS = (
+    "allowed", "credential-held", "parked", "capacity", "invalid-context",
+    "stale-session", "gate-unavailable", "other",
+)
+DIAGNOSTIC_FIELDS = {
+    "pin-accepted": {},
+    "scene-admission": {"context_present": bool, "task_present": bool, "picker_owned": bool},
+    "target-role": {"allowed": bool},
+    "task-created": {"created": bool},
+    "before-run": {"owned": bool, "context_current": bool},
+    "run-returned": {},
+    "task-state": {"state": ("run", "done", "stop", "init", "other"), "owned": bool},
+    "task-entry": {"cancelled": bool},
+    "storage-current": {"owned": bool, "protected_check": bool},
+    "scene-broker-snapshot": {
+        "allowed": bool,
+        "verdict": GATE_VERDICTS + (
+            "broker-missing", "broker-not-ready", "snapshot-unavailable", "credential-digest-unavailable",
+        ),
+    },
+    "broker-missing": {},
+    "broker-not-ready": {},
+    "broker-ready": {},
+    "credential-digest-unavailable": {},
+    "broker-no-reply": {},
+    "acquire-enter": {},
+    "permit-decision": {"verdict": GATE_VERDICTS},
+    "transfer-start": {"started": bool},
+}
+
+
+def picker_event_fields(pairs):
+    fields = dict(pairs)
+    if len(fields) != len(pairs):
+        raise ValueError("Duplicate picker event fields")
+    return fields
+
+
+def sanitized_picker_diagnostic(event):
+    stage = event.get("stage")
+    fields = DIAGNOSTIC_FIELDS.get(stage) if type(stage) is str else None
+    if fields is None:
+        return None
+    safe = {"kind": "startup-diagnostic", "stage": stage}
+    for name, allowed in fields.items():
+        value = event.get(name)
+        if allowed is bool:
+            if type(value) is not bool:
+                return None
+        elif type(value) is not str or value not in allowed:
+            return None
+        safe[name] = value
+    return safe
+
+
+def record_picker_output(report, line, *, protected):
+    """The native runner's stdout is a private pipe. Filter before public output."""
+    _, prefix, payload = line.partition(PICKER_PREFIX.rstrip() if protected else PICKER_PREFIX)
+    event = None
+    if prefix and (protected or payload.startswith("{")):
+        if protected:
+            try:
+                event = json.loads(payload, object_pairs_hook=picker_event_fields)
+            except (ValueError, RecursionError):
+                return None
+            if not isinstance(event, dict) or not isinstance(event.get("kind"), str):
+                return None
+        else:
+            event = json.loads(payload)
+        if event.get("kind") == "startup-diagnostic":
+            if not protected:
+                return None
+            event = sanitized_picker_diagnostic(event)
+            if event is None:
+                return None
+            line = PICKER_PREFIX + json.dumps(event, separators=(",", ":")) + "\n"
+    print(line, end="", flush=True)
+    report.setdefault("output", []).append(line.rstrip())
+    if event is not None:
+        report["events"].append(event)
+    return event
+
+
+def require_patch_anchor(name, body, anchor):
+    count = body.count(anchor)
+    if count != 1:
+        raise ValueError(f"{name}: expected a unique patch anchor, found {count}")
 
 
 def await_back_ack(report, completed):
@@ -89,7 +188,7 @@ def instrument_protected_child_picker(name, body):
     def edit(anchor, replacement):
         nonlocal body
         anchor = anchor.encode()
-        assert body.count(anchor) == 1, (name, anchor)
+        require_patch_anchor(name, body, anchor)
         body = body.replace(anchor, replacement.encode(), 1)
 
     if name == "components/ProfilePickerNavigation.brs":
@@ -130,6 +229,16 @@ sub onStartupProfileState(event as object)
         end if
     end if
     if not owned then return''')
+    elif name == "components/ProfilePinNavigation.brs":
+        anchor = '''    if not checked.verified
+        updateProfilePinFeedback(checked)
+        return
+    end if
+    profile = context.profile
+    m.profileUnlockGrant = {slot: context.slot, id: profile.id, pinType: profile.pinType, pinHash: profile.pinHash, pinSalt: profile.pinSalt}
+'''
+        edit(anchor, anchor + '''    if startupSelection and m.pickerProbeMode = "child-select-pin" then print "[picker-launch] "; FormatJson({kind: "startup-diagnostic", stage: "pin-accepted"})
+''')
     elif name == "components/DispatcharrTask.xml":
         edit('  <interface>', '  <interface>\n    <field id="pickerProbe5fif" type="boolean" value="false" />')
     elif name == "components/DispatcharrTask.brs":
@@ -229,20 +338,54 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
     if (phone_verify or phone_import or profile_media) and not baseline_accounts:
         raise ValueError("Phone verification needs private authorized test accounts")
     ordinary_live = baseline_accounts and not (admin_ui or phone_verify or phone_import or profile_media)
-    with zipfile.ZipFile(normal) as original, zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as package:
+    required = list(PICKER_ENTRIES)
+    if mode == "child-select-pin":
+        required.extend(PROTECTED_PICKER_ENTRIES)
+    if mode in ("back", "cold-link"):
+        required.append("source/Main.brs")
+    if mode == "back":
+        required.append("components/AerioScene.xml")
+    if mode == "reorder":
+        required.append("components/ProfilePickerManagementNavigation.brs")
+    if ordinary_live:
+        required.append("source/HttpTransport.brs")
+    if admin_ui:
+        required.extend(("components/ProfileServerAdminTask.brs", "components/ProfileServerAdminNavigation.brs"))
+    if phone_import:
+        required.extend(("components/DispatcharrSyncWriteTask.brs", "components/DispatcharrTask.brs"))
+    if profile_media:
+        required.extend(("components/DvrView.xml", "components/DvrView.brs", "components/OnDemandPlayer.xml", "components/OnDemandPlayer.brs"))
+    if profile_vod:
+        required.extend(("components/VodView.xml", "components/VodView.brs"))
+    with zipfile.ZipFile(normal) as original:
+        entries = Counter(original.namelist())
+        for name in dict.fromkeys(required):
+            if entries[name] != 1:
+                raise ValueError(f"{name}: expected one required ZIP entry, found {entries[name]}")
+        # Work beside the destination for an atomic publish after every patch
+        # validates and the ZIP closes. Do not expose a half-instrumented ZIP.
+        with tempfile.TemporaryDirectory(prefix=".picker-probe-", dir=Path(path).parent) as directory:
+            candidate = Path(directory) / "probe.zip"
+            write_picker_archive(candidate, original, section, base, mode, baseline_accounts, ordinary_live, admin_ui, phone_verify, phone_import, phone_import_add, profile_media, peer_envelope, peer_material, profile_vod, vod_title, vod_year)
+            candidate.replace(path)
+
+
+def write_picker_archive(path, original, section, base, mode, baseline_accounts, ordinary_live, admin_ui, phone_verify, phone_import, phone_import_add, profile_media, peer_envelope, peer_material, profile_vod, vod_title, vod_year):
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as package:
         for name in original.namelist():
             body = original.read(name)
             if name == "manifest":
+                require_patch_anchor(name, body, b"title=AerioTV\n")
                 body = body.replace(b"title=AerioTV\n", b"title=Aerio Startup Picker Probe\n")
                 body += b"\naeriotv_picker_launch_probe=1\n"
                 if mode == "baseline":
                     body += b"\naeriotv_profiles_baseline=1\n"
             elif name == "source/MetadataCacheStore.brs":
-                assert body.count(b'"cachefs:/aeriotv-metadata-v1"') == 1
+                require_patch_anchor(name, body, b'"cachefs:/aeriotv-metadata-v1"')
                 body = body.replace(b'"cachefs:/aeriotv-metadata-v1"', b'"tmp:/picker-launch-cache"')
             elif name == "source/HttpTransport.brs" and ordinary_live:
                 anchor = b"    method = ucase(method)"
-                assert body.count(anchor) == 1
+                require_patch_anchor(name, body, anchor)
                 body = body.replace(anchor, anchor + b'''
     ' Private qualification permits authenticating only at the token route.
     if method <> "GET" or body <> invalid or checkedJson <> invalid
@@ -256,20 +399,21 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
             elif name == "components/AerioScene.brs":
                 source = body.decode()
                 if mode.startswith("child-"):
-                    assert source.count('    m.profileChildAccessReady = false') == 1
+                    require_patch_anchor(name, source, '    m.profileChildAccessReady = false')
                     source = source.replace('    m.profileChildAccessReady = false', '    m.profileChildAccessReady = true', 1)
-                assert source.count("m.profilePickerReady = false") == 1
+                require_patch_anchor(name, source, "m.profilePickerReady = false")
                 source = source.replace("m.profilePickerReady = false", "m.profilePickerReady = true", 1)
                 target = '    m.registry = CreateObject("roRegistrySection", "AerioTV")'
-                assert source.count(target) == 1
+                require_patch_anchor(name, source, target)
                 source = source.replace(target, f'    m.registry = CreateObject("roRegistrySection", "{section}")\n    seedProfilePickerLaunchProbe({json.dumps(base)}, {json.dumps(mode)})', 1)
                 if phone_import:
                     # Protected synthetic phone imports must never upload their
                     # fixture PIN/roster to the real approved accounts.
                     anchor = f'    seedProfilePickerLaunchProbe({json.dumps(base)}, {json.dumps(mode)})'
+                    require_patch_anchor(name, source, anchor)
                     source = source.replace(anchor, anchor + '\n    m.profileSyncWriterReady = false\n    m.profileSyncSchedulingReady = false', 1)
                 target = "sub onLaunchRequest()\n    if m.profileStartupDeferred = true then return\n"
-                assert source.count(target) == 1
+                require_patch_anchor(name, source, target)
                 source = source.replace(target, target + '''    if m.top.launchRequest.pickerProbeSubmit = "1"
         m.pickerProbeSubmit = true
         return
@@ -280,10 +424,10 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
     end if
 ''', 1)
                 target = '    if not welcome\n        if deferUserProfileLaunch() then return\n        launchGate = selectedUserProfileGate()'
-                assert source.count(target) == 1
+                require_patch_anchor(name, source, target)
                 if mode == "back":
                     target = "            cancelStartupProfileTask()\n            closeUserProfileLaunchPicker()\n            m.top.exitRequested = true"
-                    assert source.count(target) == 1
+                    require_patch_anchor(name, source, target)
                     source = source.replace(target, target.replace("            m.top.exitRequested", "            verifyStartupPickerProbeCancel()\n            m.top.exitRequested"), 1)
                 fixture = (ROOT / "tests/native/ProfilePickerLaunchFixture.brs").read_text()
                 if admin_ui:
@@ -306,6 +450,7 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
                 body = (source + "\n" + fixture).encode()
             elif name == "components/ProfileServerAdminTask.brs" and admin_ui:
                 text = body.decode()
+                require_patch_anchor(name, text, "function profileAdminRequest(")
                 start = text.index("function profileAdminRequest(")
                 end = text.index("end function", start) + len("end function")
                 text = text[:start] + (ROOT / "tests/native/ProfileServerAdminTransportFixture.brs").read_text() + text[end:]
@@ -314,11 +459,12 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
                 # The normal baseline now has qualified Sync. Phone fixtures
                 # carry test PINs and must remain read-only even after consent.
                 line = b'    if CreateObject("roAppInfo").getValue("aeriotv_profiles_baseline") = "1" then m.syncWriterReady = true'
+                require_patch_anchor(name, body, line)
                 body = body.replace(line, b"    ' Private phone qualification never enables PUT.", 1)
             elif name == "components/DispatcharrTask.brs" and phone_import:
                 text = body.decode()
                 target = 'sub publishError(message as string, relogin = false as boolean, apiAccessRequired = false as boolean)\n'
-                assert text.count(target) == 1
+                require_patch_anchor(name, text, target)
                 text = text.replace(target, target + '''    status = 0
     category = ""
     if type(m.httpFailure) = "roAssociativeArray"
@@ -331,34 +477,35 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
             elif name == "components/ProfileServerAdminNavigation.brs" and admin_ui:
                 text = body.decode()
                 target = '    if result.ok <> true then finishProfileServerAdminUi(textValue(result.reason)) : return'
-                assert text.count(target) == 1
+                require_patch_anchor(name, text, target)
                 text = text.replace(target, '    if result.ok <> true then print "[picker-launch] "; FormatJson({kind: "admin-ui-error", operation: context.operation, reason: result.reason})\n' + target)
                 body = text.encode()
             elif name == "components/AerioScene.xml" and mode == "back":
+                require_patch_anchor(name, body, b"<interface>")
                 body = body.replace(b"<interface>", b'<interface><field id="pickerProbeCancelPassed" type="boolean" value="false" />', 1)
             elif name == "source/Main.brs" and mode == "back":
                 target = b"                    screen.close()\n"
-                assert body.count(target) == 1
+                require_patch_anchor(name, body, target)
                 body = body.replace(target, b'                    passed = scene.pickerProbeCancelPassed\n' + target + b'                    print "[picker-launch] "; FormatJson({kind: "result", passed: passed, exited: true})\n', 1)
             elif name == "source/Main.brs" and mode == "cold-link":
                 target = b'    if type(args) = "roAssociativeArray" then scene.launchRequest = args'
-                assert body.count(target) == 1
+                require_patch_anchor(name, body, target)
                 body = body.replace(target, b'    scene.launchRequest = {contentId: "missing-fixture-id", mediaType: "live"}', 1)
             elif name == "source/StartupBeaconModel.brs":
                 for beacon in ["AppDialogInitiate", "AppDialogComplete", "AppLaunchComplete"]:
                     target = f'    m.top.signalBeacon("{beacon}")'.encode()
-                    assert body.count(target) == 1
+                    require_patch_anchor(name, body, target)
                     body = body.replace(target, f'    print "[picker-launch] "; FormatJson({{kind: "beacon", name: "{beacon}"}})\n'.encode() + target, 1)
             elif name == "components/ProfilePickerNavigation.brs":
                 if mode == "identity":
                     target = b"sub beginStartupProfileSelection(targetId as string, ownPin = invalid as dynamic)\n"
-                    assert body.count(target) == 1
+                    require_patch_anchor(name, body, target)
                     body = body.replace(target, target + b"    if m.pickerProbeSelectionCount = invalid then m.pickerProbeSelectionCount = 0\n    m.pickerProbeSelectionCount++\n", 1)
                 target = b"    m.profilePicker = picker\n"
-                assert body.count(target) == 1
+                require_patch_anchor(name, body, target)
                 body = body.replace(target, target + b"    m.pickerProbePickerCount++\n", 1)
                 target = b"    m.profileStartupTask = task\n"
-                assert body.count(target) == 1
+                require_patch_anchor(name, body, target)
                 phase_event = b'    print "[picker-launch] "; FormatJson({kind: "phase", phase: phase, no_actor: m.activeUserScope = invalid, empty_key: m.apiKey = ""})\n'
                 if mode == "import-pin":
                     phase_event = b'''    freshRead = false
@@ -371,22 +518,25 @@ def build(path, normal, section, base, mode="plain", baseline_accounts=None, adm
                 body = body.replace(target, target + b'    m.pickerProbeTask = task\n' + phase_event, 1)
                 if mode == "back":
                     target = b"        m.top.exitRequested = true\n"
-                    assert body.count(target) == 1
+                    require_patch_anchor(name, body, target)
                     body = body.replace(target, b"        verifyStartupPickerProbeCancel()\n" + target, 1)
             elif name == "components/ProfilePickerManagementNavigation.brs" and mode == "reorder":
                 target = b"    m.profilePickerReorderContext = context\n"
-                assert body.count(target) == 1
+                require_patch_anchor(name, body, target)
                 body = body.replace(target, target + b'    print "[picker-launch] "; FormatJson({kind: "reorder-held", passed: m.profilePickerReorderDialog = invalid and m.top.dialog = invalid and m.activeUserScope = invalid and m.apiKey = "" and m.profileStartupTask = invalid})\n', 1)
             elif name == "components/GuideView.xml":
+                require_patch_anchor(name, body, b"</interface>")
                 body = body.replace(b"</interface>", b'<function name="profilePickerProbeLineup" /><function name="profilePickerProbeRole" /></interface>', 1)
             elif name == "components/GuideView.brs":
                 body += b'\nfunction profilePickerProbeLineup() as string\n    if type(m.channels) <> "roArray" then return ""\n    if m.channels.count() = 0 then return ""\n    return m.channels[0].id\nend function\n'
                 body += b'\nfunction profilePickerProbeRole() as string\n    return m.userRole\nend function\n'
             elif name == "components/VodView.xml" and profile_vod:
+                require_patch_anchor(name, body, b"</interface>")
                 body = body.replace(b"</interface>", b'<function name="profileVodAcceptanceState" /><function name="profileVodAcceptanceAction" /></interface>', 1)
             elif name == "components/VodView.brs" and profile_vod:
                 body += b"\n" + vod_view_fixture(vod_title, vod_year).encode()
             elif name == "components/DvrView.xml" and profile_media:
+                require_patch_anchor(name, body, b"</interface>")
                 body = body.replace(b"</interface>", b'<function name="profileMediaAcceptanceRow" /></interface>', 1)
             elif name == "components/DvrView.brs" and profile_media:
                 body += b'''
@@ -398,6 +548,7 @@ function profileMediaAcceptanceRow() as object
 end function
 '''
             elif name == "components/OnDemandPlayer.xml" and profile_media:
+                require_patch_anchor(name, body, b"</interface>")
                 body = body.replace(b"</interface>", b'<function name="profileMediaAcceptanceState" /></interface>', 1)
             elif name == "components/OnDemandPlayer.brs" and profile_media:
                 body += b'''
@@ -640,12 +791,9 @@ def main():
     try:
         process = subprocess.Popen(["python3", "scripts/run-native-probe.py", str(archive), "--prefix", "[picker-launch]", "--marker", '"kind":"result"', "--timeout", "180" if baseline_accounts else "75"], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         for line in process.stdout:
-            print(line, end="", flush=True)
-            report.setdefault("output", []).append(line.rstrip())
-            if "[picker-launch] {" not in line:
+            event = record_picker_output(report, line, protected=args.mode == "child-select-pin" and not args.baseline)
+            if event is None:
                 continue
-            event = json.loads(line.split("[picker-launch] ", 1)[1])
-            report["events"].append(event)
             if event["kind"] == "profile-vod-visual":
                 image = str(Path(args.report).with_suffix(f'.account-{event["account"]}-{event["view"]}.jpg'))
                 captured = subprocess.run(["python3", "scripts/capture-roku-screenshot.py", "--developer-mode", "--output", image], cwd=ROOT, capture_output=True, timeout=40)
