@@ -84,7 +84,29 @@ and late-write behavior, and public-access/platform verification. The current
 scope does not convert controlled or missing results from that plan into
 live passes, nor does it close the separate parity tracks.
 
-## Actual remaining boundaries
+## Parent epic acceptance at the `7f2eb06` checkpoint
+
+Beads records all 20 direct child records (`d85` and `.1`–`.19`) as closed, while
+`AerioTV-Roku-mrr` remains **in progress**. The child closures do not establish
+the parent's broader acceptance. `mrr.11` tracks rather than blocks on
+`e3e.7` and `e3e.8`; those tracks were not waived or accepted by closing
+`mrr.11`. The rows below reconcile the parent criteria without changing them.
+
+| Parent criterion | Evidence at this checkpoint | Where the remaining work belongs |
+| --- | --- | --- |
+| Preserve isolated VOD/DVR visual fixes; obtain separate authenticated evidence | `d85`, `.2`, `.3` and `dgt` are closed. `dgt` supplies representative authenticated Dispatcharr overlay and item-action evidence; `.11` adds populated playback before/after own-user switching and the scoped owner report. | No missing bounded Dispatcharr acceptance or need to repeat it. Broader provider/device or independent physical picture/audio evidence is not implied; wider compatibility belongs to `e3e.25` and needs suitable providers and devices. |
+| Preserve default credentials, migration and target-own identity, permissions and state; fence stale callbacks, held addresses, rejected keys and 429 parks | `.4`, `.6`, `.7`, `.14`, `.15` and bounded `.18` establish local storage, admission, request gates, early roster and authority boundaries. `ajp9` establishes live **same-origin** matched-ID replacement and cold PIN admission; changed-origin safety has controlled evidence only. | No identified missing bounded Roku implementation. Full changed-origin and broader import cases stay in `e3e.8`, using authorized live Dispatcharr origins/accounts for live evidence. No live server-admin mutation was needed for `.18` or is implied here. |
+| Enforce imported PIN and Child protection before public switching | `.5`, `.8`, `.9`, `.10` and `.19` establish import/verify, protected admission and the owner-reported native voice pass. All-Directions management has native controller evidence. | Do not repeat accepted testing or infer public/Store access approval. New salt, new Device Admin and kid-only onboarding remain outside the phase. Store access/certification, including any required household evidence, is separate. |
+| Qualify strict JSON/PUT, per-user keys and legacy handling before writing | `.13`/`e3e.3` establish strict native transport, own canonical keys and conservative legacy read-only fallback. Both own accounts' Profiles-only writes, acknowledgements and readbacks passed; unsupported data was preserved. | `e3e.6`/`.7` own non-Profile adapters, wider category/scope and migration verification, and named peer **Sync** round trips. The 0.3.103 capacity changes and read-only control tests are not fresh live PUT or peer evidence. |
+| Test Apple **and** Android senders | Both pinned unmodified encoders passed against the normal v0.3.102 receiver and live Dispatcharr in separate adult/Child runs. The owner reported iOS use; the exact physical build and same-LAN result were not recorded. | No unresolved normal QR/protocol delivery blocker. `e3e.5`/`.8` own wider provider, partial/error and onboarding evidence; physical Android was deferred to Beta users. Same-LAN Bonjour requires a suitable LAN and phones, and lifecycle removal has its own `e3e.2.9.1` record. Encoder passes are not physical phone UI passes. |
+| Record all nine section 20 dispositions or tested safe deferrals | `.17` records the phase decisions (see [contract](PROFILES-CONTRACT.md)): import-only PINs, `roku`, four profiles per slot, Connection placement, no new Device Admin/kid-only onboarding, interim protected-default refusal, scoped settings, default-PIN Child deep links and bounded Directions testing. Later `.19` and the non-blocking receiver-entropy disposition below supersede the relevant developer-phase notes. | Do not reopen entropy assurance as a blocker or claim shared-spec approval, public Directions certification or authenticated Dashboard verification from the phase decisions. Runtime OS 14.6 enforcement is not evidence of the configured Store minimum. |
+| Document implementation and native/automated evidence and obtain explicit parent acceptance | The closed evidence supports the accepted Profiles-only Beta; the scoped decision and subsequent versioned packaging do not accept the whole parent or authorize Store submission. | Reuse the existing parity and Store tracks. The owner must explicitly decide whether to close the parent with the documented boundaries or keep the broader criterion in scope and await its evidence. No new Roku task or acceptance change follows solely from the closed-child count. |
+
+No new device or external verification was performed for this reconciliation.
+See the [reliability evidence audit](RELIABILITY-GUIDE-INVESTIGATION.md#historical-reliability-evidence-audit)
+for open incidents and what would distinguish their causes.
+
+## Remaining boundaries of the approved phase
 
 ### Final seven-item audit
 
