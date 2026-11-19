@@ -61,6 +61,7 @@ sub checkPhoneSetupBackAfterPartialSave()
     entry = normalizeConnectionEntry({id: "new", name: "Imported", provider: "dispatcharr", url: "https://new.example.test", remember: true})
     values = {connectionsV1: FormatJson({schema: 1, selected: entry.id, entries: [entry]})}
     values[userProfileImportKey(entry.id)] = "fixture-journal"
+    m.phoneFailedImport = {slot: entry.id, root: "fixture-journal", restartRequired: false}
     m.registry = {values: values, read: function(key as string) as string
         return textValue(m.values[key])
     end function, exists: function(key as string) as boolean
@@ -72,10 +73,28 @@ sub checkPhoneSetupBackAfterPartialSave()
     check(m.registry.exists(userProfileImportKey(entry.id)) and not m.phoneSetup.active, "opening recovery never discards the fence or leaves the receiver running")
 
     resetImportTest()
+    m.phoneFailedImport = {slot: entry.id, root: "fixture-journal", restartRequired: true}
+    m.recoverySlot = ""
+    onPhoneSetupClosed()
+    check(m.recoverySlot = "" and m.restartRequired and m.apiKey = "" and not m.drewSetup, "a failed rollback requires restart even when the journal remains readable")
+
+    resetImportTest()
+    m.phoneFailedImport = {slot: entry.id, root: "fixture-journal", restartRequired: false}
     m.registry.values.delete(userProfileImportKey(entry.id))
     m.recoverySlot = ""
     onPhoneSetupClosed()
-    check(m.recoverySlot = "" and m.page = "setup" and m.apiKey = "old-runtime-key", "non-import recovery flag alone does not trigger incomplete-import recovery")
+    check(m.recoverySlot = "" and m.restartRequired and m.apiKey = "" and not m.drewSetup, "a missing journal cannot send a partially saved playlist back to ordinary setup")
+
+    resetImportTest()
+    m.phoneFailedImport = {slot: entry.id, root: "fixture-journal", restartRequired: false}
+    m.registry.values[userProfileImportKey(entry.id)] = ""
+    onPhoneSetupClosed()
+    check(m.recoverySlot = "" and m.restartRequired and m.apiKey = "" and not m.drewSetup, "an existing journal with an empty read cannot be discarded")
+
+    resetImportTest()
+    m.phoneRecoveryRequired = true
+    onPhoneSetupClosed()
+    check(m.recoverySlot = "" and not m.restartRequired and m.drewSetup and m.apiKey = "old-runtime-key", "non-import recovery flag alone does not trigger incomplete-import recovery")
     m.phoneRecoveryRequired = false
 end sub
 
@@ -91,6 +110,10 @@ function showIncompletePhoneImportRecovery() as boolean
     m.recoverySlot = m.selectedConnectionId
     return true
 end function
+
+sub coverProfileManagementRecovery(message as string)
+    m.restartRequired = instr(1, message, "Restart AerioTV") > 0
+end sub
 
 sub checkPhoneReopenAfterPinAdmission()
     resetImportTest()
@@ -200,6 +223,9 @@ sub showNotice(message as string)
 end sub
 
 sub resetImportTest()
+    m.phoneFailedImport = invalid
+    m.restartRequired = false
+    m.drewSetup = false
     m.page = "phoneSetup"
     m.phoneOriginPage = "setup"
     m.phoneClock = {control: "start"}
@@ -229,6 +255,7 @@ function fakeImportTask() as object
 end function
 
 sub drawSetup()
+    m.drewSetup = true
 end sub
 
 sub drawWelcome()

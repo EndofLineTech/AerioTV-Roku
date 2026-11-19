@@ -98,9 +98,14 @@ sub onPhoneProfileVerification(event as object)
     startPhoneVerification()
 end sub
 
-sub failPhoneProfileImport(message as string)
+sub failPhoneProfileImport(message as string, restartRequired = false as boolean)
     committed = false
-    if type(m.phoneProfileImport) = "roAssociativeArray" then committed = m.phoneProfileImport.saved <> invalid
+    if type(m.phoneProfileImport) = "roAssociativeArray"
+        committed = m.phoneProfileImport.saved <> invalid
+        if committed
+            m.phoneFailedImport = {slot: m.phoneProfileImport.connection.id, root: m.phoneProfileImport.saved.importRoot, restartRequired: restartRequired}
+        end if
+    end if
     retirePhoneProfileImport()
     m.phonePending = invalid
     failPhoneSetup(message)
@@ -108,6 +113,7 @@ sub failPhoneProfileImport(message as string)
         m.phoneRecoveryRequired = true
         m.phoneSetup.retryAvailable = false
         m.phoneSetup.phase = "Profile import is incomplete. The saved playlist remains locked pending recovery."
+        if restartRequired then m.phoneSetup.phase = "Profile import could not be restored. Press Back for recovery."
     end if
 end sub
 
@@ -208,7 +214,7 @@ sub finishPhoneProfileCommit()
     end for
     batch = {nonce: context.nonce, connection: entry, connectionRoot: context.connectionRoot, store: context.previous, rows: context.rows, proofs: context.proofs, ids: ids, deviceAdmin: context.deviceAdmin, importRoot: context.saved.importRoot}
     applied = commitPhoneSetupProfileBatch(m.registry, batch, CreateObject("roDateTime").asSeconds(), context.nonce)
-    if not applied.ok then failPhoneProfileImport("Profile import did not finish.") : return
+    if not applied.ok then failPhoneProfileImport("Profile import did not finish.", applied.recoveryRequired = true) : return
     context.skipped = applied.skipped
     context.sessionKeys = applied.keys
     context.saved.profiles = applied.store
@@ -348,6 +354,7 @@ sub onIncompletePhoneImportRecovery(event as object)
     m.selectedConnectionId = saved.connections.selected
     applySelectedConnection()
     m.phoneRecoveryRequired = false
+    m.phoneFailedImport = invalid
     m.profileUnlockGrant = invalid
     m.pendingLaunch = invalid
     m.global.profilegateclosed = false

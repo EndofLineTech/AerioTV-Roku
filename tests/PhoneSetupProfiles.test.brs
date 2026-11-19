@@ -76,6 +76,7 @@ sub main()
     end function, exists: function(key as string) as boolean
         return m.values.doesExist(key)
     end function, write: function(key as string, value as string) as boolean
+        if lcase(key) = textValue(m.failRestoreKey) then return false
         m.values[key] = value
         return true
     end function, delete: function(key as string) as boolean
@@ -112,6 +113,7 @@ sub main()
     recovered = commitPhoneSetupProfileBatch(registry, context, 100, nonce)
     check(recovered.ok and not registry.exists(userProfileImportKey(entry.id)) and loadUserProfileStore(registry, entry.id).profiles[0].pinType = "numbers", "metadata own keys and fence removal share the second Flush")
     checkPhoneSetupRememberOffCommit(registry, entry, ids, rows, proofs, nonce)
+    if m.phoneProfileRootHasher <> invalid then checkPhoneSetupRollbackFailure(registry, entry, proofs, nonce)
     currentConnections = loadConnectionStore(registry)
     held = phoneSetupHoldMatchedAddress(registry, currentConnections, entry.id, "https://other.example.test")
     check(held.ok and held.store.addressChangeSnapshot.userId = 1 and held.store.profiles[1].addressHeld, "matched new origin snapshots the old recorded default and holds nondefault users before authentication")
@@ -142,6 +144,31 @@ sub main()
     discarded = phoneSetupDiscardIncompleteImport(registry, loadConnectionStore(registry), entry.id, interrupted.importRoot)
     check(discarded.ok and discarded.connections.entries.count() = 0 and registry.read("connKey_slot-a") = "", "discard of an incomplete new slot removes that slot and its key: " + textValue(discarded.reason))
     print "ALL TESTS PASSED"
+end sub
+
+sub checkPhoneSetupRollbackFailure(registry as object, entry as object, proofs as object, nonce as string)
+    originalValues = registry.values
+    previous = defaultConnectionStore()
+    registry.values = {connectionsV1: FormatJson(previous)}
+    staged = {schema: 1, selected: entry.id, entries: [entry]}
+    fenced = phoneSetupCommitFencedConnection(registry, previous, staged, proofs.alice.apiKey, nonce)
+    check(fenced.ok, "rollback fixture first commits the real protected slot transaction")
+    m.registry = registry
+    m.phoneSetup = {retryAvailable: true}
+    m.phoneProfileImport = {nonce: nonce, connection: entry, connectionRoot: registry.read("connectionsV1"), previous: defaultUserProfileStore(entry.id), rows: [], proofs: copyJson(proofs), saved: fenced}
+    m.phonePending = {entry: entry}
+    m.phoneResult = {apiKey: proofs.alice.apiKey}
+    registry.failNextFlush = true
+    registry.failRestoreKey = lcase(userProfileImportKey(entry.id))
+    before = registry.flushes
+    finishPhoneProfileCommit()
+    check(registry.flushes = before + 2 and not registry.exists(registry.failRestoreKey), "the actual phase-two Flush failed and only the journal restoration write failed; flushes=" + (registry.flushes - before).toStr() + "; journal=" + registry.exists(registry.failRestoreKey).toStr())
+    failure = m.phoneFailedImport
+    check(failure <> invalid, "the actual phase-two controller retains failed import state after retiring the transient context")
+    check(failure.slot = entry.id and failure.root = fenced.importRoot and failure.restartRequired, "the phase-two controller propagates rollback recoveryRequired for the exact failed slot and journal")
+    check(m.phoneProfileImport = invalid and m.phonePending = invalid and m.phoneResult = invalid and not m.phoneSetup.retryAvailable, "rollback failure retires credentials and refuses setup retry")
+    registry.failRestoreKey = invalid
+    registry.values = originalValues
 end sub
 
 sub checkPhoneSetupRememberOffCommit(registry as object, entry as object, ids as object, rows as object, proofs as object, nonce as string)
@@ -179,4 +206,10 @@ end sub
 
 sub check(passed as boolean, message as string)
     if not passed then print "FAIL: "; message : stop
+end sub
+
+sub failPhoneSetup(message as string)
+    m.phoneResult = invalid
+    m.phoneSetup.phase = message
+    m.phoneSetup.retryAvailable = true
 end sub

@@ -256,8 +256,10 @@ sub closePhoneSetupDialog()
 end sub
 
 sub onPhoneSetupClosed()
-    incomplete = false
-    if type(m.phoneProfileImport) = "roAssociativeArray" then incomplete = m.phoneProfileImport.saved <> invalid
+    incomplete = m.phoneFailedImport
+    if type(m.phoneProfileImport) = "roAssociativeArray"
+        if m.phoneProfileImport.saved <> invalid then incomplete = {slot: m.phoneProfileImport.connection.id, root: m.phoneProfileImport.saved.importRoot, restartRequired: false}
+    end if
     if m.phoneProfileImport <> invalid or m.phoneProfileVerifyTask <> invalid then retirePhoneProfileImport()
     closePhoneSetupDialog()
     stopPhoneVerification()
@@ -265,19 +267,23 @@ sub onPhoneSetupClosed()
     m.phoneSetup.visible = false
     m.phonePending = invalid
     m.phoneResult = invalid
-    if not incomplete and m.phoneRecoveryRequired = true and m.page = "phoneSetup"
-        ' Phase-two failure can retire the in-memory import before Back. The
-        ' selected slot's durable journal still owns incomplete-save recovery.
-        savedConnections = loadConnectionStore(m.registry)
-        key = userProfileImportKey(savedConnections.selected)
-        if key <> "" then incomplete = m.registry.exists(key)
-    end if
-    if incomplete
+    if type(incomplete) = "roAssociativeArray" and m.page = "phoneSetup"
         resetConnectionRuntime()
-        m.connectionStore = loadConnectionStore(m.registry)
-        m.selectedConnectionId = m.connectionStore.selected
-        applySelectedConnection()
-        showIncompletePhoneImportRecovery()
+        ' Only offer discard for the same readable journal on the same slot.
+        ' An unsuccessful rollback leaves registry state uncertain in this run.
+        if not incomplete.restartRequired
+            connections = loadConnectionStore(m.registry)
+            key = userProfileImportKey(incomplete.slot)
+            if connections.readOnly <> true and connections.selected = incomplete.slot and key <> "" and incomplete.root <> ""
+                if m.registry.exists(key) and m.registry.read(key) = incomplete.root
+                    m.connectionStore = connections
+                    m.selectedConnectionId = incomplete.slot
+                    applySelectedConnection()
+                    if showIncompletePhoneImportRecovery() then return
+                end if
+            end if
+        end if
+        coverProfileManagementRecovery("Phone setup storage needs recovery. Restart AerioTV before using saved connections.")
         return
     end if
     if m.page <> "phoneSetup" then return
