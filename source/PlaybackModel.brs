@@ -235,6 +235,11 @@ function playbackFailureText(code as integer, detail as string) as string
     if refusal = "connection-limit" then reason = "The server or provider connection limit was reached. Stop another session before trying again."
     if refusal = "authentication" then reason = "The media request was not authorized. Check the account and server permissions."
     if refusal = "rate-limit" then reason = "The media server is limiting requests. Wait before trying again."
+    ' Video can report a status without exposing the HTTP headers or body.
+    ' Give useful guidance, but do not infer a connection limit or retry delay.
+    if refusal = "" and CreateObject("roRegex", "(http[^0-9]{0,24}|response code[^0-9]{0,16})503\b", "i").isMatch(detail)
+        reason = "The media server is temporarily unavailable. Wait before trying again."
+    end if
     if instr(1, lcase(detail), "full-content response on a range request") > 0
         reason = "The server returned a continuous stream to a byte-range request. The playback transport is incompatible."
     end if
