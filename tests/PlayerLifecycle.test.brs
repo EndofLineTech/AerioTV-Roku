@@ -169,6 +169,29 @@ sub main()
     assertEqual(m.playerOptions.active, false, "star does not open app options")
     openPlayerOptions()
     assertEqual(m.playerOptions.menu.title, "AerioTV player options", "clearly branded app menu")
+    m.playingChannel.id = "4"
+    m.capabilities.switchStreams = "allowed"
+    m.channelFacts = normalizeChannelCapabilities([{id: 4, uuid: "a", effective_is_radio: true}])
+    m.video.content.isSameNode = function(other as object) as boolean
+        return other.programId = m.programId
+    end function
+    m.sourceWatch = {control: "start"}
+    m.sourceWatchState = {content: m.video.content, ticks: 0, stalls: 0, previous: {audio: 1.0, video: 1.0}}
+    m.video.positionInfo = {audio: 4.0, video: 1.0}
+    checkSourceVideo()
+    assertEqual(m.sourceWatchState.stalls, 0, "radio audio without video does not count as a picture stall")
+    openPlayerOptions()
+    assertEqual(playerOptionsHasAction("recoverPicture"), false, "Dispatcharr radio detail hides picture-only control")
+    recoverFrozenPicture()
+    assertEqual(m.video.content.programId, "a", "stale picture-recovery selection does not reopen declared radio")
+    m.channelFacts = normalizeChannelCapabilities([{id: 4, uuid: "a", effective_is_radio: false}])
+    m.video.positionInfo = {audio: 7.0, video: 1.0}
+    checkSourceVideo()
+    assertEqual(m.sourceWatchState.stalls, 1, "ordinary video still detects frozen picture during audio progress")
+    m.sourceWatchState = invalid
+    openPlayerOptions()
+    assertEqual(playerOptionsHasAction("recoverPicture"), true, "ordinary video retains picture recovery")
+    m.capabilities.switchStreams = "denied"
     m.capabilities.dvr = "manage"
     openPlayerOptions()
     assertEqual(m.playerOptions.menu.items[0].action, "recordCurrent", "authorized player offers current-program recording")
@@ -509,6 +532,13 @@ function lifecycleRetryContent(serial as integer) as object
     end function, clone: function(deep as boolean) as object
         return lifecycleRetryContent(m.serial + 1)
     end function}
+end function
+
+function playerOptionsHasAction(action as string) as boolean
+    for each item in m.playerOptions.menu.items
+        if item.action = action then return true
+    end for
+    return false
 end function
 
 sub assertEqual(actual as dynamic, expected as dynamic, label as string)

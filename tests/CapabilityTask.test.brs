@@ -16,6 +16,8 @@ sub main()
             if m.top.result.verifiedUser.username <> m.top.result.accountUsername or m.top.result.verifiedBaseUrl <> "https://example.test" then stop
             if mode = "ready" or mode = "username-case"
                 if m.top.profileResult.state <> "ready" or m.top.profileResult.profile.id <> "7" then stop
+                if not channelDeclaredRadio({id: "4", uuid: "fixture-radio"}, m.top.result.channelFacts) then stop
+                if channelDeclaredRadio({id: "5", uuid: "fixture-video"}, m.top.result.channelFacts) then stop
             else if mode = "missing"
                 if m.top.profileResult.state <> "unavailable" then stop
             else
@@ -61,5 +63,6 @@ end function
 
 function requestPages(path as string) as dynamic
     m.profileSeenBeforeFacts = m.top.profileResult <> invalid
-    return []
+    if path <> "/api/channels/channels/?page=1&page_size=200" then stop
+    return [{id: 4, uuid: "fixture-radio", effective_is_radio: true}, {id: 5, uuid: "fixture-video", effective_is_radio: false}]
 end function

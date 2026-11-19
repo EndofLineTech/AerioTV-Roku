@@ -17,6 +17,18 @@ sub main()
     facts = normalizeChannelCapabilities([{id: 1, is_catchup: true, catchup_days: 99}, {id: 2, is_catchup: false, catchup_days: 7}])
     assertEqual(facts["1"].catchupDays, 30, "retention cap")
     assertEqual(facts["2"].catchupDays, 0, "disabled catchup")
+    facts = normalizeChannelCapabilities([
+        {id: 1, uuid: "radio-uuid", is_radio: false, effective_is_radio: true}
+        {id: 2, uuid: "video-uuid", is_radio: true, effective_is_radio: false}
+        {id: 3, uuid: "old-uuid"}
+    ])
+    assertEqual(channelDeclaredRadio({id: "1", uuid: "radio-uuid", isRadio: false}, facts), true, "channel details supply radio flag when summary omits it")
+    assertEqual(channelDeclaredRadio({id: "2", uuid: "video-uuid", isRadio: true}, facts), false, "current effective detail with matching identity supersedes earlier summary")
+    assertEqual(channelDeclaredRadio({id: "1", uuid: "different-uuid", isRadio: false}, facts), false, "numeric ID alone cannot attach detail metadata")
+    assertEqual(channelDeclaredRadio({id: "3", uuid: "old-uuid", isRadio: true}, facts), true, "missing detail flag does not replace summary")
+    assertEqual(channelDeclaredRadio({id: "xc-1", uuid: "xc-1", isRadio: true}, {}), true, "direct feed classification needs no detail lookup")
+    assertEqual(channelDeclaredRadio({id: "1", uuid: "radio-uuid", isRadio: true}, invalid), true, "summary classification applies before detail lookup")
+    assertEqual(channelDeclaredRadio(invalid, facts), false, "no active channel cannot be radio")
     choices = normalizeStreamChoices([{id: 10, name: "Provider A", url: "https://provider/a/secret"}, {id: 11, name: "Provider B", url: "https://provider/b/secret"}], {stream_id: 11, url: "https://provider/a/secret"})
     assertEqual(choices[0].active, true, "exact URL confirms source despite stale stream ID")
     assertEqual(choices[1].reported, true, "reported source is labeled separately")

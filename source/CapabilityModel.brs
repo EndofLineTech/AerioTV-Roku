@@ -96,10 +96,30 @@ function normalizeChannelCapabilities(rows as dynamic) as object
             catchup = false
             if type(row.is_catchup) = "Boolean" or type(row.is_catchup) = "roBoolean" then catchup = row.is_catchup
             if not catchup then days = 0
-            if id <> "" then result[id] = {catchupDays: days}
+            if id <> ""
+                fact = {catchupDays: days}
+                radio = dispatcharrRadioFlag(row)
+                if radio <> invalid
+                    fact.uuid = textValue(row.uuid)
+                    fact.isRadio = radio
+                end if
+                result[id] = fact
+            end if
         end if
     end for
     return result
+end function
+
+function channelDeclaredRadio(channel as dynamic, facts as dynamic) as boolean
+    if type(channel) <> "roAssociativeArray" then return false
+    uuid = textValue(channel.uuid)
+    if type(facts) = "roAssociativeArray" and uuid <> ""
+        fact = facts[textValue(channel.id)]
+        if fact <> invalid
+            if fact.uuid = uuid and fact.isRadio <> invalid then return fact.isRadio
+        end if
+    end if
+    return channel.isRadio = true
 end function
 
 function sourceClientSnapshot(status as dynamic) as dynamic

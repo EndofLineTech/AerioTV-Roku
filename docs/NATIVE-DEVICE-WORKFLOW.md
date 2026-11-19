@@ -128,6 +128,23 @@ sanitized symptom.
 - Current outstanding acceptance: `docs/PHYSICAL-TESTING-CURRENT.txt`.
 - Completed historical Live TV/VOD evidence: `docs/PHYSICAL-VALIDATION-CURRENT.txt`
   and `docs/WORKSHEET-RECONCILIATION-0.3.28.md`.
+
+### Declared radio channels
+
+On an approved test account, use an existing declared audio-only station and a
+working video channel as the control. Record the provider, declared flag, media
+container and audio codec without saving credentials, stream URLs or raw account
+payloads. If a provider account has no representative station, record that case
+as untested rather than marking a live channel as radio to produce a fixture.
+
+For Dispatcharr, let the background channel detail request finish after
+connecting; the lean guide summary can omit radio flags. Tune the station,
+listen for sustained audio, and use Hold OK to confirm an account that normally
+offers **Recover frozen picture** does not offer it on this station. Switch to
+ordinary video and confirm picture, audio and the usual recovery option. For M3U
+and Xtream, repeat the audio/video checks on existing `radio="true"` and
+`stream_type: "radio_streams"` entries. Record codec-specific results: a
+recognized declaration is not proof that Roku can decode the feed.
 - Required baseline path: setup/reconnect, populated guide, tune a known-working
   channel, verify now/next, exercise player Options, then Back/minimize and
   return to the guide.

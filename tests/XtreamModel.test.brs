@@ -9,7 +9,11 @@ sub main()
     assertEqual(xtreamEscape("p@ss/word"), "p%40ss%2Fword", "credential path delimiters encoded")
     assertEqual(xtreamCredentialsValid("viewer", "é"), false, "unsupported non-ASCII credential rejected without misencoding")
     categories = [{category_id: "7", category_name: "Local"}]
-    streams = [{stream_id: 19, name: "Alpha TV", num: 2, epg_channel_id: "2", category_id: "7", stream_icon: "https://unrelated.test/icon.png", tv_archive: 1, tv_archive_duration: 45}]
+    streams = [
+        {stream_id: 19, name: "Alpha TV", stream_type: "live", num: 2, epg_channel_id: "2", category_id: "7", stream_icon: "https://unrelated.test/icon.png", tv_archive: 1, tv_archive_duration: 45}
+        {stream_id: 20, name: "Station", stream_type: "radio_streams", category_id: "7"}
+        {stream_id: 21, name: "Radio News TV", category_id: "7"}
+    ]
     lineup = xtreamLiveLineup(streams, categories, "https://example.test", "viewer", "must-not-publish")
     assertEqual(lineup.ok, true, "authorized live lineup mapped")
     assertEqual(lineup.channels[0].uuid, "xc-19", "stable stream identity")
@@ -20,6 +24,9 @@ sub main()
     assertEqual(lineup.channels[0].logoId, "", "remote artwork is not a Dispatcharr ID")
     assertEqual(lineup.channels[0].logoUrl, "https://unrelated.test/icon.png", "Xtream stream_icon retained for isolated artwork loading")
     assertEqual(lineup.channels[0].archiveDays, 30, "advertised archive retention bounded without enabling unsupported playback")
+    assertEqual(lineup.channels[0].isRadio, false, "live stream remains video")
+    assertEqual(lineup.channels[1].isRadio, true, "radio_streams row in get_live_streams")
+    assertEqual(lineup.channels[2].isRadio, false, "no radio inference from name")
     assertEqual(xtreamLiveLineup([{stream_id: "bad/id", name: "Invalid"}], categories, "https://example.test", "viewer", "pass").ok, false, "unsafe stream IDs rejected")
     assertEqual(xtreamLiveLineup(streams, categories, "https://user:pass@example.test", "viewer", "pass").ok, false, "credentialed base URL rejected")
     print "ALL TESTS PASSED"

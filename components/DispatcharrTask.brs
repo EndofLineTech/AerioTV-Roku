@@ -151,7 +151,8 @@ sub loadChannels()
     selection = profileSelectionIdentity(selectedIds, "")
     scope = metadataCacheDigest(m.base + "|" + textValue(user.id) + "|profile:" + selection)
     generation = metadataCacheDigest(FormatJson(rows))
-    cached = metadataCacheRead(scope, "channels", "summary", generation, CreateObject("roDateTime").asSeconds(), requestGateAccessAllowed(m.base, m.key))
+    ' Older normalized summary cache entries did not preserve radio flags.
+    cached = metadataCacheRead(scope, "channels", "summary-v2", generation, CreateObject("roDateTime").asSeconds(), requestGateAccessAllowed(m.base, m.key))
     channels = []
     if cached.state = "fresh" then channels = cached.payload
     seen = {}
@@ -165,7 +166,7 @@ sub loadChannels()
             end if
         end if
     end for
-    if cached.state <> "fresh" then metadataCacheWrite(scope, "channels", "summary", generation, CreateObject("roDateTime").asSeconds(), channels)
+    if cached.state <> "fresh" then metadataCacheWrite(scope, "channels", "summary-v2", generation, CreateObject("roDateTime").asSeconds(), channels)
     rows = invalid
     warning = ""
     ' EPG mappings hydrate separately after the authorized lineup becomes usable.

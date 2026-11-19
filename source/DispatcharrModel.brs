@@ -202,7 +202,18 @@ function normalizeChannel(raw as dynamic) as dynamic
         groupId: groupId, tvgId: textValue(effectiveChannelValue(raw, "tvg_id"))
         epgId: textValue(effectiveChannelValue(raw, "epg_data_id"))
         epgKey: "", logoId: textValue(effectiveChannelValue(raw, "logo_id"))
+        isRadio: dispatcharrRadioFlag(raw) = true
     }
+end function
+
+' Keep absent distinct from false so a sparse detail row cannot override a
+' declared value from the authorized summary.
+function dispatcharrRadioFlag(raw as object) as dynamic
+    for each field in ["effective_is_radio", "is_radio"]
+        value = raw[field]
+        if type(value) = "Boolean" or type(value) = "roBoolean" then return value
+    end for
+    return invalid
 end function
 
 function serverGroupOrder(groups as object) as object

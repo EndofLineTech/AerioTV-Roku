@@ -1,20 +1,20 @@
 ' Small URL-based live playlists. Raw feed and stream URLs stay in Task/Scene
 ' memory for this session and are never written to registry or metadata cache.
-function m3uAttribute(line as string, name as string) as string
+function m3uAttribute(line as string, name as string, options = "" as string) as string
     quote = chr(34)
-    parts = CreateObject("roRegex", "(^|\s)" + name + "=" + quote + "([^" + quote + "]{0,256})" + quote, "").match(line)
+    parts = CreateObject("roRegex", "(^|\s)" + name + "=" + quote + "([^" + quote + "]{0,256})" + quote, options).match(line)
     if parts.count() <> 3 then return ""
     return parts[2]
 end function
 
-function m3uDisplayName(line as string) as string
+function m3uExtinfSeparator(line as string) as integer
     quoted = false
     for i = 1 to len(line)
         character = mid(line, i, 1)
         if character = chr(34) then quoted = not quoted
-        if character = "," and not quoted then return mid(line, i + 1).trim()
+        if character = "," and not quoted then return i
     end for
-    return ""
+    return 0
 end function
 
 function m3uStreamUrl(url as string) as string
@@ -55,7 +55,9 @@ function m3uParsePlaylist(body as string) as object
         else if line <> "" and left(line, 1) <> "#" and pending <> ""
             url = m3uStreamUrl(line)
             if url = "" then return failure
-            name = m3uDisplayName(pending)
+            separator = m3uExtinfSeparator(pending)
+            name = ""
+            if separator > 0 then name = mid(pending, separator + 1).trim()
             if name = "" then name = m3uAttribute(pending, "tvg-name")
             if name = "" then return failure
             id = m3uChannelId(url)
@@ -72,7 +74,10 @@ function m3uParsePlaylist(body as string) as object
                 end if
                 number = m3uAttribute(pending, "tvg-chno")
                 if number = "" then number = (channels.count() + 1).toStr()
-                channels.push({id: id, uuid: id, name: left(name, 120), number: left(number, 12), groupId: groupId, tvgId: left(m3uAttribute(pending, "tvg-id"), 128), epgId: "", epgKey: left(m3uAttribute(pending, "tvg-id"), 128), logoId: "", streamUrl: url})
+                attributes = pending
+                if separator > 0 then attributes = left(pending, separator - 1)
+                radio = lcase(m3uAttribute(attributes, "radio", "i").trim()) = "true"
+                channels.push({id: id, uuid: id, name: left(name, 120), number: left(number, 12), groupId: groupId, tvgId: left(m3uAttribute(pending, "tvg-id"), 128), epgId: "", epgKey: left(m3uAttribute(pending, "tvg-id"), 128), logoId: "", streamUrl: url, isRadio: radio})
                 seenChannels[id] = true
             end if
             pending = ""

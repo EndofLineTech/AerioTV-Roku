@@ -142,7 +142,8 @@ function sleepTimerLabel(deadline as integer, now as integer) as string
     return ((remaining + 59) \ 60).toStr() + " min remaining"
 end function
 
-function sourceVideoStalled(previous as dynamic, current as dynamic) as boolean
+function sourceVideoStalled(previous as dynamic, current as dynamic, declaredRadio = false as boolean) as boolean
+    if declaredRadio then return false
     if type(previous) <> "roAssociativeArray" or type(current) <> "roAssociativeArray" then return false
     if previous.audio = invalid or current.audio = invalid or previous.video = invalid or current.video = invalid then return false
     if current.audio <= previous.audio + 0.5 then return false

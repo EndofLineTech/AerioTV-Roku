@@ -1903,7 +1903,7 @@ sub openPlayerOptions(kind = "main" as string)
         if catchupChannelDays(m.capabilities.catchup, m.channelFacts, textValue(m.playingChannel.id)) > 0 then items.unshift({title: "Rewind history (provider)", action: "rewindHistory"})
     end if
     if m.capabilities.switchStreams = "allowed"
-        items.unshift({title: "Recover frozen picture (this player)", action: "recoverPicture"})
+        if not channelDeclaredRadio(m.playingChannel, m.channelFacts) then items.unshift({title: "Recover frozen picture (this player)", action: "recoverPicture"})
         role = currentUserSettingsRole()
         if role = "user" or role = "admin" then items.unshift({title: "Switch stream source", action: "sourceMenu"})
     else if m.capabilities.switchStreams = "unknown"
@@ -2495,7 +2495,7 @@ sub checkSourceVideo()
     end if
     state.ticks++
     if m.video.state = "playing" and not m.pictureCover.visible
-        if sourceVideoStalled(state.previous, m.video.positionInfo) then state.stalls++ else state.stalls = 0
+        if sourceVideoStalled(state.previous, m.video.positionInfo, channelDeclaredRadio(m.playingChannel, m.channelFacts)) then state.stalls++ else state.stalls = 0
     else
         state.stalls = 0
     end if
@@ -2512,6 +2512,7 @@ end sub
 
 sub recoverFrozenPicture()
     if m.playingChannel = invalid or m.video.content = invalid or m.recoveryTask <> invalid then return
+    if channelDeclaredRadio(m.playingChannel, m.channelFacts) then return
     m.sourceWatch.control = "stop"
     m.sourceWatchState = invalid
     m.recoveryContent = m.video.content

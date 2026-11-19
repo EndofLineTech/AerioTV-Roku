@@ -118,6 +118,11 @@ cumulative summary, verification boundaries and remaining Beta limitations.
 - **Server DVR:** browse, schedule, manage and play permitted Dispatcharr
   recordings, including guarded resume and supported growing files. No local
   recording service is added.
+- **Declared radio channels:** Roku recognizes provider radio labels from
+  Dispatcharr, M3U (`radio="true"`) and Xtream (`radio_streams`). It skips
+  frozen-picture recovery for those channels without changing the live
+  player or transport. This does not add Radio Mode, radio editing, or
+  support for additional codecs; radio playback on Roku is not yet verified.
 - **Presentation:** source-informed pill navigation, poster-led VOD, rounded
   settings and player controls, appearance/text preferences, a first-run welcome
   screen, and model-tested guide density/visibility settings.
