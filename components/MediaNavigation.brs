@@ -517,6 +517,9 @@ sub saveArchiveBookmarkProgress(progress as dynamic, force = false as boolean)
     if catchupRequestWindow(program, days, now, context.requestShiftMinutes, xc) = invalid then return
     position = int(progress.position + context.bookmarkOffset)
     completed = position >= program.endsAt - program.startsAt
+    ' An early sample after a minute-rounded resume can fall below the
+    ' bookmark floor; ignore it rather than treating it like a reset.
+    if not completed and position < catchupBookmarkMinSeconds() then return
     if not (force or completed or progress.closing = true)
         if progress.state = context.lastBookmarkState and context.lastBookmarkWrite > now - 15 then return
     end if

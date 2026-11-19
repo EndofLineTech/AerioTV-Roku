@@ -16,6 +16,10 @@ function catchupBookmarkMatches(row as object, channelUuid as string, program as
     return row.channelUuid = channelUuid and row.startsAt = program.startsAt and row.endsAt = program.endsAt
 end function
 
+function catchupBookmarkMinSeconds() as integer
+    return 60
+end function
+
 function catchupBookmarks(raw as dynamic, now as integer) as object
     rows = []
     if type(raw) <> "roArray" then return rows
@@ -24,7 +28,7 @@ function catchupBookmarks(raw as dynamic, now as integer) as object
             uuid = textValue(row.channelUuid)
             if uuid <> "" and len(uuid) <= 128 and mediaNumber(row.position) and mediaNumber(row.expiresAt)
                 if row.expiresAt > now and catchupEligible(row, 30, now)
-                    if row.position >= 60 and row.position < row.endsAt - row.startsAt
+                    if row.position >= catchupBookmarkMinSeconds() and row.position < row.endsAt - row.startsAt
                         rows.push({channelUuid: uuid, startsAt: row.startsAt, endsAt: row.endsAt, position: int(row.position), expiresAt: row.expiresAt})
                         if rows.count() >= 20 then exit for
                     end if

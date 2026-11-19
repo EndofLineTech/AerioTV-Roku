@@ -127,6 +127,35 @@ sub testXtreamSlotArchive()
     onArchiveRequested(archiveEvent)
     expected = xtreamArchiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, m.xcTimezone, m.archiveContext.channel, program, uiNow(), 30)
     if m.mediaPlayer.request.url <> expected or m.mediaPlayer.request.programStart <> program.startsAt then stop
+
+    ' The first resume minute begins at 0:17 for this :43 airing. Going
+    ' Back after six native seconds must not erase the saved 1:03 bookmark.
+    early = {node: m.mediaPlayer, value: {mode: "catchup", account: "account", identity: m.mediaPlayer.request.identity, position: 106, state: "playing"}, getData: archiveEvent.getData, getRoSGNode: archiveEvent.getRoSGNode}
+    onMediaProgress(early)
+    if catchupFindBookmark(m.accountPreferences.archiveBookmarks, "xc-19", program, uiNow()).position <> 63 then stop
+    m.page = "guide"
+    archiveEvent.value.bookmarkAction = "resume"
+    onArchiveRequested(archiveEvent)
+    if m.archiveContext.bookmarkOffset <> 17 then stop
+    beforeBack = m.registry.data
+    early.value.identity = m.mediaPlayer.request.identity
+    early.value.position = 6
+    early.value.state = "stopped"
+    early.value.closing = true
+    m.mediaPlayer.progress = early.value
+    onMediaClosed(early)
+    if m.page <> "guide" or m.registry.data <> beforeBack
+        print "FAIL: early Back after rounded Resume should preserve the stored bookmark"
+        stop
+    end if
+    if catchupFindBookmark(m.accountPreferences.archiveBookmarks, "xc-19", program, uiNow()).position <> 63 then stop
+    archiveEvent.value.bookmarkAction = "startOver"
+    onArchiveRequested(archiveEvent)
+    if m.mediaPlayer.request.offset <> 0 then stop
+    if catchupFindBookmark(m.accountPreferences.archiveBookmarks, "xc-19", program, uiNow()) <> invalid then stop
+    archiveEvent.value.delete("bookmarkAction")
+    m.mediaPlayer.progress = invalid
+
     seekEvent = {node: m.mediaPlayer, value: {target: 125}, getData: archiveEvent.getData, getRoSGNode: archiveEvent.getRoSGNode}
     m.selectedConnectionId = "other"
     onArchiveSeek(seekEvent)
