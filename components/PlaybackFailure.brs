@@ -20,7 +20,11 @@ sub failLivePlayback(code as integer, detail as string)
 end sub
 
 sub showPlaybackFailure(code as integer, detail as string)
-    dialog = CreateObject("roSGNode", "AerioDialog")
+    if m.playbackFailureDialogFactory <> invalid
+        dialog = m.playbackFailureDialogFactory()
+    else
+        dialog = CreateObject("roSGNode", "AerioDialog")
+    end if
     dialog.title = "Unable to play this channel"
     dialog.message = playbackFailureText(code, sanitizePlaybackDiagnostic(detail, m.apiKey))
     dialog.buttons = ["Return to guide"]

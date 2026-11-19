@@ -10,7 +10,9 @@ they do not start media transfers or issue provider requests.
   budgets. A midstream replacement does not get a fresh startup retry budget.
   An already paused reader is not treated as stalled. A Pause or Resume command
   issued while guarded picture recovery is waiting for its bridge now wins over
-  the pause state captured before the command.
+  the pause state captured before the command. Dedicated Resume (`playonly`)
+  uses the same intent handling with or without the picture hidden; it can
+  cancel a pending pause before Video acknowledges it.
 - An API-key refusal does not trigger password re-login. The request broker
   parks on 429 and honors bounded Retry-After for requests it sees. This is not
   a promise to observe Retry-After from the native Video reader. Native HTTP 503
@@ -44,12 +46,18 @@ they do not start media transfers or issue provider requests.
   Automatic startup or midstream retry now queues one bounded close for the
   previous token and separately mints from the original entry URL (including
   its selected audio profile). Video waits for the replacement capability.
+  A replacement can ignore one immediate `finished` before Video reports
+  progress; later finishes and startup errors still go through normal failure
+  handling, and a reader that stays stopped still has a bounded watchdog.
   A late successful mint is closed with its captured owner and cannot replace
   the current reader. These are app-side assertions, not observations of new
   HTTP 204 responses. The request gate can still decline a close.
 - Pause and minimize do not close the current session. A guarded picture
   recovery is a local decoder restart against the same owned capability,
-  not a new tune. No shared-channel or other-client stop is sent.
+  not a new tune. It cannot open a pending mint entry, even from an already
+  open Options menu, and an owned bridge uses only the current profile's
+  captured playlist and owner credentials. No shared-channel or other-client
+  stop is sent.
 - [Historical native evidence](UPLOAD-CANDIDATE-0.3.95.md) covers a compatible
   test server, native `playing`, and owner DELETE 204 on explicit retune/Stop.
   It does not qualify the new remint flow on-device, TV-side picture/audio,

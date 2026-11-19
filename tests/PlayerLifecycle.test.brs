@@ -542,6 +542,7 @@ sub main()
     assertEqual(flushTask.apiKey, "", "cancelled outgoing flush clears captured own credentials")
     checkRecoveryReadyRadioClassification()
     checkOwnedHlsRetryLifecycle()
+    checkOwnedHlsStartupFailureBoundaries()
     print "ALL TESTS PASSED"
 end sub
 
@@ -612,9 +613,47 @@ sub checkRecoveryReadyRadioClassification()
     assertEqual(m.video.control, "pause", "viewer pauses before bridge readiness")
     onRecoveryReady(ready)
     assertEqual(m.recoveryPausePending, true, "decoder replacement preserves the new pause request")
+
+    for each hidden in [false, true]
+        m.top = {dialog: invalid}
+        m.page = "player"
+        m.pictureCover = {visible: hidden}
+        m.pictureWakeKey = ""
+        m.playerOptions = {active: false}
+        m.browser = {active: false}
+        m.transport = {active: false}
+        m.heldZap = ""
+        m.profileSwitchContext = invalid
+        m.recoveryIssued = false
+        m.recoveryPausePending = false
+        m.video.state = "playing"
+        m.recoveryPaused = false
+        m.recoveryContent = m.video.content
+        togglePause()
+        assertEqual(m.video.control, "pause", "manual Pause queues while Video still reports playing")
+        assertEqual(onKeyEvent("playonly", true), true, "playonly handled in the player")
+        assertEqual(m.video.control, "resume", "playonly supersedes pending Pause before Video ack")
+        onRecoveryReady(ready)
+        assertEqual(m.recoveryPausePending, false, "decoder replacement honors playonly before ack")
+
+        m.recoveryIssued = false
+        m.recoveryPaused = true
+        m.video.state = "paused"
+        m.recoveryContent = m.video.content
+        assertEqual(onKeyEvent("playonly", true), true, "playonly handles acknowledged pause")
+        assertEqual(m.video.control, "resume", "playonly resumes paused Video")
+        onRecoveryReady(ready)
+        assertEqual(m.recoveryPausePending, false, "decoder replacement does not reapply pause after playonly")
+
+        m.recoveryPausePending = true
+        m.recoveryPaused = true
+        assertEqual(onKeyEvent("playonly", true), true, "playonly updates the already issued replacement")
+        assertEqual(m.recoveryPausePending, false, "playonly cancels deferred pause on replacement")
+        assertEqual(m.video.control, "play", "playonly does not overwrite replacement startup control")
+    end for
 end sub
 
-sub checkOwnedHlsRetryLifecycle()
+sub resetOwnedHlsFixture()
     m.hlsSessionTaskFactory = function() as object
         m.hlsTestSerial++
         return {id: m.hlsTestSerial, cancelRequested: false, observeField: sub(field as string, callback as string)
@@ -626,12 +665,22 @@ sub checkOwnedHlsRetryLifecycle()
         end function}
     end function
     m.hlsTestSerial = 0
+    m.hlsMintTask = invalid
+    m.hlsSession = invalid
+    m.top = {dialog: invalid}
+    m.playbackFailureDialogFactory = function() as object
+        return {observeField: sub(field as string, callback as string)
+        end sub, unobserveField: sub(field as string)
+        end sub}
+    end function
     m.global = {activeusersession: "hls-test-owner"}
     m.baseUrl = "https://example.test"
     m.apiKey = "fixture-key"
     m.page = "player"
     m.playingChannel = {uuid: "a", name: "Local fixture"}
-    m.video = {control: "stop", state: "none", pauseBufferOverflow: false, content: lifecycleRetryContent(10)}
+    m.video = {control: "stop", state: "none", pauseBufferOverflow: false, content: lifecycleRetryContent(10), setFocus: function(focused as boolean) as boolean
+        return true
+    end function}
     for each field in ["heldZapTimer", "pictureHintTimer", "sourceWatch", "playerClock", "channelTuneTimer", "bannerTimer", "audioCheck"]
         m[field] = {control: "stop"}
     end for
@@ -653,13 +702,54 @@ sub checkOwnedHlsRetryLifecycle()
     m.streamReady = false
     m.pendingChannel = invalid
     m.heldZap = ""
+    m.accountIdentity = "fixture-account"
+    m.devicePreferences = normalizeDevicePreferences(invalid)
+    m.accountPreferences = normalizeAccountPreferences(invalid)
+    m.channelFacts = {}
+    m.liveSession = invalid
+    m.recordedChannel = m.playingChannel.uuid
+    m.serverAccountId = ""
+    m.sleepDeadline = 0
+    m.video.globalCaptionMode = "Off"
+end sub
+
+sub checkOwnedHlsRetryLifecycle()
+    resetOwnedHlsFixture()
     entry = "https://example.test/proxy/ts/stream/fixture?output_format=hls&output_profile=7"
+    legacy = "https://example.test/proxy/ts/stream/fixture?output_format=mpegts"
+    m.video.content.url = legacy
+    m.playbackBridgeTaskFactory = m.hlsSessionTaskFactory
+    m.capabilities = {switchStreams: "allowed"}
+    recoverFrozenPicture()
+    assertEqual(m.recoveryTask.url, legacy, "legacy TS bridge passes through the current reader URL")
+    cancelPictureRecovery()
+    openPlayerOptions()
+    assertEqual(playerOptionsHasAction("recoverPicture"), true, "legacy picture recovery action exists before mint")
     m.video.content.url = entry
-    oldMint = m.hlsSessionTaskFactory()
-    m.hlsMintTask = oldMint
-    m.hlsPendingMints.push({task: oldMint, baseUrl: m.baseUrl, apiKey: m.apiKey, content: m.video.content, entryUrl: entry, recovering: false, waitForSources: true})
+    beginOwnedHlsPlayback(m.video.content)
+    onPlayerOption({getData: function() as object
+        return {action: "recoverPicture"}
+    end function})
+    assertEqual(m.recoveryTask = invalid, true, "a stale Options action cannot open the raw mint entry")
+    openPlayerOptions()
+    assertEqual(playerOptionsHasAction("recoverPicture"), false, "new Options menu hides recovery during mint")
+    recoverFrozenPicture()
+    assertEqual(m.recoveryTask = invalid, true, "direct recovery handler also cannot open a pending entry")
+    m.playerOptions.active = false
     oldToken = "opaque_first_12345678"
     onHlsSessionOpened(hlsFixtureEvent(m.hlsMintTask, hlsFixtureResult(oldToken)))
+    m.video.content.url = entry
+    recoverFrozenPicture()
+    assertEqual(m.recoveryTask = invalid, true, "an owned session never authorizes a changed entry URL")
+    m.video.content.url = hlsFixtureResult(oldToken).url
+    m.global.activeUserSession = "unrelated-session"
+    recoverFrozenPicture()
+    assertEqual(m.recoveryTask = invalid, true, "another profile cannot open the owned playlist")
+    m.global.activeUserSession = "hls-test-owner"
+    recoverFrozenPicture()
+    assertEqual(m.recoveryTask.url, m.video.content.url, "owned recovery opens only the minted playlist")
+    assertEqual(m.recoveryTask.apiKey, "fixture-key", "owned bridge uses the captured owner's key")
+    cancelPictureRecovery()
     m.video.state = "buffering"
     assertEqual(retryStartupPlayback(), true, "owned HLS startup retry admitted once")
     assertEqual(m.hlsStopTasks.count(), 1, "startup retry queues one owner close")
@@ -682,6 +772,10 @@ sub checkOwnedHlsRetryLifecycle()
     assertEqual(m.video.control, "play", "only replacement result starts Video")
     assertEqual(m.startupWatch.recovering, true, "startup retry watch survives asynchronous mint")
     assertEqual(m.startupWatch.waitForSources, true, "owned startup retry retains its source wait")
+    onVideoState()
+    assertEqual(m.hlsSession <> invalid, true, "late outgoing finish cannot close minted replacement before progress")
+    assertEqual(m.hlsSession.token, secondToken, "late finish preserves the replacement token")
+    assertEqual(m.hlsStopTasks.count(), 0, "late finish issues no close")
     m.video.state = "paused"
     m.streamReady = true
     assertEqual(retryInterruptedLive("buffering", -2, ""), false, "paused owner keeps the same session")
@@ -746,6 +840,80 @@ sub checkOwnedHlsRetryLifecycle()
     assertEqual(m.video.content.streamFormat, "ts", "direct TS playback uses the actual path")
     assertEqual(m.video.content.httpHeaders[0], "User-Agent: Fixture Player/1.0", "direct reader gets custom User-Agent")
     assertEqual(m.video.content.httpHeaders.count(), 1, "Dispatcharr credential is not sent to direct feed")
+
+    m.connectionStore = {entries: [{id: "fixture-dispatcharr", provider: "dispatcharr", authMode: "x-api-key", userAgent: ""}]}
+    m.selectedConnectionId = "fixture-dispatcharr"
+    m.devicePreferences.liveTransport = "hls"
+    startPlayback({uuid: "first-retune", name: "First retune", number: "3"})
+    superseded = m.hlsMintTask
+    startPlayback({uuid: "second-retune", name: "Second retune", number: "4"})
+    assertEqual(superseded.cancelRequested, true, "second retune cancels first pending mint")
+    retiredToken = "opaque_retired_12345678"
+    onHlsSessionOpened(hlsFixtureEvent(superseded, hlsFixtureResult(retiredToken)))
+    assertEqual(m.hlsStopTasks[4].token, retiredToken, "superseded retune closes only its own late token")
+    latestToken = "opaque_latest_12345678"
+    onHlsSessionOpened(hlsFixtureEvent(m.hlsMintTask, hlsFixtureResult(latestToken)))
+    m.video.state = "finished"
+    onVideoState()
+    assertEqual(m.hlsSession.token, latestToken, "rapid retunes preserve outgoing-reader protection")
+    assertEqual(m.hlsStopTasks.count(), 5, "outgoing finish does not close the latest token")
+    stopPlayback()
+    assertEqual(m.hlsStopTasks[5].token, latestToken, "explicit Stop still closes the latest token")
+end sub
+
+sub checkOwnedHlsStartupFailureBoundaries()
+    for each scenario in ["timeout", "stopped", "second-finish", "progress", "error", "late-finish", "initial-finish"]
+        resetOwnedHlsFixture()
+        m.startupRetryCount = m.startupRetryLimit
+        mintOwnedHlsPlayback(m.video.content, m.baseUrl, m.apiKey, true, false, scenario <> "initial-finish")
+        token = "opaque_failure_12345678"
+        onHlsSessionOpened(hlsFixtureEvent(m.hlsMintTask, hlsFixtureResult(token)))
+        m.startupWatch.clock = {ms: 0, totalMilliseconds: function() as integer
+            return m.ms
+        end function}
+        if scenario = "progress"
+            m.video.state = "buffering"
+            onVideoState()
+        else if scenario = "late-finish"
+            m.startupWatch.clock.ms = 2001
+        end if
+        m.video.state = "finished"
+        if scenario = "error"
+            m.video.state = "error"
+            m.video.errorCode = -1
+            m.video.errorStr = "reader failed"
+        else if scenario = "stopped"
+            m.video.state = "stopped"
+        else if scenario = "second-finish"
+            m.activeAudioProfile = "7"
+            m.aacDecodeRetried = true
+        end if
+        if scenario = "stopped"
+            m.startupWatch.clock.ms = 25000
+            checkStartupPlayback()
+        end if
+        onVideoState()
+        if scenario = "timeout" or scenario = "second-finish"
+            assertEqual(m.hlsSession <> invalid, true, "one ambiguous immediate finish keeps ownership: " + scenario)
+            assertEqual(m.hlsStopTasks.count(), 0, "one ambiguous finish must not close: " + scenario)
+            if scenario = "timeout"
+                m.startupWatch.clock.ms = 24999
+                checkStartupPlayback()
+                assertEqual(m.hlsSession <> invalid, true, "existing deadline is not shortened")
+                m.startupWatch.clock.ms = 25000
+                checkStartupPlayback()
+            else
+                onVideoState()
+            end if
+        end if
+        assertEqual(m.hlsSession, invalid, "genuine startup failure clears ownership: " + scenario)
+        assertEqual(m.hlsStopTasks.count(), 1, "genuine startup failure queues one close: " + scenario)
+        assertEqual(m.hlsStopTasks[0].token, token, "failure closes only its own token: " + scenario)
+        assertEqual(m.hlsMintTask, invalid, "exhausted startup budget cannot remint: " + scenario)
+        assertEqual(m.playbackRetry.channel.uuid, "a", "manual retry remains available: " + scenario)
+        onVideoState()
+        assertEqual(m.hlsStopTasks.count(), 1, "later Video callback cannot double-close: " + scenario)
+    end for
 end sub
 
 function hlsFixtureEvent(node as object, data as object) as object

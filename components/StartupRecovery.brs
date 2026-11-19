@@ -26,6 +26,7 @@ end sub
 ' immediate terminal event; if the new reader never buffers/plays, the normal
 ' startup watchdog still fails/retries with a bounded budget.
 function ignoreOutgoingAacFinish() as boolean
+    if m.hlsSession <> invalid then return false ' Owned replacements have a separate, one-event guard.
     if m.aacDecodeRetried <> true or m.activeAudioProfile = "" or m.streamReady then return false
     if m.page <> "player" or m.video.state <> "finished" then return false
     if not startupWatchIsCurrent() then return false
@@ -33,6 +34,18 @@ function ignoreOutgoingAacFinish() as boolean
     if m.startupWatch.clock.totalMilliseconds() > 2000 then return false
     m.startupWatch.ignoredOutgoingFinish = true
     print "[aac-recovery] ignored outgoing reader finish"
+    return true
+end function
+
+' A stop notification can arrive after a replacement mint starts Video.
+' Suppress at most one immediate finish before progress; leave errors and the
+' ordinary startup watchdog in charge of a genuinely dead reader.
+function ignoreOutgoingOwnedHlsFinish() as boolean
+    if m.hlsSession = invalid or m.video.state <> "finished" or not startupWatchIsCurrent() then return false
+    watch = m.startupWatch
+    if watch.guardOwnedHlsFinish <> true or watch.ignoredOutgoingFinish = true then return false
+    if watch.clock.totalMilliseconds() > 2000 then return false
+    watch.ignoredOutgoingFinish = true
     return true
 end function
 
@@ -81,8 +94,9 @@ sub checkStartupPlayback()
         return
     end if
     if m.video.state <> "buffering" and m.video.state <> "none"
-        if m.startupWatch.ignoredOutgoingFinish <> true then return
-        if m.video.state <> "finished" and m.video.state <> "stopped" then return
+        outgoingTerminal = m.startupWatch.ignoredOutgoingFinish = true and (m.video.state = "finished" or m.video.state = "stopped")
+        ownedReaderStillStopped = m.hlsSession <> invalid and m.video.state = "stopped"
+        if not outgoingTerminal and not ownedReaderStillStopped then return
     end if
     if m.pendingChannel <> invalid or m.heldZap <> "" then return
     ' Dispatcharr may still be trying later member streams after 25 seconds.

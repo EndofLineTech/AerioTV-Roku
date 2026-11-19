@@ -182,6 +182,7 @@ sub init()
     m.hlsSession = invalid
     m.hlsMintTask = invalid
     m.hlsMintClock = invalid
+    m.hlsMintReplacesReader = false
     m.hlsPendingMints = []
     m.hlsStopTasks = []
     m.startupWatch = invalid
@@ -1353,6 +1354,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     if not preserveStartupBudget then m.aacDecodeRetried = false
     if not preserveStartupBudget then m.liveRetryCount = 0
     m.liveBufferWatch = invalid
+    replacesReader = m.video.content <> invalid and (m.hlsMintTask = invalid or m.hlsMintReplacesReader = true)
     cancelHlsMint()
     m.video.control = "stop"
     closeOwnedHlsSession()
@@ -1420,7 +1422,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     focusPlaybackInput()
     ownedHls = content.streamFormat = "hls" and connection <> invalid and connection.provider = "dispatcharr"
     if ownedHls
-        beginOwnedHlsPlayback(content)
+        beginOwnedHlsPlayback(content, replacesReader)
     else
         beginStartupWatch(content, false, connection <> invalid and connection.provider = "dispatcharr")
         m.video.control = "play"
@@ -1893,12 +1895,31 @@ sub onTransportInfoFocus()
 end sub
 
 sub togglePause()
-    if m.video.state = "paused"
-        m.video.control = "resume"
-        if m.recoveryTask <> invalid and not m.recoveryIssued then m.recoveryPaused = false
-    else if m.video.state = "playing"
-        m.video.control = "pause"
-        if m.recoveryTask <> invalid and not m.recoveryIssued then m.recoveryPaused = true
+    paused = m.video.state = "paused"
+    if m.recoveryIssued = true and not m.streamReady
+        paused = m.recoveryPausePending
+    else if m.recoveryTask <> invalid and not m.recoveryIssued
+        paused = m.recoveryPaused
+    end if
+    setManualPlaybackPaused(not paused)
+end sub
+
+sub setManualPlaybackPaused(paused as boolean)
+    ' During a guarded restart, the command is authoritative even if the old
+    ' reader has not yet reported its pause/resume acknowledgement.
+    if m.recoveryIssued = true and not m.streamReady
+        m.recoveryPausePending = paused
+        return ' Do not replace the pending reader's play command.
+    end if
+    supersedes = false
+    if m.recoveryTask <> invalid and not m.recoveryIssued
+        supersedes = paused <> m.recoveryPaused
+        m.recoveryPaused = paused
+    end if
+    if m.video.state = "playing" and (paused or supersedes)
+        if paused then m.video.control = "pause" else m.video.control = "resume"
+    else if m.video.state = "paused" and (not paused or supersedes)
+        if paused then m.video.control = "pause" else m.video.control = "resume"
     end if
 end sub
 
@@ -1942,7 +1963,7 @@ sub openPlayerOptions(kind = "main" as string)
         if catchupChannelDays(m.capabilities.catchup, m.channelFacts, textValue(m.playingChannel.id)) > 0 then items.unshift({title: "Rewind history (provider)", action: "rewindHistory"})
     end if
     if m.capabilities.switchStreams = "allowed"
-        if not channelDeclaredRadio(m.playingChannel, m.channelFacts) then items.unshift({title: "Recover frozen picture (this player)", action: "recoverPicture"})
+        if pictureRecoveryAvailable() then items.unshift({title: "Recover frozen picture (this player)", action: "recoverPicture"})
         role = currentUserSettingsRole()
         if role = "user" or role = "admin" then items.unshift({title: "Switch stream source", action: "sourceMenu"})
     else if m.capabilities.switchStreams = "unknown"
@@ -2240,6 +2261,7 @@ end sub
 
 sub cancelPictureRecovery()
     m.recoveryContent = invalid
+    m.recoveryIssued = false
     m.recoveryPausePending = false
     if m.recoveryTask <> invalid
         m.recoveryTask.unobserveField("ready")
@@ -2466,6 +2488,10 @@ sub onVideoState()
     ' No reader owns the pending entry yet. A queued terminal event from the
     ' reader we just stopped must not fail the replacement before mint completes.
     if m.hlsMintTask <> invalid then return
+    if ignoreOutgoingOwnedHlsFinish() then return
+    if m.video.state = "buffering" and m.startupWatch <> invalid
+        m.startupWatch.guardOwnedHlsFinish = false
+    end if
     if m.liveSession <> invalid then mediaObserve(m.liveSession, m.video.state, m.video.position, m.video.duration, invalid)
     if m.video.state = "playing" or m.video.state = "paused" then updateLivePresentation()
     if m.video.state <> "buffering" then m.liveBufferWatch = invalid
@@ -2556,20 +2582,36 @@ sub checkSourceVideo()
     end if
 end sub
 
+function pictureRecoveryAvailable() as boolean
+    if m.hlsMintTask <> invalid or m.playingChannel = invalid or m.video.content = invalid then return false
+    if m.hlsSession <> invalid
+        if userProfileGateClosed() or m.hlsSession.userSession <> currentUserSessionId() then return false
+        if m.video.content.url <> m.hlsSession.url then return false
+    end if
+    return not channelDeclaredRadio(m.playingChannel, m.channelFacts)
+end function
+
 sub recoverFrozenPicture()
-    if m.playingChannel = invalid or m.video.content = invalid or m.recoveryTask <> invalid then return
-    if channelDeclaredRadio(m.playingChannel, m.channelFacts) then return
+    if m.recoveryTask <> invalid or not pictureRecoveryAvailable() then return
     m.sourceWatch.control = "stop"
     m.sourceWatchState = invalid
     m.recoveryContent = m.video.content
     m.recoveryPaused = m.video.state = "paused"
     m.recoveryIssued = false
-    m.recoveryTask = CreateObject("roSGNode", "PlaybackBridgeTask")
+    if m.playbackBridgeTaskFactory <> invalid
+        m.recoveryTask = m.playbackBridgeTaskFactory()
+    else
+        m.recoveryTask = CreateObject("roSGNode", "PlaybackBridgeTask")
+    end if
     tagTaskForCurrentUser(m.recoveryTask)
     m.recoveryTask.url = m.video.content.url
     m.recoveryTask.baseUrl = m.baseUrl
     m.recoveryTask.channelUuid = m.playingChannel.uuid
     m.recoveryTask.apiKey = m.apiKey
+    if m.hlsSession <> invalid
+        m.recoveryTask.baseUrl = m.hlsSession.baseUrl
+        m.recoveryTask.apiKey = m.hlsSession.apiKey
+    end if
     m.recoveryTask.observeField("ready", "onRecoveryReady")
     m.recoveryTask.observeField("result", "onRecoveryFinished")
     m.recoveryTask.control = "RUN"
@@ -2579,10 +2621,9 @@ end sub
 sub onRecoveryReady(event as object)
     if not isCurrentTaskEvent(event, m.recoveryTask) then return
     if not event.getData() or not m.recoveryTask.ready or m.recoveryIssued then return
-    if m.playingChannel = invalid then return
-    if not m.recoveryContent.isSameNode(m.video.content) then return
-    ' Channel details may declare radio while the temporary bridge starts.
-    if channelDeclaredRadio(m.playingChannel, m.channelFacts)
+    ' The ownership/reader state or radio classification can change while
+    ' the bridge is starting; do not restart a replaced or unowned reader.
+    if not pictureRecoveryAvailable() or m.recoveryContent = invalid or not m.recoveryContent.isSameNode(m.video.content)
         cancelPictureRecovery()
         return
     end if
@@ -2853,7 +2894,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
             if key = "play"
                 togglePause()
             else if key = "playonly"
-                if m.video.state = "paused" then m.video.control = "resume"
+                setManualPlaybackPaused(false)
             else
                 restorePicture()
                 m.pictureWakeKey = key
@@ -2874,7 +2915,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         if key = "play"
             return handlePlayerMappedKey(key)
         else if key = "playonly"
-            if m.video.state = "paused" then m.video.control = "resume"
+            setManualPlaybackPaused(false)
             return true
         end if
         if key = "rewind"
