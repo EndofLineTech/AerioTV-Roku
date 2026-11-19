@@ -14,8 +14,8 @@ committed Roku behavior with upstream TV and separates native evidence, fixture
 coverage and deferred work. The [September audit](docs/PARITY-AUDIT.md) records
 the original baseline.
 
-Development builds with the independent library text setting are covered in
-the [Movies & TV Shows display scale guide](docs/DISPLAY-SCALE.md).
+Development builds with independent Guide and library scales are covered in
+the [display scale guide](docs/DISPLAY-SCALE.md).
 
 ## Download the testing build
 

@@ -88,8 +88,14 @@ sub main()
     if not settingsHubChangeAllowed(model, "guide", "futureDays", 30) then stop
     if settingsHubChangeAllowed(model, "guide", "futureDays", 0) then stop
     live = settingsHubEntries("live", model)
-    if live[7].key <> "showSubtitles" or live[7].values[0] <> true or live[7].values[1] <> false then stop
-    if instr(1, live[7].title, "Preview") = 0 then stop
+    if live[3].key <> "guideDensity" or live[4].key <> "guideDisplayScale" or live[4].scope <> "guide" then stop
+    if FormatJson(live[4].values) <> "[90,100,110,120]" then stop
+    if settingsValueText(90, live[4].key) <> "90%" then stop
+    if not settingsHubChangeAllowed(model, "guide", live[4].key, 120) then stop
+    if settingsHubChangeAllowed(model, "guide", live[4].key, 115) then stop
+    if settingsHubChangeAllowed(model, "device", live[4].key, 120) then stop
+    if live[8].key <> "showSubtitles" or live[8].values[0] <> true or live[8].values[1] <> false then stop
+    if instr(1, live[8].title, "Preview") = 0 then stop
     if settingsValueText(25, "channelLogoSize") <> "2.5%" or settingsValueText(100, "channelLogoSize") <> "10%" then stop
     if not settingsHubChangeAllowed(model, "guide", "channelLogoSize", 250) then stop
     if settingsHubChangeAllowed(model, "guide", "channelLogoSize", 125) then stop

@@ -201,12 +201,13 @@ function programBadges(program as object, settings as object) as string
 end function
 
 ' Feed flags, not clock-derived "airing now". Colors match both upstream TV apps.
-function programFlagPills(program as object, settings as object, availableWidth as float) as object
+function programFlagPills(program as object, settings as object, availableWidth as float, widthFactor = 1.0 as float) as object
     result = []
     used = 0
     definitions = [{key: "live", label: "LIVE", color: "0xFF4757FF", width: 56}, {key: "new", label: "NEW", color: "0x27AE60FF", width: 46}, {key: "premiere", label: "PREMIERE", color: "0x9B59B6FF", width: 96}, {key: "finale", label: "FINALE", color: "0x9B59B6FF", width: 76}]
     for each flag in definitions
         if settings.badges[flag.key] and program["is_" + flag.key] = true
+            flag.width = int(flag.width * widthFactor + 0.5)
             if used + flag.width > availableWidth then exit for
             flag.x = used
             result.push(flag)
@@ -229,8 +230,7 @@ function guideInitialLogoIds(channels as object, selected as integer, visibleRow
     ids = []
     if channels = invalid or visibleRows < 1 then return ids
     if channels.count() = 0 then return ids
-    first = 0
-    if selected >= visibleRows then first = selected - visibleRows + 1
+    first = guideVisibleRowStart(0, selected, visibleRows, channels.count())
     seen = {}
     for i = first to channels.count() - 1
         if i >= first + visibleRows then exit for
@@ -241,6 +241,15 @@ function guideInitialLogoIds(channels as object, selected as integer, visibleRow
         end if
     end for
     return ids
+end function
+
+function guideVisibleRowStart(previous as integer, selected as integer, visibleRows as integer, channelCount as integer) as integer
+    first = previous
+    if selected < first then first = selected
+    if selected >= first + visibleRows then first = selected - visibleRows + 1
+    if first > channelCount - visibleRows then first = channelCount - visibleRows
+    if first < 0 then first = 0
+    return first
 end function
 
 function guideClamp(value as integer, now as integer) as integer

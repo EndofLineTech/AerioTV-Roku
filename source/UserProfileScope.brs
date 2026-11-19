@@ -5,7 +5,7 @@ function userProfileAccountSeedFields() as object
 end function
 
 function userProfileGuideSeedFields() as object
-    return ["groupSort", "groupOrder", "channelSort", "groupLayout", "collectionsPosition", "historyDays", "futureDays", "badges", "tmdbFallback", "guideDensity", "showLogos", "showNumbers", "showNames", "showSubtitles", "channelLogoSize", "roundedGuideLogos", "roundedProgramCells"]
+    return ["groupSort", "groupOrder", "channelSort", "groupLayout", "collectionsPosition", "historyDays", "futureDays", "badges", "tmdbFallback", "guideDensity", "guideDisplayScale", "showLogos", "showNumbers", "showNames", "showSubtitles", "channelLogoSize", "roundedGuideLogos", "roundedProgramCells"]
 end function
 
 ' Explicit PO-approved appearance/player axis. Network, clock, accessibility,
@@ -89,7 +89,7 @@ function userProfileSeedAccountPreferences(raw as dynamic) as object
         guide = raw.guide
         settings = raw.profileSettings
     end if
-    selected["guide"] = userProfileTypedSettings(userProfilePickSettings(guide, userProfileGuideSeedFields()), ["historyDays", "futureDays", "channelLogoSize"], ["tmdbFallback", "showLogos", "showNumbers", "showNames", "showSubtitles", "roundedGuideLogos", "roundedProgramCells"], ["groupOrder"], ["badges"])
+    selected["guide"] = userProfileTypedSettings(userProfilePickSettings(guide, userProfileGuideSeedFields()), ["historyDays", "futureDays", "channelLogoSize", "guideDisplayScale"], ["tmdbFallback", "showLogos", "showNumbers", "showNames", "showSubtitles", "roundedGuideLogos", "roundedProgramCells"], ["groupOrder"], ["badges"])
     selected["profileSettings"] = normalizeUserProfileSettings(settings)
     result = normalizeAccountPreferences(selected)
     normalized = userProfileNormalizedFields(result, userProfileAccountSeedFields())

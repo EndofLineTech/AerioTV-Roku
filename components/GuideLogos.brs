@@ -88,7 +88,7 @@ sub prefetchInitialGuideLogos()
     if not m.settings.showLogos then return
     if m.providerType = "dispatcharr" and m.key = "" then return
     if m.providerType <> "dispatcharr" and m.guideLogoUrls.count() = 0 then return
-    rows = guidePresentationGeometry(m.settings.guideDensity, m.settings.showSubtitles).rowCount
+    rows = currentGuideGeometry().rowCount
     ids = guideInitialLogoIds(m.filtered, m.selected, rows)
     if ids.count() = 0 then return
     m.guideLogoClock = CreateObject("roTimespan")

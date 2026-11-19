@@ -37,6 +37,7 @@ function normalizeGuideSettings(raw as dynamic) as object
     end for
     if type(p.tmdbFallback) <> "Boolean" and type(p.tmdbFallback) <> "roBoolean" then p.tmdbFallback = false
     if p.guideDensity <> "preview" and p.guideDensity <> "basic" then p.guideDensity = "preview"
+    p.guideDisplayScale = normalizeGuideDisplayScale(p.guideDisplayScale)
     if type(p.showLogos) <> "Boolean" and type(p.showLogos) <> "roBoolean" then p.showLogos = true
     if type(p.showNumbers) <> "Boolean" and type(p.showNumbers) <> "roBoolean" then p.showNumbers = true
     if type(p.showNames) <> "Boolean" and type(p.showNames) <> "roBoolean" then p.showNames = true
@@ -46,6 +47,19 @@ function normalizeGuideSettings(raw as dynamic) as object
         if type(p[field]) <> "Boolean" and type(p[field]) <> "roBoolean" then p[field] = false
     end for
     return p
+end function
+
+function normalizeGuideDisplayScale(value as dynamic) as integer
+    kind = type(value)
+    if kind <> "Integer" and kind <> "roInt" and kind <> "roInteger" and kind <> "LongInteger" and kind <> "roLongInteger" and kind <> "Float" and kind <> "roFloat" and kind <> "Double" and kind <> "roDouble" then return 100
+    for each choice in [90, 100, 110, 120]
+        if value = choice then return choice
+    end for
+    return 100
+end function
+
+function guideScalePixels(pixels as integer, scale as integer) as integer
+    return int(pixels * scale / 100.0 + 0.5)
 end function
 
 function guideChannelGeometry(row as object, settings as object) as object
@@ -66,10 +80,18 @@ function guideChannelGeometry(row as object, settings as object) as object
         nameHeight = 32
         nameLines = 1
     end if
+    indicatorY = guideScalePixels(4, row.scale)
+    indicatorHeight = guideScalePixels(27, row.scale)
+    indicatorBottom = indicatorY + indicatorHeight
+    logoY = guideScalePixels(logoY, row.scale)
+    stockWidth = guideScalePixels(stockWidth, row.scale)
+    stockHeight = guideScalePixels(stockHeight, row.scale)
+    nameY = guideScalePixels(nameY, row.scale)
+    nameHeight = guideScalePixels(nameHeight, row.scale)
     ' Keep the indicator lane reserved even when the number is hidden.
-    if not settings.showNumbers and nameY < 31 then nameY = 31
+    if (not settings.showNumbers or row.scale <> 100) and nameY < indicatorBottom then nameY = indicatorBottom
     if nameY + nameHeight > row.tileHeight then nameHeight = row.tileHeight - nameY
-    layout = {textX: 12, numberX: 12, numberWidth: 170, nameY: nameY, nameHeight: nameHeight, nameLines: nameLines}
+    layout = {textX: 12, numberX: 12, numberWidth: 170, nameY: nameY, nameHeight: nameHeight, nameLines: nameLines, indicatorY: indicatorY, indicatorHeight: indicatorHeight}
     if settings.showLogos
         layout.logo = boundedChannelLogo(12, row.tileHeight, settings.channelLogoSize, stockWidth, stockHeight, maxWidth, maxHeight)
         if settings.channelLogoSize <= 100
@@ -77,13 +99,13 @@ function guideChannelGeometry(row as object, settings as object) as object
             if logoY + layout.logo.h > row.tileHeight then layout.logo.y = row.tileHeight - layout.logo.h
         end if
         layout.textX = layout.logo.x + layout.logo.w + 10
-        if settings.channelLogoSize > 100 and layout.logo.y < 31
+        if settings.channelLogoSize > 100 and layout.logo.y < indicatorBottom
             layout.numberX = layout.textX
             layout.numberWidth = 182 - layout.numberX
         end if
     end if
     layout.nameWidth = 230 - layout.textX
-    if settings.showLogos and settings.channelLogoSize = 100 then layout.nameWidth = 150
+    if settings.showLogos and settings.channelLogoSize = 100 and row.scale = 100 then layout.nameWidth = 150
     return layout
 end function
 
@@ -102,11 +124,37 @@ function boundedChannelLogo(x as integer, rowHeight as integer, size as integer,
     return {x: x, y: int((rowHeight - h) / 2), w: w, h: h}
 end function
 
-function guidePresentationGeometry(density as string, showSubtitles = true as boolean) as object
-    if density = "basic" then return {basic: true, rowHeight: 64, rowCount: 10, tileHeight: 60, titleY: 3, titleHeight: 27, timeY: 32, timeHeight: 24, badgeY: 34}
-    ' Both Preview modes occupy the same 672px guide viewport.
-    if not showSubtitles then return {basic: false, rowHeight: 96, rowCount: 7, tileHeight: 95, titleY: 14, titleHeight: 37, timeY: 55, timeHeight: 29, badgeY: 57}
-    return {basic: false, rowHeight: 112, rowCount: 6, tileHeight: 111, titleY: 14, titleHeight: 37, timeY: 74, timeHeight: 25, badgeY: 75, withSubtitle: {titleY: 8, titleHeight: 31, subtitleY: 43, subtitleHeight: 27, timeY: 78, timeHeight: 23, badgeY: 77}}
+function guideRowPoolSize() as integer
+    ' The largest visible count is eleven Basic rows at 90%.
+    return 11
+end function
+
+function guidePresentationGeometry(density as string, showSubtitles = true as boolean, rawScale = 100 as dynamic) as object
+    scale = normalizeGuideDisplayScale(rawScale)
+    if density = "basic"
+        row = {basic: true, rowHeight: 64, tileHeight: 60, titleY: 3, titleHeight: 27, timeY: 32, timeHeight: 24, badgeY: 34}
+        viewport = 640
+    else
+        ' Both Preview modes occupy the same 672px guide viewport.
+        row = {basic: false, rowHeight: 96, tileHeight: 95, titleY: 14, titleHeight: 37, timeY: 55, timeHeight: 29, badgeY: 57}
+        if showSubtitles
+            row = {basic: false, rowHeight: 112, tileHeight: 111, titleY: 14, titleHeight: 37, timeY: 74, timeHeight: 25, badgeY: 75, withSubtitle: {titleY: 8, titleHeight: 31, subtitleY: 43, subtitleHeight: 27, timeY: 78, timeHeight: 23, badgeY: 77}}
+        end if
+        viewport = 672
+    end if
+    for each field in ["rowHeight", "tileHeight", "titleY", "titleHeight", "timeY", "timeHeight", "badgeY"]
+        row[field] = guideScalePixels(row[field], scale)
+    end for
+    if row.tileHeight >= row.rowHeight then row.tileHeight = row.rowHeight - 1
+    if row.withSubtitle <> invalid
+        for each field in row.withSubtitle
+            row.withSubtitle[field] = guideScalePixels(row.withSubtitle[field], scale)
+        end for
+    end if
+    row.badgeHeight = guideScalePixels(24, scale)
+    row.scale = scale
+    row.rowCount = viewport \ row.rowHeight
+    return row
 end function
 
 function copyGuideValue(value as dynamic) as dynamic

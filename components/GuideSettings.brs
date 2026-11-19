@@ -31,9 +31,13 @@ sub refreshPresentation()
     if m.details.active then updateRichDetails()
 end sub
 
+function currentGuideGeometry() as object
+    return guidePresentationGeometry(m.settings.guideDensity, m.settings.showSubtitles, m.settings.guideDisplayScale)
+end function
+
 function applyHubGuideSetting(key as string, value as dynamic) as dynamic
     if not m.ready then return invalid
-    if key = "channelLogoSize" or key = "roundedGuideLogos" or key = "roundedProgramCells"
+    if key = "channelLogoSize" or key = "roundedGuideLogos" or key = "roundedProgramCells" or key = "guideDisplayScale"
         m.settings[lcase(key)] = value
         m.settings = normalizeGuideSettings(m.settings)
         refreshPresentation()

@@ -36,6 +36,14 @@ sub main()
     assertEqual(guidePresentationGeometry(m.saved.guideDensity, m.saved.showSubtitles).rowCount, 7, "saved Off restores compact Preview")
     applyHubGuideSetting("showSubtitles", true)
     assertEqual(guidePresentationGeometry(m.saved.guideDensity, m.saved.showSubtitles).rowCount, 6, "saved On restores subtitle-rich Preview")
+    selectedAnchor = m.anchor
+    m.top = {active: true}
+    m.details = {active: false}
+    changed = applyHubGuideSetting("guideDisplayScale", 120)
+    assertEqual(changed.guideDisplayScale, 120, "Hub scale applies and returns the local guide preference")
+    assertEqual(changed.guideDensity, "preview", "scale does not change density")
+    assertEqual(changed.showSubtitles, true, "scale does not change subtitle mode")
+    assertEqual(m.anchor, selectedAnchor, "scale does not jump the timeline")
     m.userRole = "child"
     m.pickedKind = "unchanged"
     before = FormatJson(m.settings)

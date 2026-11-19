@@ -1,4 +1,5 @@
 sub main()
+    testGuideDisplayScale()
     numbered = channelOrderedGroups([{id: "a", name: "Alpha"}, {id: "z", name: "Zulu"}, {id: "e", name: "Empty"}], [{groupId: "a", number: "100"}, {groupId: "z", number: "2.1"}, {groupId: "a", number: "3"}])
     assertEqual(numbered[0].id, "z", "default groups use minimum numeric channel, not name")
     assertEqual(numbered[1].id, "a", "minimum member beats first member")
@@ -190,6 +191,68 @@ sub main()
     enriched = mergeProgramFacts(p, {title: "Enriched", startsAt: now + 60, endsAt: now + 999, key: "wrong"})
     assertEqual(enriched.startsAt, now, "detail metadata cannot move guide focus")
     print "ALL TESTS PASSED"
+end sub
+
+sub testGuideDisplayScale()
+    assertEqual(normalizeGuideSettings(invalid).guideDisplayScale, 100, "missing scale keeps stock")
+    assertEqual(normalizeGuideSettings({guideDisplayScale: "120"}).guideDisplayScale, 100, "reject strings")
+    assertEqual(normalizeGuideSettings({guideDisplayScale: 115}).guideDisplayScale, 100, "do not accept VOD-only stops")
+    assertEqual(normalizeGuideSettings({guideDisplayScale: 110.9}).guideDisplayScale, 100, "reject fractional values")
+    for each mode in [
+        {density: "basic", subtitles: true, row: 64, count: 10, viewport: 640}
+        {density: "preview", subtitles: false, row: 96, count: 7, viewport: 672}
+        {density: "preview", subtitles: true, row: 112, count: 6, viewport: 672}
+    ]
+        for each scale in [90, 100, 110, 120]
+            saved = {guide: {guideDisplayScale: scale, guideDensity: mode.density, showSubtitles: mode.subtitles}}
+            settings = normalizeAccountPreferences(ParseJson(FormatJson(saved))).guide
+            assertEqual(settings.guideDisplayScale, scale, "account round trip")
+            row = guidePresentationGeometry(settings.guideDensity, settings.showSubtitles, settings.guideDisplayScale)
+            assertEqual(row.rowHeight, int(mode.row * scale / 100.0 + 0.5), "density-specific row pitch scales")
+            assertEqual(row.rowCount, mode.viewport \ row.rowHeight, "whole rows fit in density viewport")
+            if scale = 100 then assertEqual(row.rowCount, mode.count, "stock count")
+            assertEqual(row.rowCount * row.rowHeight <= mode.viewport and row.tileHeight < row.rowHeight, true, "now line/rows remain above footer")
+            assertEqual(row.rowCount <= guideRowPoolSize(), true, "pool covers visible rows")
+            channels = []
+            for i = 1 to 25
+                channels.push({logoId: i.toStr()})
+            end for
+            logoIds = guideInitialLogoIds(channels, 24, row.rowCount)
+            assertEqual(logoIds.count(), row.rowCount, "initial logo batch follows layout count at end of lineup")
+            assertEqual(logoIds[logoIds.count() - 1], "25", "initial logo batch includes focused channel")
+            for each index in [0, 7, 21, 24]
+                first = guideVisibleRowStart(10, index, row.rowCount, 25)
+                assertEqual(first <= index and index < first + row.rowCount and first + row.rowCount <= 25, true, "focus stays visible after changing scale")
+            end for
+            for each textSize in [90, 100, 110, 120]
+                for each subtextSize in [90, 100, 110, 120]
+                    prefs = {textSize: textSize, subtextSize: subtextSize}
+                    for each cell in [row, row.withSubtitle]
+                        if cell <> invalid
+                            assertEqual(cell.titleY + cell.titleHeight <= cell.timeY, true, "title and metadata lanes do not overlap")
+                            assertEqual(cell.badgeY + row.badgeHeight <= row.tileHeight, true, "pill fits row")
+                            assertEqual(cell.timeY + cell.timeHeight <= row.tileHeight, true, "clock fits row")
+                            if cell.subtitleHeight <> invalid
+                                assertEqual(cell.titleY + cell.titleHeight <= cell.subtitleY and cell.subtitleY + cell.subtitleHeight <= cell.timeY, true, "subtitle lane remains separate")
+                            end if
+                            font = uiScaledFontSize(20, cell.timeHeight, true, prefs, scale)
+                            assertEqual(font * 1.12 <= cell.timeHeight, true, "clock fits with both accessibility settings")
+                            badgeBox = row.badgeHeight - guideScalePixels(4, scale)
+                            badgeFont = uiScaledFontSize(16, badgeBox, false, prefs, scale)
+                            assertEqual(badgeFont * 1.12 <= badgeBox, true, "badge type fits its inset box")
+                        end if
+                    end for
+                    for each logoSize in [25, 100, 250]
+                        settings.channelLogoSize = logoSize
+                        settings.showNumbers = false
+                        channel = guideChannelGeometry(row, settings)
+                        assertEqual(channel.nameY >= channel.indicatorY + channel.indicatorHeight, true, "name clears indicators")
+                        assertEqual(channel.nameY + channel.nameHeight <= row.tileHeight and channel.logo.y + channel.logo.h <= row.tileHeight, true, "channel content fits in tile")
+                    end for
+                end for
+            end for
+        end for
+    end for
 end sub
 
 sub assertEqual(actual as dynamic, expected as dynamic, label as string)

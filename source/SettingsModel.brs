@@ -62,6 +62,7 @@ function settingsHubAllEntries(page as string, model as object) as object
         {title: "Guide future days", scope: "guide", key: "futureDays", values: guideDayChoices()}
         {title: "Channel sort", scope: "guide", key: "channelSort", values: ["number", "name", "id"]}
         {title: "Guide density", scope: "guide", key: "guideDensity", values: ["preview", "basic"]}
+        {title: "Guide display scale", scope: "guide", key: "guideDisplayScale", values: [90, 100, 110, 120]}
         {title: "Show channel logos", scope: "guide", key: "showLogos", values: [true, false]}
         {title: "Show channel numbers", scope: "guide", key: "showNumbers", values: [true, false]}
         {title: "Show channel names", scope: "guide", key: "showNames", values: [true, false]}
@@ -257,7 +258,7 @@ function settingsValueText(value as dynamic, key = "" as string) as string
         if value = "hls" then return "HLS (test server)"
         return "MPEG-TS"
     end if
-    if key = "textSize" or key = "subtextSize" or key = "vodDisplayScale" then return value.toStr() + "%"
+    if key = "textSize" or key = "subtextSize" or key = "vodDisplayScale" or key = "guideDisplayScale" then return value.toStr() + "%"
     if key = "themePreset"
         names = {aerio: "AerioTV", midnight: "Midnight", sunset: "Sunset", forest: "Forest", lavender: "Lavender", monochrome: "Monochrome", light: "Neutral"}
         if names.doesExist(textValue(value)) then return names[value]

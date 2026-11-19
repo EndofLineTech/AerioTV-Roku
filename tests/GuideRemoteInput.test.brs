@@ -58,6 +58,16 @@ sub main()
     m.selected = 19
     handleGuideMappedKey("fastforward")
     check(m.selected = 19, "page down clamps")
+    for each scale in [90, 100, 110, 120]
+        setupGuide()
+        geometry = guidePresentationGeometry("basic", false, scale)
+        m.rowCount = geometry.rowCount
+        m.selected = 1
+        handleGuideMappedKey("fastforward")
+        check(m.selected = 1 + geometry.rowCount, "page down follows scaled visible row count")
+        handleGuideMappedKey("rewind")
+        check(m.selected = 1, "page up follows scaled visible row count")
+    end for
     m.top.miniActive = false
     handleGuideMappedKey("play")
     check(m.top.playerRequest = "" and m.observed = "programDetails", "Play opens program details when no mini-player exists")

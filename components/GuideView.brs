@@ -169,10 +169,10 @@ sub buildCanvas()
         m.ticks.push(uiLabel(m.canvas, "", 346 + i * 300, 270, 280, 30, 22, "0x9EB5C9FF"))
     end for
     m.rows = []
-    ' Reuse the same nodes for six Preview rows or ten Basic rows.
-    for i = 0 to 9
+    ' Reuse enough rows to cover every density and display scale.
+    for i = 1 to guideRowPoolSize()
         root = m.canvas.createChild("Group")
-        root.translation = [96, 306 + i * 96]
+        root.translation = [96, 306 + (i - 1) * 96]
         background = uiRect(root, 0, 0, 239, 95, "0x0D1E35FF")
         number = uiLabel(root, "", 12, 4, 170, 27, 20, "0x1AC4D8FF")
         badge = uiLabel(root, "", 180, 4, 55, 27, 18, "0x1AC4D8FF")
@@ -501,7 +501,7 @@ sub drawGuide()
         print "[guide-paint] first-grid-ms="; m.metadataElapsed.totalMilliseconds()
         m.initialGridReported = true
     end if
-    geometry = guidePresentationGeometry(m.settings.guideDensity, m.settings.showSubtitles)
+    geometry = currentGuideGeometry()
     channelLayout = guideChannelGeometry(geometry, m.settings)
     m.rowCount = geometry.rowCount
     gridX = 96
@@ -511,8 +511,7 @@ sub drawGuide()
     keepAnchorVisible()
     m.detailDelay.control = "stop"
     m.detailDelay.control = "start"
-    if m.selected < m.rowStart then m.rowStart = m.selected
-    if m.selected >= m.rowStart + m.rowCount then m.rowStart = m.selected - m.rowCount + 1
+    m.rowStart = guideVisibleRowStart(m.rowStart, m.selected, m.rowCount, m.filtered.count())
     now = uiNow()
     groupTitle = m.groups[m.groupIndex].name
     if m.query <> "" then groupTitle = "Search all channels"
@@ -523,17 +522,19 @@ sub drawGuide()
     if not m.navigator.active then m.navigator.model = {groups: m.groups, layout: m.settings.groupLayout, selected: m.groups[m.groupIndex].id}
     m.dateLabel.text = uiLocalDate(m.viewStart)
     m.dateLabel.translation = [gridX, 270]
-    m.rowHeight = geometry.rowHeight
-    m.nowLine.height = m.rowCount * m.rowHeight
+    m.nowLine.height = m.rowCount * geometry.rowHeight
     for i = 0 to m.ticks.count() - 1
         m.ticks[i].text = uiTime(m.viewStart + i * 1800)
         tickX = timeX + 10 + i * 300
         m.ticks[i].translation = [tickX, 270]
         m.ticks[i].visible = tickX < 1824
     end for
+    appearance = uiAppearance()
+    badgeFont = uiScaledFontSize(16, geometry.badgeHeight - guideScalePixels(4, geometry.scale), false, appearance, geometry.scale)
+    badgeWidthFactor = badgeFont / 16.0
     for i = 0 to m.rows.count() - 1
         row = m.rows[i]
-        row.root.translation = [gridX, 306 + i * m.rowHeight]
+        row.root.translation = [gridX, 306 + i * geometry.rowHeight]
         index = m.rowStart + i
         row.root.visible = i < m.rowCount and index < m.filtered.count()
         if row.root.visible
@@ -549,11 +550,19 @@ sub drawGuide()
             row.name.height = channelLayout.nameHeight
             row.name.maxLines = channelLayout.nameLines
             lineHeight = channelLayout.nameHeight / channelLayout.nameLines
-            if row.nameLineHeight <> lineHeight
+            if row.nameLineHeight <> lineHeight or row.displayScale <> geometry.scale
                 row.nameLineHeight = lineHeight
-                uiSetFont(row.name, 21, "font", false, lineHeight)
+                uiSetFont(row.name, 21, "font", false, lineHeight, geometry.scale)
             end if
-            row.number.translation = [channelLayout.numberX, 4]
+            if row.displayScale <> geometry.scale
+                row.displayScale = geometry.scale
+                row.number.height = channelLayout.indicatorHeight
+                row.badge.height = channelLayout.indicatorHeight
+                row.badge.translation = [180, channelLayout.indicatorY]
+                uiSetFont(row.number, 20, "font", false, channelLayout.indicatorHeight, geometry.scale)
+                uiSetFont(row.badge, 18, "font", false, channelLayout.indicatorHeight, geometry.scale)
+            end if
+            row.number.translation = [channelLayout.numberX, channelLayout.indicatorY]
             channel = m.filtered[index]
             row.uuid = channel.uuid
             row.logoId = ""
@@ -570,8 +579,8 @@ sub drawGuide()
                 if measuredWidth < numberWidth then numberWidth = measuredWidth
             end if
             row.number.width = numberWidth
-            row.catchup.translation = [154, 4]
-            if m.settings.showNumbers then row.catchup.translation = [channelLayout.numberX + numberWidth + 6, 4]
+            row.catchup.translation = [154, channelLayout.indicatorY]
+            if m.settings.showNumbers then row.catchup.translation = [channelLayout.numberX + numberWidth + 6, channelLayout.indicatorY]
             row.name.text = channel.name
             row.badge.text = ""
             if m.favorites.doesExist(channel.uuid) then row.badge.text = "FAV"
@@ -585,7 +594,7 @@ sub drawGuide()
             updateGuideLogoCorners(row)
             row.number.visible = m.settings.showNumbers
             row.name.visible = m.settings.showNames
-            renderCells(row, rowCells(channel), index = m.selected)
+            renderCells(row, rowCells(channel), index = m.selected, geometry, badgeWidthFactor)
         end if
     end for
     scheduleGuideLogos()
@@ -649,13 +658,12 @@ function gapText() as string
     return "No guide information"
 end function
 
-sub renderCells(row as object, cells as object, selected as boolean)
+sub renderCells(row as object, cells as object, selected as boolean, geometry as object, badgeWidthFactor as float)
     ' Bound node count even if a malformed source produces sub-minute schedules.
     if cells.count() > 128
         cells = [{startsAt: m.viewStart, endsAt: m.viewStart + m.span, program: invalid}]
         m.message = "This schedule is too dense to display. Live tuning is available."
     end if
-    geometry = guidePresentationGeometry(m.settings.guideDensity, m.settings.showSubtitles)
     while row.tiles.count() < cells.count()
         root = row.root.createChild("Group")
         border = uiRect(root, 0, 0, 100, 95, "0x17344AFF")
@@ -738,6 +746,10 @@ sub renderCells(row as object, cells as object, selected as boolean)
                     tile.subtitle.visible = true
                     tile.subtitle.translation = [14, secondaryLayout.subtitleY]
                     tile.subtitle.height = secondaryLayout.subtitleHeight
+                    if tile.subtitleScale <> geometry.scale
+                        uiSetFont(tile.subtitle, 21, "font", true, secondaryLayout.subtitleHeight, geometry.scale)
+                        tile.subtitleScale = geometry.scale
+                    end if
                     tile.subtitle.width = textWidth
                     uiSetColor(tile.subtitle, "0x9EB5C9FF")
                     if focused then uiSetColor(tile.subtitle, "0xE8F3FAFF")
@@ -747,7 +759,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
                     tile.time.height = secondaryLayout.timeHeight
                 end if
                 tile.time.text = uiTime(program.startsAt) + " - " + uiTime(program.endsAt)
-                flags = programFlagPills(program, m.settings, textWidth)
+                flags = programFlagPills(program, m.settings, textWidth, badgeWidthFactor)
                 offset = 0
                 for j = 0 to flags.count() - 1
                     flag = flags[j]
@@ -763,11 +775,18 @@ sub renderCells(row as object, cells as object, selected as boolean)
                     badge.root.visible = true
                     badge.root.translation = [14 + flag.x, badgeY]
                     badge.surface.width = flag.width
+                    badge.surface.height = geometry.badgeHeight
+                    badge.surface.radius = geometry.badgeHeight / 2
                     uiSetColor(badge.surface, flag.color)
                     labelBounds = uiFlagLabelBounds(flag.label, flag.width)
-                    badge.label.translation = [labelBounds.x, labelBounds.y]
+                    badgeYInset = guideScalePixels(labelBounds.y, geometry.scale)
+                    badge.label.translation = [labelBounds.x, badgeYInset]
                     badge.label.width = labelBounds.width
-                    badge.label.height = labelBounds.height
+                    badge.label.height = geometry.badgeHeight - badgeYInset
+                    if badge.displayScale <> geometry.scale
+                        uiSetFont(badge.label, 16, "font", false, badge.label.height, geometry.scale)
+                        badge.displayScale = geometry.scale
+                    end if
                     badge.label.text = flag.label
                     offset = flag.x + flag.width + 8
                 end for
@@ -778,6 +797,13 @@ sub renderCells(row as object, cells as object, selected as boolean)
                     tile.time.width = remaining
                 end if
                 if hasReminder(m.reminders, row.uuid, program.id) then tile.title.text = "REM | " + tile.title.text
+            end if
+            if tile.displayScale <> geometry.scale or tile.titleFontHeight <> tile.title.height or tile.timeFontHeight <> tile.time.height
+                tile.displayScale = geometry.scale
+                tile.titleFontHeight = tile.title.height
+                tile.timeFontHeight = tile.time.height
+                uiSetFont(tile.title, 25, "font", false, tile.title.height, geometry.scale)
+                uiSetFont(tile.time, 20, "font", true, tile.time.height, geometry.scale)
             end if
         end if
     end for
