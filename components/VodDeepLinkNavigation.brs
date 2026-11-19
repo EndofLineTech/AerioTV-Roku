@@ -92,14 +92,42 @@ sub beginVodDeepLink(request as object)
     owner.request = request
     m.vodDeepLinkOwner = owner
     m.vodDeepLinkTask = task
+    ' Only hold the previous deferred tune, never the active renderer.
+    if m.pendingAacTune <> invalid
+        m.pendingAacTune.vodHold = {page: owner.page, session: owner.scope.sessionId, waiting: true}
+    end if
     task.observeField("result", "onVodDeepLinkResult")
     task.control = "RUN"
 end sub
 
-sub cancelVodDeepLink()
+function vodDeepLinkOwnerCurrent(task as object, owner as dynamic) as boolean
+    if owner = invalid or not taskUserSessionCurrent(task) then return false
+    current = vodDeepLinkOwner()
+    if current = invalid then return false
+    if not userProfileSameSession(current.scope, owner.scope) then return false
+    return current.page = owner.page and current.base = owner.base and current.key = owner.key and current.protection = owner.protection
+end function
+
+sub releaseVodDeepLinkAacWait(allowFallback as boolean)
+    if m.pendingAacTune = invalid or m.pendingAacTune.vodHold = invalid then return
+    if not m.pendingAacTune.vodHold.waiting then return
+    if allowFallback
+        m.pendingAacTune.vodHold.waiting = false
+    else
+        cancelAacWait()
+    end if
+end sub
+
+sub cancelVodDeepLink(allowFallback = false as boolean)
     if m.vodDeepLinkTask <> invalid
+        resumeTune = false
+        if allowFallback and m.pendingAacTune <> invalid
+            resumeTune = vodDeepLinkOwnerCurrent(m.vodDeepLinkTask, m.vodDeepLinkOwner)
+            if resumeTune then resumeTune = requestGateAccessAllowed(m.vodDeepLinkOwner.base, m.vodDeepLinkOwner.key)
+        end if
         m.vodDeepLinkTask.unobserveField("result")
         cancelNetworkTask(m.vodDeepLinkTask)
+        releaseVodDeepLinkAacWait(resumeTune)
     end if
     m.vodDeepLinkTask = invalid
     m.vodDeepLinkOwner = invalid
@@ -113,11 +141,11 @@ sub onVodDeepLinkResult(event as object)
     task.unobserveField("result")
     m.vodDeepLinkTask = invalid
     m.vodDeepLinkOwner = invalid
-    if not taskUserSessionCurrent(task) then return
-    current = vodDeepLinkOwner()
-    if current = invalid or owner = invalid then return
-    if not userProfileSameSession(current.scope, owner.scope) then return
-    if current.page <> owner.page or current.base <> owner.base or current.key <> owner.key or current.protection <> owner.protection then return
+    if not vodDeepLinkOwnerCurrent(task, owner)
+        releaseVodDeepLinkAacWait(false)
+        return
+    end if
+    allowed = requestGateAccessAllowed(owner.base, owner.key)
     result = event.getData()
     if type(result) = "roAssociativeArray"
         item = result.item
@@ -125,11 +153,12 @@ sub onVodDeepLinkResult(event as object)
             request = owner.request
             matches = item.kind = request.kind and item.id = request.id
             if request.kind = "series" then matches = item.kind = "episode" and item.seriesId = request.id
-            if matches and not vodItemHidden(m.accountPreferences.vod, item) and requestGateAccessAllowed(current.base, current.key)
+            if matches and not vodItemHidden(m.accountPreferences.vod, item) and allowed
                 if startVodPlayback(item, "guide") then return
             end if
         end if
     end if
+    releaseVodDeepLinkAacWait(allowed)
     showVodDeepLinkUnavailable()
 end sub
 

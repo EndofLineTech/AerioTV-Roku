@@ -36,10 +36,25 @@ sub processAacWait()
         cancelAacWait()
         return
     end if
+    hold = request.vodHold
+    if hold <> invalid
+        if hold.page <> m.page or hold.session <> currentUserSessionId() or userProfileUiClosed()
+            cancelAacWait()
+            return
+        end if
+    end if
     ' Deadline wins over a late result, even if the timer callback was delayed.
     message = ""
     if request.clock.totalMilliseconds() >= 20000
+        if hold <> invalid and hold.waiting = true
+            ' The older attempt still expires on its original budget, but
+            ' must not open a failure dialog over the newer link.
+            cancelAacWait()
+            return
+        end if
         message = "AAC profile discovery timed out after 20 seconds."
+    else if hold <> invalid and hold.waiting = true
+        return
     else if m.aacProfile <> invalid
         cancelAacWait()
         startPlayback(request.channel, request.forceRetune, true, request.preserveBudget, request.tuneStartedAt)

@@ -1093,6 +1093,31 @@ sub runStartupLiveLinkChecks()
     assertEqual(m.startMiniAfterPlayback, true, "unavailable live link preserves normal mini startup")
     cancelAacWait()
     m.startMiniAfterPlayback = false
+
+    startPlayback(saved)
+    task = {control: "RUN", unobserveField: sub(field as string)
+        m.detached = true
+    end sub}
+    m.vodDeepLinkTask = task
+    m.pendingAacTune.vodHold = {page: "guide", session: "", waiting: true}
+    startPlayback(linked)
+    assertEqual(task.cancelRequested and task.detached, true, "a later explicit live tune retires the warm VOD resolver")
+    assertEqual(m.vodDeepLinkTask, invalid, "late warm VOD result cannot replace the viewer's live tune")
+    assertEqual(m.pendingAacTune.channel.uuid, linked.uuid, "only the viewer's new AAC wait survives")
+    assertEqual(m.pendingAacTune.vodHold, invalid, "the new tune does not inherit the old hold")
+    cancelAacWait()
+
+    m.page = "player"
+    startPlayback(saved)
+    task = {control: "RUN", unobserveField: sub(field as string)
+        m.detached = true
+    end sub}
+    m.vodDeepLinkTask = task
+    m.pendingAacTune.vodHold = {page: "player", session: "", waiting: true}
+    assertEqual(onKeyEvent("back", true), true, "Back cancels both pending intents without navigating away")
+    assertEqual(task.cancelRequested and task.detached, true, "Back retires the warm VOD task")
+    assertEqual(m.pendingAacTune, invalid, "Back discards held AAC instead of restoring it")
+    assertEqual(m.page, "player", "Back with a held tune preserves existing player surface")
 end sub
 
 sub runProvisionalVodLaunchChecks()

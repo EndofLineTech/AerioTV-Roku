@@ -1,5 +1,6 @@
 sub main()
     checkUnavailableSavedHolderDoesNotResolve()
+    checkAacWaitDuringVodLink()
     request = normalizeLaunchRequest({contentId: "12", mediaType: "movie", apiKey: "untrusted", url: "https://other.test"})
     fixture()
     m.global.profilegateclosed = true
@@ -75,6 +76,65 @@ sub main()
     beginVodDeepLink(request)
     check(m.created = 1 and m.vodDeepLinkTask.apiKey = "own-key", "Remember off uses the existing verified runtime credential without a disk key")
     print "ALL TESTS PASSED"
+end sub
+
+sub checkAacWaitDuringVodLink()
+    for each path in ["plays", "missing", "denied-admission", "replacement", "cancel", "changed-page", "changed-session", "newer-tune", "elapsed", "broker-denied", "page-after-release"]
+        fixture()
+        request = normalizeLaunchRequest({contentId: "12", mediaType: "movie"})
+        check(deferRequiredAacTune({uuid: "old-live"}, false, false, false), "real AAC path is pending before the link")
+        if path = "denied-admission" then request.session = "different-session"
+        beginVodDeepLink(request)
+        task = m.vodDeepLinkTask
+        m.aacProfile = {id: "7"}
+        processAacWait()
+        if path = "denied-admission"
+            check(task = invalid and m.starts = 1 and m.stops = 0, "unadmitted link leaves the existing live intent alone")
+        else
+            check(task <> invalid and m.starts = 0 and m.stops = 0, "admitted link holds old AAC continuation without stopping current playback")
+            if path = "changed-page" then m.page = "settings"
+            if path = "changed-session" then m.global.activeusersession = "replaced"
+            if path = "newer-tune"
+                cancelVodDeepLink()
+                m.aacProfile = invalid
+                deferRequiredAacTune({uuid: "new-live"}, false, false, false)
+            end if
+            if path = "elapsed"
+                m.pendingAacTune.clock = {totalMilliseconds: function() as integer
+                    return 20000
+                end function}
+                processAacWait()
+                check(m.pendingAacTune = invalid and m.failures = 0, "superseded AAC reaches its original deadline silently")
+            end if
+            result = movieResult()
+            if path = "missing" or path = "page-after-release" then result = {ok: false}
+            if path = "broker-denied" then m.global.requestGateRequired = true
+            if path = "cancel" or path = "replacement"
+                cancelVodDeepLink(path = "replacement")
+                check(task.cancelRequested and task.detached, "cancelled task detaches and stops cooperatively")
+                if path = "replacement" then beginVodDeepLink(request)
+                onVodDeepLinkResult(linkEvent(task, movieResult()))
+                if path = "replacement"
+                    processAacWait()
+                    check(m.starts = 0 and m.stops = 0, "old result cannot release replacement's hold")
+                    task = m.vodDeepLinkTask
+                end if
+            end if
+            onVodDeepLinkResult(linkEvent(task, result))
+            if path = "page-after-release" then m.page = "settings"
+            m.aacProfile = {id: "7"}
+            processAacWait()
+            if path = "plays" or path = "replacement" or path = "elapsed"
+                check(m.stops = 1 and m.starts = 0 and m.page = "onDemand", "only the admitted movie takes over playback: " + path)
+            else if path = "missing" or path = "newer-tune"
+                expected = "old-live"
+                if path = "newer-tune" then expected = "new-live"
+                check(m.stops = 0 and m.starts = 1 and m.startedChannel = expected, "only the still-valid live intent resumes: " + path)
+            else
+                check(m.stops = 0 and m.starts = 0 and m.pendingAacTune = invalid, "stale VOD and held live tune are both discarded: " + path)
+            end if
+        end if
+    end for
 end sub
 
 sub checkUnavailableSavedHolderDoesNotResolve()
@@ -157,6 +217,15 @@ sub fixture()
     end function}
     m.page = "player"
     m.stops = 0
+    m.starts = 0
+    m.failures = 0
+    m.pendingAacTune = invalid
+    m.aacWaitTimer = {control: "stop"}
+    m.noticeTimer = {control: "stop"}
+    m.devicePreferences = {audioMode: "aac"}
+    m.aacProfile = invalid
+    m.aacDiscoveryState = "pending"
+    m.capabilityTask = {}
     m.created = 0
     m.profilePinDialog = invalid
     m.startupVodFallbackHolder = invalid
@@ -188,6 +257,23 @@ end function
 
 sub stopPlayback()
     m.stops++
+    cancelAacWait()
+end sub
+
+sub startPlayback(channel as object, force as boolean, useAac as boolean, preserveBudget as boolean, tuneStartedAt as integer)
+    m.starts++
+    m.startedChannel = channel.uuid
+    m.page = "player"
+end sub
+
+sub refreshCapabilities()
+end sub
+
+sub showAacUnavailable(request as object, message as string)
+    m.failures++
+end sub
+
+sub hideNotice()
 end sub
 
 function persistAccountPreferences() as boolean

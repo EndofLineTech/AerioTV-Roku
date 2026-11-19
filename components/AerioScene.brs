@@ -350,7 +350,7 @@ sub onLaunchRequest()
     if not launchRequestHasMediaIntent(raw) then return
     beforeGuide = m.startupGuideReady <> true
     if beforeGuide then m.startupVodIntent = launchRequestHasVodIntent(raw)
-    cancelVodDeepLink()
+    cancelVodDeepLink(true)
     m.pendingLaunch = normalizeLaunchRequest(raw)
     if m.pendingLaunch <> invalid
         if m.pendingLaunch.kind <> "live"
@@ -1302,6 +1302,10 @@ end sub
 
 sub startPlayback(channel as object, forceRetune = false as boolean, useAac = false as boolean, preserveStartupBudget = false as boolean, tuneStartedAt = 0 as integer)
     if userProfileGateClosed() then return
+    ' A same-channel automatic recovery is not a newer viewer tune.
+    if not preserveStartupBudget
+        if m.vodDeepLinkTask <> invalid then cancelVodDeepLink()
+    end if
     if m.settingsHub <> invalid
         if m.settingsHub.active then closeSettingsHub()
     end if
@@ -1620,6 +1624,7 @@ sub hideBanner()
 end sub
 
 sub stopPlayback()
+    if m.vodDeepLinkTask <> invalid then cancelVodDeepLink()
     cancelHlsMint()
     if m.settingsHub <> invalid then m.settingsHub.active = false
     m.startMiniAfterPlayback = false
@@ -1785,6 +1790,7 @@ sub onGuidePlayerRequest(event as object)
         return
     end if
     if event.getData() = "cancelPendingTune"
+        if m.vodDeepLinkTask <> invalid then cancelVodDeepLink()
         cancelAacWait()
         showNotice("Pending channel tune cancelled.")
         return
@@ -2915,6 +2921,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if handlePlayerOkKey(key, press) then return true
     if m.page = "player"
         if key = "back" and press and m.pendingAacTune <> invalid
+            if m.vodDeepLinkTask <> invalid then cancelVodDeepLink()
             cancelAacWait()
             showNotice("Pending channel tune cancelled.")
             return true

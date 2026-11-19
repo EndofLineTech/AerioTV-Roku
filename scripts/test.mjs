@@ -297,7 +297,7 @@ for (const suite of suites) {
     ...(suite === 'VodDescriptionInput' ? ['components/VodView.brs', 'components/VodMetadata.brs'] : []),
     ...(suite === 'LiveRecovery' ? ['components/LiveRecovery.brs'] : []),
     ...(suite === 'PlaybackFailure' ? ['components/PlaybackFailure.brs'] : []),
-    ...(['AacStartup', 'PlayerLifecycle'].includes(suite) ? ['components/AacStartup.brs'] : []),
+    ...(['AacStartup', 'PlayerLifecycle', 'VodDeepLinkNavigation'].includes(suite) ? ['components/AacStartup.brs'] : []),
     ...(suite === 'CapabilityTask' ? ['components/CapabilityTask.brs'] : []),
     ...(suite === 'PlayerOptionsInput' ? ['components/PlayerOptions.brs'] : []),
     ...(suite === 'PlayerControls' ? ['components/PlayerControls.brs'] : []),
