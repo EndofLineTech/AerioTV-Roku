@@ -61,7 +61,7 @@ sub onTmdbLoaded(event as object)
         return
     end if
     if not result.ok
-        m.failure = textValue(result.message) + "  * > Refresh to retry."
+        m.failure = vodRetryStatus(result.message)
         drawVod()
         return
     end if
@@ -110,7 +110,7 @@ sub loadDiscovery()
     m.items = []
     m.failure = ""
     m.discoveryMessage = ""
-    m.status.text = "Matching optional TMDB discovery to your permitted catalog... Back cancels."
+    m.status.text = "Matching catalog titles... Back cancels."
     m.tmdbTask = createTmdbTask(m.shelf, m.discoveryAnchor)
     m.tmdbTask.control = "RUN"
 end sub

@@ -252,7 +252,7 @@ for (const suite of suites) {
     ...(['SettingsRail', 'SettingsHubInput'].includes(suite) ? ['components/SettingsRail.brs'] : []),
     ...(suite === 'SettingsHubInput' ? ['components/SettingsHub.brs'] : []),
     ...(suite === 'SettingsModel' ? ['components/SettingsNavigation.brs'] : []),
-    ...(['TmdbModel', 'TmdbTask'].includes(suite) ? ['source/TmdbModel.brs'] : []),
+    ...(['TmdbModel', 'TmdbTask', 'VodDescriptionInput'].includes(suite) ? ['source/TmdbModel.brs'] : []),
     ...(suite === 'TmdbTask' ? ['components/TmdbTask.brs'] : []),
     ...(suite === 'VodShelfTask' ? ['components/VodShelfTask.brs'] : []),
     ...(['PlayerLifecycle', 'ConnectionNavigation'].includes(suite) ? ['components/AerioScene.brs'] : []),

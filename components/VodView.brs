@@ -319,8 +319,8 @@ sub onVodLoaded(event as object)
             loadVodPage()
             return
         end if
-        m.failure = result.message + "  * > Refresh to retry."
-        m.status.text = m.failure
+        m.failure = vodRetryStatus(result.message)
+        drawVod()
         return
     end if
     if shelfResult
@@ -330,7 +330,7 @@ sub onVodLoaded(event as object)
         m.hasNext = false
         if m.index >= m.items.count() then m.index = 0
         if result.partial = true
-            m.failure = "Some saved titles could not be checked. * > Refresh to retry."
+            m.failure = vodRetryStatus("Some saved titles could not be checked.")
             if m.shelf = "continue" then m.failure = "Some completed series need explicit episode selection in TV Shows."
         end if
         drawVod()
@@ -461,7 +461,6 @@ sub drawVod()
     scale = normalizeVodDisplayScale(appearance["vodDisplayScale"])
     titleSize = uiTypeSize("body")
     factSize = uiTypeSize("caption")
-    layout = vodTextLayout(scale, appearance.textSize, uiScaledFontSize(titleSize, 0, false, appearance, scale), uiScaledFontSize(factSize, 0, true, appearance, scale))
     compact = m.shelf = "categories" or m.shelf = "providers" or m.shelf = "versions"
     typographyKey = scale.toStr() + "|" + textValue(appearance.textSize) + "|" + textValue(appearance.subtextSize)
     if compact then typographyKey += "|compact"
@@ -504,9 +503,11 @@ sub drawVod()
         end if
     end if
     if (m.shelf = "related" or m.shelf = "person") and m.failure = "" and textValue(m.discoveryMessage) <> "" then m.status.text = m.discoveryMessage
+    extraStatus = fitVodFailureStatus(scale)
+    layout = vodTextLayout(scale, appearance.textSize, uiScaledFontSize(titleSize, 0, false, appearance, scale), uiScaledFontSize(factSize, 0, true, appearance, scale), extraStatus)
     for i = 0 to 19
         tile = m.tiles[i]
-        placement = vodVisualTile(i, m.index, m.items.count(), compact, scale)
+        placement = vodVisualTile(i, m.index, m.items.count(), compact, scale, extraStatus)
         tile.root.translation = [placement.x, placement.y]
         tile.root.visible = placement.visible
         tile.border.visible = i < m.items.count()
@@ -603,6 +604,25 @@ sub drawVod()
         end if
     end for
 end sub
+
+function fitVodFailureStatus(scale as integer) as integer
+    m.status.wrap = false
+    m.status.maxLines = 1
+    if scale = 100 or m.failure = "" then return 0
+    width = m.status.width
+    m.status.width = 0
+    measured = m.status.localBoundingRect().width
+    m.status.width = width
+    if measured > 0 and measured + 2 <= width then return 0
+    ' Reserve a second line only for failures that need it. Tabs and the
+    ' selected item stay put logically; the same tiles reflow below the text.
+    extra = int(m.status.font.size * 1.12 + 0.9999)
+    if extra mod 2 <> 0 then extra++
+    m.status.height += extra
+    m.status.wrap = true
+    m.status.maxLines = 2
+    return extra
+end function
 
 sub layoutVodCompactCard(tile as object, scale as integer, sourceVersion as boolean, typographyKey as string)
     cardHeight = 116

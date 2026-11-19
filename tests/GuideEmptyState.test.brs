@@ -55,6 +55,12 @@ sub testGuideCellScaleRedraw()
     if not tile.time.visible or tile.title.font.size <= 27 or tile.time.font.size <= 20 then stop
     if tile.time.translation[0] <= badge.root.translation[0] + badge.surface.width then stop
     if tile.time.translation[0] + tile.time.width > tile.root.clippingRect[2] then stop
+    measured = tile.timeMeasuredWidth
+    ' Keep the subtitle lane and font, but reduce room after the badge.
+    cell.endsAt = 43200 + 1740
+    renderCells(row, [cell], true, geometry, 1.2)
+    if tile.time.visible or tile.timeMeasuredWidth <> measured or not badge.root.visible then stop
+    cell.endsAt = 43200 + 4200
     applyHubGuideSetting("guideDisplayScale", 100)
     renderCells(row, [cell], true, currentGuideGeometry(), 1.0)
     if tile.title.font.size <> 27 or tile.time.font.size <> 20 or tile.root.clippingRect[3] <> 111 then stop

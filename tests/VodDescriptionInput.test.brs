@@ -82,6 +82,7 @@ sub testVodDisplayFrames()
     if m.status.text <> "Nothing in To Watch yet. Add a movie or TV show from its details." then stop
     if m.status.width <> 1728 or m.status.font.size <> 52 then stop
     if len(m.status.text) * m.status.font.size * 0.51 > m.status.width then stop
+    testVodFailureStatus()
     m.shelf = "versions"
     name = "A VERY LONG SOURCE NAME WITH UPPERCASE EXAMPLES AND A SHARED PREFIX FOR BOTH VERSIONS"
     m.items = vodVersionPage([{id: "1234567890123456788", m3u_account: {id: 5, name: name}}, {id: "1234567890123456789", m3u_account: {id: 5, name: name}}], 1).items
@@ -119,8 +120,43 @@ sub testVodDisplayFrames()
     if tile.title.translation[1] + tile.title.height > tile.border.height or tile.title.maxLines * tile.title.font.size * 1.12 > tile.title.height then stop
 end sub
 
+sub testVodFailureStatus()
+    m.kind = "episode"
+    m.shelf = "catalog"
+    m.items = []
+    for i = 0 to 1
+        m.items.push({id: "fixture-" + i.toStr(), kind: "episode", title: "Fixture", season: "1", episode: i.toStr(), year: "", rating: ""})
+        m.tiles[i].poster.uri = "pkg:/images/channel-icon-hd.png"
+    end for
+    m.index = 1
+    m.task = descriptionNode(20)
+    m.task.itemId = ""
+    m.task.operation = "page"
+    m.task.subtype = function() as string
+        return "VodTask"
+    end function
+    reason = "Episode catalog could not be loaded from the available sources. Refresh to retry."
+    onVodLoaded(descriptionEvent(m.task, {ok: false, message: reason, category: "episode-loading"}))
+    if m.task <> invalid or m.index <> 1 or not m.tiles[1].root.visible then stop
+    if m.tiles[0].border.color = m.tiles[1].border.color then stop
+    if m.libraryNavigation.active or m.primaryNavigation.active then stop
+    if m.status.text <> "* > Refresh to retry.  Episode catalog could not be loaded from the available sources." then stop
+    if not m.status.wrap or m.status.maxLines <> 2 or m.status.font.size <> 52 then stop
+    if m.status.height < 2 * m.status.font.size * 1.12 then stop
+    if m.status.translation[1] + m.status.height > m.tiles[0].root.translation[1] then stop
+    x = m.tiles[1].root.translation[0]
+    m.failure = ""
+    drawVod()
+    if m.status.wrap or m.status.maxLines <> 1 or m.tiles[1].root.translation[1] <> 278 or m.tiles[1].root.translation[0] <> x or m.index <> 1 then stop
+    for i = 0 to 1
+        m.tiles[i].poster.uri = ""
+    end for
+end sub
+
 function vodTestLabel() as object
-    return {font: {size: 24}, translation: [0, 0], text: ""}
+    return {font: {size: 24}, translation: [0, 0], text: "", localBoundingRect: function() as object
+        return {width: len(m.text) * m.font.size * 0.51}
+    end function}
 end function
 
 sub resetDescriptionTest()

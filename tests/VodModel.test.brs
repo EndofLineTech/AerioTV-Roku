@@ -15,10 +15,12 @@ sub main()
     if vodVisualTile(1, 0, 1, false).visible then stop
     if not vodVisualTile(19, 0, 20, true).visible then stop
     for focused = 0 to 19
-        if not vodVisualTile(focused, focused, 20, false, 150).visible then stop
-        for i = 0 to 19
-            scaled = vodVisualTile(i, focused, 20, false, 150)
-            if scaled.visible and (scaled.y < 278 or scaled.y + vodCatalogTileHeight(150) > 970) then stop
+        for each statusExtra in [0, 60]
+            if not vodVisualTile(focused, focused, 20, false, 150, statusExtra).visible then stop
+            for i = 0 to 19
+                scaled = vodVisualTile(i, focused, 20, false, 150, statusExtra)
+                if scaled.visible and (scaled.y < 278 + statusExtra or scaled.y + vodCatalogTileHeight(150, statusExtra) > 970) then stop
+            end for
         end for
     end for
     art = vodNormalize({id: 42, uuid: "episode", name: "Episode", series: {id: 1, name: "Series", logo: {id: 5}}}, "episode")
