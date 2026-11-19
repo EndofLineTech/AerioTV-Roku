@@ -150,9 +150,11 @@ sub numericEpochRoundTrip(epoch as integer, now as integer)
     end if
     entry = metadataCacheEnvelope("scope", "channels", "key", "gen", epoch, [])
     numericCache("epoch-roundtrip", ParseJson(FormatJson(entry)), "fresh", "caller", now)
-    numericCache("fetched-at-now", ParseJson(FormatJson(entry)), "fresh", "wire", epoch)
-    future = metadataCacheEnvelope("scope", "channels", "key", "gen", now, [])
-    numericCache("fetched-at-now-plus-one", ParseJson(FormatJson(future)), "miss", "wire", epoch)
+    atBoundary = metadataCacheEnvelope("scope", "channels", "key", "gen", now, [])
+    decoded = ParseJson(FormatJson(atBoundary))
+    ' Reuse the decoded fields; only the Integer clock changes.
+    numericCache("fetched-at-now", decoded, "fresh", "wire", now)
+    numericCache("fetched-at-now-plus-one", decoded, "miss", "wire", epoch)
 end sub
 
 sub numericPrimitiveControls(one as integer, fetched as integer, native as boolean)

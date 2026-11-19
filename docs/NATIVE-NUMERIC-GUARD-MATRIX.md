@@ -46,6 +46,9 @@ expectations and lanes independently of the probe, and reports `caller` and
 `caller-shape` mismatch counts separately. It checks evidence integrity, not
 product approval. Review every mismatch:
 
+- The cache boundary pair shares one decoded entry. Its fresh result at
+  `now = fetched` is the control for the miss with the clock one second earlier.
+
 - `caller` failures reproduce inputs at the named model boundary. For
   `caller-shape` failures, check the exact input types and source in production
   before proposing a narrowly scoped fix. If an HTTP bucket is lost, do not
