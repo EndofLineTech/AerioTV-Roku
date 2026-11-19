@@ -160,10 +160,18 @@ Multiview is excluded. Rewind uses provider archives; it is not a guaranteed
 local buffer.
 
 Development work after v0.3.102 includes provider-declared radio detection,
-catch-up offset and local archive resume, and new Live TV appearance controls.
-Detection does not add Radio Mode or server radio editing; native radio and the
-new archive paths still need playable-provider verification. See the
-[crosswalk](docs/PARITY-CROSSWALK.md) for current evidence and limitations.
+foreground Radio Mode, catch-up offset and local archive resume, and new Live
+TV appearance controls. Declared radio stations open Radio Mode automatically.
+To open ordinary live channels that way too, turn on **Settings > Player >
+Radio Mode by Default** (off by default, stored only on this Roku).
+Choose **Watch Video** from Guide options to bypass Radio Mode for one tune, or
+from Radio Mode to reveal the same stream without retuning. **Stop and return
+to guide** (or Back) ends playback. A station may not have a video track.
+
+On a video channel, Radio Mode hides the picture but does not remove video from
+the stream or save bandwidth. Keep AerioTV open; listening after leaving
+AerioTV or turning off the TV is not supported. See [Radio Mode validation](docs/RADIO-MODE.md)
+and the [parity crosswalk](docs/PARITY-CROSSWALK.md) for evidence and limitations.
 
 The comparison below is the historical v0.3.88 preview snapshot.
 

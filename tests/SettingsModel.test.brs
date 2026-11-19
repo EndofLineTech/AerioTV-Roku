@@ -56,6 +56,10 @@ sub main()
     if player[0].key <> "archiveSkipSeconds" or player[0].values[0] <> 60 or player[0].values[2] <> 300 then stop
     if player[2].key <> "liveTransport" or not settingsHubChangeAllowed(model, "device", "liveTransport", "hls") then stop
     if player[3].key <> "liveStartupRetries" or not settingsHubChangeAllowed(model, "device", "liveStartupRetries", 3) then stop
+    if player[4].key <> "radioDefault" or player[4].scope <> "device" then stop
+    if settingsHubValue(model, "device", "radioDefault") <> false then stop
+    if not settingsHubChangeAllowed(model, "device", "radioDefault", true) then stop
+    if settingsHubChangeAllowed(model, "device", "radioDefault", "true") then stop
     if not settingsHubChangeAllowed(model, "device", "liveStartupRetries", 0) then stop
     if settingsHubChangeAllowed(model, "device", "liveStartupRetries", 4) then stop
     if settingsValueText(0, "liveStartupRetries") <> "No automatic retries" then stop
@@ -122,7 +126,7 @@ sub main()
     model.dvr = "denied"
     if settingsHubChangeAllowed(model, "account", "dvrPreRollMinutes", 5) then stop
     model.catchup = "denied"
-    if settingsHubEntries("player", model).count() <> 4 then stop
+    if settingsHubEntries("player", model).count() <> 5 then stop
     if settingsHubChangeAllowed(model, "device", "archiveSkipSeconds", 120) then stop
     model.catchup = "allowed"
     model.movies = "allowed"

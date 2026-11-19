@@ -77,6 +77,7 @@ function settingsHubAllEntries(page as string, model as object) as object
         entries.push({title: "Audio compatibility (next tune)", scope: "device", key: "audioMode", values: ["auto", "direct", "aac"]})
         entries.push({title: "Dispatcharr live transport (next tune)", scope: "device", key: "liveTransport", values: ["auto", "ts", "hls"]})
         entries.push({title: "Live startup retries (next tune)", scope: "device", key: "liveStartupRetries", values: [0, 1, 2, 3]})
+        entries.push({title: "Radio Mode by Default (next tune)", scope: "device", key: "radioDefault", values: [true, false]})
         entries.push({title: "Video scale", scope: "device", key: "videoScale", values: ["fit", "fill", "stretch"]})
         return entries
     end if

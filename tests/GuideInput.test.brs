@@ -109,6 +109,18 @@ sub main()
     if m.top.beacons.count() <> 2 or m.top.beacons[1] <> "EPGLaunchComplete" then stop
     m.top.active = false
     if beginEpgLaunch() then stop
+    m.userSessionId = "view-session"
+    m.channels = m.filtered
+    m.savedFavoriteIds = []
+    m.favorites = {}
+    m.groups = [{id: "all"}]
+    m.groupIndex = 0
+    m.selected = 2
+    watchLive(true)
+    if m.top.watchChannel.uuid <> "2" or m.top.watchChannel.watchVideo <> true or userViewSession(m.top.watchChannel) <> "view-session" then stop
+    if m.filtered[2].watchVideo <> invalid then stop
+    watchLive()
+    if m.top.watchChannel.watchVideo <> invalid then stop
     print "ALL TESTS PASSED"
 end sub
 

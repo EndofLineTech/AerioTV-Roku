@@ -9,6 +9,7 @@
     <field id="hint" type="string" onChange="renderInfo" />
     <field id="playbackState" type="string" onChange="renderInfo" />
     <field id="preferences" type="assocarray" onChange="renderInfo" />
+    <field id="radioPresentation" type="boolean" onChange="renderInfo" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="pkg:/source/NowNextModel.brs" />

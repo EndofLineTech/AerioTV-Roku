@@ -1,5 +1,5 @@
 ' Gate mandatory AAC before constructing/opening any new media request.
-function deferRequiredAacTune(channel as object, forceRetune as boolean, useAac as boolean, preserveBudget as boolean, tuneStartedAt = 0 as integer, coldToken = "" as string) as boolean
+function deferRequiredAacTune(channel as object, forceRetune as boolean, useAac as boolean, preserveBudget as boolean, tuneStartedAt = 0 as integer, coldToken = "" as string, presentation = "auto" as string) as boolean
     if m.devicePreferences.audioMode <> "aac" and not useAac then return false
     if m.aacProfile <> invalid then return false
     if m.devicePreferences.audioMode = "auto" and m.ac3Profile <> invalid then return false
@@ -8,7 +8,7 @@ function deferRequiredAacTune(channel as object, forceRetune as boolean, useAac 
     m.pendingAacTune = {
         channel: channel, forceRetune: forceRetune, preserveBudget: preserveBudget
         account: m.accountIdentity, mode: m.devicePreferences.audioMode, clock: clock
-        tuneStartedAt: tuneStartedAt, coldToken: coldToken
+        tuneStartedAt: tuneStartedAt, coldToken: coldToken, presentation: presentation
     }
     if coldPlaybackCurrent(coldToken)
         m.coldPlayback.phase = "aac"
@@ -76,11 +76,7 @@ sub processAacWait()
         return
     else if m.aacProfile <> invalid
         cancelAacWait()
-        if token <> ""
-            startPlayback(request.channel, request.forceRetune, true, request.preserveBudget, request.tuneStartedAt, token)
-        else
-            startPlayback(request.channel, request.forceRetune, true, request.preserveBudget, request.tuneStartedAt)
-        end if
+        startPlayback(request.channel, request.forceRetune, true, request.preserveBudget, request.tuneStartedAt, token, request.presentation)
         return
     else if m.aacDiscoveryState = "unavailable" or m.aacDiscoveryState = "error"
         message = m.aacDiscoveryMessage

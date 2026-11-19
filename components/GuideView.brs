@@ -866,10 +866,12 @@ sub jumpTo(epoch as integer)
     scheduleLoad()
 end sub
 
-sub watchLive()
+sub watchLive(explicitVideo = false as boolean)
     if m.filtered.count() = 0 then return
     savePreferences()
-    m.top.watchChannel = userViewEvent(m.filtered[m.selected], m.userSessionId)
+    channel = userViewEvent(m.filtered[m.selected], m.userSessionId)
+    if explicitVideo then channel.watchVideo = true
+    m.top.watchChannel = channel
 end sub
 
 function adjacentPlayingChannel(currentUuid as string, direction as integer) as dynamic
@@ -1081,6 +1083,13 @@ sub openOptions(advanced = false as boolean)
     if m.top.vodEnabled then label = "Disable VOD libraries for this connection"
     if m.providerType <> "m3u" and m.providerType <> "xtream" then items.push({title: label, action: "toggleVod"})
     if m.top.pendingTune then items.unshift({title: "Cancel pending channel tune", action: "cancelPendingTune"})
+    if m.filtered.count() > 0
+        defaultRadio = false
+        if m.top.remotePreferences <> invalid then defaultRadio = m.top.remotePreferences.radioDefault = true
+        if defaultRadio or channelDeclaredRadio(m.filtered[m.selected], m.top.channelFacts)
+            items.unshift({title: "Watch Video", action: "watchVideo"})
+        end if
+    end if
     permittedItems = []
     for each item in items
         if guideProfileActionAllowed(m.userRole, item.action) then permittedItems.push(item)
@@ -1135,6 +1144,9 @@ sub onPickerSelected(event as object)
         end if
         if action = "expandPlayer" or action = "stopPlayer" or action = "optionsPlayer" or action = "cancelSleep" or action = "cancelPendingTune"
             m.top.playerRequest = action
+            return
+        else if action = "watchVideo"
+            watchLive(true)
             return
         else if action = "details"
             showDetails()

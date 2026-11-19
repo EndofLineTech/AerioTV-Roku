@@ -175,10 +175,10 @@ sub renderInfo()
     m.progressFill.width = 0
     if status = "loading"
         m.title.text = "Loading program information..."
-        m.description.text = "Playback continues while the guide loads."
+        m.description.text = "Waiting for guide data."
     else if status = "unavailable"
         m.title.text = "Program information unavailable"
-        m.description.text = "The guide could not be refreshed. Playback is unaffected."
+        m.description.text = "The guide could not be refreshed."
     end if
     if schedule.current <> invalid
         current = schedule.current
@@ -228,6 +228,7 @@ sub renderInfo()
 end sub
 
 function playerInfoVisible(key as string) as boolean
+    if m.top.radioPresentation = true then return key <> "infoHints"
     preferences = m.top.preferences
     if type(preferences) <> "roAssociativeArray" then return true
     return preferences[key] <> false
@@ -243,7 +244,7 @@ sub applyPlayerInfoPreferences()
     showHints = playerInfoVisible("infoHints")
     m.logo.visible = showLogo
     m.channelName.visible = showChannel
-    m.state.visible = showChannel
+    m.state.visible = showChannel and m.top.radioPresentation <> true
     m.clock.visible = showTime
     m.title.visible = showTitle
     m.times.visible = showTime

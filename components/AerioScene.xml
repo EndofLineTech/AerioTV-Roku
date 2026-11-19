@@ -102,6 +102,8 @@
   <script type="text/brightscript" uri="StartupRecovery.brs" />
   <script type="text/brightscript" uri="LiveRecovery.brs" />
   <script type="text/brightscript" uri="PlaybackFailure.brs" />
+  <script type="text/brightscript" uri="RadioPresentation.brs" />
+  <script type="text/brightscript" uri="pkg:/source/RadioModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/VodModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/NowNextModel.brs" />
@@ -143,6 +145,12 @@
       <AerioVideo id="video" visible="false" width="1920" height="1080" enableUI="false" allowOptionsKeyOverride="false" focusable="true" />
     </Group>
     <Group id="playerInput" focusable="true" />
+    <Group id="radioPanel" visible="false">
+      <Rectangle width="1920" height="1080" color="0x0A1628FF" />
+      <Label translation="[160,146]" width="1600" height="84" text="Radio Mode" font="font:LargeBoldSystemFont" color="0xE8F3FAFF" />
+      <Label id="radioStatus" translation="[160,246]" width="1600" height="54" font="font:MediumBoldSystemFont" color="0x1AC4D8FF" />
+      <Label id="radioHelp" translation="[160,538]" width="1600" height="104" wrap="true" font="font:MediumSystemFont" color="0x9EB5C9FF" />
+    </Group>
     <PlayerInfo id="playerBanner" visible="false" />
     <Group id="bufferingIndicator" visible="false" translation="[1536,146]">
       <AerioSurface width="288" height="64" radius="22" color="0x0D1E35F0" />

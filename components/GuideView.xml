@@ -61,6 +61,7 @@
   <script type="text/brightscript" uri="pkg:/source/PreferenceModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/StrictJson.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideSettingsModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/CapabilityModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideLogoSize.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideDayOptions.brs" />
   <script type="text/brightscript" uri="pkg:/source/DvrPresentationModel.brs" />

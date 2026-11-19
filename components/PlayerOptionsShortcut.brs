@@ -6,7 +6,7 @@ end sub
 
 function canHoldPlayerOk() as boolean
     if m.page <> "player" or m.playingChannel = invalid or m.mini then return false
-    if m.pictureCover.visible or m.playerOptions.active or m.browser.active or m.transport.active then return false
+    if m.pictureCover.visible or (m.radioPanel <> invalid and m.radioPanel.visible) or m.playerOptions.active or m.browser.active or m.transport.active then return false
     if m.top.dialog <> invalid
         if not m.top.dialog.wasClosed then return false
     end if

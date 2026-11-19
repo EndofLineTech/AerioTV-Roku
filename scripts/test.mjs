@@ -110,6 +110,7 @@ suites.push('CatchupTask');
 suites.push('XtreamGuideOverride');
 suites.push('PlayerControls');
 suites.push('MemoryCleanup');
+suites.push('RadioPresentation');
 const requested = process.argv.slice(2);
 for (const name of requested) {
   if (!suites.includes(name)) throw new Error(`Unknown suite: ${name}`);
@@ -290,7 +291,9 @@ for (const name of requested.length ? requested : suites) {
     ...(suite === 'GroupInput' ? ['components/GroupNavigator.brs'] : []),
     ...(['PlayerOkHold', 'PlayerLifecycle'].includes(suite) ? ['components/PlayerOptionsShortcut.brs'] : []),
     ...(['StartupRecovery', 'PlayerLifecycle'].includes(suite) ? ['components/StartupRecovery.brs'] : []),
-    ...(suite === 'PlayerLifecycle' ? ['components/HlsSessionLifecycle.brs', 'components/LiveRecovery.brs', 'components/PlaybackFailure.brs'] : []),
+    ...(suite === 'PlayerLifecycle' ? ['components/HlsSessionLifecycle.brs', 'components/LiveRecovery.brs', 'components/PlaybackFailure.brs', 'components/RadioPresentation.brs'] : []),
+    ...(suite === 'RadioPresentation' ? ['components/AerioScene.brs', 'components/RadioPresentation.brs', 'components/PlayerRemoteInput.brs', 'components/AacStartup.brs', 'components/PlayerOptionsShortcut.brs', 'components/StartupRecovery.brs', 'components/HlsSessionLifecycle.brs', 'components/LiveRecovery.brs', 'components/PlaybackFailure.brs', 'source/SettingsModel.brs'] : []),
+    ...(['RadioPresentation', 'PlayerLifecycle', 'PlaybackFailure'].includes(suite) ? ['source/RadioModel.brs'] : []),
     ...(['PlayerLifecycle', 'DvrHandoff'].includes(suite) ? ['components/MediaNavigation.brs', 'components/DvrPlayback.brs'] : []),
     ...(suite === 'DvrNavigation' ? ['components/MediaNavigation.brs', 'components/DvrNavigation.brs', 'components/DvrSeriesNavigation.brs', 'components/DvrPlayback.brs'] : []),
     ...(suite === 'DvrView' ? ['components/DvrView.brs'] : []),

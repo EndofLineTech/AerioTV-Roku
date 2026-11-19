@@ -169,6 +169,7 @@ sub init()
     m.optionKind = "main"
     m.optionReturnAction = ""
     m.pictureCover = m.top.findNode("pictureCover")
+    initRadioPresentation()
     m.pictureHint = m.top.findNode("pictureHint")
     m.pictureHintTimer = m.top.findNode("pictureHintTimer")
     m.pictureHintTimer.observeField("fire", "hidePictureHint")
@@ -1184,6 +1185,7 @@ sub onCapabilities(event as object)
         end if
     end if
     m.guide.channelFacts = m.channelFacts
+    applyLivePresentation()
     m.guide.catchupPermission = m.capabilities.catchup
     m.guide.dvrPermission = m.capabilities.dvr
     if m.capabilities.dvr <> "manage" then cancelRecordFlow()
@@ -1266,7 +1268,7 @@ sub onAacFailureChoice(event as object)
     if request.account <> m.accountIdentity then return
     if choice = 0 then m.devicePreferences.audioMode = "auto" else m.devicePreferences.audioMode = "direct"
     persistPreferences()
-    startPlayback(request.channel, true, false, false, request.tuneStartedAt)
+    startPlayback(request.channel, true, false, false, request.tuneStartedAt, "", request.presentation)
 end sub
 
 sub onAacFailureClosed(event as object)
@@ -1317,10 +1319,13 @@ end sub
 sub onWatchChannel(event as object)
     if not userEventCurrent(event.getData()) then return
     if not m.guide.isSameNode(event.getRoSGNode()) or m.page <> "guide" then return
-    startPlayback(event.getData())
+    channel = event.getData()
+    intent = "auto"
+    if channel.watchVideo = true then intent = "video"
+    startPlayback(channel, false, false, false, 0, "", intent)
 end sub
 
-sub startPlayback(channel as object, forceRetune = false as boolean, useAac = false as boolean, preserveStartupBudget = false as boolean, tuneStartedAt = 0 as integer, coldToken = "" as string)
+sub startPlayback(channel as object, forceRetune = false as boolean, useAac = false as boolean, preserveStartupBudget = false as boolean, tuneStartedAt = 0 as integer, coldToken = "" as string, presentation = "auto" as string)
     if userProfileGateClosed() then return
     if coldToken = "" then retireColdPlayback("replaced")
     ' A same-channel automatic recovery is not a newer viewer tune.
@@ -1341,10 +1346,14 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     m.channelTuneTimer.control = "stop"
     m.pendingChannel = invalid
     if m.playingChannel <> invalid
-        if not forceRetune and m.playingChannel.uuid = channel.uuid and m.video.state <> "error" and m.video.state <> "finished"
-            expandPlayback()
-            settleColdPlayback(coldToken, "replaced")
-            return
+        if m.playingChannel.uuid = channel.uuid
+            if forceRetune and presentation = "auto" and m.livePresentationIntent <> invalid then presentation = m.livePresentationIntent
+            if not forceRetune and m.video.state <> "error" and m.video.state <> "finished"
+                m.livePresentationIntent = presentation
+                expandPlayback()
+                settleColdPlayback(coldToken, "replaced")
+                return
+            end if
         end if
     end if
     transport = dispatcharrLiveTransport(m.devicePreferences.liveTransport, m.hlsAvailable)
@@ -1367,7 +1376,8 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         return
     end if
     cancelStartupWatch()
-    if deferRequiredAacTune(channel, forceRetune, useAac, preserveStartupBudget, tuneStartedAt, coldToken) then return
+    if deferRequiredAacTune(channel, forceRetune, useAac, preserveStartupBudget, tuneStartedAt, coldToken, presentation) then return
+    clearRadioPresentation()
     m.guide.active = false
     m.guide.visible = false
     m.screen.visible = false
@@ -1395,6 +1405,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     m.decoderKeysReported = false
     m.decoderSnapshot = {}
     m.playingChannel = channel
+    m.livePresentationIntent = presentation
     m.liveSession = mediaSession(m.accountIdentity, CreateObject("roDeviceInfo").getRandomUUID(), "live", channel.uuid, uiNow())
     if tuneStartedAt > 0 and tuneStartedAt <= uiNow() then m.liveSession.openedAt = tuneStartedAt
     applyVideoLayout()
@@ -1445,13 +1456,15 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     if not directM3u and not directXtream then playbackKey = m.apiKey
     if not requestGateTrackRenderer(m.video, content.url, playbackKey)
         m.video.content = invalid
-        if settleColdPlayback(coldToken, "denied") then stopPlayback()
+        settleColdPlayback(coldToken, "denied")
+        stopPlayback()
         showNotice("Requests are paused for this account or server.")
         return
     end if
     m.page = "player"
     m.video.visible = true
     bindColdLiveReader(coldToken, content)
+    applyLivePresentation()
     ' AerioVideo forwards keys to the Scene instead of native transport actions.
     print "[playback] tuning channel "; channel.number; " requested reader="; content.streamFormat
     focusPlaybackInput()
@@ -1475,7 +1488,7 @@ sub onRequestGateSnapshot()
 end sub
 
 sub showChannelBanner(channel as object, hint as string)
-    if m.mini or m.pictureCover.visible then return
+    if m.mini or m.pictureCover.visible or radioPresentationActive() then return
     m.banner.channel = channel
     m.banner.info = m.guide.callFunc("cachedPlaybackInfo", channel, uiNow())
     m.banner.playhead = invalid
@@ -1496,7 +1509,7 @@ sub updateBufferingIndicator()
     if m.bufferingIndicator = invalid or m.bufferingSpinner = invalid then return
     show = m.playingChannel <> invalid and m.video.state = "buffering"
     if m.page <> "player" and not (m.page = "guide" and m.mini) then show = false
-    if m.banner.visible or m.pictureCover.visible or m.pendingChannel <> invalid then show = false
+    if m.banner.visible or m.pictureCover.visible or radioPresentationActive() or m.pendingChannel <> invalid then show = false
     if m.browser.active or m.playerOptions.active then show = false
     if show
         m.bufferingIndicator.translation = [1536, 146]
@@ -1538,8 +1551,10 @@ end sub
 
 sub onPlayerClock()
     m.guide.sleepActive = m.sleepDeadline > uiNow()
+    if not radioPresentationActive() then applyLivePresentation()
     updateLivePresentation()
     if m.page = "player" then m.banner.now = uiNow()
+    if radioPresentationActive() then refreshRadioPresentation()
     if m.playingChannel <> invalid
         if sleepTimerRemaining(m.sleepDeadline, uiNow()) = 0
             m.sleepDeadline = 0
@@ -1624,7 +1639,7 @@ end sub
 sub onBannerTimeout()
     ' Explicitly summoned chrome belongs to the viewer, not the tune-in timer.
     ' Also guard an expiry event already queued before the timer was stopped.
-    if m.userInfoOpen or m.transport.active then return
+    if m.userInfoOpen or m.transport.active or radioPresentationActive() then return
     hideBanner()
 end sub
 
@@ -1666,6 +1681,8 @@ sub stopPlayback(preserveGuideVod = false as boolean)
     cancelHeldZap()
     m.audioCheck.control = "stop"
     restorePicture()
+    clearRadioPresentation()
+    m.livePresentationIntent = "auto"
     cancelSourceOperation()
     wasSetup = m.page = "setup"
     m.browser.active = false
@@ -1712,6 +1729,10 @@ sub minimizePlayback(fromRemote = false as boolean)
     cancelHeldZap()
     restorePicture()
     if m.playingChannel = invalid then return
+    if radioPresentationActive()
+        stopPlayback()
+        return
+    end if
     if coldLiveReaderToken() <> "" then retireColdPlayback("cancelled")
     m.channelTuneTimer.control = "stop"
     m.pendingChannel = invalid
@@ -1745,8 +1766,10 @@ sub expandPlayback()
     m.guide.visible = false
     m.screen.visible = false
     applyVideoLayout()
-    focusPlaybackInput()
     m.userInfoOpen = false
+    if not radioForCurrentTune() then clearRadioPresentation(true)
+    applyLivePresentation()
+    focusPlaybackInput()
     showChannelBanner(m.playingChannel, playerInfoHint())
     print "[player] expanded without retune"
 end sub
@@ -2011,6 +2034,13 @@ sub openPlayerOptions(kind = "main" as string)
         {title: "Close", action: "close"}
     ]
     if m.serverAccountId <> "" then items.unshift({title: "Live transport: " + m.devicePreferences.liveTransport, action: "liveTransportMenu"})
+    if radioPresentationActive()
+        for i = items.count() - 1 to 0 step -1
+            if items[i].action = "minimize" or items[i].action = "hidePicture" then items.delete(i)
+        end for
+    else
+        items.unshift({title: "Radio Mode (foreground listening)", action: "radioMode"})
+    end if
     if m.sleepDeadline > 0 then items.unshift({title: "Cancel sleep timer", action: "cancelSleep"})
     if m.playingChannel <> invalid and m.capabilities.catchup = "allowed"
         if catchupChannelDays(m.capabilities.catchup, m.channelFacts, textValue(m.playingChannel.id)) > 0 then items.unshift({title: "Rewind history (provider)", action: "rewindHistory"})
@@ -2018,11 +2048,11 @@ sub openPlayerOptions(kind = "main" as string)
     if m.capabilities.switchStreams = "allowed"
         if pictureRecoveryAvailable() then items.unshift({title: "Recover frozen picture (this player)", action: "recoverPicture"})
         role = currentUserSettingsRole()
-        if role = "user" or role = "admin" then items.unshift({title: "Switch stream source", action: "sourceMenu"})
+        if not radioPresentationActive() and (role = "user" or role = "admin") then items.unshift({title: "Switch stream source", action: "sourceMenu"})
     else if m.capabilities.switchStreams = "unknown"
         items.unshift({title: "Refresh source-switch permissions", action: "refreshCapabilities"})
     end if
-    if kind = "main" and m.capabilities.dvr = "manage" and m.playingChannel <> invalid
+    if kind = "main" and not radioPresentationActive() and m.capabilities.dvr = "manage" and m.playingChannel <> invalid
         items.unshift({title: "Record current program on server", action: "recordCurrent"})
     end if
     if kind = "clock"
@@ -2158,6 +2188,7 @@ sub onPlayerOption(event as object)
     if m.page <> "player" then return
     item = event.getData()
     if item.action = "sourceMenu" or item.action = "source" or item.action = "sourceConfirm"
+        if radioPresentationActive() then return
         role = currentUserSettingsRole()
         if role <> "user" and role <> "admin" then return
     end if
@@ -2169,6 +2200,7 @@ sub onPlayerOption(event as object)
         return
     end if
     if item.action = "recordCurrent"
+        if radioPresentationActive() then return
         m.playerOptions.active = false
         onPlayerOptionsClosed()
         requestPlayerRecording()
@@ -2288,6 +2320,10 @@ sub onPlayerOption(event as object)
     if item.action = "minimize" then minimizePlayback()
     if item.action = "stop" then stopPlayback()
     if item.action = "recoverPicture" then recoverFrozenPicture()
+    if item.action = "radioMode" and m.playingChannel <> invalid
+        m.livePresentationIntent = "radio"
+        applyLivePresentation()
+    end if
     if item.action = "hidePicture"
         hidePicture()
         ' LabelList selection can transfer focus during the initiating OK event.
@@ -2447,6 +2483,7 @@ end sub
 
 sub onPlayerOptionsClosed()
     cancelPlayerOkHold()
+    applyLivePresentation()
     if m.page = "player" then focusPlaybackInput()
     updateBufferingIndicator()
 end sub
@@ -2454,7 +2491,7 @@ end sub
 sub focusPlaybackInput()
     ' Give the Video override an actual input owner. The hidden Video cannot
     ' receive focus, so foreground listening uses the separate input Group.
-    if m.pictureCover.visible
+    if m.pictureCover.visible or radioPresentationActive()
         m.playerInput.setFocus(true)
     else
         m.video.setFocus(true)
@@ -2482,7 +2519,7 @@ end sub
 sub hidePicture()
     cancelPlayerOkHold()
     if m.playingChannel = invalid or m.mini then return
-    if m.pictureCover.visible then return
+    if m.pictureCover.visible or radioPresentationActive() then return
     cancelHeldZap()
     m.channelTuneTimer.control = "stop"
     m.pendingChannel = invalid
@@ -2567,6 +2604,7 @@ sub onVideoState()
     if m.video.state = "playing" or m.video.state = "paused" then completeStartupWatch()
     if m.video.state = "playing" then m.streamReady = true
     m.transport.paused = m.video.state = "paused"
+    refreshRadioPresentation()
     print "[playback] state="; m.video.state
     recordDiagnostic("playback", 0, m.video.state)
     if m.pendingChannel = invalid then m.banner.playbackState = m.video.state
@@ -2632,7 +2670,7 @@ sub checkSourceVideo()
         return
     end if
     state.ticks++
-    if m.video.state = "playing" and not m.pictureCover.visible
+    if m.video.state = "playing" and not m.pictureCover.visible and not radioPresentationActive()
         if sourceVideoStalled(state.previous, m.video.positionInfo, channelDeclaredRadio(m.playingChannel, m.channelFacts)) then state.stalls++ else state.stalls = 0
     else
         state.stalls = 0
@@ -2649,6 +2687,7 @@ sub checkSourceVideo()
 end sub
 
 function pictureRecoveryAvailable() as boolean
+    if radioPresentationActive() then return false
     if m.hlsMintTask <> invalid or m.playingChannel = invalid or m.video.content = invalid then return false
     if m.hlsSession <> invalid
         if userProfileGateClosed() or m.hlsSession.userSession <> currentUserSessionId() then return false
@@ -2969,7 +3008,6 @@ function onKeyEvent(key as string, press as boolean) as boolean
         end if
         return true
     end if
-    if handlePlayerOkKey(key, press) then return true
     if m.page = "player"
         if key = "back" and press and m.pendingAacTune <> invalid
             if m.vodDeepLinkTask <> invalid then cancelVodDeepLink()
@@ -2978,6 +3016,8 @@ function onKeyEvent(key as string, press as boolean) as boolean
             return true
         end if
     end if
+    if handleRadioKey(key, press) then return true
+    if handlePlayerOkKey(key, press) then return true
     if not press then return false
     if m.page = "player"
         if key = "options" then return false

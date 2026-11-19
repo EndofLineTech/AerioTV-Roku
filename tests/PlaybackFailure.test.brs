@@ -1,9 +1,12 @@
 sub main()
+    if liveFailureTitle("Station", true) <> "Channel unavailable: Station" then stop
+    if liveFailureTitle("TV", false) <> "Playback interrupted: TV" then stop
     resetFailure()
     dialog = m.playbackFailureDialog
     event = failureEvent(dialog, 0)
     onPlaybackFailureAction(event)
     if m.starts <> 1 or not m.mini or m.playbackRetry <> invalid or not dialog.close then stop
+    if m.presentation <> "video" then stop
     onPlaybackFailureAction(event)
     if m.starts <> 1 then stop
 
@@ -25,7 +28,7 @@ sub main()
 end sub
 
 sub resetFailure()
-    m.playbackRetry = {account: "account", channel: {uuid: "channel"}, useAac: true, mini: true}
+    m.playbackRetry = {account: "account", channel: {uuid: "channel"}, useAac: true, mini: true, presentation: "video"}
     m.accountIdentity = "account"
     m.playbackFailureDialog = failureDialog(1)
     m.starts = 0
@@ -48,9 +51,10 @@ function failureEvent(node, data)
     end function}
 end function
 
-sub startPlayback(channel, forced, useAac)
+sub startPlayback(channel, forced, useAac, preserveBudget, tuneStartedAt, presentation)
     if not forced or not useAac or channel.uuid <> "channel" then stop
     m.starts++
+    m.presentation = presentation
     m.playingChannel = channel
 end sub
 

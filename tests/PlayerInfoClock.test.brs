@@ -27,5 +27,13 @@ sub main()
     m.top.playhead = {known: true, epoch: 1100, delay: 0, delayed: false, estimated: true}
     renderInfo()
     if m.title.text <> "Currently on air" or m.state.text <> "LIVE" then stop
+    m.top.preferences = {infoLogo: false, infoChannel: false, infoTitle: false}
+    m.top.radioPresentation = true
+    renderInfo()
+    if not m.logo.visible or not m.channelName.visible or not m.title.visible then stop
+    if m.state.visible or m.hint.visible then stop
+    m.top.radioPresentation = false
+    renderInfo()
+    if m.logo.visible or m.channelName.visible or m.title.visible then stop
     print "ALL TESTS PASSED"
 end sub

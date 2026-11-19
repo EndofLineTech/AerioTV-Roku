@@ -21,7 +21,7 @@ sub failLivePlayback(code as integer, detail as string)
     end if
     context = invalid
     if m.playingChannel <> invalid
-        context = {channel: m.playingChannel, account: m.accountIdentity, useAac: m.activeAudioProfile <> "", mini: m.mini}
+        context = {channel: m.playingChannel, account: m.accountIdentity, useAac: m.activeAudioProfile <> "", mini: m.mini, radio: radioForCurrentTune(), presentation: m.livePresentationIntent}
     end if
     token = coldLiveReaderToken()
     if token <> "" then m.coldPlayback.failing = true
@@ -41,7 +41,7 @@ sub showPlaybackFailure(code as integer, detail as string)
     dialog.message = playbackFailureText(code, sanitizePlaybackDiagnostic(detail, m.apiKey))
     dialog.buttons = ["Return to guide"]
     if m.playbackRetry <> invalid
-        dialog.title = "Playback interrupted: " + m.playbackRetry.channel.name
+        dialog.title = liveFailureTitle(m.playbackRetry.channel.name, m.playbackRetry.radio = true)
         dialog.buttons = ["Retry channel", "Return to guide"]
     end if
     m.playbackFailureDialog = dialog
@@ -57,7 +57,7 @@ sub onPlaybackFailureAction(event as object)
     cancelPlaybackFailure()
     if retry
         if context.account = m.accountIdentity
-            startPlayback(context.channel, true, context.useAac)
+            startPlayback(context.channel, true, context.useAac, false, 0, "", textValue(context.presentation))
             if context.mini and m.playingChannel <> invalid then minimizePlayback()
             return
         end if

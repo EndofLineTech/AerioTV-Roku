@@ -87,7 +87,7 @@ function normalizeDevicePreferences(raw as dynamic) as object
     if type(raw) = "roAssociativeArray" then result = copyPreferenceValue(raw)
     ' Earlier Settings writes lowercased camel-case keys on ParseJson's
     ' case-sensitive map. Migrate the displayed choice to the canonical field.
-    for each field in ["archiveSkipSeconds", "audioMode", "liveTransport", "liveStartupRetries", "videoScale", "themePreset", "appearanceMode", "trueBlack", "panelStyle", "textSize", "subtextSize", "contrastMode", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints", "networkTimeoutSeconds", "refreshSeconds", "clockFormat", "audioGuide"]
+    for each field in ["archiveSkipSeconds", "audioMode", "liveTransport", "liveStartupRetries", "radioDefault", "videoScale", "themePreset", "appearanceMode", "trueBlack", "panelStyle", "textSize", "subtextSize", "contrastMode", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints", "networkTimeoutSeconds", "refreshSeconds", "clockFormat", "audioGuide"]
         alias = lcase(field)
         exactAlias = CreateObject("roRegex", "^" + alias + "$", "")
         for each key in result.keys()
@@ -129,6 +129,7 @@ function normalizeDevicePreferences(raw as dynamic) as object
     if result.audioMode <> "auto" and result.audioMode <> "direct" and result.audioMode <> "aac" then result.audioMode = "auto"
     if result.liveTransport <> "ts" and result.liveTransport <> "hls" then result.liveTransport = "auto"
     if result.liveStartupRetries <> 0 and result.liveStartupRetries <> 1 and result.liveStartupRetries <> 2 and result.liveStartupRetries <> 3 then result.liveStartupRetries = 1
+    if type(result.radioDefault) <> "Boolean" and type(result.radioDefault) <> "roBoolean" then result.radioDefault = false
     if result.clockFormat <> "12" and result.clockFormat <> "24" then result.clockFormat = "system"
     hasRemoteMap = type(result.remoteMap) = "roAssociativeArray"
     result.remoteMap = normalizeRemoteMap(result.remoteMap)
