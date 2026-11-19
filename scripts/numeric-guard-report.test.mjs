@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { checkNumericGuardReport, numericGuardInventory } from './numeric-guard-report.mjs';
+import { assertNumericGuardNativeVerdict, checkNumericGuardReport, numericGuardInventory } from './numeric-guard-report.mjs';
 
 const prefix = '[numeric-guard]';
 
@@ -142,4 +142,57 @@ test('native mismatch accounting keeps caller, caller-shape and other cases sepa
   sample.summary.callermismatches = 2;
   sample.summary.callershapemismatches = 0;
   assert.throws(() => checkNumericGuardReport(report(sample), true), /Wrong terminal summary/);
+});
+
+test('native boxing aliases are confined to the observed AA input slots', () => {
+  const sample = fixture(true);
+  find(sample, 'http/failure', 'double-whole/response').kinds = 'roFloat/Integer';
+  find(sample, 'metadata/state', 'double-fractional/fetched').kinds = 'Integer/roFloat/Integer';
+  find(sample, 'preferences/model', 'double-whole').kinds = 'roFloat';
+  find(sample, 'phone/payload/guideDays', 'typed-double-whole').kinds = 'roFloat';
+  for (const field of ['guideDays', 'catchupOffsetMinutes', 'channelProfileIds']) {
+    find(sample, `phone/payload/${field}`, 'typed-invalid').kinds = 'roInvalid';
+  }
+  assert.doesNotThrow(() => checkNumericGuardReport(report(sample), true));
+  const order = find(sample, 'phone/payload/order', 'typed-invalid');
+  order.kinds = 'roInvalid';
+  assert.throws(() => checkNumericGuardReport(report(sample), true), /Invalid kinds/);
+  order.kinds = 'Invalid';
+  find(sample, 'http/failure', 'native-byte-array-count').kinds = 'roFloat/Integer';
+  assert.throws(() => checkNumericGuardReport(report(sample), true), /Invalid kinds/);
+  const host = fixture();
+  find(host, 'phone/payload/guideDays', 'typed-double-whole').kinds = 'roFloat';
+  assert.throws(() => checkNumericGuardReport(report(host), false), /Invalid kinds/);
+});
+
+test('only HTTP parser observations change with the fix; no synthetic or caller mismatch is waived', () => {
+  const sample = fixture(true);
+  const row = find(sample, 'http/failure', 'parsed-decimal-whole/response');
+  row.kinds = 'roInteger/Integer';
+  row.actual = '';
+  assert.doesNotThrow(() => checkNumericGuardReport(report(sample), true));
+  assert.throws(() => checkNumericGuardReport(report(sample), true, { fixedHttp: true }), /Unexpected observation/);
+  row.actual = 'at-least-1-mib';
+
+  for (const [name, kinds] of [
+    ['primitive-assigned/schema', 'roInteger/Integer/Integer'],
+    ['primitive-assigned/fetched', 'Integer/roInteger/Integer'],
+    ['constructed-envelope', 'roInteger/roInteger/Integer'],
+    ['aa-int/schema', 'roInteger/Integer/Integer'],
+    ['aa-int/fetched', 'Integer/roInteger/Integer'],
+  ]) Object.assign(find(sample, 'metadata/state', name), { kinds, actual: 'miss' });
+  for (const name of ['primitive-assigned', 'aa-int']) {
+    Object.assign(find(sample, 'preferences/model', name), { kinds: 'roInteger', actual: 'default' });
+  }
+  sample.summary.mismatches = 7;
+  const accepted = checkNumericGuardReport(report(sample), true, { fixedHttp: true });
+  assert.equal(accepted.mismatches.length, 7);
+  assert.deepEqual(assertNumericGuardNativeVerdict(accepted, 'post-fix'), { knownSynthetic: 7, reproducedHttp: 0 });
+  assert.throws(() => assertNumericGuardNativeVerdict(accepted, 'pre-fix'), /Unexpected pre-fix mismatch set/);
+
+  find(sample, 'metadata/state', 'aa-int/schema').actual = 'fresh';
+  find(sample, 'metadata/state', 'epoch-roundtrip').actual = 'miss';
+  sample.summary.callermismatches = 1;
+  const regressed = checkNumericGuardReport(report(sample), true, { fixedHttp: true });
+  assert.throws(() => assertNumericGuardNativeVerdict(regressed, 'post-fix'), /Unexpected post-fix mismatch set/);
 });

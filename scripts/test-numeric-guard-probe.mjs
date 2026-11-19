@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { checkNumericGuardReport } from './numeric-guard-report.mjs';
+import { assertNumericGuardNativeVerdict, checkNumericGuardReport } from './numeric-guard-report.mjs';
 
 const root = new URL('../', import.meta.url);
 const nativeLog = process.argv[2];
-assert(process.argv.length <= 3, 'Usage: node scripts/test-numeric-guard-probe.mjs [native-console.log]');
+const phase = process.argv[3];
+assert(process.argv.length <= 4 && (!phase || ['pre-fix', 'post-fix'].includes(phase)),
+  'Usage: node scripts/test-numeric-guard-probe.mjs [native-console.log [pre-fix|post-fix]]');
 
 let log;
 if (nativeLog) {
@@ -25,11 +27,16 @@ if (nativeLog) {
 }
 process.stdout.write(log);
 
-const { summary, mismatches } = checkNumericGuardReport(log, Boolean(nativeLog));
+const result = checkNumericGuardReport(log, Boolean(nativeLog), { fixedHttp: phase === 'post-fix' });
+const { summary, mismatches } = result;
 if (nativeLog) {
   // An AA-only mismatch is evidence, not a product regression. Leave native
   // mismatch interpretation to the reader; never silently treat it as a pass.
   console.log(`Native evidence complete: ${summary.rows} rows, ${summary.observations} observations, ${summary.mismatches} mismatches (${summary.callermismatches} caller, ${summary.callershapemismatches} caller-shape).`);
+  if (phase) {
+    const { knownSynthetic, reproducedHttp } = assertNumericGuardNativeVerdict(result, phase);
+    console.log(`Native ${phase} verdict matched: ${knownSynthetic} known synthetic cache/preference mismatches, ${reproducedHttp} HTTP bucket mismatches.`);
+  }
 } else {
   assert.deepEqual(mismatches, [], 'Host matrix regression');
   console.log(`Host gate passed: ${summary.rows} rows (${summary.observations} observations).`);

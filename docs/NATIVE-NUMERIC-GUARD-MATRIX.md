@@ -8,7 +8,7 @@ based on a synthetic mismatch.
 
 | Entry point | Contract tested | Current caller and what the probe reproduces |
 | --- | --- | --- |
-| `httpFailure(..., "too-large", bytes, cap)` | Byte bucket requires recognized integer values, a response over budget, and a cap of at least 1 MiB. No numeric strings, booleans, null, LongInteger, Float or Double. | `DispatcharrHttp` passes direct `len(response.body)` or `response.bytes`, and the default or an `m.maxResponseBytes` override. `HttpTransport` puts `roFileSystem.stat().size` or `roByteArray.count()` in that response AA. The probe uses those native APIs on local data and replays the AA/cap shapes. Mapping detail's 65,536-byte cap deliberately has no bucket. A missing bucket is lost diagnostics, not an accepted oversized download. |
+| `httpFailure(..., "too-large", bytes, cap)` | Byte bucket requires recognized integer values, a response over budget, and a cap of at least 1 MiB. No numeric strings, booleans, null, LongInteger, Float or Double. | `HttpTransport` stores `roFileSystem.stat().size` or `roByteArray.count()` in `result.bytes` and checks the size before returning. The `roByteArray.count()` path is used for buffered responses and retained GET error bodies. `DispatcharrHttp` passes `response.bytes` and the local copy of `m.maxResponseBytes` (or the default) into `httpFailure`; tasks such as `VodTask` set that override with integer literals. The probe uses local bytes/files and reproduces the AA/cap shapes; it does not run a transport. Mapping detail's 65,536-byte cap deliberately has no bucket. A missing bucket is lost diagnostics, not an accepted oversized download. |
 | `metadataCacheState` | Schema is integer `1`; `fetched` must be a positive, nonfuture integer. With an integer clock, `fetched = now` is fresh and `fetched = now + 1` misses. Valid scope, kind, payload and byte budget are controls. The noninteger rows vary one field at a time. | `metadataCacheWrite` serializes `metadataCacheEnvelope`; `metadataCacheRead` parses that text before passing its entry to the model. The probe uses that writer/reader codec round trip with both a small exact timestamp and a realistic epoch. An unpersisted AA is diagnostic only. The probe does not use the production cache directory, filesystem, checksum or provider refresh. |
 | `normalizePreferenceStore`, `loadStrictPreferenceStore`, `loadPreferenceStore` | Integer schema `1` retains data; the non-strict model preserves a newer integer version, while the strict loader refuses it. Malformed strict stores are read-only, not empty writable defaults. An account favorite distinguishes retained data from a default with the same schema. | Current app startup/roster adoption use `loadPreferenceStore(..., true)`: `ParseJson(raw, "d")` through the strict loader, **then** the normalizer. Cleanup and other scoped transactions call the strict loader itself. Both are tested, plus an actual `savePreferenceStore` round trip, using an in-memory `settingsV1` stand-in and no decoder override. The non-precision load and raw AA are comparison paths, not evidence about startup. |
 | `validatePhoneSetupEnvelope` | JSON body; `v` must be a recognized number equal to `1` (including valid decimal/exponent spellings); no numeric strings, booleans, null, fractional or wrong version. No direct AA/typed version enters this API. | `phoneSetupOpen` in `PhoneSetupCrypto` gives the validator the body string. The probe replays just that string with valid-length inert base64 fields. It does not run crypto or an HTTP receiver. |
@@ -28,17 +28,36 @@ phone payload rows say `host-fix-unsupported`. The host preference round trip
 uses the non-precision path and is labeled `comparison`, not `caller`. Host
 results do not establish firmware boxing or native parser behavior.
 
-Only the device owner should run this next command. It replaces the currently
-sideloaded app; restore the prior developer ZIP afterward. Record the Roku
-model and firmware/build separately. Do not include developer credentials
-in the record.
+Only the device owner should run these next commands, with the staged
+`numeric-guard-pre-fix.zip` and `numeric-guard-post-fix.zip`. Each replaces
+the sideloaded app; restore the prior developer ZIP afterward. Record the
+Roku model and firmware/build separately, without developer credentials.
 
 ```sh
-python3 scripts/run-native-probe.py out/numeric-guard-probe.zip \
+python3 scripts/run-native-probe.py out/numeric-guard-pre-fix.zip \
   --timeout 45 --prefix '[numeric-guard]' --marker '[numeric-guard] COMPLETE' \
-  > out/numeric-guard-native.log
-node scripts/test-numeric-guard-probe.mjs out/numeric-guard-native.log
+  > out/numeric-guard-pre-fix-native.log &&
+node scripts/test-numeric-guard-probe.mjs out/numeric-guard-pre-fix-native.log pre-fix
+
+python3 scripts/run-native-probe.py out/numeric-guard-post-fix.zip \
+  --timeout 45 --prefix '[numeric-guard]' --marker '[numeric-guard] COMPLETE' \
+  > out/numeric-guard-post-fix-native.log &&
+node scripts/test-numeric-guard-probe.mjs out/numeric-guard-post-fix-native.log post-fix
 ```
+
+| Native phase | `caller` mismatches | `caller-shape` mismatches | `synthetic` mismatches | Other mismatches |
+| --- | ---: | ---: | ---: | ---: |
+| Pre-fix (observed on `c6fa6c6`) | 0 | 3 HTTP | 2 HTTP + 7 cache/preferences | 0 |
+| Post-fix (expected, not yet observed) | 0 | 0 | 7 cache/preferences | 0 |
+
+The phase verdict checks the exact mismatch set, not just counts. The seven
+synthetic cache/preferences mismatches remain in the log with their original
+contract expectations. Native rejects the boxed Integer in these constructed
+objects, but the persisted cache and precise preference-load controls use
+decoded input and did not reproduce a mismatch. This is not grounds to
+change either model. Native `roFloat` for the AA Double fixtures and
+`roInvalid` for three typed phone slots are accepted as reported types only;
+their expected outcomes did not change.
 
 The checker requires the exact inventory and a consistent terminal record:
 231 native rows (14 observations) or 210 host rows. It checks type slots,

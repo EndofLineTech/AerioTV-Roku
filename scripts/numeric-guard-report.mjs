@@ -7,13 +7,16 @@ const keyFor = (target, name) => JSON.stringify([target, name]);
 
 // Independent of the probe's rows and summary. Type names are case-insensitive
 // on Roku, but only the named representations for each input slot are valid.
-export function numericGuardInventory(native) {
+export function numericGuardInventory(native, fixedHttp = false) {
   const inventory = new Map();
   const variants = (host, ...aliases) => native ? [host, ...aliases] : [host];
   const i = variants('Integer', 'roInt', 'roInteger');
   const l = variants('LongInteger', 'roLongInteger');
   const f = variants('Float', 'roFloat');
   const d = variants('Double', 'roDouble');
+  // Roku boxes these AA-sourced Double fixtures as roFloat. Do not widen
+  // primitive, JSON or unrelated output slots to accommodate the fixtures.
+  const boxedDouble = native ? [...d, 'roFloat'] : d;
   const b = variants('Boolean', 'roBoolean');
   const s = variants('String', 'roString');
   const nil = ['Invalid'];
@@ -39,6 +42,7 @@ export function numericGuardInventory(native) {
   // the reported type, so an otherwise valid control cannot silently fail.
   const acceptedInteger = kind => ['integer', 'roint'].includes(kind.toLowerCase());
   const strictInteger = kind => acceptedInteger(kind) || kind.toLowerCase() === 'rointeger';
+  const httpInteger = fixedHttp ? strictInteger : acceptedInteger;
   const ifKind = (slot, predicate, accepted, refused) =>
     kinds => [predicate(kinds[slot]) ? accepted : refused];
 
@@ -48,8 +52,8 @@ export function numericGuardInventory(native) {
   ]) http(name, i, i, expected);
   const typed = [
     ['aa-int', i], ['long', l], ['wide-long', l],
-    ['float-whole', f], ['float-fractional', f], ['double-whole', d],
-    ['double-fractional', d], ['invalid', nil], ['bool', b], ['string', s],
+    ['float-whole', f], ['float-fractional', f], ['double-whole', boxedDouble],
+    ['double-fractional', boxedDouble], ['invalid', nil], ['bool', b], ['string', s],
   ];
   for (const [name, kind] of typed) {
     const expected = name === 'aa-int' ? bucket : '';
@@ -63,7 +67,7 @@ export function numericGuardInventory(native) {
     const observed = name === 'decimal-whole' || name === 'exponent-whole';
     for (const [side, a, z] of [['response', kind, i], ['cap', i, kind]]) {
       const expected = observed ? kinds => [
-        kinds.every(acceptedInteger) ? bucket : '',
+        kinds.every(httpInteger) ? bucket : '',
       ] : name === 'int' ? bucket : '';
       http(`parsed-${name}/${side}`, a, z, expected);
     }
@@ -114,13 +118,14 @@ export function numericGuardInventory(native) {
   for (const field of fields) {
     for (const name of ['primitive-assigned', 'literal-field']) phone(field, name, i, 'accepted');
     for (const [name, kind] of typed) {
-      if (!native && kind === d) {
+      if (!native && kind === boxedDouble) {
         phone(field, `typed-${name}`, kind, () => ['host-fix-unsupported'], 'host-only');
       } else {
         const refused = ['float-fractional', 'double-fractional', 'bool', 'string'].includes(name)
           || (name === 'wide-long' && field === 'guideDays');
         const absent = name === 'invalid';
-        phone(field, `typed-${name}`, kind, absent ? (field === 'channelProfileIds' ? 'refused' : 'default')
+        const fieldKinds = native && absent && field !== 'order' ? [...kind, 'roInvalid'] : kind;
+        phone(field, `typed-${name}`, fieldKinds, absent ? (field === 'channelProfileIds' ? 'refused' : 'default')
           : refused ? 'refused' : 'accepted');
       }
     }
@@ -167,8 +172,8 @@ const outcomeFor = target => {
 };
 const consoleError = /(?:\bERROR\s*:|\berror &h|\bSyntax Error\b|\bCompile Error\b|\bError in XML\b|\bERROR compiling\b|\bCompilation Failed\b)/i;
 
-export function checkNumericGuardReport(log, native) {
-  const inventory = numericGuardInventory(native);
+export function checkNumericGuardReport(log, native, { fixedHttp = false } = {}) {
+  const inventory = numericGuardInventory(native, fixedHttp);
   const seen = new Set();
   const mismatches = [];
   let observations = 0;
@@ -231,4 +236,32 @@ export function checkNumericGuardReport(log, native) {
     callermismatches: caller, callershapemismatches: callerShape, observations,
   }, 'Wrong terminal summary');
   return { summary, mismatches };
+}
+
+// Keep the contract mismatches and their original lanes in the report. These
+// are known synthetic-only baselines, not passes or caller observations.
+const syntheticBaseline = [
+  ['metadata/state', 'primitive-assigned/schema', 'roInteger/Integer/Integer', 'miss'],
+  ['metadata/state', 'primitive-assigned/fetched', 'Integer/roInteger/Integer', 'miss'],
+  ['metadata/state', 'constructed-envelope', 'roInteger/roInteger/Integer', 'miss'],
+  ['metadata/state', 'aa-int/schema', 'roInteger/Integer/Integer', 'miss'],
+  ['metadata/state', 'aa-int/fetched', 'Integer/roInteger/Integer', 'miss'],
+  ['preferences/model', 'primitive-assigned', 'roInteger', 'default'],
+  ['preferences/model', 'aa-int', 'roInteger', 'default'],
+].map(([target, name, kinds, actual]) => ({ target, name, kinds, actual, lane: 'synthetic' }));
+const httpBaseline = [
+  ['aa-int/response', 'roInteger/Integer', 'synthetic'],
+  ['aa-int/cap', 'Integer/roInteger', 'synthetic'],
+  ['transport-aa-shape', 'roInteger/Integer', 'caller-shape'],
+  ['task-cap-shape', 'Integer/roInteger', 'caller-shape'],
+  ['native-byte-array-count', 'roInteger/Integer', 'caller-shape'],
+].map(([name, kinds, lane]) => ({ target: 'http/failure', name, kinds, actual: '', lane }));
+
+export function assertNumericGuardNativeVerdict({ summary, mismatches }, phase) {
+  assert(summary.native, 'Native verdict requires native evidence');
+  assert(['pre-fix', 'post-fix'].includes(phase), 'Unknown native phase');
+  const expected = phase === 'pre-fix' ? [...syntheticBaseline, ...httpBaseline] : syntheticBaseline;
+  const signature = ({ target, name, kinds, actual, lane }) => JSON.stringify([target, name, kinds.toLowerCase(), actual, lane]);
+  assert.deepEqual(mismatches.map(signature).sort(), expected.map(signature).sort(), `Unexpected ${phase} mismatch set`);
+  return { knownSynthetic: syntheticBaseline.length, reproducedHttp: expected.length - syntheticBaseline.length };
 }
