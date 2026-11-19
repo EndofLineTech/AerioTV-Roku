@@ -153,10 +153,10 @@ canonical creation; an oversized snapshot permits read-only refresh and a
 genuine local edit can retry. These are offline tests, not new device/peer
 qualification.
 
-Beyond Profiles, the checked-in mapping describes lane selection and typed
-pass-through, but does not define a versioned peer setting-key/value allowlist
-or approved adapter scope for Roku. Before enabling Shared/TV/Off settings
-application or writes, decide whether to keep the accepted phase Profiles-only
-or identify the first settings, their peer keys/value kinds and defaults, and
-the intended behavior for missing lanes and scope-transition seeding. General
-category adapters and full-category legacy migration remain outside this slice.
+The owner confirmed the delivery scope remains Profiles-only. The checked-in
+mapping describes settings lane selection and typed pass-through, not a versioned
+setting-key/value contract for a Roku adapter. Any future Shared/TV/Off settings
+phase would require approval and a contract covering keys, value kinds,
+defaults, missing lanes and scope-transition seeding. General category adapters,
+full-category legacy migration, and device/peer acceptance are not established
+by this host-only work.

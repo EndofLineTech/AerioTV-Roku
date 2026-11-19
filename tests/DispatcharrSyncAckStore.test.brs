@@ -79,12 +79,27 @@ sub main()
             m.syncTestNow = 1002
             onProfileSyncScheduleTick()
             check(m.profileScheduledSyncTask = invalid, "imported metadata does not unblock oversize writes")
-            current.profiles[1] = setCanonicalPreference(current.profiles[1], "displayName", "Local Bob")
-            m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(current)
+            launchChoice = setCanonicalPreference(current, "askAtLaunch", not current.askAtLaunch)
+            check(commitUserProfileStore(m.registry, current, launchChoice, {}, true).ok, "save the local launch choice while roster edits are pending")
+            current = loadUserProfileStore(m.registry, "slot-a")
+            askRoot = m.registry.read(userProfileStoreKey("slot-a"))
             onProfileSyncScheduleTick()
             m.syncTestNow = 1003
             onProfileSyncScheduleTick()
+            check(m.profileScheduledSyncTask = invalid and m.profileSyncSchedule.pause = "too-large", "changing Ask at Launch while pending must not retry the same roster content")
+            current.profiles[1] = setCanonicalPreference(current.profiles[1], "displayName", "Local Bob")
+            m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(current)
+            onProfileSyncScheduleTick()
+            m.syncTestNow = 1004
+            onProfileSyncScheduleTick()
             check(m.profileScheduledSyncTask <> invalid and not m.profileScheduledSyncTask.pullOnly and not m.profileScheduledSyncTask.creationBlocked, "next local edit schedules a fresh eligible write after debounce")
+            task = m.profileScheduledSyncTask
+            check(task.storeRoot <> askRoot and task.storeRoot = m.registry.read(userProfileStoreKey("slot-a")), "writer still captures the exact durable root for acknowledgement")
+            launchChoice = setCanonicalPreference(current, "askAtLaunch", not current.askAtLaunch)
+            check(commitUserProfileStore(m.registry, current, launchChoice, {}, true).ok, "save the next launch choice during an admitted roster write")
+            m.receipt.storeRoot = task.storeRoot
+            onScheduledProfileSyncResult(syncFlushEvent(task, m.receipt))
+            check(loadUserProfileStore(m.registry, "slot-a").pendingRoster and not m.registry.exists(userProfileSyncAckKey("slot-a")), "same wire intent cannot acknowledge across changed exact root")
         end if
         closeScheduledProfileSync()
     end for
@@ -93,11 +108,26 @@ sub main()
     onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, syncFlushReadReceipt({rows: []})))
     m.syncTestNow = 101
     onProfileSyncScheduleTick()
-    onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, {ok: false, state: "storage-full", phase: "put", status: 409, submitted: true, creationBlocked: true}))
+    task = m.profileScheduledSyncTask
+    changed = loadUserProfileStore(m.registry, "slot-a")
+    changed.profiles[1] = setCanonicalPreference(changed.profiles[1], "displayName", "New Bob")
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(changed)
+    onProfileSyncScheduleTick()
+    onScheduledProfileSyncResult(syncFlushEvent(task, syncMaxAppsReceipt(task)))
     m.syncTestNow = 1001
     onProfileSyncScheduleTick()
     check(m.profileScheduledSyncTask <> invalid and m.profileScheduledSyncTask.creationBlocked and not m.profileScheduledSyncTask.pullOnly, "Scene carries confirmed creation refusal without disallowing a canonical update")
+    check(m.profileScheduledSyncTask.storeRoot <> task.storeRoot and loadUserProfileStore(m.registry, "slot-a").pendingRoster and not m.registry.exists(userProfileSyncAckKey("slot-a")), "confirmed max_apps survives a new pending roster root without acknowledging it")
     closeScheduledProfileSync()
+    syncScheduledFixture()
+    onProfileSyncScheduleTick()
+    onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, syncFlushReadReceipt({rows: []})))
+    m.syncTestNow = 101
+    onProfileSyncScheduleTick()
+    task = m.profileScheduledSyncTask
+    m.registry.values["connKey_slot-a"] = "replacement-own"
+    onScheduledProfileSyncResult(syncFlushEvent(task, syncMaxAppsReceipt(task)))
+    check(not m.profileSyncSchedule.creationBlocked and m.profileSyncSchedule.pause <> "storage-full" and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "Scene does not apply old credential capacity feedback after saved credential replacement")
     syncScheduledFixture()
     onProfileSyncScheduleTick()
     onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, syncFlushReadReceipt({rows: []})))
@@ -362,6 +392,10 @@ sub main()
     print "ALL TESTS PASSED"
 end sub
 
+function syncMaxAppsReceipt(task as object) as object
+    return {ok: false, state: "storage-full", phase: "put", status: 409, submitted: true, creationBlocked: true, scope: m.scope, connectionRoot: task.connectionRoot, credentialHash: requestGateCredentialHash(m.key), canonicalKey: "alice.aeriotv"}
+end function
+
 sub syncScheduledFixture()
     syncFlushFixture()
     m.profileSwitchContext = invalid
@@ -547,8 +581,8 @@ end sub
 
 function requestGateCredentialHash(key as string) as string
     if key = "synthetic-own" then return string(64, "a")
-    ' Host fixture identity for roster snapshots; edits here change byte length.
-    if left(key, 1) = "{" then return len(key).toStr()
+    ' Host fixture identity for roster snapshots; tested wire edits change byte length.
+    if left(key, 1) = "[" or left(key, 1) = "{" then return len(key).toStr()
     return string(64, "b")
 end function
 

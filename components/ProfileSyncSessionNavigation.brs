@@ -93,8 +93,7 @@ sub onProfileSyncScheduleTick()
     end if
     if m.profileSyncSchedule = invalid then return
     store = loadUserProfileStore(m.registry, scope.playlistId)
-    root = m.registry.read(userProfileStoreKey(scope.playlistId))
-    m.profileSyncSchedule = dispatcharrSyncScheduleDirty(m.profileSyncSchedule, scope, requestGateCredentialHash(root), store.pendingRoster = true, now)
+    m.profileSyncSchedule = dispatcharrSyncScheduleDirty(m.profileSyncSchedule, scope, dispatcharrSyncRosterIntentDigest(store), store.pendingRoster = true, now)
     ' Absence of held siblings admits transport, not writes. Keep the durable
     ' fence through failure/backoff until the exact own pull commits.
     nextWork = dispatcharrSyncScheduleTake(m.profileSyncSchedule, scope, now, true, store.rosterPullRequired = true)
@@ -198,7 +197,10 @@ sub finishScheduledProfileSync(result as dynamic)
         saved = commitDispatcharrSyncRosterRead(m.registry, context.connection, context.store, result, m.activeUserScope, m.apiKey, memory, m.profileAuthorizationSignature, true, CreateObject("roDateTime").asSeconds())
         if saved.readCommitted <> true then saved.ok = false
     end if
-    m.profileSyncSchedule = dispatcharrSyncScheduleComplete(m.profileSyncSchedule, context.ticket, saved.ok = true, profileSyncSchedulingNow(), textValue(result.state), result.creationBlocked = true)
+    creationBlocked = currentScheduledProfileSyncCreationRefusal(context, result, memory)
+    outcome = textValue(result.state)
+    if result.creationBlocked = true and not creationBlocked then outcome = "stale-context"
+    m.profileSyncSchedule = dispatcharrSyncScheduleComplete(m.profileSyncSchedule, context.ticket, saved.ok = true, profileSyncSchedulingNow(), outcome, creationBlocked)
     if saved.needsDefaultSwitch = true
         if beginOwnSyncDefaultRetirement(context, result, memory) then return
         coverScheduledProfileSync()
@@ -209,8 +211,7 @@ sub finishScheduledProfileSync(result as dynamic)
         return
     end if
     if not saved.ok then return
-    currentRoot = m.registry.read(userProfileStoreKey(context.connection.id))
-    m.profileSyncSchedule = dispatcharrSyncScheduleDirty(m.profileSyncSchedule, m.activeUserScope, requestGateCredentialHash(currentRoot), saved.store.pendingRoster = true, profileSyncSchedulingNow(), false)
+    m.profileSyncSchedule = dispatcharrSyncScheduleDirty(m.profileSyncSchedule, m.activeUserScope, dispatcharrSyncRosterIntentDigest(saved.store), saved.store.pendingRoster = true, profileSyncSchedulingNow(), false)
     m.userProfileStore = saved.store
     if type(saved.preferenceStore) = "roAssociativeArray" then m.preferenceStore = saved.preferenceStore
     if type(saved.suggestions) = "roArray"
@@ -227,6 +228,25 @@ sub finishScheduledProfileSync(result as dynamic)
     end for
     if m.profileSwitcher <> invalid then refreshUserProfileSwitcherAfterSync()
 end sub
+
+' Only non-authorizing capacity feedback can outlive a stale roster root. The
+' current live actor and storage credential must still be the Task's own.
+function currentScheduledProfileSyncCreationRefusal(context as object, result as object, memory as object) as boolean
+    if result.creationBlocked <> true or result.state <> "storage-full" then return false
+    if result.ok <> false or result.submitted <> true or result.status <> 409 or result.phase <> "put" then return false
+    if not userProfileSameSession(result.scope, m.activeUserScope) then return false
+    if result.connectionRoot <> m.registry.read("connectionsV1") then return false
+    if m.apiKey = "" or not requestGateDigestValid(textValue(result.credentialHash)) then return false
+    if result.credentialHash <> requestGateCredentialHash(m.apiKey) then return false
+    current = loadUserProfileStore(m.registry, context.connection.id)
+    credential = userProfileCredential(m.registry, context.connection, current, memory)
+    if not credential.ok or credential.key <> m.apiKey or credential.profileId <> m.activeUserScope.profileId then return false
+    if context.connection.remember and m.registry.read(credential.keyName) <> m.apiKey then return false
+    for each profile in current.profiles
+        if profile.id = credential.profileId then return dispatcharrSyncUserKey(profile.username) = result.canonicalKey
+    end for
+    return false
+end function
 
 sub coverScheduledProfileSync()
     if m.profileSwitcher <> invalid then retireUserProfileSwitcher()

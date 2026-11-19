@@ -362,13 +362,17 @@ failures. Authorization pauses wait for regular cadence; actual shared 429 parks
 and specific rejected-key holds remain enforced below this policy on every call.
 
 Typed `409 max_apps` blocks new canonical creation for this sync session, not
-updates to a canonical that exists. An advertised total-byte or key-count
-refusal reports storage full, but the scheduled writer reevaluates the quota
+updates to a canonical that exists. This failure still applies after a local
+roster edit during the request if the own account, credential, and session are
+still current. It cannot acknowledge the changed roster. An advertised
+total-byte or key-count refusal reports storage full, but the scheduled writer reevaluates the quota
 using a new own list at its next regular attempt; it has not received a
 `max_apps` response. Malformed budget metadata refuses the write with ordinary
 backoff. The absolute body limit and the advertised per-value limit enter the
 same scheduled oversize pause as a typed 413. The pause applies to the attempted
-dirty snapshot, not a newer edit observed while the Task ran. Scheduled regular
+roster write intent, not a newer wire-relevant edit observed while the Task ran.
+Changing Ask at Launch does not change that intent. Write acknowledgements
+still require the exact durable root. Scheduled regular
 or explicitly requested pulls remain read-only while that pause is in force,
 and imported metadata does not count as a new local edit that unblocks writing.
 The next real local mutation may prepare a fresh checked body. No unknown data

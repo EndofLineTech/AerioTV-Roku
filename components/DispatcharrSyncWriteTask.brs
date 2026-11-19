@@ -71,12 +71,31 @@ sub writeDispatcharrSync()
     budget = dispatcharrSyncWriteBudget(listing.data, key, prepared.bytes)
     if not budget.ok then finishDispatcharrSyncWrite(budget) : return
     response = httpTransferOnce(url, invalid, "", 10000, 65536, "PUT", prepared.body)
+    failure = invalid
+    if response.status = 409 then failure = syncWriterResponseFailure("put", response)
+    if failure <> invalid and failure.creationBlocked = true
+        ' A confirmed max_apps applies to the own account, not the submitted
+        ' roster bytes. This failure receipt is never a write acknowledgement.
+        if syncWriterAccessCurrent(false)
+            if dispatcharrSyncUserKey(m.writerProfile.username) = key
+                failure.scope = m.top.userScope
+                failure.connectionRoot = m.top.connectionRoot
+                failure.credentialHash = requestGateCredentialHash(m.key)
+                failure.canonicalKey = key
+                finishDispatcharrSyncWrite(failure)
+                return
+            end if
+        end if
+        finishDispatcharrSyncWrite({ok: false, state: "stale-context", submitted: true})
+        return
+    end if
     if not syncWriterAccessCurrent()
         finishDispatcharrSyncWrite({ok: false, state: "stale-context", submitted: true})
         return
     end if
     if response.error <> "" or response.status <> 200
-        finishDispatcharrSyncWrite(syncWriterResponseFailure("put", response))
+        if failure = invalid then failure = syncWriterResponseFailure("put", response)
+        finishDispatcharrSyncWrite(failure)
         return
     end if
     finishDispatcharrSyncWrite({ok: true, state: "written", submitted: true, maximumSentStamp: prepared.maximumSentStamp, storeRoot: m.top.storeRoot, connectionRoot: m.top.connectionRoot, credentialHash: requestGateCredentialHash(m.key), scope: m.top.userScope})
@@ -84,7 +103,7 @@ end sub
 
 ' Every request rechecks exact saved roots, actual selected holder, own key,
 ' current adopted request nonce and broker. No default/target scope is invented.
-function syncWriterAccessCurrent() as boolean
+function syncWriterAccessCurrent(requireRosterSnapshot = true as boolean) as boolean
     if m.top.cancelRequested or m.top.profilesEnabled <> true then return false
     if type(m.top.userScope) <> "roAssociativeArray" then return false
     scope = m.top.userScope
@@ -97,11 +116,12 @@ function syncWriterAccessCurrent() as boolean
     entry = connectionStoreEntry(connections, scope.playlistId)
     if entry = invalid then return false
     if entry.provider <> "dispatcharr" or entry.url <> m.top.baseUrl then return false
-    if m.writerRegistry.read(userProfileStoreKey(entry.id)) <> m.top.storeRoot then return false
+    if requireRosterSnapshot and m.writerRegistry.read(userProfileStoreKey(entry.id)) <> m.top.storeRoot then return false
     store = loadUserProfileStore(m.writerRegistry, entry.id)
     if store.readOnly = true or store.active <> scope.profileId then return false
-    if store.rosterPullRequired = true and m.top.pullOnly <> true then return false
-    if store.pendingRoster <> true and m.top.pullOnly <> true then return false
+    if requireRosterSnapshot and m.top.pullOnly <> true
+        if store.rosterPullRequired = true or store.pendingRoster <> true then return false
+    end if
     target = invalid
     for each profile in store.profiles
         if profile.addressHeld then return false

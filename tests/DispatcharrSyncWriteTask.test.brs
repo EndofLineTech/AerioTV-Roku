@@ -37,11 +37,23 @@ sub main()
     m.syncWriterRegistry.values[rootKey] = m.top.storeRoot
     writeDispatcharrSync()
     check(not m.top.result.ok and m.calls.count() = 0, "writer entry point refuses a write attempt against a released but unsynchronized roster")
+    for each change in ["roster-edit", "credential-change", "retired-session", "untyped-conflict", "success"]
+        syncWriterFixture("max-apps")
+        m.duringPut = change
+        writeDispatcharrSync()
+        check(m.calls.count() = 4 and m.top.result.ok = false and m.top.result.submitted, "one submitted attempt cannot acknowledge after an in-flight roster edit")
+        if change = "roster-edit"
+            check(m.top.result.state = "storage-full" and m.top.result.creationBlocked and userProfileSameSession(m.top.result.scope, m.top.userScope) and m.top.result.credentialHash = requestGateCredentialHash("synthetic-own"), "typed max_apps still applies to the same current own key and session after a real roster edit")
+        else
+            check(m.top.result.state <> "storage-full" and m.top.result.creationBlocked <> true, "no account-level capacity evidence survives " + change)
+        end if
+    end for
     print "ALL TESTS PASSED"
 end sub
 
 sub syncWriterFixture(scenario as string)
     m.scenario = scenario
+    m.duringPut = ""
     m.calls = []
     m.syncWriterReady = scenario <> "disabled"
     m.syncJsonParser = function(raw as string) as dynamic
@@ -101,6 +113,16 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
         if m.scenario = "too-large" then response.status = 413 : response.body = "{""code"":""value_too_large""}"
         if m.scenario = "max-apps" then response.status = 409 : response.body = "{""code"":""max_apps""}"
         if m.scenario = "late-success" then m.global.activeusersession = "00000000-0000-4000-8000-000000000091"
+        if m.duringPut <> ""
+            rootKey = userProfileStoreKey("slot-a")
+            current = loadUserProfileStore(m.syncWriterRegistry, "slot-a")
+            current.profiles[0] = setCanonicalPreference(current.profiles[0], "displayName", "Changed Alice")
+            m.syncWriterRegistry.values[rootKey] = FormatJson(current)
+            if m.duringPut = "credential-change" then m.syncWriterRegistry.values["connKey_slot-a"] = "replacement-own"
+            if m.duringPut = "retired-session" then m.global.activeusersession = "00000000-0000-4000-8000-000000000091"
+            if m.duringPut = "untyped-conflict" then response.body = "{}"
+            if m.duringPut = "success" then response.status = 200 : response.body = "{}"
+        end if
     else if right(url, 10) = "/users/me/"
         user = {id: 7, username: "Alice", user_level: 1}
         if m.scenario = "identity" then user.username = "Other"

@@ -1,6 +1,17 @@
 ' Pure bounded scheduling, not request/storage authority. Callers still prove the
-' current own actor/key/roots and broker on every Task request. root is a digest
-' of durable roster bytes, never the bytes, credentials or PIN material itself.
+' current own actor/key/roots and broker on every Task request. Scheduling only
+' sees a digest of local wire-relevant roster inputs, never the inputs themselves.
+function dispatcharrSyncRosterIntentDigest(store as object) as string
+    rows = []
+    for each p in store.profiles
+        ' The merge uses the raw order for ties, presentation claims and
+        ' add freshness. Launch choices, PIN entry length and local address
+        ' bookkeeping aren't roster write inputs.
+        rows.push([p.userId, p.username, p.displayName, p.pinType, p.pinHash, p.pinSalt, p.role, p.userLevel, p.updatedAt, p.avatar.icon, p.avatar.color, p.order, p.isDefault, p.createdAt, p.addOrigin, p.displayNameClaimed, p.avatarClaimed])
+    end for
+    return requestGateCredentialHash(FormatJson([rows, store.removed]))
+end function
+
 function dispatcharrSyncScheduleBind(previous as dynamic, scope as dynamic, now as integer) as dynamic
     if type(scope) <> "roAssociativeArray" or now <= 0 then return invalid
     if userProfileLocalId(textValue(scope.sessionId)) = "" or userProfileLocalId(textValue(scope.profileId)) = "" then return invalid
@@ -15,23 +26,23 @@ function dispatcharrSyncScheduleBind(previous as dynamic, scope as dynamic, now 
         slots = copyPreferenceValue(previous.pickerSlots)
         sequence = previous.sequence
     end if
-    return {scope: captured, pickerSlots: slots, sequence: sequence, dueAt: now, rereadAt: 0, periodicAt: now + 900, dirtyAt: 0, dirtyRoot: "", pending: false, retryAt: 0, failures: 0, pause: "", writeBlockedRoot: "", creationBlocked: false, flight: invalid}
+    return {scope: captured, pickerSlots: slots, sequence: sequence, dueAt: now, rereadAt: 0, periodicAt: now + 900, dirtyAt: 0, dirtyIntent: "", pending: false, retryAt: 0, failures: 0, pause: "", writeBlockedRoot: "", creationBlocked: false, flight: invalid}
 end function
 
-function dispatcharrSyncScheduleDirty(previous as object, scope as dynamic, root as string, pending as boolean, now as integer, localChange = true as boolean) as object
+function dispatcharrSyncScheduleDirty(previous as object, scope as dynamic, intent as string, pending as boolean, now as integer, localChange = true as boolean) as object
     if not userProfileSameSession(previous.scope, scope) or now <= 0 then return previous
     state = copyPreferenceValue(previous)
     state.pending = pending
     if not pending
         state.dirtyAt = 0
-    else if root <> state.dirtyRoot
+    else if not previous.pending or intent <> state.dirtyIntent
         state.dirtyAt = now + 1
         if localChange
             state.writeBlockedRoot = ""
             if state.pause = "too-large" then state.pause = ""
         end if
     end if
-    state.dirtyRoot = root
+    state.dirtyIntent = intent
     return state
 end function
 
@@ -74,7 +85,7 @@ function dispatcharrSyncScheduleTake(previous as object, scope as dynamic, now a
     if push then state.dirtyAt = 0
     state.periodicAt = now + 900
     state.sequence++
-    state.flight = {id: state.sequence, scope: copyPreferenceValue(state.scope), root: state.dirtyRoot, push: push}
+    state.flight = {id: state.sequence, scope: copyPreferenceValue(state.scope), intent: state.dirtyIntent, push: push}
     return {run: true, push: push, state: state, ticket: state.flight}
 end function
 
@@ -89,7 +100,7 @@ function dispatcharrSyncScheduleComplete(previous as object, ticket as dynamic, 
     if not ok
         ' An oversize result applies only to the body prepared for this ticket.
         ' Leave a newer observed edit's debounce and queued reads intact.
-        if ticket.push and failure = "too-large" and ticket.root <> state.dirtyRoot then return state
+        if ticket.push and failure = "too-large" and ticket.intent <> state.dirtyIntent then return state
         state.failures++
         delay = 30
         if state.failures = 2 then delay = 120
@@ -103,7 +114,7 @@ function dispatcharrSyncScheduleComplete(previous as object, ticket as dynamic, 
         if ticket.push and failure = "storage-full" and creationBlocked then state.creationBlocked = true
         if ticket.push and failure = "too-large"
             state.pause = failure
-            state.writeBlockedRoot = ticket.root
+            state.writeBlockedRoot = ticket.intent
             state.dirtyAt = 0
             state.dueAt = 0
             return state
