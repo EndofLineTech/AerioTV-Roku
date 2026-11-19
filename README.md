@@ -310,6 +310,13 @@ connection screen:
   files retain Roku's native FF/REW transport.
 - For catch-up/Restart, open **Program details** and select the separate archive
   or Restart action. **Watch channel LIVE** remains a distinct choice.
+- For a completed archive you partly watched, **Program details** offers
+  **Resume archive** (at the preceding provider minute) or **Start Over**.
+  Progress stays on this Roku and in the same connection and account/profile;
+  up to 20 bookmarks are kept while the provider advertises the archive.
+  Watching to the end or choosing Start Over clears the old position.
+  An abrupt exit may lose the most recent seconds. This does not save Restart
+  Program or live rewind, and a bookmark cannot make an unavailable archive play.
 - If a completed archive plays the wrong time, set **Catch-Up Time Offset**
   under **Manage saved connections → Request identity and header settings**.
   Enter signed minutes from −180 to +180 (0 is off). Positive values request a

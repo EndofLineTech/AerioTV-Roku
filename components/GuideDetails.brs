@@ -105,12 +105,26 @@ sub onCatchupCapabilities()
     if m.top.active then drawGuide()
 end sub
 
+sub onArchiveBookmarks()
+    if m.ready <> true then return
+    if m.details.active then updateRichDetails()
+end sub
+
 sub updateRichDetails()
+    now = uiNow()
     days = catchupChannelDays(m.top.catchupPermission, m.top.channelFacts, m.detailChannel.id)
-    eligible = m.top.catchupPermission = "allowed" and catchupEligible(m.detailProgram, days, uiNow())
-    restart = catchupRestartPlan(m.detailProgram, days, uiNow()) <> invalid
+    eligible = catchupEligible(m.detailProgram, days, now)
+    restart = catchupRestartPlan(m.detailProgram, days, now) <> invalid
     if m.providerType = "xtream" then restart = false
-    m.details.model = {program: m.detailProgram, channel: m.detailChannel, baseUrl: m.base, apiKey: m.key, settings: m.settings, reminded: hasReminder(m.reminders, m.detailChannel.uuid, m.detailProgram.id), catchupAvailable: eligible, restartAvailable: restart, catchupRetention: catchupRetentionLabel(days), dvrPermission: m.top.dvrPermission}
+    resumeLabel = ""
+    if eligible
+        bookmark = catchupFindBookmark(m.top.archiveBookmarks, m.detailChannel.uuid, m.detailProgram, now)
+        if bookmark <> invalid
+            plan = catchupSeekPlan(m.detailProgram, bookmark.position, now)
+            resumeLabel = catchupElapsedText(plan.offset)
+        end if
+    end if
+    m.details.model = {program: m.detailProgram, channel: m.detailChannel, baseUrl: m.base, apiKey: m.key, settings: m.settings, reminded: hasReminder(m.reminders, m.detailChannel.uuid, m.detailProgram.id), catchupAvailable: eligible, catchupResumeLabel: resumeLabel, restartAvailable: restart, catchupRetention: catchupRetentionLabel(days), dvrPermission: m.top.dvrPermission}
 end sub
 
 sub updateReminders()
@@ -151,6 +165,8 @@ sub onRichDetailAction(event as object)
         return
     end if
     if action = "watch" then m.top.watchChannel = userViewEvent(m.detailChannel, m.userSessionId)
-    if action = "catchup" then m.top.archiveRequest = userViewEvent({channel: m.detailChannel, program: m.detailProgram, scope: m.cacheScope}, m.userSessionId)
+    if action = "catchup" or action = "resume" or action = "startOver"
+        m.top.archiveRequest = userViewEvent({channel: m.detailChannel, program: m.detailProgram, scope: m.cacheScope, bookmarkAction: action}, m.userSessionId)
+    end if
     if action = "restart" then m.top.archiveRequest = userViewEvent({channel: m.detailChannel, program: m.detailProgram, scope: m.cacheScope, restart: true}, m.userSessionId)
 end sub

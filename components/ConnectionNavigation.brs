@@ -615,6 +615,7 @@ sub completeDirectConnection(result as object, entry as object, xcUsername = "" 
     end if
     m.capabilities.dvr = "none"
     m.capabilities.switchStreams = "denied"
+    reconcileArchiveBookmarks(result.channels, true)
     m.guide.config = {
         userRole: "user"
         channels: result.channels, groups: result.groups, warning: result.warning

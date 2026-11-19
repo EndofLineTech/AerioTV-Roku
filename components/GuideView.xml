@@ -6,6 +6,7 @@
     <field id="metadataEvent" type="assocarray" alwaysNotify="true" />
     <field id="channelFacts" type="assocarray" onChange="onCatchupCapabilities" />
     <field id="catchupPermission" type="string" value="unknown" onChange="onCatchupCapabilities" />
+    <field id="archiveBookmarks" type="array" onChange="onArchiveBookmarks" />
     <field id="moviesPermission" type="string" value="unknown" onChange="updatePrimaryTabs" />
     <field id="seriesPermission" type="string" value="unknown" onChange="updatePrimaryTabs" />
     <field id="dvrPermission" type="string" value="unknown" onChange="updatePrimaryTabs" />

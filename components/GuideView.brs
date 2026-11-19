@@ -74,6 +74,7 @@ sub configure()
     m.top.playbackChannel = invalid
     m.top.playbackInfo = invalid
     config = m.top.config
+    m.top.archiveBookmarks = []
     if config = invalid then return
     m.userRole = config.userRole
     m.top.vodEnabled = config.preferences.vodEnabled <> false
@@ -85,6 +86,7 @@ sub configure()
     m.forceGuideFetch = false
     m.serverGroups = config.groups
     prefs = normalizeAccountPreferences(config.preferences)
+    m.top.archiveBookmarks = catchupBookmarks(prefs.archiveBookmarks, uiNow())
     m.settings = prefs.guide
     m.collections = prefs.collections
     m.reminders = prefs.reminders

@@ -1104,6 +1104,10 @@ sub onCapabilities(event as object)
         end if
         if m.playingChannel <> invalid then m.audioCheck.control = "start"
         m.channelFacts = result.channelFacts
+        if m.accountPreferences.archiveBookmarks <> invalid
+            lineup = m.guide.callFunc("playerBrowserData")
+            if lineup <> invalid then reconcileArchiveBookmarks(lineup.channels, result.factsAvailable = true)
+        end if
         print "[capabilities] level="; m.capabilities.level; " source-switch="; m.capabilities.switchStreams; " version="; m.capabilities.version
     else
         m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
@@ -2688,6 +2692,7 @@ sub onLineupRefresh(event as object)
             m.miniCaption.text = current.name
         end if
     end if
+    reconcileArchiveBookmarks(result.channels, false)
     result.preferences = m.accountPreferences
     result.aeriosession = currentUserSessionId()
     m.guide.callFunc("applyRefreshedLineup", result)

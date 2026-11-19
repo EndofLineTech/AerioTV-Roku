@@ -146,7 +146,7 @@ sub onMediaState()
         hideRecordingOverlay()
         m.message.visible = true
         m.mediaFailed = true
-        m.top.diagnostic = userViewEvent({mode: m.session.mode, code: m.video.errorCode, message: sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)}, m.userSessionId)
+        m.top.diagnostic = userViewEvent({mode: m.session.mode, account: m.session.account, identity: m.session.identity, code: m.video.errorCode, message: sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)}, m.userSessionId)
         print "[on-demand] failure code="; m.video.errorCode; " detail="; sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)
         m.message.text = playbackFailureText(m.video.errorCode, sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)) + chr(10) + "OK Retry    Back Return"
         if m.session.mode = "vod"

@@ -4,6 +4,91 @@ function catchupEligible(program as dynamic, days as integer, now as integer) as
     return program.startsAt >= now - days * 86400 and program.endsAt <= now and program.endsAt > program.startsAt and program.endsAt - program.startsAt <= 86400
 end function
 
+function catchupBookmarkExpiry(program as object, days as integer, shiftMinutes as integer, minuteStart as boolean) as integer
+    start = program.startsAt + catchupOffsetMinutes(shiftMinutes) * 60
+    if minuteStart then start -= start mod 60
+    if start > program.startsAt then start = program.startsAt
+    ' The last eligible second is inclusive in catchupRequestWindow.
+    return (start + days * 86400 + 1) \ 1
+end function
+
+function catchupBookmarkMatches(row as object, channelUuid as string, program as object) as boolean
+    return row.channelUuid = channelUuid and row.startsAt = program.startsAt and row.endsAt = program.endsAt
+end function
+
+function catchupBookmarks(raw as dynamic, now as integer) as object
+    rows = []
+    if type(raw) <> "roArray" then return rows
+    for each row in raw
+        if type(row) = "roAssociativeArray"
+            uuid = textValue(row.channelUuid)
+            if uuid <> "" and len(uuid) <= 128 and mediaNumber(row.position) and mediaNumber(row.expiresAt)
+                if row.expiresAt > now and catchupEligible(row, 30, now)
+                    if row.position >= 60 and row.position < row.endsAt - row.startsAt
+                        rows.push({channelUuid: uuid, startsAt: row.startsAt, endsAt: row.endsAt, position: int(row.position), expiresAt: row.expiresAt})
+                        if rows.count() >= 20 then exit for
+                    end if
+                end if
+            end if
+        end if
+    end for
+    return rows
+end function
+
+function catchupFindBookmark(raw as dynamic, channelUuid as string, program as object, now as integer) as dynamic
+    for each row in catchupBookmarks(raw, now)
+        if catchupBookmarkMatches(row, channelUuid, program) then return row
+    end for
+    return invalid
+end function
+
+function catchupBookmarkUpdate(raw as dynamic, channelUuid as string, program as object, position as integer, expiresAt as integer, now as integer) as object
+    rows = [{channelUuid: channelUuid, startsAt: program.startsAt, endsAt: program.endsAt, position: position, expiresAt: expiresAt}]
+    for each row in catchupBookmarks(raw, now)
+        if not catchupBookmarkMatches(row, channelUuid, program) then rows.push(row)
+    end for
+    return catchupBookmarks(rows, now)
+end function
+
+function catchupBookmarkReconcile(raw as dynamic, channels as object, permission as string, facts as dynamic, factsAvailable as boolean, now as integer) as object
+    rows = catchupBookmarks(raw, now)
+    if rows.count() = 0 or permission = "denied" then return []
+    ids = {}
+    ids.setModeCaseSensitive()
+    for each channel in channels
+        ids[textValue(channel.uuid)] = textValue(channel.id)
+    end for
+    kept = []
+    for each row in rows
+        if ids.doesExist(row.channelUuid)
+            retain = true
+            if permission = "allowed" and factsAvailable
+                days = catchupChannelDays(permission, facts, ids[row.channelUuid])
+                retain = catchupEligible(row, days, now)
+            end if
+            if retain then kept.push(row)
+        end if
+    end for
+    return kept
+end function
+
+function catchupBookmarkUnavailableStatus(status as dynamic) as boolean
+    return status = 401 or status = 403 or status = 404 or status = 410
+end function
+
+function catchupBookmarkUnavailableMediaError(detail as string) as boolean
+    return CreateObject("roRegex", "(http[^0-9]{0,24}|response code[^0-9]{0,16})(401|403|404|410)([^0-9]|$)", "i").isMatch(detail)
+end function
+
+function catchupBookmarkPlan(raw as dynamic, channelUuid as string, program as object, action as string, now as integer) as dynamic
+    if action = "resume"
+        row = catchupFindBookmark(raw, channelUuid, program, now)
+        if row = invalid then return invalid
+        return catchupSeekPlan(program, row.position, now)
+    end if
+    return {program: program, offset: 0}
+end function
+
 function catchupOffsetSupported(provider as string) as boolean
     return provider = "dispatcharr" or provider = "xtream"
 end function

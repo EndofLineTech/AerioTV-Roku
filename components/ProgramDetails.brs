@@ -105,6 +105,10 @@ sub render()
     if model.catchupAvailable = true
         m.actions = ["catchup", "watch", "close"]
         labels = ["Play archive (provider availability)", "Watch channel LIVE", "Close"]
+        if textValue(model.catchupResumeLabel) <> ""
+            m.actions = ["resume", "startOver", "watch", "close"]
+            labels = ["Resume archive at " + model.catchupResumeLabel, "Start Over", "Watch channel LIVE", "Close"]
+        end if
     else if model.restartAvailable = true
         m.actions = ["restart", "watch", "close"]
         labels = ["Restart Program (provider availability)", "Watch channel LIVE", "Close"]
