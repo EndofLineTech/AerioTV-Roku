@@ -55,7 +55,7 @@ sub checkPhoneReopenAfterPinAdmission()
     m.page = "setup"
     m.busy = false
     m.phoneSetup.active = false
-    entry = {id: "old", name: "Saved", provider: "dispatcharr", url: "https://old.example.test"}
+    entry = {id: "old", name: "Saved", provider: "dispatcharr", url: "https://old.example.test", remember: true}
     m.connectionStore.entries = [entry]
     m.selectedConnectionId = "old"
     profile = userProfileFromVerified("old", "00000000-0000-4000-8000-000000000001", {id: 7, username: "Owner", user_level: 1}, 1)
@@ -66,20 +66,37 @@ sub checkPhoneReopenAfterPinAdmission()
     store = defaultUserProfileStore("old")
     store.profiles = [profile]
     store.active = profile.id
-    m.registry = {store: store, exists: function(key as string) as boolean
+    m.registry = {store: store, key: m.apiKey, exists: function(key as string) as boolean
         return key = "userProfilesV1_old"
     end function, read: function(key as string) as string
         if key = "userProfilesV1_old" then return FormatJson(m.store)
+        if key = "connKey_old" then return m.key
         return ""
     end function}
     scope = userProfileSessionScope(entry, profile.id, 7, "current", "00000000-0000-4000-8000-000000000002")
     m.activeUserScope = scope
     m.global = {activeusersession: scope.sessionId, profilegateclosed: false, profileswitchpending: false}
     m.profileUnlockGrant = invalid
+    m.phoneTestBrokerPermit = true
     m.phoneSetupPinAdmission = {scope: scope, pin: {slot: "old", id: profile.id, pinType: profile.pinType, pinHash: profile.pinHash, pinSalt: profile.pinSalt}}
     check(selectedUserProfileGate().reason = "pin", "ordinary startup gate has no reusable raw PIN grant")
     openPhoneSetup()
     check(m.phoneSetup.active and m.page = "phoneSetup", "an already PIN-admitted holder can reopen its receiver")
+    m.registry.key = ""
+    check(not phoneSetupSelectedProfileGate().allowed, "deleted own saved key stops reuse even if the old runtime key remains")
+    m.registry.key = m.apiKey
+    m.phoneTestBrokerPermit = false
+    check(not phoneSetupSelectedProfileGate().allowed, "broker hold stops reuse of PIN admission")
+    m.phoneTestBrokerPermit = true
+    m.registry.store.profiles[0].pinHash = "2345678901234567890123456789012345678901234567890123456789012345"
+    m.phonePending = invalid
+    acceptPhoneSetupPayload({})
+    check(m.phonePending = invalid and m.phoneSetup.retryAvailable <> true, "new PIN after QR prevents accepting a payload")
+    m.phonePending = {entry: {id: "new"}}
+    m.phoneResult = {apiKey: "replacement"}
+    commitPhoneSetup("replace")
+    check(m.phonePending = invalid and m.phoneResult = invalid and m.connectionStore.selected = "old", "new PIN before commit retires staged phone setup without writing")
+    m.registry.store.profiles[0].pinHash = profile.pinHash
     m.page = "setup"
     m.phoneSetup.active = false
     m.global.activeusersession = "00000000-0000-4000-8000-000000000003"
@@ -90,6 +107,10 @@ sub checkPhoneReopenAfterPinAdmission()
     openPhoneSetup()
     check(not m.phoneSetup.active, "changed saved PIN cannot reuse phone setup admission")
 end sub
+
+function requestGateAccessAllowed(url as string, key as string) as boolean
+    return m.phoneTestBrokerPermit = true
+end function
 
 sub cancelProfileTask()
 end sub
@@ -115,6 +136,7 @@ sub resetImportTest()
     m.phonePending = {ok: true, entry: {id: "new", provider: "m3u"}, credential: {apiKey: "fixture-only"}}
     m.phoneResult = invalid
     m.connectionStore = {schema: 1, selected: "old", entries: []}
+    m.selectedConnectionId = "old"
     m.apiKey = "old-runtime-key"
     m.baseUrl = "https://old.example.test"
 end sub

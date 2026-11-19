@@ -5,6 +5,7 @@ sub beginPhoneProfileVerification(payload as object, prepared as object)
     identity = phoneSetupPlaylistIdentityPlan(m.connectionStore, payload.playlist.id, prepared.entry.id)
     if not identity.ok then failPhoneSetup("Could not match the playlist ID. Saved connections were not changed.") : return
     prepared.entry.id = identity.id
+    heldSelectedAddress = false
     previous = connectionStoreEntry(m.connectionStore, identity.matchedId)
     if previous <> invalid
         if previous.provider <> "dispatcharr"
@@ -28,6 +29,7 @@ sub beginPhoneProfileVerification(payload as object, prepared as object)
                 end for
             end if
             selectedChanged = previous.id = m.selectedConnectionId
+            heldSelectedAddress = selectedChanged
             if selectedChanged then resetConnectionRuntime()
             m.connectionStore = held.connections
             if selectedChanged then applySelectedConnection()
@@ -37,6 +39,7 @@ sub beginPhoneProfileVerification(payload as object, prepared as object)
     end if
     nonce = CreateObject("roDeviceInfo").getRandomUUID()
     m.phoneProfileImport = {nonce: nonce, phase: "default", matchedId: identity.matchedId, connectionRoot: m.registry.read("connectionsV1"), rows: [], proofs: {}, privateProfiles: copyJson(payload.profiles), incomingSync: payload.sync}
+    m.phoneProfileImport.heldSelectedAddress = heldSelectedAddress
     task = CreateObject("roSGNode", "PhoneSetupProfileVerifyTask")
     tagTaskForCurrentUser(task)
     task.baseUrl = prepared.url
@@ -115,6 +118,9 @@ sub startPhoneProfileCommit(staged as object)
     if m.activeUserScope <> invalid
         if not persistCurrentUserProfilePreferences() then failPhoneProfileImport("Could not preserve the current profile.") : return
     end if
+    if not phoneSetupCommitAdmissionCurrent() then failPhoneProfileImport("Profile access changed. Reopen phone setup to try again.") : return
+    context.commitActor = m.activeUserScope
+    context.commitActorUrl = m.baseUrl
     saved = phoneSetupCommitFencedConnection(m.registry, m.connectionStore, staged, textValue(m.phoneResult.apiKey), context.nonce)
     if not saved.ok
         if saved.recoveryRequired = true then m.phoneRecoveryRequired = true
@@ -147,6 +153,28 @@ end sub
 sub finishPhoneProfileCommit()
     context = m.phoneProfileImport
     entry = context.connection
+    ' The first flush deliberately fences the target; its exact journal/root,
+    ' prior roster (including PIN), and verified key must still own phase two.
+    if context.commitActor <> invalid
+        if not userProfileSameSession(context.commitActor, m.activeUserScope) or currentUserSessionId() <> context.commitActor.sessionId or userProfileGateClosed()
+            failPhoneProfileImport("Profile access changed. Reopen phone setup to try again.")
+            return
+        end if
+        if textValue(m.apiKey) = "" or not requestGateAccessAllowed(context.commitActorUrl, textValue(m.apiKey))
+            failPhoneProfileImport("Profile access changed. Reopen phone setup to try again.")
+            return
+        end if
+        if context.commitActor.playlistId <> entry.id
+            if not phoneSetupCommitAdmissionCurrent() then failPhoneProfileImport("Profile access changed. Reopen phone setup to try again.") : return
+        end if
+    else if m.activeUserScope <> invalid
+        failPhoneProfileImport("Profile access changed. Reopen phone setup to try again.")
+        return
+    end if
+    if entry.remember and m.registry.read(connectionRegistryKey(entry.id)) <> textValue(m.phoneResult.apiKey)
+        failPhoneProfileImport("Saved connection credentials changed.")
+        return
+    end if
     ids = {defaultId: CreateObject("roDeviceInfo").getRandomUUID(), byUsername: {}}
     for each profile in context.previous.profiles
         if profile.isDefault then ids.defaultId = profile.id

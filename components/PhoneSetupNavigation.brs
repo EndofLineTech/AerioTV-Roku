@@ -46,7 +46,18 @@ function phoneSetupSelectedProfileGate() as object
     for each profile in m.userProfileStore.profiles
         if profile.id = m.userProfileStore.active and profile.id = scope.profileId
             if not userProfileFullAccess(profile.role) or profile.addressHeld = true or profile.userId.toStr() <> scope.accountId then return gate
-            if userProfilePinGrantMatches(admission.pin, entry.id, profile) then return {allowed: true, reason: ""}
+            if not userProfilePinGrantMatches(admission.pin, entry.id, profile) then return gate
+            memory = {}
+            if not entry.remember and type(m.profileSessionKeys) = "roAssociativeArray"
+                bucket = preferenceScope(entry.url + "|" + entry.id + "|" + profile.id)
+                keyName = userProfileKeyName(entry.id, profile.id)
+                if profile.isDefault then keyName = connectionRegistryKey(entry.id)
+                if m.profileSessionKeys.doesExist(bucket) then memory[keyName] = m.profileSessionKeys[bucket]
+            end if
+            credential = userProfileCredential(m.registry, entry, m.userProfileStore, memory)
+            if credential.ok and credential.profileId = scope.profileId and credential.key = m.apiKey and requestGateAccessAllowed(entry.url, credential.key)
+                return {allowed: true, reason: ""}
+            end if
         end if
     end for
     return gate
@@ -63,6 +74,7 @@ end sub
 sub acceptPhoneSetupPayload(payload as object)
     if not userProfileConnectionSetupAllowed() then return
     if m.page <> "phoneSetup" or not m.phoneSetup.active then return
+    if not phoneSetupSelectedProfileGate().allowed then return
     digest = ""
     if payload.playlist.type = "m3u" then digest = metadataCacheDigest("m3u|" + phoneSetupFeedIdentity(payload.playlist.url))
     profilesReady = m.profilePhoneImportReady = true and payload.playlist.type = "dispatcharr"
@@ -107,7 +119,7 @@ sub startPhoneVerification()
     end if
     profileGate = phoneSetupSelectedProfileGate()
     if m.phoneProfileImport <> invalid
-        if phoneProfileDefaultVerificationCurrent() then profileGate = {allowed: true}
+        if phoneSetupHeldAddressCurrent(m.phoneProfileImport) and phoneProfileDefaultVerificationCurrent() then profileGate = {allowed: true}
     end if
     if not profileGate.allowed
         m.phonePending = invalid
@@ -334,6 +346,12 @@ end sub
 sub commitPhoneSetup(choice as string)
     if not userProfileConnectionSetupAllowed() then return
     if m.phonePending = invalid or m.phoneResult = invalid then return
+    if not phoneSetupCommitAdmissionCurrent()
+        if m.phoneProfileImport <> invalid then retirePhoneProfileImport()
+        m.phonePending = invalid
+        failPhoneSetup("Profile access changed. Reopen phone setup to try again.")
+        return
+    end if
     if m.phonePending.phoneProfilesRequired = true and m.phoneProfileImport = invalid
         m.phonePending = invalid
         failPhoneSetup("Profile verification expired. Send setup again.")
@@ -407,6 +425,20 @@ sub commitPhoneSetup(choice as string)
     if pending.multipleProfiles = true then summary = "Multiple profiles aren't currently supported on Roku. Stay tuned."
     showNotice(summary) ' Nonblocking; the guide is already active.
 end sub
+
+function phoneSetupCommitAdmissionCurrent() as boolean
+    if phoneSetupHeldAddressCurrent(m.phoneProfileImport) then return phoneProfileDefaultVerificationCurrent()
+    return userProfileConnectionSetupAllowed() and phoneSetupSelectedProfileGate().allowed
+end function
+
+' Only the original, already-authorized matched address edit may continue
+' after intentionally retiring the selected actor and its old credential.
+function phoneSetupHeldAddressCurrent(context as dynamic) as boolean
+    if type(context) <> "roAssociativeArray" then return false
+    if context.heldSelectedAddress <> true or context.matchedId <> m.selectedConnectionId then return false
+    if m.activeUserScope <> invalid or textValue(m.apiKey) <> "" or userProfileGateClosed() then return false
+    return context.connectionRoot = m.registry.read("connectionsV1")
+end function
 
 function takePhoneSetupPreferences(preferences as object, entry as object) as object
     if m.phoneOptions = invalid then return preferences
