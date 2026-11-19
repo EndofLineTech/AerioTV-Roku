@@ -148,9 +148,15 @@ sub main()
         if onKeyEvent("OK", false) or m.top.watchChannel <> invalid then stop
     end for
     m.top.watchChannel = invalid
-    onKeyEvent("OK", true)
-    onKeyEvent("down", true)
-    if onKeyEvent("OK", false) or m.top.watchChannel <> invalid then stop
+    m.filtered[3].epgKey = ""
+    if not onKeyEvent("OK", true) or not onKeyEvent("down", true) or m.selected <> 3 then stop
+    if not onKeyEvent("OK", true) or not onKeyEvent("OK", false) or m.top.watchChannel <> invalid
+        print "FAIL: cancelled Guide OK re-armed a different row"
+        stop
+    end if
+    onKeyEvent("down", false)
+    if not onKeyEvent("OK", true) or m.top.watchChannel <> invalid then stop
+    if not onKeyEvent("OK", false) or m.top.watchChannel.uuid <> "3" then stop
     print "ALL TESTS PASSED"
 end sub
 

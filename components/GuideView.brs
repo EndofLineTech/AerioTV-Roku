@@ -257,7 +257,7 @@ sub completeEpgLaunch()
 end sub
 
 sub suspendGuide()
-    m.guideTuneOkUuid = ""
+    m.guideTuneOkUuid = invalid
     m.primaryNavigation.active = false
     cancelGuideHold()
     if m.tmdbTask <> invalid
@@ -1439,22 +1439,26 @@ function onKeyEvent(key as string, press as boolean) as boolean
     if not m.top.active then return false
     ' The committing LabelList OK must not tune the grid after closing a picker.
     if m.pickerWakeKey = key
-        if not press then m.pickerWakeKey = ""
+        if not press
+            m.pickerWakeKey = ""
+            if key = "OK" then m.guideTuneOkUuid = invalid
+        end if
         return true
     end if
+    ' Invalid means no gesture; an empty UUID still owns a cancelled press.
+    if press and key <> "OK" and m.guideTuneOkUuid <> invalid then m.guideTuneOkUuid = ""
     if handleGuideHeldKey(key, press) then return true
-    if key = "OK" and textValue(m.guideTuneOkUuid) <> ""
+    if key = "OK" and m.guideTuneOkUuid <> invalid
         if not press
             uuid = m.guideTuneOkUuid
-            m.guideTuneOkUuid = ""
-            if m.picker = invalid and m.filtered.count() > 0 and guideRemoteAction("okShort") = "activateSelection"
+            m.guideTuneOkUuid = invalid
+            if uuid <> "" and m.picker = invalid and m.filtered.count() > 0 and guideRemoteAction("okShort") = "activateSelection"
                 if m.filtered[m.selected].uuid = uuid then handleGuideMappedKey("OK")
             end if
         end if
         return true
     end if
     if not press then return false
-    m.guideTuneOkUuid = ""
     if m.picker <> invalid
         if key = "back" or key = "options"
             closePicker()

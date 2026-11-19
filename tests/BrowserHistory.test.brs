@@ -23,6 +23,8 @@ sub main()
     check(onKeyEvent("OK", true) and m.top.channelSelected = invalid and m.top.active, "Recently Watched keeps focus on OK-down")
     check(onKeyEvent("OK", true) and m.top.channelSelected = invalid, "held repeat cannot tune")
     check(onKeyEvent("OK", false) and m.top.channelSelected.uuid = "a" and userViewSession(m.top.channelSelected) = "session-a", "release tunes the selected recent channel")
+    checkCancelledBrowserOk("Recently Watched", "c")
+    check(onKeyEvent("up", true) and m.selected = 0, "Up returns to first recent after fresh tune")
     check(onKeyEvent("down", true) and m.selected = 1, "Down still browses channels")
     m.top.channelSelected = invalid
     check(onKeyEvent("right", true) and m.focus = "history" and m.selected = 1, "Right focuses the history button without moving the channel cursor")
@@ -67,10 +69,22 @@ sub main()
     check(onKeyEvent("OK", false) and m.top.channelSelected.uuid = "a", "Channels emits once on release")
     m.top.channelSelected = invalid
     check(not onKeyEvent("OK", false) and m.top.channelSelected = invalid, "stray release is harmless")
-    onKeyEvent("OK", true)
-    onKeyEvent("down", true)
-    check(not onKeyEvent("OK", false) and m.top.channelSelected = invalid, "moving focus cancels the uncommitted selection")
+    checkCancelledBrowserOk("Channels", "b")
+    check(onKeyEvent("left", true) and m.focus = "groups", "Left focuses group list")
+    check(onKeyEvent("OK", true) and m.focus = "channels", "group OK returns focus to channels")
+    check(onKeyEvent("OK", true) and onKeyEvent("OK", false) and m.top.channelSelected = invalid, "group OK cannot retune after focus-only handoff")
+    check(onKeyEvent("OK", true) and m.top.channelSelected = invalid, "fresh OK can arm tune after group OK release")
+    check(onKeyEvent("OK", false) and m.top.channelSelected.uuid = "b", "fresh OK tunes after group OK release")
     print "ALL TESTS PASSED"
+end sub
+
+sub checkCancelledBrowserOk(mode as string, uuid as string)
+    m.top.channelSelected = invalid
+    check(onKeyEvent("OK", true) and onKeyEvent("down", true), mode + " allows movement during held OK")
+    check(onKeyEvent("OK", true) and onKeyEvent("OK", false) and m.top.channelSelected = invalid, mode + " consumes cancelled repeats through release")
+    check(onKeyEvent("OK", true) and m.top.channelSelected = invalid, mode + " fresh OK arms only")
+    check(onKeyEvent("OK", false) and m.top.channelSelected.uuid = uuid, mode + " fresh tap tunes the moved-to channel")
+    m.top.channelSelected = invalid
 end sub
 
 sub check(condition as boolean, label as string)

@@ -19,7 +19,7 @@ sub init()
 end sub
 
 sub configure()
-    m.tuneOkUuid = ""
+    m.tuneOkUuid = invalid
     m.userSessionId = userViewSession(m.top.model)
     data = m.top.model
     if data = invalid then return
@@ -120,7 +120,7 @@ sub filterList()
 end sub
 
 sub onActive()
-    m.tuneOkUuid = ""
+    m.tuneOkUuid = invalid
     m.top.visible = m.top.active
     if m.top.active
         draw()
@@ -431,11 +431,12 @@ end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if not m.top.active then return false
-    if key = "OK" and textValue(m.tuneOkUuid) <> ""
+    ' Invalid means no gesture; an empty UUID owns a cancelled or focus-only OK.
+    if key = "OK" and m.tuneOkUuid <> invalid
         if not press
             uuid = m.tuneOkUuid
-            m.tuneOkUuid = ""
-            if m.focus = "channels" and m.filtered.count() > 0
+            m.tuneOkUuid = invalid
+            if uuid <> "" and m.focus = "channels" and m.filtered.count() > 0
                 channel = m.filtered[m.selected]
                 if channel.uuid = uuid then m.top.channelSelected = userViewEvent(channel, m.userSessionId)
             end if
@@ -443,7 +444,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     if not press then return false
-    m.tuneOkUuid = ""
+    if m.tuneOkUuid <> invalid then m.tuneOkUuid = ""
     ' Fullscreen Star belongs to Roku even when an app overlay has focus.
     if key = "options" then return false
     if key = "back"
@@ -487,6 +488,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         end if
     else if key = "OK"
         if m.focus = "groups"
+            m.tuneOkUuid = ""
             m.focus = "channels"
         else if m.focus = "history"
             uuid = ""
