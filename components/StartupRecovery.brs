@@ -49,15 +49,19 @@ function retryStartupPlayback() as boolean
     m.audioCheck.control = "stop"
     m.streamReady = false
     m.decoderSnapshot = {}
-    ' Close this local attempt before replacing it. Clone retains exact URL,
-    ' transport, authentication headers and selected output profile.
+    ' Close this local attempt before replacing it. Direct/TS clones retain
+    ' their exact URL; owned HLS retires its capability and remints the entry.
     m.video.control = "stop"
-    m.video.content = replacement
-    beginStartupWatch(replacement, true, waitForSources)
-    m.video.control = "play"
+    if m.hlsSession <> invalid
+        retryOwnedHlsPlayback(replacement, waitForSources)
+    else
+        m.video.content = replacement
+        beginStartupWatch(replacement, true, waitForSources)
+        m.video.control = "play"
+    end if
     m.banner.playbackState = "buffering"
     showNotice("Channel startup stalled. Retrying " + m.startupRetryCount.toStr() + "/" + m.startupRetryLimit.toStr() + " with the same audio setting...")
-    print "[startup-recovery] local retry " + m.startupRetryCount.toStr() + "/" + m.startupRetryLimit.toStr() + "; same playback URL and profile"
+    print "[startup-recovery] local retry " + m.startupRetryCount.toStr() + "/" + m.startupRetryLimit.toStr() + "; same transport and profile"
     return true
 end function
 

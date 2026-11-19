@@ -15,7 +15,7 @@ sub closeOwnedHlsSession()
 end sub
 
 sub queueHlsDisconnect(session as object)
-    task = CreateObject("roSGNode", "HlsSessionTask")
+    task = createHlsSessionTask()
     task.operation = "close"
     task.baseUrl = session.baseUrl
     task.apiKey = session.apiKey
@@ -24,6 +24,11 @@ sub queueHlsDisconnect(session as object)
     m.hlsStopTasks.push(task)
     task.control = "RUN"
 end sub
+
+function createHlsSessionTask() as object
+    if m.hlsSessionTaskFactory <> invalid then return m.hlsSessionTaskFactory()
+    return CreateObject("roSGNode", "HlsSessionTask")
+end function
 
 sub onHlsSessionClosed(event as object)
     for i = 0 to m.hlsStopTasks.count() - 1
@@ -38,18 +43,32 @@ sub onHlsSessionClosed(event as object)
 end sub
 
 sub beginOwnedHlsPlayback(content as object)
-    task = CreateObject("roSGNode", "HlsSessionTask")
+    mintOwnedHlsPlayback(content, m.baseUrl, m.apiKey, false, true)
+end sub
+
+sub mintOwnedHlsPlayback(content as object, baseUrl as string, apiKey as string, recovering as boolean, waitForSources as boolean)
+    task = createHlsSessionTask()
     tagTaskForCurrentUser(task)
     task.operation = "open"
-    task.baseUrl = m.baseUrl
-    task.apiKey = m.apiKey
+    task.baseUrl = baseUrl
+    task.apiKey = apiKey
     task.entryUrl = content.url
     task.observeField("result", "onHlsSessionOpened")
     m.hlsMintTask = task
     m.hlsMintClock = CreateObject("roTimespan")
     m.hlsMintClock.mark()
-    m.hlsPendingMints.push({task: task, baseUrl: m.baseUrl, apiKey: m.apiKey, content: content})
+    m.hlsPendingMints.push({task: task, baseUrl: baseUrl, apiKey: apiKey, content: content, entryUrl: content.url, recovering: recovering, waitForSources: waitForSources})
     task.control = "RUN"
+end sub
+
+' Replace this playback attempt, not just the Video reader. A retry must get
+' its own capability so that the previous attempt can be closed independently.
+sub retryOwnedHlsPlayback(replacement as object, waitForSources as boolean)
+    owner = m.hlsSession
+    closeOwnedHlsSession()
+    replacement.url = owner.entryUrl
+    m.video.content = replacement
+    mintOwnedHlsPlayback(replacement, owner.baseUrl, owner.apiKey, true, waitForSources)
 end sub
 
 sub onHlsSessionOpened(event as object)
@@ -74,13 +93,13 @@ sub onHlsSessionOpened(event as object)
                 failLivePlayback(-1, "Dispatcharr HLS session could not be opened (HTTP " + result.status.toStr() + ").")
                 return
             end if
-            m.hlsSession = {token: result.token, baseUrl: pending.baseUrl, apiKey: pending.apiKey}
+            m.hlsSession = {token: result.token, baseUrl: pending.baseUrl, apiKey: pending.apiKey, entryUrl: pending.entryUrl}
             pending.content.url = result.url
             if not requestGateTrackRenderer(m.video, result.url, pending.apiKey)
                 stopPlayback()
                 return
             end if
-            beginStartupWatch(pending.content, false, true)
+            beginStartupWatch(pending.content, pending.recovering = true, pending.waitForSources = true)
             m.video.control = "play"
             print "[hls-session] owned session opened"
             return

@@ -541,11 +541,13 @@ sub main()
     assertEqual(m.profileSyncWriteTask, invalid, "outgoing flush cancellation retires its actual Task")
     assertEqual(flushTask.apiKey, "", "cancelled outgoing flush clears captured own credentials")
     checkRecoveryReadyRadioClassification()
+    checkOwnedHlsRetryLifecycle()
     print "ALL TESTS PASSED"
 end sub
 
 sub checkRecoveryReadyRadioClassification()
     m.global = {activeusersession: "recovery-session"}
+    m.hlsSession = invalid
     m.playingChannel = {id: "4", uuid: "a", isRadio: false}
     for each declaredRadio in [true, false]
         bridge = {id: "bridge", aeriosession: "recovery-session", ready: true, release: false, detached: [], isSameNode: function(other as object) as boolean
@@ -591,7 +593,172 @@ sub checkRecoveryReadyRadioClassification()
             assertEqual(bridge.detached.count(), 0, "ordinary video keeps its bridge callbacks")
         end if
     end for
+
+    ' Resume while the temporary bridge is still starting. A later callback
+    ' must honor that command even before Video publishes its new state.
+    m.recoveryIssued = false
+    m.recoveryPausePending = false
+    m.recoveryContent = m.video.content
+    m.video.state = "paused"
+    togglePause()
+    assertEqual(m.video.control, "resume", "viewer resumes before bridge readiness")
+    onRecoveryReady(ready)
+    assertEqual(m.recoveryPausePending, false, "decoder replacement does not reapply stale pause")
+
+    m.recoveryIssued = false
+    m.recoveryContent = m.video.content
+    m.video.state = "playing"
+    togglePause()
+    assertEqual(m.video.control, "pause", "viewer pauses before bridge readiness")
+    onRecoveryReady(ready)
+    assertEqual(m.recoveryPausePending, true, "decoder replacement preserves the new pause request")
 end sub
+
+sub checkOwnedHlsRetryLifecycle()
+    m.hlsSessionTaskFactory = function() as object
+        m.hlsTestSerial++
+        return {id: m.hlsTestSerial, cancelRequested: false, observeField: sub(field as string, callback as string)
+            m.callback = callback
+        end sub, unobserveField: sub(field as string)
+            m.callback = ""
+        end sub, isSameNode: function(other as object) as boolean
+            return m.id = other.id
+        end function}
+    end function
+    m.hlsTestSerial = 0
+    m.global = {activeusersession: "hls-test-owner"}
+    m.baseUrl = "https://example.test"
+    m.apiKey = "fixture-key"
+    m.page = "player"
+    m.playingChannel = {uuid: "a", name: "Local fixture"}
+    m.video = {control: "stop", state: "none", pauseBufferOverflow: false, content: lifecycleRetryContent(10)}
+    for each field in ["heldZapTimer", "pictureHintTimer", "sourceWatch", "playerClock", "channelTuneTimer", "bannerTimer", "audioCheck"]
+        m[field] = {control: "stop"}
+    end for
+    for each field in ["browser", "guide", "transport", "miniFrame", "playerOptions", "pictureCover"]
+        m[field] = {visible: false, active: false}
+    end for
+    m.banner = {playbackState: "", visible: false}
+    m.noticeText = {text: ""}
+    m.notice = {visible: false}
+    m.noticeTimer = {control: "stop"}
+    m.recoveryTask = invalid
+    m.sourceTask = invalid
+    m.sourceWatchState = invalid
+    m.hlsPendingMints = []
+    m.hlsStopTasks = []
+    m.startupRetryLimit = 1
+    m.startupRetryCount = 0
+    m.liveRetryCount = 0
+    m.streamReady = false
+    m.pendingChannel = invalid
+    m.heldZap = ""
+    entry = "https://example.test/proxy/ts/stream/fixture?output_format=hls&output_profile=7"
+    m.video.content.url = entry
+    oldMint = m.hlsSessionTaskFactory()
+    m.hlsMintTask = oldMint
+    m.hlsPendingMints.push({task: oldMint, baseUrl: m.baseUrl, apiKey: m.apiKey, content: m.video.content, entryUrl: entry, recovering: false, waitForSources: true})
+    oldToken = "opaque_first_12345678"
+    onHlsSessionOpened(hlsFixtureEvent(m.hlsMintTask, hlsFixtureResult(oldToken)))
+    m.video.state = "buffering"
+    assertEqual(retryStartupPlayback(), true, "owned HLS startup retry admitted once")
+    assertEqual(m.hlsStopTasks.count(), 1, "startup retry queues one owner close")
+    oldClose = m.hlsStopTasks[0]
+    assertEqual(oldClose.token, oldToken, "startup retry closes the old token")
+    assertEqual(oldClose.apiKey, "fixture-key", "close uses original owner")
+    assertEqual(m.video.control, "stop", "reader waits for replacement mint")
+    mint = m.hlsMintTask
+    assertEqual(mint.entryUrl, entry, "startup retry mints from original entry and profile")
+    m.video.state = "finished"
+    onVideoState()
+    assertEqual(m.hlsMintTask.isSameNode(mint), true, "outgoing Video finish cannot cancel a pending mint")
+    assertEqual(m.startupRetryCount, 1, "mint does not reset the startup budget")
+    secondToken = "opaque_second_12345678"
+    onHlsSessionOpened(hlsFixtureEvent(mint, hlsFixtureResult(secondToken)))
+    onHlsSessionOpened(hlsFixtureEvent(mint, hlsFixtureResult(secondToken)))
+    onHlsSessionClosed(hlsFixtureEvent(oldClose, {status: 204}))
+    assertEqual(m.hlsStopTasks.count(), 0, "duplicate mint and completed close do not enqueue another close")
+    assertEqual(m.hlsSession.token, secondToken, "old close cannot clear replacement ownership")
+    assertEqual(m.video.control, "play", "only replacement result starts Video")
+    assertEqual(m.startupWatch.recovering, true, "startup retry watch survives asynchronous mint")
+    assertEqual(m.startupWatch.waitForSources, true, "owned startup retry retains its source wait")
+    m.video.state = "paused"
+    m.streamReady = true
+    assertEqual(retryInterruptedLive("buffering", -2, ""), false, "paused owner keeps the same session")
+    assertEqual(m.hlsStopTasks.count(), 0, "pause sends no close")
+    m.video.state = "finished"
+    assertEqual(retryInterruptedLive("finished", 0, ""), true, "owned midstream reconnect admitted")
+    assertEqual(m.hlsStopTasks.count(), 1, "midstream reconnect closes just its previous owner")
+    assertEqual(m.hlsStopTasks[0].token, secondToken, "midstream close cannot target older token")
+    mint = m.hlsMintTask
+    assertEqual(mint.entryUrl, entry, "midstream reconnect remints the original entry")
+    thirdToken = "opaque_third_12345678"
+    onHlsSessionOpened(hlsFixtureEvent(mint, hlsFixtureResult(thirdToken)))
+    assertEqual(m.startupWatch.waitForSources, false, "midstream replacement retains the shorter watchdog")
+    assertEqual(m.startupRetryCount, m.startupRetryLimit, "midstream replacement cannot reset startup budget")
+    m.streamReady = true
+    assertEqual(retryInterruptedLive("finished", 0, ""), false, "successful mint does not replenish reconnect budget")
+    onTransportAction({getData: function() as string
+        return "stop"
+    end function})
+    stopPlayback()
+    assertEqual(m.hlsStopTasks.count(), 2, "app Stop closes current owner exactly once")
+    assertEqual(m.hlsStopTasks[1].token, thirdToken, "Stop targets only the current owner token")
+    assertEqual(m.video.content, invalid, "Stop clears the reader")
+
+    m.playingChannel = {uuid: "new"}
+    m.video.content = lifecycleRetryContent(20)
+    beginOwnedHlsPlayback(m.video.content)
+    staleMint = m.hlsMintTask
+    cancelHlsMint()
+    m.global.activeUserSession = "new-owner"
+    m.apiKey = "new-fixture-key"
+    m.video.content = lifecycleRetryContent(21)
+    beginOwnedHlsPlayback(m.video.content)
+    currentMint = m.hlsMintTask
+    onHlsSessionOpened(hlsFixtureEvent(staleMint, hlsFixtureResult(oldToken)))
+    onHlsSessionOpened(hlsFixtureEvent(staleMint, hlsFixtureResult(oldToken)))
+    assertEqual(m.hlsStopTasks.count(), 3, "late successful mint closes once despite duplicate callback")
+    assertEqual(m.hlsStopTasks[2].apiKey, "fixture-key", "old mint cleans up under captured owner")
+    assertEqual(m.hlsMintTask.isSameNode(currentMint), true, "late mint cannot replace current task")
+    assertEqual(m.video.control, "stop", "late mint cannot start Video")
+
+    fourthToken = "opaque_fourth_12345678"
+    onHlsSessionOpened(hlsFixtureEvent(currentMint, hlsFixtureResult(fourthToken)))
+    m.connectionStore = {entries: [{id: "fixture-m3u", provider: "m3u", authMode: "authorization", userAgent: "Fixture Player/1.0"}]}
+    m.selectedConnectionId = "fixture-m3u"
+    m.accountIdentity = "fixture-account"
+    m.devicePreferences = normalizeDevicePreferences(invalid)
+    m.accountPreferences = normalizeAccountPreferences(invalid)
+    m.videoViewport = {}
+    m.screen = {}
+    m.guide.callFunc = function(name as string, channel as dynamic, now = 0 as integer) as dynamic
+        return invalid
+    end function
+    m.video.setFocus = function(focused as boolean) as boolean
+        return true
+    end function
+    startPlayback({uuid: "direct-m3u", name: "Direct fixture", number: "2", streamUrl: "https://other.test/live.ts?label=guide.m3u8"})
+    assertEqual(m.hlsStopTasks.count(), 4, "retune to a direct feed retires only the old owned session")
+    assertEqual(m.hlsStopTasks[3].token, fourthToken, "retune closes the outgoing token")
+    assertEqual(m.hlsStopTasks[3].apiKey, "new-fixture-key", "retune uses the outgoing token's owner")
+    assertEqual(m.hlsMintTask, invalid, "direct feed does not mint a Dispatcharr session")
+    assertEqual(m.video.content.streamFormat, "ts", "direct TS playback uses the actual path")
+    assertEqual(m.video.content.httpHeaders[0], "User-Agent: Fixture Player/1.0", "direct reader gets custom User-Agent")
+    assertEqual(m.video.content.httpHeaders.count(), 1, "Dispatcharr credential is not sent to direct feed")
+end sub
+
+function hlsFixtureEvent(node as object, data as object) as object
+    return {node: node, data: data, getRoSGNode: function() as object
+        return m.node
+    end function, getData: function() as object
+        return m.data
+    end function}
+end function
+
+function hlsFixtureResult(token as string) as object
+    return {ok: true, status: 200, token: token, url: "https://example.test/proxy/hls/" + token + "/index.m3u8"}
+end function
 
 function vodProgressEvent(value as object) as object
     return {data: value, getRoSGNode: function() as object

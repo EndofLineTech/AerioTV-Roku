@@ -25,6 +25,11 @@ function m3uStreamUrl(url as string) as string
     return url
 end function
 
+function directLiveStreamFormat(url as string) as string
+    if CreateObject("roRegex", "^https?://[^/?#]+/[^?#]*[.]m3u8([?]|$)", "i").isMatch(url) then return "hls"
+    return "ts"
+end function
+
 function m3uChannelId(url as string) as string
     parts = CreateObject("roRegex", "/proxy/ts/stream/([A-Za-z0-9-]{16,64})([?]|$)", "").match(url)
     if parts.count() > 1 then return parts[1]

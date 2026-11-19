@@ -20,12 +20,16 @@ function retryInterruptedLive(state as string, code as integer, detail as string
     ' never consume the user-configured startup retry budget a second time.
     m.startupRetryCount = m.startupRetryLimit
     m.video.control = "stop"
-    m.video.content = replacement
-    beginStartupWatch(replacement, true)
-    m.video.control = "play"
+    if m.hlsSession <> invalid
+        retryOwnedHlsPlayback(replacement, false)
+    else
+        m.video.content = replacement
+        beginStartupWatch(replacement, true)
+        m.video.control = "play"
+    end if
     m.banner.playbackState = "buffering"
     showNotice("Live stream interrupted. Reconnecting once with the same audio setting...")
-    print "[live-recovery] local reconnect 1/1; same URL/profile"
+    print "[live-recovery] local reconnect 1/1; same transport and profile"
     return true
 end function
 

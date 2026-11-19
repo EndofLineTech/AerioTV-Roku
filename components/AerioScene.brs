@@ -1325,9 +1325,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         if directXtream then streamUrl = xtreamLiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, textValue(channel.streamId))
         descriptor = invalid
         if streamUrl <> ""
-            format = "ts"
-            if CreateObject("roRegex", "[.]m3u8([?]|$)", "i").isMatch(streamUrl) then format = "hls"
-            descriptor = {url: streamUrl, streamFormat: format, live: true, title: textValue(channel.name), programId: textValue(channel.uuid)}
+            descriptor = {url: streamUrl, streamFormat: directLiveStreamFormat(streamUrl), live: true, title: textValue(channel.name), programId: textValue(channel.uuid)}
         end if
     end if
     if descriptor = invalid
@@ -1897,8 +1895,10 @@ end sub
 sub togglePause()
     if m.video.state = "paused"
         m.video.control = "resume"
+        if m.recoveryTask <> invalid and not m.recoveryIssued then m.recoveryPaused = false
     else if m.video.state = "playing"
         m.video.control = "pause"
+        if m.recoveryTask <> invalid and not m.recoveryIssued then m.recoveryPaused = true
     end if
 end sub
 
@@ -2463,6 +2463,9 @@ end sub
 
 sub onVideoState()
     if m.playingChannel = invalid then return
+    ' No reader owns the pending entry yet. A queued terminal event from the
+    ' reader we just stopped must not fail the replacement before mint completes.
+    if m.hlsMintTask <> invalid then return
     if m.liveSession <> invalid then mediaObserve(m.liveSession, m.video.state, m.video.position, m.video.duration, invalid)
     if m.video.state = "playing" or m.video.state = "paused" then updateLivePresentation()
     if m.video.state <> "buffering" then m.liveBufferWatch = invalid
