@@ -87,7 +87,7 @@ function normalizeDevicePreferences(raw as dynamic) as object
     if type(raw) = "roAssociativeArray" then result = copyPreferenceValue(raw)
     ' Earlier Settings writes lowercased camel-case keys on ParseJson's
     ' case-sensitive map. Migrate the displayed choice to the canonical field.
-    for each field in ["archiveSkipSeconds", "audioMode", "liveTransport", "liveStartupRetries", "videoScale", "themePreset", "appearanceMode", "panelStyle", "textSize", "subtextSize", "contrastMode", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints", "networkTimeoutSeconds", "refreshSeconds", "clockFormat", "audioGuide"]
+    for each field in ["archiveSkipSeconds", "audioMode", "liveTransport", "liveStartupRetries", "videoScale", "themePreset", "appearanceMode", "trueBlack", "panelStyle", "textSize", "subtextSize", "contrastMode", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints", "networkTimeoutSeconds", "refreshSeconds", "clockFormat", "audioGuide"]
         alias = lcase(field)
         exactAlias = CreateObject("roRegex", "^" + alias + "$", "")
         for each key in result.keys()
@@ -104,6 +104,7 @@ function normalizeDevicePreferences(raw as dynamic) as object
     end for
     result.themePreset = preset
     if result.appearanceMode <> "light" then result.appearanceMode = "dark"
+    if type(result.trueBlack) <> "Boolean" and type(result.trueBlack) <> "roBoolean" then result.trueBlack = false
     result.customAccent = ucase(textValue(result.customAccent))
     if not CreateObject("roRegex", "^[0-9A-F]{6}$", "").isMatch(result.customAccent) then result.customAccent = ""
     if result.panelStyle <> "solid" then result.panelStyle = "translucent"

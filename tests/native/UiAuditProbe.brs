@@ -60,6 +60,7 @@ sub showUiAudit()
     m.devicePreferences = normalizeDevicePreferences({})
     if left(name, 6) = "large-" then m.devicePreferences.textSize = 120
     if left(name, 6) = "light-" then m.devicePreferences.appearanceMode = "light"
+    if instr(1, name, "guide-appearance-oled") > 0 or name = "live-browser-appearance" then m.devicePreferences.trueBlack = true
     m.global.appearance = m.devicePreferences
     scenario = name
     if left(name, 6) = "large-" or left(name, 6) = "light-" then scenario = mid(name, 7)
@@ -328,10 +329,17 @@ sub seedUiAuditLive(scenario as string)
         m.banner.hint = "OK  Info    Hold OK  Options    Down  Controls    Back  Guide"
         m.banner.now = now
         if scenario = "live-banner-paused" then m.banner.playhead = {known: true, delayed: true, epoch: now - 120, delay: 120, estimated: false}
-    else if scenario = "live-browser" or scenario = "live-recent"
+    else if scenario = "live-browser" or scenario = "live-recent" or scenario = "live-browser-appearance"
         mode = "channels"
         if scenario = "live-recent" then mode = "recent"
-        m.browser.model = {channels: channels, groups: [{id: "all", name: "All channels"}, {id: "group:news", name: "News"}], favorites: {}, recent: ["audit-1", "audit-2"], historyAccount: "ui-audit", collections: [], settings: m.accountPreferences.guide, baseUrl: "", apiKey: "", mode: mode, group: "all"}
+        settings = normalizeGuideSettings(m.accountPreferences.guide)
+        if scenario = "live-browser-appearance"
+            settings.channelLogoSize = 250
+            for each channel in channels
+                channel.logoId = channel.id
+            end for
+        end if
+        m.browser.model = {channels: channels, groups: [{id: "all", name: "All channels"}, {id: "group:news", name: "News"}], favorites: {}, recent: ["audit-1", "audit-2"], historyAccount: "ui-audit", collections: [], settings: settings, baseUrl: "", apiKey: "", mode: mode, group: "all"}
         m.browser.playingUuid = channels[0].uuid
         m.browser.active = true
         m.browser.observeField("channelSelected", "uiAuditForbiddenPlay")

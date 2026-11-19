@@ -56,6 +56,9 @@ function uiResolvedPalette(preferences as object) as object
         if GetInterface(preferences[key], "ifString") <> invalid then cacheKey += preferences[key]
         cacheKey += "|"
     end for
+    oled = type(preferences.trueBlack) = "Boolean" or type(preferences.trueBlack) = "roBoolean"
+    if oled then oled = preferences.trueBlack = true
+    if oled then cacheKey += "oled"
     if m.uiPaletteCacheKey = cacheKey and m.uiPaletteCache <> invalid then return m.uiPaletteCache
     result = uiPalette()
     presets = {
@@ -76,6 +79,11 @@ function uiResolvedPalette(preferences as object) as object
     result.card = "0x" + selected[1] + "FF"
     result.accent = "0x" + selected[2] + "FF"
     result.lightMode = preferences.appearanceMode = "light"
+    result.trueBlack = oled and not result.lightMode
+    if result.trueBlack
+        result.background = "0x000000FF"
+        result.card = "0x0A0A0AFF"
+    end if
     if result.lightMode
         result.background = "0x" + selected[3] + "FF"
         result.card = "0xFFFFFFFF"
@@ -158,12 +166,14 @@ function uiColorForPalette(color as string, palette as object, isText as boolean
     if isText and (rgb = "0A1628" or rgb = "081525") then role = "ink"
     if role = "" then return color
     alpha = right(color, 2)
+    if palette.trueBlack = true and role = "background" and alpha <> "00" then alpha = "FF"
     if palette.solid = true and (role = "background" or role = "card" or role = "elevated") and alpha <> "00" then alpha = "FF"
     return left(palette[role], 8) + alpha
 end function
 
-sub uiSetColor(node as object, color as string, field = "color" as string)
+sub uiSetColor(node as object, color as string, field = "color" as string, surface = false as boolean)
     isText = field = "focusedColor" or field = "blendColor"
+    if surface then isText = false
     if type(node) = "roAssociativeArray"
         isText = isText or node.font <> invalid
     else
@@ -305,6 +315,54 @@ function uiSurface(parent as object, x as float, y as float, w as float, h as fl
     return node
 end function
 
+function uiFittedImageBounds(slot as object, bitmapWidth as float, bitmapHeight as float) as dynamic
+    if bitmapWidth <= 0 or bitmapHeight <= 0 then return invalid
+    factor = slot.w / bitmapWidth
+    if bitmapHeight * factor > slot.h then factor = slot.h / bitmapHeight
+    w = bitmapWidth * factor
+    h = bitmapHeight * factor
+    return {x: slot.x + (slot.w - w) / 2, y: slot.y + (slot.h - h) / 2, w: w, h: h}
+end function
+
+function uiCutoutRadius(w as float, h as float) as integer
+    shorter = w
+    if h < shorter then shorter = h
+    if shorter >= 32 then return 8
+    return int(shorter / 4)
+end function
+
+' A flat backing color and four shared tiny assets replace a render-to-texture
+' mask. Hide/reuse the nodes for square corners and for recycled rows.
+sub uiLayoutCutoutCorners(parent as object, corners as object, bounds as dynamic, backing as string)
+    radius = 0
+    if bounds <> invalid then radius = uiCutoutRadius(bounds.w, bounds.h)
+    if radius = 0
+        for each corner in corners
+            corner.visible = false
+        end for
+        return
+    end if
+    if corners.count() = 0
+        for each name in ["tl", "tr", "bl", "br"]
+            corner = parent.createChild("Poster")
+            corner.uri = "pkg:/images/ui-cutout-" + name + ".png"
+            corner.loadDisplayMode = "scaleToFill"
+            uiSetColor(corner, backing, "blendColor", true)
+            corners.push(corner)
+        end for
+    end if
+    for i = 0 to 3
+        corner = corners[i]
+        x = bounds.x
+        y = bounds.y
+        if i mod 2 = 1 then x += bounds.w - radius
+        if i >= 2 then y += bounds.h - radius
+        corner.translation = [x, y]
+        corner.width = radius
+        corner.height = radius
+        corner.visible = true
+    end for
+end sub
 ' Use the whole control height for native vertical alignment. Manual baseline
 ' offsets drift with the resolved Roku font and accessibility text scaling.
 function uiButtonLabel(parent as object, text as string, x as float, y as float, w as float, h as float, size as integer, color = "0xE8F3FAFF" as string, padding = 16 as float) as object

@@ -6,8 +6,9 @@ export const guideLiveAuditScreens = [
   'guide-manage-groups', 'guide-startup', 'guide-collections', 'guide-favorites', 'guide-reminders', 'guide-badges', 'guide-tmdb', 'guide-date',
   'connection-picker', 'connection-manager', 'connection-advanced', 'connection-auth', 'connection-forget', 'record-flow', 'record-confirm',
   'guide-populated', 'guide-sidebar', 'guide-basic', 'guide-empty', 'guide-gap', 'guide-options-real', 'guide-more-real', 'guide-layout-choices', 'guide-settings-real', 'guide-groups-real', 'guide-details-real',
+  'guide-appearance-logos', 'guide-appearance-cells', 'large-guide-appearance-oled', 'light-guide-appearance-oled',
   'live-main', 'live-audio', 'live-subtitle', 'live-captions', 'live-audiomode', 'live-livetransport', 'live-scale', 'live-aspect', 'live-sleep', 'live-direction', 'live-clock', 'live-streaminfo',
-  'live-banner-playing', 'live-banner-paused', 'live-banner-buffering', 'live-banner-preview', 'live-browser', 'live-recent',
+  'live-banner-playing', 'live-banner-paused', 'live-banner-buffering', 'live-banner-preview', 'live-browser', 'live-recent', 'live-browser-appearance',
   ...['large-', 'light-'].flatMap(prefix => ['guide-populated', 'guide-sidebar', 'guide-options-real', 'guide-details-real', 'live-main', 'live-banner-playing', 'live-browser'].map(screen => prefix + screen)),
 ];
 
@@ -48,6 +49,18 @@ export async function exerciseFullCase(screen, { key, check, capture }) {
     await key('Info'); await capture('options');
     await key('Back'); state = await check(); assert.equal(state.guide.picker, '');
     await capture('back');
+  } else if (base.startsWith('guide-appearance-')) {
+    const before = await check();
+    assert.deepEqual(before.guide.appearance, {
+      logosize: base.endsWith('-logos') ? 25 : 250,
+      roundedlogos: !base.endsWith('-cells'),
+      roundedcells: !base.endsWith('-logos'),
+      trueblack: base.endsWith('-oled') && !screen.startsWith('light-'),
+    });
+    await key('Down', 7);
+    const after = await check();
+    assert.ok(after.guide.selected > before.guide.selected, 'Guide focus still moves across recycled rows');
+    await capture('moved-focus');
   } else if (base === 'guide-sidebar-focus') {
     await key('Down', 6); await capture('scroll-focus'); await key('Back');
     const state = await check(); assert.equal(state.guide.groups, false); await capture('back');
@@ -63,12 +76,12 @@ export async function exerciseFullCase(screen, { key, check, capture }) {
   } else if (base === 'live-main') {
     await inspectAllMenuRows(); let state = await check(); assert.equal(state.player.focused, state.player.menu.items.length - 1);
     await capture('scroll'); await key('Back'); await capture('dismissed');
-  } else if (base.startsWith('live-') && !base.startsWith('live-banner-') && !['live-browser', 'live-recent'].includes(base)) {
+  } else if (base.startsWith('live-') && !base.startsWith('live-banner-') && !['live-browser', 'live-recent', 'live-browser-appearance'].includes(base)) {
     await key('Down'); await capture('focus');
     if (base === 'live-streaminfo') await inspectAllMenuRows();
     await key('Back');
     const state = await check(); assert.equal(state.player.kind, 'main'); await capture('parent');
-  } else if (base === 'live-browser' || base === 'live-recent') {
+  } else if (base === 'live-browser' || base === 'live-recent' || base === 'live-browser-appearance') {
     await key('Down', base === 'live-recent' ? 1 : 9); await capture('scroll');
     if (base === 'live-browser') { await key('Left'); await key('Down'); await capture('groups'); await key('Back'); await capture('groups-back'); }
     await key('Back'); const state = await check(); assert.equal(state.browser, false); await capture('closed');

@@ -56,6 +56,17 @@ function dispatcharrSyncSettingsLane(data as dynamic, scope as string) as object
     return result
 end function
 
+' Canonical upstream settings names (not iCloud/Drive aliases). Each item
+' can select its own lane; this does not enable the settings category.
+function dispatcharrSyncAppearanceMappings() as object
+    return [
+        {wire: "channelLogoSize", item: "logoSize", kind: "int", localScope: "guide", localKey: "channelLogoSize"}
+        {wire: "logoCornersGuide", item: "roundedGuideLogos", kind: "bool", localScope: "guide", localKey: "roundedGuideLogos"}
+        {wire: "logoCornersGuideCells", item: "roundedProgramCells", kind: "bool", localScope: "guide", localKey: "roundedProgramCells"}
+        {wire: "trueBlack", item: "trueBlack", kind: "bool", localScope: "profileSettings", localKey: "trueBlack"}
+    ]
+end function
+
 ' Normalized local catalog IDs may be decimal strings; wire IDs must still be
 ' emitted as 32-bit JSON integers. This is not a permissive wire decoder.
 function dispatcharrSyncLocalServerId(value as dynamic) as dynamic

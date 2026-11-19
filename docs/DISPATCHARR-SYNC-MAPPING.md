@@ -59,6 +59,23 @@ This helper is not a settings applier, category switch, or write permission.
 Per-profile local appearance/player scope does not authorize syncing device
 network, hardware/display, credentials, remote mappings or PIN backoff.
 
+`dispatcharrSyncAppearanceMappings` records the compatible appearance items
+from the [pinned upstream settings schema][appearance-schema]. It does not apply
+incoming values or activate any local scope. When an adapter is authorized,
+each item uses its own scope choice and the normal `v` / `tv` / Off rules above.
+
+| Dispatcharr wire name | Sync item | Wire value | Roku local carrier |
+| --- | --- | --- | --- |
+| `channelLogoSize` | `logoSize` | Integer 25–250 in tenths of a percent; 100 is stock | `guide.channelLogoSize` |
+| `logoCornersGuide` | `roundedGuideLogos` | Boolean | `guide.roundedGuideLogos` |
+| `logoCornersGuideCells` | `roundedProgramCells` | Boolean | `guide.roundedProgramCells` |
+| `trueBlack` | `trueBlack` | Boolean | `profileSettings.trueBlack` (legacy effective appearance on direct connections) |
+
+`logoCornersList` is a distinct setting and is not mapped to guide corners.
+The local renderer does not normalize or write any peer settings envelope.
+
+[appearance-schema]: https://github.com/jonzey231/AerioTV/blob/fe7ad4c1968a193efb7a55d68b2b3bd32d03b17a/docs/DispatcharrSyncSchema.md#49-settings
+
 ## Deployed capability and budgets
 
 Read-only checks on both approved test accounts returned own App Data list

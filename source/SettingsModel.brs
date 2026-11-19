@@ -66,6 +66,9 @@ function settingsHubAllEntries(page as string, model as object) as object
         {title: "Show channel numbers", scope: "guide", key: "showNumbers", values: [true, false]}
         {title: "Show channel names", scope: "guide", key: "showNames", values: [true, false]}
         {title: "Program subtitles / taller Preview", scope: "guide", key: "showSubtitles", values: [true, false]}
+        {title: "Logo Size", scope: "guide", key: "channelLogoSize", values: channelLogoSizeChoices()}
+        {title: "Rounded Guide Logos", scope: "guide", key: "roundedGuideLogos", values: [true, false]}
+        {title: "Rounded Program Cells", scope: "guide", key: "roundedProgramCells", values: [true, false]}
     ]
     if page = "player"
         entries = []
@@ -100,6 +103,7 @@ function settingsHubAllEntries(page as string, model as object) as object
     if page = "appearance" then return [
         {title: "Color theme", scope: "device", key: "themePreset", values: ["aerio", "midnight", "sunset", "forest", "lavender", "monochrome", "light"]}
         {title: "Appearance mode", scope: "device", key: "appearanceMode", values: ["dark", "light"]}
+        {title: "True Black Background", scope: "device", key: "trueBlack", values: [true, false]}
         {title: "Custom accent (hex RGB)", action: "customAccent"}
         {title: "Panel style", scope: "device", key: "panelStyle", values: ["translucent", "solid"]}
         {title: "Text size", scope: "device", key: "textSize", values: [90, 100, 110, 120]}
@@ -235,6 +239,11 @@ function settingsHubChangeAllowed(model as object, scope as string, key as strin
 end function
 
 function settingsValueText(value as dynamic, key = "" as string) as string
+    if key = "channelLogoSize"
+        value = normalizeChannelLogoSize(value)
+        if value = 25 then return "2.5%"
+        return (value \ 10).toStr() + "%"
+    end if
     if key = "liveStartupRetries"
         if value = 0 then return "No automatic retries"
         if value = 1 then return "1 retry"

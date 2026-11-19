@@ -5,13 +5,13 @@ function userProfileAccountSeedFields() as object
 end function
 
 function userProfileGuideSeedFields() as object
-    return ["groupSort", "groupOrder", "channelSort", "groupLayout", "collectionsPosition", "historyDays", "futureDays", "badges", "tmdbFallback", "guideDensity", "showLogos", "showNumbers", "showNames", "showSubtitles"]
+    return ["groupSort", "groupOrder", "channelSort", "groupLayout", "collectionsPosition", "historyDays", "futureDays", "badges", "tmdbFallback", "guideDensity", "showLogos", "showNumbers", "showNames", "showSubtitles", "channelLogoSize", "roundedGuideLogos", "roundedProgramCells"]
 end function
 
 ' Explicit PO-approved appearance/player axis. Network, clock, accessibility,
 ' remote mapping/direction and hardware/display controls remain device-local.
 function userProfileSettingsFields() as object
-    return ["themePreset", "appearanceMode", "customAccent", "panelStyle", "textSize", "subtextSize", "contrastMode", "audioMode", "liveTransport", "liveStartupRetries", "videoScale", "archiveSkipSeconds", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints"]
+    return ["themePreset", "appearanceMode", "trueBlack", "customAccent", "panelStyle", "textSize", "subtextSize", "contrastMode", "audioMode", "liveTransport", "liveStartupRetries", "videoScale", "archiveSkipSeconds", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints"]
 end function
 
 function userProfilePickSettings(raw as dynamic, allowed as object) as object
@@ -34,7 +34,7 @@ end function
 
 function normalizeUserProfileSettings(raw as dynamic) as object
     selected = userProfilePickSettings(raw, userProfileSettingsFields())
-    selected = userProfileTypedSettings(selected, ["textSize", "subtextSize", "liveStartupRetries", "archiveSkipSeconds"], ["infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints"], [], [])
+    selected = userProfileTypedSettings(selected, ["textSize", "subtextSize", "liveStartupRetries", "archiveSkipSeconds"], ["trueBlack", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints"], [], [])
     normalized = normalizeDevicePreferences(selected)
     return userProfileNormalizedFields(normalized, userProfileSettingsFields())
 end function
@@ -89,7 +89,7 @@ function userProfileSeedAccountPreferences(raw as dynamic) as object
         guide = raw.guide
         settings = raw.profileSettings
     end if
-    selected["guide"] = userProfileTypedSettings(userProfilePickSettings(guide, userProfileGuideSeedFields()), ["historyDays", "futureDays"], ["tmdbFallback", "showLogos", "showNumbers", "showNames", "showSubtitles"], ["groupOrder"], ["badges"])
+    selected["guide"] = userProfileTypedSettings(userProfilePickSettings(guide, userProfileGuideSeedFields()), ["historyDays", "futureDays", "channelLogoSize"], ["tmdbFallback", "showLogos", "showNumbers", "showNames", "showSubtitles", "roundedGuideLogos", "roundedProgramCells"], ["groupOrder"], ["badges"])
     selected["profileSettings"] = normalizeUserProfileSettings(settings)
     result = normalizeAccountPreferences(selected)
     normalized = userProfileNormalizedFields(result, userProfileAccountSeedFields())

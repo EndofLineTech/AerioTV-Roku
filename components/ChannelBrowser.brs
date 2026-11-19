@@ -147,6 +147,7 @@ sub draw()
     if m.selected >= m.start + 8 then m.start = m.selected - 7
     groupStart = 0
     if m.groupIndex > 7 then groupStart = m.groupIndex - 7
+    channelLayout = browserChannelGeometry(m.settings.channelLogoSize, m.settings.showLogos)
     for i = 0 to 7
         group = m.groupRows[i]
         group.root.visible = m.groupsOpen and groupStart + i < m.groups.count()
@@ -164,8 +165,18 @@ sub draw()
         row.logoId = ""
         if row.root.visible
             channel = m.filtered[m.start + i]
-            row.logoId = channelLogoCacheId(channel)
+            if m.settings.showLogos then row.logoId = channelLogoCacheId(channel)
             row.uuid = channel.uuid
+            row.logo.visible = m.settings.showLogos
+            if channelLayout.logo <> invalid
+                row.logo.translation = [channelLayout.logo.x, channelLayout.logo.y]
+                row.logo.width = channelLayout.logo.w
+                row.logo.height = channelLayout.logo.h
+            end if
+            row.name.translation = [channelLayout.textX, 11]
+            row.name.width = 605 - channelLayout.textX
+            row.now.translation = [channelLayout.textX, 47]
+            row.now.width = 729 - channelLayout.textX
             row.name.text = channel.name
             row.now.text = ""
             row.watching.text = ""
@@ -297,7 +308,7 @@ sub touchLogo(id as string)
 end sub
 
 sub requestLogos()
-    if not m.top.active or m.logoTask <> invalid then return
+    if not m.top.active or not m.settings.showLogos or m.logoTask <> invalid then return
     ids = []
     seen = {}
     for each row in m.rows
@@ -378,7 +389,7 @@ sub onLogoBatch(event as object)
 end sub
 
 sub reportLogoLoad()
-    if not m.ready or not m.top.active or m.logoReported then return
+    if not m.ready or not m.top.active or not m.settings.showLogos or m.logoReported then return
     loaded = 0
     failed = 0
     for each row in m.rows

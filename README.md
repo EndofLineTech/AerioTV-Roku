@@ -947,6 +947,24 @@ reference to distinguish repeated daylight-saving hours. A missing spring-forwar
 hour is not offered. The guide follows the current time until you navigate
 horizontally or jump to a historical/future time.
 
+### Live TV appearance
+
+Open **Settings → Live TV → Logo Size** to adjust logos in the guide and the
+player's Channels and Recently Watched lists. **10%** is the stock size; the
+available choices are **2.5%, 5%, 10%, 15%, 20%, and 25%**. Larger logos stop
+growing when the row runs out of room, so changing size does not reduce the
+number of channels on screen. **Show channel logos** takes precedence.
+
+**Rounded Guide Logos** and **Rounded Program Cells** are independent and off
+by default. They apply only to the guide, not to the player lists or player
+information card. Very narrow program cells stay square to keep focus visible.
+
+**Settings → Appearance → True Black Background** uses pure black for the
+app's dark backgrounds, with near-black cards. It is off by default, has no
+effect in Light mode, and does not change the video picture or Roku system
+menus. **Reset appearance** turns it off. These preferences are saved locally;
+Roku does not yet sync them to other clients.
+
 ## Live playback transport
 
 The established live route is:

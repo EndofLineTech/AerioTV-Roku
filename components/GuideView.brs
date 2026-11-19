@@ -184,7 +184,7 @@ sub buildCanvas()
         logo.loadWidth = 116
         logo.loadHeight = 104
         logo.loadDisplayMode = "scaleToFit"
-        logo.observeField("loadStatus", "onGuideLogoStatus")
+        logo.observeField("loadStatus", "onGuideLogoAppearanceStatus")
         name = uiLabel(root, "", 80, 34, 150, 56, 21)
         name.wrap = true
         name.maxLines = 2
@@ -195,10 +195,31 @@ sub buildCanvas()
         catchup.height = 20
         catchup.loadDisplayMode = "scaleToFit"
         catchup.visible = false
-        m.rows.push({root: root, background: background, number: number, badge: badge, catchup: catchup, logo: logo, name: name, tiles: []})
+        m.rows.push({root: root, background: background, number: number, badge: badge, catchup: catchup, logo: logo, logoBounds: invalid, logoCorners: [], name: name, tiles: []})
     end for
     m.nowLine = uiRect(m.canvas, 336, 300, 2, 678, "0x1AC4D8AA")
     m.footer = uiRemoteHints(m.canvas, 96, 998, 1728, 36, 22)
+end sub
+
+sub updateGuideLogoCorners(row as object)
+    bounds = invalid
+    if m.settings.roundedGuideLogos and row.logoBounds <> invalid and row.logo.uri <> "" and row.logo.loadStatus = "ready"
+        bounds = uiFittedImageBounds(row.logoBounds, row.logo.bitmapWidth, row.logo.bitmapHeight)
+    end if
+    uiLayoutCutoutCorners(row.root, row.logoCorners, bounds, "0x0D1E35FF")
+end sub
+
+sub onGuideLogoAppearanceStatus(event as object)
+    if m.ready and m.settings.roundedGuideLogos
+        logo = event.getRoSGNode()
+        for each row in m.rows
+            if row.root.visible and row.logo.isSameNode(logo)
+                updateGuideLogoCorners(row)
+                exit for
+            end if
+        end for
+    end if
+    onGuideLogoStatus()
 end sub
 
 sub onActive()
@@ -482,6 +503,7 @@ sub drawGuide()
         m.initialGridReported = true
     end if
     geometry = guidePresentationGeometry(m.settings.guideDensity, m.settings.showSubtitles)
+    channelLayout = guideChannelGeometry(geometry, m.settings)
     m.rowCount = geometry.rowCount
     gridX = 96
     if m.settings.groupLayout = "sidebar" then gridX = 400
@@ -517,45 +539,44 @@ sub drawGuide()
         row.root.visible = i < m.rowCount and index < m.filtered.count()
         if row.root.visible
             row.background.height = geometry.tileHeight
-            if geometry.basic
-                row.logo.translation = [12, 27]
-                row.logo.width = 32
-                row.logo.height = 30
-                row.name.translation = [54, 26]
-                row.name.height = 32
-                row.name.maxLines = 1
-            else
-                row.logo.translation = [12, 40]
-                row.logo.width = 58
-                row.logo.height = 58
-                row.name.translation = [80, 40]
-                row.name.height = 62
-                row.name.maxLines = 2
+            row.logoBounds = channelLayout.logo
+            if row.logoBounds <> invalid
+                row.logo.translation = [channelLayout.logo.x, channelLayout.logo.y]
+                row.logo.width = channelLayout.logo.w
+                row.logo.height = channelLayout.logo.h
             end if
+            row.name.translation = [channelLayout.textX, channelLayout.nameY]
+            row.name.width = channelLayout.nameWidth
+            row.name.height = channelLayout.nameHeight
+            row.name.maxLines = channelLayout.nameLines
+            row.number.translation = [channelLayout.textX, 4]
             channel = m.filtered[index]
             row.uuid = channel.uuid
-            row.logoId = channelLogoCacheId(channel)
+            row.logoId = ""
+            if m.settings.showLogos then row.logoId = channelLogoCacheId(channel)
             row.number.text = channel.number
             row.catchup.visible = catchupChannelDays(m.top.catchupPermission, m.top.channelFacts, channel.id) > 0
-            row.number.width = 170
-            if row.catchup.visible
+            numberWidth = 176 - channelLayout.textX
+            if row.catchup.visible and m.settings.showNumbers
                 ' Measure the resolved Label font so the icon follows the digits.
                 row.number.width = 0
-                numberWidth = row.number.localBoundingRect().width
-                if numberWidth > 128 then numberWidth = 128
-                row.number.width = numberWidth
-                row.catchup.translation = [12 + numberWidth + 6, 4]
+                measuredWidth = row.number.localBoundingRect().width
+                if measuredWidth < numberWidth - 26 then numberWidth = measuredWidth else numberWidth -= 26
             end if
+            row.number.width = numberWidth
+            row.catchup.translation = [154, 4]
+            if m.settings.showNumbers then row.catchup.translation = [channelLayout.textX + numberWidth + 6, 4]
             row.name.text = channel.name
             row.badge.text = ""
             if m.favorites.doesExist(channel.uuid) then row.badge.text = "FAV"
             uri = ""
-            if m.guideLogoFiles.doesExist(row.logoId)
+            if m.settings.showLogos and m.guideLogoFiles.doesExist(row.logoId)
                 uri = m.guideLogoFiles[row.logoId].uri
                 touchGuideLogo(row.logoId)
             end if
             if row.logo.uri <> uri then row.logo.uri = uri
             row.logo.visible = m.settings.showLogos
+            updateGuideLogoCorners(row)
             row.number.visible = m.settings.showNumbers
             row.name.visible = m.settings.showNames
             renderCells(row, rowCells(channel), index = m.selected)
@@ -637,7 +658,7 @@ sub renderCells(row as object, cells as object, selected as boolean)
         title.maxLines = 1
         time = uiLabel(root, "", 14, 55, 70, 29, 20, "0x9EB5C9FF")
         time.vertAlign = "center"
-        row.tiles.push({root: root, border: border, fill: fill, title: title, subtitle: invalid, time: time, badges: []})
+        row.tiles.push({root: root, border: border, fill: fill, title: title, subtitle: invalid, time: time, badges: [], corners: []})
     end while
     for i = 0 to row.tiles.count() - 1
         tile = row.tiles[i]
@@ -686,6 +707,9 @@ sub renderCells(row as object, cells as object, selected as boolean)
                 uiSetColor(tile.border, "0xFFFFFEFF")
                 uiSetColor(tile.fill, "0x365163FF")
             end if
+            cornerBounds = invalid
+            if m.settings.roundedProgramCells then cornerBounds = {x: 0, y: 0, w: width, h: geometry.tileHeight}
+            uiLayoutCutoutCorners(tile.root, tile.corners, cornerBounds, "0x0A1628FF")
             tile.title.text = gapText()
             tile.time.text = ""
             if cell.program <> invalid

@@ -118,7 +118,7 @@ sub onSettingsHubSelection(event as object)
     if item.action = "resetAppearance"
         before = copyJson(m.devicePreferences)
         beforeStore = copyJson(m.preferenceStore)
-        defaults = {themePreset: "aerio", appearanceMode: "dark", customAccent: "", panelStyle: "translucent", textSize: 100, subtextSize: 100, contrastMode: "standard"}
+        defaults = {themePreset: "aerio", appearanceMode: "dark", trueBlack: false, customAccent: "", panelStyle: "translucent", textSize: 100, subtextSize: 100, contrastMode: "standard"}
         for each field in defaults
             m.devicePreferences = setCanonicalPreference(m.devicePreferences, field, defaults[field])
         end for

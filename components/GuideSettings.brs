@@ -33,6 +33,12 @@ end sub
 
 function applyHubGuideSetting(key as string, value as dynamic) as dynamic
     if not m.ready then return invalid
+    if key = "channelLogoSize" or key = "roundedGuideLogos" or key = "roundedProgramCells"
+        m.settings[lcase(key)] = value
+        m.settings = normalizeGuideSettings(m.settings)
+        refreshPresentation()
+        return m.settings
+    end if
     if key <> "historyDays" and key <> "futureDays" and key <> "channelSort" and key <> "groupLayout" and key <> "guideDensity" and key <> "showLogos" and key <> "showNumbers" and key <> "showNames" and key <> "showSubtitles" then return invalid
     m.settings[lcase(key)] = value
     m.settings = normalizeGuideSettings(m.settings)

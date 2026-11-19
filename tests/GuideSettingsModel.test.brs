@@ -20,6 +20,56 @@ sub main()
     settings = normalizeGuideSettings(invalid)
     assertEqual(settings.guideDensity, "preview", "subtitle-rich preview is the default density")
     assertEqual(settings.showSubtitles, true, "subtitle-rich preview defaults on")
+    assertEqual(settings.channelLogoSize, 100, "upgraded guide keeps the stock logo size")
+    assertEqual(settings.roundedGuideLogos, false, "guide logos default to square")
+    assertEqual(settings.roundedProgramCells, false, "program cells default to square")
+    assertEqual(normalizeGuideSettings({channelLogoSize: "250"}).channelLogoSize, 100, "reject text in numeric logo size")
+    assertEqual(normalizeGuideSettings({channelLogoSize: 999}).channelLogoSize, 100, "reject logo size above the wire range")
+    assertEqual(normalizeGuideSettings({channelLogoSize: 122}).channelLogoSize, 100, "snap a valid peer setting to the nearest supported stop")
+    for each size in [25, 50, 100, 150, 200, 250]
+        for each logosRounded in [true, false]
+            for each cellsRounded in [true, false]
+                restored = normalizeAccountPreferences(ParseJson(FormatJson({guide: {channelLogoSize: size, roundedGuideLogos: logosRounded, roundedProgramCells: cellsRounded}}))).guide
+                assertEqual(restored.channelLogoSize, size, "logo size survives stored account round trip")
+                assertEqual(restored.roundedGuideLogos, logosRounded, "logo corners survive independently")
+                assertEqual(restored.roundedProgramCells, cellsRounded, "program corners survive independently")
+            end for
+        end for
+    end for
+    for each mode in [{density: "basic", subtitles: false}, {density: "preview", subtitles: false}, {density: "preview", subtitles: true}]
+        geometry = guidePresentationGeometry(mode.density, mode.subtitles)
+        for each size in [25, 50, 100, 150, 200, 250]
+            layout = guideChannelGeometry(geometry, {showLogos: true, showNumbers: true, showNames: true, channelLogoSize: size})
+            assertEqual(layout.logo.y >= 0 and layout.logo.y + layout.logo.h <= geometry.tileHeight, true, "logo stays inside all guide row modes")
+            assertEqual(layout.logo.x + layout.logo.w < layout.textX, true, "logo cannot overlap number or name")
+            assertEqual(layout.textX + layout.nameWidth, 229, "even the widest logo retains a text gutter")
+            assertEqual(layout.nameY + layout.nameHeight <= geometry.tileHeight, true, "label fits in the tile")
+            for each scale in [90, 100, 110, 120]
+                font = uiScaledFontSize(21, layout.nameHeight, false, {textSize: scale})
+                assertEqual(font * 1.12 * layout.nameLines <= layout.nameHeight, true, "scaled channel name fits the line box")
+            end for
+        end for
+        stock = guideChannelGeometry(geometry, {showLogos: true, showNumbers: true, showNames: true, channelLogoSize: 100})
+        small = guideChannelGeometry(geometry, {showLogos: true, showNumbers: true, showNames: true, channelLogoSize: 25})
+        large = guideChannelGeometry(geometry, {showLogos: true, showNumbers: true, showNames: true, channelLogoSize: 250})
+        hidden = guideChannelGeometry(geometry, {showLogos: false, showNumbers: true, showNames: true, channelLogoSize: 250})
+        assertEqual(small.logo.h < stock.logo.h and stock.logo.h < large.logo.h, true, "all guide modes can shrink and grow from stock")
+        assertEqual(hidden.textX, 12, "hidden logos return their column to text")
+    end for
+    browser = browserChannelGeometry(250, true)
+    assertEqual(browser.logo.y + browser.logo.h < 84, true, "browser logo fits the recycled row")
+    assertEqual(browser.logo.x + browser.logo.w < browser.textX and browser.textX < 614, true, "browser logo clears text and WATCHING label")
+    assertEqual(browserChannelGeometry(250, false).textX, 10, "hidden browser logos return their column to text")
+    wide = uiFittedImageBounds({x: 12, y: 6, w: 80, h: 60}, 200, 50)
+    assertEqual(wide.y, 26, "round the vertically centered image, not the fit box")
+    assertEqual(wide.h, 20, "wide logo preserves aspect")
+    tall = uiFittedImageBounds({x: 12, y: 6, w: 80, h: 60}, 50, 100)
+    assertEqual(tall.x, 37, "round the horizontally centered image, not the fit box")
+    assertEqual(tall.w, 30, "tall logo preserves aspect")
+    assertEqual(uiFittedImageBounds(wide, 0, 50), invalid, "unknown bitmap size does not produce a cutout")
+    assertEqual(uiCutoutRadius(1, 60), 0, "one-pixel focus target stays square")
+    assertEqual(uiCutoutRadius(12, 60), 3, "narrow cells limit radius to a quarter of their width")
+    assertEqual(uiCutoutRadius(80, 60), 8, "normal cells use modest rounded corners")
     assertEqual(normalizeGuideSettings({showSubtitles: false}).showSubtitles, false, "subtitle Off survives normalization")
     parsed = {}
     parsed.setModeCaseSensitive()

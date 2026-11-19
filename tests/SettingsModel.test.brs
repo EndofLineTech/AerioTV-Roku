@@ -65,6 +65,13 @@ sub main()
     live = settingsHubEntries("live", model)
     if live[7].key <> "showSubtitles" or live[7].values[0] <> true or live[7].values[1] <> false then stop
     if instr(1, live[7].title, "Preview") = 0 then stop
+    if settingsValueText(25, "channelLogoSize") <> "2.5%" or settingsValueText(100, "channelLogoSize") <> "10%" then stop
+    if not settingsHubChangeAllowed(model, "guide", "channelLogoSize", 250) then stop
+    if settingsHubChangeAllowed(model, "guide", "channelLogoSize", 125) then stop
+    if not settingsHubChangeAllowed(model, "guide", "roundedGuideLogos", true) then stop
+    if not settingsHubChangeAllowed(model, "guide", "roundedProgramCells", true) then stop
+    if not settingsHubChangeAllowed(model, "device", "trueBlack", true) then stop
+    if settingsHubChangeAllowed(model, "device", "trueBlack", "true") then stop
     remote = settingsHubEntries("remote", model)
     if remote.count() <> 3 or remote[0].page <> "remotePlayer" then stop
     remotePlayer = settingsHubEntries("remotePlayer", model)

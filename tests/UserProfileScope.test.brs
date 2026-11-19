@@ -5,15 +5,18 @@ sub main()
         whatsNewVersion: "private", vod: {hidden: ["private"], progress: {"7": 99}}, vodRecent: ["private"], vodBrowse: {query: "private"}, futurePrivateData: "private",
         guide: {groupSort: "name", groupOrder: ["setting"], channelSort: "name", groupLayout: "rail", collectionsPosition: "top", historyDays: 3, futureDays: 7, badges: false,
             tmdbFallback: false, guideDensity: "basic", showLogos: false, showNumbers: false, showNames: false, showSubtitles: false,
+            channelLogoSize: 200, roundedGuideLogos: true, roundedProgramCells: false,
             hiddenGroups: ["private"], favoriteOrder: ["private"], startupGroup: "private", futurePrivateGuide: "private"},
-        profileSettings: {themePreset: "sunset", customAccent: "ABCDEF", audioMode: "aac", liveTransport: "hls", archiveSkipSeconds: 120, remoteMap: {private: true}, networkTimeoutSeconds: 10}}
+        profileSettings: {themePreset: "sunset", trueBlack: true, customAccent: "ABCDEF", audioMode: "aac", liveTransport: "hls", archiveSkipSeconds: 120, remoteMap: {private: true}, networkTimeoutSeconds: 10}}
     before = FormatJson(original)
     seeded = userProfileSeedAccountPreferences(original)
     check(seeded.startupBehavior = "mini" and seeded.vodEnabled and not seeded.vodTmdbEnabled and seeded.dvrPreRollMinutes = 5 and seeded.dvrPostRollMinutes = 10, "explicit account settings copied")
     check(seeded.guide.groupOrder[0] = "setting" and seeded.guide.historyDays = 3 and seeded.guide.futureDays = 7 and not seeded.guide.showLogos, "explicit guide settings copied")
+    check(seeded.guide.channelLogoSize = 200 and seeded.guide.roundedGuideLogos and not seeded.guide.roundedProgramCells, "copy only the supported guide appearance choices")
     check(instr(1, FormatJson(seeded), "private") = 0, "no unknown/current account or guide data can seed another user")
     check(seeded.favoriteIds.count() = 0 and seeded.recent.count() = 0 and seeded.dvrPositions.count() = 0 and seeded.collections.count() = 0 and seeded.reminders.count() = 0, "all user data starts empty")
     check(seeded.profileSettings.themePreset = "sunset" and seeded.profileSettings.customAccent = "ABCDEF" and seeded.profileSettings.audioMode = "aac", "approved appearance/accent/player settings seed separately")
+    check(seeded.profileSettings.trueBlack, "true black follows the appearance profile")
     check(not seeded.profileSettings.doesExist("remoteMap") and not seeded.profileSettings.doesExist("networkTimeoutSeconds"), "hardware/network/remote fields remain device local")
     seeded.guide.groupOrder.push("changed")
     seeded.profileSettings.themePreset = "light"
@@ -54,9 +57,11 @@ sub main()
     preferenceStore.accounts[preferenceScope(a.preferenceIdentity)] = preparedA.preferences
     preferenceStore.accounts[preferenceScope(b.preferenceIdentity)] = preparedB.preferences
     effectiveB = setCanonicalPreference(preparedB.device, "themePreset", "midnight")
+    effectiveB = setCanonicalPreference(effectiveB, "trueBlack", true)
     effectiveB = setCanonicalPreference(effectiveB, "clockFormat", "12")
     plan = userProfileSettingsCommitPlan(preferenceStore, b.preferenceIdentity, preparedB.preferences, effectiveB)
     check(plan.ok and plan.preferences.profileSettings.themePreset = "midnight", "profile change persists in target account only")
+    check(plan.preferences.profileSettings.trueBlack and not plan.store.device.trueBlack and not plan.store.accounts[preferenceScope(a.preferenceIdentity)].profileSettings.trueBlack, "OLED change is isolated from the baseline and other profiles")
     check(plan.store.device.themePreset = "sunset" and plan.store.device.clockFormat = "12", "profile appearance never overwrites legacy migration baseline; hardware change stays device-local")
     check(plan.store.accounts[preferenceScope(a.preferenceIdentity)].profileSettings.themePreset = "sunset" and plan.store.accounts[preferenceScope(a.preferenceIdentity)].favoriteIds[0] = "alice-private", "target write leaves outgoing user data/settings intact")
     check(preferenceStore.device.clockFormat = "24", "preparation cannot adopt persistence before successful flush")

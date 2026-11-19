@@ -51,6 +51,25 @@ test('repeat audit covers populated guide and live pop-ups without submitting ac
   assert.match(probe, /availableSubtitleTracks: \[\{trackName: "1"/);
 });
 
+test('appearance audit exercises independent corners and native focus without changing settings', async () => {
+  for (const [screen, appearance] of [
+    ['guide-appearance-logos', {logosize: 25, roundedlogos: true, roundedcells: false, trueblack: false}],
+    ['guide-appearance-cells', {logosize: 250, roundedlogos: false, roundedcells: true, trueblack: false}],
+    ['large-guide-appearance-oled', {logosize: 250, roundedlogos: true, roundedcells: true, trueblack: true}],
+    ['light-guide-appearance-oled', {logosize: 250, roundedlogos: true, roundedcells: true, trueblack: false}],
+  ]) {
+    let selected = 0;
+    assert.ok(guideLiveAuditScreens.includes(screen));
+    await exerciseFullCase(screen, {
+      key: async (key, count) => { assert.equal(key, 'Down'); selected += count; },
+      check: async () => ({guide: {appearance, selected}}),
+      capture: async step => assert.equal(step, 'moved-focus'),
+    });
+    assert.equal(selected, 7);
+  }
+  assert.ok(guideLiveAuditScreens.includes('live-browser-appearance'));
+});
+
 test('gallery replaces startup and disconnects real account navigation', () => {
   const builder = read('scripts/build-ui-audit-probe.py');
   assert.match(builder, /sub init\(\)\\n    initUiAudit\(\)\\nend sub/);

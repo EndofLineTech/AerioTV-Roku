@@ -148,7 +148,7 @@ for (const suite of suites) {
     'source/CapabilityModel.brs',
     'source/ProgramSearchModel.brs',
     'source/VideoGeometry.brs',
-    'source/GuideSettingsModel.brs', 'source/GuideDayOptions.brs',
+    'source/GuideSettingsModel.brs', 'source/GuideDayOptions.brs', 'source/GuideLogoSize.brs',
     'source/ReminderModel.brs',
     ...(['TmdbTask', 'VodShelfTask', 'VodSeriesTask', 'XtreamTask', 'XtreamVodTask', 'ConnectionAuthTask'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
     'source/HttpPolicy.brs',

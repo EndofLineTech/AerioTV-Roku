@@ -40,6 +40,12 @@ sub runUiAuditFixtureTask()
             if scenario = "dvr-denied" then result.message = "Synthetic permission denied (403)."
         end if
         m.top.result = result
+    else if kind = "LogoCacheTask" and scenario = "live-browser-appearance"
+        assets = []
+        for each id in m.top.ids
+            assets.push({id: id, uri: "pkg:/images/channel-icon-hd.png", bytes: 0})
+        end for
+        m.top.result = {ok: true, assets: assets, failed: []}
     else
         print "[ui-audit] "; formatJson({forbidden: true, task: kind})
     end if

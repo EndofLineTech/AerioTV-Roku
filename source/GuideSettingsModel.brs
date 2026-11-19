@@ -41,7 +41,52 @@ function normalizeGuideSettings(raw as dynamic) as object
     if type(p.showNumbers) <> "Boolean" and type(p.showNumbers) <> "roBoolean" then p.showNumbers = true
     if type(p.showNames) <> "Boolean" and type(p.showNames) <> "roBoolean" then p.showNames = true
     if type(p.showSubtitles) <> "Boolean" and type(p.showSubtitles) <> "roBoolean" then p.showSubtitles = true
+    p.channelLogoSize = normalizeChannelLogoSize(p.channelLogoSize)
+    for each field in ["roundedGuideLogos", "roundedProgramCells"]
+        if type(p[field]) <> "Boolean" and type(p[field]) <> "roBoolean" then p[field] = false
+    end for
     return p
+end function
+
+function guideChannelGeometry(row as object, settings as object) as object
+    stockWidth = 58
+    stockHeight = 58
+    maxWidth = 98
+    maxHeight = row.tileHeight - 8
+    nameY = 32
+    nameLines = 2
+    if row.basic
+        stockWidth = 32
+        stockHeight = 30
+        maxWidth = 66
+        nameY = 26
+        nameLines = 1
+    end if
+    if not settings.showNumbers then nameY = 4
+    layout = {textX: 12, nameY: nameY, nameHeight: row.tileHeight - nameY - 2, nameLines: nameLines}
+    if settings.showLogos
+        layout.logo = boundedChannelLogo(12, row.tileHeight, settings.channelLogoSize, stockWidth, stockHeight, maxWidth, maxHeight)
+        layout.textX = layout.logo.x + layout.logo.w + 10
+        if not settings.showNames and not settings.showNumbers
+            layout.logo.x = int((239 - layout.logo.w) / 2)
+        end if
+    end if
+    layout.nameWidth = 229 - layout.textX
+    return layout
+end function
+
+function browserChannelGeometry(size as integer, showLogo as boolean) as object
+    if not showLogo then return {textX: 10}
+    logo = boundedChannelLogo(10, 84, size, 76, 54, 112, 72)
+    return {logo: logo, textX: logo.x + logo.w + 19}
+end function
+
+function boundedChannelLogo(x as integer, rowHeight as integer, size as integer, stockWidth as integer, stockHeight as integer, maxWidth as integer, maxHeight as integer) as object
+    w = int(stockWidth * size / 100.0 + 0.5)
+    h = int(stockHeight * size / 100.0 + 0.5)
+    if w > maxWidth then w = maxWidth
+    if h > maxHeight then h = maxHeight
+    return {x: x, y: int((rowHeight - h) / 2), w: w, h: h}
 end function
 
 function guidePresentationGeometry(density as string, showSubtitles = true as boolean) as object
