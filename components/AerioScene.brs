@@ -314,20 +314,21 @@ sub init()
     if m.baseUrl <> "" and m.apiKey <> "" then connectServer(true)
 end sub
 
-sub signalStartupComplete()
+function signalStartupComplete() as boolean
     if m.profileBaselineReady = true then refreshUserProfileChrome()
     recordUserProfileLaunchResolution()
     if m.profilePickerReady = true and m.activeUserScope <> invalid then m.profileLaunchPickerResolved = true
     completeStartupBeacons()
     ' A later authenticated guide still resolves links without a second beacon.
     if m.page = "guide" then m.startupGuideReady = true
-    handlePendingLaunch()
+    linkedLiveTune = handlePendingLaunch()
     if m.profileBaselineReady = true and m.profileBaselinePendingAdd = true
         m.profileBaselinePendingAdd = false
         openSettingsHub()
         beginProfileBaselineAdd()
     end if
-end sub
+    return linkedLiveTune
+end function
 
 sub onLaunchRequest()
     if m.profileStartupDeferred = true then return
@@ -377,32 +378,35 @@ sub onLaunchRequest()
     handlePendingLaunch()
 end sub
 
-sub handlePendingLaunch()
-    if userProfileUiClosed() then return
-    if m.pendingLaunch = invalid then return
-    if m.page <> "guide" and m.page <> "player" then return
+' Return true only when an authorized live link owns the tune, including
+' when startPlayback hands it off to AAC discovery or the HLS startup task.
+function handlePendingLaunch() as boolean
+    if userProfileUiClosed() then return false
+    if m.pendingLaunch = invalid or m.startupGuideReady <> true then return false
+    if m.page <> "guide" and m.page <> "player" then return false
     request = m.pendingLaunch
     if request.kind <> "live"
-        if m.startupGuideReady <> true then return
         if m.phoneProfileOnboarding <> invalid
             ' The flow may temporarily open other forms. Keep the link pending,
             ' bound to this adopted session, until the onboarding continuation.
             if textValue(request.session) = "" then request.session = currentUserSessionId()
-            return
+            return false
         end if
     end if
     m.pendingLaunch = invalid
     if request.kind <> "live"
         beginVodDeepLink(request)
-        return
+        return false
     end if
     channel = m.guide.callFunc("channelByUuid", request.id)
     if channel = invalid
         showNotice("This channel is not available to your current connection.")
-        return
+        return false
     end if
+    m.startMiniAfterPlayback = false
     startPlayback(channel)
-end sub
+    return true
+end function
 
 sub requestRokuEmail(nextAction as string)
     if m.rokuRfiPending <> "" then return
@@ -1009,14 +1013,14 @@ sub completeConnection(result as dynamic)
         m.profileGateCover.visible = false
         m.global.profileswitchpending = false
     end if
-    signalStartupComplete()
+    linkedLiveTune = signalStartupComplete()
     print "[startup] authorized lineup ms="; m.connectionElapsed.totalMilliseconds(); " channels="; result.channels.count()
     refreshCapabilities()
     m.capabilityClock.control = "start"
     m.reminderClock.control = "start"
     version = CreateObject("roAppInfo").getValue("major_version") + "." + CreateObject("roAppInfo").getValue("minor_version") + "." + CreateObject("roAppInfo").getValue("build_version")
     if m.accountPreferences.whatsNewVersion <> version then showNotice("What's New in " + version + ". Open Settings > About > What's New.")
-    if m.profileRefreshReload <> true then startConfiguredMiniPlayback(result.channels)
+    if m.profileRefreshReload <> true then startConfiguredMiniPlayback(result.channels, linkedLiveTune)
     m.startupVodIntent = false
     m.startupVodFallbackHolder = invalid
     m.profileRefreshReload = false
@@ -1024,7 +1028,8 @@ sub completeConnection(result as dynamic)
     if m.phoneProfileOnboarding <> invalid then continuePhoneProfileOnboarding()
 end sub
 
-sub startConfiguredMiniPlayback(channels as object)
+sub startConfiguredMiniPlayback(channels as object, linkedLiveTune = false as boolean)
+    if linkedLiveTune then return
     m.startMiniAfterPlayback = false
     if m.startupVodIntent = true then return
     if m.accountPreferences.startupBehavior <> "mini" then return

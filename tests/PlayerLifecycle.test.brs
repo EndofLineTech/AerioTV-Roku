@@ -356,6 +356,7 @@ sub main()
     assertEqual(m.startupWatch, invalid, "startup-recovery clock does not run during profile discovery")
     assertEqual(onKeyEvent("back", true), true, "Back cancels deferred AAC tune")
     assertEqual(m.pendingAacTune, invalid, "cancelled profile wait cannot tune later")
+    runStartupLiveLinkChecks()
     pendingRecording = {control: "RUN"}
     m.recordTask = pendingRecording
     m.recordDialog = {title: "existing picker"}
@@ -1048,6 +1049,50 @@ sub assertEqual(actual as dynamic, expected as dynamic, label as string)
         print "FAIL: "; label; " expected="; expected; " actual="; actual
         stop
     end if
+end sub
+
+sub runStartupLiveLinkChecks()
+    linked = {uuid: "linked-channel", name: "Explicit linked channel"}
+    saved = {uuid: "saved-channel", name: "Saved mini channel"}
+    m.guide.callFunc = function(name as string, id as dynamic, now = 0 as integer) as dynamic
+        if name = "channelByUuid" and id = "linked-channel" then return {uuid: id, name: "Explicit linked channel"}
+        return invalid
+    end function
+    m.accountPreferences = {startupBehavior: "mini", lastChannel: saved.uuid}
+    m.page = "setup"
+    m.startupGuideReady = false
+    m.startupVodIntent = false
+    m.top.launchRequest = {contentID: linked.uuid, mediatype: "live"}
+    onLaunchRequest()
+    assertEqual(m.pendingAacTune, invalid, "pre-guide launch cannot open playback")
+    m.page = "guide"
+    onLaunchRequest()
+    assertEqual(m.pendingAacTune, invalid, "provisional guide page alone cannot dispatch a live input")
+    assertEqual(m.pendingLaunch.id, linked.uuid, "latest live input stays pending until guide readiness")
+    m.global = {profilegateclosed: true}
+    handlePendingLaunch()
+    assertEqual(m.pendingAacTune, invalid, "protected startup cannot dispatch a live input")
+    assertEqual(m.pendingLaunch.id, linked.uuid, "PIN/Child gate retains rather than executes the intent")
+    m.global = invalid
+    m.startMiniAfterPlayback = true
+    linkedTune = signalStartupComplete()
+    startConfiguredMiniPlayback([linked, saved], linkedTune)
+    assertEqual(m.pendingAacTune.channel.uuid, linked.uuid, "saved mini cannot replace a linked tune waiting for AAC")
+    assertEqual(m.startMiniAfterPlayback, false, "linked tune remains fullscreen even with a saved mini preference")
+    assertEqual(m.pendingLaunch, invalid, "authorized startup live intent is consumed once")
+    cancelAacWait()
+
+    m.page = "setup"
+    m.startupGuideReady = false
+    m.top.launchRequest = {contentID: "unknown-channel", mediaType: "livefeed"}
+    onLaunchRequest()
+    m.page = "guide"
+    linkedTune = signalStartupComplete()
+    startConfiguredMiniPlayback([linked, saved], linkedTune)
+    assertEqual(m.pendingAacTune.channel.uuid, saved.uuid, "unavailable link does not claim the normal startup tune")
+    assertEqual(m.startMiniAfterPlayback, true, "unavailable live link preserves normal mini startup")
+    cancelAacWait()
+    m.startMiniAfterPlayback = false
 end sub
 
 sub runProvisionalVodLaunchChecks()
