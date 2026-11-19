@@ -9,8 +9,10 @@ parity with deliberate Roku remote adaptations. Distribution starts with persona
 sideloading. The deployment consists of the Roku and the existing Dispatcharr
 instance; no additional service/container is required by this build.
 
-The [source-level parity audit and remaining-work inventory](docs/PARITY-AUDIT.md)
-records the original baseline. The feature table below describes this release.
+The [current development parity crosswalk](docs/PARITY-CROSSWALK.md) compares
+committed Roku behavior with upstream TV and separates native evidence, fixture
+coverage and deferred work. The [September audit](docs/PARITY-AUDIT.md) records
+the original baseline.
 
 ## Download the testing build
 
@@ -118,11 +120,6 @@ cumulative summary, verification boundaries and remaining Beta limitations.
 - **Server DVR:** browse, schedule, manage and play permitted Dispatcharr
   recordings, including guarded resume and supported growing files. No local
   recording service is added.
-- **Declared radio channels:** Roku recognizes provider radio labels from
-  Dispatcharr, M3U (`radio="true"`) and Xtream (`radio_streams`). It skips
-  frozen-picture recovery for those channels without changing the live
-  player or transport. This does not add Radio Mode, radio editing, or
-  support for additional codecs; radio playback on Roku is not yet verified.
 - **Presentation:** source-informed pill navigation, poster-led VOD, rounded
   settings and player controls, appearance/text preferences, a first-run welcome
   screen, and model-tested guide density/visibility settings.
@@ -154,8 +151,18 @@ cumulative summary, verification boundaries and remaining Beta limitations.
 
 **Roku includes Dispatcharr live TV, the guide, movies/series, server DVR,
 supported direct Xtream/M3U connections and conditional catch-up/restart/rewind,
-but not full upstream feature parity.** Multiview and cross-device sync remain
-unimplemented. Rewind uses provider archives; it is not a guaranteed local buffer.
+but not full upstream feature parity.** In v0.3.102, opt-in Dispatcharr Sync
+covers **Profiles only**, not settings, favorites, history or watch progress.
+Multiview is excluded. Rewind uses provider archives; it is not a guaranteed
+local buffer.
+
+Development work after v0.3.102 includes provider-declared radio detection,
+catch-up offset and local archive resume, and new Live TV appearance controls.
+Detection does not add Radio Mode or server radio editing; native radio and the
+new archive paths still need playable-provider verification. See the
+[crosswalk](docs/PARITY-CROSSWALK.md) for current evidence and limitations.
+
+The comparison below is the historical v0.3.88 preview snapshot.
 
 | Feature | Roku — v0.3.88 preview | Apple TV — upstream | Android TV / Google TV — upstream |
 | --- | --- | --- | --- |
