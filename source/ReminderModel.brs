@@ -7,13 +7,15 @@ function normalizeReminders(raw as dynamic) as object
             id = textValue(entry.id)
             start = guideEpoch(entry.startsAt)
             finish = guideEpoch(entry.endsAt)
-            if id <> "" and start <> invalid and finish <> invalid
+            ' Keep the whole lookup key: 128-char channel UUID + "|" +
+            ' 128-char XMLTV channel key + "-" + an 11-char signed epoch.
+            if id <> "" and len(id) <= 269 and start <> invalid and finish <> invalid
                 if finish > start and not seen.doesExist(id) and result.count() < 50
                     notified = false
                     if type(entry.notified) = "Boolean" or type(entry.notified) = "roBoolean" then notified = entry.notified
                     unavailable = false
                     if type(entry.unavailable) = "Boolean" or type(entry.unavailable) = "roBoolean" then unavailable = entry.unavailable
-                    result.push({id: left(id, 180), channelUuid: left(textValue(entry.channelUuid), 128), title: left(textValue(entry.title), 180), startsAt: start, endsAt: finish, notified: notified, unavailable: unavailable})
+                    result.push({id: id, channelUuid: left(textValue(entry.channelUuid), 128), title: left(textValue(entry.title), 180), startsAt: start, endsAt: finish, notified: notified, unavailable: unavailable})
                     seen[id] = true
                 end if
             end if
