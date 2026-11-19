@@ -1117,7 +1117,10 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertLess(permitted.index('selectedUserProfileGate()'), permitted.index('"ProfileTask"'))
         phone = (root / 'components/PhoneSetupNavigation.brs').read_text()
         verification = phone.split('sub startPhoneVerification()', 1)[1].split('end sub', 1)[0]
-        self.assertLess(verification.index('selectedUserProfileGate()'), verification.index('CreateObject('))
+        self.assertLess(verification.index('phoneSetupSelectedProfileGate()'), verification.index('CreateObject('))
+        self.assertLess(verification.index('if not profileGate.allowed'), verification.index('CreateObject('))
+        gate = phone.split('function phoneSetupSelectedProfileGate()', 1)[1].split('end function', 1)[0]
+        self.assertIn('gate = selectedUserProfileGate()', gate)
 
     def test_optional_model_store_checks_use_shared_tests_and_private_section(self):
         path = Path(__file__).with_name('build-profile-probe.py')

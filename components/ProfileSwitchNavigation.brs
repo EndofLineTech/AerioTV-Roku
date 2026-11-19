@@ -277,6 +277,13 @@ sub adoptCompletedUserProfileState(context as object, saved as object, verified 
     m.accountPreferences = saved.preferences
     m.devicePreferences = saved.device
     m.activeUserScope = saved.scope
+    if type(context.target) = "roAssociativeArray"
+        if userProfileFullAccess(context.target.role) and userProfilePinGrantMatches(context.pin, context.connection.id, context.target)
+            ' Take the exact native PIN grant; a JSON-style copy changes the
+            ' key lookup behavior of its case-insensitive associative array.
+            m.phoneSetupPinAdmission = {scope: saved.scope, pin: context.pin}
+        end if
+    end if
     m.profileAuthorizationSignature = dispatcharrAuthorizationSignature(verified.verifiedUser)
     m.scopedPreferencesRequired = true
     m.global.activeusersession = saved.scope.sessionId

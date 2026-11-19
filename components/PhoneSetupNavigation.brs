@@ -12,7 +12,7 @@ sub openPhoneSetup()
         showNotice("Saved connections need recovery; setup will not overwrite them.")
         return
     end if
-    profileGate = selectedUserProfileGate()
+    profileGate = phoneSetupSelectedProfileGate()
     if not profileGate.allowed
         showNotice(userProfileGateMessage(profileGate))
         return
@@ -28,6 +28,29 @@ sub openPhoneSetup()
     m.phoneSetup.active = true
     m.phoneSetup.setFocus(true)
 end sub
+
+' Startup/picker admission consumes its one-shot PIN grant. Only reuse the
+' resulting admission for the same live adult session and unchanged saved PIN.
+function phoneSetupSelectedProfileGate() as object
+    gate = selectedUserProfileGate()
+    if gate.reason <> "pin" then return gate
+    admission = m.phoneSetupPinAdmission
+    scope = m.activeUserScope
+    if type(admission) <> "roAssociativeArray" or type(scope) <> "roAssociativeArray" then return gate
+    if not userProfileSameSession(admission.scope, scope) then return gate
+    if currentUserSessionId() <> scope.sessionId or userProfileGateClosed() then return gate
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    if entry = invalid then return gate
+    if entry.id <> scope.playlistId or entry.url <> m.baseUrl or textValue(m.apiKey) = "" then return gate
+    if connectionPreferenceIdentity(entry, scope.accountId) <> scope.preferenceIdentity then return gate
+    for each profile in m.userProfileStore.profiles
+        if profile.id = m.userProfileStore.active and profile.id = scope.profileId
+            if not userProfileFullAccess(profile.role) or profile.addressHeld = true or profile.userId.toStr() <> scope.accountId then return gate
+            if userProfilePinGrantMatches(admission.pin, entry.id, profile) then return {allowed: true, reason: ""}
+        end if
+    end for
+    return gate
+end function
 
 sub onPhoneSetupPayload(event as object)
     if userProfileGateClosed() then return
@@ -82,7 +105,7 @@ sub startPhoneVerification()
         failPhoneSetup("Send profile setup again to verify all required protection.")
         return
     end if
-    profileGate = selectedUserProfileGate()
+    profileGate = phoneSetupSelectedProfileGate()
     if m.phoneProfileImport <> invalid
         if phoneProfileDefaultVerificationCurrent() then profileGate = {allowed: true}
     end if

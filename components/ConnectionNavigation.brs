@@ -421,6 +421,7 @@ sub changeProfiledConnectionUrl(entry as object, profiles as object, base as str
 end sub
 
 sub resetConnectionRuntime()
+    m.phoneSetupPinAdmission = invalid
     if m.phoneProfileOnboarding <> invalid then retirePhoneProfileOnboarding()
     if m.profileServerAdminContext <> invalid then retireProfileServerAdmin()
     if m.profileSwitcher <> invalid then retireUserProfileSwitcher()

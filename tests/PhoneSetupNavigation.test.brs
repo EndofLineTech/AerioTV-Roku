@@ -46,7 +46,58 @@ sub main()
     applied.vodEnabled = true
     retained = takePhoneSetupPreferences(normalizeAccountPreferences(ParseJson(FormatJson(applied))), {id: "imported"})
     check(retained.guide.futureDays = 6 and retained.guide.historyDays = 2 and retained.vodEnabled, "later reconnect reloads the viewer's changed options")
+    checkPhoneReopenAfterPinAdmission()
     print "ALL TESTS PASSED"
+end sub
+
+sub checkPhoneReopenAfterPinAdmission()
+    resetImportTest()
+    m.page = "setup"
+    m.busy = false
+    m.phoneSetup.active = false
+    entry = {id: "old", name: "Saved", provider: "dispatcharr", url: "https://old.example.test"}
+    m.connectionStore.entries = [entry]
+    m.selectedConnectionId = "old"
+    profile = userProfileFromVerified("old", "00000000-0000-4000-8000-000000000001", {id: 7, username: "Owner", user_level: 1}, 1)
+    profile.isDefault = true
+    profile.pinType = "numbers"
+    profile.pinSalt = "00112233445566778899aabbccddeeff"
+    profile.pinHash = "1234567890123456789012345678901234567890123456789012345678901234"
+    store = defaultUserProfileStore("old")
+    store.profiles = [profile]
+    store.active = profile.id
+    m.registry = {store: store, exists: function(key as string) as boolean
+        return key = "userProfilesV1_old"
+    end function, read: function(key as string) as string
+        if key = "userProfilesV1_old" then return FormatJson(m.store)
+        return ""
+    end function}
+    scope = userProfileSessionScope(entry, profile.id, 7, "current", "00000000-0000-4000-8000-000000000002")
+    m.activeUserScope = scope
+    m.global = {activeusersession: scope.sessionId, profilegateclosed: false, profileswitchpending: false}
+    m.profileUnlockGrant = invalid
+    m.phoneSetupPinAdmission = {scope: scope, pin: {slot: "old", id: profile.id, pinType: profile.pinType, pinHash: profile.pinHash, pinSalt: profile.pinSalt}}
+    check(selectedUserProfileGate().reason = "pin", "ordinary startup gate has no reusable raw PIN grant")
+    openPhoneSetup()
+    check(m.phoneSetup.active and m.page = "phoneSetup", "an already PIN-admitted holder can reopen its receiver")
+    m.page = "setup"
+    m.phoneSetup.active = false
+    m.global.activeusersession = "00000000-0000-4000-8000-000000000003"
+    openPhoneSetup()
+    check(not m.phoneSetup.active, "session change cannot reuse phone setup admission")
+    m.global.activeusersession = scope.sessionId
+    m.registry.store.profiles[0].pinHash = "2345678901234567890123456789012345678901234567890123456789012345"
+    openPhoneSetup()
+    check(not m.phoneSetup.active, "changed saved PIN cannot reuse phone setup admission")
+end sub
+
+sub cancelProfileTask()
+end sub
+
+sub cancelCapabilityRefresh()
+end sub
+
+sub showNotice(message as string)
 end sub
 
 sub resetImportTest()

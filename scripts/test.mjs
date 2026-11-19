@@ -233,6 +233,7 @@ for (const suite of suites) {
     ...(['UserProfileForget', 'UserProfileRemoval'].includes(suite) ? ['source/UserProfileCleanup.brs', 'source/StrictJson.brs'] : []),
     ...(['UserProfileNavigation', 'ProfileSetupFence', 'ConnectionNavigation', 'PlayerLifecycle', 'PhoneSetupNavigation', 'PhoneSetupAutoAdd'].includes(suite) ? ['components/UserProfileNavigation.brs', 'source/UserProfileAddressPolicy.brs'] : []),
     ...(['ProfileSetupFence', 'PhoneSetupNavigation', 'PhoneSetupAutoAdd'].includes(suite) ? ['source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs'] : []),
+    ...(suite === 'PhoneSetupNavigation' ? ['source/UserProfileScope.brs'] : []),
     ...(suite === 'ProfileSetupFence' ? ['components/ConnectionNavigation.brs', 'components/PhoneSetupNavigation.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'DvrRecordingModel' ? ['source/DvrRecordingModel.brs'] : []),
     ...(suite === 'DvrRecordingModel' ? ['source/DvrSeriesModel.brs'] : []),
