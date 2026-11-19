@@ -198,7 +198,7 @@ sub finishScheduledProfileSync(result as dynamic)
         saved = commitDispatcharrSyncRosterRead(m.registry, context.connection, context.store, result, m.activeUserScope, m.apiKey, memory, m.profileAuthorizationSignature, true, CreateObject("roDateTime").asSeconds())
         if saved.readCommitted <> true then saved.ok = false
     end if
-    m.profileSyncSchedule = dispatcharrSyncScheduleComplete(m.profileSyncSchedule, context.ticket, saved.ok = true, profileSyncSchedulingNow(), textValue(result.state))
+    m.profileSyncSchedule = dispatcharrSyncScheduleComplete(m.profileSyncSchedule, context.ticket, saved.ok = true, profileSyncSchedulingNow(), textValue(result.state), result.creationBlocked = true)
     if saved.needsDefaultSwitch = true
         if beginOwnSyncDefaultRetirement(context, result, memory) then return
         coverScheduledProfileSync()

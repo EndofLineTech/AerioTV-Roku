@@ -35,7 +35,12 @@ function dispatcharrSyncCheckedWriteBody(original as dynamic, candidate as dynam
     if not encoded.ok or encoded.text = "" then return denied
     ' Byte budget and the immutable checked string are enforced before posting.
     bytes = dispatcharrSyncWriteByteCount(encoded.text)
-    if bytes < 2 or bytes > 131072 then return denied
+    if bytes < 2 then return denied
+    if bytes > 131072
+        denied.state = "too-large"
+        denied.reason = "size"
+        return denied
+    end if
     denied.reason = "readback"
     parsed = invalid
     if m.syncWriteParser <> invalid

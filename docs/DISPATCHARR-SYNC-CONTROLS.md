@@ -142,3 +142,21 @@ fixture or modify the Roku registry.
 | Cadence and pull-before-PUT | `DispatcharrSyncSchedule`, `DispatcharrSyncWriteTask`, `out/mrr-sync-session-scheduler-final-native.log`, and `out/mrr-sync-network-events-native.log`. The authenticated switcher queues picker work against the actual session and refreshes its idle snapshot safely. | Cold/no-session picker has no authenticated actor; Add's credential form suspends background work. Timing arithmetic is not a physical 15-minute soak. |
 | Unowned and Off categories/settings | `DispatcharrSyncMapping` selects `v`/`tv`/Off with no fallback; `DispatcharrSyncWriteBody`/`DispatcharrSyncRosterWrite` exercise checked, typed pass-through of `v`, `tv`, `mobile`, future rows and milliseconds on peer-shaped payloads. | There are no active settings lanes, lane-seeding transitions or per-item Shared/TV/Off controls; the general engine remains `e3e.6`. |
 | UI/status/focus and peer round trips | Native control and cold-restoration reports above; the read-only live driver checks actual ECP focus and pending state on the approved test Roku. Peer-shaped native fixture round trips prove Roku's wire behavior only. | Named Apple/Android Sync clients producing, consuming and applying these writes were not exercised. Setup encoders are not Sync readers. |
+
+### Host-only Profiles writer follow-up
+
+The writer's size/quota preflight and scheduled retry classification are
+covered by host mapping, checked-body, Task, scheduler and Scene-controller
+tests. Refused writes leave pending intent and do not trim peer data or create
+an acknowledgement. Preflight storage-full does not latch an account's
+canonical creation; an oversized snapshot permits read-only refresh and a
+genuine local edit can retry. These are offline tests, not new device/peer
+qualification.
+
+Beyond Profiles, the checked-in mapping describes lane selection and typed
+pass-through, but does not define a versioned peer setting-key/value allowlist
+or approved adapter scope for Roku. Before enabling Shared/TV/Off settings
+application or writes, decide whether to keep the accepted phase Profiles-only
+or identify the first settings, their peer keys/value kinds and defaults, and
+the intended behavior for missing lanes and scope-transition seeding. General
+category adapters and full-category legacy migration remain outside this slice.

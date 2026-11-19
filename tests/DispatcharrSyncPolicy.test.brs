@@ -12,9 +12,10 @@ sub main()
         check(dispatcharrSyncFailure("put", status, "", "").state = "retry", "network/server failure remains pending with bounded backoff")
     end for
     check(dispatcharrSyncFailure("put", 429, "", "").state = "parked", "429 stays below the sync engine's shared broker park")
-    check(dispatcharrSyncFailure("put", 409, "max_apps", "").state = "storage-full", "max_apps does not authorize another key or legacy deletion")
+    result = dispatcharrSyncFailure("put", 409, "max_apps", "")
+    check(result.state = "storage-full" and result.creationBlocked = true, "only typed PUT max_apps latches canonical creation")
     check(dispatcharrSyncFailure("put", 413, "value_too_large", "").state = "too-large", "oversize is retained for safe trimming/local-change handling, never retried immediately")
-    check(dispatcharrSyncFailure("put", 409, "different_conflict", "").state = "retry", "unknown conflict code is not mistaken for capacity evidence")
+    check(dispatcharrSyncFailure("put", 409, "different_conflict", "").state = "retry" and dispatcharrSyncFailure("list", 409, "max_apps", "").creationBlocked <> true, "unknown conflict or non-PUT max_apps cannot latch canonical creation")
     result = dispatcharrSyncFailure("list", 401, "Invalid API key", "")
     check(not result.doesExist("apiKey") and not result.doesExist("body") and not result.doesExist("code"), "failure receipt contains only sanitized classification, no credential or arbitrary response body")
     print "ALL TESTS PASSED"

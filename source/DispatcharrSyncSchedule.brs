@@ -78,7 +78,7 @@ function dispatcharrSyncScheduleTake(previous as object, scope as dynamic, now a
     return {run: true, push: push, state: state, ticket: state.flight}
 end function
 
-function dispatcharrSyncScheduleComplete(previous as object, ticket as dynamic, ok as boolean, now as integer, failure = "retry" as string) as object
+function dispatcharrSyncScheduleComplete(previous as object, ticket as dynamic, ok as boolean, now as integer, failure = "retry" as string, creationBlocked = false as boolean) as object
     if previous.flight = invalid or type(ticket) <> "roAssociativeArray" or now <= 0 then return previous
     if not userProfileSameSession(previous.scope, ticket.scope) then return previous
     if FormatJson(previous.flight) <> FormatJson(ticket) then return previous
@@ -87,6 +87,9 @@ function dispatcharrSyncScheduleComplete(previous as object, ticket as dynamic, 
     state.retryAt = 0
     state.pause = ""
     if not ok
+        ' An oversize result applies only to the body prepared for this ticket.
+        ' Leave a newer observed edit's debounce and queued reads intact.
+        if ticket.push and failure = "too-large" and ticket.root <> state.dirtyRoot then return state
         state.failures++
         delay = 30
         if state.failures = 2 then delay = 120
@@ -95,10 +98,12 @@ function dispatcharrSyncScheduleComplete(previous as object, ticket as dynamic, 
             state.pause = failure
             delay = 900
         end if
-        if failure = "storage-full" then state.creationBlocked = true
-        if failure = "too-large"
+        ' Advertised quota is a fresh observation, not a confirmed max_apps
+        ' response. Only the latter disables creation for this own session.
+        if ticket.push and failure = "storage-full" and creationBlocked then state.creationBlocked = true
+        if ticket.push and failure = "too-large"
             state.pause = failure
-            state.writeBlockedRoot = state.dirtyRoot
+            state.writeBlockedRoot = ticket.root
             state.dirtyAt = 0
             state.dueAt = 0
             return state

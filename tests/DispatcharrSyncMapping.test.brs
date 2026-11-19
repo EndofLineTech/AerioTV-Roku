@@ -45,14 +45,15 @@ sub main()
     check(not dispatcharrSyncChannelIds(["channel-a"], channels).complete, "ambiguous catalog ownership cannot choose an arbitrary server ID")
     listing = {apps: [{key: "alice.aeriotv", bytes: 100}], total_bytes: 100, limits: {max_value_bytes: 32768, max_total_bytes: 131072, max_apps: 25}}
     check(dispatcharrSyncWriteBudget(listing, "alice.aeriotv", 32768).ok, "older deployed per-key boundary is inclusive")
-    check(not dispatcharrSyncWriteBudget(listing, "alice.aeriotv", 32769).ok, "fresh advertised older-server cap overrides larger schema deployment cap")
+    check(dispatcharrSyncWriteBudget(listing, "alice.aeriotv", 32769).state = "too-large", "fresh per-value limit rejects this body, not canonical creation")
     listing.total_bytes = 131000
-    check(dispatcharrSyncWriteBudget(listing, "alice.aeriotv", 172).ok and not dispatcharrSyncWriteBudget(listing, "alice.aeriotv", 173).ok, "replacement subtracts only its listed own previous size from total quota")
+    check(dispatcharrSyncWriteBudget(listing, "alice.aeriotv", 172).ok and dispatcharrSyncWriteBudget(listing, "alice.aeriotv", 173).state = "storage-full", "replacement subtracts only its listed own previous size from current total quota")
     listing.limits.max_apps = 1
-    check(not dispatcharrSyncWriteBudget(listing, "bob.aeriotv", 2).ok, "full key quota cannot create a new canonical key")
+    check(dispatcharrSyncWriteBudget(listing, "bob.aeriotv", 2).state = "storage-full", "full key quota cannot create a new canonical key")
+    check(dispatcharrSyncWriteBudget(listing, "alice.aeriotv", 2).ok, "full key quota allows an existing canonical replacement within byte limits")
     listing.limits.max_value_bytes = "32768"
-    check(not dispatcharrSyncWriteBudget(listing, "alice.aeriotv", 2).ok, "malformed advertised limits never grant a PUT")
-    check(not dispatcharrSyncWriteBudget({apps: []}, "alice.aeriotv", 32769).ok, "absent limits use conservative older-server per-key cap")
+    check(dispatcharrSyncWriteBudget(listing, "alice.aeriotv", 2).state = "retry", "malformed advertised limits never grant a PUT or report a known capacity")
+    check(dispatcharrSyncWriteBudget({apps: []}, "alice.aeriotv", 32769).state = "too-large", "absent limits use conservative older-server per-key cap")
     print "ALL TESTS PASSED"
 end sub
 

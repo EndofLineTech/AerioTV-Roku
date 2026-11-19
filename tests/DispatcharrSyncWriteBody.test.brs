@@ -65,7 +65,14 @@ sub main()
     end for
     original = syncWriteBodyFixture()
     proposed = syncWriteBodyFixture()
+    original["categories"]["profiles"]["deviceId"] = "roku-device"
     proposed["categories"]["profiles"]["deviceId"] = "roku-device"
+    original["categories"]["FutureCategory"]["data"]["padding"] = string(131072, "x")
+    proposed["categories"]["FutureCategory"]["data"]["padding"] = original["categories"]["FutureCategory"]["data"]["padding"]
+    result = dispatcharrSyncCheckedWriteBody(original, proposed, ["profiles"])
+    check(not result.ok and result.state = "too-large" and result.body = "", "absolute write cap classifies the untouched oversized body before reparse")
+    original["categories"]["FutureCategory"]["data"].delete("padding")
+    proposed["categories"]["FutureCategory"]["data"].delete("padding")
     m.syncWriteParser = function(raw as string) as dynamic
         return {}
     end function

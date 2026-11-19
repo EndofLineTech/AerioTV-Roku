@@ -18,9 +18,9 @@ end function
 ' advertise smaller limits than the current schema reference deployment. Never
 ' trim an unsupported category to fit. Absent limits use the older safe bounds.
 function dispatcharrSyncWriteBudget(listing as dynamic, key as string, bytes as dynamic) as object
-    denied = {ok: false, state: "storage-full", phase: "budget", submitted: false}
+    denied = {ok: false, state: "retry", phase: "budget", submitted: false}
     if not dispatcharrSyncInteger(bytes) then return denied
-    if bytes < 2 or bytes > 131072 then return denied
+    if bytes < 2 then return denied
     plan = dispatcharrSyncReadPlan(key, listing)
     if plan.state <> "canonical" and plan.state <> "missing" then return denied
     valueCap = 32768
@@ -53,8 +53,14 @@ function dispatcharrSyncWriteBudget(listing as dynamic, key as string, bytes as 
         if listing["total_bytes"] < total then return denied
         total = listing["total_bytes"]
     end if
-    if bytes > valueCap or total - previous + bytes > totalCap then return denied
-    if not found and listing["apps"].count() >= appsCap then return denied
+    if bytes > 131072 or bytes > valueCap
+        denied.state = "too-large"
+        return denied
+    end if
+    if total - previous + bytes > totalCap or (not found and listing["apps"].count() >= appsCap)
+        denied.state = "storage-full"
+        return denied
+    end if
     return {ok: true}
 end function
 

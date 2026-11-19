@@ -52,6 +52,52 @@ sub main()
     m.syncTestNow = 102
     onProfileSyncScheduleTick()
     check(m.profileScheduledSyncTask = invalid, "clean acknowledged snapshot does not produce a write loop")
+    for each refusal in ["too-large", "storage-full"]
+        syncScheduledFixture()
+        onProfileSyncScheduleTick()
+        onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, syncFlushReadReceipt({rows: []})))
+        m.syncTestNow = 101
+        onProfileSyncScheduleTick()
+        task = m.profileScheduledSyncTask
+        before = FormatJson(m.registry.values)
+        onScheduledProfileSyncResult(syncFlushEvent(task, {ok: false, state: refusal, phase: "budget", submitted: false}))
+        check(m.profileSyncSchedule.pause = refusal and not m.profileSyncSchedule.creationBlocked, "preflight size/quota refusals are not server-confirmed max_apps")
+        check(FormatJson(m.registry.values) = before and task.apiKey = "", "capacity refusal keeps exact pending root without acknowledging and wipes Task key")
+        m.syncTestNow = 102
+        onProfileSyncScheduleTick()
+        check(m.profileScheduledSyncTask = invalid, "capacity refusal does not immediately retry")
+        m.syncTestNow = 1001
+        onProfileSyncScheduleTick()
+        task = m.profileScheduledSyncTask
+        check(task <> invalid and task.pullOnly = (refusal = "too-large") and not task.creationBlocked, "fresh quota is retried on cadence; an unchanged oversize snapshot stays read-only")
+        if refusal = "too-large"
+            read = syncFlushReadReceipt({rows: [[8, "Bob", "Remote Bob", "none", "", "", "user", 200]]})
+            read.storeRoot = task.storeRoot
+            onScheduledProfileSyncResult(syncFlushEvent(task, read))
+            current = loadUserProfileStore(m.registry, "slot-a")
+            check(current.pendingRoster and current.profiles[1].displayName = "Remote Bob", "oversize pause still applies fresh peer roster without acknowledging")
+            m.syncTestNow = 1002
+            onProfileSyncScheduleTick()
+            check(m.profileScheduledSyncTask = invalid, "imported metadata does not unblock oversize writes")
+            current.profiles[1] = setCanonicalPreference(current.profiles[1], "displayName", "Local Bob")
+            m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(current)
+            onProfileSyncScheduleTick()
+            m.syncTestNow = 1003
+            onProfileSyncScheduleTick()
+            check(m.profileScheduledSyncTask <> invalid and not m.profileScheduledSyncTask.pullOnly and not m.profileScheduledSyncTask.creationBlocked, "next local edit schedules a fresh eligible write after debounce")
+        end if
+        closeScheduledProfileSync()
+    end for
+    syncScheduledFixture()
+    onProfileSyncScheduleTick()
+    onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, syncFlushReadReceipt({rows: []})))
+    m.syncTestNow = 101
+    onProfileSyncScheduleTick()
+    onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, {ok: false, state: "storage-full", phase: "put", status: 409, submitted: true, creationBlocked: true}))
+    m.syncTestNow = 1001
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask <> invalid and m.profileScheduledSyncTask.creationBlocked and not m.profileScheduledSyncTask.pullOnly, "Scene carries confirmed creation refusal without disallowing a canonical update")
+    closeScheduledProfileSync()
     syncScheduledFixture()
     onProfileSyncScheduleTick()
     onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, syncFlushReadReceipt({rows: []})))
@@ -501,6 +547,8 @@ end sub
 
 function requestGateCredentialHash(key as string) as string
     if key = "synthetic-own" then return string(64, "a")
+    ' Host fixture identity for roster snapshots; edits here change byte length.
+    if left(key, 1) = "{" then return len(key).toStr()
     return string(64, "b")
 end function
 

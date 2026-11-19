@@ -362,12 +362,18 @@ failures. Authorization pauses wait for regular cadence; actual shared 429 parks
 and specific rejected-key holds remain enforced below this policy on every call.
 
 Typed `409 max_apps` blocks new canonical creation for this sync session, not
-updates to a canonical that exists. Typed 413 stops repeated writes of the same
-dirty snapshot; regular or explicitly requested pulls remain read-only, and
-imported metadata does not count as a new local edit that unblocks writing.
-The next real local mutation may prepare a fresh checked body. Safe category trim
-steps and public error/status UI remain unfinished; no unknown data is discarded
-to make a rejected body fit.
+updates to a canonical that exists. An advertised total-byte or key-count
+refusal reports storage full, but the scheduled writer reevaluates the quota
+using a new own list at its next regular attempt; it has not received a
+`max_apps` response. Malformed budget metadata refuses the write with ordinary
+backoff. The absolute body limit and the advertised per-value limit enter the
+same scheduled oversize pause as a typed 413. The pause applies to the attempted
+dirty snapshot, not a newer edit observed while the Task ran. Scheduled regular
+or explicitly requested pulls remain read-only while that pause is in force,
+and imported metadata does not count as a new local edit that unblocks writing.
+The next real local mutation may prepare a fresh checked body. No unknown data
+is discarded to make a rejected body fit. Outgoing switches still require their
+existing flush/admission checks; this change does not alter switch policy.
 
 Host endpoint/capacity/backoff/blocked-root tests passed. Actual native 413 followed
 by a read-only network-return pull sent exactly one PUT and retained dirty state;
