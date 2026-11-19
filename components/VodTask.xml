@@ -4,6 +4,7 @@
     <field id="baseUrl" type="string" />
     <field id="apiKey" type="string" />
     <field id="accountId" type="string" />
+    <field id="accountUsername" type="string" />
     <field id="kind" type="string" />
     <field id="operation" type="string" value="page" />
     <field id="bypassCache" type="boolean" />
@@ -30,6 +31,7 @@
   <script type="text/brightscript" uri="pkg:/source/VodState.brs" />
   <script type="text/brightscript" uri="pkg:/source/VodSeriesTarget.brs" />
   <script type="text/brightscript" uri="pkg:/source/VodSeriesLoader.brs" />
+  <script type="text/brightscript" uri="pkg:/source/LaunchModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/DescriptionModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MetadataCacheModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/MetadataCacheStore.brs" />

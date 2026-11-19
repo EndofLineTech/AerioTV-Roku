@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 
 const suites = ['DispatcharrModel', 'GuideModel', 'XmltvModel', 'M3uModel', 'XtreamModel', 'XtreamVodModel', 'XtreamArchiveModel', 'XtreamTask', 'XtreamVodTask', 'SceneUi', 'AerioSurface', 'RemoteHints', 'TaskSupport', 'PlaybackModel', 'NowNextModel', 'PreferenceModel', 'ConnectionStore', 'ConnectionNavigation', 'ConnectionAuthTask', 'CapabilityModel', 'ProgramSearchModel', 'GuideUnifiedSearch', 'PlayerLifecycle', 'VideoGeometry', 'StreamSourceTask', 'GuideSettingsModel', 'ReminderModel', 'GuideMenu', 'LogoCache', 'VideoInput', 'GuideInput', 'GroupInput', 'PlayerOkHold', 'PlayerRemoteInput', 'GuideRemoteInput', 'StartupRecovery', 'AacStartup', 'CapabilityTask', 'PlayerOptionsInput', 'MetadataCacheModel', 'HttpPolicy', 'DvrRecordingModel', 'DvrPresentationModel', 'DvrNavigation', 'DvrView', 'GuideTaskCache', 'GuideMappingFallback', 'MappingTask', 'MappingDetailModel', 'LiveRecovery', 'PlaybackFailure', 'MediaSessionModel', 'VodModel', 'VodState', 'VodSeriesTarget', 'VodSeriesTask', 'CatchupModel', 'DiagnosticModel', 'OnDemandPlayer', 'RecordingSeekModel', 'ArchiveController', 'VodSeriesLoader', 'NavigationModel', 'DescriptionModel', 'VodDescriptionInput', 'SettingsModel', 'PlayerInfoClock', 'TmdbModel', 'TmdbTask', 'VodShelfTask', 'RemoteMapModel', 'SettingsRail', 'SettingsHubInput'];
 suites.unshift('LaunchModel');
+suites.unshift('VodDeepLinkNavigation');
 suites.unshift('PhoneSetupModel');
 suites.unshift('PhoneSetupEntropy');
 suites.unshift('PhoneSetupTransport');
@@ -109,8 +110,10 @@ for (const suite of suites) {
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
     'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/SceneUi.brs', 'source/TaskSupport.brs',
+    'components/VodDeepLinkNavigation.brs',
     ...(suite === 'ProgramDetailRecovery' ? ['components/ProgramDetailTask.brs'] : []),
-    ...(suite === 'LaunchModel' ? ['source/LaunchModel.brs'] : []),
+    ...(['LaunchModel', 'VodSeriesTask', 'PlayerLifecycle', 'VodDeepLinkNavigation'].includes(suite) ? ['source/LaunchModel.brs'] : []),
+    ...(suite === 'VodDeepLinkNavigation' ? ['components/MediaNavigation.brs', 'source/UserProfileScope.brs', 'source/ConnectionStoreModel.brs', 'source/UserProfileModel.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileCredential.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs', 'source/UserProfileStore.brs', 'source/StrictJson.brs'] : []),
     ...(suite === 'ProfilePickerInputNavigation' ? ['components/UserProfilePicker.brs', 'source/UserProfilePickerInput.brs', 'source/UserProfileAvatar.brs'] : []),
     ...(suite === 'ProfilePickerNavigation' ? ['components/ProfilePickerNavigation.brs', 'components/ProfilePickerManagementNavigation.brs', 'components/UserProfileNavigation.brs', 'source/LaunchModel.brs', 'source/UserProfilePicker.brs', 'source/UserProfilePickerInput.brs', 'source/UserProfileStartupSelection.brs', 'source/UserProfileSwitch.brs', 'source/UserProfileScope.brs', 'source/UserProfileCredential.brs', 'source/UserProfileAddressPolicy.brs', 'source/StrictJson.brs', 'source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/DispatcharrSyncMerge.brs'] : []),
     ...(suite === 'UserProfileSwitch' ? ['source/UserProfileStartupSelection.brs', 'source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/DispatcharrSyncMerge.brs'] : []),

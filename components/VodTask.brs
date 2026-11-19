@@ -10,6 +10,16 @@ sub loadVod()
     m.clock.mark()
     m.deadlineMs = 30000
     m.maxResponseBytes = 1048576
+    if m.top.operation = "deepLink"
+        if m.top.cancelRequested or m.base = "" or m.key = "" or m.top.accountId = "" or m.top.accountUsername = ""
+            publishVod({ok: false})
+            return
+        end if
+        if not launchCatalogId(m.top.itemId) or vodKindPath(m.top.kind) = ""
+            publishVod({ok: false})
+            return
+        end if
+    end if
     user = requestJson(m.base + "/api/accounts/users/me/")
     if type(user) <> "roAssociativeArray"
         publishVod({ok: false, category: "network", message: "Could not verify account. " + m.failure})
@@ -19,6 +29,10 @@ sub loadVod()
     props = user.custom_properties
     if type(props) <> "roAssociativeArray" then props = {}
     authorization = metadataCacheDigest(FormatJson({account: cap.accountId, level: cap.level, movies: cap.movies, series: cap.series, hideAdult: props.hide_adult_content}))
+    if m.top.operation = "deepLink"
+        publishVod(vodResolveDeepLink(user, cap, authorization))
+        return
+    end if
     if m.top.operation = "authorize" and cap.accountId <> "" and cap.accountId = m.top.accountId
         publishVod({ok: true, authorization: authorization, authorizedShelf: true, movies: cap.movies, series: cap.series})
         return
@@ -219,6 +233,94 @@ sub loadVod()
     result.source = "network"
     publishVod(result)
 end sub
+
+' No cached pages or provider selection from the link. The detail endpoint is
+' responsible for the own account's catalog visibility (including server filters).
+function vodResolveDeepLink(user as object, cap as object, authorization as string) as object
+    failure = {ok: false}
+    expected = m.top.accountUsername
+    if cap.accountId = "" or cap.accountId <> m.top.accountId or expected = "" then return failure
+    if GetInterface(user.username, "ifString") = invalid then return failure
+    if lcase(user.username) <> lcase(expected) then return failure
+    kind = m.top.kind
+    if kind = "movie"
+        if cap.movies <> "allowed" then return failure
+    else if kind = "episode" or kind = "series"
+        if cap.series <> "allowed" then return failure
+    else
+        return failure
+    end if
+    item = vodDeepLinkDetail(kind, m.top.itemId)
+    if item = invalid then return failure
+    if vodItemHidden(m.top.savedState, item) then return failure
+    resume = true
+    if kind = "series"
+        catalog = vodLoadSeriesEpisodes(item.id, "")
+        if not catalog.ok then return failure
+        target = vodSeriesTarget(catalog.items, m.top.savedState, item.id, catalog.complete)
+        if target.item = invalid then return failure
+        selected = target.item
+        for each candidate in catalog.items
+            if candidate.id <> selected.id
+                if candidate.key = selected.key then return failure
+                if candidate.season = selected.season and candidate.episode = selected.episode then return failure
+            else if candidate.key <> selected.key
+                return failure
+            end if
+        end for
+        item = vodDeepLinkDetail("episode", selected.id)
+        if item = invalid then return failure
+        if item.key <> selected.key or item.seriesId <> selected.seriesId then return failure
+        if item.season <> selected.season or item.episode <> selected.episode then return failure
+        resume = target.status = "resume"
+    end if
+    item.resume = 0
+    if resume then item.resume = vodResumePosition(vodStateEntry(m.top.savedState, item), item.duration)
+    if item.streamFormat = "unknown" then item.streamFormat = vodDeepLinkFormat(item)
+    if item.streamFormat = "unknown" then return failure
+    item.authorization = authorization
+    item.accountScope = m.base + "|" + cap.accountId
+    return {ok: true, item: item}
+end function
+
+function vodDeepLinkDetail(kind as string, id as string) as dynamic
+    if not launchCatalogId(id) or m.top.cancelRequested then return invalid
+    item = vodNormalize(requestJson(m.base + "/api/vod/" + vodKindPath(kind) + "/" + id + "/"), kind)
+    if item = invalid then return invalid
+    if item.id <> id then return invalid
+    if kind = "episode"
+        if not launchCatalogId(item.seriesId) then return invalid
+    end if
+    return item
+end function
+
+function vodDeepLinkFormat(item as object) as string
+    if m.top.cancelRequested then return "unknown"
+    if item.kind = "movie"
+        info = vodNormalize(requestJson(m.base + "/api/vod/movies/" + item.id + "/provider-info/?refresh_interval=24"), "movie")
+        if info <> invalid
+            if info.id = item.id and info.key = item.key then return info.streamFormat
+        end if
+    else
+        info = requestJson(m.base + "/api/vod/series/" + item.seriesId + "/provider-info/?include_episodes=true")
+        if type(info) <> "roAssociativeArray" then return "unknown"
+        if type(info.episodes) <> "roAssociativeArray" then return "unknown"
+        matches = 0
+        format = "unknown"
+        for each season in info.episodes
+            if type(info.episodes[season]) <> "roArray" then return "unknown"
+            for each episode in info.episodes[season]
+                if type(episode) <> "roAssociativeArray" then return "unknown"
+                if textValue(episode.id) = item.id
+                    matches++
+                    format = vodStreamFormat(textValue(episode.container_extension))
+                end if
+            end for
+        end for
+        if matches = 1 then return format
+    end if
+    return "unknown"
+end function
 
 sub publishVod(result as object)
     m.key = ""

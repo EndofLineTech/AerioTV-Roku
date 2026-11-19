@@ -20,6 +20,7 @@ sub closeDvrLibrary()
     m.page = "guide"
     m.guide.visible = true
     m.guide.active = true
+    resumePendingVodDeepLink()
 end sub
 
 sub openVodLibrary(kind as string)
@@ -61,6 +62,7 @@ sub closeVodLibrary()
     m.guide.visible = true
     m.guide.active = true
     if restoreSearch then m.guide.callFunc("resumeUnifiedSearch")
+    resumePendingVodDeepLink()
 end sub
 
 sub onUnifiedSearchVodSelection(event as object)
@@ -142,26 +144,35 @@ end sub
 sub onVodPlay(event as object)
     if not userEventCurrent(event.getData()) then return
     if not m.vod.isSameNode(event.getRoSGNode()) or m.page <> "library" then return
-    item = event.getData()
+    started = startVodPlayback(event.getData(), "library")
+end sub
+
+function startVodPlayback(item as object, returnPage as string) as boolean
     scope = normalizeBaseUrl(m.baseUrl) + "|" + m.serverAccountId
     connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     directXtream = connection <> invalid and connection.provider = "xtream"
     if directXtream then scope = m.accountIdentity
-    if textValue(item.accountScope) <> scope then return
+    if textValue(item.accountScope) <> scope then return false
     identity = "roku_" + CreateObject("roDeviceInfo").getRandomUUID()
     transport = identity
     if m.vodTransport <> invalid
         if m.vodTransport.account = m.accountIdentity and m.vodTransport.key = item.key and m.vodTransport.version = textValue(item.relationId) then transport = m.vodTransport.id
     end if
-    m.vodTransport = {account: m.accountIdentity, key: item.key, id: transport, version: textValue(item.relationId)}
     url = vodPlaybackUrl(m.baseUrl, item, transport)
     if directXtream then url = xtreamVodStreamUrl(m.baseUrl, m.xcUsername, m.xcPassword, item)
     if url = ""
         if directXtream then showNotice("Xtream title format is not supported for this Roku.")
-        return
+        return false
     end if
+    if returnPage = "guide"
+        stopPlayback()
+        m.guide.active = false
+        m.guide.visible = false
+        m.screen.visible = false
+    end if
+    m.vodTransport = {account: m.accountIdentity, key: item.key, id: transport, version: textValue(item.relationId)}
     saveVodChange(item, {relationId: textValue(item.relationId)})
-    m.mediaReturn = "library"
+    m.mediaReturn = returnPage
     m.mediaItem = item
     recordDiagnostic("vod", 0, "Opening " + item.kind + " using " + item.streamFormat)
     m.mediaIdentity = identity
@@ -173,7 +184,8 @@ sub onVodPlay(event as object)
     providerType = "dispatcharr"
     if directXtream then providerType = "xtream"
     m.mediaPlayer.request = userViewEvent({account: m.accountIdentity, identity: identity, key: item.key, mode: "vod", providerType: providerType, url: url, title: item.title, apiKey: m.apiKey, streamFormat: item.streamFormat, resume: item.resume}, currentUserSessionId())
-end sub
+    return true
+end function
 
 sub onMediaClosed(event as object)
     if not m.mediaPlayer.isSameNode(event.getRoSGNode()) then return
@@ -194,6 +206,7 @@ sub onMediaClosed(event as object)
         m.page = "guide"
         m.guide.visible = true
         m.guide.active = true
+        resumePendingVodDeepLink()
     end if
 end sub
 
@@ -532,6 +545,7 @@ sub saveArchiveBookmarkProgress(progress as dynamic, force = false as boolean)
 end sub
 
 sub resetMediaNavigation()
+    cancelVodDeepLink()
     m.unifiedSearchReturn = invalid
     cancelDvrPlayback()
     if m.settingsHub <> invalid then m.settingsHub.active = false

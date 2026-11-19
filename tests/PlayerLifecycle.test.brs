@@ -28,7 +28,7 @@ sub main()
     beginStartupBeacons(true)
     assertEqual(m.top.beacons.count(), 0, "first-run Welcome is the initial interactive screen")
     m.page = "welcome"
-    m.pendingLaunch = {id: "unavailable-channel"}
+    m.pendingLaunch = {kind: "live", id: "unavailable-channel"}
     signalStartupComplete()
     assertEqual(m.top.beacons.count(), 1, "Welcome completes launch without waiting for credentials")
     assertEqual(m.top.beacons[0], "AppLaunchComplete", "fully rendered Welcome satisfies unattended launch test")
@@ -46,6 +46,17 @@ sub main()
     assertEqual(m.top.beacons.count(), 1, "later sign-in does not emit a second launch beacon")
     assertEqual(m.pendingLaunch, invalid, "authorized guide consumes the pending link after sign-in")
     assertEqual(m.notice.visible, true, "unavailable link falls back safely to the guide")
+    m.page = "welcome"
+    m.top.launchRequest = {contentId: "27", mediaType: "movie"}
+    onLaunchRequest()
+    signalStartupComplete()
+    assertEqual(m.pendingLaunch.kind, "movie", "first-run VOD link remains pending on Welcome")
+    m.global = {profilegateclosed: true}
+    m.page = "guide"
+    handlePendingLaunch()
+    assertEqual(m.pendingLaunch.id, "27", "PIN cover defers an otherwise valid VOD link")
+    m.pendingLaunch = invalid
+    m.global = invalid
     m.page = "guide"
     m.heldZap = ""
     m.heldZapTimer = {control: "stop"}

@@ -64,12 +64,12 @@ sub main()
     store.profiles[0] = setCanonicalPreference(store.profiles[0], "pinSalt", string(32, "b"))
     m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(store)
     check(deferUserProfileLaunch(), "deep-link startup is also deferred")
-    m.top.launchRequest = {contentId: "missing-channel", mediaType: "live"}
+    m.top.launchRequest = {contentId: "42", mediaType: "series"}
     m.top.startupReady = true
     onSceneStartupReady()
     onDeferredUserProfileLaunch()
     check(m.pickerCreates = 0 and m.routePinTarget = m.a.id and m.routeConnectCalls = 0 and m.activeUserScope = invalid, "cold media intent skips picker but still requires the actual restored holder PIN before requests")
-    check(m.pendingLaunch.id = "missing-channel" and m.apiKey = "default-key" and m.global.profilegateclosed, "validated link waits behind restored own-key PIN, never incoming target credentials")
+    check(m.pendingLaunch.id = "42" and m.pendingLaunch.profile = m.a.id and m.pendingLaunch.account = "7" and m.apiKey = "default-key" and m.global.profilegateclosed, "validated VOD link waits behind restored own-key PIN, bound to that holder")
     pickerNavigationFixture()
     store = loadUserProfileStore(m.registry, "slot-a")
     store.profiles[0] = setCanonicalPreference(store.profiles[0], "pinType", "numbers")

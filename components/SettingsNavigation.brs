@@ -54,6 +54,7 @@ sub closeSettingsHub()
     m.page = "guide"
     m.guide.visible = true
     m.guide.active = true
+    resumePendingVodDeepLink()
 end sub
 
 sub onSettingsHubSelection(event as object)

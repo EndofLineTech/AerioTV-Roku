@@ -333,6 +333,7 @@ sub onLaunchRequest()
     if m.profileOwnSignInContext <> invalid
         if m.profileOwnSignInContext.startupRecovery = true and launchRequestHasMediaIntent(m.top.launchRequest)
             m.pendingLaunch = normalizeLaunchRequest(m.top.launchRequest)
+            bindStartupVodDeepLink(m.pendingLaunch, m.profileStartupLaunchConnection)
             cancelUserProfileOwnSignIn()
             dismissStartupPickerForDeepLink()
         end if
@@ -340,13 +341,19 @@ sub onLaunchRequest()
     end if
     if m.profileSwitchContext <> invalid then return
     raw = m.top.launchRequest
+    if not launchRequestHasMediaIntent(raw) then return
+    cancelVodDeepLink()
     m.pendingLaunch = normalizeLaunchRequest(raw)
+    if m.pendingLaunch <> invalid
+        if m.pendingLaunch.kind <> "live"
+            m.pendingLaunch.session = currentUserSessionId()
+            if m.pendingLaunch.session = "" then bindStartupVodDeepLink(m.pendingLaunch, m.profileStartupLaunchConnection)
+        end if
+    end if
     if m.profilePickerReady = true
         if m.profilePickerContext <> invalid or m.profileStartupSelectionContext <> invalid
-            if launchRequestHasMediaIntent(raw)
-                dismissStartupPickerForDeepLink()
-                return
-            end if
+            dismissStartupPickerForDeepLink()
+            return
         end if
     end if
     if m.pendingLaunch = invalid
@@ -362,6 +369,10 @@ sub handlePendingLaunch()
     if m.page <> "guide" and m.page <> "player" then return
     request = m.pendingLaunch
     m.pendingLaunch = invalid
+    if request.kind <> "live"
+        beginVodDeepLink(request)
+        return
+    end if
     channel = m.guide.callFunc("channelByUuid", request.id)
     if channel = invalid
         showNotice("This channel is not available to your current connection.")
@@ -975,6 +986,8 @@ sub completeConnection(result as dynamic)
         m.profileGateCover.visible = false
         m.global.profileswitchpending = false
     end if
+    suppressMini = false
+    if m.pendingLaunch <> invalid then suppressMini = m.pendingLaunch.kind <> "live"
     signalStartupComplete()
     print "[startup] authorized lineup ms="; m.connectionElapsed.totalMilliseconds(); " channels="; result.channels.count()
     refreshCapabilities()
@@ -982,7 +995,7 @@ sub completeConnection(result as dynamic)
     m.reminderClock.control = "start"
     version = CreateObject("roAppInfo").getValue("major_version") + "." + CreateObject("roAppInfo").getValue("minor_version") + "." + CreateObject("roAppInfo").getValue("build_version")
     if m.accountPreferences.whatsNewVersion <> version then showNotice("What's New in " + version + ". Open Settings > About > What's New.")
-    if m.profileRefreshReload <> true then startConfiguredMiniPlayback(result.channels)
+    if not suppressMini and m.profileRefreshReload <> true then startConfiguredMiniPlayback(result.channels)
     m.profileRefreshReload = false
     activateProfileSyncScheduling()
     if m.phoneProfileOnboarding <> invalid then continuePhoneProfileOnboarding()

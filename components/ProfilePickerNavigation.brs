@@ -54,6 +54,7 @@ sub onDeferredUserProfileLaunch()
     if m.registry.exists(userProfileImportKey(entry.id))
         if showIncompletePhoneImportRecovery() then return
     end if
+    bindStartupVodDeepLink(m.pendingLaunch, entry)
     store = loadUserProfileStore(m.registry, entry.id)
     model = userProfilePickerPlan(store, "launch", entry.provider, m.profileLaunchPickerDeepLink)
     if model.ok and model.show
