@@ -2665,6 +2665,7 @@ sub recoverFrozenPicture()
             if attempt.reader.isSameNode(m.video.content)
                 if coldLiveReaderToken() = "" then return
                 m.recoveryColdAttempt = attempt
+                attempt.position = invalid
             end if
         end if
     end if

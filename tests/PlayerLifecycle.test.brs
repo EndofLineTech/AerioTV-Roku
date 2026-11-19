@@ -1282,7 +1282,7 @@ sub runColdLiveAttemptChecks()
 end sub
 
 sub checkColdPictureRecovery()
-    for each path in ["ready", "timeout", "changed-holder", "retired-holder", "stale-reader"]
+    for each path in ["ready", "timeout", "pending-timeout", "bridge-failed", "bridge-cancelled", "unrelated-bridge", "changed-holder", "retired-holder", "stale-reader"]
         resetOwnedHlsFixture()
         m.top.exitRequested = false
         m.coldPlaybackClock = {control: "stop"}
@@ -1304,32 +1304,71 @@ sub checkColdPictureRecovery()
         m.playbackBridgeTaskFactory = m.hlsSessionTaskFactory
         recoverFrozenPicture()
         bridge = m.recoveryTask
-        bridge.ready = true
-        holderChanged = path = "changed-holder" or path = "retired-holder"
-        if holderChanged then m.accountIdentity = "new-holder"
-        if path = "retired-holder" then checkColdPlayback()
-        if path = "stale-reader" then m.video.content = lifecycleRetryContent(99)
-        onRecoveryReady(hlsFixtureEvent(bridge, true))
-        if holderChanged or path = "stale-reader"
-            expected = 10
-            if path = "stale-reader" then expected = 99
-            assertEqual(m.video.content.serial, expected, "stale bridge must not restart a reader: " + path)
-            assertEqual(bridge.release, true, "unowned bridge is released")
+        m.video.position = 11
+        checkColdPlayback()
+        assertEqual(m.coldPlayback <> invalid, true, "advancing outgoing reader cannot settle while its bridge is pending: " + path)
+        assertEqual(m.coldPlaybackClock.control, "start", "pending bridge does not stop the cold timer")
+        assertEqual(m.coldPlayback.position, invalid, "pending bridge clears the old readiness sample")
+        if path = "pending-timeout"
+            elapsed.ms = 390000
             checkColdPlayback()
-            assertEqual(m.video.content.serial, expected, "obsolete deadline cannot stop a different owner's reader")
-        else
-            assertEqual(m.video.content.serial, 11, "authorized picture recovery restarts the exact reader")
-            assertEqual(coldLiveReaderToken(), request.coldToken, "picture recovery transfers the same cold token")
-            assertEqual(m.coldPlayback.position, invalid, "picture recovery clears outgoing advancement")
-            m.video.position = 11
-            checkColdPlayback()
-            assertEqual(m.coldPlayback <> invalid, true, "first replacement sample is not readiness")
-            if path = "timeout" then elapsed.ms = 390000
+            assertEqual(m.coldPlaybackOutcome.result, "failed", "exact pending bridge cannot postpone deadline")
+            assertEqual(m.page, "guide", "expiry during recovery restores Guide")
+            assertEqual(bridge.release, true, "expiry releases the pending bridge")
+            bridge.ready = true
+            onRecoveryReady(hlsFixtureEvent(bridge, true))
+            assertEqual(m.video.content, invalid, "late bridge readiness cannot restart after fallback")
+        else if path = "bridge-failed" or path = "bridge-cancelled" or path = "unrelated-bridge"
+            if path = "bridge-failed"
+                onRecoveryFinished(hlsFixtureEvent(bridge, {ok: false, message: "fixture failure"}))
+            else if path = "bridge-cancelled"
+                cancelPictureRecovery()
+            else
+                m.video.state = "buffering"
+                beginStartupWatch(m.video.content)
+                assertEqual(retryStartupPlayback(), true, "another startup retry can replace the outgoing reader")
+                m.video.state = "playing"
+            end if
             m.video.position = 12
             checkColdPlayback()
-            expected = "ready"
-            if path = "timeout" then expected = "failed"
-            assertEqual(m.coldPlaybackOutcome.result, expected, "replacement preserves original deadline: " + path)
+            assertEqual(m.coldPlayback <> invalid, true, "after abandonment or separate replacement, readiness needs a fresh sample")
+            m.video.position = 13
+            checkColdPlayback()
+            assertEqual(m.coldPlaybackOutcome.result, "ready", "an abandoned or unrelated bridge does not block valid progress")
+            if path = "unrelated-bridge"
+                bridge.ready = true
+                onRecoveryReady(hlsFixtureEvent(bridge, true))
+                assertEqual(m.video.content.serial, 11, "late bridge does not restart the independent replacement")
+                assertEqual(bridge.release, true, "unrelated bridge is released")
+            end if
+        else
+            bridge.ready = true
+            holderChanged = path = "changed-holder" or path = "retired-holder"
+            if holderChanged then m.accountIdentity = "new-holder"
+            if path = "retired-holder" then checkColdPlayback()
+            if path = "stale-reader" then m.video.content = lifecycleRetryContent(99)
+            onRecoveryReady(hlsFixtureEvent(bridge, true))
+            if holderChanged or path = "stale-reader"
+                expected = 10
+                if path = "stale-reader" then expected = 99
+                assertEqual(m.video.content.serial, expected, "stale bridge must not restart a reader: " + path)
+                assertEqual(bridge.release, true, "unowned bridge is released")
+                checkColdPlayback()
+                assertEqual(m.video.content.serial, expected, "obsolete deadline cannot stop a different owner's reader")
+            else
+                assertEqual(m.video.content.serial, 11, "authorized picture recovery restarts the exact reader")
+                assertEqual(coldLiveReaderToken(), request.coldToken, "picture recovery transfers the same cold token")
+                assertEqual(m.coldPlayback.position, invalid, "picture recovery clears outgoing advancement")
+                m.video.position = 12
+                checkColdPlayback()
+                assertEqual(m.coldPlayback <> invalid, true, "first replacement sample is not readiness")
+                if path = "timeout" then elapsed.ms = 390000
+                m.video.position = 13
+                checkColdPlayback()
+                expected = "ready"
+                if path = "timeout" then expected = "failed"
+                assertEqual(m.coldPlaybackOutcome.result, expected, "replacement preserves original deadline: " + path)
+            end if
         end if
     end for
 end sub

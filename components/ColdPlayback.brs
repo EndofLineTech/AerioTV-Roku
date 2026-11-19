@@ -80,6 +80,11 @@ function coldPlaybackExpired(attempt as object) as boolean
     return attempt.clock.totalMilliseconds() >= deadline
 end function
 
+function coldPictureRecoveryPending(reader as object) as boolean
+    if m.recoveryTask = invalid or m.recoveryIssued = true or m.recoveryContent = invalid then return false
+    return reader.isSameNode(m.recoveryContent)
+end function
+
 sub checkColdPlayback()
     attempt = m.coldPlayback
     if attempt = invalid then return
@@ -100,6 +105,10 @@ sub checkColdPlayback()
             settleColdPlayback(token, "cancelled")
         else if expired
             failLivePlayback(-2, "No playable video started before the linked tune deadline.")
+        else if coldPictureRecoveryPending(attempt.reader)
+            ' This reader is about to be replaced. Its progress cannot finish
+            ' the launch, but the original deadline still owns the fallback.
+            attempt.position = invalid
         else if m.hlsMintTask = invalid and m.video.visible and m.video.state = "playing" and requestGateRendererAllowed(m.video) and m.top.dialog = invalid
             if m.video.hasFocus() and mediaNumber(m.video.position)
                 position = m.video.position

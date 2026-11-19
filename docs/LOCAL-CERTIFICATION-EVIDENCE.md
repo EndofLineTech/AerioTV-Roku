@@ -159,8 +159,9 @@ PIN, protected Child access, or user onboarding.
 | Live | The attempt is bound to the current holder and passed through mandatory AAC discovery to the exact ContentNode. HLS mint blocks readiness until the existing Task/content fence releases it. Local startup/midstream retries replace the tracked ContentNode and reset position evidence. The 390-second outer ceiling preserves the existing AAC, mint and startup retry budgets and falls back through the existing Guide/Retry dialog only while the linked tune still owns playback. |
 | Dispatcharr VOD | The authorized resolver Task hands off to a tagged media request and playback identity; the player checks the current ContentNode and waits for an advancing position at or beyond a requested resume seek. The 60-second ceiling includes resolution and can cancel the exact resolver or close the linked renderer to Guide. Renderer denial before a media session still reports a tagged close, and existing focused Retry/Back counts as terminal failure, not playback. |
 
-Picture recovery replaces the live ContentNode without resetting the cold
-deadline or carrying forward the old reader's position sample. A warm input
+While picture recovery is pending, progress from the exact outgoing live
+reader cannot settle readiness. The original deadline still applies, and
+readiness requires fresh samples after replacement or abandonment. A warm input
 queued behind cold VOD does not reset or cancel the old renderer's deadline:
 readiness leaves the queued input waiting, while an eligible close restores
 Guide and dispatches the queued input for its current holder.
