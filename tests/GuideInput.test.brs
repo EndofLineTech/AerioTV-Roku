@@ -131,25 +131,26 @@ sub main()
     m.viewStart = m.anchor
     m.span = 8928
     m.filtered[2].id = "2"
-    for each declared in [false, true]
-        m.top.remotePreferences.radioDefault = not declared
+    for each mode in ["default", "declared", "late", "video"]
+        m.top.remotePreferences.radioDefault = mode = "default"
         rows = []
-        if declared then rows = [{id: 2, uuid: "2", effective_is_radio: true}]
+        if mode = "declared" then rows = [{id: 2, uuid: "2", effective_is_radio: true}]
         m.top.channelFacts = normalizeChannelCapabilities(rows)
         m.top.watchChannel = invalid
         if not onKeyEvent("OK", true) or m.top.watchChannel <> invalid
-            print "FAIL: the Guide must retain the initiating Radio OK until release"
+            print "FAIL: Guide must retain the initiating OK until release, including "; mode
             stop
         end if
+        if mode = "late" then m.top.channelFacts = normalizeChannelCapabilities([{id: 2, uuid: "2", effective_is_radio: true}])
         if not onKeyEvent("OK", true) or m.top.watchChannel <> invalid then stop
         if not onKeyEvent("OK", false) or m.top.watchChannel.uuid <> "2" then stop
         m.top.watchChannel = invalid
         if onKeyEvent("OK", false) or m.top.watchChannel <> invalid then stop
     end for
-    m.top.channelFacts = {}
-    m.top.remotePreferences.radioDefault = false
     m.top.watchChannel = invalid
-    if not onKeyEvent("OK", true) or m.top.watchChannel.uuid <> "2" then stop
+    onKeyEvent("OK", true)
+    onKeyEvent("down", true)
+    if onKeyEvent("OK", false) or m.top.watchChannel <> invalid then stop
     print "ALL TESTS PASSED"
 end sub
 

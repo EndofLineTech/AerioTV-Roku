@@ -14,7 +14,7 @@ function livePlaybackFailureContext() as dynamic
         activeRadio = radioPresentationActive()
         presentation = m.livePresentationIntent
         if activeRadio then presentation = "radio"
-        return {channel: m.playingChannel, account: m.accountIdentity, useAac: m.activeAudioProfile <> "", mini: m.mini, radio: activeRadio or radioForCurrentTune(), presentation: presentation}
+        return {channel: m.playingChannel, account: m.accountIdentity, userSession: currentUserSessionId(), useAac: m.activeAudioProfile <> "", mini: m.mini, radio: activeRadio or radioForCurrentTune(), presentation: presentation}
     end if
     return invalid
 end function
@@ -63,7 +63,7 @@ sub onPlaybackFailureAction(event as object)
     retry = event.getData() = 0 and context <> invalid
     cancelPlaybackFailure()
     if retry
-        if context.account = m.accountIdentity
+        if context.account = m.accountIdentity and textValue(context.userSession) = currentUserSessionId()
             startPlayback(context.channel, true, context.useAac, false, 0, "", textValue(context.presentation))
             if context.mini and m.playingChannel <> invalid then minimizePlayback()
             return

@@ -27,6 +27,13 @@ sub main()
     if m.starts <> 0 then stop
 
     resetFailure()
+    m.playbackRetry.userSession = "session-old"
+    m.global = {activeusersession: "session-new"}
+    onPlaybackFailureAction(failureEvent(m.playbackFailureDialog, 0))
+    if m.starts <> 0 then stop
+    m.global = invalid
+
+    resetFailure()
     onPlaybackFailureAction(failureEvent(failureDialog(9), 0))
     if m.starts <> 0 or m.playbackRetry = invalid then stop
     onPlaybackFailureClosed(failureEvent(m.playbackFailureDialog, invalid))

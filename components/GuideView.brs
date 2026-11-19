@@ -257,7 +257,7 @@ sub completeEpgLaunch()
 end sub
 
 sub suspendGuide()
-    m.radioGuideOkUuid = ""
+    m.guideTuneOkUuid = ""
     m.primaryNavigation.active = false
     cancelGuideHold()
     if m.tmdbTask <> invalid
@@ -1443,10 +1443,10 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     if handleGuideHeldKey(key, press) then return true
-    if key = "OK" and textValue(m.radioGuideOkUuid) <> ""
+    if key = "OK" and textValue(m.guideTuneOkUuid) <> ""
         if not press
-            uuid = m.radioGuideOkUuid
-            m.radioGuideOkUuid = ""
+            uuid = m.guideTuneOkUuid
+            m.guideTuneOkUuid = ""
             if m.picker = invalid and m.filtered.count() > 0 and guideRemoteAction("okShort") = "activateSelection"
                 if m.filtered[m.selected].uuid = uuid then handleGuideMappedKey("OK")
             end if
@@ -1454,7 +1454,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     if not press then return false
-    m.radioGuideOkUuid = ""
+    m.guideTuneOkUuid = ""
     if m.picker <> invalid
         if key = "back" or key = "options"
             closePicker()
@@ -1485,11 +1485,11 @@ function onKeyEvent(key as string, press as boolean) as boolean
         return true
     end if
     if m.filtered.count() = 0 then return true
-    ' The guide knows this OK would open a second OK-driven screen. Commit
-    ' only on release so the held gesture cannot select Watch Video there.
+    ' A live tune can become Radio Mode when channel detail arrives. Keep
+    ' ownership through release so this OK cannot operate the next screen.
     if key = "OK" and guideRemoteAction("okShort") = "activateSelection"
-        if guideSelectionOpensRadio() and guideSelectionIsLive()
-            m.radioGuideOkUuid = m.filtered[m.selected].uuid
+        if guideSelectionIsLive()
+            m.guideTuneOkUuid = m.filtered[m.selected].uuid
             return true
         end if
     end if

@@ -29,12 +29,30 @@ end function
 sub captureLiveRadioDetail()
     declared = channelRadioDetail(m.playingChannel, m.channelFacts)
     if declared = invalid then return
-    if m.playingChannel.isRadio = declared then return
-    channel = {}
-    channel.append(m.playingChannel)
-    channel.isRadio = declared
-    m.playingChannel = channel
+    if m.playingChannel.verifiedRadioDetail = declared then return
+    m.playingChannel = liveChannelWithRadioDetail(m.playingChannel, declared)
 end sub
+
+function liveChannelWithRadioDetail(source as object, declared as boolean) as object
+    channel = {}
+    channel.append(source)
+    channel.isRadio = declared
+    channel.verifiedRadioDetail = declared
+    return channel
+end function
+
+function refreshedActiveLiveChannel(channel as object) as object
+    detail = channelRadioDetail(channel, m.channelFacts)
+    if detail = invalid and m.liveSession <> invalid and m.playingChannel <> invalid
+        if m.liveSession.state <> "stopped" and m.liveSession.account = m.accountIdentity and m.liveSession.aeriosession = currentUserSessionId()
+            if m.liveSession.item = channel.uuid and m.playingChannel.uuid = channel.uuid and m.playingChannel.id = channel.id
+                detail = m.playingChannel.verifiedRadioDetail
+            end if
+        end if
+    end if
+    if detail = invalid then return channel
+    return liveChannelWithRadioDetail(channel, detail)
+end function
 
 sub applyLivePresentation()
     if m.radioPanel = invalid or m.page <> "player" or m.mini or not radioForCurrentTune() then return

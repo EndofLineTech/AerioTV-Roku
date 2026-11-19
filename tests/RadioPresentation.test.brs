@@ -143,6 +143,20 @@ sub checkRadioRefreshAndRetry()
     assertEqual(m.guide.channelFacts.count(), 0, "failed authority refresh does not preserve global channel facts")
     assertEqual(m.radioPanel.visible, true, "existing radio screen survives transient capability loss")
     assertEqual(radioForCurrentTune(), true, "verified radio identity survives loss for the active reader")
+    m.liveSession = mediaSession(m.accountIdentity, "active-reader", "live", "a", uiNow())
+    m.global = {activeusersession: "session-a"}
+    m.liveSession.aeriosession = currentUserSessionId()
+    m.connectionStore = {entries: [{id: "provider", provider: "dispatcharr", authMode: "x-api-key", profileId: "lineup"}]}
+    m.selectedConnectionId = "provider"
+    m.serverAccountId = "account"
+    m.miniCaption = {}
+    m.browser.callFunc = sub(name as string)
+    end sub
+    refreshed = normalizeChannel({id: 4, uuid: "a", name: "Refreshed station"})
+    refreshFixtureLineup(refreshed)
+    assertEqual(m.playingChannel.name, "Refreshed station", "accepts new lineup metadata")
+    assertEqual(channelDeclaredRadio(m.playingChannel, {}), true, "lean lineup does not erase the detail-only declaration")
+    assertEqual(refreshed.isRadio, false, "active declaration does not mutate the lineup data")
     context = livePlaybackFailureContext()
     assertEqual(context.radio, true, "interruption is a radio terminal failure")
     assertEqual(context.presentation, "radio", "explicit retry reopens the active presentation")
@@ -153,6 +167,10 @@ sub checkRadioRefreshAndRetry()
     assertEqual(context.radio, false, "Watch Video uses normal failure presentation")
     assertEqual(context.presentation, "video", "retry preserves explicit Watch Video")
     assertEqual(channelDeclaredRadio(context.channel, {}), true, "Watch Video does not enable picture recovery for a declared station")
+    m.sourceWatch.control = "start"
+    recoverFrozenPicture()
+    assertEqual(m.recoveryTask, invalid, "picture guard leaves a declared station's reader alone")
+    assertEqual(m.sourceWatch.control, "start", "guard returns before starting recovery")
 
     m.capabilityTask = fixtureCapabilityTask()
     facts = normalizeChannelCapabilities([{id: 4, uuid: "a", effective_is_radio: false}])
@@ -161,6 +179,25 @@ sub checkRadioRefreshAndRetry()
     onCapabilities(fixtureCapabilityEvent(m.capabilityTask, {ok: false}))
     context = livePlaybackFailureContext()
     assertEqual(channelDeclaredRadio(context.channel, {}), false, "an explicit verified false is not treated as missing facts")
+    refreshFixtureLineup(normalizeChannel({id: 4, uuid: "a", name: "Video station", is_radio: true}))
+    assertEqual(channelDeclaredRadio(m.playingChannel, {}), false, "matching effective detail still outranks the summary")
+    refreshFixtureLineup(normalizeChannel({id: 5, uuid: "a", name: "Different channel ID", is_radio: true}))
+    assertEqual(channelDeclaredRadio(m.playingChannel, {}), true, "does not copy a declaration to a different ID using the same UUID")
+    assertEqual(m.playingChannel.verifiedRadioDetail, invalid, "reused UUID has no inherited verification")
+    m.channelFacts = normalizeChannelCapabilities([{id: 5, uuid: "a", effective_is_radio: true}])
+    captureLiveRadioDetail()
+    m.channelFacts = {}
+    m.global.activeusersession = "session-b"
+    refreshFixtureLineup(normalizeChannel({id: 5, uuid: "a", name: "Different session"}))
+    assertEqual(channelDeclaredRadio(m.playingChannel, {}), false, "new session cannot inherit the previous session's declaration")
+    resetRadioFixture()
+end sub
+
+sub refreshFixtureLineup(channel as object)
+    m.refreshTask = fixtureCapabilityTask()
+    tagTaskForCurrentUser(m.refreshTask)
+    result = {ok: true, accountId: m.serverAccountId, authModeUsed: "x-api-key", channels: [channel]}
+    onLineupRefresh(fixtureCapabilityEvent(m.refreshTask, result))
 end sub
 
 function fixtureCapabilityTask() as object
@@ -184,6 +221,8 @@ sub resetRadioFixture()
         return true
     end function
     m.top = {dialog: invalid}
+    m.global = invalid
+    m.liveSession = invalid
     m.radioPanel = {visible: false}
     m.radioStatus = {}
     m.radioHelp = {}
@@ -193,12 +232,13 @@ sub resetRadioFixture()
     m.accountIdentity = "account"
     m.page = "player"
     m.playingChannel = {id: "4", uuid: "a", name: "Station"}
-    m.video = {state: "playing", control: "play", content: {programId: "a"}, visible: true, alwaysShowVideoPlanes: true, suppressCaptions: false, setFocus: focus}
+    m.video = {state: "playing", control: "play", content: {programId: "a"}, visible: true, alwaysShowVideoPlanes: true, suppressCaptions: false, pauseBufferOverflow: false, setFocus: focus}
     m.playerInput = {setFocus: focus}
     m.pictureCover = {visible: false}
     m.guide = {active: false, selectedUuid: "a"}
     m.guide.callFunc = function(name as string, channel = invalid as dynamic, now = 0 as integer) as object
         if name = "playerBrowserData" then return {channels: []}
+        if name = "applyRefreshedLineup" then return {}
         return {channelUuid: channel.uuid, status: "ready", programs: []}
     end function
     m.accountPreferences = {recent: []}

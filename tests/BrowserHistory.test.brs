@@ -20,7 +20,9 @@ sub main()
     check(not onKeyEvent("options", true) and m.top.active, "fullscreen Star remains Roku-owned")
     check(m.top.historyRequest = invalid, "Star does not request app management")
     check(onKeyEvent("up", true) and m.selected = 0, "Up still browses channels")
-    check(onKeyEvent("OK", true) and m.top.channelSelected.uuid = "a", "OK still tunes from channel focus")
+    check(onKeyEvent("OK", true) and m.top.channelSelected = invalid and m.top.active, "Recently Watched keeps focus on OK-down")
+    check(onKeyEvent("OK", true) and m.top.channelSelected = invalid, "held repeat cannot tune")
+    check(onKeyEvent("OK", false) and m.top.channelSelected.uuid = "a" and userViewSession(m.top.channelSelected) = "session-a", "release tunes the selected recent channel")
     check(onKeyEvent("down", true) and m.selected = 1, "Down still browses channels")
     m.top.channelSelected = invalid
     check(onKeyEvent("right", true) and m.focus = "history" and m.selected = 1, "Right focuses the history button without moving the channel cursor")
@@ -57,6 +59,17 @@ sub main()
     check(onKeyEvent("left", true) and m.focus = "groups" and m.groupsOpen, "regular browser still opens groups")
     check(onKeyEvent("right", true) and m.focus = "channels", "regular browser Right still returns to channels")
     check(m.top.historyRequest = invalid, "regular browser cannot request history")
+    m.filtered = m.channels
+    m.selected = 0
+    m.top.channelSelected = invalid
+    check(onKeyEvent("OK", true) and m.top.channelSelected = invalid and m.top.active, "Channels keeps focus on OK-down")
+    check(onKeyEvent("OK", true) and m.top.channelSelected = invalid, "held Channels OK does not move focus to the player")
+    check(onKeyEvent("OK", false) and m.top.channelSelected.uuid = "a", "Channels emits once on release")
+    m.top.channelSelected = invalid
+    check(not onKeyEvent("OK", false) and m.top.channelSelected = invalid, "stray release is harmless")
+    onKeyEvent("OK", true)
+    onKeyEvent("down", true)
+    check(not onKeyEvent("OK", false) and m.top.channelSelected = invalid, "moving focus cancels the uncommitted selection")
     print "ALL TESTS PASSED"
 end sub
 

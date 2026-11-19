@@ -1409,6 +1409,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     captureLiveRadioDetail()
     m.livePresentationIntent = presentation
     m.liveSession = mediaSession(m.accountIdentity, CreateObject("roDeviceInfo").getRandomUUID(), "live", channel.uuid, uiNow())
+    m.liveSession.aeriosession = currentUserSessionId()
     if tuneStartedAt > 0 and tuneStartedAt <= uiNow() then m.liveSession.openedAt = tuneStartedAt
     applyVideoLayout()
     m.recordedChannel = ""
@@ -2903,9 +2904,9 @@ sub onLineupRefresh(event as object)
             removedPlaying = true
             stopPlayback()
         else
-            m.playingChannel = current
-            m.guide.playbackChannel = current
-            m.banner.channel = current
+            m.playingChannel = refreshedActiveLiveChannel(current)
+            m.guide.playbackChannel = m.playingChannel
+            m.banner.channel = m.playingChannel
             m.miniCaption.text = current.name
         end if
     end if

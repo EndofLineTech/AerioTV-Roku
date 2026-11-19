@@ -62,11 +62,12 @@ Never mark a provider channel as radio to create a fixture.
    picture after **Watch Video**. Repeat with existing M3U/Xtream fixtures if
    authorized; otherwise record those providers as not tested.
 4. Enter from a scrolled/filtered guide. Test Back and **Stop and return to
-   guide** with the physical remote. Hold OK on a known Radio Mode tune and
-   release; confirm that the gesture tunes but does not also choose **Watch
-   Video**. Open **Channels** and **Recently Watched** from Player options,
-   then close each without tuning; confirm that station information and the
-   radio controls return. Confirm Stop and Back stop audio and restore the
+   guide** with the physical remote. Hold OK on a live tune in the guide and
+   in **Channels** and **Recently Watched**; confirm that release tunes once
+   and never also chooses **Watch Video**, including a station identified as
+   radio only by later channel details. Close Channels and Recently Watched
+   without tuning and confirm that station information and the radio
+   controls return. Confirm Stop and Back stop audio and restore the
    original guide row/time, and a configured sleep timer stops playback from
    Radio Mode. From Radio Mode, select another station that waits for
    mandatory AAC; Back must stop the current station and cancel the pending

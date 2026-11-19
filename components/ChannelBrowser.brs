@@ -19,6 +19,7 @@ sub init()
 end sub
 
 sub configure()
+    m.tuneOkUuid = ""
     m.userSessionId = userViewSession(m.top.model)
     data = m.top.model
     if data = invalid then return
@@ -119,6 +120,7 @@ sub filterList()
 end sub
 
 sub onActive()
+    m.tuneOkUuid = ""
     m.top.visible = m.top.active
     if m.top.active
         draw()
@@ -428,7 +430,20 @@ sub updateTitles()
 end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
-    if not press or not m.top.active then return false
+    if not m.top.active then return false
+    if key = "OK" and textValue(m.tuneOkUuid) <> ""
+        if not press
+            uuid = m.tuneOkUuid
+            m.tuneOkUuid = ""
+            if m.focus = "channels" and m.filtered.count() > 0
+                channel = m.filtered[m.selected]
+                if channel.uuid = uuid then m.top.channelSelected = userViewEvent(channel, m.userSessionId)
+            end if
+        end if
+        return true
+    end if
+    if not press then return false
+    m.tuneOkUuid = ""
     ' Fullscreen Star belongs to Roku even when an app overlay has focus.
     if key = "options" then return false
     if key = "back"
@@ -479,7 +494,8 @@ function onKeyEvent(key as string, press as boolean) as boolean
             m.top.historyRequest = userViewEvent({account: m.historyAccount, uuid: uuid}, m.userSessionId)
             return true
         else if m.filtered.count() > 0
-            m.top.channelSelected = userViewEvent(m.filtered[m.selected], m.userSessionId)
+            ' Keep the channel-selection gesture in the browser through key-up.
+            m.tuneOkUuid = m.filtered[m.selected].uuid
             return true
         end if
     else
