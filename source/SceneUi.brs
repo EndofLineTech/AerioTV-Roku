@@ -212,7 +212,7 @@ sub uiApplyAppearanceTree(node as object)
     if node.hasField("uiTypography")
         for each field in node.uiTypography
             entry = node.uiTypography[field]
-            uiSetFont(node, entry.size, field, entry.secondary, entry.height, entry.surfaceScale)
+            uiSetFont(node, entry.size, field, entry.secondary, entry.height, entry.surfaceScale, entry.maxSize)
         end for
     end if
     for each child in node.getChildren(-1, 0)
@@ -238,19 +238,21 @@ function uiScaledFontSize(base as integer, height as float, secondary as boolean
     return size
 end function
 
-sub uiSetFont(node as object, size as integer, field = "font" as string, secondary = false as boolean, height = 0 as float, surfaceScale = 100 as integer)
+sub uiSetFont(node as object, size as integer, field = "font" as string, secondary = false as boolean, height = 0 as float, surfaceScale = 100 as integer, maxSize = 0 as integer)
     if type(node) <> "roAssociativeArray"
         if not node.hasField("uiTypography") then node.addField("uiTypography", "assocarray", false)
         info = node.uiTypography
         if type(info) <> "roAssociativeArray" then info = {}
-        info[field] = {size: size, secondary: secondary, height: height, surfaceScale: surfaceScale}
+        info[field] = {size: size, secondary: secondary, height: height, surfaceScale: surfaceScale, maxSize: maxSize}
         node.uiTypography = info
         if height = 0 and node.hasField("height") then height = node.height
     else if height = 0 and node.height <> invalid
         height = node.height
     end if
     font = node[field]
-    font.size = uiScaledFontSize(size, height, secondary, uiAppearance(), surfaceScale)
+    resolvedSize = uiScaledFontSize(size, height, secondary, uiAppearance(), surfaceScale)
+    if maxSize > 0 and resolvedSize > maxSize then resolvedSize = maxSize
+    font.size = resolvedSize
     node[field] = font
 end sub
 

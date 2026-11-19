@@ -36,15 +36,22 @@ function uiAuditVodResult(kind as string, operation as string, page as integer, 
     for i = (page - 1) * 20 + 1 to page * 20
         if i > result.total then exit for
         item = uiAuditVodItem(i, kind)
-        if operation = "categories" or operation = "providers" or operation = "versions"
+        if operation = "categories" or operation = "providers"
             item.kind = "category"
             item.value = i.toStr()
             item.title = "Synthetic category " + i.toStr()
             if operation = "providers" then item.title = "Synthetic provider " + i.toStr()
-            if operation = "versions" then item.title = "Synthetic source version " + i.toStr()
-            if i = 2 then item.title = "A deliberately long category or source label that wraps inside its control"
+            if i = 2 then item.title = "A deliberately long category or provider label that wraps inside its control"
             item.year = ""
             item.rating = ""
+        else if operation = "versions"
+            id = i.toStr()
+            sourceName = "Synthetic source " + id
+            if i <= 2
+                id = "123456789012345678" + (i + 7).toStr()
+                sourceName = "A VERY LONG SYNTHETIC SOURCE NAME WITH A SHARED PREFIX AND IDENTICAL DISPLAY NAMES"
+            end if
+            item = {id: id, providerId: "5", uuid: "version-" + id, key: "version:" + id, kind: "version", title: sourceName + " — version " + id, sourceName: sourceName, year: "", rating: "", logoId: "", season: "", episode: ""}
         end if
         result.items.push(item)
     end for

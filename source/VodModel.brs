@@ -149,15 +149,25 @@ function vodPage(payload as dynamic, kind as string, base as string, limit = 20 
     return result
 end function
 
-function vodVisualTile(index as integer, focused as integer, total as integer, compact as boolean) as object
+function vodVisualTile(index as integer, focused as integer, total as integer, compact as boolean, scale = 100 as integer) as object
     row = index \ 5
     first = focused \ 5 - 1
     if first < 0 then first = 0
     lastFirst = (total + 4) \ 5 - 2
     if lastFirst < 0 then lastFirst = 0
     if first > lastFirst then first = lastFirst
-    if compact then return {x: 96 + (index mod 5) * 348, y: 220 + row * 150, visible: index < total}
-    return {x: 96 + (index mod 5) * 348, y: 210 + (row - first) * 380, visible: index < total and row >= first and row < first + 2}
+    top = 210
+    if scale <> 100 then top = 278
+    if compact then
+        if scale = 100 then top = 220
+        return {x: 96 + (index mod 5) * 348, y: top + row * 150, visible: index < total}
+    end if
+    return {x: 96 + (index mod 5) * 348, y: top + (row - first) * vodCatalogTileHeight(scale), visible: index < total and row >= first and row < first + 2}
+end function
+
+function vodCatalogTileHeight(scale as integer) as integer
+    if scale = 100 then return 380
+    return 346 ' Two rows share the space remaining below scaled status.
 end function
 
 function vodTextLayout(scale as integer, primary as dynamic, titleFont as integer, factFont as integer) as object
@@ -174,7 +184,7 @@ function vodTextLayout(scale as integer, primary as dynamic, titleFont as intege
     ' reducing the centered 2:3 artwork only when the text needs its space.
     layout.factHeight = int(factFont * 1.12 + 0.9999)
     if layout.factHeight < 26 then layout.factHeight = 26
-    layout.factY = 380 - layout.factHeight
+    layout.factY = vodCatalogTileHeight(scale) - layout.factHeight
     layout.titleHeight = int(2 * titleFont * 1.12 + 0.9999)
     if layout.titleY + layout.titleHeight > layout.factY then layout.titleY = layout.factY - layout.titleHeight
     if layout.posterHeight + 8 > layout.titleY

@@ -532,6 +532,7 @@ sub drawGuide()
     appearance = uiAppearance()
     badgeFont = uiScaledFontSize(16, geometry.badgeHeight - guideScalePixels(4, geometry.scale), false, appearance, geometry.scale)
     badgeWidthFactor = badgeFont / 16.0
+    if geometry.scale = 100 and badgeWidthFactor < 1.0 then badgeWidthFactor = 1.0
     for i = 0 to m.rows.count() - 1
         row = m.rows[i]
         row.root.translation = [gridX, 306 + i * geometry.rowHeight]
@@ -697,7 +698,6 @@ sub renderCells(row as object, cells as object, selected as boolean, geometry as
             tile.title.translation = [14, geometry.titleY]
             tile.title.height = geometry.titleHeight
             if tile.subtitle <> invalid then tile.subtitle.visible = false
-            tile.time.visible = width > 180
             textWidth = width - 28
             if textWidth < 1 then textWidth = 1
             tile.title.width = textWidth
@@ -726,6 +726,7 @@ sub renderCells(row as object, cells as object, selected as boolean, geometry as
             uiLayoutCutoutCorners(tile.root, tile.corners, cornerBounds, "0x0A1628FF")
             tile.title.text = gapText()
             tile.time.text = ""
+            offset = 0
             if cell.program <> invalid
                 program = cell.program
                 secondary = guideTileSecondary(program, m.settings, width)
@@ -760,7 +761,6 @@ sub renderCells(row as object, cells as object, selected as boolean, geometry as
                 end if
                 tile.time.text = uiTime(program.startsAt) + " - " + uiTime(program.endsAt)
                 flags = programFlagPills(program, m.settings, textWidth, badgeWidthFactor)
-                offset = 0
                 for j = 0 to flags.count() - 1
                     flag = flags[j]
                     if j >= tile.badges.count()
@@ -790,12 +790,6 @@ sub renderCells(row as object, cells as object, selected as boolean, geometry as
                     badge.label.text = flag.label
                     offset = flag.x + flag.width + 8
                 end for
-                remaining = textWidth - offset
-                tile.time.visible = remaining >= 100
-                if remaining >= 100
-                    tile.time.translation = [14 + offset, timeY]
-                    tile.time.width = remaining
-                end if
                 if hasReminder(m.reminders, row.uuid, program.id) then tile.title.text = "REM | " + tile.title.text
             end if
             if tile.displayScale <> geometry.scale or tile.titleFontHeight <> tile.title.height or tile.timeFontHeight <> tile.time.height
@@ -805,6 +799,27 @@ sub renderCells(row as object, cells as object, selected as boolean, geometry as
                 uiSetFont(tile.title, 25, "font", false, tile.title.height, geometry.scale)
                 uiSetFont(tile.time, 20, "font", true, tile.time.height, geometry.scale)
             end if
+            remaining = textWidth - offset
+            showTime = false
+            if tile.time.text <> "" and remaining >= 100
+                ' Measure the whole interval at the actual font, before the
+                ' width constraint. If it will not fit after the flags, the
+                ' full interval remains available in the summary and details.
+                size = tile.time.font.size
+                if tile.measuredTime <> tile.time.text or tile.measuredTimeSize <> size or tile.timeMeasuredWidth <= 0
+                    tile.time.visible = true
+                    tile.time.width = 0
+                    tile.timeMeasuredWidth = tile.time.localBoundingRect().width
+                    tile.measuredTime = tile.time.text
+                    tile.measuredTimeSize = size
+                end if
+                if tile.timeMeasuredWidth > 0 and tile.timeMeasuredWidth + 2 <= remaining
+                    tile.time.translation = [14 + offset, timeY]
+                    tile.time.width = remaining
+                    showTime = true
+                end if
+            end if
+            tile.time.visible = showTime
         end if
     end for
 end sub

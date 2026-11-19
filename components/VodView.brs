@@ -472,14 +472,13 @@ sub drawVod()
     m.status.width = 1728
     m.status.height = 40
     if scale <> 100
-        ' Keep both labels on a dedicated line below the tabs and above the
-        ' first tile. Size-to-fit headings no longer compete with tab pills.
+        ' Keep heading and full-width status on separate lines below the tabs.
+        ' The two-row grid reflows below them without changing D-pad movement.
         m.heading.translation = [96, 143]
         m.heading.width = 680
         m.heading.height = 66
-        m.status.translation = [800, 143]
-        m.status.width = 1024
-        m.status.height = 66
+        m.status.translation = [96, 210]
+        m.status.height = 62
     end if
     uiSetFont(m.heading, headingSize, "font", false, 0, scale)
     uiSetFont(m.status, 24, "font", true, 0, scale)
@@ -507,7 +506,7 @@ sub drawVod()
     if (m.shelf = "related" or m.shelf = "person") and m.failure = "" and textValue(m.discoveryMessage) <> "" then m.status.text = m.discoveryMessage
     for i = 0 to 19
         tile = m.tiles[i]
-        placement = vodVisualTile(i, m.index, m.items.count(), compact)
+        placement = vodVisualTile(i, m.index, m.items.count(), compact, scale)
         tile.root.translation = [placement.x, placement.y]
         tile.root.visible = placement.visible
         tile.border.visible = i < m.items.count()
@@ -635,7 +634,7 @@ sub layoutVodCompactCard(tile as object, scale as integer, sourceVersion as bool
     if sourceVersion then typographyKey += "|" + factFont.toStr()
     if tile.typographyKey <> typographyKey
         uiSetFont(tile.title, titleBase, "font", false, titleHeight, scale)
-        if sourceVersion then uiSetFont(tile.fact, 16, "font", true, factHeight, scale)
+        if sourceVersion then uiSetFont(tile.fact, 16, "font", true, factHeight, scale, factFont)
         tile.typographyKey = typographyKey
     end if
     ' The same production centering path also gives host fixtures final bounds.

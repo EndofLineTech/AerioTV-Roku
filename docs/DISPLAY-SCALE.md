@@ -21,8 +21,8 @@ the active account has a Movies or TV Shows library and can edit its settings.
 **Text size** and **Secondary text size**. Other values multiply those global
 settings for library headings, status, and catalog tiles. The D-pad grid
 keeps its column and page counts; larger text can reduce the poster footprint
-to give titles and captions room. Outside 100%, the heading and status sit
-below the tabs. Source-version cards reserve a separate line for the version
+to give titles and captions room. Outside 100%, the heading and full-width
+status use separate lines below the tabs. Source-version cards reserve a separate line for the version
 ID, so an abbreviated source name does not hide the distinction. The change
 takes effect without restarting.
 It is saved on this Roku, does not change Guide density or player text, and
@@ -52,6 +52,11 @@ Check 90% and 120% at the first and last channels with both global text sizes
 at 120%. Verify the current channel/program stays selected, FF/Rew moves by
 one visible page, the Now marker and program cells stay aligned, and long
 titles, subtitles, channel names, badges, and logos stay within their rows.
+With 12-hour time enabled, check a long airing clipped by the viewport: its
+clock interval should appear only if it fits after the badges, and remain in
+the summary and details even when hidden in the cell. At 100%, enlarged global
+text retains its normal size where it fits; tight cell lanes cap only the font
+that would exceed the existing bounds.
 Check that the 11th Basic logo can load at 90%. Return to 100% and verify all
 three stock row layouts; then relaunch at a nondefault setting and confirm the
 Guide and Movies & TV Shows scales can be changed independently.
@@ -66,6 +71,9 @@ different IDs; both IDs and the focused card should remain distinct. Check
 Continue Watching and related-title headings and the status line at 150% with
 global text sizes at 120%, including switching secondary text between 110%
 and 120%. Return to 100% and verify the stock heading, status, and poster grid.
+The synthetic UI audit offers `library-scale-watchlist` (full empty-state
+status at 150%/120%/120%) and `library-scale-versions` (long source IDs at
+150%/120%/120%). Compare against `library-versions` at all-default sizes.
 Relaunch with a nondefault choice to confirm persistence, and verify the Guide
 and global appearance settings were not changed.
 

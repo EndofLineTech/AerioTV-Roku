@@ -59,20 +59,29 @@ sub testVodDisplayFrames()
     m.pageNumber = 1
     m.kind = "movie"
     m.failure = ""
+    m.query = ""
+    m.category = ""
+    m.providerId = ""
     for each shelf in ["continue", "related"]
         m.shelf = shelf
         drawVod()
         if m.heading.translation[1] < 141 or m.heading.height + m.heading.translation[1] > 210 then stop
-        if m.heading.width < 600 or m.heading.translation[0] + m.heading.width > m.status.translation[0] then stop
+        if m.heading.width < 600 or m.heading.translation[1] + m.heading.height > m.status.translation[1] then stop
         if shelf = "continue" and m.heading.font.size <> 43 then stop
         if shelf = "related" and m.heading.font.size <> 58 then stop
-        if m.status.translation[1] < 141 or m.status.height + m.status.translation[1] > 210 then stop
+        if m.status.translation[0] <> 96 or m.status.width <> 1728 then stop
+        if m.status.translation[1] + m.status.height > m.tiles[0].root.translation[1] then stop
         if m.status.font.size <> 52 or m.status.font.size * 1.12 > m.status.height then stop
         m.global.appearance.subtextSize = 110
         drawVod()
         if m.status.font.size <> 48 then stop
         m.global.appearance.subtextSize = 120
     end for
+    m.shelf = "watchlist"
+    drawVod()
+    if m.status.text <> "Nothing in To Watch yet. Add a movie or TV show from its details." then stop
+    if m.status.width <> 1728 or m.status.font.size <> 52 then stop
+    if len(m.status.text) * m.status.font.size * 0.51 > m.status.width then stop
     m.shelf = "versions"
     name = "A VERY LONG SOURCE NAME WITH UPPERCASE EXAMPLES AND A SHARED PREFIX FOR BOTH VERSIONS"
     m.items = vodVersionPage([{id: "1234567890123456788", m3u_account: {id: 5, name: name}}, {id: "1234567890123456789", m3u_account: {id: 5, name: name}}], 1).items
@@ -94,7 +103,10 @@ sub testVodDisplayFrames()
         if m.tiles[0].border.color = m.tiles[1].border.color then stop
     end for
     m.global.appearance.vodDisplayScale = 100
+    m.global.appearance.textSize = 100
+    m.global.appearance.subtextSize = 100
     drawVod()
+    if m.tiles[0].fact.font.size <> 13 or m.tiles[0].fact.font.size * 1.12 > m.tiles[0].fact.height then stop
     if m.heading.translation[0] <> 96 or m.heading.translation[1] <> 91 or m.heading.width <> 280 or m.heading.height <> 55 then stop
     if m.status.translation[0] <> 96 or m.status.translation[1] <> 154 or m.status.width <> 1728 or m.status.height <> 40 then stop
     m.shelf = "categories"

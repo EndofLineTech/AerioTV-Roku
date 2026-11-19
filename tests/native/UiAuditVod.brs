@@ -11,7 +11,7 @@ sub seedUiAuditVod(scenario as string)
     cancelVod()
     m.shelf = "catalog"
     for each shelf in ["favorite", "watchlist", "continue", "recent", "hidden", "categories", "providers", "versions"]
-        if scenario = "library-" + shelf then m.shelf = shelf
+        if scenario = "library-" + shelf or scenario = "library-scale-" + shelf then m.shelf = shelf
     end for
     if scenario = "library-xtream" then m.shelf = "categories"
     if m.shelf = "versions" then m.versionItem = {id: "1"}

@@ -120,7 +120,7 @@ for (const suite of suites) {
     ...(suite === 'UserProfileSwitch' ? ['source/UserProfileStartupSelection.brs', 'source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncRoster.brs', 'source/DispatcharrSyncMerge.brs'] : []),
     ...(suite === 'UserProfilePicker' ? ['source/UserProfilePicker.brs', 'source/UserProfilePickerInput.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'PillListItem' ? ['components/AerioPillListItem.brs'] : []),
-    ...(suite === 'GuideEmptyState' ? ['components/GuideView.brs'] : []),
+    ...(suite === 'GuideEmptyState' ? ['components/GuideView.brs', 'components/GuideSettings.brs'] : []),
     ...(suite === 'UiAuditLibraryData' ? ['tests/native/UiAuditLibraryData.brs', 'tests/native/UiAuditGuideData.brs'] : []),
     ...(suite === 'UiAuditFixtureTask' ? ['tests/native/UiAuditLibraryData.brs', 'tests/native/UiAuditFixtureTask.brs'] : []),
     ...(suite === 'PhoneSetupModel' ? ['source/PhoneSetupModel.brs'] : []),

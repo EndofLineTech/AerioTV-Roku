@@ -59,12 +59,18 @@ sub showUiAudit()
     name = m.top.auditScreen
     m.devicePreferences = normalizeDevicePreferences({})
     if left(name, 6) = "large-" then m.devicePreferences.textSize = 120
+    if name = "library-scale-watchlist" or name = "library-scale-versions"
+        m.devicePreferences.textSize = 120
+        m.devicePreferences.subtextSize = 120
+        m.devicePreferences["vodDisplayScale"] = 150
+    end if
     if left(name, 6) = "light-" then m.devicePreferences.appearanceMode = "light"
     if instr(1, name, "guide-appearance-oled") > 0 or name = "live-browser-appearance" then m.devicePreferences.trueBlack = true
     m.global.appearance = m.devicePreferences
     scenario = name
     if left(name, 6) = "large-" or left(name, 6) = "light-" then scenario = mid(name, 7)
     m.global.uiAuditLibraryCase = scenario
+    if scenario = "library-scale-watchlist" then m.global.uiAuditLibraryCase = "library-watchlist-empty"
     if left(scenario, 6) = "popup-"
         m.page = "fixture"
         m.accountIdentity = "ui-audit"
