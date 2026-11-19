@@ -71,6 +71,7 @@ sub checkPhoneReopenAfterPinAdmission()
     end function, read: function(key as string) as string
         if key = "userProfilesV1_old" then return FormatJson(m.store)
         if key = "connKey_old" then return m.key
+        if key = m.ownKeyName then return textValue(m.ownKey)
         return ""
     end function}
     scope = userProfileSessionScope(entry, profile.id, 7, "current", "00000000-0000-4000-8000-000000000002")
@@ -90,8 +91,9 @@ sub checkPhoneReopenAfterPinAdmission()
     m.phoneTestBrokerPermit = true
     m.registry.store.profiles[0].pinHash = "2345678901234567890123456789012345678901234567890123456789012345"
     m.phonePending = invalid
+    m.phoneSetup.phase = "Connecting to your server"
     acceptPhoneSetupPayload({})
-    check(m.phonePending = invalid and m.phoneSetup.retryAvailable <> true, "new PIN after QR prevents accepting a payload")
+    check(m.phonePending = invalid and m.phoneSetup.retryAvailable = false and instr(1, m.phoneSetup.phase, "Reopen phone setup") > 0, "new PIN after QR ends the attempt with actionable reopen guidance")
     m.phonePending = {entry: {id: "new"}}
     m.phoneResult = {apiKey: "replacement"}
     commitPhoneSetup("replace")
@@ -106,6 +108,40 @@ sub checkPhoneReopenAfterPinAdmission()
     m.registry.store.profiles[0].pinHash = "2345678901234567890123456789012345678901234567890123456789012345"
     openPhoneSetup()
     check(not m.phoneSetup.active, "changed saved PIN cannot reuse phone setup admission")
+    checkPhoneImportFencedActor(entry, profile, scope)
+end sub
+
+sub checkPhoneImportFencedActor(entry as object, profile as object, scope as object)
+    saved = defaultUserProfileStore(entry.id)
+    saved.active = profile.id
+    saved.profiles = [profile]
+    originalKey = m.apiKey
+    m.phoneResult = {apiKey: "new-default-key"}
+    m.registry.key = m.phoneResult.apiKey
+    context = {commitActor: scope, commitActorConnection: entry, commitActorKey: originalKey, replacedActorDefaultKey: true}
+    check(phoneSetupFencedActorCredentialCurrent(context, saved), "phase two can rely on the exact default credential intentionally replaced by this import")
+    m.registry.key = "different-key"
+    check(not phoneSetupFencedActorCredentialCurrent(context, saved), "default exception requires the exact key written by this import")
+    m.registry.key = m.phoneResult.apiKey
+    holder = userProfileFromVerified(entry.id, "00000000-0000-4000-8000-000000000009", {id: 9, username: "Other", user_level: 1}, 1)
+    holder.isDefault = false
+    saved.profiles.push(holder)
+    saved.active = holder.id
+    context.commitActor = userProfileSessionScope(entry, holder.id, 9, "current", scope.sessionId)
+    m.registry.ownKeyName = userProfileKeyName(entry.id, holder.id)
+    m.registry.ownKey = originalKey
+    check(phoneSetupFencedActorCredentialCurrent(context, saved), "same-slot nondefault holder uses its current own key")
+    m.registry.ownKey = ""
+    check(not phoneSetupFencedActorCredentialCurrent(context, saved), "same-slot nondefault holder cannot bypass a missing own key")
+    saved.active = profile.id
+    context.commitActor = scope
+    entry.remember = false
+    m.profileSessionKeys = {}
+    bucket = preferenceScope(entry.url + "|" + entry.id + "|" + profile.id)
+    m.profileSessionKeys[bucket] = originalKey
+    check(phoneSetupFencedActorCredentialCurrent(context, saved), "same-slot session holder uses its current own lease")
+    m.profileSessionKeys.delete(bucket)
+    check(not phoneSetupFencedActorCredentialCurrent(context, saved), "same-slot default with a retired session lease cannot use the replacement exception")
 end sub
 
 function requestGateAccessAllowed(url as string, key as string) as boolean

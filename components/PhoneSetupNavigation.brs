@@ -47,14 +47,7 @@ function phoneSetupSelectedProfileGate() as object
         if profile.id = m.userProfileStore.active and profile.id = scope.profileId
             if not userProfileFullAccess(profile.role) or profile.addressHeld = true or profile.userId.toStr() <> scope.accountId then return gate
             if not userProfilePinGrantMatches(admission.pin, entry.id, profile) then return gate
-            memory = {}
-            if not entry.remember and type(m.profileSessionKeys) = "roAssociativeArray"
-                bucket = preferenceScope(entry.url + "|" + entry.id + "|" + profile.id)
-                keyName = userProfileKeyName(entry.id, profile.id)
-                if profile.isDefault then keyName = connectionRegistryKey(entry.id)
-                if m.profileSessionKeys.doesExist(bucket) then memory[keyName] = m.profileSessionKeys[bucket]
-            end if
-            credential = userProfileCredential(m.registry, entry, m.userProfileStore, memory)
+            credential = phoneSetupOwnCredential(entry, m.userProfileStore, profile)
             if credential.ok and credential.profileId = scope.profileId and credential.key = m.apiKey and requestGateAccessAllowed(entry.url, credential.key)
                 return {allowed: true, reason: ""}
             end if
@@ -63,8 +56,41 @@ function phoneSetupSelectedProfileGate() as object
     return gate
 end function
 
+function phoneSetupOwnCredential(entry as object, store as object, profile as object) as object
+    memory = {}
+    if entry.remember <> true and type(m.profileSessionKeys) = "roAssociativeArray"
+        bucket = preferenceScope(entry.url + "|" + entry.id + "|" + profile.id)
+        keyName = userProfileKeyName(entry.id, profile.id)
+        if profile.isDefault then keyName = connectionRegistryKey(entry.id)
+        if m.profileSessionKeys.doesExist(bucket) then memory[keyName] = m.profileSessionKeys[bucket]
+    end if
+    return userProfileCredential(m.registry, entry, store, memory)
+end function
+
+' The fenced slot cannot use the ordinary loader until phase two. Its caller
+' separately verifies the original roster digest and exact import journal.
+function phoneSetupFencedActorCredentialCurrent(context as object, originalStore as object) as boolean
+    scope = context.commitActor
+    entry = context.commitActorConnection
+    if type(scope) <> "roAssociativeArray" or type(entry) <> "roAssociativeArray" then return false
+    if originalStore.active <> scope.profileId or entry.id <> scope.playlistId then return false
+    if textValue(m.apiKey) = "" or m.apiKey <> context.commitActorKey then return false
+    for each profile in originalStore.profiles
+        if profile.id = scope.profileId
+            if not userProfileFullAccess(profile.role) or profile.addressHeld = true or profile.userId.toStr() <> scope.accountId then return false
+            ' Only the persistent default slot key can be overwritten by flush one.
+            if context.replacedActorDefaultKey = true and profile.isDefault and entry.remember = true
+                writtenKey = textValue(m.phoneResult.apiKey)
+                return writtenKey <> "" and writtenKey <> context.commitActorKey and m.registry.read(connectionRegistryKey(entry.id)) = writtenKey
+            end if
+            own = phoneSetupOwnCredential(entry, originalStore, profile)
+            return own.ok and own.profileId = scope.profileId and own.key = m.apiKey
+        end if
+    end for
+    return false
+end function
+
 sub onPhoneSetupPayload(event as object)
-    if userProfileGateClosed() then return
     if not m.phoneSetup.isSameNode(event.getRoSGNode()) then return
     payload = event.getData()
     m.phoneSetup.payload = invalid
@@ -72,9 +98,13 @@ sub onPhoneSetupPayload(event as object)
 end sub
 
 sub acceptPhoneSetupPayload(payload as object)
-    if not userProfileConnectionSetupAllowed() then return
     if m.page <> "phoneSetup" or not m.phoneSetup.active then return
-    if not phoneSetupSelectedProfileGate().allowed then return
+    if not userProfileConnectionSetupAllowed() or not phoneSetupSelectedProfileGate().allowed
+        m.phonePending = invalid
+        failPhoneSetup("Profile access changed. Reopen phone setup to try again.")
+        m.phoneSetup.retryAvailable = false
+        return
+    end if
     digest = ""
     if payload.playlist.type = "m3u" then digest = metadataCacheDigest("m3u|" + phoneSetupFeedIdentity(payload.playlist.url))
     profilesReady = m.profilePhoneImportReady = true and payload.playlist.type = "dispatcharr"

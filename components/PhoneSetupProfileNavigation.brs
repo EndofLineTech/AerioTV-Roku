@@ -121,6 +121,22 @@ sub startPhoneProfileCommit(staged as object)
     if not phoneSetupCommitAdmissionCurrent() then failPhoneProfileImport("Profile access changed. Reopen phone setup to try again.") : return
     context.commitActor = m.activeUserScope
     context.commitActorUrl = m.baseUrl
+    context.commitActorKey = textValue(m.apiKey)
+    if context.commitActor <> invalid and context.commitActor.playlistId = entry.id
+        originalEntry = connectionStoreEntry(m.connectionStore, entry.id)
+        if originalEntry = invalid then failPhoneProfileImport("Saved profile access changed.") : return
+        context.commitActorConnection = originalEntry
+        for each holder in previous.profiles
+            if holder.id = previous.active and holder.id = context.commitActor.profileId and holder.isDefault and originalEntry.remember = true and entry.remember = true
+                originalKey = phoneSetupOwnCredential(originalEntry, previous, holder)
+                context.replacedActorDefaultKey = originalKey.ok and originalKey.profileId = holder.id and originalKey.key = context.commitActorKey and originalKey.key <> textValue(m.phoneResult.apiKey)
+            end if
+        end for
+        if context.replacedActorDefaultKey <> true and not phoneSetupFencedActorCredentialCurrent(context, previous)
+            failPhoneProfileImport("Saved profile access changed.")
+            return
+        end if
+    end if
     saved = phoneSetupCommitFencedConnection(m.registry, m.connectionStore, staged, textValue(m.phoneResult.apiKey), context.nonce)
     if not saved.ok
         if saved.recoveryRequired = true then m.phoneRecoveryRequired = true
@@ -164,7 +180,9 @@ sub finishPhoneProfileCommit()
             failPhoneProfileImport("Profile access changed. Reopen phone setup to try again.")
             return
         end if
-        if context.commitActor.playlistId <> entry.id
+        if context.commitActor.playlistId = entry.id
+            if not phoneSetupFencedActorCredentialCurrent(context, context.previous) then failPhoneProfileImport("Saved profile access changed.") : return
+        else
             if not phoneSetupCommitAdmissionCurrent() then failPhoneProfileImport("Profile access changed. Reopen phone setup to try again.") : return
         end if
     else if m.activeUserScope <> invalid
