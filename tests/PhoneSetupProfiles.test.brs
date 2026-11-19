@@ -88,6 +88,10 @@ sub main()
             m.failNextFlush = false
             return false
         end if
+        if m.trackDurable = true
+            m.durable = {}
+            m.durable.append(m.values)
+        end if
         return true
     end function}
     registry.values["connectionsV1"] = FormatJson({schema: 1, selected: entry.id, entries: [entry]})
@@ -150,25 +154,38 @@ sub checkPhoneSetupRollbackFailure(registry as object, entry as object, proofs a
     originalValues = registry.values
     previous = defaultConnectionStore()
     registry.values = {connectionsV1: FormatJson(previous)}
+    registry.trackDurable = true
+    registry.durable = {}
     staged = {schema: 1, selected: entry.id, entries: [entry]}
     fenced = phoneSetupCommitFencedConnection(registry, previous, staged, proofs.alice.apiKey, nonce)
-    check(fenced.ok, "rollback fixture first commits the real protected slot transaction")
+    journalKey = userProfileImportKey(entry.id)
+    check(fenced.ok and registry.durable[journalKey] = fenced.importRoot, "first Flush durably stores the protected slot and journal")
     m.registry = registry
     m.phoneSetup = {retryAvailable: true}
     m.phoneProfileImport = {nonce: nonce, connection: entry, connectionRoot: registry.read("connectionsV1"), previous: defaultUserProfileStore(entry.id), rows: [], proofs: copyJson(proofs), saved: fenced}
     m.phonePending = {entry: entry}
     m.phoneResult = {apiKey: proofs.alice.apiKey}
     registry.failNextFlush = true
-    registry.failRestoreKey = lcase(userProfileImportKey(entry.id))
+    registry.failRestoreKey = lcase(journalKey)
     before = registry.flushes
     finishPhoneProfileCommit()
-    check(registry.flushes = before + 2 and not registry.exists(registry.failRestoreKey), "the actual phase-two Flush failed and only the journal restoration write failed; flushes=" + (registry.flushes - before).toStr() + "; journal=" + registry.exists(registry.failRestoreKey).toStr())
+    check(not registry.exists(journalKey), "the second transaction removed the staged journal and rollback could not put it back")
+    check(registry.flushes = before + 1, "a failed journal restore must not Flush the incomplete rollback")
     failure = m.phoneFailedImport
     check(failure <> invalid, "the actual phase-two controller retains failed import state after retiring the transient context")
     check(failure.slot = entry.id and failure.root = fenced.importRoot and failure.restartRequired, "the phase-two controller propagates rollback recoveryRequired for the exact failed slot and journal")
     check(m.phoneProfileImport = invalid and m.phonePending = invalid and m.phoneResult = invalid and not m.phoneSetup.retryAvailable, "rollback failure retires credentials and refuses setup retry")
+    lateWrite = m.registry.write("settingsV1", "late-write")
+    lateDelete = m.registry.delete("connectionsV1")
+    lateFlush = m.registry.flush()
+    check(not lateWrite and not lateDelete and not lateFlush and registry.flushes = before + 1, "later Scene registry operations cannot publish the unsafe staged deletion")
+    cold = {values: registry.durable, read: registry.read, exists: registry.exists}
+    check(cold.read(journalKey) = fenced.importRoot and loadUserProfileStore(cold, entry.id).readOnly, "cold load still sees the original durable journal and refuses profile admission")
+    registry.trackDurable = false
     registry.failRestoreKey = invalid
     registry.values = originalValues
+    m.registry = registry
+    m.userProfileRecoveryRequired = false
 end sub
 
 sub checkPhoneSetupRememberOffCommit(registry as object, entry as object, ids as object, rows as object, proofs as object, nonce as string)

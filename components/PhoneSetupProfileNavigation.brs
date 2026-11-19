@@ -19,8 +19,12 @@ sub beginPhoneProfileVerification(payload as object, prepared as object)
             end if
             held = phoneSetupHoldMatchedAddress(m.registry, m.connectionStore, previous.id, prepared.url)
             if not held.ok
-                if held.recoveryRequired = true then m.phoneRecoveryRequired = true
-                failPhoneSetup("Could not safely hold profiles before changing the saved address.")
+                if held.recoveryRequired = true
+                    m.phoneFailedImport = {slot: previous.id, root: "", restartRequired: true}
+                    failPhoneProfileImport("Could not safely hold profiles before changing the saved address.", true)
+                else
+                    failPhoneSetup("Could not safely hold profiles before changing the saved address.")
+                end if
                 return
             end if
             addressEdited = true
@@ -106,6 +110,7 @@ sub failPhoneProfileImport(message as string, restartRequired = false as boolean
             m.phoneFailedImport = {slot: m.phoneProfileImport.connection.id, root: m.phoneProfileImport.saved.importRoot, restartRequired: restartRequired}
         end if
     end if
+    if restartRequired then quarantinePhoneImportRegistry()
     retirePhoneProfileImport()
     m.phonePending = invalid
     failPhoneSetup(message)
@@ -115,6 +120,24 @@ sub failPhoneProfileImport(message as string, restartRequired = false as boolean
         m.phoneSetup.phase = "Profile import is incomplete. The saved playlist remains locked pending recovery."
         if restartRequired then m.phoneSetup.phase = "Profile import could not be restored. Press Back for recovery."
     end if
+end sub
+
+' Staged writes may still be present after a failed rollback. Keep reads
+' available for recovery UI, but never let a later Scene callback flush them.
+sub quarantinePhoneImportRegistry()
+    m.phoneRecoveryRequired = true
+    m.userProfileRecoveryRequired = true
+    m.registry = {source: m.registry, read: function(key as string) as string
+        return m.source.read(key)
+    end function, exists: function(key as string) as boolean
+        return m.source.exists(key)
+    end function, write: function(key as string, value as string) as boolean
+        return false
+    end function, delete: function(key as string) as boolean
+        return false
+    end function, flush: function() as boolean
+        return false
+    end function}
 end sub
 
 ' Commit the verified playlist BEFORE any nondefault password/key attempts.
@@ -151,8 +174,8 @@ sub startPhoneProfileCommit(staged as object)
     end if
     saved = phoneSetupCommitFencedConnection(m.registry, m.connectionStore, staged, textValue(m.phoneResult.apiKey), context.nonce)
     if not saved.ok
-        if saved.recoveryRequired = true then m.phoneRecoveryRequired = true
-        failPhoneProfileImport("Could not save the verified playlist.")
+        if saved.recoveryRequired = true then m.phoneFailedImport = {slot: entry.id, root: "", restartRequired: true}
+        failPhoneProfileImport("Could not save the verified playlist.", saved.recoveryRequired = true)
         return
     end if
     context.saved = saved
@@ -345,6 +368,11 @@ sub onIncompletePhoneImportRecovery(event as object)
     saved = phoneSetupDiscardIncompleteImport(m.registry, context.connections, context.slot, context.root)
     if not saved.ok
         m.phoneImportRecoveryFailure = saved.reason
+        if saved.recoveryRequired = true
+            quarantinePhoneImportRegistry()
+            coverProfileManagementRecovery("Phone setup storage needs recovery. Restart AerioTV before using saved connections.")
+            return
+        end if
         m.top.findNode("profileGateMessage").text = "Could not recover incomplete setup. The playlist remains locked. Back exits AerioTV."
         return
     end if

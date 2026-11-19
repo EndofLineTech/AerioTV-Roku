@@ -434,7 +434,8 @@ function userProfileRegistryTransaction(registry as object, changes as object) a
             restored = registry.delete(name) and restored
         end if
     end for
-    restored = registry.flush() and restored
+    ' Never publish a partially restored set of staged registry changes.
+    if restored then restored = registry.flush()
     failure.recoveryRequired = not restored
     return failure
 end function
