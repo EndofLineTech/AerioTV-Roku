@@ -197,9 +197,19 @@ sub finishScheduledProfileSync(result as dynamic)
         saved = commitDispatcharrSyncRosterRead(m.registry, context.connection, context.store, result, m.activeUserScope, m.apiKey, memory, m.profileAuthorizationSignature, true, CreateObject("roDateTime").asSeconds())
         if saved.readCommitted <> true then saved.ok = false
     end if
-    creationBlocked = currentScheduledProfileSyncCreationRefusal(context, result, memory)
     outcome = textValue(result.state)
-    if result.creationBlocked = true and not creationBlocked then outcome = "stale-context"
+    creationBlocked = false
+    if result.creationBlocked = true
+        creationBlocked = result.state = "storage-full" and result.status = 409 and currentScheduledProfileSyncFeedbackStore(context, result, memory) <> invalid
+        if not creationBlocked then outcome = "stale-context"
+    else if result.state = "too-large" and result.submitted = true
+        ' A normal edit can land after the Task's check, before this callback.
+        current = currentScheduledProfileSyncFeedbackStore(context, result, memory)
+        outcome = "stale-context"
+        if current <> invalid and result.status = 413 and result.rosterIntent <> "" and result.rosterIntent = context.ticket.intent
+            if dispatcharrSyncRosterIntentDigest(current) = result.rosterIntent then outcome = "too-large"
+        end if
+    end if
     m.profileSyncSchedule = dispatcharrSyncScheduleComplete(m.profileSyncSchedule, context.ticket, saved.ok = true, profileSyncSchedulingNow(), outcome, creationBlocked)
     if saved.needsDefaultSwitch = true
         if beginOwnSyncDefaultRetirement(context, result, memory) then return
@@ -231,21 +241,20 @@ end sub
 
 ' Only non-authorizing capacity feedback can outlive a stale roster root. The
 ' current live actor and storage credential must still be the Task's own.
-function currentScheduledProfileSyncCreationRefusal(context as object, result as object, memory as object) as boolean
-    if result.creationBlocked <> true or result.state <> "storage-full" then return false
-    if result.ok <> false or result.submitted <> true or result.status <> 409 or result.phase <> "put" then return false
-    if not userProfileSameSession(result.scope, m.activeUserScope) then return false
-    if result.connectionRoot <> m.registry.read("connectionsV1") then return false
-    if m.apiKey = "" or not requestGateDigestValid(textValue(result.credentialHash)) then return false
-    if result.credentialHash <> requestGateCredentialHash(m.apiKey) then return false
+function currentScheduledProfileSyncFeedbackStore(context as object, result as object, memory as object) as dynamic
+    if result.ok <> false or result.submitted <> true or result.phase <> "put" then return invalid
+    if not userProfileSameSession(result.scope, m.activeUserScope) then return invalid
+    if result.connectionRoot <> m.registry.read("connectionsV1") then return invalid
+    if m.apiKey = "" or not requestGateDigestValid(textValue(result.credentialHash)) then return invalid
+    if result.credentialHash <> requestGateCredentialHash(m.apiKey) then return invalid
     current = loadUserProfileStore(m.registry, context.connection.id)
     credential = userProfileCredential(m.registry, context.connection, current, memory)
-    if not credential.ok or credential.key <> m.apiKey or credential.profileId <> m.activeUserScope.profileId then return false
-    if context.connection.remember and m.registry.read(credential.keyName) <> m.apiKey then return false
+    if not credential.ok or credential.key <> m.apiKey or credential.profileId <> m.activeUserScope.profileId then return invalid
+    if context.connection.remember and m.registry.read(credential.keyName) <> m.apiKey then return invalid
     for each profile in current.profiles
-        if profile.id = credential.profileId then return dispatcharrSyncUserKey(profile.username) = result.canonicalKey
+        if profile.id = credential.profileId and dispatcharrSyncUserKey(profile.username) = result.canonicalKey then return current
     end for
-    return false
+    return invalid
 end function
 
 sub coverScheduledProfileSync()

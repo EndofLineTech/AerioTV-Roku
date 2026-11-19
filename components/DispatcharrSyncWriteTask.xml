@@ -22,6 +22,7 @@
   <script type="text/brightscript" uri="DispatcharrSyncWriteTask.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncKey.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncPolicy.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncSchedule.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncRoster.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncEnvelope.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncMerge.brs" />

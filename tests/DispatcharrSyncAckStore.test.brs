@@ -128,6 +128,32 @@ sub main()
     m.registry.values["connKey_slot-a"] = "replacement-own"
     onScheduledProfileSyncResult(syncFlushEvent(task, syncMaxAppsReceipt(task)))
     check(not m.profileSyncSchedule.creationBlocked and m.profileSyncSchedule.pause <> "storage-full" and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "Scene does not apply old credential capacity feedback after saved credential replacement")
+    for each change in ["launch-choice", "roster-edit"]
+        syncScheduledFixture()
+        onProfileSyncScheduleTick()
+        onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, syncFlushReadReceipt({rows: []})))
+        m.syncTestNow = 101
+        onProfileSyncScheduleTick()
+        task = m.profileScheduledSyncTask
+        current = loadUserProfileStore(m.registry, "slot-a")
+        feedback = syncMaxAppsReceipt(task)
+        feedback.state = "too-large"
+        feedback.status = 413
+        feedback.creationBlocked = false
+        feedback.rosterIntent = dispatcharrSyncRosterIntentDigest(current)
+        changed = setCanonicalPreference(current, "askAtLaunch", not current.askAtLaunch)
+        if change = "roster-edit" then changed.profiles[1] = setCanonicalPreference(changed.profiles[1], "displayName", "New roster intent")
+        check(commitUserProfileStore(m.registry, current, changed, {}, true).ok and task.storeRoot <> m.registry.read(userProfileStoreKey("slot-a")), "edit advances the exact root while a write is in flight")
+        onScheduledProfileSyncResult(syncFlushEvent(task, feedback))
+        check((m.profileSyncSchedule.pause = "too-large") = (change = "launch-choice"), "without another timer tick, oversize applies only to the current roster intent")
+        check(loadUserProfileStore(m.registry, "slot-a").pendingRoster and not m.registry.exists(userProfileSyncAckKey("slot-a")), "typed oversize does not acknowledge the changed durable root")
+        m.syncTestNow = 102
+        onProfileSyncScheduleTick()
+        m.syncTestNow = 1001
+        onProfileSyncScheduleTick()
+        check(m.profileScheduledSyncTask <> invalid and m.profileScheduledSyncTask.pullOnly = (change = "launch-choice"), "unchanged intent refreshes read-only; a changed roster can retry")
+        closeScheduledProfileSync()
+    end for
     syncScheduledFixture()
     onProfileSyncScheduleTick()
     onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, syncFlushReadReceipt({rows: []})))

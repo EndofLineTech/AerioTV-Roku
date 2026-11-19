@@ -48,6 +48,17 @@ sub main()
             check(m.top.result.state <> "storage-full" and m.top.result.creationBlocked <> true, "no account-level capacity evidence survives " + change)
         end if
     end for
+    for each change in ["launch-choice", "roster-edit", "credential-change", "retired-session", "untyped-conflict"]
+        syncWriterFixture("too-large")
+        m.duringPut = change
+        writeDispatcharrSync()
+        check(m.calls.count() = 4 and m.top.result.ok = false and m.top.result.submitted, "an oversize response never acknowledges a submitted write")
+        if change = "launch-choice"
+            check(m.top.result.state = "too-large" and m.top.result.rosterIntent <> invalid and userProfileSameSession(m.top.result.scope, m.top.userScope), "changing Ask at Launch during PUT retains typed oversize for the same own roster intent")
+        else
+            check(m.top.result.state <> "too-large", "typed oversize feedback cannot survive " + change)
+        end if
+    end for
     print "ALL TESTS PASSED"
 end sub
 
@@ -99,6 +110,7 @@ function requestGateTaskSessionCurrent() as boolean
 end function
 
 function requestGateCredentialHash(key as string) as string
+    if left(key, 1) = "[" then return len(key).toStr()
     return string(64, "a")
 end function
 
@@ -116,7 +128,11 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
         if m.duringPut <> ""
             rootKey = userProfileStoreKey("slot-a")
             current = loadUserProfileStore(m.syncWriterRegistry, "slot-a")
-            current.profiles[0] = setCanonicalPreference(current.profiles[0], "displayName", "Changed Alice")
+            if m.duringPut = "roster-edit" or m.scenario <> "too-large"
+                current.profiles[0] = setCanonicalPreference(current.profiles[0], "displayName", "Changed Alice")
+            else
+                current = setCanonicalPreference(current, "askAtLaunch", not current.askAtLaunch)
+            end if
             m.syncWriterRegistry.values[rootKey] = FormatJson(current)
             if m.duringPut = "credential-change" then m.syncWriterRegistry.values["connKey_slot-a"] = "replacement-own"
             if m.duringPut = "retired-session" then m.global.activeusersession = "00000000-0000-4000-8000-000000000091"

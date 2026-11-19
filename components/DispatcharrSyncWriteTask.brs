@@ -50,7 +50,8 @@ sub writeDispatcharrSync()
         finishDispatcharrSyncWrite(syncWriterLocalReadReceipt(latest.data, user))
         return
     end if
-    prepared = dispatcharrSyncPrepareProfilesWrite(latest.data, m.writerStore, m.top.profilesEnabled, CreateObject("roDateTime").asSeconds(), m.top.acknowledgedStamp, m.top.deviceId, m.top.appVersion)
+    preparedStore = m.writerStore
+    prepared = dispatcharrSyncPrepareProfilesWrite(latest.data, preparedStore, m.top.profilesEnabled, CreateObject("roDateTime").asSeconds(), m.top.acknowledgedStamp, m.top.deviceId, m.top.appVersion)
     if not prepared.ok
         if type(prepared.localPlan) = "roAssociativeArray"
             finishDispatcharrSyncWrite(syncWriterLocalReadReceipt(latest.data, user))
@@ -70,18 +71,24 @@ sub writeDispatcharrSync()
     end if
     budget = dispatcharrSyncWriteBudget(listing.data, key, prepared.bytes)
     if not budget.ok then finishDispatcharrSyncWrite(budget) : return
+    rosterIntent = dispatcharrSyncRosterIntentDigest(preparedStore)
     response = httpTransferOnce(url, invalid, "", 10000, 65536, "PUT", prepared.body)
     failure = invalid
-    if response.status = 409 then failure = syncWriterResponseFailure("put", response)
-    if failure <> invalid and failure.creationBlocked = true
-        ' A confirmed max_apps applies to the own account, not the submitted
-        ' roster bytes. This failure receipt is never a write acknowledgement.
+    if response.status = 409 or response.status = 413 then failure = syncWriterResponseFailure("put", response)
+    if failure <> invalid and (failure.creationBlocked = true or failure.state = "too-large")
+        ' Capacity is account-scoped; oversize is scoped to the attempted
+        ' wire intent. Neither failure can acknowledge a write.
         if syncWriterAccessCurrent(false)
-            if dispatcharrSyncUserKey(m.writerProfile.username) = key
+            sameIntent = false
+            if failure.state = "too-large" and rosterIntent <> ""
+                sameIntent = dispatcharrSyncRosterIntentDigest(m.writerStore) = rosterIntent
+            end if
+            if dispatcharrSyncUserKey(m.writerProfile.username) = key and (failure.creationBlocked = true or sameIntent)
                 failure.scope = m.top.userScope
                 failure.connectionRoot = m.top.connectionRoot
                 failure.credentialHash = requestGateCredentialHash(m.key)
                 failure.canonicalKey = key
+                if sameIntent then failure.rosterIntent = rosterIntent
                 finishDispatcharrSyncWrite(failure)
                 return
             end if

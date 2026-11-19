@@ -371,7 +371,9 @@ using a new own list at its next regular attempt; it has not received a
 backoff. The absolute body limit and the advertised per-value limit enter the
 same scheduled oversize pause as a typed 413. The pause applies to the attempted
 roster write intent, not a newer wire-relevant edit observed while the Task ran.
-Changing Ask at Launch does not change that intent. Write acknowledgements
+Changing Ask at Launch does not change that intent, including while a submitted
+PUT returns a typed 413. The Task and Scene recheck the current own actor,
+credential and intent before applying that failure. Write acknowledgements
 still require the exact durable root. Scheduled regular
 or explicitly requested pulls remain read-only while that pause is in force,
 and imported metadata does not count as a new local edit that unblocks writing.
