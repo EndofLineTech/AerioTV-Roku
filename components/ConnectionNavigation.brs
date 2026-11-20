@@ -54,6 +54,7 @@ sub applySelectedConnection()
     m.xcUsername = ""
     m.xcPassword = ""
     m.xcTimezone = ""
+    m.xcLiveFormat = ""
     m.selectedProfileName = ""
 end sub
 
@@ -500,6 +501,7 @@ sub resetConnectionRuntime()
     m.xcUsername = ""
     m.xcPassword = ""
     m.xcTimezone = ""
+    m.xcLiveFormat = ""
     m.selectedProfileName = ""
     m.page = "setup"
     m.setupIndex = 0
@@ -595,6 +597,7 @@ sub completeDirectConnection(result as object, entry as object, xcUsername = "" 
     m.xcUsername = xcUsername
     m.xcPassword = xcPassword
     m.xcTimezone = textValue(result.timezone)
+    if entry.provider = "xtream" then m.xcLiveFormat = textValue(result.liveFormat)
     guideUrl = m.guideUrl
     guideBase = urlOrigin(m.baseUrl)
     if entry.provider = "xtream"

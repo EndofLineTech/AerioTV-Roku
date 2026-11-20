@@ -9,17 +9,31 @@ sub main()
     loadXtream()
     if m.top.result.relogin = true or m.top.password <> "" then stop
     m.fakeStatus = 0
+    for each fixture in [{formats: ["m3u8"], expected: "m3u8"}, {formats: ["ts"], expected: "ts"}, {formats: ["m3u8", "ts"], expected: "ts"}]
+        m.formats = fixture.formats
+        m.top = {baseUrl: "https://example.test", username: "viewer", password: "private-test-only", connectionId: "xc-test", cancelRequested: false}
+        loadXtream()
+        if not m.top.result.ok then print "XC advertised format rejected: "; fixture.expected : stop
+        if m.top.result.liveFormat <> fixture.expected or m.top.result.channels[0].streamId <> "12" then print "XC did not publish selected live format and lineup" : stop
+        if not m.top.result.movies then print "XC MOVIES missing" : stop
+        if m.top.result.series then print "XC SERIES unexpected" : stop
+        if m.top.result.timezone <> "UTC" then print "XC ZONE missing" : stop
+        if m.top.password <> "" or m.top.username <> "" then print "XC credentials retained in completed Task" : stop
+        safe = {}
+        safe.append(m.top.result)
+        safe.delete("guideUrl") ' Live XMLTV URL is volatile and necessarily contains XC credentials.
+        if instr(1, FormatJson(safe), "private-test-only") > 0 then print "XC PASSWORD published outside volatile guide URL" : stop
+    end for
+    m.formats = ["mp4"]
     m.top = {baseUrl: "https://example.test", username: "viewer", password: "private-test-only", connectionId: "xc-test", cancelRequested: false}
     loadXtream()
-    if not m.top.result.ok then print "XC SUCCESS missing" : stop
-    if not m.top.result.movies then print "XC MOVIES missing" : stop
-    if m.top.result.series then print "XC SERIES unexpected" : stop
-    if m.top.result.timezone <> "UTC" then print "XC ZONE missing" : stop
-    if m.top.password <> "" then print "XC PASSWORD retained" : stop
-    safe = {}
-    safe.append(m.top.result)
-    safe.delete("guideUrl") ' Live XMLTV URL is volatile and necessarily contains XC credentials.
-    if instr(1, FormatJson(safe), "private-test-only") > 0 then print "XC PASSWORD published outside volatile guide URL" : stop
+    if m.top.result.ok or m.top.password <> "" then print "XC accepted an unsupported live output" : stop
+    m.formats = ["m3u8"]
+    m.cancelOnCatalog = true
+    m.top = {baseUrl: "https://example.test", username: "viewer", password: "private-test-only", connectionId: "xc-test", cancelRequested: false}
+    loadXtream()
+    if not m.top.cancelRequested or m.top.result <> invalid or m.top.password <> "" then print "XC cancelled lineup must not publish" : stop
+    m.cancelOnCatalog = false
     m.denyAction = "get_live_streams"
     m.top = {baseUrl: "https://example.test", username: "viewer", password: "private-test-only", connectionId: "xc-test", cancelRequested: false}
     loadXtream()
@@ -44,8 +58,11 @@ function requestJson(url as string, body = invalid as dynamic, bearer = "" as st
         if instr(1, url, "get_live_categories") > 0 then return [{category_id: 7, category_name: "TV"}]
         if instr(1, url, "get_live_streams") > 0 then return [{stream_id: 12, category_id: "7", name: "Test live"}]
         if instr(1, url, "get_vod_categories") > 0 then return [{category_id: 3, category_name: "Films"}]
-        if instr(1, url, "get_series_categories") > 0 then return []
-        return {user_info: {auth: 1, status: "Active", allowed_output_formats: ["ts"], password: "private-test-only"}, server_info: {timezone: "UTC"}}
+        if instr(1, url, "get_series_categories") > 0
+            if m.cancelOnCatalog = true then m.top.cancelRequested = true
+            return []
+        end if
+        return {user_info: {auth: 1, status: "Active", allowed_output_formats: m.formats, password: "private-test-only"}, server_info: {timezone: "UTC"}}
     end if
     m.httpFailure = httpFailure(m.fakeStatus, {}, 1000)
     m.failure = m.httpFailure.message

@@ -27,7 +27,7 @@ sub main()
     m.preferenceStore = defaultPreferenceStore()
     panelGuide = xtreamGuideUrl(entry.url, "viewer", "fixture-password")
     channels = [{id: "xc-1", uuid: "xc-1", number: "101", tvgId: "Station.alpha", streamId: "1", archiveDays: 7}]
-    result = {channels: channels, groups: [], baseUrl: entry.url, timezone: "UTC", guideUrl: panelGuide, scope: "panel-scope", generation: "lineup", accountId: "xc-account"}
+    result = {channels: channels, groups: [], baseUrl: entry.url, liveFormat: "m3u8", timezone: "UTC", guideUrl: panelGuide, scope: "panel-scope", generation: "lineup", accountId: "xc-account"}
     now = uiNow()
     bucket = preferenceScope(connectionPreferenceIdentity(entry, result.accountId))
     m.preferenceStore.accounts[bucket] = {archiveBookmarks: [
@@ -39,6 +39,8 @@ sub main()
     m.phoneCommittedId = entry.id
     completeDirectConnection(result, m.connectionStore.entries[0], "viewer", "fixture-password")
     config = m.guide.config
+    check(m.xcLiveFormat = "m3u8", "verified Live format applies to the active Xtream session")
+    check(instr(1, FormatJson(m.registry.values), "m3u8") = 0, "Live format stays out of persisted metadata")
     check(config.guideUrl = entry.epgUrl and config.baseUrl = entry.url and config.apiKey = "", "verified guide uses saved override; panel base and auth remain separate")
     check(m.banner.session.baseUrl = urlOrigin(entry.url), "live playback still points at the account origin")
     check(m.guide.catchupPermission = "allowed" and config.preferences.archiveBookmarks.count() = 1 and config.preferences.archiveBookmarks[0].channelUuid = "xc-1" and config.preferences.archiveBookmarks[0].position = 120, "override preserves valid archive progress and prunes missing channels")
@@ -83,6 +85,8 @@ sub main()
     m.guideUrl = m.guide.config.guideUrl
     loadMappings()
     check(m.cacheGeneration = config.generation and m.cacheGeneration <> overrideGeneration, "account guide keeps its own cache identity without hashing credentials")
+    applySelectedConnection()
+    check(m.xcLiveFormat = "" and m.xcPassword = "", "selection clears the previous Xtream Live format and credentials")
     print "ALL TESTS PASSED"
 end sub
 

@@ -66,3 +66,23 @@ credential-bearing archive ZIP was deleted. Restricted-account fixtures,
 provider-specific error/redirect variants, unusual Range/container cases,
 and actual picture/audio remain separate acceptance limitations under the
 appropriate story and `ah5.13`.
+
+## Advertised HLS-only Live (`e3e.24`)
+
+When `player_api.php` advertises `m3u8` but not `ts` in
+`user_info.allowed_output_formats`, the Roku now requests
+`/live/{user}/{pass}/{id}.m3u8` with the HLS reader. An account advertising `ts`
+still uses `.ts` even if it also advertises `m3u8`. The choice is session-only
+and uses the configured Xtream origin, not a lineup URL or an alternate
+LAN/WAN address. There is no format-fallback probe or Dispatcharr HLS mint.
+
+The route distinction is supported by the local source snapshot of
+[Dispatcharr `e8ee959`, Live](https://github.com/Dispatcharr/Dispatcharr/blob/e8ee959f5c21e5c68f4382815e768c84d6755309/apps/proxy/live_proxy/views.py#L1149-L1174)
+and its [completed archive path](https://github.com/Dispatcharr/Dispatcharr/blob/e8ee959f5c21e5c68f4382815e768c84d6755309/apps/timeshift/views.py#L110-L134).
+The Live advertisement does not establish a VOD or archive format. Movies and
+episodes still use the item's supported container, and the existing UTC-only
+completed archive `.ts` route and bounded reopen seek are unchanged.
+
+Host fixtures exercise HLS-only, TS-only and dual-format account responses and
+check the app's reader requests. They do not establish native HLS decoding,
+real HLS-only provider behavior, or a different archive dialect.

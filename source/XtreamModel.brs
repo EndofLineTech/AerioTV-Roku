@@ -6,16 +6,20 @@ function xtreamAccount(payload as dynamic) as object
     info = payload.user_info
     if type(info) <> "roAssociativeArray" then return failed
     if textValue(info.auth) <> "1" or lcase(textValue(info.status)) <> "active" then return failed
-    permitted = false
+    liveFormat = ""
     if type(info.allowed_output_formats) = "roArray"
         for each format in info.allowed_output_formats
-            if format = "ts" then permitted = true
+            if format = "ts"
+                liveFormat = "ts"
+                exit for
+            end if
+            if format = "m3u8" then liveFormat = "m3u8"
         end for
     end if
-    if not permitted then return {ok: false, message: "This Xtream account has no MPEG-TS live output."}
+    if liveFormat = "" then return {ok: false, message: "This Xtream account has no supported MPEG-TS or HLS live output."}
     zone = ""
     if type(payload.server_info) = "roAssociativeArray" then zone = left(textValue(payload.server_info.timezone), 64)
-    return {ok: true, timezone: zone, format: "ts"}
+    return {ok: true, timezone: zone, liveFormat: liveFormat}
 end function
 
 function xtreamCredentialsValid(username as string, password as string) as boolean
@@ -53,11 +57,12 @@ function xtreamGuideUrl(base as string, username as string, password as string) 
     return base + "/xmltv.php?username=" + xtreamEscape(username) + "&password=" + xtreamEscape(password)
 end function
 
-function xtreamLiveUrl(base as string, username as string, password as string, streamId as string) as string
+function xtreamLiveUrl(base as string, username as string, password as string, streamId as string, liveFormat as string) as string
     base = normalizeBaseUrl(base)
     if base = "" or not xtreamCredentialsValid(username, password) then return ""
     if not CreateObject("roRegex", "^[1-9][0-9]{0,9}$", "").isMatch(streamId) then return ""
-    return base + "/live/" + xtreamEscape(username) + "/" + xtreamEscape(password) + "/" + streamId + ".ts"
+    if liveFormat <> "ts" and liveFormat <> "m3u8" then return ""
+    return base + "/live/" + xtreamEscape(username) + "/" + xtreamEscape(password) + "/" + streamId + "." + liveFormat
 end function
 
 function xtreamLiveLineup(rows as dynamic, categories as dynamic, base as string, username as string, password as string) as object

@@ -251,6 +251,7 @@ sub init()
     m.xcUsername = ""
     m.xcPassword = ""
     m.xcTimezone = ""
+    m.xcLiveFormat = ""
     m.remember = false
     m.apiKey = ""
     if selectedConnection <> invalid
@@ -1354,7 +1355,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     directXtream = connection <> invalid and connection.provider = "xtream"
     if directM3u or directXtream
         streamUrl = m3uStreamUrl(textValue(channel.streamUrl))
-        if directXtream then streamUrl = xtreamLiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, textValue(channel.streamId))
+        if directXtream then streamUrl = xtreamLiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, textValue(channel.streamId), textValue(m.xcLiveFormat))
         descriptor = invalid
         if streamUrl <> ""
             descriptor = {url: streamUrl, streamFormat: directLiveStreamFormat(streamUrl), live: true, title: textValue(channel.name), programId: textValue(channel.uuid)}

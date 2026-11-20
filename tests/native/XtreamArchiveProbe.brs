@@ -5,6 +5,7 @@ sub startNativeXtreamArchiveProbe()
     m.xcUsername = __USER__
     m.xcPassword = __PASSWORD__
     m.xcTimezone = "UTC"
+    m.xcLiveFormat = "ts" ' This probe bypasses account verification and exercises TS Go Live.
     m.baseUrl = m.probeBase
     m.apiKey = ""
     m.accountIdentity = "native-archive-probe"
@@ -98,6 +99,7 @@ sub nativeXtreamArchiveDone()
     m.guide.config = invalid
     m.xcUsername = ""
     m.xcPassword = ""
+    m.xcLiveFormat = ""
     m.probeBase = ""
     print "[xc-archive-probe] done"
 end sub

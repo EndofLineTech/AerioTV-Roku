@@ -103,6 +103,7 @@ sub testXtreamSlotArchive()
     m.xcUsername = "viewer"
     m.xcPassword = "fixture"
     m.xcTimezone = "UTC"
+    m.xcLiveFormat = "m3u8" ' Live advertisement must not change the supported completed archive route.
     m.devicePreferences = {archiveSkipSeconds: 60}
     m.mediaPlayer = {
         owner: "media"
@@ -127,6 +128,7 @@ sub testXtreamSlotArchive()
     onArchiveRequested(archiveEvent)
     expected = xtreamArchiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, m.xcTimezone, m.archiveContext.channel, program, uiNow(), 30)
     if m.mediaPlayer.request.url <> expected or m.mediaPlayer.request.programStart <> program.startsAt then stop
+    if right(m.mediaPlayer.request.url, 3) <> ".ts" or m.mediaPlayer.request.streamFormat <> "ts" then stop
 
     ' The first resume minute begins at 0:17 for this :43 airing. Going
     ' Back after six native seconds must not erase the saved 1:03 bookmark.
@@ -165,6 +167,7 @@ sub testXtreamSlotArchive()
     onArchiveSeek(seekEvent)
     expected = xtreamArchiveUrl(m.baseUrl, m.xcUsername, m.xcPassword, m.xcTimezone, m.archiveContext.channel, plan.program, uiNow(), 30)
     if m.mediaPlayer.request.url <> expected or m.mediaPlayer.request.program.startsAt <> program.startsAt or m.mediaPlayer.request.offset <> 120 then stop
+    if right(m.mediaPlayer.request.url, 3) <> ".ts" or m.mediaPlayer.request.streamFormat <> "ts" then stop
 
     ' Late samples, a buffering seek target, and samples from another account/slot.
     progress = {node: m.mediaPlayer, value: {mode: "catchup", account: "account", identity: "stale", position: 99, state: "playing"}, getData: archiveEvent.getData, getRoSGNode: archiveEvent.getRoSGNode}

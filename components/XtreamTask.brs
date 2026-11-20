@@ -85,5 +85,5 @@ sub loadXtream()
     m.top.username = ""
     m.top.password = ""
     if m.top.cancelRequested = true then return
-    m.top.result = {ok: true, channels: result.channels, groups: result.groups, scope: accountScope, generation: generation, accountId: "xc-" + left(metadataCacheDigest(m.base + "|" + username), 24), timezone: account.timezone, movies: movies, series: series, guideUrl: guideUrl, apiKey: "", warning: ""}
+    m.top.result = {ok: true, channels: result.channels, groups: result.groups, scope: accountScope, generation: generation, accountId: "xc-" + left(metadataCacheDigest(m.base + "|" + username), 24), timezone: account.timezone, liveFormat: account.liveFormat, movies: movies, series: series, guideUrl: guideUrl, apiKey: "", warning: ""}
 end sub

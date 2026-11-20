@@ -547,6 +547,7 @@ sub runPlayerLifecycleChecks()
     checkFocusedRecoveryResume()
     checkPictureRecoveryPauseIsolation()
     checkPictureRecoveryPauseCleanup()
+    checkXtreamDirectRoutes()
 end sub
 
 sub checkRecoveryReadyRadioClassification()
@@ -864,6 +865,52 @@ sub checkOwnedHlsRetryLifecycle()
     assertEqual(m.hlsStopTasks.count(), 5, "outgoing finish does not close the latest token")
     stopPlayback()
     assertEqual(m.hlsStopTasks[5].token, latestToken, "explicit Stop still closes the latest token")
+end sub
+
+sub checkXtreamDirectRoutes()
+    resetOwnedHlsFixture()
+    m.videoViewport = {}
+    m.screen = {}
+    m.guide.callFunc = function(name as string, value as dynamic, now = 0 as integer) as dynamic
+        return invalid
+    end function
+    m.connectionStore = {entries: [{id: "fixture-xc", provider: "xtream", authMode: "authorization", userAgent: "Fixture Player/1.0", localUrl: "http://lan.example.test"}]}
+    m.selectedConnectionId = "fixture-xc"
+    m.baseUrl = "https://panel.example.test/prefix"
+    m.xcUsername = "viewer"
+    m.xcPassword = "fixture"
+    channel = {uuid: "xc-12", streamId: "12", name: "XC fixture", number: "12", streamUrl: "https://other.test/live.m3u8"}
+    for each fixture in [{extension: "m3u8", reader: "hls", preference: "ts"}, {extension: "ts", reader: "ts", preference: "hls"}]
+        m.xcLiveFormat = fixture.extension
+        m.devicePreferences.liveTransport = fixture.preference
+        startPlayback(channel, true)
+        assertEqual(m.video.content.url, m.baseUrl + "/live/viewer/fixture/12." + fixture.extension, "XC tune uses configured origin and verified format only")
+        assertEqual(m.video.content.streamFormat, fixture.reader, "XC tune selects the corresponding Roku reader")
+        assertEqual(m.hlsMintTask, invalid, "direct XC never mints a Dispatcharr session")
+        assertEqual(m.video.content.httpHeaders.count(), 1, "XC reader gets no Dispatcharr credential")
+    end for
+
+    m.xcLiveFormat = "m3u8"
+    m.apiKey = ""
+    m.capabilities = {movies: "allowed"}
+    m.vod = {}
+    m.mediaPlayer = {}
+    m.preferenceStore = defaultPreferenceStore()
+    m.scopedPreferencesRequired = false
+    m.registry = {read: function(key as string) as string
+        return ""
+    end function, write: function(key as string, value as string) as boolean
+        return true
+    end function, flush: function() as boolean
+        return true
+    end function}
+    openVodLibrary("movie")
+    assertEqual(m.vod.config.providerType, "xtream", "HLS-only Live leaves the Xtream catalog route available")
+    assertEqual(m.vod.config.baseUrl, m.baseUrl, "catalog retains the verified origin")
+    movie = xtreamVodDetail({info: {name: "Fixture film"}, movie_data: {stream_id: 21, container_extension: "mp4"}}, "movie", "21", m.accountIdentity)
+    assertEqual(startVodPlayback(movie, "library"), true, "HLS-only Live does not override a playable VOD container")
+    assertEqual(m.mediaPlayer.request.url, m.baseUrl + "/movie/viewer/fixture/21.mp4", "movie keeps its own container path")
+    assertEqual(m.mediaPlayer.request.streamFormat, "mp4", "movie uses its own Roku reader")
 end sub
 
 sub checkOwnedHlsStartupFailureBoundaries()
