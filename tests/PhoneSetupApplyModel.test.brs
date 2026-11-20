@@ -78,6 +78,7 @@ sub main()
     check(prepared.ok and prepared.entry.sessionUrl, "query feed prepared as session-only")
     check(prepared.entry.url = "" and instr(1, formatJson(prepared.entry), "token=") = 0, "query token absent from roster")
     check(prepared.url = payload.playlist.url, "exact query retained only in volatile request")
+    checkPhoneSetupM3uVerificationFailure(prepared)
     check(not phoneSetupVerifiedImport(prepared, {ok: false}).ok, "provider rejection cannot become a candidate")
     check(not phoneSetupVerifiedImport(prepared, {ok: true, channels: []}).ok, "empty lineup cannot consume a slot")
     verified = phoneSetupVerifiedImport(prepared, {ok: true, channels: [{id: "one"}], accountId: "feed"})
@@ -113,6 +114,29 @@ sub main()
     testXtreamXmltvImport()
     testInterimProfiles()
     print "ALL TESTS PASSED"
+end sub
+
+sub checkPhoneSetupM3uVerificationFailure(prepared as object)
+    generic = "Could not verify the playlist or its live channels. Saved connections were not changed."
+    guidance = "Raw gzip M3U is unsupported. Use a plain M3U playlist URL. Saved connections were not changed."
+    original = formatJson(prepared)
+    raw = {ok: false, errorCode: "m3u-raw-gzip", message: "Untrusted task detail."}
+    result = phoneSetupVerifiedImport(prepared, raw)
+    check(not result.ok and result.message = guidance, "raw M3U failure maps to fixed phone guidance instead of task text")
+    for each unrelated in [
+        {ok: false, errorCode: "unknown", message: guidance}
+        {ok: false, errorCode: ["m3u-raw-gzip"], message: guidance}
+        {ok: false, message: guidance}
+        {errorCode: "m3u-raw-gzip", message: guidance}
+        {ok: true, channels: [], errorCode: "m3u-raw-gzip"}
+    ]
+        result = phoneSetupVerifiedImport(prepared, unrelated)
+        check(not result.ok and result.message = generic, "other failures retain generic phone guidance")
+    end for
+    other = {entry: {provider: "xtream"}}
+    result = phoneSetupVerifiedImport(other, raw)
+    check(not result.ok and result.message = generic, "raw M3U code is scoped to M3U verification")
+    check(formatJson(prepared) = original, "failed verification does not alter the prepared import")
 end sub
 
 sub checkPhoneSetupReplaceRememberPolicy()

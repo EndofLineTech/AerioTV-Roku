@@ -104,7 +104,17 @@ end function
 function phoneSetupVerifiedImport(prepared as object, result as dynamic) as object
     failure = {ok: false, message: "Could not verify the playlist or its live channels. Saved connections were not changed."}
     if type(result) <> "roAssociativeArray" then return failure
-    if result.ok <> true or type(result.channels) <> "roArray" then return failure
+    if result.ok <> true
+        ' Only known, provider-specific failures get fixed local copy. Never
+        ' display arbitrary task detail in the phone import flow.
+        if result.ok = false and GetInterface(result.errorCode, "ifString") <> invalid
+            if result.errorCode = "m3u-raw-gzip" and prepared.entry.provider = "m3u"
+                failure.message = "Raw gzip M3U is unsupported. Use a plain M3U playlist URL. Saved connections were not changed."
+            end if
+        end if
+        return failure
+    end if
+    if type(result.channels) <> "roArray" then return failure
     if result.channels.count() = 0 then return failure
     verified = copyJson(prepared)
     if verified.entry.provider = "dispatcharr"
