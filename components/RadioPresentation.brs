@@ -169,7 +169,7 @@ function handleRadioKey(key as string, press as boolean) as boolean
     else if key = "play"
         togglePause()
     else if key = "playonly"
-        if m.video.state = "paused" then m.video.control = "resume"
+        setManualPlaybackPaused(false)
     else if key = "options"
         openPlayerOptions()
     end if

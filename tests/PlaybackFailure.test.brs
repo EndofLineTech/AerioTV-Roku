@@ -65,8 +65,8 @@ function failureEvent(node, data)
     end function}
 end function
 
-sub startPlayback(channel, forced, useAac, preserveBudget, tuneStartedAt, presentation)
-    if not forced or not useAac or channel.uuid <> "channel" then stop
+sub startPlayback(channel, forced, useAac, preserveBudget, tuneStartedAt, coldToken, presentation)
+    if not forced or not useAac or channel.uuid <> "channel" or coldToken <> "" then stop
     m.starts++
     m.presentation = presentation
     m.playingChannel = channel

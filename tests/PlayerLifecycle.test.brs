@@ -1265,6 +1265,27 @@ sub runColdLiveAttemptChecks()
     checkColdPlayback()
     assertEqual(m.coldPlaybackClock.control, "stop", "settling is one-shot")
 
+    request = coldPlaybackLaunchRequest({contentId: "a", mediaType: "live"}, true)
+    beginColdPlayback(request)
+    bindColdLiveReader(request.coldToken, m.video.content)
+    m.radioPanel = {visible: true}
+    m.video.visible = false
+    m.video.focused = false
+    m.playerInput = {focused: false, hasFocus: function() as boolean
+        return m.focused
+    end function}
+    m.video.position = 14
+    checkColdPlayback()
+    assertEqual(m.coldPlayback.position, invalid, "unfocused Radio controls cannot settle the cold launch")
+    m.playerInput.focused = true
+    m.video.position = 15
+    checkColdPlayback()
+    assertEqual(m.coldPlayback.position, 15, "focused Radio controls allow a readiness sample from the exact hidden reader")
+    m.video.position = 16
+    checkColdPlayback()
+    assertEqual(m.coldPlaybackOutcome.result, "ready", "advancing Radio reader settles the original cold-launch attempt")
+    m.radioPanel = invalid
+
     resetOwnedHlsFixture()
     request = coldPlaybackLaunchRequest({contentId: "a", mediaType: "live"}, true)
     beginColdPlayback(request)

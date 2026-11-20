@@ -85,6 +85,12 @@ function coldPictureRecoveryPending(reader as object) as boolean
     return reader.isSameNode(m.recoveryContent)
 end function
 
+function coldLiveInputFocused() as boolean
+    ' Foreground Radio hides the same Video reader and moves remote input.
+    if radioPresentationActive() then return m.playerInput.hasFocus()
+    return m.video.visible and m.video.hasFocus()
+end function
+
 sub checkColdPlayback()
     attempt = m.coldPlayback
     if attempt = invalid then return
@@ -104,13 +110,15 @@ sub checkColdPlayback()
         else if expired and m.top.dialog <> invalid
             settleColdPlayback(token, "cancelled")
         else if expired
-            failLivePlayback(-2, "No playable video started before the linked tune deadline.")
+            detail = "No playable video started before the linked tune deadline."
+            if radioPresentationActive() then detail = "No playable stream started before the linked tune deadline."
+            failLivePlayback(-2, detail)
         else if coldPictureRecoveryPending(attempt.reader)
             ' This reader is about to be replaced. Its progress cannot finish
             ' the launch, but the original deadline still owns the fallback.
             attempt.position = invalid
-        else if m.hlsMintTask = invalid and m.video.visible and m.video.state = "playing" and requestGateRendererAllowed(m.video) and m.top.dialog = invalid
-            if m.video.hasFocus() and mediaNumber(m.video.position)
+        else if m.hlsMintTask = invalid and m.video.state = "playing" and requestGateRendererAllowed(m.video) and m.top.dialog = invalid
+            if coldLiveInputFocused() and mediaNumber(m.video.position)
                 position = m.video.position
                 if mediaNumber(attempt.position)
                     if position > attempt.position then settleColdPlayback(token, "ready")

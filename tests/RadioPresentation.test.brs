@@ -123,8 +123,25 @@ sub main()
     onKeyEvent("back", true)
     assertEqual(m.pendingAacTune, invalid, "ordinary video Back still cancels only the pending tune")
     assertEqual(m.video.control, "play", "ordinary video continues playing")
+    checkRadioResumeDuringPictureRecovery()
     checkRadioRefreshAndRetry()
     print "ALL TESTS PASSED"
+end sub
+
+sub checkRadioResumeDuringPictureRecovery()
+    resetRadioFixture()
+    m.devicePreferences.radioDefault = true
+    applyLivePresentation()
+    m.video.content.isSameNode = function(other as object) as boolean
+        return m.programId = other.programId
+    end function
+    m.recoveryPauseContent = m.video.content
+    m.recoveryPausePending = true
+    m.video.state = "buffering"
+    assertEqual(onKeyEvent("playonly", true), true, "Radio owns the explicit resume command")
+    assertEqual(m.video.control, "play", "resume leaves the replacement play command intact")
+    assertEqual(m.recoveryPausePending, false, "resume clears the old pause intent for the replacement")
+    m.recoveryPauseContent = invalid
 end sub
 
 sub checkRadioRefreshAndRetry()

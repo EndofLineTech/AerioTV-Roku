@@ -1,6 +1,6 @@
 sub main()
     resetAacTest()
-    if not deferRequiredAacTune({uuid: "first"}, false, false, false, 900, "video") then stop
+    if not deferRequiredAacTune({uuid: "first"}, false, false, false, 900, "", "video") then stop
     if m.starts <> 0 or not m.guide.pendingTune then stop
     if m.pendingAacTune.channel.uuid <> "first" then stop
     m.aacProfile = {id: "7"}
@@ -9,6 +9,16 @@ sub main()
     if m.starts <> 1 or m.started.channel.uuid <> "first" or not m.started.useAac then stop
     if m.started.tuneStartedAt <> 900 or m.started.presentation <> "video" then stop
     if m.pendingAacTune <> invalid or m.guide.pendingTune then stop
+
+    resetAacTest()
+    m.top = {exitRequested: false}
+    m.coldPlayback = {token: "cold", holder: m.accountIdentity, playlist: m.selectedConnectionId, session: currentUserSessionId(), base: m.baseUrl, key: m.apiKey}
+    if not deferRequiredAacTune({uuid: "first"}, false, false, false, 900, "cold", "radio") then stop
+    if m.coldPlayback.phase <> "aac" or m.coldPlayback.waitPage <> m.page then stop
+    m.aacProfile = {id: "7"}
+    processAacWait()
+    if m.starts <> 1 or m.started.coldToken <> "cold" or m.started.presentation <> "radio" then stop
+    m.coldPlayback = invalid
 
     resetAacTest()
     deferRequiredAacTune({uuid: "first"}, false, false, false)
@@ -155,7 +165,7 @@ sub showAacUnavailable(request as object, message as string)
     m.failureMessage = message
 end sub
 
-sub startPlayback(channel as object, force as boolean, useAac as boolean, preserveBudget as boolean, tuneStartedAt = 0 as integer, presentation = "auto" as string)
+sub startPlayback(channel as object, force as boolean, useAac as boolean, preserveBudget as boolean, tuneStartedAt = 0 as integer, coldToken = "" as string, presentation = "auto" as string)
     m.starts++
-    m.started = {channel: channel, force: force, useAac: useAac, preserveBudget: preserveBudget, tuneStartedAt: tuneStartedAt, presentation: presentation}
+    m.started = {channel: channel, force: force, useAac: useAac, preserveBudget: preserveBudget, tuneStartedAt: tuneStartedAt, coldToken: coldToken, presentation: presentation}
 end sub

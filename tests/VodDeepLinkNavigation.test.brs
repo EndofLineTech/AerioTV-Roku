@@ -331,7 +331,8 @@ sub stopPlayback()
     cancelAacWait()
 end sub
 
-sub startPlayback(channel as object, force as boolean, useAac as boolean, preserveBudget as boolean, tuneStartedAt as integer)
+sub startPlayback(channel as object, force as boolean, useAac as boolean, preserveBudget as boolean, tuneStartedAt as integer, coldToken as string, presentation as string)
+    check(coldToken = "" and presentation = "auto", "warm AAC continuation does not inherit cold ownership or override presentation")
     m.starts++
     m.startedChannel = channel.uuid
     m.page = "player"
