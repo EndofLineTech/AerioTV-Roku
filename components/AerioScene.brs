@@ -1350,6 +1350,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         if m.playingChannel.uuid = channel.uuid
             if forceRetune and presentation = "auto" and m.livePresentationIntent <> invalid then presentation = m.livePresentationIntent
             if not forceRetune and m.video.state <> "error" and m.video.state <> "finished"
+                m.radioBackDown = false
                 m.livePresentationIntent = presentation
                 expandPlayback()
                 settleColdPlayback(coldToken, "replaced")
@@ -1378,7 +1379,13 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
     end if
     cancelStartupWatch()
     if deferRequiredAacTune(channel, forceRetune, useAac, preserveStartupBudget, tuneStartedAt, coldToken, presentation) then return
-    clearRadioPresentation()
+    ' Both automatic AAC recovery paths replace the reader, not the tune.
+    ' Keep Radio input alive through Back-up only for that same live owner.
+    keepRadioBack = false
+    if forceRetune and useAac and preserveStartupBudget and m.page = "player" and m.radioBackDown = true and radioPresentationActive() and m.liveSession <> invalid
+        keepRadioBack = m.liveSession.item = channel.uuid and m.liveSession.account = m.accountIdentity and m.liveSession.aeriosession = currentUserSessionId()
+    end if
+    if not keepRadioBack then clearRadioPresentation()
     m.guide.active = false
     m.guide.visible = false
     m.screen.visible = false
@@ -1465,7 +1472,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         return
     end if
     m.page = "player"
-    m.video.visible = true
+    m.video.visible = not radioPresentationActive()
     bindColdLiveReader(coldToken, content)
     applyLivePresentation()
     ' AerioVideo forwards keys to the Scene instead of native transport actions.

@@ -543,6 +543,7 @@ sub runPlayerLifecycleChecks()
     assertEqual(flushTask.apiKey, "", "cancelled outgoing flush clears captured own credentials")
     checkRecoveryReadyRadioClassification()
     checkOwnedHlsRetryLifecycle()
+    checkRadioBackDuringAacRecovery()
     checkOwnedHlsStartupFailureBoundaries()
     checkFocusedRecoveryResume()
     checkPictureRecoveryPauseIsolation()
@@ -865,6 +866,107 @@ sub checkOwnedHlsRetryLifecycle()
     assertEqual(m.hlsStopTasks.count(), 5, "outgoing finish does not close the latest token")
     stopPlayback()
     assertEqual(m.hlsStopTasks[5].token, latestToken, "explicit Stop still closes the latest token")
+end sub
+
+sub checkRadioBackDuringAacRecovery()
+    for each scenario in ["silent-audio", "unsupported-aac", "video", "new-tune", "same-station", "new-holder"]
+        resetOwnedHlsFixture()
+        m.radioPanel = {visible: false}
+        m.radioStatus = {}
+        m.radioHelp = {}
+        m.radioChoices = []
+        m.playerInput = {setFocus: function(focused as boolean) as boolean
+            return true
+        end function}
+        m.videoViewport = {}
+        m.screen = {}
+        m.guide.callFunc = function(name as string, channel as dynamic, now = 0 as integer) as dynamic
+            if name = "selectPlayingChannel" then m.selectedUuid = channel
+            return invalid
+        end function
+        m.connectionStore = {entries: [{id: "radio-fixture", provider: "dispatcharr", authMode: "x-api-key", userAgent: ""}]}
+        m.selectedConnectionId = "radio-fixture"
+        m.hlsAvailable = true
+        m.devicePreferences.liveTransport = "hls"
+        m.devicePreferences.audioMode = "auto"
+        m.aacProfile = {id: "7"}
+        m.ac3Profile = invalid
+        m.playingChannel = invalid
+        m.userProfileRecoveryRequired = false
+        channel = {uuid: "a", name: "Radio fixture", number: "1", isRadio: scenario <> "video"}
+        request = coldPlaybackLaunchRequest({contentId: channel.uuid, mediaType: "live"}, true)
+        beginColdPlayback(request)
+        m.coldPlayback.clock = {totalMilliseconds: function() as integer
+            return 731
+        end function}
+        startPlayback(channel, false, false, false, 0, request.coldToken)
+        originalToken = "opaque_radio_original_1234"
+        onHlsSessionOpened(hlsFixtureEvent(m.hlsMintTask, hlsFixtureResult(originalToken)))
+        assertEqual(m.video.control, "play", "initial owned reader opens")
+        assertEqual(radioPresentationActive(), scenario <> "video", "the presentation matches the station")
+        if scenario <> "video"
+            assertEqual(onKeyEvent("back", true), true, "Radio owns Back-down")
+            assertEqual(m.page, "player", "Back waits for release")
+        end if
+        if scenario = "silent-audio" or scenario = "video"
+            m.video.state = "playing"
+            m.video.audioFormat = "none"
+            checkPlaybackAudio()
+        else if scenario = "unsupported-aac"
+            m.video.state = "error"
+            m.video.errorCode = -5
+            m.video.errorStr = "decoder:pump:Unsupported AAC stream:clip"
+            onVideoState()
+        else if scenario = "same-station"
+            startPlayback(channel)
+            onKeyEvent("back", false)
+            assertEqual(m.page, "player", "explicit same-station selection retires the old gesture")
+            assertEqual(m.hlsSession.token, originalToken, "explicit re-expansion still reuses the reader")
+        else
+            if scenario = "new-holder"
+                m.global.activeUserSession = "new-owner"
+                startPlayback(channel, true, true, true)
+            else
+                startPlayback({uuid: "b", name: "Other station", number: "2", isRadio: true})
+            end if
+        end if
+        mint = m.hlsMintTask
+        if scenario <> "same-station"
+            assertEqual(mint <> invalid, true, "replacement has real owned HLS work: " + scenario)
+            assertEqual(m.hlsStopTasks.count(), 1, "replacement closes the original owned reader")
+            assertEqual(m.hlsStopTasks[0].token, originalToken, "original close uses its exact token")
+        end if
+        if scenario = "silent-audio" or scenario = "unsupported-aac"
+            assertEqual(m.coldPlayback.token, request.coldToken, "AAC recovery preserves the cold token")
+            assertEqual(m.coldPlayback.clock.totalMilliseconds(), 731, "AAC recovery keeps the cold deadline clock")
+            assertEqual(m.coldPlayback.reader.isSameNode(m.video.content), true, "AAC recovery binds the replacement reader")
+            assertEqual(onKeyEvent("back", false), true, "Radio owns Back-up after AAC recovery")
+            cancelledBeforeResult = mint.cancelRequested and m.hlsMintTask = invalid
+            replacementToken = "opaque_radio_replacement_1234"
+            onHlsSessionOpened(hlsFixtureEvent(mint, hlsFixtureResult(replacementToken)))
+            onHlsSessionOpened(hlsFixtureEvent(mint, hlsFixtureResult(replacementToken)))
+            assertEqual(m.page, "guide", "Back-up restores Guide after AAC recovery: " + scenario + " (control after late result: " + m.video.control + ")")
+            assertEqual(m.guide.active and m.guide.visible, true, "Guide is usable")
+            assertEqual(m.guide.selectedUuid, "a", "Guide keeps the tune-origin row")
+            assertEqual(m.coldPlaybackOutcome.result, "cancelled", "Back cancels the tracked launch")
+            assertEqual(cancelledBeforeResult, true, "Back cancels the actual pending mint")
+            assertEqual(m.hlsStopTasks.count(), 2, "late success queues exactly one close")
+            assertEqual(m.hlsStopTasks[1].token, replacementToken, "late close uses the replacement token")
+            assertEqual(m.video.control, "stop", "late success never starts Video")
+            assertEqual(m.video.content, invalid, "late success never reattaches content")
+            assertEqual(m.hlsSession, invalid, "late success never adopts ownership")
+        else if scenario = "video"
+            onHlsSessionOpened(hlsFixtureEvent(mint, hlsFixtureResult("opaque_video_replacement_1234")))
+            assertEqual(m.video.control, "play", "ordinary video recovery still starts its replacement")
+            assertEqual(m.video.visible, true, "ordinary video stays visible")
+        else if scenario <> "same-station"
+            onKeyEvent("back", false)
+            assertEqual(m.page, "player", "old release does not dismiss an unrelated tune or holder")
+            assertEqual(mint.cancelRequested, false, "old release does not cancel the new mint")
+        end if
+        if m.page = "player" then stopPlayback()
+        m.radioPanel = invalid
+    end for
 end sub
 
 sub checkXtreamDirectRoutes()
