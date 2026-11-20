@@ -93,7 +93,9 @@ sub onHlsSessionOpened(event as object)
             m.hlsMintClock = invalid
             m.hlsMintReplacesReader = false
             if result.ok <> true
-                failLivePlayback(-1, "Dispatcharr HLS session could not be opened (HTTP " + result.status.toStr() + ").")
+                detail = "Dispatcharr HLS session could not be opened (HTTP " + result.status.toStr() + ")."
+                if result.status >= 200 and result.status < 300 then detail = "Dispatcharr did not provide a valid HLS session."
+                failLivePlayback(-1, detail)
                 return
             end if
             m.hlsSession = {token: result.token, url: result.url, baseUrl: pending.baseUrl, apiKey: pending.apiKey, entryUrl: pending.entryUrl, userSession: currentUserSessionId()}

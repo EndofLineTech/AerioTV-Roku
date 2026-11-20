@@ -543,8 +543,10 @@ sub runPlayerLifecycleChecks()
     assertEqual(flushTask.apiKey, "", "cancelled outgoing flush clears captured own credentials")
     checkRecoveryReadyRadioClassification()
     checkOwnedHlsRetryLifecycle()
+    checkOwnedHlsMissingReceipt()
     checkRadioBackDuringAacRecovery()
     checkOwnedHlsStartupFailureBoundaries()
+    checkMidstreamTemporaryUnavailable()
     checkFocusedRecoveryResume()
     checkPictureRecoveryPauseIsolation()
     checkPictureRecoveryPauseCleanup()
@@ -1015,6 +1017,37 @@ sub checkXtreamDirectRoutes()
     assertEqual(m.mediaPlayer.request.streamFormat, "mp4", "movie uses its own Roku reader")
 end sub
 
+sub checkOwnedHlsMissingReceipt()
+    resetOwnedHlsFixture()
+    m.videoViewport = {}
+    m.screen = {}
+    m.guide.callFunc = function(name as string, value as dynamic, now = 0 as integer) as dynamic
+        return invalid
+    end function
+    m.connectionStore = {entries: [{id: "hls-fixture", provider: "dispatcharr", authMode: "x-api-key", userAgent: ""}]}
+    m.selectedConnectionId = "hls-fixture"
+    m.hlsAvailable = true
+    m.devicePreferences.liveTransport = "hls"
+    channel = {uuid: "a", name: "Local fixture", number: "1"}
+
+    for each fixture in [{status: 200, detail: "Dispatcharr did not provide a valid HLS session."}, {status: 503, detail: "Dispatcharr HLS session could not be opened (HTTP 503)."}]
+        startPlayback(channel, true)
+        assertEqual(m.video.content.streamFormat, "hls", "explicit HLS still selects the HLS reader")
+        assertEqual(m.video.control, "stop", "the entry is not played before a receipt")
+        mint = m.hlsMintTask
+        assertEqual(mint <> invalid, true, "explicit HLS waits for its owned session")
+        onHlsSessionOpened(hlsFixtureEvent(mint, {ok: false, status: fixture.status, detail: "unused fixture response text"}))
+        assertEqual(m.top.dialog.message, playbackFailureText(-1, fixture.detail), "failed HLS mint uses only bounded app wording")
+        assertEqual(m.video.control, "stop", "failed HLS mint never starts a fallback reader")
+        assertEqual(m.video.content, invalid, "failed HLS mint clears the entry without substituting TS")
+        assertEqual(m.hlsMintTask, invalid, "failed HLS mint is not silently retried")
+        assertEqual(m.hlsSession, invalid, "no receipt means no owned session")
+        assertEqual(m.hlsStopTasks.count(), 0, "no unowned token is closed")
+        assertEqual(m.playbackRetry.channel.uuid, channel.uuid, "manual channel Retry is retained")
+        assertEqual(m.devicePreferences.liveTransport, "hls", "manual Retry retains explicit HLS selection")
+    end for
+end sub
+
 sub checkOwnedHlsStartupFailureBoundaries()
     for each scenario in ["timeout", "stopped", "second-finish", "progress", "error", "late-finish", "initial-finish"]
         resetOwnedHlsFixture()
@@ -1068,6 +1101,26 @@ sub checkOwnedHlsStartupFailureBoundaries()
         onVideoState()
         assertEqual(m.hlsStopTasks.count(), 1, "later Video callback cannot double-close: " + scenario)
     end for
+end sub
+
+sub checkMidstreamTemporaryUnavailable()
+    resetOwnedHlsFixture()
+    beginOwnedHlsPlayback(m.video.content)
+    token = "opaque_midstream_12345678"
+    onHlsSessionOpened(hlsFixtureEvent(m.hlsMintTask, hlsFixtureResult(token)))
+    m.video.state = "playing"
+    onVideoState()
+    assertEqual(m.streamReady, true, "owned Video reached playing before the interruption")
+    m.video.state = "error"
+    m.video.errorCode = -2
+    m.video.errorStr = "HTTP 503: Channel is stopping"
+    onVideoState()
+    assertEqual(m.video.control, "stop", "reported temporary 503 stops the failed reader")
+    assertEqual(m.hlsStopTasks.count(), 1, "reported temporary 503 queues one owner close")
+    assertEqual(m.hlsStopTasks[0].token, token, "the close uses the interrupted reader's token")
+    assertEqual(m.hlsMintTask, invalid, "reported temporary 503 does not immediately remint")
+    assertEqual(m.top.dialog.message, "The media server is temporarily unavailable. Wait before trying again." + chr(10) + "Roku error -2" + chr(10) + m.video.errorStr, "the existing wait guidance reaches the viewer")
+    assertEqual(m.top.dialog.buttons[0], "Retry channel", "viewer may retry intentionally")
 end sub
 
 function startPictureRecoveryFixture() as object

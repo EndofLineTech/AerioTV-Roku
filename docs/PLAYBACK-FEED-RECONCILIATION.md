@@ -47,28 +47,31 @@ phone or certification criteria, or supplies explicit parent acceptance.
   not claim human picture/audio, an imported Xtream history feed, M3U or
   in-progress Restart/live rewind offset support, or cross-device Sync.
 
-### App-side findings from the committed paths
+### App-side findings at `4733127` and follow-up
 
 - `z2l`: Beacon order is a known implementation gap, not merely missing
   evidence. [`signalStartupComplete`](../components/AerioScene.brs) calls
   `completeStartupBeacons()` before `handlePendingLaunch()`. The current cold
   readiness outcome is diagnostic only. Native attribution is needed before
   wiring it to the beacon; a focused node alone is not remote operability.
-- `e3e.22` / `yud`: A completed HTTP 200 HLS open without a valid token and
-  matching Location still fails closed. The Task returns only `ok=false` and
-  the status, so the [Scene](../components/HlsSessionLifecycle.brs) reports an
-  open failure with “HTTP 200,” without distinguishing an unowned or non-HLS
-  response from an HTTP error. A host assertion for that branch can verify a
-  useful transport message and zero Video handoff without a TS fallback,
-  fabricated token, or provider request. This is a source-visible diagnostic
-  gap, not an observed provider failure.
-- `e3e.22`: The [midstream retry predicate](../components/LiveRecovery.brs)
-  excludes authentication, rate and connection-limit refusals, but not 503.
-  A `-2` error carrying explicit HTTP 503 text can reconnect immediately
-  instead of reaching the existing wait guidance. This path is inspectable
-  in source; the available evidence does not establish that a channel-stopping
-  response produces that exact native code/text pair. Do not infer a delay
-  from a status-only error.
+- `e3e.22` / `yud` — **Historical finding, fixed and verified on the host;
+  live qualification pending.** At `4733127`, HTTP 200 without a valid owned
+  HLS receipt failed closed but displayed “HTTP 200” as an open failure.
+  The [Scene](../components/HlsSessionLifecycle.brs) now reports that
+  Dispatcharr did not provide a valid HLS session. Host checks verify fixed
+  wording, no Video handoff or silent MPEG-TS fallback, and no fabricated
+  token. This was a source-visible diagnostic gap, not an observed provider
+  failure.
+- `e3e.22` — **Historical finding, fixed and verified on the host; live
+  qualification pending.** At `4733127`, a midstream `-2` could reconnect
+  immediately even with explicit HTTP 503 text. The
+  [midstream retry predicate](../components/LiveRecovery.brs) now routes `-2`
+  with explicit 503 and channel-stopping or temporarily-unavailable detail to
+  the existing wait guidance and manual Retry, with no immediate reconnect.
+  Other timeout cases retain the existing bounded behavior. Host checks do
+  not establish that a channel-stopping response yields that exact native
+  code/text pair. No provider cause, Retry-After value, or automatic delay
+  is inferred.
 
 ## Historical implementation detail (`4ee2ec8` baseline)
 

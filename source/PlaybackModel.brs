@@ -237,7 +237,7 @@ function playbackFailureText(code as integer, detail as string) as string
     if refusal = "rate-limit" then reason = "The media server is limiting requests. Wait before trying again."
     ' Video can report a status without exposing the HTTP headers or body.
     ' Give useful guidance, but do not infer a connection limit or retry delay.
-    if refusal = "" and CreateObject("roRegex", "(http[^0-9]{0,24}|response code[^0-9]{0,16})503\b", "i").isMatch(detail)
+    if refusal = "" and nativePlaybackReports503(detail)
         reason = "The media server is temporarily unavailable. Wait before trying again."
     end if
     if instr(1, lcase(detail), "full-content response on a range request") > 0
@@ -246,6 +246,10 @@ function playbackFailureText(code as integer, detail as string) as string
     message = reason + chr(10) + "Roku error " + code.toStr()
     if detail <> "" then message += chr(10) + detail
     return message
+end function
+
+function nativePlaybackReports503(detail as string) as boolean
+    return CreateObject("roRegex", "(http[^0-9]{0,24}|response code[^0-9]{0,16})503\b", "i").isMatch(detail)
 end function
 
 function isStartupBufferingStall(code as integer, detail as string) as boolean

@@ -13,6 +13,21 @@ sub main()
         resetLive()
         if retryInterruptedLive("error", -5, "buffering is stalled " + refusal) then stop
     end for
+    for each detail in ["HTTP 503: channel is stopping", "HTTP 503: channel stopping", "Response code: 503, temporarily unavailable"]
+        resetLive()
+        m.video.state = "error"
+        if retryInterruptedLive("error", -2, detail)
+            print "Explicit 503 with temporary condition must not reconnect immediately: "; detail
+            stop
+        end if
+        if m.liveRetryCount <> 0 or m.video.content.serial <> 1 or not m.streamReady then stop
+    end for
+    for each detail in ["read timed out", "HTTP 503", "temporarily unavailable", "HTTP 500: channel is stopping"]
+        resetLive()
+        m.video.state = "error"
+        if not retryInterruptedLive("error", -2, detail) then stop
+        if m.liveRetryCount <> 1 or m.startupRetryCount <> m.startupRetryLimit then stop
+    end for
     resetLive()
     if retryInterruptedLive("error", -5, "unsupported codec") then stop
     m.video.state = "paused"

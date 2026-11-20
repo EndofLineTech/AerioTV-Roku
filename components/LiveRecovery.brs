@@ -7,6 +7,11 @@ function retryInterruptedLive(state as string, code as integer, detail as string
     if m.pendingChannel <> invalid or m.heldZap <> "" then return false
     if m.recoveryTask <> invalid or m.sourceTask <> invalid or m.sourceWatchState <> invalid then return false
     if nativePlaybackRefusal(detail) <> "" then return false
+    ' The native timeout code can accompany an explicit temporary refusal.
+    ' Use the existing wait guidance and manual Retry rather than reminting now.
+    if state = "error" and code = -2
+        if nativePlaybackReports503(detail) and CreateObject("roRegex", "\b(channel (is )?stopping|temporar(il)?y unavailable)\b", "i").isMatch(detail) then return false
+    end if
     supported = state = "finished" or state = "buffering"
     if state = "error" then supported = isStartupBufferingStall(code, detail) or code = -2
     if not supported then return false
