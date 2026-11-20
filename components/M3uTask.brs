@@ -68,6 +68,12 @@ sub loadM3u()
         m.top.result = {ok: false, message: "Playlist exceeds the 2-MiB limit."}
         return
     end if
+    issue = m3uStagedPlaylistIssue(path, stat.size)
+    if issue <> ""
+        fs.delete(path)
+        m.top.result = {ok: false, message: issue}
+        return
+    end if
     body = ReadAsciiFile(path)
     fs.delete(path)
     parsed = m3uParsePlaylist(body)
@@ -81,3 +87,13 @@ sub loadM3u()
     if m.top.cancelRequested = true then return
     m.top.result = {ok: true, channels: parsed.channels, groups: parsed.groups, scope: scope, generation: generation, accountId: "feed", apiKey: "", warning: ""}
 end sub
+
+' Check actual staged bytes, not the URL suffix or MIME type. The caller
+' checks the staging budget before this read and owns cleanup.
+function m3uStagedPlaylistIssue(path as string, size as integer) as string
+    if size < 2 then return "Invalid or oversized M3U playlist."
+    bytes = CreateObject("roByteArray")
+    if not bytes.readFile(path, 0, 2) or bytes.count() <> 2 then return "Could not read playlist file."
+    if bytes[0] = 31 and bytes[1] = 139 then return "Raw gzip M3U is unsupported. Use a plain M3U playlist URL."
+    return ""
+end function
