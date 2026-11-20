@@ -1,8 +1,79 @@
 # Live recovery, direct feeds, and owned HLS cleanup
 
-This reconciles `e3e.22`, `e3e.24`, and `yud` against committed `4ee2ec8`.
-The new checks run on the host with synthetic Scene fields and `.test` addresses;
-they do not start media transfers or issue provider requests.
+## Evidence at `4733127` (development 0.3.103)
+
+This source and local evidence review did not run Roku, contact providers, or
+test a signed package. The existing exact-source full gate passed (190 host
+suite markers and a verified 387-file ZIP). That gate is not device acceptance.
+Beads remains the status register; the seven records below were still in
+progress at this review. No observation from the ongoing native QA run is
+included; use its completed report when available.
+
+| Bead | Delivered or already qualified | Remaining evidence or scope decision |
+| --- | --- | --- |
+| `e3e.5.2` — received Guide options | Live native Dispatcharr imports of Guide Days `2` and `0` exercised ±2 and bounded ±30 days respectively, including later manual edits surviving reconnect. The received catch-up offset is saved per playlist; the shared playback path has live native qualification for completed Dispatcharr and UTC Xtream archives (`e3e.13`, `e3e.14`, `91wm`; details below). The independent Xtream XMLTV override is integrated (`94a8078`). Host checks cover saved import, reload and refresh; a native HTTP fixture used the production Task, matched programme data, followed a same-origin redirect without auth/cookies/Referer, failed without account-guide fallback on 503, and recovered on Retry. | The owner selected the override as the only remaining current-phase import feature and deferred automatic LAN failover; `localUrl` stays informational. The live Xtream archive tests used an explicitly seeded history-enabled XMLTV feed, **not** a phone-imported override. For live override qualification, use an authorized Xtream import with distinct programme data: verify persistence across relaunch (re-enter session-only credentials), Refresh, and reimport without the override to restore the account-guide route. Unsupported M3U offset remains disclosed. |
+| `z2l` — cold playback launch timing | Cold Live and supported private Dispatcharr VOD track the exact attempt and replacement renderer, check progress/focus, and retain a bounded no-media fallback. The Radio Mode changes preserve the diagnostic check when the input target is the radio surface. **`AppLaunchComplete` still precedes dispatch of the linked tune**; readiness does not emit or defer it. | On the exact candidate, attribute advancing playback to the requested reader across replacement/resume and exercise a real remote action. Then qualify a beacon change against the usable playback point, preserving one completion for ordinary launch/Welcome, safe protected cancellation/no-media fallback, and no second beacon for warm input. Dashboard/cloud evidence is separate. |
+| `e19` — Roku input launch | `supports_input_launch=1`, `roInput`, account-checked live aliases, safe invalid/unsupported handling, and newer live/AAC/warm VOD arbitration are integrated. Older native runs cover malformed input and authorized cold/warm live, including the exact cloud-shaped `mediatype=live` spelling and fresh sign-in continuation. The later arbitration is host-qualified. | For current-build local acceptance, confirm authorized cold and warm Live with a competing saved mini/AAC tune, plus malformed, unsupported and unavailable input falling back safely. Reuse the historical results for their exact builds. Do not treat the known old alias rejection, an ECP HTTP 200, a skipped run or an earlier signed artifact as current Dashboard/cloud success; reviewer identity/sample and compatible rendition remain in `856`/`h99`. |
+| `yud` — owned HLS disconnect | On the instrumented exact v0.3.102 release, authorized standard-user live HLS advanced on two channels; Stop and retune each produced one owner DELETE 204. Current automatic startup and midstream retry retire the prior token and wait for a fresh owned playlist; stale opens are fenced and cleaned with the captured owner in host tests. | Qualify the integrated retry/remint/error and stale/account boundaries with owner-scoped request observations and playback on a supported server. Record revision/support and TV-side picture/audio separately. The historical Home run observed no explicit close and the standard status endpoint returned 403: neither client count nor idle-reaper timing was established. Do not use admin/shared stops or promise close delivery on OS termination; the server reaper is the fallback. |
+| `e3e.22` — auth and audio recovery | No automatic password re-login on API-key refusal; `mrr.14` supplies native controlled evidence for concurrent holds, 429 parks and a single eligible recheck. Bounded JSON GET retry, stock live retry budgets, current-reader Pause/Resume and stale-callback fences are distinct. Terminal native media HTTP 503 gets temporary-unavailability guidance. `e3e.11` observed advancing AAC on a declared Dispatcharr radio station; `e3e.12` used packaged AAC for foreground Radio Mode controls, not an affected provider HLS stream. | Reuse `mxz`/`ihp` for equivalent recovery, not as evidence of a new provider behavior. A channel-stopping 503 backoff in the native media reader, explicit HLS-to-TS/non-HLS transition, and affected audio-only HLS pacing/recovery are not established. Verify the affected response/format and bounded behavior where observable, or record a scoped Roku limitation; do not claim native Video receives HTTP Retry-After. |
+| `w6g` — private Dispatcharr VOD links | Account-verified movie/episode/series direct play is integrated (`49917e3` and follow-ups). The resolver refreshes own identity, capabilities and details; it respects bookmark/series target selection and rejects stale, unrelated or unauthorized handoffs. Host evidence covers the route. Existing Profiles Beta VOD playback used the catalog UI, not deep links. | Use a separately approved populated Dispatcharr account to exercise each media type cold and warm, capture expected title/episode and bookmark position, and confirm direct play, Back/remote operation and a denied case without unrelated playback. Store/Search and stable reviewer samples or an explicit Roku-approved scope belong to `856`, not an inference from private IDs or playback. |
+| `e3e.24` — direct providers | Custom User-Agent and bounded M3U/plain XMLTV, Xtream TS Live, bounded catalog and UTC completed archive have scoped evidence. Advertised HLS-only Xtream Live now selects `.m3u8`, while TS/both stay `.ts` (`5f9cf2b`); host routing is not native provider acceptance. Raw gzip M3U now rejects with plain-URL guidance; raw gzip XMLTV also rejects. | For support claims, qualify advertised HLS-only Live on a representative Roku/provider; separate that from catalog containers and other archive dialects. Distinguish actual HTTP Content-Encoding staging from raw gzip: native decoding for the former is unverified and raw inflation is unsupported (see [gzip boundary](DIRECT-FEED-GZIP.md)). No new LAN fallback or credential forwarding is in scope. |
+
+For detailed local versus portal evidence see
+[Roku certification prep](LOCAL-CERTIFICATION-EVIDENCE.md). The
+[Profiles-only Beta acceptance](MRR-DELIVERY-STATUS.md) does not cover these
+provider or certification claims. Of this batch, `e3e.5.2` can add bounded
+evidence for the broader phone-provider track, and the launch/recovery work
+can add platform evidence; none replaces the parent's separate peer Sync,
+phone or certification criteria, or supplies explicit parent acceptance.
+
+### Closed archive evidence relevant to `e3e.5.2`
+
+- `e3e.13`: Live Roku playback on completed Dispatcharr and UTC Xtream
+  programmes qualified the per-playlist offset. On `5601bbd`, Dispatcharr
+  compared +120 seconds with zero on the same retained airing. Xtream used a
+  seeded +2-minute offset that applied once across Play, Skip, Resume and
+  Start Over. The sampled default Xtream XMLTV feed lacked retained airings;
+  the test seeded a history-enabled XMLTV URL rather than importing it.
+- `91wm`: On `7f2eb06` the native Connection editor changed −1 to +1 minute.
+  Registry readback and full Roku relaunch retained +1 while a sibling playlist
+  stayed at zero. A real Dispatcharr archive request was shifted by exactly
+  +60 seconds, played, and closed the owned session with HTTP 204.
+- `e3e.14`: Both providers passed live local Resume and Start Over for
+  completed programmes. A 66-second bookmark survived full exit and cold
+  relaunch (with Xtream reauthentication), reopened at provider minute 1:00
+  and advanced. Start Over returned to 0:00 and cleared progress; Back restored
+  the guide cell. Exact v0.3.102 restoration was verified. These results do
+  not claim human picture/audio, an imported Xtream history feed, M3U or
+  in-progress Restart/live rewind offset support, or cross-device Sync.
+
+### App-side findings from the committed paths
+
+- `z2l`: Beacon order is a known implementation gap, not merely missing
+  evidence. [`signalStartupComplete`](../components/AerioScene.brs) calls
+  `completeStartupBeacons()` before `handlePendingLaunch()`. The current cold
+  readiness outcome is diagnostic only. Native attribution is needed before
+  wiring it to the beacon; a focused node alone is not remote operability.
+- `e3e.22` / `yud`: A completed HTTP 200 HLS open without a valid token and
+  matching Location still fails closed. The Task returns only `ok=false` and
+  the status, so the [Scene](../components/HlsSessionLifecycle.brs) reports an
+  open failure with “HTTP 200,” without distinguishing an unowned or non-HLS
+  response from an HTTP error. A host assertion for that branch can verify a
+  useful transport message and zero Video handoff without a TS fallback,
+  fabricated token, or provider request. This is a source-visible diagnostic
+  gap, not an observed provider failure.
+- `e3e.22`: The [midstream retry predicate](../components/LiveRecovery.brs)
+  excludes authentication, rate and connection-limit refusals, but not 503.
+  A `-2` error carrying explicit HTTP 503 text can reconnect immediately
+  instead of reaching the existing wait guidance. This path is inspectable
+  in source; the available evidence does not establish that a channel-stopping
+  response produces that exact native code/text pair. Do not infer a delay
+  from a status-only error.
+
+## Historical implementation detail (`4ee2ec8` baseline)
+
+The host checks described below used synthetic Scene fields and `.test`
+addresses. They did not start media transfers or issue provider requests.
 
 ## Live retry and pause (`e3e.22`)
 

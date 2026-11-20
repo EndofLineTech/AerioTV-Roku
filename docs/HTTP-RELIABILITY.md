@@ -1,16 +1,19 @@
 # HTTP and ingestion policy (mxz.4 / mxz.8)
 
-Implemented in development 0.3.12. `HttpPolicy.brs` supplies structured categories;
+Originally implemented in development 0.3.12. `HttpPolicy.brs` supplies structured categories;
 `DispatcharrHttp.brs` retains callers' string error compatibility while applying
 attempt/deadline budgets; `HttpTransport.brs` owns native transfer cleanup.
 
 - 401 authentication and 403 permission are distinct, non-retryable failures.
 - 409 is a conflict/resource refusal, not blindly labeled a connection limit.
 - 404/410 distinguish unavailable items and expired sessions.
-- 429 and transient 408/502/503/504 permit **one retry for GET only**, inside the
-  original request and enclosing Task deadlines. Retry-After seconds and HTTP
-  dates are honored when the delay fits the remaining budget. Long delays return
-  immediately with an actionable message rather than sleeping indefinitely.
+- A 429 reported to the [shared request gate](REQUEST-GATE.md) parks the server;
+  the failing GET does **not** automatically retry, even with Retry-After zero.
+  The park accepts seconds or HTTP dates, defaults to 60 seconds, and caps at
+  120 seconds. For transient 408/502/503/504, the JSON request helper permits
+  **one retry for an eligible GET only**, inside the original request and Task
+  deadlines. It uses Retry-After when the delay fits; long delays return
+  rather than sleeping indefinitely. This is not native media-reader backoff.
 - Login, source changes and other POST mutations are never automatically repeated.
 - Pagination is same-server trusted, rejects repeated next URLs, caps at 100 pages
   and 100,000 accumulated rows, and has an enclosing 60-second budget. VOD uses
@@ -30,10 +33,10 @@ attempt/deadline budgets; `HttpTransport.brs` owns native transfer cleanup.
 
 ## Verification
 
-Actual requestJson/requestPages tests cover rate response → success, Retry-After
-seconds/date/invalid/too-long cases, no POST retry, malformed JSON, repeated pages
-and cancellation before/between attempts. Existing Task-body and lifecycle tests
-also pass with cooperative cancellation.
+Actual requestJson/requestPages tests cover no automatic 429 retry, transient
+GET cancellation before retry, Retry-After seconds/date/invalid/too-long cases,
+no mutation retry, malformed JSON and repeated pages.
+Existing Task-body and lifecycle tests also pass with cooperative cancellation.
 
 Native `tests/cache-probe` phase `http` recorded:
 - Valid JSON success.

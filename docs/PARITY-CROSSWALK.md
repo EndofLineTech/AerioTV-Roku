@@ -4,6 +4,10 @@
 
 **Evidence:** **Native** = a prior result on Roku for the stated path, not necessarily on this exact commit. **Fixture** = automated/model or synthetic input evidence, even if run on Roku; not a provider or physical pass. **Source** = implementation or active routing at this pin without a matching native outcome established here. **Missing** = the specified behavior is not active at this pin. **Disposition** = an explicit scope choice or platform difference, not delivery. Physical results are called out separately where important. This review did not run a device, contact a provider, fetch source, or change Beads. Pending branches and local modifications are not counted as integrated.
 
+For later implementation and evidence boundaries on the launch, recovery and
+direct-provider rows, see the [follow-up audit at `4733127`](PLAYBACK-FEED-RECONCILIATION.md#evidence-at-4733127-development-03103).
+The table below retains its original source pin.
+
 ## Reference availability
 
 - **Apple October:** The locally staged [`fe7ad4c` tree][oct-tree], including the [October changelog][oct], [setup handoff][oct-setup] and [Sync schema][oct-sync], was available. The cited files match the pinned Git tree. The comparison uses TV call sites and guards, not just release-note labels. The last release in that changelog is **v1.8.44**. The October documents describe the shared design, not proof of both peers shipping at that revision (the October Sync document says draft).

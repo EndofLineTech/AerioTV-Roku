@@ -163,10 +163,11 @@ shipping randomness are not claimed by this experiment.
 
 ## Real provider/Guide HTTP execution — 2026-11-09
 
-Only **enabling real cryptographic pairing** is blocked on secure randomness.
-Building and testing the remaining code does not depend on that gate. Guide and
-catch-up option work (`AerioTV-Roku-e3e.5.2`) is unfinished implementation, not an
-entropy blocker.
+At this historical checkpoint, normal pairing was not yet enabled, and Guide
+and catch-up option work was unfinished. Normal pairing later shipped in Beta
+v0.3.102, and the owner treated receiver-entropy assurance as non-blocking.
+For the implemented Guide options and remaining provider evidence, see the
+[follow-up audit](PLAYBACK-FEED-RECONCILIATION.md).
 
 `AerioTV-Roku-e3e.5.3` adds a second native probe mode using the **unchanged
 production DispatcharrTask, XtreamTask, M3uTask and GuideTask**, including the real
@@ -260,9 +261,11 @@ using the lineup's Xtream EPG channel IDs; live channels and sign-in still use
 the configured Xtream server. Refresh guide retries the chosen feed and does
 not fall back to the account guide on failure. Reimport without an override to
 restore the account guide. Local URL failover and provider-inapplicable options
-are explicitly disclosed before Save, not silently claimed as applied. These
-runtime gaps are tracked as `AerioTV-Roku-e3e.5.2`. Token-bearing or unsupported
-XMLTV URLs are rejected with an explanation rather than persisted. Household
+are explicitly disclosed before Save, not silently claimed as applied. The
+owner deferred automatic LAN failover; live qualification of the independent
+Xtream override remains separate from its implementation (`AerioTV-Roku-e3e.5.2`).
+Token-bearing or unsupported XMLTV URLs are rejected with an explanation
+rather than persisted. Household
 profiles/PINs are not imported and Sync is never enabled from the payload.
 Multi-Channel-Profile selection is also
 retained during lineup refresh and no longer prunes history outside the selected
