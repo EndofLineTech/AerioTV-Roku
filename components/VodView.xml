@@ -4,6 +4,7 @@
     <function name="refreshAppearance" />
     <field id="config" type="assocarray" onChange="configureVod" />
     <field id="active" type="boolean" onChange="activateVod" />
+    <field id="unsupportedTitles" type="assocarray" onChange="onUnsupportedTitles" />
     <field id="playRequested" type="assocarray" alwaysNotify="true" />
     <field id="exitRequested" type="boolean" alwaysNotify="true" />
     <field id="authRejected" type="boolean" alwaysNotify="true" />

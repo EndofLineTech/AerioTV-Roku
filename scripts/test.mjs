@@ -107,6 +107,7 @@ suites.push('DispatcharrSyncPolicy');
 suites.push('NetworkStatus');
 suites.push('DispatcharrSyncSettingsStore');
 suites.push('CatchupTask');
+suites.push('VodPlaybackSupport');
 suites.push('XtreamGuideOverride');
 suites.push('PlayerControls');
 suites.push('MemoryCleanup');
@@ -163,7 +164,7 @@ for (const name of requested.length ? requested : suites) {
     'source/VideoGeometry.brs',
     'source/GuideSettingsModel.brs', 'source/GuideDayOptions.brs', 'source/GuideLogoSize.brs',
     'source/ReminderModel.brs',
-    ...(['TmdbTask', 'VodShelfTask', 'VodSeriesTask', 'XtreamTask', 'XtreamVodTask', 'ConnectionAuthTask', 'XtreamGuideOverride'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
+    ...(['TmdbTask', 'VodShelfTask', 'VodSeriesTask', 'XtreamTask', 'XtreamVodTask', 'ConnectionAuthTask', 'XtreamGuideOverride', 'VodPlaybackSupport'].includes(suite) ? [] : ['source/MetadataCacheModel.brs']),
     'source/HttpPolicy.brs',
     'source/RequestGateModel.brs', ...(['PhoneSetupNavigation', 'ProfileSetupCredentialNavigation', 'ProfileSwitchRollbackProtection', 'DispatcharrSyncSwitchRosterStore', 'DispatcharrSyncWriteTask', 'DispatcharrSyncAckStore', 'DispatcharrSyncSettingsStore'].includes(suite) ? [] : ['source/RequestGateClient.brs']), ...(['ProfileSwitchRollbackProtection', 'DispatcharrSyncSwitchRosterStore', 'DispatcharrSyncAckStore'].includes(suite) ? [] : ['source/RequestGateRenderer.brs']),
     ...(['ProfileSetupCredentialNavigation', 'ConnectionNavigation', 'PlayerLifecycle'].includes(suite) ? ['components/ProfileSetupCredentialNavigation.brs'] : []),
@@ -177,6 +178,7 @@ for (const name of requested.length ? requested : suites) {
     ...(['UserProfileScopeStore', 'UserProfilePreferenceNavigation'].includes(suite) ? ['source/StrictJson.brs', 'source/UserProfileScope.brs', 'source/UserProfileScopeStore.brs', 'source/UserProfileModel.brs', 'source/UserProfileStore.brs', 'source/UserProfileLifecycle.brs', 'source/UserProfileAvatar.brs', 'source/UserProfilePin.brs', 'source/ConnectionStoreModel.brs'] : []),
     ...(suite === 'UserProfilePreferenceNavigation' ? ['components/UserProfilePreferenceNavigation.brs'] : []),
     ...(suite === 'UserViewGuards' ? ['components/MediaNavigation.brs'] : []),
+    ...(suite === 'VodPlaybackSupport' ? ['components/MediaNavigation.brs'] : []),
     ...(suite === 'DispatcharrSyncKey' ? ['source/DispatcharrSyncKey.brs'] : []),
     ...(['DispatcharrSyncReadTask', 'DispatcharrSyncReadAuthority', 'DispatcharrSyncEnvelope'].includes(suite) ? ['source/DispatcharrSyncKey.brs', 'source/DispatcharrSyncEnvelope.brs', 'source/DispatcharrSyncRoster.brs', 'source/UserProfilePin.brs', 'source/UserProfileAvatar.brs'] : []),
     ...(['DispatcharrSyncReadTask', 'DispatcharrSyncReadAuthority'].includes(suite) ? ['components/DispatcharrSyncReadTask.brs'] : []),
@@ -252,7 +254,7 @@ for (const name of requested.length ? requested : suites) {
     ...(suite === 'DvrRecordingModel' ? ['source/DvrRecordingModel.brs'] : []),
     ...(suite === 'DvrRecordingModel' ? ['source/DvrSeriesModel.brs'] : []),
     ...(['DvrPresentationModel', 'DvrNavigation', 'DvrHandoff', 'DvrView'].includes(suite) ? ['source/DvrPresentationModel.brs'] : []),
-    'source/MediaSessionModel.brs', 'source/VodModel.brs', 'source/VodState.brs',
+    'source/MediaSessionModel.brs', 'source/VodModel.brs', 'source/VodState.brs', 'source/VodPlaybackSupport.brs',
     ...(['VodSeriesTarget', 'VodSeriesTask', 'VodShelfTask'].includes(suite) ? ['source/VodSeriesTarget.brs'] : []), 'source/CatchupModel.brs',
     ...(['RecordingSeekModel', 'OnDemandPlayer'].includes(suite) ? ['source/RecordingSeekModel.brs'] : []),
     'source/DiagnosticModel.brs',

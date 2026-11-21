@@ -40,6 +40,7 @@ sub main()
     updateLibraryTabs()
     if m.libraryNavigation.items.count() <> 8 or m.libraryNavigation.items[2].id <> "continue" then stop
     testVodDisplayFrames()
+    testVodUnsupportedBadge()
     print "ALL TESTS PASSED"
 end sub
 
@@ -183,3 +184,29 @@ function descriptionEvent(node, data)
         return m.data
     end function}
 end function
+
+sub testVodUnsupportedBadge()
+    m.global = {appearance: {vodDisplayScale: 100, textSize: 100, subtextSize: 100}}
+    m.top = {active: true, config: {baseUrl: "https://fixtures.invalid"}, unsupportedTitles: {"wide-uuid": true}}
+    m.shelf = "catalog"
+    m.items = [vodNormalize({id: 7, uuid: "wide-uuid", name: "Wide", year: 2010, rating: "7"}, "movie"), vodNormalize({id: 8, uuid: "fine-uuid", name: "Fine", year: 2011, rating: "6"}, "movie")]
+    m.index = 0
+    for i = 0 to 1
+        ' Preset artwork so the host test does not create a native roHttpAgent.
+        m.tiles[i].poster.uri = vodArtworkUrl(m.top.config.baseUrl, m.items[i])
+    end for
+    drawVod()
+    if m.tiles[0].fact.text <> "Won't play on Roku" then stop
+    if m.tiles[1].fact.text = "Won't play on Roku" or instr(1, m.tiles[1].fact.text, "2011") = 0 then stop
+    if m.tiles[0].fact.color = m.tiles[1].fact.color then stop ' the badge is visually distinct
+    m.top.unsupportedTitles = {}
+    drawVod()
+    if instr(1, m.tiles[0].fact.text, "2010") = 0 or m.tiles[0].fact.color <> m.tiles[1].fact.color then stop
+    resetDescriptionTest()
+    m.top.unsupportedTitles = {test: true}
+    renderDetailDescription()
+    if instr(1, m.dialog.message, "Won't play on Roku") <> 1 then stop
+    m.top.unsupportedTitles = {}
+    renderDetailDescription()
+    if instr(1, m.dialog.message, "Won't play on Roku") > 0 then stop
+end sub

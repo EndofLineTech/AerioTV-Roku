@@ -35,6 +35,7 @@ sub openVodLibrary(kind as string)
     m.page = "library"
     m.vod.savedState = vodState(m.accountPreferences.vod)
     m.vod.history = vodHistory(m.accountPreferences.vodRecent)
+    m.vod.unsupportedTitles = vodUnsupportedLookup(vodUnsupportedStore(), m.baseUrl)
     bookmark = invalid
     if type(m.accountPreferences.vodBrowse) = "roAssociativeArray" then bookmark = m.accountPreferences.vodBrowse[kind]
     connection = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
@@ -599,6 +600,7 @@ sub onMediaProgress(event as object)
         position = int(progress.position)
         if finished then position = 0
         played = not m.mediaHistoryRecorded and (progress.state = "playing" and progress.position > 0 or progress.finished)
+        if progress.state = "playing" and progress.position > 0 then rememberVodUnsupported(progress.identity, false)
         saveVodChange(m.mediaItem, {position: position, duration: int(progress.duration), watched: finished}, played)
         return
     end if
@@ -862,7 +864,30 @@ sub onMediaDiagnostic(event as object)
             end if
         end if
     end if
+    if value.mode = "vod" and nativeUnsupportedFormat(value.code, textValue(value.message)) then rememberVodUnsupported(value.identity, true)
     recordDiagnostic(stage, value.code, value.message)
+end sub
+
+function vodUnsupportedStore() as object
+    if m.vodUnsupported = invalid then m.vodUnsupported = loadVodUnsupported(m.registry)
+    return m.vodUnsupported
+end function
+
+' Mark on a native format refusal; clear once the same title actually plays.
+sub rememberVodUnsupported(identity as string, unsupported as boolean)
+    item = m.mediaItem
+    if item = invalid or identity = "" or identity <> m.mediaIdentity then return
+    store = vodUnsupportedStore()
+    if vodUnsupportedMarked(store, m.baseUrl, textValue(item.uuid)) = unsupported then return
+    if unsupported
+        store = markVodUnsupported(store, m.baseUrl, textValue(item.uuid))
+    else
+        store = clearVodUnsupported(store, m.baseUrl, textValue(item.uuid))
+    end if
+    m.vodUnsupported = store
+    ' Recovery mode blocks runtime registry writes; keep the session copy.
+    if m.userProfileRecoveryRequired <> true then saveVodUnsupported(m.registry, store)
+    m.vod.unsupportedTitles = vodUnsupportedLookup(store, m.baseUrl)
 end sub
 
 sub onMetadataDiagnostic(event as object)

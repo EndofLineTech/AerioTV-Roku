@@ -109,6 +109,7 @@
   <script type="text/brightscript" uri="pkg:/source/NowNextModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/CatchupModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/VodState.brs" />
+  <script type="text/brightscript" uri="pkg:/source/VodPlaybackSupport.brs" />
   <script type="text/brightscript" uri="MediaNavigation.brs" />
   <script type="text/brightscript" uri="VodDeepLinkNavigation.brs" />
   <script type="text/brightscript" uri="pkg:/source/DiagnosticModel.brs" />

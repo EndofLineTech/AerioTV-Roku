@@ -139,6 +139,17 @@ sub activateVod()
     end if
 end sub
 
+sub onUnsupportedTitles()
+    if m.top.active then drawVod()
+end sub
+
+' Device-local evidence from an earlier native format refusal on this Roku.
+function vodTitleUnsupported(item as dynamic) as boolean
+    if type(item) <> "roAssociativeArray" or type(m.top.unsupportedTitles) <> "roAssociativeArray" then return false
+    uuid = textValue(item.uuid)
+    return uuid <> "" and m.top.unsupportedTitles[uuid] = true
+end function
+
 sub refreshVodHistory()
     if m.top.active and m.top.config <> invalid and m.shelf = "recent" then loadVodPage()
 end sub
@@ -579,6 +590,9 @@ sub drawVod()
             if item.unavailable = true
                 tile.fact.text = "Unavailable — * to remove"
                 uri = ""
+            else if not compact and vodTitleUnsupported(item)
+                tile.fact.text = "Won't play on Roku"
+                uiSetColor(tile.fact, "0xF3C14BFF")
             end if
             if sourceVersion
                 tile.title.text = textValue(item.sourceName)
@@ -794,6 +808,7 @@ end sub
 sub renderDetailDescription()
     if m.dialog = invalid or m.detail = invalid then return
     message = m.detail.year + "  " + left(m.detail.genre, 100)
+    if vodTitleUnsupported(m.detail) then message = "Won't play on Roku: this Roku couldn't decode its video format last time." + chr(10) + message
     actors = left(m.detail.actors, 180)
     director = left(m.detail.director, 160)
     if m.detail.tmdb <> invalid
