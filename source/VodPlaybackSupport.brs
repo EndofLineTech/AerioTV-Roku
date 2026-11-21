@@ -4,7 +4,12 @@
 ' Keys are "<server digest>:<catalog uuid>" and never retain the server URL.
 
 function vodUnsupportedLimit() as integer
-    return 200
+    return 50
+end function
+
+' Shares the registry quota with settings (up to 24000 bytes); stay small.
+function vodUnsupportedMaxBytes() as integer
+    return 4000
 end function
 
 function vodUnsupportedKey(base as string, uuid as string) as string
@@ -45,7 +50,7 @@ function markVodUnsupported(store as object, base as string, uuid as string) as 
     result = clearVodUnsupported(store, base, uuid)
     if key = "" then return result
     result.keys.push(key)
-    while result.keys.count() > vodUnsupportedLimit()
+    while result.keys.count() > vodUnsupportedLimit() or len(FormatJson({schema: 1, keys: result.keys})) > vodUnsupportedMaxBytes()
         result.keys.shift()
     end while
     return result
@@ -70,6 +75,7 @@ function saveVodUnsupported(registry as object, store as object) as boolean
 end function
 
 ' Catalog uuid -> true for one server, for views that do not hold the store.
+' AA keys ignore case; Dispatcharr uuids are lowercase and Xtream ids numeric.
 function vodUnsupportedLookup(store as object, base as string) as object
     lookup = {}
     if store.keys.count() = 0 then return lookup

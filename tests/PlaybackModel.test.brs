@@ -36,7 +36,6 @@ sub main()
     ' Observed on 3820RW2 / OS 16.0.4 for H.264 4096x1744 (DCI 4K) MKV.
     wide = ":pump:Image width too high: ISO/IEC 14496-10, MPEG-4 part 10 Annex-B, H.264, AVC:extra:err_clip_idx:0:program_id:"
     assertEqual(nativeUnsupportedFormat(-5, wide), true, "native width refusal is an unsupported format")
-    assertEqual(nativeUnsupportedFormat(-5, "unsupported video format"), true, "native unsupported video text is an unsupported format")
     assertEqual(nativeUnsupportedFormat(-1, wide), false, "only native media errors classify as format refusals")
     assertEqual(nativeUnsupportedFormat(-5, ""), false, "generic media error is not an unsupported format")
     assertEqual(nativeUnsupportedFormat(-5, "buffering is stalled:extra:err_clip_idx:0"), false, "buffering stall is not an unsupported format")

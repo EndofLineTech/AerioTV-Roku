@@ -13,6 +13,13 @@ sub main()
     assertEqual(instr(1, FormatJson(store), "server.test"), 0, "stored marks do not retain the server URL")
     again = markVodUnsupported(store, base, "uuid-1")
     assertEqual(again.keys.count(), 1, "marking twice keeps one entry")
+    long = "u0123456789012345678901234567890123456789012345678901234567890123456789"
+    big = {schema: 1, keys: []}
+    for i = 1 to vodUnsupportedLimit()
+        big = markVodUnsupported(big, base, long + i.toStr())
+    end for
+    assertEqual(len(FormatJson(big)) <= vodUnsupportedMaxBytes(), true, "long uuids stay within the registry byte budget")
+    assertEqual(vodUnsupportedMarked(big, base, long + vodUnsupportedLimit().toStr()), true, "byte eviction keeps the newest mark")
     for i = 2 to vodUnsupportedLimit() + 5
         store = markVodUnsupported(store, base, "uuid-" + i.toStr())
     end for
@@ -115,8 +122,17 @@ sub checkSceneMarksRefusals()
     assertEqual(m.vod.unsupportedTitles.count(), 0, "recovery mode still updates the session view")
     m.userProfileRecoveryRequired = false
     m.vodUnsupported = invalid
-    rememberVodUnsupported("roku_current", false)
-    assertEqual(vodUnsupportedMarked(loadVodUnsupported(m.registry), base, "wide-uuid"), false, "later playback clears the persisted mark")
+    m.accountIdentity = "account"
+    m.accountPreferences = {vod: {}, vodRecent: []}
+    m.lastVodWrite = 0
+    m.lastVodState = ""
+    m.mediaHistoryRecorded = false
+    onMediaProgress(sceneProgressEvent(m.mediaPlayer, "roku_current", m.mediaItem.key, "buffering", 0))
+    assertEqual(vodUnsupportedMarked(loadVodUnsupported(m.registry), base, "wide-uuid"), true, "buffering does not clear the mark")
+    onMediaProgress(sceneProgressEvent(m.mediaPlayer, "roku_previous", m.mediaItem.key, "playing", 5))
+    assertEqual(vodUnsupportedMarked(loadVodUnsupported(m.registry), base, "wide-uuid"), true, "a stale reader cannot clear the mark")
+    onMediaProgress(sceneProgressEvent(m.mediaPlayer, "roku_current", m.mediaItem.key, "playing", 5))
+    assertEqual(vodUnsupportedMarked(loadVodUnsupported(m.registry), base, "wide-uuid"), false, "actual playback clears the persisted mark")
     m.global = invalid
 end sub
 
@@ -127,6 +143,19 @@ function sceneDiagnosticEvent(node as object, identity as string, code as intege
     end function, getData: function() as object
         return m.data
     end function}
+end function
+
+function sceneProgressEvent(node as object, identity as string, key as string, state as string, position as integer) as object
+    data = userViewEvent({account: "account", identity: identity, key: key, mode: "vod", position: position, duration: 600, finished: false, state: state, closing: false}, "holder")
+    return {node: node, data: data, getRoSGNode: function() as object
+        return m.node
+    end function, getData: function() as object
+        return m.data
+    end function}
+end function
+
+function persistAccountPreferences() as boolean
+    return true
 end function
 
 sub recordDiagnostic(stage as string, code as integer, message as string, elapsedMs = 0 as integer)

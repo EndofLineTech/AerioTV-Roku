@@ -256,7 +256,7 @@ end function
 ' "Image width too high" in errorStr. Other -5 errors are not format proof.
 function nativeUnsupportedFormat(code as integer, detail as string) as boolean
     if code <> -5 then return false
-    return CreateObject("roRegex", "image width too high|unsupported video format", "i").isMatch(detail)
+    return CreateObject("roRegex", "image width too high", "i").isMatch(detail)
 end function
 
 function nativePlaybackReports503(detail as string) as boolean
