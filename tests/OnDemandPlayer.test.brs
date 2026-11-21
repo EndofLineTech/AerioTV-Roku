@@ -1,10 +1,12 @@
 sub main()
     checkColdVodPlayer()
+    checkColdVodFailureFocus()
     m.session = mediaSession("account", "session", "vod", "item", 1000)
     mediaObserve(m.session, "playing", 5, 100, invalid)
     m.top = {request: {apiKey: "private"}, setFocus: sub(value)
     end sub}
-    m.video = {state: "buffering", position: 60, duration: 100, visible: true, errorCode: -1, errorStr: "HTTP 500 https://host/private"}
+    m.video = {state: "buffering", position: 60, duration: 100, visible: true, errorCode: -1, errorStr: "HTTP 500 https://host/private", setFocus: sub(value)
+    end sub}
     m.elapsed = {totalSeconds: function()
         return 2
     end function, mark: sub()
@@ -195,6 +197,64 @@ sub checkColdVodPlayer()
     m.clock = {}
     openMedia()
     if m.top.closedContext.identity <> "identity" or m.top.closedContext.coldResult <> "denied" or m.top.visible then stop
+    m.global = invalid
+    m.session = invalid
+    m.coldVodContent = invalid
+end sub
+
+' Native Roku 16 keeps focus on a focused Video child when only its parent
+' Group requests focus. Model that so failure must explicitly hand off focus.
+function coldFocusNode(name as string, focus as object) as object
+    return {name: name, focus: focus, visible: true, setFocus: sub(value as boolean)
+        if value
+            if m.name = "video" or m.focus.owner <> "video" then m.focus.owner = m.name
+        else if m.focus.owner = m.name
+            m.focus.owner = ""
+        end if
+    end sub, hasFocus: function() as boolean
+        return m.focus.owner = m.name
+    end function}
+end function
+
+sub checkColdVodFailureFocus()
+    for each failure in ["native", "startup"]
+        focus = {owner: "video"}
+        m.global = {activeusersession: "holder"}
+        m.userSessionId = "holder"
+        m.top = coldFocusNode("top", focus)
+        m.top.request = userViewEvent({coldToken: "cold-token", identity: "identity", mode: "vod", apiKey: "private"}, "holder")
+        m.session = mediaSession("account", "identity", "vod", "movie", 1000)
+        content = {serial: 1, isSameNode: function(other as dynamic) as boolean
+            return other <> invalid and m.serial = other.serial
+        end function}
+        m.video = coldFocusNode("video", focus)
+        m.video.content = content
+        m.video.state = "buffering"
+        m.video.position = 0
+        m.video.duration = 600
+        m.video.errorCode = -5
+        m.video.errorStr = "Image width too high"
+        m.coldVodContent = content
+        m.coldVodResumeTarget = 0
+        m.pendingResume = 0
+        m.opening = false
+        m.startPaused = false
+        m.mediaFailed = false
+        m.message = {text: ""}
+        m.clock = {control: "start"}
+        if failure = "native"
+            m.video.state = "error"
+            onMediaState()
+        else
+            m.elapsed = {totalSeconds: function() as integer
+                return 45
+            end function}
+            reportProgress()
+        end if
+        if not m.mediaFailed or m.video.visible then stop
+        if focus.owner <> "top" then stop ' failure text owns the remote, not the hidden Video
+        if checkColdVodPlayback("cold-token", "identity", false) <> "failed" then stop
+    end for
     m.global = invalid
     m.session = invalid
     m.coldVodContent = invalid

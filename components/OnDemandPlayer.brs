@@ -168,7 +168,7 @@ sub onMediaState()
             m.message.text += chr(10) + "Up  Go Live    OK / Back  Return"
         end if
         m.video.visible = false
-        m.top.setFocus(true)
+        focusFailureMessage()
         m.clock.control = "stop"
     else if state = "finished"
         cancelArchiveScrub()
@@ -184,6 +184,13 @@ sub onMediaState()
         end if
         closeMedia()
     end if
+end sub
+
+' Roku keeps focus on a focused Video child when only this Group requests it,
+' leaving the hidden reader with the remote. Release it so Retry/Back reach us.
+sub focusFailureMessage()
+    m.video.setFocus(false)
+    m.top.setFocus(true)
 end sub
 
 sub reportProgress()
@@ -242,7 +249,7 @@ sub reportProgress()
             if m.top.request.restart = true or m.top.request.rewind = true then m.message.text = "Archive not yet available. Try again later." + chr(10) + "Up  Go Live    OK / Back  Return"
             m.video.visible = false
             m.clock.control = "stop"
-            m.top.setFocus(true)
+            focusFailureMessage()
         end if
     else if m.video.state = "playing" or m.video.state = "paused"
         m.elapsed.mark()
