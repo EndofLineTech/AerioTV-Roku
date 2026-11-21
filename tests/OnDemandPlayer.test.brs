@@ -245,6 +245,8 @@ sub checkColdVodFailureFocus()
         if failure = "native"
             m.video.state = "error"
             onMediaState()
+            if instr(1, m.message.text, "Retrying won't help") = 0 or instr(1, m.message.text, "Choose source version") = 0 then stop
+            if instr(1, m.message.text, "OK Retry") > 0 then stop ' a known format refusal does not advertise retry
         else
             m.elapsed = {totalSeconds: function() as integer
                 return 45

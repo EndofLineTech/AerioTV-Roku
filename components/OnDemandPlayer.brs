@@ -156,7 +156,11 @@ sub onMediaState()
         print "[on-demand] failure code="; m.video.errorCode; " detail="; sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)
         m.message.text = playbackFailureText(m.video.errorCode, sanitizePlaybackDiagnostic(m.video.errorStr, m.top.request.apiKey)) + chr(10) + "OK Retry    Back Return"
         if m.session.mode = "vod"
-            if m.top.request.providerType = "xtream"
+            if nativeUnsupportedFormat(m.video.errorCode, m.video.errorStr)
+                m.message.text = playbackFailureText(m.video.errorCode, m.video.errorStr) + chr(10) + "Retrying won't help on this Roku."
+                if m.top.request.providerType <> "xtream" then m.message.text += chr(10) + "Back to the title, then Choose source version if another copy is available (authorized accounts)."
+                m.message.text += chr(10) + "Back  Return"
+            else if m.top.request.providerType = "xtream"
                 m.message.text += chr(10) + "If this title keeps failing, return to its category or sign in again."
             else
                 m.message.text += chr(10) + "If this source keeps failing: Back to the title, then Choose source version (authorized accounts)."

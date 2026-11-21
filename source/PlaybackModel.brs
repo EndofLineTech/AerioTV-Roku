@@ -229,6 +229,10 @@ function playbackFailureText(code as integer, detail as string) as string
     if code = -1 then reason = "The Roku could not read the channel's media response."
     if code = -2 then reason = "The channel request timed out. Check the server and network."
     if code = -5 then reason = "The Roku reported a media playback error."
+    if nativeUnsupportedFormat(code, detail)
+        ' Decoder internals do not help viewers; keep the code for support.
+        return "This video's format isn't supported by this Roku, for example cinema-4K video wider than standard 4K." + chr(10) + "Roku error " + code.toStr()
+    end if
     if isStartupBufferingStall(code, detail) then reason = "Playback stalled while buffering. Try this channel again."
     if instr(1, lcase(detail), "startup buffering timed out") > 0 then reason = "The channel did not start within the selected automatic retry budget. Try again or choose another channel."
     refusal = nativePlaybackRefusal(detail)
@@ -246,6 +250,13 @@ function playbackFailureText(code as integer, detail as string) as string
     message = reason + chr(10) + "Roku error " + code.toStr()
     if detail <> "" then message += chr(10) + detail
     return message
+end function
+
+' Observed on 3820RW2 / OS 16.0.4: H.264 4096x1744 fails as code -5 with
+' "Image width too high" in errorStr. Other -5 errors are not format proof.
+function nativeUnsupportedFormat(code as integer, detail as string) as boolean
+    if code <> -5 then return false
+    return CreateObject("roRegex", "image width too high|unsupported video format", "i").isMatch(detail)
 end function
 
 function nativePlaybackReports503(detail as string) as boolean
