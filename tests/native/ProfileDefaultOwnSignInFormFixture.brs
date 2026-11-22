@@ -104,8 +104,14 @@ end sub
 function unlockDefaultOwnProbePin() as boolean
     if m.profilePinDialog = invalid or m.profileOwnSignInDialog <> invalid then return false
     pad = m.profilePinDialog
-    covered = m.global.profilegateclosed and m.profileGateCover.visible
+    ' Since 3477f49 a chosen inactive own sign-in preserves the outgoing
+    ' source through its PIN, so the gate stays open and uncovered.
+    preserved = m.global.profilegateclosed <> true and not m.profileGateCover.visible
     pad.textEditBox.text = "1234"
     onProfilePinSubmit(managementProbeEvent(pad, 0))
-    return covered and m.profilePinDialog = invalid and m.profileOwnSignInDialog <> invalid and m.profileOwnSignInContext.pin.id = m.ownProbeTarget and m.profileUnlockGrant = invalid
+    pinned = false
+    if m.profileOwnSignInContext <> invalid and type(m.profileOwnSignInContext.pin) = "roAssociativeArray" then pinned = m.profileOwnSignInContext.pin.id = m.ownProbeTarget
+    unlocked = preserved and m.profilePinDialog = invalid and m.profileOwnSignInDialog <> invalid and pinned and m.profileUnlockGrant = invalid
+    if not unlocked then print "[own-signin] pin-diagnostic "; FormatJson({preserved: preserved, closed: m.global.profilegateclosed = true, cover: m.profileGateCover.visible, pad_closed: m.profilePinDialog = invalid, form: m.profileOwnSignInDialog <> invalid, pinned: pinned, grant_cleared: m.profileUnlockGrant = invalid})
+    return unlocked
 end function

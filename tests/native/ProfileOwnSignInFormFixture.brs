@@ -137,8 +137,10 @@ end sub
 function unlockOwnProbePin() as boolean
     if m.profilePinDialog = invalid or m.profileOwnSignInDialog <> invalid then return false
     pad = m.profilePinDialog
-    protected = m.global.profilegateclosed and m.profileGateCover.visible
+    ' Since 3477f49 a chosen inactive own sign-in preserves the outgoing
+    ' source through its PIN, so the gate stays open and uncovered.
+    preserved = m.global.profilegateclosed <> true and not m.profileGateCover.visible
     pad.textEditBox.text = "1234"
     onProfilePinSubmit(managementProbeEvent(pad, 0))
-    return protected and m.profilePinDialog = invalid and m.profileOwnSignInDialog <> invalid and m.profileOwnSignInContext.pin.id = m.ownProbeTarget and m.profileUnlockGrant = invalid and not m.global.profilegateclosed
+    return preserved and m.profilePinDialog = invalid and m.profileOwnSignInDialog <> invalid and m.profileOwnSignInContext.pin.id = m.ownProbeTarget and m.profileUnlockGrant = invalid and not m.global.profilegateclosed
 end function

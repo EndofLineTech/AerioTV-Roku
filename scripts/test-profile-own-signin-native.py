@@ -15,6 +15,21 @@ import uuid
 import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
+OWN_PROBE_EMAIL = '''function ownProbeEmailRequest() as object
+    store = CreateObject("roSGNode", "Node")
+    store.addField("userData", "assocarray", true)
+    store.addField("requestedUserDataInfo", "node", false)
+    store.addFields({requestedUserData: "", command: ""})
+    store.observeField("command", "onOwnProbeEmailCommand")
+    return {store: store, info: CreateObject("roSGNode", "ContentNode")}
+end function
+
+sub onOwnProbeEmailCommand(event as object)
+    node = event.getRoSGNode()
+    if node.command = "getUserData" then node.userData = {}
+end sub
+
+'''
 
 
 def module(name):
@@ -22,6 +37,18 @@ def module(name):
     loaded = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(loaded)
     return loaded
+
+
+def trace_first_failure(fixture):
+    """Print the fixture line where m.ownProbePassed first becomes false."""
+    lines = []
+    for number, line in enumerate(fixture.splitlines(), 1):
+        lines.append(line)
+        stripped = line.strip()
+        if stripped.startswith('m.ownProbePassed =') and ' then ' not in stripped:
+            indent = line[:len(line) - len(line.lstrip())]
+            lines.append(f'{indent}if m.ownProbePassed <> true and m.ownProbeFirstFailure = invalid then m.ownProbeFirstFailure = {number} : print "[own-signin] first-failure "; FormatJson({{fixture_line: {number}}})')
+    return '\n'.join(lines) + '\n'
 
 
 def build(output, normal, section, base, form=False, default_form=False, held=False, active_form=False, active_recheck=False, recheck_cancel=False, identity_change=False, child_form=None, same_key=False, hold_cancel=False, child_rejected=False, hold_timeout=False, child_recheck=False, default_setup=False, setup_replacement=False):
@@ -70,6 +97,7 @@ def build(output, normal, section, base, form=False, default_form=False, held=Fa
     fixture = fixture.replace('OWN_SETUP_KEY', '"synthetic-a"' if same_key else '"synthetic-new-own-key"')
     fixture = fixture.replace('OWN_SETUP_CANCEL', 'true' if hold_cancel else 'false').replace('OWN_SETUP_TIMEOUT', 'true' if hold_timeout else 'false')
     fixture = fixture.replace('OWN_SETUP_REPLACEMENT', 'true' if setup_replacement else 'false')
+    fixture = trace_first_failure(fixture)
     if form:
         fixture = fixture.replace('OWN_PROBE_PIN_HASH', hashlib.sha256(bytes.fromhex('bb' * 16) + b'1234').hexdigest())
     with zipfile.ZipFile(seeded) as original, zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as package:
@@ -96,7 +124,13 @@ def build(output, normal, section, base, form=False, default_form=False, held=Fa
     m.registry.write(userProfileStoreKey("slot-a"), FormatJson(childStore))
 '''
                     source = source.replace('    m.registry.flush()', retire + '    m.registry.flush()', 1)
-                body = (source.split('sub onManagementProbeTick()', 1)[0] + fixture).encode()
+                # Own sign-in now asks ChannelStore for email consent first. These
+                # credential-form probes answer it synthetically with no email;
+                # the real consent dialog is covered by the switch-fault own-email cases.
+                hook = '    m.managementProbeClock.observeField("fire", "onManagementProbeTick")\n'
+                assert source.count(hook) == 1
+                source = source.replace(hook, hook + '    m.profileOwnSignInEmailRequestFactory = ownProbeEmailRequest\n', 1)
+                body = (source.split('sub onManagementProbeTick()', 1)[0] + OWN_PROBE_EMAIL + fixture).encode()
             package.writestr(name, body)
         package.writestr('profile-own-signin-probe.json', '{"synthetic":true}')
 
@@ -194,7 +228,7 @@ def main():
             body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', '0'))))
             scenario = body.get('password', '').removeprefix('synthetic-')
             username = 'Synthetic99' if args.setup_replacement else ('Synthetic7' if args.default_form else 'Synthetic8')
-            hits.append({'method': 'POST', 'path': self.path, 'scenario': scenario, 'no_api_key': not self.headers.get('X-API-Key'), 'username_ok': body.get('username') == username})
+            hits.append({'method': 'POST', 'path': self.path, 'scenario': scenario, 'no_api_key': not self.headers.get('X-API-Key'), 'username_ok': body.get('username') == username, 'mono': time.monotonic()})
             if self.path != '/api/accounts/token/' or scenario not in ['rejected', 'name', 'id', 'no-api', 'correct', 'delayed']:
                 self.reply(400, {})
             elif scenario == 'rejected':
@@ -210,7 +244,7 @@ def main():
             scenario = bearer.removeprefix('fixture-') if bearer.startswith('fixture-') else ''
             key = self.headers.get('X-API-Key', '')
             returned_key = 'synthetic-a' if args.default_form else 'synthetic-b'
-            hits.append({'method': 'GET', 'path': self.path, 'scenario': scenario, 'no_api_key': not key, 'default_key': key == 'synthetic-a', 'old_own_key': key == 'synthetic-b', 'new_own_key': key == 'synthetic-new-own-key' or (args.same_key and key == returned_key and fixture_state.get('same_key_adopted', False)), 'at': int(time.time())})
+            hits.append({'method': 'GET', 'path': self.path, 'scenario': scenario, 'no_api_key': not key, 'default_key': key == 'synthetic-a', 'old_own_key': key == 'synthetic-b', 'new_own_key': key == 'synthetic-new-own-key' or (args.same_key and key == returned_key and fixture_state.get('same_key_adopted', False)), 'at': int(time.time()), 'mono': time.monotonic()})
             value = []
             if self.path == '/api/accounts/users/me/':
                 own_rejected = args.active_form and ((key == 'synthetic-b' and fixture_state['revoke_old']) or (key == 'synthetic-new-own-key' and fixture_state['revoke_new']))
@@ -292,7 +326,9 @@ def main():
                     fixture_state['child_form_boundary'] = len(hits)
                 if '"kind":"cancel-ready"' in line:
                     request = urllib.request.Request(f'http://{host}:8060/keypress/Back', data=b'', method='POST')
+                    report['cancel_ready_at'] = time.monotonic()
                     with urllib.request.urlopen(request, timeout=10) as response:
+                        report['back_status'] = response.status
                         report['back_sent'] = response.status == 200
                         report['back_at'] = time.monotonic()
             stderr = process.stderr.read()
@@ -365,6 +401,11 @@ def main():
             if args.hold_timeout:
                 waits = [row for row in rows if row.get('kind') == 'timeout-ready']
                 report['passed'] = result.returncode == 0 and rows[-1].get('passed') and len(waits) == 1 and waits[0].get('passed') and [hit['scenario'] for hit in posts] == ['correct', 'correct']
+        if not report['passed'] and 'back_status' in report and report['back_status'] != 200:
+            # A queued (non-200) ECP Back can arrive after the delayed reply, so
+            # it cannot prove or disprove app cancellation (AerioTV-Roku-kz60).
+            report['harness_inconclusive'] = 'ECP Back not acknowledged with 200'
+            raise RuntimeError('Native Back delivery unconfirmed; rerun before judging the app')
         if not report['passed']:
             raise RuntimeError('Native own-profile sign-in assertions failed')
     finally:
@@ -413,6 +454,8 @@ def main():
                 if args.setup_replacement:
                     report_name = 'profile-default-setup-replacement-native.json'
             (ROOT / 'out' / report_name).write_text(json.dumps(report, indent=2) + '\n')
+            # Keep every run; the fixed name above is only the latest (kz60).
+            (ROOT / 'out' / report_name.replace('.json', time.strftime('-%Y%m%dT%H%M%S.json'))).write_text(json.dumps(report, indent=2) + '\n')
             print(json.dumps({key: report.get(key) for key in ['passed', 'cleaned', 'restored']}), flush=True)
             if not report['restored']:
                 raise RuntimeError('Exact prior app restore failed')
