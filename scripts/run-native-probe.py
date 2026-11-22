@@ -32,7 +32,16 @@ def main():
     parser.add_argument("--timeout", type=int, default=90)
     parser.add_argument("--marker", default="")
     parser.add_argument("--prefix", default="[cache-probe")
+    parser.add_argument("--console-log", help="Also write every redacted console line to this ignored out/ path")
     args = parser.parse_args()
+    if args.console_log is None:
+        args.console_log = os.environ.get("AERIO_PROBE_CONSOLE_LOG") or None
+    transcript = None
+    if args.console_log:
+        target = os.path.realpath(args.console_log)
+        if not target.startswith(os.path.realpath("out") + os.sep):
+            parser.error("--console-log must be under out/")
+        transcript = open(target, "a", encoding="utf-8")
     host = os.environ["ROKU_HOST"]
     password = os.environ["ROKU_DEV_PASSWORD"]
     console = socket.create_connection((host, 8085), 5)
@@ -72,6 +81,10 @@ def main():
                 line = raw.decode("utf-8", "replace").strip()
                 if "Running dev" in line:
                     launch_observed = True
+                if transcript is not None:
+                    redacted = re.sub(r'https?://[^\s"<>]+', "[URL]", line).replace(password, "[developer password]")
+                    transcript.write(f"{time.monotonic():.3f} {redacted}\n")
+                    transcript.flush()
                 relevant = args.prefix in line or any(term in line for term in (
                     "ERROR:", "error &h", "Syntax Error", "Running dev",
                     "Compile Error", "Error in XML", "ERROR compiling", "Compilation Failed",
@@ -87,6 +100,8 @@ def main():
         except socket.timeout:
             pass
     console.close()
+    if transcript is not None:
+        transcript.close()
     if not installed:
         raise SystemExit("Native install failed; inspect compiler evidence above")
     if args.marker and not complete:
