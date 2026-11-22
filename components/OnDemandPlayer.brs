@@ -382,7 +382,12 @@ function checkColdVodPlayback(token as string, identity as string, expired as bo
     request = m.top.request
     if request = invalid or token = "" then return ""
     if request.coldToken <> token or request.identity <> identity or not userEventCurrent(request) then return ""
-    if m.session = invalid or m.session.identity <> identity then return ""
+    if m.session = invalid
+        ' No session can still start playback, so the deadline must settle it.
+        if expired then closeMedia("timeout")
+        return ""
+    end if
+    if m.session.identity <> identity then return ""
     if m.video.content <> invalid and m.coldVodContent <> invalid
         if not m.coldVodContent.isSameNode(m.video.content) then return "replaced"
     end if

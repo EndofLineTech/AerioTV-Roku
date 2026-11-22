@@ -186,6 +186,16 @@ sub checkColdVodPlayer()
     m.global.profilegateclosed = false
     checkColdVodPlayback("cold-token", "identity", true)
     if m.top.closedContext.coldResult <> "timeout" or m.top.closedContext.identity <> "identity" or m.top.visible then stop
+    ' A cold request whose session never started must still settle at its deadline.
+    m.top.closedContext = invalid
+    m.top.visible = true
+    m.top.request = userViewEvent({coldToken: "cold-token", identity: "identity", mode: "vod"}, "holder")
+    m.video.content = content
+    m.coldVodContent = content
+    if checkColdVodPlayback("cold-token", "identity", false) <> "" or m.top.closedContext <> invalid then stop
+    checkColdVodPlayback("cold-token", "identity", true)
+    if m.top.closedContext = invalid then stop
+    if m.top.closedContext.coldResult <> "timeout" or m.top.closedContext.identity <> "identity" or m.top.visible then stop
     m.session = invalid
     m.video.hasField = function(field as string) as boolean
         return true
