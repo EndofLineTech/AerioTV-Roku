@@ -110,7 +110,7 @@ function metadataCacheWriteLocked(fs as object, scope as string, kind as string,
     for each file in files
         bytes += file.bytes
     end for
-    while files.count() >= 64 or bytes + rawBytes > 8388608
+    while files.count() >= 64 or bytes + rawBytes > 25165824
         if files.count() = 0 then return false
         victim = files.shift()
         if not fs.delete(root + "/" + victim.name) then return false

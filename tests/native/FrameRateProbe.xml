@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="FrameRateProbe" extends="Scene">
+  <script type="text/brightscript" uri="FrameRateProbe.brs" />
+  <children>
+    <Rectangle width="1920" height="1080" color="0x0A1628FF" />
+    <Video id="video" width="1920" height="1080" enableUI="false" />
+    <Rectangle translation="[96,80]" width="1728" height="105" color="0x0A1628EFFF" />
+    <Label id="status" translation="[120,90]" width="1670" height="84" font="font:MediumSystemFont" />
+    <Timer id="sample" duration="1" repeat="true" />
+  </children>
+</component>

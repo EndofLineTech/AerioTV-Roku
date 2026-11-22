@@ -67,7 +67,7 @@ def sample(sock, seconds, started, result):
             for prefix, key in MARKERS.items():
                 if prefix not in line:
                     continue
-                source = re.search(r"source=(cache|network)", line)
+                source = re.search(r"source=(cache|network|details)", line)
                 field = {
                     "grid": "first-grid-ms", "program": "first-program-ms",
                     "logo_count": "initial-prefetch", "logo_file": "first-asset-ms",

@@ -26,28 +26,33 @@ sub loadMappings()
         for each channel in channels
             if channel.epgId <> "" then allowed[channel.epgId] = true
         end for
-        rows = []
-        ' Explicit channel assignments require their authoritative mapped tvg_id.
-        ' Dispatcharr 0.31 ignores pagination here. Retain the legacy query and
-        ' next-link support, but the HTTP response ceiling still bounds the list.
-        if allowed.count() > 0 then rows = requestPages("/api/epg/epgdata/?page=1&page_size=500")
-        if rows = invalid and type(m.httpFailure) = "roAssociativeArray"
-            if m.httpFailure.category = "response-too-large" and not m.top.cancelRequested
-                ' Dispatcharr 0.31 ignores list pagination. Resolve only IDs from
-                ' the authorized lineup rather than increasing the memory ceiling.
-                links = requestMappedDetails(allowed)
-                source = "details"
-            end if
-        end if
-        if rows <> invalid
+        if allowed.count() = 0
             links = {}
-            for each row in rows
-                if type(row) = "roAssociativeArray"
-                    id = textValue(row.id)
-                    if allowed.doesExist(id) then links[id] = textValue(row.tvg_id)
+        else if allowed.count() <= 100
+            ' Small lineups avoid the unpaginated server-wide list altogether.
+            ' Detail requests are bounded and use only freshly authorized IDs.
+            links = requestMappedDetails(allowed)
+            source = "details"
+        else
+            ' On larger lineups, one list is cheaper than many detail requests.
+            ' Dispatcharr 0.31 ignores pagination; retain the existing byte cap.
+            rows = requestPages("/api/epg/epgdata/?page=1&page_size=500")
+            if rows = invalid and type(m.httpFailure) = "roAssociativeArray"
+                if m.httpFailure.category = "response-too-large" and not m.top.cancelRequested
+                    links = requestMappedDetails(allowed)
+                    source = "details"
                 end if
-            end for
-            rows = invalid
+            end if
+            if rows <> invalid
+                links = {}
+                for each row in rows
+                    if type(row) = "roAssociativeArray"
+                        id = textValue(row.id)
+                        if allowed.doesExist(id) then links[id] = textValue(row.tvg_id)
+                    end if
+                end for
+                rows = invalid
+            end if
         end if
         if links <> invalid then metadataCacheWrite(m.top.scope, "mapping", "epg-links", m.top.generation, now, links)
     end if

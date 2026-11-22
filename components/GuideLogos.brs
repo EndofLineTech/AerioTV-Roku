@@ -154,7 +154,7 @@ sub storeGuideLogo(asset as object)
     for each row in m.rows
         if row.root.visible and row.logoId = asset.id then row.logo.uri = asset.uri
     end for
-    while m.guideLogoOrder.count() > 24 or m.guideLogoBytes > 12582912
+    while m.guideLogoOrder.count() > 96 or m.guideLogoBytes > 20971520
         victim = ""
         for each id in m.guideLogoOrder
             visible = false
