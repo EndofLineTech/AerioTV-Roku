@@ -325,10 +325,13 @@ function signalStartupComplete() as boolean
     if m.profileBaselineReady = true then refreshUserProfileChrome()
     recordUserProfileLaunchResolution()
     if m.profilePickerReady = true and m.activeUserScope <> invalid then m.profileLaunchPickerResolved = true
-    completeStartupBeacons()
+    completeStartupDialog()
     ' A later authenticated guide still resolves links without a second beacon.
     if m.page = "guide" then m.startupGuideReady = true
     linkedLiveTune = handlePendingLaunch()
+    ' Roku: a valid cold media link completes launch once its playback starts
+    ' and responds. settleColdPlayback completes it for any other outcome.
+    if m.coldPlayback = invalid then completeStartupBeacons()
     if m.profileBaselineReady = true and m.profileBaselinePendingAdd = true
         m.profileBaselinePendingAdd = false
         openSettingsHub()

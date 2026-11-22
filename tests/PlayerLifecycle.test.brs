@@ -1380,8 +1380,10 @@ sub runColdLiveAttemptChecks()
     handlePendingLaunch()
     assertEqual(m.coldPlayback, invalid, "closed protection gate cannot start cold playback")
     m.global.profilegateclosed = false
+    m.startupDialogOpen = true
     signalStartupComplete()
-    assertEqual(m.top.beacons[0], "AppLaunchComplete", "prerequisite does not move the existing startup beacon")
+    assertEqual(m.top.beacons.join(","), "AppDialogComplete", "the sign-in dialog closes at the Guide; only AppLaunchComplete waits for playback")
+    m.top.beacons = []
     assertEqual(m.coldPlayback.kind, "live", "matched cold link owns a real Scene tune")
     assertEqual(m.pendingAacTune.coldToken, m.coldPlayback.token, "AAC continuation carries the exact attempt")
     assertEqual(m.coldPlaybackClock.control, "start", "watchdog includes pre-render AAC")
@@ -1398,6 +1400,7 @@ sub runColdLiveAttemptChecks()
     m.video.position = 10
     checkColdPlayback()
     assertEqual(m.coldPlayback <> invalid, true, "one playing sample cannot settle startup")
+    assertEqual(m.top.beacons.count(), 0, "a single playing sample cannot complete launch")
     m.video.focused = false
     m.video.position = 11
     checkColdPlayback()
@@ -1414,9 +1417,13 @@ sub runColdLiveAttemptChecks()
     m.video.position = 12
     checkColdPlayback()
     assertEqual(m.coldPlayback <> invalid, true, "new reader cannot reuse an outgoing position sample")
+    assertEqual(m.top.beacons.count(), 0, "unsettled linked playback has not completed launch")
     m.video.position = 13
     checkColdPlayback()
     assertEqual(m.coldPlaybackOutcome.result, "ready", "only the focused advancing replacement settles the attempt")
+    assertEqual(m.top.beacons.join(","), "AppLaunchComplete", "operable linked playback completes launch exactly once")
+    signalStartupComplete()
+    assertEqual(m.top.beacons.count(), 1, "later guide readiness cannot repeat the launch beacon")
     checkColdPlayback()
     assertEqual(m.coldPlaybackClock.control, "stop", "settling is one-shot")
 
@@ -1473,7 +1480,11 @@ sub runColdLiveAttemptChecks()
         end if
     end for
     resetOwnedHlsFixture()
-    m.startupBeaconSent = true
+    m.startupBeaconSent = false
+    m.top.beacons = []
+    m.top.signalBeacon = sub(name as string)
+        m.beacons.push(name)
+    end sub
     m.startupGuideReady = false
     m.page = "setup"
     m.top.launchFromMain = true
@@ -1487,6 +1498,7 @@ sub runColdLiveAttemptChecks()
     end function
     signalStartupComplete()
     assertEqual(m.coldPlaybackOutcome.result, "unavailable", "unavailable link settles on the Guide")
+    assertEqual(m.top.beacons.join(","), "AppLaunchComplete", "unavailable link completes launch once on the usable Guide")
     assertEqual(m.guide.active, true, "unavailable link leaves the Guide usable")
     m.startupGuideReady = false
     m.page = "setup"

@@ -112,8 +112,10 @@ sub checkColdVodContinuation()
             check(play.coldToken = request.coldToken and m.coldPlayback.identity = play.identity, "verified result transfers the exact token to the media player")
             onMediaClosed(linkEvent(m.mediaPlayer, userViewEvent({closed: true, coldToken: request.coldToken, identity: "stale-renderer", coldResult: "denied"}, currentUserSessionId())))
             check(m.page = "onDemand" and m.coldPlayback <> invalid, "a stale close cannot displace the current renderer")
+            check(m.top.beacons.count() = 0, "an unsettled cold VOD renderer withholds AppLaunchComplete")
             onMediaClosed(linkEvent(m.mediaPlayer, userViewEvent({closed: true, coldToken: request.coldToken, identity: play.identity, coldResult: "denied"}, currentUserSessionId())))
             check(m.page = "guide" and m.guide.active and m.coldPlaybackOutcome.result = "denied", "the exact no-session denial restores the Guide before settling")
+            check(m.top.beacons.join(",") = "AppLaunchComplete", "settled cold VOD completes launch once on the restored Guide")
         else if path = "missing"
             check(m.coldPlaybackOutcome.result = "unavailable" and m.page = "guide", "missing title settles on the existing Guide")
         else if path = "stale"
@@ -279,7 +281,11 @@ sub fixture()
     m.accountIdentity = m.activeUserScope.preferenceIdentity
     m.accountPreferences = {vodEnabled: true, vod: [], vodRecent: []}
     m.global = {profilegateclosed: false, activeusersession: session}
-    m.top = {dialog: invalid}
+    m.top = {dialog: invalid, beacons: [], signalBeacon: sub(name as string)
+        m.beacons.push(name)
+    end sub}
+    m.startupBeaconSent = false
+    m.startupDialogOpen = false
     m.screen = {visible: false}
     m.guide = {config: userViewEvent({providerType: "dispatcharr", accountId: "8", apiKey: "own-key", baseUrl: entry.url}, session), visible: false, active: false}
     m.vod = {active: false}

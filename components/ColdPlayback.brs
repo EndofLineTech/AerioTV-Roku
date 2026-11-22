@@ -1,5 +1,5 @@
-' App-side evidence only. Native Video.state is not reader-tagged, and none
-' of these outcomes emit or defer the Roku launch beacon.
+' App-side evidence only. Native Video.state is not reader-tagged. A cold
+' attempt withholds AppLaunchComplete; its first outcome completes launch.
 function coldPlaybackLaunchRequest(raw as dynamic, cold as boolean) as dynamic
     request = normalizeLaunchRequest(raw)
     if cold and request <> invalid then request.coldToken = CreateObject("roDeviceInfo").getRandomUUID()
@@ -43,6 +43,7 @@ function settleColdPlayback(token as string, result as string) as boolean
     m.coldPlayback = invalid
     if m.coldPlaybackClock <> invalid then m.coldPlaybackClock.control = "stop"
     print "[cold-playback] kind="; m.coldPlaybackOutcome.kind; " result="; result
+    completeStartupBeacons()
     return true
 end function
 
