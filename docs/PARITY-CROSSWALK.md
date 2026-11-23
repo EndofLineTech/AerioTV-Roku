@@ -192,13 +192,17 @@ were delivered, and `n8ie` remains separate.
 | Minor polish (default group by hold, loading byte counter, sidebar overlay, frozen-stream toggle) | tvOS and Android | Works differently | `e3e.34` |
 | VOD playback speed | Android `VODPlayerScreen.kt`; tvOS V10 | Normal speed only; OS 16.0.4 now applies speed via pause/set/resume | `0451` (owner decision) |
 
-**Proposed platform dispositions (for owner review):** Android's *Learn Button*
+**Platform dispositions (accepted by the owner, 2026-11-23):** Android's *Learn Button*
 needs arbitrary key codes, which Roku's fixed remote key set does not deliver.
 *Buffer size* and *surround passthrough* are Roku system/player settings without
 an app control. *Hold Back to stop playback* depends on reliable held-key
 delivery, which Roku does not report after a native dialog closes (`e3e.20`).
 tvOS *Radio Mode as a banner over the Guide* differs by design from Roku's
 separate Radio screen ([Radio Mode](RADIO-MODE.md), [player contract](PLAYER-CONTRACT.md)).
+
+*Keep Recent Channels Live* (`e3e.16`/`e3e.17`) is also closed as a Roku
+platform difference: inactive streams cannot be retained usefully, and held
+connections would cost Dispatcharr capacity.
 
 **Confirmed on Android TV (peer behavior, not a new Roku gap):** launcher
 *Top Channels* / *Watch Next* rows (I04), `aeriotv://` channel and VOD deep
