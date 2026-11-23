@@ -184,7 +184,7 @@ were delivered, and `n8ie` remains separate.
 | Exit prompt at the top of the Guide | Android TV `MainActivity.kt` exit prompt | Delivered: Back on the Guide top menu asks **Exit AerioTV?** (Exit / Stay, Stay focused) | `e3e.26` |
 | Info card on channel change can be turned off | tvOS `PlayerInfoCardSettings.swift`; Android `PlayerSettingsScreen.kt` | Banner always shown on tune | `e3e.27` |
 | Play channels into the mini-player | tvOS `RemoteControlStore.swift` `tuneInMiniKey` | Guide tunes go fullscreen | `e3e.28` |
-| Recording marker on Guide cells | tvOS `EPGGuideView.swift` `hasScheduledRecording` | None; reminders use a `REM \|` prefix | `e3e.29` |
+| Recording marker on Guide cells | tvOS `EPGGuideView.swift` `hasScheduledRecording` | Delivered: red **REC** pill on scheduled and in-progress recordings (DVR view/manage accounts) | `e3e.29` |
 | Separate Skip Back / Skip Forward | tvOS `SkipIntervals.swift` | Delivered: separate Skip Back / Skip Forward (10 s–5 min) for rewind/archive (default 1 min) and in-progress recordings (default 30 s) | `e3e.30` |
 | Fuller DVR recording facts | tvOS `RecordingFacts` | Status, channel, times, description, Comskip | `e3e.31` |
 | Permissions summary and manual refresh | tvOS `ServerDetailView.swift` | Automatic refresh only | `e3e.32` |

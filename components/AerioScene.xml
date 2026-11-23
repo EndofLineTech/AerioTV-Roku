@@ -93,6 +93,7 @@
   <script type="text/brightscript" uri="pkg:/source/GuideLogoSize.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideDayOptions.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideRecordingMarks.brs" />
   <script type="text/brightscript" uri="pkg:/source/DvrPresentationModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/ReminderModel.brs" />
   <script type="text/brightscript" uri="AerioScene.brs" />

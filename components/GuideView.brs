@@ -2,6 +2,7 @@ sub init()
     m.canvas = m.top.findNode("canvas")
     initGuideLogos()
     m.rows = []
+    m.recordingMarks = {}
     m.top.focusable = true
     m.primaryNavigation = m.top.findNode("primaryNavigation")
     m.primaryNavigation.observeField("selection", "onPrimarySelection")
@@ -569,6 +570,7 @@ sub drawGuide()
             row.number.translation = [channelLayout.numberX, channelLayout.indicatorY]
             channel = m.filtered[index]
             row.uuid = channel.uuid
+            row.channelId = textValue(channel.id)
             row.logoId = ""
             if m.settings.showLogos then row.logoId = channelLogoCacheId(channel)
             row.number.text = channel.number
@@ -768,7 +770,7 @@ sub renderCells(row as object, cells as object, selected as boolean, geometry as
                     tile.time.height = secondaryLayout.timeHeight
                 end if
                 tile.time.text = uiTime(program.startsAt) + " - " + uiTime(program.endsAt)
-                flags = programFlagPills(program, m.settings, textWidth, badgeWidthFactor)
+                flags = programFlagPills(program, m.settings, textWidth, badgeWidthFactor, guideRecordingMark(m.recordingMarks, textValue(row.channelId), program))
                 for j = 0 to flags.count() - 1
                     flag = flags[j]
                     if j >= tile.badges.count()
@@ -1658,6 +1660,11 @@ sub updatePrimaryTabs()
         if profile.sessionId = userViewSession(m.top.config) then items.push(profile)
     end if
     if FormatJson(m.primaryNavigation.items) <> FormatJson(items) then m.primaryNavigation.items = items
+end sub
+
+sub updateRecordingMarks()
+    m.recordingMarks = guideRecordingMarks(m.top.recordingState)
+    if m.ready = true and m.top.active then drawGuide()
 end sub
 
 sub onGuideChromeFocus()

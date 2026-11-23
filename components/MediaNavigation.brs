@@ -20,6 +20,7 @@ sub closeDvrLibrary()
     m.page = "guide"
     m.guide.visible = true
     m.guide.active = true
+    refreshGuideRecordings() ' DVR changes made there show on the Guide
     resumePendingVodDeepLink()
 end sub
 

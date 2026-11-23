@@ -318,6 +318,9 @@ connection screen:
 - To reach the guide header: hold Left directly in Modal; in Sidebar, then Left
   from groups; in Pills, then Up from groups. Select **VOD**, **DVR** (on permitted
   Dispatcharr accounts), or **Settings** there.
+- Guide cells show a red **REC** pill on programs this account has scheduled or
+  is recording on the server (accounts with DVR access). The marks refresh with
+  account permissions, after scheduling from the Guide and when leaving DVR.
 - **DVR** shows Recording Now, Scheduled, Recent and Series Rules under separate
   subheadings in one scrolling list. Active recordings appear first; **Replay**
   refreshes server items. Select a row with **OK** for facts and available playback.

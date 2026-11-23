@@ -757,6 +757,7 @@ sub connectServer(skipRfi = false as boolean)
     cancelPlaybackFailure()
     if m.playingChannel <> invalid then stopPlayback()
     cancelCapabilityRefresh()
+    clearGuideRecordings()
     m.capabilities = normalizeCapabilities(invalid, invalid, invalid, 0)
     m.channelFacts = {}
     validCredential = m.apiKey <> ""
@@ -1193,6 +1194,7 @@ sub onCapabilities(event as object)
     m.guide.catchupPermission = m.capabilities.catchup
     m.guide.dvrPermission = m.capabilities.dvr
     if m.capabilities.dvr <> "manage" then cancelRecordFlow()
+    refreshGuideRecordings()
     updateLibraryPermissions()
     enforceMediaCapabilities()
     processAacWait()

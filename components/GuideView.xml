@@ -51,9 +51,11 @@
     <function name="trimTransientGuideMemory" />
     <function name="forgetStoredMetadata" />
     <field id="reminderState" type="array" onChange="updateReminders" />
+    <field id="recordingState" type="array" onChange="updateRecordingMarks" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/DispatcharrModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/GuideRecordingMarks.brs" />
   <script type="text/brightscript" uri="pkg:/source/ProgramSearchModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
   <script type="text/brightscript" uri="pkg:/source/PlaybackModel.brs" />

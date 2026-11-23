@@ -174,6 +174,7 @@ sub onRecordScheduled(event as object)
     end if
     if result.ok
         showNotice("Server recording scheduled. Open DVR to confirm its status.")
+        refreshGuideRecordings()
     else if result.category = "duplicate"
         showNotice("This program is already scheduled. Open DVR to review.")
     else
@@ -190,4 +191,43 @@ sub cancelRecordFlow()
         cancelNetworkTask(m.recordTask)
         m.recordTask = invalid
     end if
+end sub
+
+' e3e.29: keep the Guide's REC markers in step with this account's DVR list.
+' A failed refresh keeps the last markers; losing DVR access clears them.
+sub refreshGuideRecordings()
+    if m.capabilities.dvr <> "view" and m.capabilities.dvr <> "manage"
+        clearGuideRecordings()
+        return
+    end if
+    if m.apiKey = "" or m.serverAccountId = "" or m.guideRecordingTask <> invalid then return
+    task = CreateObject("roSGNode", "DvrRecordingTask")
+    if task = invalid then return
+    tagTaskForCurrentUser(task)
+    task.baseUrl = m.baseUrl
+    task.apiKey = m.apiKey
+    task.accountId = m.serverAccountId
+    task.action = "list"
+    task.observeField("result", "onGuideRecordings")
+    m.guideRecordingTask = task
+    task.control = "RUN"
+end sub
+
+sub onGuideRecordings(event as object)
+    if not isCurrentTaskEvent(event, m.guideRecordingTask) then return
+    result = event.getData()
+    m.guideRecordingTask.unobserveField("result")
+    m.guideRecordingTask = invalid
+    if userProfileUiClosed() then return
+    if result.accountId <> m.serverAccountId or result.ok <> true then return
+    m.guide.recordingState = guideActiveRecordings(result.recordings, uiNow())
+end sub
+
+sub clearGuideRecordings()
+    if m.guideRecordingTask <> invalid
+        m.guideRecordingTask.unobserveField("result")
+        cancelNetworkTask(m.guideRecordingTask)
+        m.guideRecordingTask = invalid
+    end if
+    m.guide.recordingState = []
 end sub
