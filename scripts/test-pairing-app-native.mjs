@@ -2,7 +2,7 @@
 // QR links/codes, screenshots, raw console and account text are never retained.
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash, createCipheriv, createPublicKey, diffieHellman, generateKeyPairSync, hkdfSync, randomBytes } from 'node:crypto';
-import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -24,9 +24,61 @@ const restorePath = realpathSync(restore);
 assert.ok(restorePath.startsWith(releaseDir + '/') && /^aeriotv-roku-v\d+\.\d+\.\d+\.zip$/.test(basename(restorePath)), 'Restore must be a versioned release ZIP under out/release');
 const [releaseDigest, releaseName] = readFileSync(restorePath + '.sha256', 'utf8').trim().split(/\s+/);
 assert.ok(createHash('sha256').update(readFileSync(restorePath)).digest('hex') === releaseDigest && releaseName === basename(restorePath), 'Verified normal restore ZIP required');
-const marker = spawnSync('unzip', ['-p', candidate, 'pairing-test-build.json'], { encoding: 'utf8' });
-assert.ok(marker.status === 0 && JSON.parse(marker.stdout).kind === 'full-app-pairing-test', 'Explicit full-app test artifact required');
-const testBuild = JSON.parse(marker.stdout);
+// --normal runs against the verified shipping ZIP: phone setup is enabled in
+// the normal app now, so historical pairing-test builds no longer apply.
+const normalApp = process.argv.includes('--normal');
+let testBuild;
+if (normalApp) {
+  const manifest = spawnSync('unzip', ['-p', candidate, 'manifest'], { encoding: 'utf8' }).stdout;
+  assert.ok(/^title=AerioTV$/m.test(manifest) && !/aeriotv_pairing_test/.test(manifest), 'Normal shipping ZIP required for --normal');
+  // Either a verified release ZIP (its own .sha256 under out/release) or the
+  // freshly verified out/aeriotv-roku.zip, which verify-package checks.
+  const releaseCandidate = realpathSync(candidate).startsWith(realpathSync('out/release') + '/');
+  if (releaseCandidate) {
+    const [digest, name] = readFileSync(realpathSync(candidate) + '.sha256', 'utf8').trim().split(/\s+/);
+    assert.ok(createHash('sha256').update(readFileSync(candidate)).digest('hex') === digest && name === basename(candidate), 'Release candidate checksum mismatch');
+  } else {
+    assert.ok(realpathSync(candidate) === realpathSync('out/aeriotv-roku.zip'), '--normal candidate must be a release ZIP or out/aeriotv-roku.zip');
+    assert.ok(spawnSync('node', ['scripts/verify-package.mjs'], { encoding: 'utf8' }).status === 0, 'Candidate must pass verify-package');
+  }
+  const field = name => (new RegExp(`^${name}=(\\d+)$`, 'm').exec(manifest) ?? [])[1];
+  testBuild = { version: [field('major_version'), field('minor_version'), field('build_version')].join('.'), baseZipSha256: null };
+} else {
+  const marker = spawnSync('unzip', ['-p', candidate, 'pairing-test-build.json'], { encoding: 'utf8' });
+  assert.ok(marker.status === 0 && JSON.parse(marker.stdout).kind === 'full-app-pairing-test', 'Explicit full-app test artifact required');
+  testBuild = JSON.parse(marker.stdout);
+}
+// --isolated-registry installs a copy of the verified candidate that uses a
+// unique registry section, so the owner's profiles and connections are never
+// opened; the Welcome route is used and the section is wiped before restore.
+const isolated = process.argv.includes('--isolated-registry');
+assert.ok(!isolated || normalApp, '--isolated-registry requires --normal');
+let installCandidate = candidate, cleanupZip;
+if (isolated) {
+  const section = 'AerioPairingQA-' + randomBytes(8).toString('hex');
+  const work = realpathSync(mkdtempSync(join(tmpdir(), 'aerio-pairing-')));
+  installCandidate = join(work, 'isolated.zip');
+  cleanupZip = join(work, 'cleanup.zip');
+  const rewrite = spawnSync('python3', ['-I', '-c', `
+import importlib.util, sys, zipfile
+src, dst, cleanup, section, recovery = sys.argv[1:]
+needle = b'CreateObject("roRegistrySection", "AerioTV")'
+found = 0
+with zipfile.ZipFile(src) as a, zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as b:
+    for name in a.namelist():
+        body = a.read(name)
+        found += body.count(needle)
+        b.writestr(name, body.replace(needle, ('CreateObject("roRegistrySection", "' + section + '")').encode()))
+assert found == 2, found
+spec = importlib.util.spec_from_file_location('recovery', recovery)
+module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+module.cleanup_package(cleanup, section)
+`, candidate, installCandidate, cleanupZip, section, realpathSync('scripts/test-profile-recovery-native.py')], { encoding: 'utf8' });
+  assert.ok(rewrite.status === 0, 'Isolated registry candidate build failed');
+}
+// Only historical test builds carry the visible pairing-test warning.
+const marked = row => normalApp || row.warning;
+const appTitle = normalApp ? 'AerioTV' : 'AerioTV Pairing Test';
 const candidateSha256 = createHash('sha256').update(readFileSync(candidate)).digest('hex');
 const temporaryBase = process.env.OPENCODE_TMP_DIR ?? join(tmpdir(), 'opencode');
 mkdirSync(temporaryBase, { recursive: true });
@@ -80,7 +132,7 @@ async function waitUi(predicate, timeout = 25000) {
 }
 async function readSession(state) {
   state ??= await snapshot(true);
-  assert.ok(state.pairingReady && state.warning, 'Full-app pairing screen carries visible test warning');
+  assert.ok(state.pairingReady && marked(state), 'Full-app pairing screen carries visible test warning');
   const link = state.link;
   assert.ok(link.protocol === 'aeriotv:' && link.hostname === 'setup' && link.searchParams.get('v') === '1', 'Wire-v1 QR');
   assert.ok(link.searchParams.get('ip') === host, 'QR targets selected Roku');
@@ -107,7 +159,7 @@ async function waitDiscovery(predicate, after = 0, timeout = 20000) {
   }
   const counts = {};
   for (const row of discoveryEvents) counts[row.event] = (counts[row.event] ?? 0) + 1;
-  console.log(JSON.stringify({ diagnostic: 'discovery-timeout', events: counts, transport: discoveryTransport }));
+  console.log(JSON.stringify({ diagnostic: 'discovery-timeout', events: counts, sequence: discoveryEvents.map(row => row.event), transport: discoveryTransport }));
   throw Error('Expected Bonjour discovery event did not arrive');
 }
 async function resolved(session) {
@@ -120,7 +172,7 @@ async function freshSession(previous) {
   const started = performance.now();
   while (performance.now() - started < 30000) {
     const state = await snapshot(true);
-    if (state.pairingReady && state.warning) {
+    if (state.pairingReady && marked(state)) {
       const next = await readSession(state);
       if (!next.pk.equals(previous.pk)) return next;
     }
@@ -187,7 +239,7 @@ try {
   assert.ok(connected, 'Read-only console attached before installation');
   await delay(1000);
   armed = true;
-  if (install(candidate)) ecp('launch/dev');
+  if (install(installCandidate)) ecp('launch/dev');
   await delay(5000);
   let state = await snapshot();
   if (state.welcome) {
@@ -203,7 +255,7 @@ try {
     }
     await openFromSetup();
   }
-  await waitUi(row => row.pairingReady && row.warning);
+  await waitUi(row => row.pairingReady && marked(row));
   const firstSession = await readSession();
   pass('full-app-entry-and-live-qr');
   let firstAdvert;
@@ -248,7 +300,7 @@ try {
   const acceptedAfter = discoveryEvents.length;
   const response = request(session, seal(session));
   assert.ok(response.status === 200 && JSON.parse(response.body).ok === true && response.elapsedMs < 10000, 'Encrypted receipt completed within budget');
-  await waitUi(row => row.verificationFailed && row.retry && row.warning);
+  await waitUi(row => row.verificationFailed && row.retry && marked(row));
   pass('full-app-receipt-to-real-provider-verification', { replyMs: response.elapsedMs });
   if (discovery) {
     await waitDiscovery(row => row.event === 'removed' && row.service === firstAdvert.service, acceptedAfter);
@@ -264,7 +316,7 @@ try {
   if (state.welcome) {
     await key('Back'); // Manual setup without selecting or creating a slot.
     await openFromSetup();
-    await waitUi(row => row.pairingReady && row.warning);
+    await waitUi(row => row.pairingReady && marked(row));
     const managed = await readSession();
     assert.ok(!managed.pk.equals(session.pk), 'Manage entry generated a fresh session');
     await key('Back');
@@ -274,7 +326,7 @@ try {
   }
   if (discovery) {
     await openFromSetup();
-    await waitUi(row => row.pairingReady && row.warning);
+    await waitUi(row => row.pairingReady && marked(row));
     const cancelled = await readSession();
     const advert = await resolved(cancelled);
     const after = discoveryEvents.length;
@@ -287,10 +339,10 @@ try {
   assert.ok(!runtimeError, 'No native compiler/runtime errors');
   if (leaveInstalled) {
     await openFromSetup();
-    await waitUi(row => row.pairingReady && row.warning);
+    await waitUi(row => row.pairingReady && marked(row));
     await resolved(await readSession());
     const active = curl(['--fail', `http://${host}:8060/query/active-app`]);
-    assert.ok(/id="dev"[^>]*>AerioTV Pairing Test<\/app>/.test(active), 'Exact installed test app active');
+    assert.ok(new RegExp(`id="dev"[^>]*>${appTitle}</app>`).test(active), 'Exact installed test app active');
     pass('fresh-discoverable-pairing-session-left-on-tv');
   }
   const evidence = discovery ? (expiryOnly ? 'out/pairing-discovery-expiry-native-results.json' : 'out/pairing-discovery-native-results.json') : 'out/pairing-app-native-results.json';
@@ -311,6 +363,11 @@ try {
   browserProcess?.kill('SIGTERM');
   if (completed && leaveInstalled) console.log('Verified discoverable pairing test app left installed');
   else {
+    if (cleanupZip) {
+      install(cleanupZip);
+      spawnSync('sleep', ['6']);
+      console.log('Isolated registry section cleanup installed');
+    }
     install(restore);
     console.log('Verified normal app ZIP restored');
   }

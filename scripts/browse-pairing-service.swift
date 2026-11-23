@@ -86,6 +86,9 @@ final class DiscoveryProbe: @unchecked Sendable {
             guard case let .service(service, _, _, _) = result.endpoint else {
                 emit(["event": "reject-endpoint"]); continue
             }
+            // A listed service is present even when an update omits or changes
+            // its TXT record; only its absence from the browse set is removal.
+            live.insert(service)
             guard case let .bonjour(txt) = result.metadata else {
                 emit(["event": "reject-metadata"]); continue
             }
@@ -95,7 +98,6 @@ final class DiscoveryProbe: @unchecked Sendable {
             guard let encoded = txt["pk"], let pk = Data(base64Encoded: encoded), pk.count == 32 else {
                 emit(["event": "reject-public-key"]); continue
             }
-            live.insert(service)
             if resolutions[service]?.pk == encoded { continue }
             connections.removeValue(forKey: service)?.cancel()
             resolutions.removeValue(forKey: service)?.stop()

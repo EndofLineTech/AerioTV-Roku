@@ -112,9 +112,26 @@ The synthetic URL deliberately fails verification. This is essential now that a
 successful new-account verification commits automatically; not pressing Save is
 no longer sufficient to make an arbitrary valid-payload test non-mutating.
 
-The runner requires the previously verified normal 0.3.100 restore ZIP SHA256
-`eb09f4b9705262d11efba05a7b27281ff6272f2b22ff0f003805d9e20224a610` and restores
-it in `finally`. UI recognition emits only allowlisted state booleans/counts.
+The restore ZIP must be a versioned release under `out/release` whose digest
+matches its own `.sha256` file; the runner restores it in `finally`.
+
+Phone setup is enabled in the normal app since 0.3.102, so the historical
+test build is no longer needed. Test the shipping app directly with
+`--normal`, which accepts a verified release ZIP or the freshly verified
+`out/aeriotv-roku.zip`. Add `--isolated-registry` so the run uses a private
+registry section and enters through Welcome: the owner's profiles and
+connections are never opened, and the section is wiped before the restore.
+
+```sh
+node scripts/test-pairing-app-native.mjs \
+  out/release/aeriotv-roku-v<version>.zip out/release/aeriotv-roku-v<version>.zip \
+  --discovery [--expiry-only] --normal --isolated-registry
+```
+
+The Bonjour browser treats a service as present whenever it is listed, even if
+an update omits its TXT record. Before 2026-11-22 such an update was reported as
+a removal, after which the real goodbye could not be observed
+(`AerioTV-Roku-e3e.2.9.1`). UI recognition emits only allowlisted state booleans/counts.
 Each classifier or QR decoder invocation has a 60-second deadline. On timeout,
 the runner attempts to force-kill the local worker process group, fails without
 retrying, and reports only the operation, failure category, and safe timing/status
