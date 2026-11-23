@@ -215,12 +215,12 @@ end sub
 
 sub onGuideRecordings(event as object)
     if not isCurrentTaskEvent(event, m.guideRecordingTask) then return
-    result = event.getData()
+    listed = event.getData()
     m.guideRecordingTask.unobserveField("result")
     m.guideRecordingTask = invalid
     if userProfileUiClosed() then return
-    if result.accountId <> m.serverAccountId or result.ok <> true then return
-    m.guide.recordingState = guideActiveRecordings(result.recordings, uiNow())
+    if listed.accountId <> m.serverAccountId or listed.ok <> true then return
+    m.guide.recordingState = guideActiveRecordings(listed.recordings, uiNow())
 end sub
 
 sub clearGuideRecordings()
