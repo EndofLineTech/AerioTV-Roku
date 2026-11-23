@@ -167,6 +167,57 @@ These are source-confirmed October TV behaviors, not defects reproduced in a nat
 | **Independent Guide and Movies/Series display scales** | tvOS exposes separate [Live TV][oct-guide-scale] and [Movies/Series][oct-vod-scale] scale controls. At the Roku pin the [settings model](../source/SettingsModel.brs) has global primary/secondary text scale and Basic/Preview Guide density, but no independent per-surface scale control. `faa.4`/`faa.5` and `2vr` cover the existing controls, not the independent setting. | `n8ie` |
 | **Two-step Back from library/Settings roots** | On [tvOS][oct-tab-back], Back from root content focuses that tab's pill without leaving the page; Back from the pill returns to Live TV. At Roku's library roots, the [close handlers](../components/MediaNavigation.brs) return to Guide; [Settings](../components/SettingsNavigation.brs) first unwinds its own panes and closes to Guide from its root. `e3e.20` remaps Back *in* Guide; `dgt`/`mrr.11` cover current Roku navigation, not this upstream two-step behavior. | `9jr0` |
 
+## November reconciliation: Android TV and October tvOS (2026-11-22)
+
+Both upstream repositories became readable: Apple at the pinned October
+[`fe7ad4c`][oct-tree] and Android TV at [`a9c06dd`][android-nov] (2026-11-17).
+Each finding below was confirmed in TV code (tvOS-only views, `#if os(tvOS)`,
+`FEATURE_LEANBACK` / D-pad paths), not only from release notes, and checked
+against current Roku source. Since the table above, `zyry` closed as a Roku
+platform difference, `e3e.20` (remappable Guide Back) and `9jr0` (two-step Back)
+were delivered, and `n8ie` remains separate.
+
+**New gaps, tracked:**
+
+| Behavior | Upstream | Roku today | Bead |
+| --- | --- | --- | --- |
+| Exit prompt at the top of the Guide | Android TV `MainActivity.kt` exit prompt | Back toggles grid/top menu; only Home exits | `e3e.26` (owner decision) |
+| Info card on channel change can be turned off | tvOS `PlayerInfoCardSettings.swift`; Android `PlayerSettingsScreen.kt` | Banner always shown on tune | `e3e.27` |
+| Play channels into the mini-player | tvOS `RemoteControlStore.swift` `tuneInMiniKey` | Guide tunes go fullscreen | `e3e.28` |
+| Recording marker on Guide cells | tvOS `EPGGuideView.swift` `hasScheduledRecording` | None; reminders use a `REM \|` prefix | `e3e.29` |
+| Separate Skip Back / Skip Forward | tvOS `SkipIntervals.swift` | One symmetric archive interval; fixed 30 s for recordings | `e3e.30` |
+| Fuller DVR recording facts | tvOS `RecordingFacts` | Status, channel, times, description, Comskip | `e3e.31` |
+| Permissions summary and manual refresh | tvOS `ServerDetailView.swift` | Automatic refresh only | `e3e.32` |
+| More remappable actions (search, seek, jump to day, record) | Android `RemoteControlMap.kt` | Not offered | `e3e.33` |
+| Minor polish (default group by hold, loading byte counter, sidebar overlay, frozen-stream toggle) | tvOS and Android | Works differently | `e3e.34` |
+| VOD playback speed | Android `VODPlayerScreen.kt`; tvOS V10 | Normal speed only; OS 16.0.4 now applies speed via pause/set/resume | `0451` (owner decision) |
+
+**Proposed platform dispositions (for owner review):** Android's *Learn Button*
+needs arbitrary key codes, which Roku's fixed remote key set does not deliver.
+*Buffer size* and *surround passthrough* are Roku system/player settings without
+an app control. *Hold Back to stop playback* depends on reliable held-key
+delivery, which Roku does not report after a native dialog closes (`e3e.20`).
+tvOS *Radio Mode as a banner over the Guide* differs by design from Roku's
+separate Radio screen ([Radio Mode](RADIO-MODE.md), [player contract](PLAYER-CONTRACT.md)).
+
+**Confirmed on Android TV (peer behavior, not a new Roku gap):** launcher
+*Top Channels* / *Watch Next* rows (I04), `aeriotv://` channel and VOD deep
+links (I05), companion host and Cast Connect receiver (I02/I03), guide-only TV
+layout (I07), no TV picture-in-picture (I06), live rewind and Keep Recent
+Channels Live (T02/T03, `e3e.16`/`e3e.17`), two-step Back (`9jr0`), category
+colors (G17, removed on Roku by owner choice), channel-number entry (G14),
+Jump To Day (G13), mini-player (P09), channel and recents overlays (P06/P08),
+background reminder notifications (G19) and local DVR (D08).
+
+**Not implemented upstream either:** Android omits player remote actions it
+cannot perform (Restart, Jump to Live, Subtitles, Audio Tracks, Aspect,
+Record, Sleep) rather than faking them, matching the tvOS dispatcher finding;
+neither TV app integrates voice/system search.
+
+**Still undetermined:** runtime behavior on physical Android TV devices
+(source only), whether Android's local DVR UI is reachable on TV, and older
+(pre-September) changelog entries, which were sampled only for TV lines.
+
 ## Verification still owed
 
 The old audit's §9 is historical, not a current test plan. Existing acceptance lanes cover account/setup/recovery (`e3e.5`, `.22`, `mrr.11`), live/guide resource and request behavior (`rgs.4`, `rgs.6`, `05e`, `mw1`, `yud`), provider-specific formats/archives (`rgs.5`, `e3e.13`, `.14`, `.23`, `.24`, `jmet`), focus/accessibility (`faa.8`, `dgt`, `2vr`, `e3e.19`, `.20`), and release/dashboard/certification (`w6g`, `856`, `e19`, `grq`, `z2l`). The original build/tooling advisory record is historical; see [development dependencies](DEVELOPMENT-DEPENDENCIES.md) and `tcn`. `e3e.25` still needs integrated evidence across the supported peers/providers and approved platform dispositions before a claim of parity. Packaging, fixture success and a closed scope decision do not close that gate.
@@ -186,3 +237,4 @@ The old audit's §9 is historical, not a current test plan. Existing acceptance 
 [oct-tab-back]: https://github.com/jonzey231/AerioTV/blob/fe7ad4c1968a193efb7a55d68b2b3bd32d03b17a/Features/Home/HomeView.swift#L8957-L8991
 [oct-settings-links]: https://github.com/jonzey231/AerioTV/blob/fe7ad4c1968a193efb7a55d68b2b3bd32d03b17a/Features/Settings/SettingsDeepLink.swift#L4-L13
 [android-sep]: https://github.com/jonzey231/AerioTV-Android/tree/7bf4a2ddad9dd6d58152eee5b4eee08873c1da3b
+[android-nov]: https://github.com/jonzey231/AerioTV-Android/tree/a9c06ddf034f5f7d263c0e8d7c43e329a880aba4
