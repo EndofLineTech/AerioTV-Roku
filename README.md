@@ -972,6 +972,9 @@ mapping, you can still stop the mini-player from the Guide's `*` menu.
 The assignment is saved on this Roku and reflected in the Guide hints when
 enabled. Back still dismisses an open menu or dialog first, and a pending tune
 takes priority in the grid. There is no separate held-Back assignment.
+Known limitation: Roku does not report how an on-screen keyboard or dialog
+was closed. If Back is held down to close one, a repeat of that same press may
+also run the remapped Guide action. The default mapping is unaffected.
 Fullscreen player Back and Roku system keys such as Home are unchanged.
 
 The date picker displays local calendar days and half-hour times with a UTC
