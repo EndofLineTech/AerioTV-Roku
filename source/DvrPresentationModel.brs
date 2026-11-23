@@ -145,3 +145,62 @@ function seriesRuleRows(rows as object, query as string) as object
     result.sortBy("title")
     return result
 end function
+
+' e3e.31: recording facts, limited to what the server returned. Dispatcharr
+' reports started_at/ended_at as UTC "YYYY-MM-DD HH:MM:SS.ffffff".
+function dvrServerEpoch(value as dynamic) as dynamic
+    parts = CreateObject("roRegex", "^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(\.\d+)?(Z|[+-]\d{2}:\d{2})?$", "").match(textValue(value))
+    if parts.count() < 3 then return invalid
+    zone = "Z"
+    if parts.count() > 4
+        if parts[4] <> "" then zone = parts[4]
+    end if
+    return guideEpoch(parts[1] + "T" + parts[2] + zone)
+end function
+
+function dvrRecordingFacts(row as object) as object
+    facts = []
+    started = dvrServerEpoch(row.startedAt)
+    ended = dvrServerEpoch(row.endedAt)
+    span = 0
+    if started <> invalid and ended <> invalid
+        if ended > started then span = ended - started
+    end if
+    if span > 0
+        facts.push("Recorded: " + uiLocalDate(started) + " " + uiTime(started) + " - " + uiTime(ended) + " (" + (span \ 60).toStr() + " min)")
+    else if started <> invalid
+        facts.push("Recording since " + uiTime(started))
+    end if
+    bytes = row.bytesWritten
+    if bytes <> invalid
+        if bytes > 0
+            facts.push("Size: " + dvrSizeText(bytes))
+            if span > 0 then facts.push("Average bitrate: " + dvrTenthsText(((bytes \ span) * 8 + 50000) \ 100000) + " Mbps")
+        end if
+    end if
+    name = textValue(row.fileName)
+    if name <> ""
+        dot = 0
+        for i = 1 to len(name)
+            if mid(name, i, 1) = "." then dot = i
+        end for
+        facts.push("Format: " + ucase(mid(name, dot + 1)))
+        facts.push("File: " + name)
+    end if
+    season = textValue(row.season)
+    episode = textValue(row.episode)
+    if season <> "" and episode <> "" then facts.push("Episode: S" + season + "E" + episode)
+    if textValue(row.remux) <> "" then facts.push("Remux: " + row.remux)
+    return facts
+end function
+
+function dvrSizeText(bytes as dynamic) as string
+    if bytes >= 1000000000 then return dvrTenthsText((bytes + 50000000) \ 100000000) + " GB"
+    if bytes >= 1000000 then return dvrTenthsText((bytes + 50000) \ 100000) + " MB"
+    return ((bytes + 500) \ 1000).toStr() + " KB"
+end function
+
+' Integer arithmetic only: sizes can exceed 32 bits and arrive as LongInteger.
+function dvrTenthsText(tenths as dynamic) as string
+    return (tenths \ 10).toStr() + "." + (tenths mod 10).toStr()
+end function

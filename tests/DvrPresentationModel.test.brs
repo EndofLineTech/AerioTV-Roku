@@ -69,5 +69,24 @@ sub main()
     rules = [{title: "Example", tvgId: "foo", description: "Sports"}, {title: "Other", tvgId: "bar", description: "Drama"}]
     if seriesRuleRows(rules, "SPORTS").count() <> 1 then stop
     if seriesRuleRows(rules, "bar")[0].title <> "Other" then stop
+    checkRecordingFacts()
     print "ALL TESTS PASSED"
+end sub
+
+' e3e.31: only facts the server returned are shown.
+sub checkRecordingFacts()
+    row = {status: "completed", startedAt: "2026-11-23 18:00:00.796343", endedAt: "2026-11-23 18:30:07.411097", fileName: "S2026E1123.mkv", fileFormat: "mkv", fileReady: true, bytesWritten: 1299038264, remux: "completed", season: "2026", episode: "1123"}
+    facts = dvrRecordingFacts(row)
+    text = facts.join("|")
+    started = guideEpoch("2026-11-23T18:00:00Z")
+    if facts[0] <> "Recorded: " + uiLocalDate(started) + " " + uiTime(started) + " - " + uiTime(started + 1807) + " (30 min)" then stop
+    if instr(1, text, "Size: 1.3 GB") = 0 then stop
+    if instr(1, text, "Average bitrate: 5.8 Mbps") = 0 then stop
+    if instr(1, text, "Format: MKV") = 0 or instr(1, text, "File: S2026E1123.mkv") = 0 then stop
+    if instr(1, text, "Episode: S2026E1123") = 0 or instr(1, text, "Remux: completed") = 0 then stop
+    live = dvrRecordingFacts({status: "recording", startedAt: "2026-11-23 18:00:00.796343", endedAt: "", fileName: "", fileReady: false, bytesWritten: invalid, remux: "", season: "", episode: ""})
+    if live.count() <> 1 or live[0] <> "Recording since " + uiTime(started) then stop
+    if dvrRecordingFacts({status: "scheduled"}).count() <> 0 then stop ' nothing returned, nothing shown
+    if dvrRecordingFacts({startedAt: "not a time", endedAt: "2026-11-23 18:30:07", bytesWritten: 2048}).join("|") <> "Size: 2 KB" then stop
+    if dvrServerEpoch("2026-11-23T18:00:00Z") <> started or dvrServerEpoch("2026-11-23 18:00:00+00:00") <> started then stop
 end sub

@@ -36,8 +36,24 @@ function normalizeRecording(raw as dynamic) as dynamic
     comskipMode = ""
     if comskipStatus = "completed" and comskip.mode = "mark" then comskipMode = "mark"
     if comskipStatus = "completed" and GetInterface(comskip.segments_kept, "ifInt") <> invalid then comskipMode = "remove"
+    ' e3e.31: optional server facts. The server file path is never kept.
+    fileName = textValue(cp.file_name)
+    if len(fileName) > 120 or not CreateObject("roRegex", "^[A-Za-z0-9 _(),'&+-]+(\.[A-Za-z0-9 _(),'&+-]+)*\.[A-Za-z0-9]{2,5}$", "").isMatch(fileName) then fileName = ""
+    bytesWritten = invalid
+    for each numeric in ["ifInt", "ifLongInt", "ifDouble", "ifFloat"]
+        if GetInterface(cp.bytes_written, numeric) <> invalid then bytesWritten = cp.bytes_written
+    end for
+    if bytesWritten <> invalid
+        if bytesWritten < 0 then bytesWritten = invalid
+    end if
+    remux = ""
+    if cp.remux_success = true then remux = "completed"
+    if cp.remux_success = false then remux = "failed"
     return {
         id: id, channelId: textValue(raw.channel)
+        startedAt: recordingFactText(cp.started_at), endedAt: recordingFactText(cp.ended_at)
+        fileName: fileName, bytesWritten: bytesWritten, remux: remux
+        season: recordingFactNumberText(cp.season), episode: recordingFactNumberText(cp.episode)
         startTime: textValue(raw.start_time), endTime: textValue(raw.end_time)
         status: textValue(cp.status), programId: programId
         title: left(title, 256), description: left(textValue(program.description), 500)
@@ -46,6 +62,18 @@ function normalizeRecording(raw as dynamic) as dynamic
         comskipStatus: comskipStatus, comskipReason: comskipReason, comskipSkipped: comskip.skipped = true
         comskipMode: comskipMode
     }
+end function
+
+function recordingFactText(value as dynamic) as string
+    if GetInterface(value, "ifString") = invalid then return ""
+    if len(value) > 40 then return ""
+    return value
+end function
+
+function recordingFactNumberText(value as dynamic) as string
+    text = textValue(value)
+    if not CreateObject("roRegex", "^[0-9]{1,6}$", "").isMatch(text) then return ""
+    return text
 end function
 
 function recordingFailure() as object

@@ -186,7 +186,7 @@ were delivered, and `n8ie` remains separate.
 | Play channels into the mini-player | tvOS `RemoteControlStore.swift` `tuneInMiniKey` | Guide tunes go fullscreen | `e3e.28` |
 | Recording marker on Guide cells | tvOS `EPGGuideView.swift` `hasScheduledRecording` | Delivered: red **REC** pill on scheduled and in-progress recordings (DVR view/manage accounts) | `e3e.29` |
 | Separate Skip Back / Skip Forward | tvOS `SkipIntervals.swift` | Delivered: separate Skip Back / Skip Forward (10 s–5 min) for rewind/archive (default 1 min) and in-progress recordings (default 30 s) | `e3e.30` |
-| Fuller DVR recording facts | tvOS `RecordingFacts` | Status, channel, times, description, Comskip | `e3e.31` |
+| Fuller DVR recording facts | tvOS `RecordingFacts` | Delivered: adds recorded window and length, size, average bitrate, format, file name, episode and remux result when Dispatcharr returns them (no quality/audio fields are returned) | `e3e.31` |
 | Permissions summary and manual refresh | tvOS `ServerDetailView.swift` | Automatic refresh only | `e3e.32` |
 | More remappable actions (search, seek, jump to day, record) | Android `RemoteControlMap.kt` | Not offered | `e3e.33` |
 | Minor polish (default group by hold, loading byte counter, sidebar overlay, frozen-stream toggle) | tvOS and Android | Works differently | `e3e.34` |
