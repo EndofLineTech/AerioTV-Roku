@@ -1489,7 +1489,7 @@ sub startPlayback(channel as object, forceRetune = false as boolean, useAac = fa
         m.video.control = "play"
     end if
     m.playerClock.control = "start"
-    showChannelBanner(channel, playerInfoHint())
+    showTuneBanner(channel)
 end sub
 
 sub onRequestGateSnapshot()
@@ -1498,6 +1498,17 @@ sub onRequestGateSnapshot()
         if not requestGateRendererAllowed(m.video) then stopPlayback()
     end if
     requestGateFenceRenderers(m.top)
+end sub
+
+' Automatic info card after a tune, channel commit or mini-player expand.
+' With the pop-up off it appears only when the viewer opens the player info.
+sub showTuneBanner(channel as object)
+    if m.devicePreferences.infoOnTune = false
+        m.bannerTimer.control = "stop"
+        hideBanner()
+        return
+    end if
+    showChannelBanner(channel, playerInfoHint())
 end sub
 
 sub showChannelBanner(channel as object, hint as string)
@@ -1642,7 +1653,7 @@ sub commitChannelSwitch()
     m.pendingChannel = invalid
     if m.playingChannel <> invalid
         if m.playingChannel.uuid = channel.uuid
-            showChannelBanner(channel, playerInfoHint())
+            showTuneBanner(channel)
             return
         end if
     end if
@@ -1783,7 +1794,7 @@ sub expandPlayback()
     if not radioForCurrentTune() then clearRadioPresentation(true)
     applyLivePresentation()
     focusPlaybackInput()
-    showChannelBanner(m.playingChannel, playerInfoHint())
+    showTuneBanner(m.playingChannel)
     print "[player] expanded without retune"
 end sub
 

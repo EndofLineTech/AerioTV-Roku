@@ -57,6 +57,8 @@ sub main()
     assertEqual(device.networkTimeoutSeconds, 20, "safe request timeout default")
     assertEqual(device.refreshSeconds, 300, "safe active refresh default")
     assertEqual(device.infoHints, true, "overlay hints default on")
+    assertEqual(device.infoOnTune, true, "info card pops up on channel change by default")
+    assertEqual(normalizeDevicePreferences({infoOnTune: false}).infoOnTune, false, "info card pop-up can be turned off")
     wrongCase = {}
     wrongCase.setModeCaseSensitive()
     wrongCase.audioGuide = false
@@ -66,6 +68,10 @@ sub main()
     repaired = normalizeDevicePreferences(wrongCase)
     assertEqual(repaired.audioGuide, true, "displayed Audio Guide choice migrates to runtime field")
     assertEqual(repaired.themePreset, "lavender", "displayed theme choice migrates to runtime field")
+    lowered = {}
+    lowered.setModeCaseSensitive()
+    lowered.infoontune = false
+    assertEqual(normalizeDevicePreferences(lowered).infoOnTune, false, "info card pop-up choice survives a lowercased native reload")
     migratedRemote = normalizeDevicePreferences({guideReplayAction: "options", playerReplayAction: "rewind"})
     assertEqual(migratedRemote.guideReplayAction, invalid, "legacy guide preference removed")
     assertEqual(resolveRemoteAction(migratedRemote.remoteMap, "guide", "replay"), "openOptions", "legacy guide preference migrates")

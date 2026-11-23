@@ -650,6 +650,11 @@ visibility and focus, and keys reaching the Scene while controls are active are
 routed back to them. Native scripted Up/Left/Right transitions now return to the
 input Group correctly and re-enter transport consistently.
 
+**Settings → Appearance → Pop up info card on channel change** (on by default)
+controls the automatic tune-in card. When off, the card does not appear by
+itself after a tune, a channel change or expanding the mini-player; tap OK to
+show it. The preview shown while choosing a channel with Up/Down still appears.
+
 The mini-player is 400×225 at [1424,16]. Its single-line caption ends at y=267,
 above the guide timeline at y=270. A device screenshot confirms the separation.
 Twelve suites and compiler/build checks pass. Installed 0.2.13 launches normally;

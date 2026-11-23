@@ -87,7 +87,7 @@ function normalizeDevicePreferences(raw as dynamic) as object
     if type(raw) = "roAssociativeArray" then result = copyPreferenceValue(raw)
     ' Earlier Settings writes lowercased camel-case keys on ParseJson's
     ' case-sensitive map. Migrate the displayed choice to the canonical field.
-    for each field in ["archiveSkipSeconds", "audioMode", "liveTransport", "liveStartupRetries", "radioDefault", "videoScale", "themePreset", "appearanceMode", "trueBlack", "panelStyle", "textSize", "subtextSize", "contrastMode", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints", "networkTimeoutSeconds", "refreshSeconds", "clockFormat", "audioGuide"]
+    for each field in ["archiveSkipSeconds", "audioMode", "liveTransport", "liveStartupRetries", "radioDefault", "videoScale", "themePreset", "appearanceMode", "trueBlack", "panelStyle", "textSize", "subtextSize", "contrastMode", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints", "infoOnTune", "networkTimeoutSeconds", "refreshSeconds", "clockFormat", "audioGuide"]
         alias = lcase(field)
         exactAlias = CreateObject("roRegex", "^" + alias + "$", "")
         for each key in result.keys()
@@ -153,6 +153,7 @@ function normalizeDevicePreferences(raw as dynamic) as object
     if result.infoDescription <> false then result.infoDescription = true
     if result.infoNext <> false then result.infoNext = true
     if result.infoHints <> false then result.infoHints = true
+    if result.infoOnTune <> false then result.infoOnTune = true
     if type(result.audioGuide) <> "Boolean" and type(result.audioGuide) <> "roBoolean" then result.audioGuide = false
     skip = result.archiveSkipSeconds
     ' Keep one canonical key even if a JSON dictionary contains case variants.

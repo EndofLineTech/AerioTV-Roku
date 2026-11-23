@@ -567,6 +567,7 @@ sub runPlayerLifecycleChecks()
     checkOwnedHlsRetryLifecycle()
     checkOwnedHlsMissingReceipt()
     checkOwnedHlsBusyMintRetry()
+    checkTuneBannerPreference()
     checkRadioBackDuringAacRecovery()
     checkOwnedHlsStartupFailureBoundaries()
     checkMidstreamTemporaryUnavailable()
@@ -1069,6 +1070,17 @@ sub checkOwnedHlsMissingReceipt()
         assertEqual(m.playbackRetry.channel.uuid, channel.uuid, "manual channel Retry is retained")
         assertEqual(m.devicePreferences.liveTransport, "hls", "manual Retry retains explicit HLS selection")
     end for
+end sub
+
+sub checkTuneBannerPreference()
+    resetOwnedHlsFixture()
+    m.devicePreferences.infoOnTune = false
+    m.banner.visible = true
+    m.userInfoOpen = false
+    m.transport.active = false
+    showTuneBanner(m.playingChannel)
+    assertEqual(m.banner.visible, false, "info card stays hidden after a tune when its pop-up is off")
+    assertEqual(m.bannerTimer.control, "stop", "no auto-hide timer runs for a suppressed card")
 end sub
 
 sub checkOwnedHlsBusyMintRetry()
