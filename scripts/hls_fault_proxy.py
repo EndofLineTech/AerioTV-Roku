@@ -86,7 +86,7 @@ class Rules:
         return None
 
 
-def make_handler(upstream, rules, log, lock):
+def make_handler(upstream, rules, log, lock, api_key=""):
     origin = urllib.parse.urlsplit(upstream)
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
@@ -118,6 +118,9 @@ def make_handler(upstream, rules, log, lock):
             length = int(self.headers.get("Content-Length") or 0)
             body = self.rfile.read(length) if length else None
             headers = {name: value for name, value in self.headers.items() if name.lower() not in HOP}
+            # Optional: authenticate on the Mac so a test package holds no key.
+            if api_key and not any(name.lower() in ("x-api-key", "authorization") for name in headers):
+                headers["X-API-Key"] = api_key
             request = urllib.request.Request(upstream.rstrip("/") + self.path, data=body, headers=headers, method=self.command)
             started = time.monotonic()
             try:
@@ -190,9 +193,11 @@ def main():
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--log", required=True)
     parser.add_argument("--rules")
+    parser.add_argument("--api-key-env", help="Environment variable whose API key is added to requests that carry none")
     args = parser.parse_args()
     upstream = os.environ["DISPATCHARR_BASE"]
-    server = ThreadingHTTPServer((args.bind, args.port), make_handler(upstream, Rules(args.rules), args.log, threading.Lock()))
+    api_key = os.environ.get(args.api_key_env, "") if args.api_key_env else ""
+    server = ThreadingHTTPServer((args.bind, args.port), make_handler(upstream, Rules(args.rules), args.log, threading.Lock(), api_key))
     print(json.dumps({"listening": f"http://{args.bind}:{server.server_port}"}), flush=True)
     server.serve_forever()
 

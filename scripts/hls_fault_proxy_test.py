@@ -33,6 +33,12 @@ class Upstream(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def do_HEAD(self):
+        self.send_response(200)
+        self.send_header("X-Seen-Key", self.headers.get("X-API-Key", ""))
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def do_DELETE(self):
         self.send_response(204)
         self.end_headers()
@@ -99,6 +105,24 @@ class FaultProxyTest(unittest.TestCase):
         _, body = self.request("GET", f"/proxy/hls/{TOKEN}/seg-2.ts")
         self.assertEqual(len(body), 200000)
         self.assertEqual(self.rows()[0]["injected"], "reset")
+
+
+class InjectedKeyTest(unittest.TestCase):
+    def test_key_added_only_when_request_has_none(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        upstream = ThreadingHTTPServer(("127.0.0.1", 0), Upstream)
+        upstream.public = f"127.0.0.1:{upstream.server_port}"
+        relay = ThreadingHTTPServer(("127.0.0.1", 0), proxy.make_handler(f"http://{upstream.public}", proxy.Rules(None), str(Path(folder.name) / "log"), threading.Lock(), "mac-key"))
+        for server in (upstream, relay):
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            self.addCleanup(server.server_close)
+            self.addCleanup(server.shutdown)
+        for sent, expected in ((None, "mac-key"), ("device-key", "device-key")):
+            connection = http.client.HTTPConnection("127.0.0.1", relay.server_port, timeout=5)
+            connection.request("HEAD", "/api/core/version/", headers={"X-API-Key": sent} if sent else {})
+            self.assertEqual(connection.getresponse().getheader("X-Seen-Key"), expected)
+        self.assertNotIn("mac-key", (Path(folder.name) / "log").read_text())
 
 
 if __name__ == "__main__":
