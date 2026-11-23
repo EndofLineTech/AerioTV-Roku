@@ -116,7 +116,12 @@ def build(output, base_url, registry=False, model_store=False):
         ack_source = (ROOT / 'source/DispatcharrSyncAckStore.brs').read_text().replace('requestGateCredentialHash(', 'syncAckFixtureHash(').replace('requestGateAccessAllowed(', 'syncAckFixtureAccessAllowed(')
         package.writestr('source/DispatcharrSyncAckStore.brs', ack_source)
         package.write(ROOT / 'components/ProfileSyncNavigation.brs', 'source/ProfileSyncNavigation.brs')
-        package.write(ROOT / 'components/ProfileSyncSessionNavigation.brs', 'source/ProfileSyncSessionNavigation.brs')
+        session_source = (ROOT / 'components/ProfileSyncSessionNavigation.brs').read_text()
+        if model_store:
+            # The ack-store checks use fixture credential hashes; match the host
+            # suite, whose stub replaces the real hash everywhere (AerioTV-Roku-zs49).
+            session_source = session_source.replace('requestGateCredentialHash(', 'syncAckFixtureHash(')
+        package.writestr('source/ProfileSyncSessionNavigation.brs', session_source)
         package.write(ROOT / 'source/TaskSupport.brs', 'source/TaskSupport.brs')
         package.write(ROOT / 'source/UserProfilePinPolicy.brs', 'source/UserProfilePinPolicy.brs')
         package.write(ROOT / 'source/UserProfileCredential.brs', 'source/UserProfileCredential.brs')
