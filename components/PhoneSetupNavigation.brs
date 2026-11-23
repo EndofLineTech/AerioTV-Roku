@@ -451,6 +451,7 @@ sub commitPhoneSetup(choice as string)
     if entry.provider = "m3u" then m.baseUrl = pending.url
     m.username = pending.credential.username
     m.password = pending.credential.password
+    if entry.provider = "xtream" and textValue(pending.sessionGuideUrl) <> "" then m.sessionGuideOverride = {id: entry.id, url: pending.sessionGuideUrl}
     m.phoneOptions = entry
     m.phoneCommittedId = entry.id
     m.connectionElapsed = m.phoneElapsed

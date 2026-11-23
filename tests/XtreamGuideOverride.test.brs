@@ -85,6 +85,27 @@ sub main()
     m.guideUrl = m.guide.config.guideUrl
     loadMappings()
     check(m.cacheGeneration = config.generation and m.cacheGeneration <> overrideGeneration, "account guide keeps its own cache identity without hashing credentials")
+    ' e3e.5.2: a credential-bearing override from phone setup is session-only.
+    sessionGuide = "https://guide.example.test/xmltv.php?username=viewer&password=session-secret"
+    m.sessionGuideOverride = {id: entry.id, url: sessionGuide}
+    m.phoneCommittedId = entry.id
+    completeDirectConnection(result, m.connectionStore.entries[0], "viewer", "fixture-password")
+    check(m.guide.config.guideUrl = sessionGuide, "session override replaces the account guide for this session")
+    check(m.guide.config.guideCacheKey = "https://guide.example.test/xmltv.php", "session override cache identity excludes its credentials")
+    check(instr(1, FormatJson(m.registry.values), "session-secret") = 0, "session override is never persisted")
+    m.guideUrl = m.guide.config.guideUrl
+    m.guideCacheKey = m.guide.config.guideCacheKey
+    loadMappings()
+    check(m.cacheGeneration <> config.generation and m.cacheGeneration <> overrideGeneration, "session override never shares the account or public override cache")
+    check(instr(1, m.cacheGeneration, "session-secret") = 0, "cache identity never contains the credential")
+    m.sessionGuideOverride = {id: "other", url: sessionGuide}
+    m.phoneCommittedId = entry.id
+    completeDirectConnection(result, m.connectionStore.entries[0], "viewer", "fixture-password")
+    check(m.guide.config.guideUrl = panelGuide and m.guide.config.guideCacheKey = "", "another connection's session override is not applied")
+    m.sessionGuideOverride = {id: entry.id, url: sessionGuide}
+    applySelectedConnection()
+    check(m.sessionGuideOverride = invalid, "selection clears the session override with the session credentials")
+    m.guideCacheKey = ""
     applySelectedConnection()
     check(m.xcLiveFormat = "" and m.xcPassword = "", "selection clears the previous Xtream Live format and credentials")
     print "ALL TESTS PASSED"

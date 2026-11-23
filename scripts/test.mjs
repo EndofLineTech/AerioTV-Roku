@@ -113,6 +113,7 @@ suites.push('XtreamGuideOverride');
 suites.push('PlayerControls');
 suites.push('MemoryCleanup');
 suites.push('RadioPresentation');
+suites.push('GuideRecordingMarks');
 const requested = process.argv.slice(2);
 for (const name of requested) {
   if (!suites.includes(name)) throw new Error(`Unknown suite: ${name}`);
@@ -121,7 +122,7 @@ for (const name of requested.length ? requested : suites) {
   const suite = name === 'ColdLivePlayback' ? 'PlayerLifecycle' : name;
   const result = spawnSync(process.execPath, [
     'node_modules/brs/bin/cli.js', '--root', 'tests/unit-root',
-    'source/DispatcharrModel.brs', 'source/GuideModel.brs', ...(suite === 'MemoryCleanup' ? [] : ['source/SceneUi.brs']), 'source/TaskSupport.brs',
+    'source/DispatcharrModel.brs', 'source/GuideModel.brs', 'source/GuideRecordingMarks.brs', ...(suite === 'MemoryCleanup' ? [] : ['source/SceneUi.brs']), 'source/TaskSupport.brs',
     'components/VodDeepLinkNavigation.brs', 'components/ColdPlayback.brs',
     ...(suite === 'ProgramDetailRecovery' ? ['components/ProgramDetailTask.brs'] : []),
     ...(['LaunchModel', 'VodSeriesTask', 'PlayerLifecycle', 'VodDeepLinkNavigation'].includes(suite) ? ['source/LaunchModel.brs'] : []),
@@ -156,7 +157,7 @@ for (const name of requested.length ? requested : suites) {
     ...(suite === 'AerioSurface' ? ['components/AerioSurface.brs'] : []),
     'source/NowNextModel.brs',
     'source/StartupBeaconModel.brs',
-    'source/RemoteMapModel.brs', 'source/PreferenceModel.brs', 'source/VodDisplayScale.brs',
+    'source/RemoteMapModel.brs', 'source/SkipIntervals.brs', 'source/PreferenceModel.brs', 'source/VodDisplayScale.brs',
     'components/RecentHistoryNavigation.brs',
     ...(suite === 'ConnectionAuthTask' ? ['source/ChannelProfileModel.brs'] : []),
     ...(['PhoneSetupStore', 'PhoneSetupApplyModel', 'PhoneSetupAutoAdd', 'PhoneSetupNavigation', 'ConnectionStore', 'ConnectionNavigation', 'PlayerLifecycle', 'ArchiveController'].includes(suite) ? ['source/ConnectionStoreModel.brs'] : []),

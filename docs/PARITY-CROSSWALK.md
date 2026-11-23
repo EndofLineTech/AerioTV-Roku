@@ -101,7 +101,7 @@ The table below retains its original source pin.
 | V07 | **Native, adapted:** provider/library-scoped related matches and optional TMDB person discovery; not an independent catalog. [VOD view](../components/VodView.brs), [enrichment](VOD-ENRICHMENT-0.3.29.md). | `l4j.11` |
 | V08 | **Native / disposition:** authorized provider-version selection and remembered choice; details selection plus Resume on a compatible copy is the accepted adaptation, not seamless in-player switching. [VOD scope](VOD-ENRICHMENT-0.3.29.md). | `l4j.12` |
 | V09 | **Native / disposition:** validated text trailer/TMDB links for opening on another device are the accepted Roku adaptation; neither QR nor inline trailer playback is required. [VOD scope](VOD-ENRICHMENT-0.3.29.md). | `l4j.12` |
-| V10 | **Native / disposition:** native seek/pause/resume/duration where supported. Normal speed only; prior 1.5× transition was unreliable. [On-demand player](../components/OnDemandPlayer.brs). | `l4j.6`, `l4j.13`, `e3e.23` |
+| V10 | **Native / disposition:** native seek/pause/resume/duration where supported. Playback speed 0.75–2x for movies, episodes and completed recordings (`0451`, OS 16 applies it via pause/set/resume); live, archive and in-progress recordings stay at normal speed. [On-demand player](../components/OnDemandPlayer.brs). | `l4j.6`, `l4j.13`, `e3e.23`, `0451` |
 | V11 | **Native, adapted:** bounded page-on-demand ingestion, cache, refresh, scoped toggles and bookmarks. No full background catalog sweep or promise of a resident catalog. [Metadata cache](METADATA-CACHE-IMPLEMENTATION.md). | `l4j.2`, `mxz.1`, `mxz.8` |
 | D01 | **Native:** authorized Dispatcharr server DVR from Guide/player, confirmation and scheduling; no device destination. [DVR acceptance](DVR-EPIC-0.3.70.md). | `a59.1`, `a59.7` |
 | D02 | **Native, bounded:** per-recording padding controls and saved start/end defaults; default choices were observed across relaunch. Do not infer every upstream custom value or provider branch. [DVR controls](DVR-CONTROLS-0.3.81.md), [settings redesign](SETTINGS-REDESIGN-0.3.91.md). | `a59.1`, `2vr` |
@@ -181,24 +181,28 @@ were delivered, and `n8ie` remains separate.
 
 | Behavior | Upstream | Roku today | Bead |
 | --- | --- | --- | --- |
-| Exit prompt at the top of the Guide | Android TV `MainActivity.kt` exit prompt | Back toggles grid/top menu; only Home exits | `e3e.26` (owner decision) |
+| Exit prompt at the top of the Guide | Android TV `MainActivity.kt` exit prompt | Delivered: Back on the Guide top menu asks **Exit AerioTV?** (Exit / Stay, Stay focused) | `e3e.26` |
 | Info card on channel change can be turned off | tvOS `PlayerInfoCardSettings.swift`; Android `PlayerSettingsScreen.kt` | Banner always shown on tune | `e3e.27` |
 | Play channels into the mini-player | tvOS `RemoteControlStore.swift` `tuneInMiniKey` | Guide tunes go fullscreen | `e3e.28` |
-| Recording marker on Guide cells | tvOS `EPGGuideView.swift` `hasScheduledRecording` | None; reminders use a `REM \|` prefix | `e3e.29` |
-| Separate Skip Back / Skip Forward | tvOS `SkipIntervals.swift` | One symmetric archive interval; fixed 30 s for recordings | `e3e.30` |
-| Fuller DVR recording facts | tvOS `RecordingFacts` | Status, channel, times, description, Comskip | `e3e.31` |
+| Recording marker on Guide cells | tvOS `EPGGuideView.swift` `hasScheduledRecording` | Delivered: red **REC** pill on scheduled and in-progress recordings (DVR view/manage accounts) | `e3e.29` |
+| Separate Skip Back / Skip Forward | tvOS `SkipIntervals.swift` | Delivered: separate Skip Back / Skip Forward (10 s–5 min) for rewind/archive (default 1 min) and in-progress recordings (default 30 s) | `e3e.30` |
+| Fuller DVR recording facts | tvOS `RecordingFacts` | Delivered: adds recorded window and length, size, average bitrate, format, file name, episode and remux result when Dispatcharr returns them (no quality/audio fields are returned) | `e3e.31` |
 | Permissions summary and manual refresh | tvOS `ServerDetailView.swift` | Automatic refresh only | `e3e.32` |
 | More remappable actions (search, seek, jump to day, record) | Android `RemoteControlMap.kt` | Not offered | `e3e.33` |
 | Minor polish (default group by hold, loading byte counter, sidebar overlay, frozen-stream toggle) | tvOS and Android | Works differently | `e3e.34` |
-| VOD playback speed | Android `VODPlayerScreen.kt`; tvOS V10 | Normal speed only; OS 16.0.4 now applies speed via pause/set/resume | `0451` (owner decision) |
+| VOD playback speed | Android `VODPlayerScreen.kt`; tvOS V10 | Delivered: Up/Down → Player options → Playback speed 0.75–2x for movies, episodes and completed recordings, applied via pause/set/resume | `0451` |
 
-**Proposed platform dispositions (for owner review):** Android's *Learn Button*
+**Platform dispositions (accepted by the owner, 2026-11-23):** Android's *Learn Button*
 needs arbitrary key codes, which Roku's fixed remote key set does not deliver.
 *Buffer size* and *surround passthrough* are Roku system/player settings without
 an app control. *Hold Back to stop playback* depends on reliable held-key
 delivery, which Roku does not report after a native dialog closes (`e3e.20`).
 tvOS *Radio Mode as a banner over the Guide* differs by design from Roku's
 separate Radio screen ([Radio Mode](RADIO-MODE.md), [player contract](PLAYER-CONTRACT.md)).
+
+*Keep Recent Channels Live* (`e3e.16`/`e3e.17`) is also closed as a Roku
+platform difference: inactive streams cannot be retained usefully, and held
+connections would cost Dispatcharr capacity.
 
 **Confirmed on Android TV (peer behavior, not a new Roku gap):** launcher
 *Top Channels* / *Watch Next* rows (I04), `aeriotv://` channel and VOD deep

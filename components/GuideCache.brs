@@ -47,6 +47,8 @@ sub loadMappings(bypass = false as boolean)
         ' Never incorporate the generated, credential-bearing Xtream URL.
         if (m.providerType = "dispatcharr" or m.providerType = "xtream") and normalizeBaseUrl(m.guideUrl) <> ""
             m.cacheGeneration = metadataCacheDigest(m.lineupGeneration + "|xmltv|" + m.guideUrl)
+        else if m.providerType = "xtream" and textValue(m.guideCacheKey) <> ""
+            m.cacheGeneration = metadataCacheDigest(m.lineupGeneration + "|xmltv-session|" + m.guideCacheKey)
         end if
         m.mappingState = "ready"
         m.mappingWarning = ""

@@ -289,6 +289,9 @@ sub onDvrSelected(event as object)
     endAt = guideEpoch(row.endTime)
     if startAt <> invalid and endAt <> invalid then times = uiLocalDate(startAt) + " " + uiTime(startAt) + " - " + uiTime(endAt)
     dialog.message = "Server status: " + row.displayStatus + chr(10) + channelName + chr(10) + times + chr(10) + row.description
+    for each fact in dvrRecordingFacts(row)
+        dialog.message += chr(10) + fact
+    end for
     if row.comskipStatus <> ""
         statusText = row.comskipStatus
         if row.comskipReason = "comskip_not_installed" then statusText = "unavailable (server lacks Comskip)"

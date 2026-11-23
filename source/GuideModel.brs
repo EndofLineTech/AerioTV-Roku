@@ -201,12 +201,15 @@ function programBadges(program as object, settings as object) as string
 end function
 
 ' Feed flags, not clock-derived "airing now". Colors match both upstream TV apps.
-function programFlagPills(program as object, settings as object, availableWidth as float, widthFactor = 1.0 as float) as object
+function programFlagPills(program as object, settings as object, availableWidth as float, widthFactor = 1.0 as float, recording = "" as string) as object
     result = []
     used = 0
-    definitions = [{key: "live", label: "LIVE", color: "0xFF4757FF", width: 56}, {key: "new", label: "NEW", color: "0x27AE60FF", width: 46}, {key: "premiere", label: "PREMIERE", color: "0x9B59B6FF", width: 96}, {key: "finale", label: "FINALE", color: "0x9B59B6FF", width: 76}]
+    definitions = []
+    ' A DVR marker is account state, not an EPG flag, so badge settings do not hide it.
+    if recording <> "" then definitions.push({key: "rec", label: "REC", color: "0xE53935FF", width: 50, always: true})
+    definitions.append([{key: "live", label: "LIVE", color: "0xFF4757FF", width: 56}, {key: "new", label: "NEW", color: "0x27AE60FF", width: 46}, {key: "premiere", label: "PREMIERE", color: "0x9B59B6FF", width: 96}, {key: "finale", label: "FINALE", color: "0x9B59B6FF", width: 76}])
     for each flag in definitions
-        if settings.badges[flag.key] and program["is_" + flag.key] = true
+        if flag.always = true or (settings.badges[flag.key] = true and program["is_" + flag.key] = true)
             flag.width = int(flag.width * widthFactor + 0.5)
             if used + flag.width > availableWidth then exit for
             flag.x = used

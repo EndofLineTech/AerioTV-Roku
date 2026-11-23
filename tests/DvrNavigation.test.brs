@@ -70,7 +70,56 @@ sub main()
     end function})
     assertEqual(m.recordIntent, invalid, "guide cannot reopen scheduling while a submitted operation is still settling")
     checkDvrTwoStepBack()
+    checkGuideRecordingMarkers()
     print "ALL TESTS PASSED"
+end sub
+
+' e3e.29: the Guide's REC markers follow the server DVR list for this account.
+sub checkGuideRecordingMarkers()
+    m.page = "guide"
+    m.capabilities = {dvr: "view"}
+    m.serverAccountId = "7"
+    m.apiKey = "key"
+    m.guide = {recordingState: invalid}
+    m.guideRecordingTask = invalid
+    future = CreateObject("roDateTime")
+    future.fromSeconds(uiNow() + 600)
+    later = CreateObject("roDateTime")
+    later.fromSeconds(uiNow() + 2400)
+    task = {serial: 1, isSameNode: function(other as object) as boolean
+        return other.serial = m.serial
+    end function, unobserveField: sub(field as string)
+    end sub}
+    m.guideRecordingTask = task
+    rows = [{channelId: "3", startTime: future.toIsoString(), endTime: later.toIsoString(), status: "scheduled", programId: "p"}, {channelId: "3", startTime: future.toIsoString(), endTime: later.toIsoString(), status: "completed"}]
+    event = {node: {serial: 1}, data: {ok: true, accountId: "7", recordings: rows}, getRoSGNode: function() as object
+        return m.node
+    end function, getData: function() as object
+        return m.data
+    end function}
+    onGuideRecordings(event)
+    assertEqual(m.guideRecordingTask, invalid, "finished marker task is released")
+    assertEqual(m.guide.recordingState.count(), 1, "only active recordings reach the Guide")
+    assertEqual(m.guide.recordingState[0].status, "scheduled", "scheduled marker")
+    m.guideRecordingTask = task
+    event.data = {ok: false, accountId: "7", message: "offline"}
+    onGuideRecordings(event)
+    assertEqual(m.guide.recordingState.count(), 1, "a failed refresh keeps the last markers")
+    m.guideRecordingTask = task
+    event.data = {ok: true, accountId: "8", recordings: []}
+    onGuideRecordings(event)
+    assertEqual(m.guide.recordingState.count(), 1, "another account's list is ignored")
+    m.guideRecordingTask = {serial: 2, isSameNode: task.isSameNode}
+    event.data = {ok: true, accountId: "7", recordings: []}
+    onGuideRecordings(event)
+    assertEqual(m.guide.recordingState.count(), 1, "a stale task result is ignored")
+    m.guideRecordingTask = invalid
+    m.capabilities.dvr = "none"
+    refreshGuideRecordings()
+    assertEqual(m.guide.recordingState.count(), 0, "markers clear without DVR permission")
+    m.guide.recordingState = [{status: "scheduled"}]
+    clearGuideRecordings()
+    assertEqual(m.guide.recordingState.count(), 0, "markers clear on connection change")
 end sub
 
 sub assertEqual(actual as dynamic, expected as dynamic, label as string)

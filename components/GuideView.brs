@@ -2,6 +2,7 @@ sub init()
     m.canvas = m.top.findNode("canvas")
     initGuideLogos()
     m.rows = []
+    m.recordingMarks = {}
     m.top.focusable = true
     m.primaryNavigation = m.top.findNode("primaryNavigation")
     m.primaryNavigation.observeField("selection", "onPrimarySelection")
@@ -96,6 +97,7 @@ sub configure()
     m.key = config.apiKey
     m.providerType = textValue(config.providerType)
     m.guideUrl = textValue(config.guideUrl)
+    m.guideCacheKey = textValue(config.guideCacheKey)
     m.tmdbKey = textValue(config.tmdbKey)
     m.favorites = {}
     m.allowedKeys = guideDictionary()
@@ -569,6 +571,7 @@ sub drawGuide()
             row.number.translation = [channelLayout.numberX, channelLayout.indicatorY]
             channel = m.filtered[index]
             row.uuid = channel.uuid
+            row.channelId = textValue(channel.id)
             row.logoId = ""
             if m.settings.showLogos then row.logoId = channelLogoCacheId(channel)
             row.number.text = channel.number
@@ -768,7 +771,7 @@ sub renderCells(row as object, cells as object, selected as boolean, geometry as
                     tile.time.height = secondaryLayout.timeHeight
                 end if
                 tile.time.text = uiTime(program.startsAt) + " - " + uiTime(program.endsAt)
-                flags = programFlagPills(program, m.settings, textWidth, badgeWidthFactor)
+                flags = programFlagPills(program, m.settings, textWidth, badgeWidthFactor, guideRecordingMark(m.recordingMarks, textValue(row.channelId), program))
                 for j = 0 to flags.count() - 1
                     flag = flags[j]
                     if j >= tile.badges.count()
@@ -1181,10 +1184,7 @@ sub onPickerSelected(event as object)
             openPicker("Channel groups", items, "groups")
             return
         else if action = "programSearch"
-            scopes = [{title: "All permitted EPG + VOD", scope: "all"}, {title: "EPG title", scope: "epg"}, {title: "EPG description", scope: "description"}]
-            if m.top.vodEnabled and m.top.moviesPermission = "allowed" then scopes.push({title: "Movies", scope: "movie"})
-            if m.top.vodEnabled and m.top.seriesPermission = "allowed" then scopes.push({title: "TV Shows", scope: "series"})
-            openPicker("Unified TV search", scopes, "programSearchField")
+            openProgramSearchPicker()
             return
         else if action = "searchUnsupported"
             m.message = "Direct playlists do not provide Dispatcharr's shared EPG/VOD index. Search channels here, or use Xtream's category search."
@@ -1565,14 +1565,57 @@ function handleGuideBack(press as boolean) as boolean
         m.searchView.selection = {action: "close"}
     else if owner = "groups"
         m.navigator.callFunc("dismissGroups")
-    else if owner = "navigation"
+    else if owner = "navigation" and m.primaryReturnsToGrid = true
+        ' The second step of a DVR/Settings Back still lands on the grid.
+        m.primaryReturnsToGrid = false
         m.primaryNavigation.active = false
         m.primaryNavigation.exitRequested = "back"
+    else if owner = "navigation"
+        showGuideExitPrompt()
     else
         executeGuideBack()
     end if
     return true
 end function
+
+' Back on the top menu ends the Guide's Back ladder with an exit prompt.
+function guideExitPrompt() as object
+    return {title: "Exit AerioTV?", buttons: ["Exit", "Stay"], focusButton: 1}
+end function
+
+sub showGuideExitPrompt()
+    ' The top menu stays active beneath the prompt so Stay returns to it.
+    m.guideExitPromptOpen = true
+    m.guideExitLeave = false
+    prompt = guideExitPrompt()
+    dialog = CreateObject("roSGNode", "AerioDialog")
+    if dialog = invalid then return
+    dialog.title = prompt.title
+    dialog.buttons = prompt.buttons
+    dialog.focusButton = prompt.focusButton
+    dialog.observeField("buttonSelected", "onGuideExitButton")
+    dialog.observeField("wasClosed", "onGuideExitClosed")
+    m.top.getScene().dialog = dialog
+end sub
+
+sub onGuideExitButton(event as object)
+    m.guideExitLeave = event.getData() = 0
+    event.getRoSGNode().close = true
+end sub
+
+' wasClosed also covers Back on the prompt, which means Stay.
+sub onGuideExitClosed()
+    if m.guideExitPromptOpen <> true then return
+    m.guideExitPromptOpen = false
+    if m.guideExitLeave = true
+        m.guideExitLeave = false
+        m.top.playerRequest = "exitApp"
+    else if m.primaryNavigation.active = true
+        m.primaryNavigation.setFocus(true)
+    else
+        focusPrimaryNavigation()
+    end if
+end sub
 
 sub suppressGuideBackForHandoff()
     m.guideBackOwner = ""
@@ -1620,6 +1663,11 @@ sub updatePrimaryTabs()
     if FormatJson(m.primaryNavigation.items) <> FormatJson(items) then m.primaryNavigation.items = items
 end sub
 
+sub updateRecordingMarks()
+    m.recordingMarks = guideRecordingMarks(m.top.recordingState)
+    if m.ready = true and m.top.active then drawGuide()
+end sub
+
 sub onGuideChromeFocus()
     if m.ready = true and m.top.active then drawGuide()
 end sub
@@ -1635,12 +1683,21 @@ sub onFocusTab()
     m.navigator.active = false
     m.primaryNavigation.focusId = tabId
     m.primaryNavigation.active = true
+    m.primaryReturnsToGrid = true
+end sub
+
+sub openProgramSearchPicker()
+    scopes = [{title: "All permitted EPG + VOD", scope: "all"}, {title: "EPG title", scope: "epg"}, {title: "EPG description", scope: "description"}]
+    if m.top.vodEnabled and m.top.moviesPermission = "allowed" then scopes.push({title: "Movies", scope: "movie"})
+    if m.top.vodEnabled and m.top.seriesPermission = "allowed" then scopes.push({title: "TV Shows", scope: "series"})
+    openPicker("Unified TV search", scopes, "programSearchField")
 end sub
 
 sub focusPrimaryNavigation()
     if not m.top.active then return
     cancelGuideHold()
     m.navigator.active = false
+    m.primaryReturnsToGrid = false
     m.primaryNavigation.active = true
 end sub
 
@@ -1660,5 +1717,6 @@ sub onPrimarySelection(event as object)
 end sub
 
 sub onPrimaryExit(event as object)
+    m.primaryReturnsToGrid = false
     if event.getData() = "down" and m.settings.groupLayout = "pills" then m.navigator.active = true else m.top.setFocus(true)
 end sub

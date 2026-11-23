@@ -46,6 +46,14 @@ sub main()
     available = normalizeRecording({id: 14, channel: 3, custom_properties: {status: "completed", file_path: "/data/recordings/test.mkv"}})
     if available.fileFormat <> "mkv" or available.fileReady <> true then stop
     if available.filePath <> invalid then stop
+    ' e3e.31: Dispatcharr 0.34 completed-recording facts; the server path stays out.
+    done = normalizeRecording({id: 20, channel: 1, custom_properties: {status: "completed", season: 2026, episode: 1123, started_at: "2026-11-23 18:00:00.796343", ended_at: "2026-11-23 18:30:07.411097", file_name: "S2026E1123.mkv", file_path: "/data/recordings/private/S2026E1123.mkv", bytes_written: 1299038264, remux_success: true}})
+    if done.startedAt <> "2026-11-23 18:00:00.796343" or done.endedAt <> "2026-11-23 18:30:07.411097" then stop
+    if done.fileName <> "S2026E1123.mkv" or done.bytesWritten <> 1299038264 or done.remux <> "completed" then stop
+    if done.season <> "2026" or done.episode <> "1123" then stop
+    if instr(1, FormatJson(done), "private") > 0 then stop
+    sparse = normalizeRecording({id: 21, channel: 1, custom_properties: {file_name: "../etc/passwd", bytes_written: "big", remux_success: false, started_at: 7}})
+    if sparse.fileName <> "" or sparse.bytesWritten <> invalid or sparse.remux <> "failed" or sparse.startedAt <> "" then stop
     growing = normalizeRecording({id: 15, channel: 3, custom_properties: {status: "recording", _hls_dir: "/data/recordings/hls"}})
     if growing.hlsReady <> true or growing.fileReady = true then stop
     processed = normalizeRecording({id: 16, channel: 3, custom_properties: {status: "completed", comskip: {status: "skipped", reason: "comskip_not_installed"}}})

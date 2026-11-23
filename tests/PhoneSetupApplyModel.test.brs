@@ -180,7 +180,29 @@ sub testXtreamXmltvImport()
     verified = phoneSetupVerifiedImport(prepared, {ok: true, channels: [{uuid: "xc-1"}]})
     replaced = phoneSetupStageVerifiedConnection(restored, verified.entry, "replace", "panel")
     check(replaced.entries[0].epgUrl = "", "verified reimport with a blank override restores the account guide")
-    for each badUrl in ["https://guide.example.test/feed.xml?token=secret", "https://viewer:secret@guide.example.test/feed.xml", "https://guide.example.test/feed.xml#fragment", "file:///feed.xml", "https://guide.example.test/" + string(256, "a")]
+    ' e3e.5.2: a credential-bearing Xtream XMLTV URL (xmltv.php?username=...)
+    ' applies for this session only and is never written to the roster.
+    playlist.xmltvUrl = "https://guide.example.test/xmltv.php?username=viewer&password=fixture"
+    session = phoneSetupPrepareImport(payload, "panel", "")
+    check(session.ok and session.entry.epgUrl = "" and session.sessionGuideUrl = playlist.xmltvUrl, "token-bearing override is held for the session, not stored")
+    noted = false
+    for each note in session.notes
+        if instr(1, note, "XMLTV URL with credentials is session-only") > 0 then noted = true
+        check(instr(1, note, "fixture") = 0, "notes never echo the token-bearing URL")
+    end for
+    check(noted, "session-only XMLTV override is disclosed before Save")
+    verified = phoneSetupVerifiedImport(session, {ok: true, channels: [{uuid: "xc-1"}]})
+    check(verified.sessionGuideUrl = playlist.xmltvUrl, "verified import keeps the session override")
+    staged = phoneSetupStageVerifiedConnection(defaultConnectionStore(), verified.entry, "add", "")
+    check(instr(1, FormatJson(staged), "fixture") = 0 and staged.entries[0].epgUrl = "", "roster never holds the token-bearing URL")
+    for each badSession in ["https://viewer:secret@guide.example.test/xmltv.php?u=1", "https://guide.example.test/xmltv.php?u=1#x", "ftp://guide.example.test/xmltv.php?u=1", "https://guide.example.test/xmltv.php?", "https://guide.example.test/x?" + string(1100, "a")]
+        playlist.xmltvUrl = badSession
+        rejected = phoneSetupPrepareImport(payload, "panel", "")
+        check(not rejected.ok and instr(1, rejected.message, "XMLTV URL") > 0, "malformed token-bearing guide URL is rejected")
+    end for
+    m3u = {playlist: {type: "m3u", name: "List", url: "https://list.example.test/a.m3u", xmltvUrl: "https://guide.example.test/feed.xml?token=secret", guideDays: 7, catchupOffsetMinutes: 0, vodEnabled: true, channelProfileIds: []}}
+    check(not phoneSetupPrepareImport(m3u, "list", "").ok, "non-Xtream token-bearing XMLTV URLs stay unsupported")
+    for each badUrl in ["https://viewer:secret@guide.example.test/feed.xml", "https://guide.example.test/feed.xml#fragment", "file:///feed.xml", "https://guide.example.test/" + string(256, "a")]
         playlist.xmltvUrl = badUrl
         rejected = phoneSetupPrepareImport(payload, "panel", "")
         check(not rejected.ok and rejected.entry = invalid and instr(1, rejected.message, "XMLTV URL") > 0, "unsupported guide URL is rejected before verification or persistence")

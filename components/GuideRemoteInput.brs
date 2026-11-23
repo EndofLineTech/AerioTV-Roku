@@ -33,6 +33,10 @@ sub executeGuideRemoteAction(action as string)
         if m.selected < 0 then m.selected = 0
     else if action = "resumePlayer" and m.top.miniActive
         m.top.playerRequest = "expandPlayer"
+    else if action = "openSearch"
+        if guideProfileActionAllowed(m.userRole, "programSearch") then openProgramSearchPicker()
+    else if action = "jumpToDay"
+        if guideProfileActionAllowed(m.userRole, "date") then openDatePicker()
     else if action = "programDetails"
         showDetails()
     else if action = "activateSelection"
@@ -208,7 +212,8 @@ function guideRemoteHint() as string
         hint += "    Play  Details"
     end if
     hint += "    *  Options"
-    if m.navigator.active or m.primaryNavigation.active = true then return hint + "    Back  Guide grid"
+    if m.primaryNavigation.active = true then return hint + "    Back  Exit"
+    if m.navigator.active then return hint + "    Back  Guide grid"
     back = effectiveGuideBackAction()
     labels = {stopPlayer: "Stop playback", topMenu: "Top menu", cancelPendingTune: "Cancel tune"}
     if back = "none" then return hint

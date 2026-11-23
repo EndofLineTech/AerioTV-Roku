@@ -102,7 +102,8 @@ cumulative summary, verification boundaries and remaining Beta limitations.
   resumable or next episode; completed episodes can advance Continue Watching.
 - **Growing server recordings:** Aerio's live-TV-style control pills replace
   Roku's native “Rewind live TV” overlay for active HLS recordings. Rew/FF use
-  bounded 30-second steps with an in-app seek preview; completed files retain
+  bounded Skip Back / Skip Forward steps (30 seconds by default) with an in-app
+  seek preview; completed files retain
   Roku's native transport. A single near-end HLS reader error remains a
   PO-accepted known testing limitation; see the [release notes](docs/RELEASE-0.3.88.md).
 
@@ -317,11 +318,15 @@ connection screen:
 - To reach the guide header: hold Left directly in Modal; in Sidebar, then Left
   from groups; in Pills, then Up from groups. Select **VOD**, **DVR** (on permitted
   Dispatcharr accounts), or **Settings** there.
+- Guide cells show a red **REC** pill on programs this account has scheduled or
+  is recording on the server (accounts with DVR access). The marks refresh with
+  account permissions, after scheduling from the Guide and when leaving DVR.
 - **DVR** shows Recording Now, Scheduled, Recent and Series Rules under separate
   subheadings in one scrolling list. Active recordings appear first; **Replay**
   refreshes server items. Select a row with **OK** for facts and available playback.
-- An active Dispatcharr HLS recording uses Aerio's player pills and 30-second
-  Rew/FF steps. A tap seeks; hold to preview, then OK/Play commits or Back
+- An active Dispatcharr HLS recording uses Aerio's player pills and Rew/FF
+  steps from **Settings → Player → In-progress recordings: Skip Back / Skip
+  Forward** (30 seconds each by default). A tap seeks; hold to preview, then OK/Play commits or Back
   cancels. Back/Stop leaves the server recording running. Seek availability and
   picture/audio continuity depend on the growing server stream; a near-end
   playlist-size failure remains under investigation. Completed and stopped
@@ -347,8 +352,17 @@ connection screen:
   playback running. Provider delay or failure can produce **Archive not yet available**.
 - In archive/Restart/rewind: tap Rew/FF to skip; hold to preview a timestamp,
   release, then **OK/Play** to commit or **Back** to cancel. **Up → Go Live**
-  returns to the same live channel. Set intervals in **Settings → Player** or
-  **Up → Skip interval**. VOD uses Roku's native transport controls.
+  returns to the same live channel. Rew uses **Skip Back** and FF uses **Skip
+  Forward** (10 s, 15 s, 30 s, 1, 2 or 5 minutes; 1 minute by default), set in
+  **Settings → Player → Rewind & archive** or **Up → Skip Back / Skip Forward**.
+  Provider archives start on whole minutes, so a skip shorter than a minute moves
+  to the next whole minute in that direction. Earlier single skip-interval
+  choices carry over to both directions. VOD uses Roku's native transport controls.
+- **Playback speed:** during movies, episodes and completed recordings, press
+  **Up** or **Down** for **Player options → Playback speed** (0.75x, 1x, 1.25x,
+  1.5x or 2x). Aerio briefly pauses and resumes to apply the change, because
+  Roku OS ignores speed changes during playback. Each new title starts at 1x.
+  Live TV, provider archives and in-progress recordings play at normal speed.
 - **AAC compatibility needs an existing active copy-video/AAC output profile**
   visible to the Dispatcharr account. The app does not create server profiles.
   Always AAC waits for discovery and offers explicit alternatives if unavailable.
@@ -951,20 +965,22 @@ preventing accidental reuse at a different server.
 | Guide | Instant Replay | Jump to Now |
 | Guide grid | Back (default) | Cancel a pending tune, stop an active mini-player, or focus the top menu if playback is stopped |
 | Guide grid | Play/Pause (default) | Expand an active mini-player, or show program details if playback is stopped |
+| Guide top menu | Back | **Exit AerioTV?** prompt: Exit leaves the app; Stay (focused) or Back returns to the top menu |
 | Menu | Back | Close and restore guide focus |
-| VOD, DVR, Settings (top level) | Back | First Back focuses that tab in the top menu; Back again returns to the Live TV guide |
+| VOD, DVR, Settings (top level) | Back | First Back focuses that tab in the top menu; Back again returns to the Live TV guide grid |
 | Player | OK | Show/hide now/next information without pausing |
 | Player | Hold OK | Open app player options; release before selecting an item |
 | Player | Play/Pause | Request native pause/resume; retained duration depends on stream/device |
 | Player | OK → Up/Down → Options | App options: audio, captions, scale, sleep, diagnostics and supported source controls |
 | Player | `*` | Roku system options |
+| Movie, episode or completed recording | Up / Down | Player options: Playback speed |
 | Player | Rew | Open provider-backed rewind on an eligible channel |
 | Player | Up / Down | Next / previous channel by default; configurable direction |
 | Player options | Back | Return to parent menu or playback |
 | Player | Back | Close inner chrome, then minimize to guide; use explicit Stop to stop playback |
-| Archive / Restart / rewind | Tap Rew/FF | One configured whole-minute skip on release |
+| Archive / Restart / rewind | Tap Rew/FF | One Skip Back / Skip Forward step on release, on whole provider minutes |
 | Archive / Restart / rewind | Hold Rew/FF, then release | Preview a target; OK/Play commits, Back cancels |
-| Archive / Restart / rewind | Up | Go Live, keep watching, or configure skip interval |
+| Archive / Restart / rewind | Up | Go Live, keep watching, or set Skip Back / Skip Forward |
 | Guide header | Settings | Categorized Live TV, Player, Appearance, General and Connection settings |
 
 **Settings → Remote control → Play channels from the Guide in** chooses where a
@@ -975,8 +991,10 @@ channel goes full screen. Radio Mode channels still open their own screen.
 Use **Settings → Remote control → In the TV Guide → Back** to change what a
 single Back press does in the grid. Choices include watching the selected
 channel live, opening program details or groups, moving 2½ hours earlier or
-later, paging through channels, jumping to Now or the top channel, returning
-to fullscreen, and doing nothing. Return to fullscreen only acts when the
+later, paging through channels, jumping to Now or the top channel, opening
+search, jumping to a date and time, returning to fullscreen, and doing nothing.
+Rewind, Fast Forward and Instant Replay in the Guide can also open search or
+jump to a date and time. Return to fullscreen only acts when the
 mini-player is active; it does not start playback. If you change the default
 mapping, you can still stop the mini-player from the Guide's `*` menu.
 

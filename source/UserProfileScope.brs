@@ -11,7 +11,7 @@ end function
 ' Explicit PO-approved appearance/player axis. Network, clock, accessibility,
 ' remote mapping/direction and hardware/display controls remain device-local.
 function userProfileSettingsFields() as object
-    return ["themePreset", "appearanceMode", "trueBlack", "customAccent", "panelStyle", "textSize", "subtextSize", "contrastMode", "audioMode", "liveTransport", "liveStartupRetries", "videoScale", "archiveSkipSeconds", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints"]
+    return ["themePreset", "appearanceMode", "trueBlack", "customAccent", "panelStyle", "textSize", "subtextSize", "contrastMode", "audioMode", "liveTransport", "liveStartupRetries", "videoScale", "archiveSkipBackSeconds", "archiveSkipForwardSeconds", "recordingSkipBackSeconds", "recordingSkipForwardSeconds", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints"]
 end function
 
 function userProfilePickSettings(raw as dynamic, allowed as object) as object
@@ -33,8 +33,11 @@ function userProfilePickSettings(raw as dynamic, allowed as object) as object
 end function
 
 function normalizeUserProfileSettings(raw as dynamic) as object
-    selected = userProfilePickSettings(raw, userProfileSettingsFields())
-    selected = userProfileTypedSettings(selected, ["textSize", "subtextSize", "liveStartupRetries", "archiveSkipSeconds"], ["trueBlack", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints"], [], [])
+    ' The legacy symmetric archive skip is read only to migrate it.
+    fields = userProfileSettingsFields()
+    fields.push("archiveSkipSeconds")
+    selected = userProfilePickSettings(raw, fields)
+    selected = userProfileTypedSettings(selected, ["textSize", "subtextSize", "liveStartupRetries", "archiveSkipSeconds", "archiveSkipBackSeconds", "archiveSkipForwardSeconds", "recordingSkipBackSeconds", "recordingSkipForwardSeconds"], ["trueBlack", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints"], [], [])
     normalized = normalizeDevicePreferences(selected)
     return userProfileNormalizedFields(normalized, userProfileSettingsFields())
 end function
