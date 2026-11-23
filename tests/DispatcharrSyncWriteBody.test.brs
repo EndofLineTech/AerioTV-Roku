@@ -67,7 +67,12 @@ sub main()
     proposed = syncWriteBodyFixture()
     original["categories"]["profiles"]["deviceId"] = "roku-device"
     proposed["categories"]["profiles"]["deviceId"] = "roku-device"
-    original["categories"]["FutureCategory"]["data"]["padding"] = string(131072, "x")
+    ' Native string() returns "" at this length, so build it by doubling.
+    padding = "x"
+    while len(padding) < 131072
+        padding += padding
+    end while
+    original["categories"]["FutureCategory"]["data"]["padding"] = padding
     proposed["categories"]["FutureCategory"]["data"]["padding"] = original["categories"]["FutureCategory"]["data"]["padding"]
     result = dispatcharrSyncCheckedWriteBody(original, proposed, ["profiles"])
     check(not result.ok and result.state = "too-large" and result.body = "", "absolute write cap classifies the untouched oversized body before reparse")
