@@ -1015,7 +1015,11 @@ session before opening Video and plays the returned playlist without making a
 second entry request. On Stop, retune, sleep-timer expiry or terminal playback
 failure it stops Video and sends the owner's explicit
 `DELETE /api/proxy/hls/sessions/<token>/` (not the shared-channel Stop API).
-Cancelled entry requests clean up their own minted session. Local decoder
+Cancelled entry requests clean up their own minted session. If the session request
+answers HTTP 502 or 503 with an explicit `Retry-After` of at most 15 seconds,
+the Roku shows the wait and requests a fresh session up to twice before
+offering Retry; without `Retry-After`, or with a longer wait, it offers Retry at
+once. A 429 instead parks the whole server through the request gate. Local decoder
 retries reuse the same session and disconnect when that playback ends. The
 server's inactive-client reaper remains necessary for an abrupt Roku Home,
 power loss or unreachable server, where an in-flight DELETE cannot be guaranteed.

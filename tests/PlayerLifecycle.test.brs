@@ -544,6 +544,7 @@ sub runPlayerLifecycleChecks()
     checkRecoveryReadyRadioClassification()
     checkOwnedHlsRetryLifecycle()
     checkOwnedHlsMissingReceipt()
+    checkOwnedHlsBusyMintRetry()
     checkRadioBackDuringAacRecovery()
     checkOwnedHlsStartupFailureBoundaries()
     checkMidstreamTemporaryUnavailable()
@@ -1046,6 +1047,63 @@ sub checkOwnedHlsMissingReceipt()
         assertEqual(m.playbackRetry.channel.uuid, channel.uuid, "manual channel Retry is retained")
         assertEqual(m.devicePreferences.liveTransport, "hls", "manual Retry retains explicit HLS selection")
     end for
+end sub
+
+sub checkOwnedHlsBusyMintRetry()
+    resetOwnedHlsFixture()
+    content = m.video.content
+    beginOwnedHlsPlayback(content)
+    first = m.hlsMintTask
+    onHlsSessionOpened(hlsFixtureEvent(first, {ok: false, status: 503, retryAfter: 3}))
+    assertEqual(m.top.dialog, invalid, "explicit busy Retry-After waits instead of failing")
+    assertEqual(m.hlsMintRetry <> invalid, true, "busy mint schedules one bounded retry")
+    assertEqual(m.hlsMintRetry.due, 3000, "retry waits exactly the server-requested delay")
+    assertEqual(instr(1, m.noticeText.text, "3 seconds") > 0, true, "viewer sees the requested wait")
+    m.hlsMintRetry.clock = {ms: 2999, totalMilliseconds: function() as integer
+        return m.ms
+    end function}
+    checkHlsMint()
+    assertEqual(m.hlsMintTask, invalid, "no remint before Retry-After elapses")
+    m.hlsMintRetry.clock.ms = 3000
+    checkHlsMint()
+    second = m.hlsMintTask
+    assertEqual(second <> invalid and not second.isSameNode(first), true, "Retry-After elapsed remints the same attempt")
+    assertEqual(second.entryUrl, content.url, "retry reuses the original entry")
+    assertEqual(m.hlsMintRetry, invalid, "scheduled retry is consumed")
+    onHlsSessionOpened(hlsFixtureEvent(second, {ok: false, status: 502, retryAfter: 1}))
+    m.hlsMintRetry.clock = {totalMilliseconds: function() as integer
+        return 1000
+    end function}
+    checkHlsMint()
+    third = m.hlsMintTask
+    onHlsSessionOpened(hlsFixtureEvent(third, {ok: false, status: 503, retryAfter: 1}))
+    assertEqual(m.hlsMintRetry, invalid, "busy retries are bounded to two")
+    assertEqual(m.top.dialog <> invalid, true, "exhausted busy retries fall back to manual Retry")
+    assertEqual(m.hlsStopTasks.count(), 0, "failed mints never close an unowned token")
+
+    for each fixture in [{status: 503, retryAfter: -1}, {status: 503, retryAfter: 16}, {status: 429, retryAfter: 2}, {status: 500, retryAfter: 2}, {status: 404, retryAfter: 2}]
+        resetOwnedHlsFixture()
+        beginOwnedHlsPlayback(m.video.content)
+        onHlsSessionOpened(hlsFixtureEvent(m.hlsMintTask, {ok: false, status: fixture.status, retryAfter: fixture.retryAfter}))
+        assertEqual(m.hlsMintRetry, invalid, "no inferred or overlong wait: HTTP " + fixture.status.toStr() + " retryAfter " + fixture.retryAfter.toStr())
+        assertEqual(m.top.dialog <> invalid, true, "unretried mint failure keeps manual Retry")
+    end for
+
+    resetOwnedHlsFixture()
+    beginOwnedHlsPlayback(m.video.content)
+    onHlsSessionOpened(hlsFixtureEvent(m.hlsMintTask, {ok: false, status: 503, retryAfter: 2}))
+    cancelHlsMint()
+    assertEqual(m.hlsMintRetry, invalid, "cancel retires a scheduled busy retry")
+    resetOwnedHlsFixture()
+    beginOwnedHlsPlayback(m.video.content)
+    onHlsSessionOpened(hlsFixtureEvent(m.hlsMintTask, {ok: false, status: 503, retryAfter: 2}))
+    m.video.content = lifecycleRetryContent(77)
+    m.hlsMintRetry.clock = {totalMilliseconds: function() as integer
+        return 5000
+    end function}
+    checkHlsMint()
+    assertEqual(m.hlsMintTask, invalid, "replaced reader cannot receive a stale busy retry")
+    assertEqual(m.hlsMintRetry, invalid, "stale busy retry is discarded")
 end sub
 
 sub checkOwnedHlsStartupFailureBoundaries()

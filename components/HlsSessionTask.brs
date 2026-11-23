@@ -57,6 +57,9 @@ function mintOwnedHlsSession(base as string, url as string, key as string) as ob
         event = wait(50, port)
         if type(event) = "roUrlEvent" and event.getInt() = 1
             result.status = event.getResponseCode()
+            if result.status = 502 or result.status = 503
+                result.retryAfter = httpRetryAfter(event.getResponseHeaders(), CreateObject("roDateTime").asSeconds())
+            end if
             refusal = ""
             if result.status = 401
                 stat = fs.stat(path)
@@ -90,6 +93,7 @@ sub runHlsSession()
         else if m.top.operation = "open"
             mint = mintOwnedHlsSession(base, m.top.entryUrl, key)
             result.status = mint.status
+            if mint.retryAfter <> invalid then result.retryAfter = mint.retryAfter
             if mint.session <> invalid
                 if m.top.cancelRequested or mint.status < 200 or mint.status >= 400
                     stopOwnedHlsSession(base, mint.session.token, key)

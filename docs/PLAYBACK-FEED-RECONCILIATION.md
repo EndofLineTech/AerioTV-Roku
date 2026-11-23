@@ -73,6 +73,27 @@ phone or certification criteria, or supplies explicit parent acceptance.
   code/text pair. No provider cause, Retry-After value, or automatic delay
   is inferred.
 
+## Relay-observed native evidence (2026-11-22)
+
+Roku 3820RW2 / OS 16.0.4, dev 0.3.103 private probe, approved standard
+`roku` account, real H.264 720p/AAC live channel, explicit HLS transport. The
+Roku reached Dispatcharr only through `scripts/hls_fault_proxy.py` on the Mac,
+which logged redacted request classes and injected counted faults. No admin
+endpoint, server setting or shared-channel stop was used. Cleanup and exact
+v0.3.102 restore were verified after every run.
+
+| Case | Relay sequence | Roku behavior |
+| --- | --- | --- |
+| Cold link, first mint 503 + `Retry-After: 3` (before fix) | `mint 503` | Failed at once; one `AppLaunchComplete` at the failure. |
+| Same, with the busy-mint retry | `mint 503` → `mint 302` → playlists/segments | Waited, reminted the same attempt, advancing playback. |
+| Midstream segment resets (×4) | `segment reset ×4` → `close 204` | Native reader error: one owner close, manual Retry (run 2). In run 3 the native reader absorbed the resets and kept advancing. |
+| Midstream playlist 503 + `Retry-After: 2` | `playlist 503 ×2` → `close 204` | One owner close, manual Retry; the native reader does not expose Retry-After. |
+| Retune, first mint 429 + `Retry-After: 4` | `mint 429` → `close 204` | Request gate parked the server; old session closed once; Guide shown, no remint. |
+| Home while playing | none within 12 s | No close reaches the server; the inactive-client reaper is the fallback. |
+
+Every error path closed only its own token, exactly once. Server-side client
+counts remain admin-only and unobserved.
+
 ## Historical implementation detail (`4ee2ec8` baseline)
 
 The host checks described below used synthetic Scene fields and `.test`
@@ -88,7 +109,9 @@ addresses. They did not start media transfers or issue provider requests.
   uses the same intent handling with or without the picture hidden; it can
   cancel a pending pause before Video acknowledges it.
 - An API-key refusal does not trigger password re-login. The request broker
-  parks on 429 and honors bounded Retry-After for requests it sees. This is not
+  parks on 429 and honors bounded Retry-After for requests it sees. An explicit
+  Retry-After of at most 15 seconds on a 502/503 HLS session request is
+  honored with up to two fresh session requests (see the relay evidence above). This is not
   a promise to observe Retry-After from the native Video reader. Native HTTP 503
   guidance says to wait, without guessing a connection limit or a retry delay.
   See [request policy](REQUEST-GATE.md) and [ordinary recovery](LIVE-RECOVERY.md).
