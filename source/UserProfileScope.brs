@@ -5,7 +5,7 @@ function userProfileAccountSeedFields() as object
 end function
 
 function userProfileGuideSeedFields() as object
-    return ["groupSort", "groupOrder", "channelSort", "groupLayout", "collectionsPosition", "historyDays", "futureDays", "badges", "tmdbFallback", "guideDensity", "guideDisplayScale", "showLogos", "showNumbers", "showNames", "showSubtitles", "channelLogoSize", "roundedGuideLogos", "roundedProgramCells"]
+    return ["groupSort", "groupOrder", "channelSort", "groupLayout", "sidebarLayout", "collectionsPosition", "historyDays", "futureDays", "badges", "tmdbFallback", "guideDensity", "guideDisplayScale", "showLogos", "showNumbers", "showNames", "showSubtitles", "channelLogoSize", "roundedGuideLogos", "roundedProgramCells"]
 end function
 
 ' Explicit PO-approved appearance/player axis. Network, clock, accessibility,

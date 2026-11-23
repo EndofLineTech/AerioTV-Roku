@@ -43,13 +43,13 @@ function applyHubGuideSetting(key as string, value as dynamic) as dynamic
         refreshPresentation()
         return m.settings
     end if
-    if key <> "historyDays" and key <> "futureDays" and key <> "channelSort" and key <> "groupLayout" and key <> "guideDensity" and key <> "showLogos" and key <> "showNumbers" and key <> "showNames" and key <> "showSubtitles" then return invalid
+    if key <> "historyDays" and key <> "futureDays" and key <> "channelSort" and key <> "groupLayout" and key <> "sidebarLayout" and key <> "guideDensity" and key <> "showLogos" and key <> "showNumbers" and key <> "showNames" and key <> "showSubtitles" then return invalid
     m.settings[lcase(key)] = value
     m.settings = normalizeGuideSettings(m.settings)
     m.anchor = guideTimeClamp(m.anchor, uiNow(), m.settings)
     keepAnchorVisible()
     m.navigator.active = false
-    m.navigator.callFunc("applyPresentation", {groups: m.groups, layout: m.settings.groupLayout, selected: m.groups[m.groupIndex].id})
+    m.navigator.callFunc("applyPresentation", {groups: m.groups, layout: m.settings.groupLayout, overlay: m.settings.sidebarLayout = "overlay", selected: m.groups[m.groupIndex].id})
     rebuildGuideGroups()
     return m.settings
 end function
@@ -233,7 +233,7 @@ function handleGuideSetting(kind as string, item as object) as boolean
             ' the old navigator still owns active state. Ordinary redraws avoid
             ' reconfiguring an active navigator to preserve its preview focus.
             m.navigator.active = false
-            m.navigator.callFunc("applyPresentation", {groups: m.groups, layout: item.value, selected: m.groups[m.groupIndex].id})
+            m.navigator.callFunc("applyPresentation", {groups: m.groups, layout: item.value, overlay: m.settings.sidebarLayout = "overlay", selected: m.groups[m.groupIndex].id})
         end if
         m.anchor = guideTimeClamp(m.anchor, uiNow(), m.settings)
         keepAnchorVisible()
@@ -498,4 +498,48 @@ sub onTmdbKeyTest(event as object)
         m.message = "TMDB test failed. " + result.message
     end if
     drawGuide()
+end sub
+
+' e3e.34: holding OK on a group pill offers to make it the startup group.
+function groupDefaultPrompt(groupId as string) as dynamic
+    for each group in m.groups
+        if group.id = groupId then return {title: "Default group", message: "Start the Guide on " + group.name + "?", buttons: ["Set as default", "Cancel"]}
+    end for
+    return invalid
+end function
+
+sub onGroupDefaultRequested(event as object)
+    groupId = textValue(event.getData())
+    prompt = groupDefaultPrompt(groupId)
+    if prompt = invalid then return
+    dialog = CreateObject("roSGNode", "AerioDialog")
+    if dialog = invalid then return
+    m.groupDefaultId = groupId
+    dialog.title = prompt.title
+    dialog.message = prompt.message
+    dialog.buttons = prompt.buttons
+    dialog.observeField("buttonSelected", "onGroupDefaultButton")
+    dialog.observeField("wasClosed", "onGroupDefaultClosed")
+    m.top.getScene().dialog = dialog
+end sub
+
+sub onGroupDefaultButton(event as object)
+    m.groupDefaultConfirmed = event.getData() = 0
+    event.getRoSGNode().close = true
+end sub
+
+sub onGroupDefaultClosed()
+    groupId = textValue(m.groupDefaultId)
+    m.groupDefaultId = ""
+    if groupId <> "" then finishGroupDefault(groupId, m.groupDefaultConfirmed = true)
+    m.groupDefaultConfirmed = false
+end sub
+
+sub finishGroupDefault(groupId as string, confirmed as boolean)
+    if confirmed
+        m.settings.startupGroup = groupId
+        unhideStartupGroup()
+        rebuildGuideGroups()
+    end if
+    if m.navigator.active = true then m.navigator.setFocus(true) else m.navigator.active = true
 end sub

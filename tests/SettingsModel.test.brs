@@ -63,6 +63,13 @@ sub main()
     if player[5].key <> "liveTransport" or not settingsHubChangeAllowed(model, "device", "liveTransport", "hls") then stop
     if player[6].key <> "liveStartupRetries" or not settingsHubChangeAllowed(model, "device", "liveStartupRetries", 3) then stop
     if player[7].key <> "radioDefault" or player[7].scope <> "device" then stop
+    sidebarStyle = invalid
+    for each entry in settingsHubEntries("appearance", model)
+        if entry.key = "sidebarLayout" then sidebarStyle = entry
+    end for
+    if sidebarStyle = invalid or sidebarStyle.scope <> "guide" or sidebarStyle.values[0] <> "shift" or sidebarStyle.values[1] <> "overlay" then stop
+    if settingsValueText("overlay", "sidebarLayout") <> "Overlay the guide" or settingsValueText("shift", "sidebarLayout") <> "Shift the guide" then stop
+    if player[9].key <> "autoRecoverFrozen" or not settingsHubChangeAllowed(model, "device", "autoRecoverFrozen", false) then stop
     if settingsHubValue(model, "device", "radioDefault") <> false then stop
     if not settingsHubChangeAllowed(model, "device", "radioDefault", true) then stop
     if settingsHubChangeAllowed(model, "device", "radioDefault", "true") then stop
@@ -135,7 +142,7 @@ sub main()
     model.dvr = "denied"
     if settingsHubChangeAllowed(model, "account", "dvrPreRollMinutes", 5) then stop
     model.catchup = "denied"
-    if settingsHubEntries("player", model).count() <> 5 then stop
+    if settingsHubEntries("player", model).count() <> 6 then stop
     if settingsHubChangeAllowed(model, "device", "archiveSkipBackSeconds", 120) then stop
     if settingsHubChangeAllowed(model, "device", "recordingSkipBackSeconds", 120) then stop
     model.dvr = "view"

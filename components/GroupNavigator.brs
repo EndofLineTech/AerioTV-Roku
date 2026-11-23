@@ -2,6 +2,9 @@ sub init()
     m.canvas = m.top.createChild("Group")
     m.delay = m.top.findNode("previewDelay")
     m.delay.observeField("fire", "publishPreview")
+    m.holdTimer = m.top.findNode("holdTimer")
+    m.holdTimer.observeField("fire", "onGroupHold")
+    m.okDown = false
     m.rows = []
     m.caption = invalid
     m.leftArrow = m.top.findNode("leftOverflowArrow")
@@ -23,6 +26,7 @@ sub applyPresentation(model as dynamic)
     if model = invalid then return
     m.groups = model.groups
     m.layout = model.layout
+    m.overlay = model.overlay = true and m.layout = "sidebar"
     m.index = 0
     for i = 0 to m.groups.count() - 1
         if m.groups[i].id = model.selected then m.index = i
@@ -30,6 +34,8 @@ sub applyPresentation(model as dynamic)
     m.canvas.removeChildrenIndex(m.canvas.getChildCount(), 0)
     m.caption = invalid
     m.rows = []
+    ' An overlay sidebar covers the channel column and grid while focused.
+    if m.overlay then uiSurface(m.canvas, 72, 252, 328, 724, 24, "0x0A1628F5")
     count = 5
     if m.layout = "sidebar" then count = 7
     if count > m.groups.count() then count = m.groups.count()
@@ -66,12 +72,18 @@ sub applyPresentation(model as dynamic)
 end sub
 
 sub onActive()
-    if m.top.active then m.top.setFocus(true) else m.delay.control = "stop"
+    if m.top.active
+        m.top.setFocus(true)
+    else
+        m.delay.control = "stop"
+        m.holdTimer.control = "stop"
+        m.okDown = false
+    end if
     draw()
 end sub
 
 sub draw()
-    m.top.visible = m.layout = "pills" or m.layout = "sidebar"
+    m.top.visible = m.layout = "pills" or (m.layout = "sidebar" and (m.overlay <> true or m.top.active))
     window = groupPillWindow(m.groups.count(), m.index, m.rows.count())
     first = window.first
     if m.caption <> invalid
@@ -111,6 +123,25 @@ end sub
 
 function onKeyEvent(key as string, press as boolean) as boolean
     if key = "back" and m.top.delegateBack = true then return false
+    ' e3e.34: on pills and the sidebar, OK selects on release; holding it asks
+    ' the Guide to make the focused group the default.
+    if key = "OK" and m.layout <> "modal"
+        if press
+            if not m.top.active or m.okDown then return true
+            m.okDown = true
+            m.okHeld = false
+            m.holdTimer.control = "stop"
+            m.holdTimer.control = "start"
+            return true
+        end if
+        if not m.okDown then return false
+        m.okDown = false
+        m.holdTimer.control = "stop"
+        if m.okHeld or not m.top.active then return true
+        publishPreview()
+        dismissGroups()
+        return true
+    end if
     if not press or not m.top.active then return false
     if (key = "up" and (m.layout = "pills" or m.index = 0)) or (key = "left" and m.layout = "sidebar")
         m.delay.control = "stop"
@@ -146,6 +177,12 @@ function onKeyEvent(key as string, press as boolean) as boolean
     end if
     return true
 end function
+
+sub onGroupHold()
+    if not m.okDown or not m.top.active or m.groups.count() = 0 then return
+    m.okHeld = true
+    m.top.defaultRequested = m.groups[m.index].id
+end sub
 
 sub dismissGroups()
     m.delay.control = "stop"

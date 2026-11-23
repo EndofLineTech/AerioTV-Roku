@@ -7,7 +7,7 @@ function normalizeGuideSettings(raw as dynamic) as object
             p[lcase(key)] = copyGuideValue(raw[key])
         end for
         ' Recover a previous dynamic camel-case selection over an older default.
-        for each key in ["groupSort", "channelSort", "groupLayout", "startupGroup", "collectionsPosition", "historyDays", "futureDays", "hiddenGroups", "groupOrder", "favoriteOrder", "tmdbFallback"]
+        for each key in ["groupSort", "channelSort", "groupLayout", "sidebarLayout", "startupGroup", "collectionsPosition", "historyDays", "futureDays", "hiddenGroups", "groupOrder", "favoriteOrder", "tmdbFallback"]
             if raw.doesExist(key) then p[lcase(key)] = copyGuideValue(raw[key])
         end for
     end if
@@ -16,7 +16,7 @@ function normalizeGuideSettings(raw as dynamic) as object
     p.delete("categorycolors")
     p.delete("categoryrules")
     p.delete("palette")
-    for each field in ["groupSort", "channelSort", "groupLayout", "startupGroup", "collectionsPosition"]
+    for each field in ["groupSort", "channelSort", "groupLayout", "sidebarLayout", "startupGroup", "collectionsPosition"]
         p[field] = textValue(p[field])
     end for
     p.historyDays = textValue(p.historyDays).toInt()
@@ -24,6 +24,7 @@ function normalizeGuideSettings(raw as dynamic) as object
     if p.groupSort <> "alpha" and p.groupSort <> "manual" then p.groupSort = "default"
     if p.channelSort <> "name" and p.channelSort <> "id" then p.channelSort = "number"
     if p.groupLayout <> "pills" and p.groupLayout <> "sidebar" then p.groupLayout = "modal"
+    if p.sidebarLayout <> "overlay" then p.sidebarLayout = "shift"
     if textValue(p.startupGroup) = "" then p.startupGroup = "all"
     p.hiddenGroups = compactIds(p.hiddenGroups, 300)
     p.groupOrder = compactIds(p.groupOrder, 300)
@@ -393,4 +394,11 @@ function channelNumberSortKey(number as string) as string
     fraction = ""
     if parts.count() > 3 then fraction = textValue(parts[3])
     return right("0000000000" + whole, 10) + "." + left(fraction + "0000000000", 10)
+end function
+
+' e3e.34: a shifting sidebar moves the grid right; an overlay sidebar draws
+' over the full-width grid only while it has focus.
+function guideGridX(settings as object) as integer
+    if settings.groupLayout = "sidebar" and settings.sidebarLayout <> "overlay" then return 400
+    return 96
 end function

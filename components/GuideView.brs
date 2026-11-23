@@ -13,6 +13,7 @@ sub init()
     m.navigator.observeField("preview", "onGroupPreview")
     m.navigator.observeField("closed", "onNavigatorClosed")
     m.navigator.observeField("optionsRequested", "handleOptionsShortcut")
+    m.navigator.observeField("defaultRequested", "onGroupDefaultRequested")
     m.navigator.observeField("topRequested", "focusPrimaryNavigation")
     m.navigator.observeField("active", "onGuideChromeFocus")
     m.holdKey = ""
@@ -509,8 +510,7 @@ sub drawGuide()
     geometry = currentGuideGeometry()
     channelLayout = guideChannelGeometry(geometry, m.settings)
     m.rowCount = geometry.rowCount
-    gridX = 96
-    if m.settings.groupLayout = "sidebar" then gridX = 400
+    gridX = guideGridX(m.settings)
     timeX = gridX + 240
     m.span = (1824 - timeX) * 6
     keepAnchorVisible()
@@ -524,14 +524,19 @@ sub drawGuide()
     m.liveTitle.visible = false
     m.liveUnderline.visible = false
     m.heading.visible = m.settings.groupLayout <> "pills"
-    if not m.navigator.active then m.navigator.model = {groups: m.groups, layout: m.settings.groupLayout, selected: m.groups[m.groupIndex].id}
+    if not m.navigator.active then m.navigator.model = {groups: m.groups, layout: m.settings.groupLayout, overlay: m.settings.sidebarLayout = "overlay", selected: m.groups[m.groupIndex].id}
     m.dateLabel.text = uiLocalDate(m.viewStart)
     m.dateLabel.translation = [gridX, 270]
+    ' Grid labels are created after the navigator; hide the ones an open
+    ' overlay sidebar covers so they do not paint over it.
+    overlayOpen = m.settings.groupLayout = "sidebar" and m.settings.sidebarLayout = "overlay" and m.navigator.active = true
+    m.dateLabel.visible = not overlayOpen
     m.nowLine.height = m.rowCount * geometry.rowHeight
     for i = 0 to m.ticks.count() - 1
         m.ticks[i].text = uiTime(m.viewStart + i * 1800)
         tickX = timeX + 10 + i * 300
         m.ticks[i].translation = [tickX, 270]
+        m.ticks[i].visible = not (overlayOpen and tickX < 400)
         m.ticks[i].visible = tickX < 1824
     end for
     appearance = uiAppearance()

@@ -983,6 +983,14 @@ preventing accidental reuse at a different server.
 | Archive / Restart / rewind | Up | Go Live, keep watching, or set Skip Back / Skip Forward |
 | Guide header | Settings | Categorized Live TV, Player, Appearance, General and Connection settings |
 
+With pill or sidebar groups, **hold OK** on a group to make it the default
+group; a confirmation names the group before it is saved. **Settings →
+Appearance → Sidebar style** chooses whether the group sidebar **shifts** the
+Guide (default) or **overlays** it only while the groups have focus. **Settings
+→ Player → Recover frozen picture automatically** (on by default) can be turned
+off; the Guide then reports a frozen picture and leaves **Hold OK → Recover
+frozen picture** to you.
+
 **Settings → Remote control → Play channels from the Guide in** chooses where a
 Guide selection plays. **Full screen** is the default. With **Mini-player**, OK on
 a channel tunes it in the corner while you keep browsing, and OK on the playing

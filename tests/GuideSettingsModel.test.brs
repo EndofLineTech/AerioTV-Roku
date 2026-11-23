@@ -101,6 +101,17 @@ sub main()
     parsed["grouplayout"] = "modal"
     parsed["groupLayout"] = "pills"
     assertEqual(normalizeGuideSettings(parsed).groupLayout, "pills", "migrate case-sensitive dynamic layout selection")
+    ' e3e.34: the sidebar shifts the grid by default and can overlay it instead.
+    assertEqual(normalizeGuideSettings(invalid).sidebarLayout, "shift", "sidebar keeps shifting the grid by default")
+    assertEqual(normalizeGuideSettings({sidebarLayout: "overlay"}).sidebarLayout, "overlay", "overlay choice persists")
+    assertEqual(normalizeGuideSettings({sidebarlayout: "overlay"}).sidebarLayout, "overlay", "lowercased alias persists")
+    assertEqual(normalizeGuideSettings({sidebarLayout: "float"}).sidebarLayout, "shift", "unknown sidebar style falls back")
+    overlayParsed = ParseJson("{}")
+    overlayParsed["sidebarLayout"] = "overlay"
+    assertEqual(normalizeGuideSettings(overlayParsed).sidebarLayout, "overlay", "case-sensitive map keeps the overlay choice")
+    assertEqual(guideGridX({groupLayout: "sidebar", sidebarLayout: "shift"}), 400, "shifted sidebar moves the grid")
+    assertEqual(guideGridX({groupLayout: "sidebar", sidebarLayout: "overlay"}), 96, "overlay sidebar keeps the full-width grid")
+    assertEqual(guideGridX({groupLayout: "pills", sidebarLayout: "shift"}), 96, "pills never shift the grid")
     legacyColors = normalizeGuideSettings({categoryColors: true, categoryRules: {news: ["news"]}, palette: {news: "43A047"}, showLogos: false})
     assertEqual(legacyColors.doesExist("categoryColors"), false, "retired category switch removed from saved preferences")
     assertEqual(legacyColors.doesExist("categoryRules"), false, "retired matching rules removed from saved preferences")

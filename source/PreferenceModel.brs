@@ -87,7 +87,7 @@ function normalizeDevicePreferences(raw as dynamic) as object
     if type(raw) = "roAssociativeArray" then result = copyPreferenceValue(raw)
     ' Earlier Settings writes lowercased camel-case keys on ParseJson's
     ' case-sensitive map. Migrate the displayed choice to the canonical field.
-    for each field in ["archiveSkipSeconds", "archiveSkipBackSeconds", "archiveSkipForwardSeconds", "recordingSkipBackSeconds", "recordingSkipForwardSeconds", "audioMode", "liveTransport", "liveStartupRetries", "radioDefault", "videoScale", "themePreset", "appearanceMode", "trueBlack", "panelStyle", "textSize", "subtextSize", "contrastMode", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints", "infoOnTune", "guideTuneInMini", "networkTimeoutSeconds", "refreshSeconds", "clockFormat", "audioGuide"]
+    for each field in ["archiveSkipSeconds", "archiveSkipBackSeconds", "archiveSkipForwardSeconds", "recordingSkipBackSeconds", "recordingSkipForwardSeconds", "audioMode", "liveTransport", "liveStartupRetries", "radioDefault", "videoScale", "themePreset", "appearanceMode", "trueBlack", "panelStyle", "textSize", "subtextSize", "contrastMode", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints", "infoOnTune", "guideTuneInMini", "autoRecoverFrozen", "networkTimeoutSeconds", "refreshSeconds", "clockFormat", "audioGuide"]
         alias = lcase(field)
         exactAlias = CreateObject("roRegex", "^" + alias + "$", "")
         for each key in result.keys()
@@ -155,6 +155,7 @@ function normalizeDevicePreferences(raw as dynamic) as object
     if result.infoHints <> false then result.infoHints = true
     if result.infoOnTune <> false then result.infoOnTune = true
     if result.guideTuneInMini <> true then result.guideTuneInMini = false
+    if result.autoRecoverFrozen <> false then result.autoRecoverFrozen = true
     if type(result.audioGuide) <> "Boolean" and type(result.audioGuide) <> "roBoolean" then result.audioGuide = false
     ' The symmetric 60/120/300 s archive skip migrates to both directions.
     legacySkip = normalizeSkipSeconds(result.archiveSkipSeconds, 60)

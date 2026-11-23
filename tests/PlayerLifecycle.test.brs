@@ -213,6 +213,16 @@ sub runPlayerLifecycleChecks()
     m.video.positionInfo = {audio: 7.0, video: 1.0}
     checkSourceVideo()
     assertEqual(m.sourceWatchState.stalls, 1, "ordinary video still detects frozen picture during audio progress")
+    ' e3e.34: with automatic recovery off, a second stall only reports it.
+    savedPrefs = m.devicePreferences
+    m.devicePreferences = normalizeDevicePreferences({autoRecoverFrozen: false})
+    m.recoveryTask = invalid
+    m.video.positionInfo = {audio: 10.0, video: 1.0}
+    checkSourceVideo()
+    assertEqual(m.recoveryTask, invalid, "automatic recovery off never starts a recovery")
+    assertEqual(m.sourceWatchState, invalid, "the stall watch ends after reporting")
+    assertEqual(instr(1, m.noticeText.text, "Recover frozen picture") > 0, true, "the frozen picture is reported with the manual option")
+    m.devicePreferences = savedPrefs
     m.sourceWatchState = invalid
     openPlayerOptions()
     assertEqual(playerOptionsHasAction("recoverPicture"), true, "ordinary video retains picture recovery")

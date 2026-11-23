@@ -2731,7 +2731,11 @@ sub checkSourceVideo()
     if state.stalls >= 2
         m.sourceWatch.control = "stop"
         m.sourceWatchState = invalid
-        recoverFrozenPicture()
+        if m.devicePreferences.autoRecoverFrozen = false
+            showNotice("The picture looks frozen. Hold OK, then choose Recover frozen picture.")
+        else
+            recoverFrozenPicture()
+        end if
     else if state.ticks >= 10
         m.sourceWatch.control = "stop"
         m.sourceWatchState = invalid

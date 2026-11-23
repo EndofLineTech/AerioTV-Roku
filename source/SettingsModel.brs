@@ -86,6 +86,7 @@ function settingsHubAllEntries(page as string, model as object) as object
         entries.push({title: "Live startup retries (next tune)", scope: "device", key: "liveStartupRetries", values: [0, 1, 2, 3]})
         entries.push({title: "Radio Mode by Default (next tune)", scope: "device", key: "radioDefault", values: [true, false]})
         entries.push({title: "Video scale", scope: "device", key: "videoScale", values: ["fit", "fill", "stretch"]})
+        entries.push({title: "Recover frozen picture automatically", scope: "device", key: "autoRecoverFrozen", values: [true, false]})
         return entries
     end if
     if page = "remote" then return [
@@ -122,6 +123,7 @@ function settingsHubAllEntries(page as string, model as object) as object
         {title: "Contrast", scope: "device", key: "contrastMode", values: ["standard", "high"]}
         {title: "Reset appearance", action: "resetAppearance"}
         {title: "Group navigation", scope: "guide", key: "groupLayout", values: ["modal", "pills", "sidebar"]}
+        {title: "Sidebar style", scope: "guide", key: "sidebarLayout", values: ["shift", "overlay"]}
         {title: "Pop up info card on channel change", scope: "device", key: "infoOnTune", values: [true, false]}
         {title: "Show player logo", scope: "device", key: "infoLogo", values: [true, false]}
         {title: "Show player channel", scope: "device", key: "infoChannel", values: [true, false]}
@@ -296,6 +298,10 @@ function settingsValueText(value as dynamic, key = "" as string) as string
     end if
     if key = "networkTimeoutSeconds" then return value.toStr() + " seconds"
     if key = "refreshSeconds" then return (value \ 60).toStr() + " minutes"
+    if key = "sidebarLayout"
+        if value = "overlay" then return "Overlay the guide"
+        return "Shift the guide"
+    end if
     if key = "guideTuneInMini"
         if value = true then return "Mini-player (OK again for full screen)"
         return "Full screen"
