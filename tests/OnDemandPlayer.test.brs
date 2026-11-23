@@ -162,7 +162,50 @@ sub main()
     if m.video.seek <> 114 then stop ' buffering cannot accept another seek
     m.top.request.growing = false
     if handleArchiveKey("rewind", true) then stop ' completed recording retains native path
+    checkPlaybackSpeed()
     print "ALL TESTS PASSED"
+end sub
+
+' 0451: Up/Down opens Player options with Playback speed for movies, episodes
+' and completed recordings. OS 16 applies speed only via pause -> set -> resume.
+sub checkPlaybackSpeed()
+    labels = []
+    for each speed in playbackSpeedChoices()
+        labels.push(playbackSpeedText(speed))
+    end for
+    if labels.join(",") <> "0.75x,1x,1.25x,1.5x,2x" then stop
+    m.video = {state: "playing", playbackSpeed: 1.0, control: "", visible: true, fields: {playbackSpeed: true}, hasField: function(name as string) as boolean
+        return m.fields.doesExist(name)
+    end function, setFocus: sub(value as boolean)
+    end sub}
+    m.top.request = {account: "account", mode: "recording", growing: false}
+    m.session = mediaSession("account", "recording-session", "recording", "recording-id", 1000)
+    if not playbackSpeedAllowed() then stop ' completed recording
+    m.top.request.growing = true
+    if playbackSpeedAllowed() then stop ' in-progress recordings keep app skip controls
+    m.session = mediaSession("account", "catchup-session", "catchup", "program", 1000)
+    if playbackSpeedAllowed() then stop ' provider archive is not offered speed
+    m.session = mediaSession("account", "vod-session", "vod", "movie", 1000)
+    m.top.request = {account: "account", mode: "vod"}
+    if not playbackSpeedAllowed() then stop
+    if playerOptionsButtons()[0] <> "Playback speed: 1x" then stop
+    if not handleArchiveKey("down", true) or not handleArchiveKey("up", true) then stop
+    if handleArchiveKey("down", false) then stop ' release stays native
+    selectPlaybackSpeed(3)
+    if m.video.playbackSpeed <> 1.5 or m.video.control <> "resume" or m.playbackSpeed <> 1.5 then stop
+    if playerOptionsButtons()[0] <> "Playback speed: 1.5x" then stop
+    m.video.state = "paused"
+    m.video.control = ""
+    selectPlaybackSpeed(0)
+    if m.video.playbackSpeed <> 0.75 or m.video.control <> "" then stop ' stays paused until the viewer resumes
+    selectPlaybackSpeed(9)
+    if m.video.playbackSpeed <> 0.75 then stop ' out-of-range choice ignored
+    resetPlaybackSpeed()
+    if m.video.playbackSpeed <> 1.0 or m.playbackSpeed <> 1.0 then stop ' new media starts at 1x
+    m.video.fields = {}
+    if playbackSpeedAllowed() then stop ' firmware without playbackSpeed hides the option
+    if handleArchiveKey("down", true) then stop
+    resetPlaybackSpeed() ' safe without the field
 end sub
 
 sub checkColdVodPlayer()

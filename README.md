@@ -355,6 +355,11 @@ connection screen:
   Provider archives start on whole minutes, so a skip shorter than a minute moves
   to the next whole minute in that direction. Earlier single skip-interval
   choices carry over to both directions. VOD uses Roku's native transport controls.
+- **Playback speed:** during movies, episodes and completed recordings, press
+  **Up** or **Down** for **Player options → Playback speed** (0.75x, 1x, 1.25x,
+  1.5x or 2x). Aerio briefly pauses and resumes to apply the change, because
+  Roku OS ignores speed changes during playback. Each new title starts at 1x.
+  Live TV, provider archives and in-progress recordings play at normal speed.
 - **AAC compatibility needs an existing active copy-video/AAC output profile**
   visible to the Dispatcharr account. The app does not create server profiles.
   Always AAC waits for discovery and offers explicit alternatives if unavailable.
@@ -965,6 +970,7 @@ preventing accidental reuse at a different server.
 | Player | Play/Pause | Request native pause/resume; retained duration depends on stream/device |
 | Player | OK → Up/Down → Options | App options: audio, captions, scale, sleep, diagnostics and supported source controls |
 | Player | `*` | Roku system options |
+| Movie, episode or completed recording | Up / Down | Player options: Playback speed |
 | Player | Rew | Open provider-backed rewind on an eligible channel |
 | Player | Up / Down | Next / previous channel by default; configurable direction |
 | Player options | Back | Return to parent menu or playback |

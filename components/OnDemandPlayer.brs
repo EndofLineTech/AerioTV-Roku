@@ -93,6 +93,7 @@ sub openMedia()
     m.resumeWatch = invalid
     if request.resume <> invalid then m.pendingResume = int(request.resume)
     m.video.content = content
+    resetPlaybackSpeed()
     if textValue(request.coldToken) <> "" then m.coldVodContent = content
     print "[on-demand] reader="; content.streamFormat; " mode="; request.mode
     appControls = request.mode = "catchup" or (request.mode = "recording" and request.growing = true)
@@ -536,8 +537,95 @@ function handleArchiveKey(key as string, press as boolean) as boolean
         end if
         return key <> "options"
     end if
+    if (key = "up" or key = "down") and playbackSpeedAllowed()
+        openPlayerOptions()
+        return true
+    end if
     return false
 end function
+
+' 0451: movies, episodes and completed recordings keep Roku's native transport;
+' Up/Down, which it leaves unused, opens app Player options.
+function playbackSpeedAllowed() as boolean
+    if m.session = invalid then return false
+    if not m.video.hasField("playbackSpeed") then return false
+    if m.session.mode = "vod" then return true
+    return m.session.mode = "recording" and m.top.request.growing <> true
+end function
+
+function playbackSpeedChoices() as object
+    return [0.75, 1.0, 1.25, 1.5, 2.0]
+end function
+
+function playbackSpeedText(speed as float) as string
+    text = Str(speed).trim()
+    if left(text, 1) = "." then text = "0" + text
+    return text + "x"
+end function
+
+function currentPlaybackSpeed() as float
+    if m.playbackSpeed = invalid then return 1.0
+    return m.playbackSpeed
+end function
+
+function playerOptionsButtons() as object
+    return ["Playback speed: " + playbackSpeedText(currentPlaybackSpeed())]
+end function
+
+sub openPlayerOptions()
+    closeArchiveActions()
+    dialog = CreateObject("roSGNode", "AerioDialog")
+    if dialog = invalid then return
+    dialog.title = "Player options"
+    dialog.buttons = playerOptionsButtons()
+    m.archiveDialogKind = "playerOptions"
+    dialog.observeField("buttonSelected", "onArchiveAction")
+    dialog.observeField("wasClosed", "onArchiveActionsClosed")
+    m.archiveDialog = dialog
+    m.top.getScene().dialog = dialog
+end sub
+
+sub openPlaybackSpeedChoices()
+    dialog = CreateObject("roSGNode", "AerioDialog")
+    if dialog = invalid then return
+    dialog.title = "Playback speed"
+    buttons = []
+    focus = 1
+    choices = playbackSpeedChoices()
+    for i = 0 to choices.count() - 1
+        buttons.push(playbackSpeedText(choices[i]))
+        if choices[i] = currentPlaybackSpeed() then focus = i
+    end for
+    dialog.buttons = buttons
+    dialog.focusButton = focus
+    m.archiveDialogKind = "playbackSpeed"
+    dialog.observeField("buttonSelected", "onArchiveAction")
+    dialog.observeField("wasClosed", "onArchiveActionsClosed")
+    m.archiveDialog = dialog
+    m.top.getScene().dialog = dialog
+end sub
+
+' Roku OS 16 ignores playbackSpeed changes while playing; it applies them
+' across pause -> set -> resume. A paused video takes the speed on resume.
+sub selectPlaybackSpeed(index as integer)
+    choices = playbackSpeedChoices()
+    if index < 0 or index >= choices.count() then return
+    speed = choices[index]
+    m.playbackSpeed = speed
+    if m.video.state = "playing"
+        m.video.control = "pause"
+        m.video.playbackSpeed = speed
+        m.video.control = "resume"
+    else
+        m.video.playbackSpeed = speed
+    end if
+    print "[on-demand] playback-speed="; speed
+end sub
+
+sub resetPlaybackSpeed()
+    m.playbackSpeed = 1.0
+    if m.video.hasField("playbackSpeed") then m.video.playbackSpeed = 1.0
+end sub
 
 function suspendArchive() as object
     cancelArchiveScrub()
@@ -809,7 +897,14 @@ sub onArchiveAction(event as object)
     selection = event.getData()
     kind = m.archiveDialogKind
     closeArchiveActions()
-    if kind = "archiveSkipBackSeconds" or kind = "archiveSkipForwardSeconds"
+    if kind = "playerOptions" or kind = "playbackSpeed"
+        if kind = "playerOptions" and selection = 0
+            openPlaybackSpeedChoices()
+            return
+        end if
+        if kind = "playbackSpeed" then selectPlaybackSpeed(selection)
+        m.video.setFocus(true)
+    else if kind = "archiveSkipBackSeconds" or kind = "archiveSkipForwardSeconds"
         choices = skipSecondsChoices()
         if selection >= 0 and selection < choices.count()
             intervals = {}
@@ -850,5 +945,6 @@ sub onArchiveActionsClosed(event as object)
     if m.archiveDialog = invalid then return
     if not m.archiveDialog.isSameNode(event.getRoSGNode()) then return
     m.archiveDialog = invalid
-    if m.session <> invalid then m.top.setFocus(true)
+    if m.session = invalid then return
+    if m.video.enableUI = true then m.video.setFocus(true) else m.top.setFocus(true)
 end sub

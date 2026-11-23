@@ -101,7 +101,7 @@ The table below retains its original source pin.
 | V07 | **Native, adapted:** provider/library-scoped related matches and optional TMDB person discovery; not an independent catalog. [VOD view](../components/VodView.brs), [enrichment](VOD-ENRICHMENT-0.3.29.md). | `l4j.11` |
 | V08 | **Native / disposition:** authorized provider-version selection and remembered choice; details selection plus Resume on a compatible copy is the accepted adaptation, not seamless in-player switching. [VOD scope](VOD-ENRICHMENT-0.3.29.md). | `l4j.12` |
 | V09 | **Native / disposition:** validated text trailer/TMDB links for opening on another device are the accepted Roku adaptation; neither QR nor inline trailer playback is required. [VOD scope](VOD-ENRICHMENT-0.3.29.md). | `l4j.12` |
-| V10 | **Native / disposition:** native seek/pause/resume/duration where supported. Normal speed only; prior 1.5× transition was unreliable. [On-demand player](../components/OnDemandPlayer.brs). | `l4j.6`, `l4j.13`, `e3e.23` |
+| V10 | **Native / disposition:** native seek/pause/resume/duration where supported. Playback speed 0.75–2x for movies, episodes and completed recordings (`0451`, OS 16 applies it via pause/set/resume); live, archive and in-progress recordings stay at normal speed. [On-demand player](../components/OnDemandPlayer.brs). | `l4j.6`, `l4j.13`, `e3e.23`, `0451` |
 | V11 | **Native, adapted:** bounded page-on-demand ingestion, cache, refresh, scoped toggles and bookmarks. No full background catalog sweep or promise of a resident catalog. [Metadata cache](METADATA-CACHE-IMPLEMENTATION.md). | `l4j.2`, `mxz.1`, `mxz.8` |
 | D01 | **Native:** authorized Dispatcharr server DVR from Guide/player, confirmation and scheduling; no device destination. [DVR acceptance](DVR-EPIC-0.3.70.md). | `a59.1`, `a59.7` |
 | D02 | **Native, bounded:** per-recording padding controls and saved start/end defaults; default choices were observed across relaunch. Do not infer every upstream custom value or provider branch. [DVR controls](DVR-CONTROLS-0.3.81.md), [settings redesign](SETTINGS-REDESIGN-0.3.91.md). | `a59.1`, `2vr` |
@@ -190,7 +190,7 @@ were delivered, and `n8ie` remains separate.
 | Permissions summary and manual refresh | tvOS `ServerDetailView.swift` | Automatic refresh only | `e3e.32` |
 | More remappable actions (search, seek, jump to day, record) | Android `RemoteControlMap.kt` | Not offered | `e3e.33` |
 | Minor polish (default group by hold, loading byte counter, sidebar overlay, frozen-stream toggle) | tvOS and Android | Works differently | `e3e.34` |
-| VOD playback speed | Android `VODPlayerScreen.kt`; tvOS V10 | Normal speed only; OS 16.0.4 now applies speed via pause/set/resume | `0451` (owner decision) |
+| VOD playback speed | Android `VODPlayerScreen.kt`; tvOS V10 | Delivered: Up/Down → Player options → Playback speed 0.75–2x for movies, episodes and completed recordings, applied via pause/set/resume | `0451` |
 
 **Platform dispositions (accepted by the owner, 2026-11-23):** Android's *Learn Button*
 needs arbitrary key codes, which Roku's fixed remote key set does not deliver.
