@@ -177,7 +177,7 @@ sub selectSetting(index as integer)
         goBackSettings()
     else if item.action = "connection"
         m.top.selection = userViewEvent({account: m.top.model.account, action: "connection"}, m.userSessionId)
-    else if item.action = "profiles-manage" or item.action = "profiles-baseline" or item.action = "profiles-add" or item.action = "profiles-ask"
+    else if item.action = "profiles-manage" or item.action = "profiles-baseline" or item.action = "profiles-add" or item.action = "profiles-ask" or item.action = "refreshPermissions"
         m.top.selection = userViewEvent({account: m.top.model.account, action: item.action}, m.userSessionId)
     else if item.action = "profile-edit"
         m.top.selection = userViewEvent({account: m.top.model.account, action: item.action, profileId: item.profileId}, m.userSessionId)
