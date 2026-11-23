@@ -1196,6 +1196,7 @@ sub onCapabilities(event as object)
     updateLibraryPermissions()
     enforceMediaCapabilities()
     processAacWait()
+    if m.page = "settings" then refreshSettingsHub()
 end sub
 
 sub onPreferences(event as object)

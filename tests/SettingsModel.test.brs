@@ -175,6 +175,7 @@ sub main()
     m.saveOk = false
     if persistRemoteMap(custom) then stop
     if m.preferenceStore.device.themePreset <> "sunset" or m.devicePreferences.themePreset <> "forest" then stop
+    checkPermissionsPage()
     print "ALL TESTS PASSED"
 end sub
 
@@ -186,4 +187,27 @@ end function
 sub applyDevicePreferences()
     m.published = copyJson(m.devicePreferences)
     m.applyCount++
+end sub
+
+' e3e.32: read-only Dispatcharr permission facts with a manual refresh.
+sub checkPermissionsPage()
+    model = {permissionsAvailable: true, capabilityLevel: 1, movies: "allowed", series: "denied", catchup: "unknown", dvr: "view", serverVersion: "0.31.0", capabilityFetchedAt: 1000, now: 1000 + 600}
+    connection = settingsHubEntries("connection", model)
+    if connection[connection.count() - 1].page <> "permissions" then stop
+    rows = settingsHubEntries("permissions", model)
+    titles = []
+    for each row in rows
+        titles.push(row.title)
+    end for
+    if FormatJson(titles) <> FormatJson(["Role: Standard user", "Movies: Allowed", "TV Shows: Not allowed", "Catch-up: Unknown", "DVR: View recordings", "Server: Dispatcharr 0.31.0", "Last checked: 10 minutes ago", "Refresh permissions"]) then stop
+    if rows[rows.count() - 1].action <> "refreshPermissions" then stop
+    model.capabilityLevel = 10
+    model.dvr = "manage"
+    model.capabilityFetchedAt = 0
+    rows = settingsHubEntries("permissions", model)
+    if rows[0].title <> "Role: Administrator" or rows[4].title <> "DVR: Manage recordings" or rows[6].title <> "Last checked: Not yet" then stop
+    model.permissionsAvailable = false
+    for each entry in settingsHubEntries("connection", model)
+        if entry.page = "permissions" then stop ' direct M3U/Xtream connections have no Dispatcharr role
+    end for
 end sub

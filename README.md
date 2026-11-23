@@ -986,6 +986,12 @@ takes priority in the grid. There is no separate held-Back assignment.
 Known limitation: Roku does not report how an on-screen keyboard or dialog
 was closed. If Back is held down to close one, a repeat of that same press may
 also run the remapped Guide action. The default mapping is unaffected.
+
+**Settings → Connection → Account permissions** (Dispatcharr connections) lists
+what the server reports for the signed-in account: role, Movies, TV Shows,
+Catch-up, DVR access, server version and when this was last checked.
+**Refresh permissions** checks again right away instead of waiting for the
+next automatic refresh, for example after an administrator changes your access.
 Fullscreen player Back and Roku system keys such as Home are unchanged.
 
 The date picker displays local calendar days and half-hour times with a UTC

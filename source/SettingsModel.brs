@@ -152,9 +152,11 @@ function settingsHubAllEntries(page as string, model as object) as object
             if type(model.profilesBaseline) = "Boolean" or type(model.profilesBaseline) = "roBoolean"
                 if model.profilesBaseline then entries.push({title: "Profiles", page: "profiles"})
             end if
+            if model.permissionsAvailable = true then entries.push({title: "Account permissions", page: "permissions"})
         end if
         return entries
     end if
+    if page = "permissions" then return permissionsPageEntries(model)
     if page = "profiles"
         entries = []
         if model = invalid then return entries
@@ -301,4 +303,46 @@ function settingsValueText(value as dynamic, key = "" as string) as string
         if value then return "On" else return "Off"
     end if
     return textValue(value)
+end function
+
+' Read-only Dispatcharr permission facts for the active account (e3e.32).
+function permissionsPageEntries(model as object) as object
+    if model = invalid or model.permissionsAvailable <> true then return []
+    level = model.capabilityLevel
+    role = "Unknown"
+    if type(level) = "Integer" or type(level) = "roInt" or type(level) = "roInteger"
+        if level >= 10
+            role = "Administrator"
+        else if level >= 1
+            role = "Standard user"
+        else if level = 0
+            role = "Streamer"
+        end if
+    end if
+    dvr = {manage: "Manage recordings", view: "View recordings", none: "No access"}
+    dvrText = "Unknown"
+    if dvr.doesExist(textValue(model.dvr)) then dvrText = dvr[textValue(model.dvr)]
+    checked = "Not yet"
+    fetchedAt = model.capabilityFetchedAt
+    if (type(fetchedAt) = "Integer" or type(fetchedAt) = "roInt" or type(fetchedAt) = "roInteger") and fetchedAt > 0
+        minutes = (model.now - fetchedAt) \ 60
+        if minutes < 1
+            checked = "Just now"
+        else if minutes = 1
+            checked = "1 minute ago"
+        else
+            checked = minutes.toStr() + " minutes ago"
+        end if
+    end if
+    entries = [{title: "Role: " + role}, {title: "Movies: " + permissionText(model.movies)}, {title: "TV Shows: " + permissionText(model.series)}, {title: "Catch-up: " + permissionText(model.catchup)}, {title: "DVR: " + dvrText}]
+    if textValue(model.serverVersion) <> "" then entries.push({title: "Server: Dispatcharr " + textValue(model.serverVersion)})
+    entries.push({title: "Last checked: " + checked})
+    entries.push({title: "Refresh permissions", action: "refreshPermissions"})
+    return entries
+end function
+
+function permissionText(value as dynamic) as string
+    if value = "allowed" then return "Allowed"
+    if value = "denied" then return "Not allowed"
+    return "Unknown"
 end function

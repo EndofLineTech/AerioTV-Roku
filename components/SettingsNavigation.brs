@@ -3,6 +3,13 @@ sub refreshSettingsHub()
     version = info.getValue("major_version") + "." + info.getValue("minor_version") + "." + info.getValue("build_version")
     model = {account: m.accountIdentity, version: version, device: m.devicePreferences, guide: m.accountPreferences.guide, vodEnabled: m.accountPreferences.vodEnabled <> false, vodTmdbEnabled: m.accountPreferences.vodTmdbEnabled = true, startupBehavior: m.accountPreferences.startupBehavior, dvrPreRollMinutes: m.accountPreferences.dvrPreRollMinutes, dvrPostRollMinutes: m.accountPreferences.dvrPostRollMinutes, whatsNewVersion: m.accountPreferences.whatsNewVersion, movies: m.capabilities.movies, series: m.capabilities.series, catchup: m.capabilities.catchup, dvr: m.capabilities.dvr}
     model.userRole = currentUserSettingsRole()
+    entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
+    model.permissionsAvailable = entry <> invalid and m.serverAccountId <> ""
+    if model.permissionsAvailable then model.permissionsAvailable = entry.provider = "dispatcharr"
+    model.capabilityLevel = m.capabilities.level
+    model.serverVersion = m.capabilities.version
+    model.capabilityFetchedAt = m.capabilities.fetchedAt
+    model.now = CreateObject("roDateTime").asSeconds()
     model.profileRows = []
     if m.profileBaselineReady = true
         context = profileBaselineContext()
@@ -105,6 +112,15 @@ sub onSettingsHubSelection(event as object)
     if item.action = "connection"
         closeSettingsHub()
         showConnection()
+        return
+    end if
+    if item.action = "refreshPermissions"
+        if m.capabilityTask <> invalid
+            showNotice("Already checking permissions...")
+            return
+        end if
+        refreshCapabilities()
+        if m.capabilityTask <> invalid then showNotice("Checking permissions...") else showNotice("Permissions can't be checked right now.")
         return
     end if
     if item.action = "markWhatsNew"
