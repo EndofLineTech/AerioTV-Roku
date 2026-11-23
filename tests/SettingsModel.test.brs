@@ -53,10 +53,16 @@ sub main()
     if settingsHubEntries("dvr", model).count() <> 2 then stop
     if settingsHubEntries("general", model).count() <> 5 then stop
     player = settingsHubEntries("player", model)
-    if player[0].key <> "archiveSkipSeconds" or player[0].values[0] <> 60 or player[0].values[2] <> 300 then stop
-    if player[2].key <> "liveTransport" or not settingsHubChangeAllowed(model, "device", "liveTransport", "hls") then stop
-    if player[3].key <> "liveStartupRetries" or not settingsHubChangeAllowed(model, "device", "liveStartupRetries", 3) then stop
-    if player[4].key <> "radioDefault" or player[4].scope <> "device" then stop
+    skipKeys = ["archiveSkipBackSeconds", "archiveSkipForwardSeconds", "recordingSkipBackSeconds", "recordingSkipForwardSeconds"]
+    for i = 0 to 3
+        if player[i].key <> skipKeys[i] or player[i].values.count() <> 6 or player[i].values[0] <> 10 or player[i].values[5] <> 300 then stop
+        if not settingsHubChangeAllowed(model, "device", skipKeys[i], 15) or settingsHubChangeAllowed(model, "device", skipKeys[i], 45) then stop
+    end for
+    if settingsValueText(10, "archiveSkipBackSeconds") <> "10 seconds" or settingsValueText(60, "recordingSkipForwardSeconds") <> "1 minute" then stop
+    if settingsValueText(300, "archiveSkipForwardSeconds") <> "5 minutes" then stop
+    if player[5].key <> "liveTransport" or not settingsHubChangeAllowed(model, "device", "liveTransport", "hls") then stop
+    if player[6].key <> "liveStartupRetries" or not settingsHubChangeAllowed(model, "device", "liveStartupRetries", 3) then stop
+    if player[7].key <> "radioDefault" or player[7].scope <> "device" then stop
     if settingsHubValue(model, "device", "radioDefault") <> false then stop
     if not settingsHubChangeAllowed(model, "device", "radioDefault", true) then stop
     if settingsHubChangeAllowed(model, "device", "radioDefault", "true") then stop
@@ -65,8 +71,7 @@ sub main()
     if settingsValueText(0, "liveStartupRetries") <> "No automatic retries" then stop
     if settingsValueText(3, "liveStartupRetries") <> "3 retries" then stop
     if settingsHubChangeAllowed(model, "device", "liveTransport", "unsupported") then stop
-    if not settingsHubChangeAllowed(model, "device", "archiveSkipSeconds", 120) then stop
-    if settingsHubChangeAllowed(model, "device", "archiveSkipSeconds", 15) then stop
+    if settingsHubChangeAllowed(model, "device", "archiveSkipSeconds", 120) then stop ' legacy key is not writable
     if settingsHubChangeAllowed(model, "device", "apiKey", "private") then stop
     theme = normalizeDevicePreferences(invalid)
     theme["themePreset"] = "midnight"
@@ -131,7 +136,12 @@ sub main()
     if settingsHubChangeAllowed(model, "account", "dvrPreRollMinutes", 5) then stop
     model.catchup = "denied"
     if settingsHubEntries("player", model).count() <> 5 then stop
-    if settingsHubChangeAllowed(model, "device", "archiveSkipSeconds", 120) then stop
+    if settingsHubChangeAllowed(model, "device", "archiveSkipBackSeconds", 120) then stop
+    if settingsHubChangeAllowed(model, "device", "recordingSkipBackSeconds", 120) then stop
+    model.dvr = "view"
+    if not settingsHubChangeAllowed(model, "device", "recordingSkipBackSeconds", 120) then stop
+    if settingsHubChangeAllowed(model, "device", "archiveSkipBackSeconds", 120) then stop
+    model.dvr = "denied"
     model.catchup = "allowed"
     model.movies = "allowed"
     model.dvr = "manage"

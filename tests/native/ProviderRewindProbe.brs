@@ -55,7 +55,7 @@ sub providerRewindTick()
             if channel.number = wanted and catchupChannelDays(m.capabilities.catchup, m.channelFacts, channel.id) > 0 then m.rewindProbeChannel = channel
         end for
         if m.rewindProbeChannel = invalid then return
-        m.rewindProbeSkip = m.devicePreferences.archiveSkipSeconds
+        m.rewindProbeSkip = m.devicePreferences.archiveSkipBackSeconds
         m.rewindProbeHistory = {recent: m.accountPreferences.recent, previous: m.accountPreferences.previous, lastWatched: m.accountPreferences.lastWatched}
         startPlayback(m.rewindProbeChannel, true)
         m.rewindProbeStage = 1
@@ -68,7 +68,7 @@ sub providerRewindTick()
         m.channelFacts = facts
         m.rewindProbeTune = uiNow() - 7200
         m.liveSession.openedAt = m.rewindProbeTune
-        m.devicePreferences.archiveSkipSeconds = 300
+        m.devicePreferences.archiveSkipBackSeconds = 300
         print "[provider-rewind] injected-tune-age=7200"
         openLiveRewind()
         m.rewindProbeStage = 2
@@ -163,7 +163,7 @@ sub finishProviderRewindProbe()
     releaseArchive()
     stopPlayback()
     if m.rewindProbeSkip <> invalid
-        m.devicePreferences.archiveSkipSeconds = m.rewindProbeSkip
+        m.devicePreferences.archiveSkipBackSeconds = m.rewindProbeSkip
         persistPreferences()
     end if
     if m.rewindProbeHistory <> invalid

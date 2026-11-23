@@ -14,6 +14,7 @@
   <script type="text/brightscript" uri="pkg:/source/SceneUi.brs" />
   <script type="text/brightscript" uri="pkg:/source/RemoteMapModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/VodDisplayScale.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SkipIntervals.brs" />
   <script type="text/brightscript" uri="pkg:/source/SettingsModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideDayOptions.brs" />
   <script type="text/brightscript" uri="pkg:/source/GuideLogoSize.brs" />

@@ -155,7 +155,7 @@ for (const name of requested.length ? requested : suites) {
     ...(suite === 'AerioSurface' ? ['components/AerioSurface.brs'] : []),
     'source/NowNextModel.brs',
     'source/StartupBeaconModel.brs',
-    'source/RemoteMapModel.brs', 'source/PreferenceModel.brs', 'source/VodDisplayScale.brs',
+    'source/RemoteMapModel.brs', 'source/SkipIntervals.brs', 'source/PreferenceModel.brs', 'source/VodDisplayScale.brs',
     'components/RecentHistoryNavigation.brs',
     ...(suite === 'ConnectionAuthTask' ? ['source/ChannelProfileModel.brs'] : []),
     ...(['PhoneSetupStore', 'PhoneSetupApplyModel', 'PhoneSetupAutoAdd', 'PhoneSetupNavigation', 'ConnectionStore', 'ConnectionNavigation', 'PlayerLifecycle', 'ArchiveController'].includes(suite) ? ['source/ConnectionStoreModel.brs'] : []),

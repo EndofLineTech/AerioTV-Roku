@@ -9,8 +9,8 @@ sub main()
     check(not settingsHubChangeAllowed(model, "account", "vodEnabled", true), "Child cannot change library controls despite a permitted server library")
     check(not settingsHubChangeAllowed(model, "account", "dvrPreRollMinutes", 5), "Child cannot change DVR controls despite a manage-capable server account")
     check(not settingsHubChangeAllowed(model, "device", "themePreset", {}), "malformed setting values are denied without comparing objects to primitive choices")
-    check(not settingsHubChangeAllowed(model, "device", "themePreset", true) and not settingsHubChangeAllowed(model, "device", "archiveSkipSeconds", "120"), "wrong primitive setting types cannot impersonate permitted values")
-    check(settingsHubChangeAllowed(model, "device", "themePreset", "midnight") and settingsHubChangeAllowed(model, "device", "archiveSkipSeconds", 120), "Child keeps its allowed appearance and player controls")
+    check(not settingsHubChangeAllowed(model, "device", "themePreset", true) and not settingsHubChangeAllowed(model, "device", "archiveSkipBackSeconds", "120"), "wrong primitive setting types cannot impersonate permitted values")
+    check(settingsHubChangeAllowed(model, "device", "themePreset", "midnight") and settingsHubChangeAllowed(model, "device", "archiveSkipBackSeconds", 120), "Child keeps its allowed appearance and player controls")
     for each action in ["connection", "setRemoteAction", "resetRemoteMap", "unknown-action"]
         check(not settingsHubActionAllowed(model, action), "Child handler admission rejects hidden action shortcuts")
     end for

@@ -331,7 +331,7 @@ sub onRecordingControlAction(event as object)
         end if
         direction = 1
         if action = "rewind" then direction = -1
-        plan = recordingSeekTarget(m.video.position, m.video.duration, direction, 30, true)
+        plan = recordingSeekTarget(m.video.position, m.video.duration, direction, recordingSkipSeconds(action), true)
         if plan = invalid
             m.recordingMessage.text = "Seek range unavailable. Playback continues."
         else if plan.moved
@@ -587,7 +587,7 @@ sub renderArchiveProgress()
     if clock.pastEnd then m.message.text += " — past listed end"
     m.message.text += chr(10) + "Estimated broadcast: " + uiLocalDate(clock.broadcast) + " " + uiTime(clock.broadcast) + "   |   Behind live: " + catchupElapsedText(clock.behindLive)
     m.message.text += chr(10) + "Provider seek window: 0:00 - " + catchupElapsedText(clock.seekEnd) + " (availability varies)"
-    m.message.text += chr(10) + "Play/Pause  Pause    Rew / FF  Skip " + catchupElapsedText(archiveSkipSeconds()) + " / hold to preview    Up  Controls    Back  Guide"
+    m.message.text += chr(10) + "Play/Pause  Pause    " + archiveSkipHint() + " / hold to preview    Up  Controls    Back  Guide"
     if m.scrub <> invalid
         m.archivePreview.visible = true
         m.archivePreview.translation = [160 + 1596 * m.scrub.target / clock.duration, 750]
@@ -595,10 +595,25 @@ sub renderArchiveProgress()
     end if
 end sub
 
-function archiveSkipSeconds() as integer
-    seconds = m.top.skipSeconds
-    if seconds <> 60 and seconds <> 120 and seconds <> 300 then return 60
-    return seconds
+' e3e.30: Rew uses Skip Back and FF uses Skip Forward, per context.
+function archiveSkipSeconds(key as string) as integer
+    if key = "rewind" then return playerSkipSeconds("archiveSkipBackSeconds", 60)
+    return playerSkipSeconds("archiveSkipForwardSeconds", 60)
+end function
+
+function recordingSkipSeconds(key as string) as integer
+    if key = "rewind" then return playerSkipSeconds("recordingSkipBackSeconds", 30)
+    return playerSkipSeconds("recordingSkipForwardSeconds", 30)
+end function
+
+function playerSkipSeconds(field as string, fallback as integer) as integer
+    intervals = m.top.skipIntervals
+    if type(intervals) <> "roAssociativeArray" then return fallback
+    return normalizeSkipSeconds(intervals[field], fallback)
+end function
+
+function archiveSkipHint() as string
+    return "Rew  Back " + catchupElapsedText(archiveSkipSeconds("rewind")) + "    FF  Forward " + catchupElapsedText(archiveSkipSeconds("fastforward"))
 end function
 
 sub beginRecordingScrub(key as string)
@@ -625,7 +640,7 @@ sub stepRecordingScrub()
     if m.scrub = invalid then return
     direction = 1
     if m.scrub.key = "rewind" then direction = -1
-    plan = recordingSeekTarget(m.scrub.target, m.video.duration, direction, 30, true)
+    plan = recordingSeekTarget(m.scrub.target, m.video.duration, direction, recordingSkipSeconds(m.scrub.key), true)
     if plan = invalid
         cancelArchiveScrub()
         m.recordingMessage.text = "Seek range unavailable. Playback continues."
@@ -674,10 +689,18 @@ end sub
 
 sub stepArchiveScrub()
     if m.scrub = invalid then return
-    target = m.scrub.target
-    if m.scrub.key = "rewind" then target -= archiveSkipSeconds() else target += archiveSkipSeconds()
-    plan = catchupSeekPlan(m.top.request.program, target, uiNow())
-    if m.top.request.rewind = true then plan = rewindSeekPlan(m.top.request.program, m.top.request.tuneStart, target, uiNow())
+    current = m.scrub.target
+    if m.scrub.key = "rewind"
+        plan = archiveScrubPlan(current - archiveSkipSeconds("rewind"))
+    else
+        target = current + archiveSkipSeconds("fastforward")
+        plan = archiveScrubPlan(target)
+        ' Provider offsets round down to whole minutes; a short forward skip
+        ' still moves to the next minute instead of standing still.
+        if plan <> invalid
+            if plan.offset <= current then plan = archiveScrubPlan(target + 60)
+        end if
+    end if
     if plan = invalid
         cancelArchiveScrub()
         return
@@ -685,6 +708,11 @@ sub stepArchiveScrub()
     m.scrub.target = plan.offset
     renderArchiveProgress()
 end sub
+
+function archiveScrubPlan(target as integer) as dynamic
+    if m.top.request.rewind = true then return rewindSeekPlan(m.top.request.program, m.top.request.tuneStart, target, uiNow())
+    return catchupSeekPlan(m.top.request.program, target, uiNow())
+end function
 
 sub renderRewindProgress(offset as integer)
     request = m.top.request
@@ -710,7 +738,7 @@ sub renderRewindProgress(offset as integer)
     m.message.text += "Estimated broadcast: " + uiLocalDate(clock.broadcast) + " " + uiTime(clock.broadcast) + "   |   Behind live: " + catchupElapsedText(clock.behindLive)
     m.message.text += chr(10) + "Requestable history: " + uiTime(clock.start) + " - " + uiTime(clock.finish) + " (up to 60 minutes since tuning; availability varies)"
     if clock.outside then m.message.text += chr(10) + "Position is older than the current range. New seeks use the current range."
-    m.message.text += chr(10) + "Rew / FF  Skip " + catchupElapsedText(archiveSkipSeconds()) + " / hold to preview    Play/Pause  Pause    Up  Go Live    Back  Guide"
+    m.message.text += chr(10) + archiveSkipHint() + " / hold to preview    Play/Pause  Pause    Up  Go Live    Back  Guide"
     if m.scrub <> invalid
         plan = rewindSeekPlan(request.program, request.tuneStart, m.scrub.target, uiNow())
         if plan <> invalid then m.scrub.target = plan.offset
@@ -758,7 +786,7 @@ sub openArchiveActions()
     dialog = CreateObject("roSGNode", "AerioDialog")
     dialog.title = "Archive controls"
     dialog.message = "Go Live returns to the current broadcast of this channel."
-    dialog.buttons = ["Go Live", "Keep watching archive", "Skip interval: " + catchupElapsedText(archiveSkipSeconds())]
+    dialog.buttons = ["Go Live", "Keep watching archive", "Skip Back: " + skipChoiceText(archiveSkipSeconds("rewind")), "Skip Forward: " + skipChoiceText(archiveSkipSeconds("fastforward"))]
     m.archiveDialogKind = "actions"
     dialog.observeField("buttonSelected", "onArchiveAction")
     dialog.observeField("wasClosed", "onArchiveActionsClosed")
@@ -781,25 +809,36 @@ sub onArchiveAction(event as object)
     selection = event.getData()
     kind = m.archiveDialogKind
     closeArchiveActions()
-    if kind = "skip"
-        choices = [60, 120, 300]
+    if kind = "archiveSkipBackSeconds" or kind = "archiveSkipForwardSeconds"
+        choices = skipSecondsChoices()
         if selection >= 0 and selection < choices.count()
-            m.top.skipSeconds = choices[selection]
-            m.top.skipPreference = userViewEvent({account: m.session.account, seconds: choices[selection]}, m.userSessionId)
+            intervals = {}
+            if type(m.top.skipIntervals) = "roAssociativeArray" then intervals = m.top.skipIntervals
+            intervals[kind] = choices[selection]
+            m.top.skipIntervals = intervals
+            m.top.skipPreference = userViewEvent({account: m.session.account, key: kind, seconds: choices[selection]}, m.userSessionId)
         end if
         m.top.setFocus(true)
         renderArchiveProgress()
     else if selection = 0
         m.top.goLiveContext = userViewEvent({requested: true}, m.userSessionId)
         m.top.goLiveRequested = true
-    else if selection = 2
+    else if selection = 2 or selection = 3
         dialog = CreateObject("roSGNode", "AerioDialog")
-        dialog.title = "Archive skip interval"
+        m.archiveDialogKind = "archiveSkipBackSeconds"
+        dialog.title = "Skip Back (Rew)"
+        if selection = 3
+            m.archiveDialogKind = "archiveSkipForwardSeconds"
+            dialog.title = "Skip Forward (FF)"
+        end if
         dialog.message = "Used for tap skips and held seek preview. Provider windows use whole minutes."
-        dialog.buttons = ["1 minute", "2 minutes", "5 minutes"]
+        buttons = []
+        for each seconds in skipSecondsChoices()
+            buttons.push(skipChoiceText(seconds))
+        end for
+        dialog.buttons = buttons
         dialog.observeField("buttonSelected", "onArchiveAction")
         dialog.observeField("wasClosed", "onArchiveActionsClosed")
-        m.archiveDialogKind = "skip"
         m.archiveDialog = dialog
         m.top.getScene().dialog = dialog
     else

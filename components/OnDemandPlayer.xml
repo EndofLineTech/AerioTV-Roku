@@ -10,7 +10,7 @@
     <field id="diagnostic" type="assocarray" alwaysNotify="true" />
     <field id="archiveSeek" type="integer" alwaysNotify="true" />
     <field id="goLiveRequested" type="boolean" alwaysNotify="true" />
-    <field id="skipSeconds" type="integer" value="60" />
+    <field id="skipIntervals" type="assocarray" />
     <field id="skipPreference" type="assocarray" alwaysNotify="true" />
     <field id="broadcastInfo" type="assocarray" onChange="renderArchiveProgress" />
     <function name="closeMedia" />
@@ -25,6 +25,7 @@
   <script type="text/brightscript" uri="pkg:/source/MediaSessionModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/CatchupModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/RecordingSeekModel.brs" />
+  <script type="text/brightscript" uri="pkg:/source/SkipIntervals.brs" />
   <script type="text/brightscript" uri="OnDemandPlayer.brs" />
   <script type="text/brightscript" uri="pkg:/source/TaskSupport.brs" />
   <script type="text/brightscript" uri="pkg:/source/RequestGateModel.brs" />

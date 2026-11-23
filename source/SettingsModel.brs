@@ -73,7 +73,14 @@ function settingsHubAllEntries(page as string, model as object) as object
     ]
     if page = "player"
         entries = []
-        if model.catchup = "allowed" then entries.push({title: "Archive skip interval", scope: "device", key: "archiveSkipSeconds", values: [60, 120, 300]})
+        if model.catchup = "allowed"
+            entries.push({title: "Rewind & archive: Skip Back", scope: "device", key: "archiveSkipBackSeconds", values: skipSecondsChoices()})
+            entries.push({title: "Rewind & archive: Skip Forward", scope: "device", key: "archiveSkipForwardSeconds", values: skipSecondsChoices()})
+        end if
+        if model.dvr = "view" or model.dvr = "manage"
+            entries.push({title: "In-progress recordings: Skip Back", scope: "device", key: "recordingSkipBackSeconds", values: skipSecondsChoices()})
+            entries.push({title: "In-progress recordings: Skip Forward", scope: "device", key: "recordingSkipForwardSeconds", values: skipSecondsChoices()})
+        end if
         entries.push({title: "Audio compatibility (next tune)", scope: "device", key: "audioMode", values: ["auto", "direct", "aac"]})
         entries.push({title: "Dispatcharr live transport (next tune)", scope: "device", key: "liveTransport", values: ["auto", "ts", "hls"]})
         entries.push({title: "Live startup retries (next tune)", scope: "device", key: "liveStartupRetries", values: [0, 1, 2, 3]})
@@ -272,10 +279,8 @@ function settingsValueText(value as dynamic, key = "" as string) as string
     if key = "appearanceMode"
         if value = "light" then return "Light" else return "Dark"
     end if
-    if key = "archiveSkipSeconds"
-        if value = 60 then return "1 minute"
-        if value = 120 then return "2 minutes"
-        if value = 300 then return "5 minutes"
+    if key = "archiveSkipBackSeconds" or key = "archiveSkipForwardSeconds" or key = "recordingSkipBackSeconds" or key = "recordingSkipForwardSeconds"
+        return skipChoiceText(value)
     end if
     if key = "channelDirection"
         if value = "apple" then return "Up next / Down previous"

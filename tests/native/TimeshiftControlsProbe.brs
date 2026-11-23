@@ -44,7 +44,7 @@ sub timeshiftControlsTick()
             end if
         end for
         if m.controlsChannel = invalid then return
-        m.controlsSavedSkip = m.devicePreferences.archiveSkipSeconds
+        m.controlsSavedSkip = m.devicePreferences.archiveSkipBackSeconds
         m.controlsSavedVod = m.accountPreferences.vodEnabled <> false
         m.controlsSavedHistory = {recent: m.accountPreferences.recent, previous: m.accountPreferences.previous, lastWatched: m.accountPreferences.lastWatched}
         m.guide.playerRequest = "settingsHub"
@@ -60,12 +60,12 @@ sub timeshiftControlsTick()
         m.controlsStage = 3
     else if m.controlsStage = 3
         print "[controls-probe] choice-heading="; m.settingsHub.findNode("heading").text; " count="; m.settingsHub.findNode("list").content.getChildCount()
-        m.settingsHub.callFunc("selectSetting", 1)
+        m.settingsHub.callFunc("selectSetting", 4) ' 120 s in [10, 15, 30, 60, 120, 300]
         m.controlsStage = 4
     else if m.controlsStage = 4
-        print "[controls-probe] page="; m.page; " selected-skip="; m.devicePreferences.archiveSkipSeconds
-        controlsCheck(m.devicePreferences.archiveSkipSeconds = 120, "settings-skip-active")
-        controlsCheck(loadPreferenceStore(m.registry).device.archiveSkipSeconds = 120, "settings-skip-persisted")
+        print "[controls-probe] page="; m.page; " selected-skip="; m.devicePreferences.archiveSkipBackSeconds
+        controlsCheck(m.devicePreferences.archiveSkipBackSeconds = 120, "settings-skip-active")
+        controlsCheck(loadPreferenceStore(m.registry).device.archiveSkipBackSeconds = 120, "settings-skip-persisted")
         m.settingsHub.callFunc("handleSettingsKey", "back", true)
         m.controlsStage = 5
     else if m.controlsStage = 5
@@ -161,11 +161,11 @@ sub timeshiftControlsTick()
         m.controlsStage = 17
     else if m.controlsStage = 17
         if m.top.dialog = invalid then return
-        if m.top.dialog.title <> "Archive skip interval" then return
-        m.top.dialog.buttonSelected = 0
+        if m.top.dialog.title <> "Skip Back (Rew)" then return
+        m.top.dialog.buttonSelected = 3 ' 60 s
         m.controlsStage = 18
     else if m.controlsStage = 18
-        controlsCheck(m.devicePreferences.archiveSkipSeconds = 60 and m.mediaPlayer.skipSeconds = 60, "in-player-skip-setting")
+        controlsCheck(m.devicePreferences.archiveSkipBackSeconds = 60 and m.mediaPlayer.skipIntervals.archiveSkipBackSeconds = 60, "in-player-skip-setting")
         m.controlsSession = m.archiveSession
         m.mediaPlayer.callFunc("handleArchiveKey", "fastforward", true)
         m.controlsHoldAt = m.controlsTicks
@@ -231,7 +231,7 @@ sub finishTimeshiftControls()
     releaseArchive()
     stopPlayback()
     if m.controlsSavedSkip <> invalid
-        m.devicePreferences.archiveSkipSeconds = m.controlsSavedSkip
+        m.devicePreferences.archiveSkipBackSeconds = m.controlsSavedSkip
         persistPreferences()
     end if
     if m.controlsSavedHistory <> invalid

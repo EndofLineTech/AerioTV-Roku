@@ -102,7 +102,8 @@ cumulative summary, verification boundaries and remaining Beta limitations.
   resumable or next episode; completed episodes can advance Continue Watching.
 - **Growing server recordings:** Aerio's live-TV-style control pills replace
   Roku's native “Rewind live TV” overlay for active HLS recordings. Rew/FF use
-  bounded 30-second steps with an in-app seek preview; completed files retain
+  bounded Skip Back / Skip Forward steps (30 seconds by default) with an in-app
+  seek preview; completed files retain
   Roku's native transport. A single near-end HLS reader error remains a
   PO-accepted known testing limitation; see the [release notes](docs/RELEASE-0.3.88.md).
 
@@ -320,8 +321,9 @@ connection screen:
 - **DVR** shows Recording Now, Scheduled, Recent and Series Rules under separate
   subheadings in one scrolling list. Active recordings appear first; **Replay**
   refreshes server items. Select a row with **OK** for facts and available playback.
-- An active Dispatcharr HLS recording uses Aerio's player pills and 30-second
-  Rew/FF steps. A tap seeks; hold to preview, then OK/Play commits or Back
+- An active Dispatcharr HLS recording uses Aerio's player pills and Rew/FF
+  steps from **Settings → Player → In-progress recordings: Skip Back / Skip
+  Forward** (30 seconds each by default). A tap seeks; hold to preview, then OK/Play commits or Back
   cancels. Back/Stop leaves the server recording running. Seek availability and
   picture/audio continuity depend on the growing server stream; a near-end
   playlist-size failure remains under investigation. Completed and stopped
@@ -347,8 +349,12 @@ connection screen:
   playback running. Provider delay or failure can produce **Archive not yet available**.
 - In archive/Restart/rewind: tap Rew/FF to skip; hold to preview a timestamp,
   release, then **OK/Play** to commit or **Back** to cancel. **Up → Go Live**
-  returns to the same live channel. Set intervals in **Settings → Player** or
-  **Up → Skip interval**. VOD uses Roku's native transport controls.
+  returns to the same live channel. Rew uses **Skip Back** and FF uses **Skip
+  Forward** (10 s, 15 s, 30 s, 1, 2 or 5 minutes; 1 minute by default), set in
+  **Settings → Player → Rewind & archive** or **Up → Skip Back / Skip Forward**.
+  Provider archives start on whole minutes, so a skip shorter than a minute moves
+  to the next whole minute in that direction. Earlier single skip-interval
+  choices carry over to both directions. VOD uses Roku's native transport controls.
 - **AAC compatibility needs an existing active copy-video/AAC output profile**
   visible to the Dispatcharr account. The app does not create server profiles.
   Always AAC waits for discovery and offers explicit alternatives if unavailable.
@@ -963,9 +969,9 @@ preventing accidental reuse at a different server.
 | Player | Up / Down | Next / previous channel by default; configurable direction |
 | Player options | Back | Return to parent menu or playback |
 | Player | Back | Close inner chrome, then minimize to guide; use explicit Stop to stop playback |
-| Archive / Restart / rewind | Tap Rew/FF | One configured whole-minute skip on release |
+| Archive / Restart / rewind | Tap Rew/FF | One Skip Back / Skip Forward step on release, on whole provider minutes |
 | Archive / Restart / rewind | Hold Rew/FF, then release | Preview a target; OK/Play commits, Back cancels |
-| Archive / Restart / rewind | Up | Go Live, keep watching, or configure skip interval |
+| Archive / Restart / rewind | Up | Go Live, keep watching, or set Skip Back / Skip Forward |
 | Guide header | Settings | Categorized Live TV, Player, Appearance, General and Connection settings |
 
 **Settings → Remote control → Play channels from the Guide in** chooses where a

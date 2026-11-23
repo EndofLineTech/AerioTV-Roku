@@ -60,6 +60,7 @@ sub onDvrPlaybackReady(event as object)
     m.mediaReturn = "dvr"
     m.dvr.active = false
     m.page = "onDemand"
+    m.mediaPlayer.skipIntervals = playerSkipIntervals(m.devicePreferences)
     m.mediaPlayer.request = userViewEvent({account: m.accountIdentity, identity: m.mediaIdentity, key: request.id, mode: "recording", title: result.recording.title, url: plan.url, apiKey: m.apiKey, streamFormat: plan.streamFormat, growing: plan.growing, resume: resume}, currentUserSessionId())
 end sub
 

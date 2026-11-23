@@ -87,7 +87,7 @@ function normalizeDevicePreferences(raw as dynamic) as object
     if type(raw) = "roAssociativeArray" then result = copyPreferenceValue(raw)
     ' Earlier Settings writes lowercased camel-case keys on ParseJson's
     ' case-sensitive map. Migrate the displayed choice to the canonical field.
-    for each field in ["archiveSkipSeconds", "audioMode", "liveTransport", "liveStartupRetries", "radioDefault", "videoScale", "themePreset", "appearanceMode", "trueBlack", "panelStyle", "textSize", "subtextSize", "contrastMode", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints", "infoOnTune", "guideTuneInMini", "networkTimeoutSeconds", "refreshSeconds", "clockFormat", "audioGuide"]
+    for each field in ["archiveSkipSeconds", "archiveSkipBackSeconds", "archiveSkipForwardSeconds", "recordingSkipBackSeconds", "recordingSkipForwardSeconds", "audioMode", "liveTransport", "liveStartupRetries", "radioDefault", "videoScale", "themePreset", "appearanceMode", "trueBlack", "panelStyle", "textSize", "subtextSize", "contrastMode", "infoLogo", "infoChannel", "infoTitle", "infoTime", "infoDescription", "infoNext", "infoHints", "infoOnTune", "guideTuneInMini", "networkTimeoutSeconds", "refreshSeconds", "clockFormat", "audioGuide"]
         alias = lcase(field)
         exactAlias = CreateObject("roRegex", "^" + alias + "$", "")
         for each key in result.keys()
@@ -156,13 +156,13 @@ function normalizeDevicePreferences(raw as dynamic) as object
     if result.infoOnTune <> false then result.infoOnTune = true
     if result.guideTuneInMini <> true then result.guideTuneInMini = false
     if type(result.audioGuide) <> "Boolean" and type(result.audioGuide) <> "roBoolean" then result.audioGuide = false
-    skip = result.archiveSkipSeconds
-    ' Keep one canonical key even if a JSON dictionary contains case variants.
-    for each key in result.keys()
-        if lcase(key) = "archiveskipseconds" then result.delete(key)
-    end for
-    if skip <> 60 and skip <> 120 and skip <> 300 then skip = 60
-    result.archiveSkipSeconds = skip
+    ' The symmetric 60/120/300 s archive skip migrates to both directions.
+    legacySkip = normalizeSkipSeconds(result.archiveSkipSeconds, 60)
+    result.delete("archiveSkipSeconds")
+    result.archiveSkipBackSeconds = normalizeSkipSeconds(result.archiveSkipBackSeconds, legacySkip)
+    result.archiveSkipForwardSeconds = normalizeSkipSeconds(result.archiveSkipForwardSeconds, legacySkip)
+    result.recordingSkipBackSeconds = normalizeSkipSeconds(result.recordingSkipBackSeconds, 30)
+    result.recordingSkipForwardSeconds = normalizeSkipSeconds(result.recordingSkipForwardSeconds, 30)
     return result
 end function
 

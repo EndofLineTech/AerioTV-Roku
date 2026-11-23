@@ -25,6 +25,7 @@ sub main()
     testArchiveBookmarks()
     testXtreamSlotArchive()
     testDispatcharrBookmarkPlayback()
+    testArchiveSkipPreference()
     print "ALL TESTS PASSED"
 end sub
 
@@ -104,7 +105,7 @@ sub testXtreamSlotArchive()
     m.xcPassword = "fixture"
     m.xcTimezone = "UTC"
     m.xcLiveFormat = "m3u8" ' Live advertisement must not change the supported completed archive route.
-    m.devicePreferences = {archiveSkipSeconds: 60}
+    m.devicePreferences = {archiveSkipBackSeconds: 60, archiveSkipForwardSeconds: 60}
     m.mediaPlayer = {
         owner: "media"
         isSameNode: function(other)
@@ -363,3 +364,33 @@ end function
 
 sub hideNotice()
 end sub
+
+' e3e.30: the in-player Skip Back / Skip Forward choice saves only that direction.
+sub testArchiveSkipPreference()
+    m.global = {activeusersession: "holder"}
+    m.page = "onDemand"
+    m.accountIdentity = "account"
+    m.mediaPlayer = {isSameNode: function(other) as boolean
+        return true
+    end function}
+    m.devicePreferences = normalizeDevicePreferences({archiveSkipSeconds: 120})
+    m.persisted = 0
+    event = {data: userViewEvent({account: "account", key: "archiveSkipForwardSeconds", seconds: 15}, "holder"), getRoSGNode: function()
+        return {}
+    end function, getData: function()
+        return m.data
+    end function}
+    onArchiveSkipPreference(event)
+    if m.persisted <> 1 or m.devicePreferences.archiveSkipForwardSeconds <> 15 or m.devicePreferences.archiveSkipBackSeconds <> 120 then stop
+    for each change in [{account: "account", key: "recordingSkipBackSeconds", seconds: 15}, {account: "account", key: "archiveSkipBackSeconds", seconds: 45}, {account: "other", key: "archiveSkipBackSeconds", seconds: 10}]
+        event.data = userViewEvent(change, "holder")
+        onArchiveSkipPreference(event)
+    end for
+    if m.persisted <> 1 or m.devicePreferences.archiveSkipBackSeconds <> 120 or m.devicePreferences.recordingSkipBackSeconds <> 30 then stop
+    m.global = invalid
+end sub
+
+function persistPreferences() as boolean
+    m.persisted++
+    return true
+end function

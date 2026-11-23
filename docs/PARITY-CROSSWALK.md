@@ -185,7 +185,7 @@ were delivered, and `n8ie` remains separate.
 | Info card on channel change can be turned off | tvOS `PlayerInfoCardSettings.swift`; Android `PlayerSettingsScreen.kt` | Banner always shown on tune | `e3e.27` |
 | Play channels into the mini-player | tvOS `RemoteControlStore.swift` `tuneInMiniKey` | Guide tunes go fullscreen | `e3e.28` |
 | Recording marker on Guide cells | tvOS `EPGGuideView.swift` `hasScheduledRecording` | None; reminders use a `REM \|` prefix | `e3e.29` |
-| Separate Skip Back / Skip Forward | tvOS `SkipIntervals.swift` | One symmetric archive interval; fixed 30 s for recordings | `e3e.30` |
+| Separate Skip Back / Skip Forward | tvOS `SkipIntervals.swift` | Delivered: separate Skip Back / Skip Forward (10 s–5 min) for rewind/archive (default 1 min) and in-progress recordings (default 30 s) | `e3e.30` |
 | Fuller DVR recording facts | tvOS `RecordingFacts` | Status, channel, times, description, Comskip | `e3e.31` |
 | Permissions summary and manual refresh | tvOS `ServerDetailView.swift` | Automatic refresh only | `e3e.32` |
 | More remappable actions (search, seek, jump to day, record) | Android `RemoteControlMap.kt` | Not offered | `e3e.33` |

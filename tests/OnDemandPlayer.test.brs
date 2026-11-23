@@ -40,7 +40,7 @@ sub main()
     onMediaState()
     if instr(1, m.message.text, "Archive not yet available") > 0 then stop
     m.top.request = {account: "account", title: "Example", program: {id: "p", startsAt: 1000, endsAt: 1600}, offset: 0}
-    m.top.skipSeconds = 60
+    m.top.skipIntervals = {archiveSkipBackSeconds: 60, archiveSkipForwardSeconds: 60, recordingSkipBackSeconds: 30, recordingSkipForwardSeconds: 30}
     m.top.archiveSeek = invalid
     m.video.state = "playing"
     m.video.position = 70
@@ -74,6 +74,24 @@ sub main()
     m.session.identity = "replacement"
     handleArchiveKey("fastforward", false)
     if m.top.archiveSeek <> invalid then stop
+    ' e3e.30: back and forward use their own intervals. Provider archive offsets
+    ' are whole minutes, so a short forward skip still moves one minute ahead.
+    m.session.identity = "restart-session"
+    m.top.skipIntervals = {archiveSkipBackSeconds: 120, archiveSkipForwardSeconds: 10}
+    m.video.position = 70
+    handleArchiveKey("fastforward", true)
+    handleArchiveKey("fastforward", false)
+    if m.top.archiveSeek <> 120 then stop
+    m.top.archiveSeek = invalid
+    m.video.position = 130
+    handleArchiveKey("rewind", true)
+    handleArchiveKey("rewind", false)
+    if m.top.archiveSeek <> 0 then stop
+    m.top.archiveSeek = invalid
+    if archiveSkipSeconds("rewind") <> 120 or archiveSkipSeconds("fastforward") <> 10 then stop
+    m.top.skipIntervals = {archiveSkipBackSeconds: 45}
+    if archiveSkipSeconds("rewind") <> 60 or archiveSkipSeconds("fastforward") <> 60 then stop ' invalid or missing uses the default
+    if recordingSkipSeconds("rewind") <> 30 or recordingSkipSeconds("fastforward") <> 30 then stop
     m.session = mediaSession("account", "recording-session", "recording", "recording-id", 1000)
     m.top.request = {account: "account", apiKey: "private", title: "Test recording", mode: "recording"}
     m.video = {state: "playing", position: 0, duration: 120, visible: true, seek: 0}
@@ -95,6 +113,18 @@ sub main()
     m.recordingControls = {visible: false, active: false, paused: false, setFocus: sub(value as boolean)
     end sub}
     m.recordingTimer = {control: "stop"}
+    m.top.skipIntervals = {recordingSkipBackSeconds: 15, recordingSkipForwardSeconds: 60}
+    if not handleArchiveKey("rewind", true) or m.scrub.target <> 45 then stop
+    handleArchiveKey("rewind", false)
+    if m.video.seek <> 45 then stop
+    m.video.position = 45
+    m.video.seek = 0
+    handleArchiveKey("fastforward", true)
+    if m.scrub.target <> 105 then stop
+    handleArchiveKey("back", true)
+    m.top.skipIntervals = {}
+    m.video.position = 60
+    m.video.seek = 0
     if not handleArchiveKey("rewind", true) or m.scrub.target <> 30 then stop
     if m.video.seek <> 0 or m.session = invalid then stop ' preview never seeks
     handleArchiveKey("rewind", false)

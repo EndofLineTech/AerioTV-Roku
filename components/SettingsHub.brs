@@ -72,7 +72,7 @@ sub renderSettings()
     if m.page = "profiles-baseline" then m.heading.text = "Profiles (baseline)"
     if m.page = "profiles" then m.heading.text = "Profiles"
     m.note.text = "Changes are saved on this Roku. Back returns to the previous page without moving the guide."
-    if m.page = "player" then m.note.text = "Archive skip uses whole minutes. Live startup retries apply on the next tune; each Dispatcharr attempt may wait up to 60 seconds."
+    if m.page = "player" then m.note.text = "Provider archives move in whole minutes, so short skips round to the next minute. Live startup retries apply on the next tune; each Dispatcharr attempt may wait up to 60 seconds."
     if m.page = "appearance" then m.note.text = "Appearance changes apply on this Roku without interrupting playback. Reset restores the default colors."
     if m.page = "general" then m.note.text = "Guide startup never plays automatically. Mini startup resumes only the last available channel after it starts."
     if m.page = "movies" then m.note.text = "Library and artwork preferences apply to this account. Display scale applies on this Roku."

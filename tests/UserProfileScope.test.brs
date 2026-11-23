@@ -17,6 +17,8 @@ sub main()
     check(seeded.favoriteIds.count() = 0 and seeded.recent.count() = 0 and seeded.dvrPositions.count() = 0 and seeded.collections.count() = 0 and seeded.reminders.count() = 0, "all user data starts empty")
     check(seeded.profileSettings.themePreset = "sunset" and seeded.profileSettings.customAccent = "ABCDEF" and seeded.profileSettings.audioMode = "aac", "approved appearance/accent/player settings seed separately")
     check(seeded.profileSettings.trueBlack, "true black follows the appearance profile")
+    check(seeded.profileSettings.archiveSkipBackSeconds = 120 and seeded.profileSettings.archiveSkipForwardSeconds = 120 and seeded.profileSettings.recordingSkipBackSeconds = 30, "legacy profile skip migrates to both archive directions")
+    check(not seeded.profileSettings.doesExist("archiveSkipSeconds"), "legacy profile skip key is not kept")
     check(not seeded.profileSettings.doesExist("remoteMap") and not seeded.profileSettings.doesExist("networkTimeoutSeconds"), "hardware/network/remote fields remain device local")
     seeded.guide.groupOrder.push("changed")
     seeded.profileSettings.themePreset = "light"

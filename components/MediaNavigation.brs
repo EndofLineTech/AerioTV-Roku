@@ -312,7 +312,7 @@ sub onArchiveRequested(event as object)
         m.guide.active = false
         m.guide.visible = false
         m.page = "onDemand"
-        m.mediaPlayer.skipSeconds = m.devicePreferences.archiveSkipSeconds
+        m.mediaPlayer.skipIntervals = playerSkipIntervals(m.devicePreferences)
         m.mediaPlayer.broadcastInfo = invalid
         openXtreamArchiveMedia(archiveRequest)
         return
@@ -362,7 +362,7 @@ sub openLiveRewind()
         return
     end if
     origin = {id: "rewind-" + channel.uuid, title: channel.name, startsAt: bounds.start, endsAt: now}
-    plan = rewindSeekPlan(origin, tunedAt, now - m.devicePreferences.archiveSkipSeconds - origin.startsAt, now)
+    plan = rewindSeekPlan(origin, tunedAt, now - normalizeSkipSeconds(m.devicePreferences.archiveSkipBackSeconds, 60) - origin.startsAt, now)
     paused = m.video.state = "paused"
     stopPlayback()
     cancelArchiveLoad()
@@ -426,7 +426,7 @@ sub onArchiveCreated(event as object)
     m.guide.visible = false
     m.page = "onDemand"
     p = m.archiveContext.program
-    m.mediaPlayer.skipSeconds = m.devicePreferences.archiveSkipSeconds
+    m.mediaPlayer.skipIntervals = playerSkipIntervals(m.devicePreferences)
     m.mediaPlayer.broadcastInfo = invalid
     if m.archiveContext.rewind = true
         m.guide.playbackEpoch = p.startsAt + m.archiveOffset
@@ -707,8 +707,9 @@ sub onArchiveSkipPreference(event as object)
     change = event.getData()
     if not userEventCurrent(change) then return
     if change.account <> m.accountIdentity then return
-    if change.seconds <> 60 and change.seconds <> 120 and change.seconds <> 300 then return
-    m.devicePreferences.archiveSkipSeconds = change.seconds
+    if change.key <> "archiveSkipBackSeconds" and change.key <> "archiveSkipForwardSeconds" then return
+    if normalizeSkipSeconds(change.seconds, 0) = 0 then return
+    m.devicePreferences = normalizeDevicePreferences(setCanonicalPreference(m.devicePreferences, change.key, change.seconds))
     persistPreferences()
 end sub
 
