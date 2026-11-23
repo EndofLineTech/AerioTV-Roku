@@ -212,7 +212,8 @@ function guideRemoteHint() as string
         hint += "    Play  Details"
     end if
     hint += "    *  Options"
-    if m.navigator.active or m.primaryNavigation.active = true then return hint + "    Back  Guide grid"
+    if m.primaryNavigation.active = true then return hint + "    Back  Exit"
+    if m.navigator.active then return hint + "    Back  Guide grid"
     back = effectiveGuideBackAction()
     labels = {stopPlayer: "Stop playback", topMenu: "Top menu", cancelPendingTune: "Cancel tune"}
     if back = "none" then return hint

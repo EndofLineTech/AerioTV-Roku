@@ -1562,14 +1562,57 @@ function handleGuideBack(press as boolean) as boolean
         m.searchView.selection = {action: "close"}
     else if owner = "groups"
         m.navigator.callFunc("dismissGroups")
-    else if owner = "navigation"
+    else if owner = "navigation" and m.primaryReturnsToGrid = true
+        ' The second step of a DVR/Settings Back still lands on the grid.
+        m.primaryReturnsToGrid = false
         m.primaryNavigation.active = false
         m.primaryNavigation.exitRequested = "back"
+    else if owner = "navigation"
+        showGuideExitPrompt()
     else
         executeGuideBack()
     end if
     return true
 end function
+
+' Back on the top menu ends the Guide's Back ladder with an exit prompt.
+function guideExitPrompt() as object
+    return {title: "Exit AerioTV?", buttons: ["Exit", "Stay"], focusButton: 1}
+end function
+
+sub showGuideExitPrompt()
+    ' The top menu stays active beneath the prompt so Stay returns to it.
+    m.guideExitPromptOpen = true
+    m.guideExitLeave = false
+    prompt = guideExitPrompt()
+    dialog = CreateObject("roSGNode", "AerioDialog")
+    if dialog = invalid then return
+    dialog.title = prompt.title
+    dialog.buttons = prompt.buttons
+    dialog.focusButton = prompt.focusButton
+    dialog.observeField("buttonSelected", "onGuideExitButton")
+    dialog.observeField("wasClosed", "onGuideExitClosed")
+    m.top.getScene().dialog = dialog
+end sub
+
+sub onGuideExitButton(event as object)
+    m.guideExitLeave = event.getData() = 0
+    event.getRoSGNode().close = true
+end sub
+
+' wasClosed also covers Back on the prompt, which means Stay.
+sub onGuideExitClosed()
+    if m.guideExitPromptOpen <> true then return
+    m.guideExitPromptOpen = false
+    if m.guideExitLeave = true
+        m.guideExitLeave = false
+        m.top.playerRequest = "exitApp"
+    else if m.primaryNavigation.active = true
+        m.primaryNavigation.setFocus(true)
+    else
+        focusPrimaryNavigation()
+    end if
+end sub
 
 sub suppressGuideBackForHandoff()
     m.guideBackOwner = ""
@@ -1632,6 +1675,7 @@ sub onFocusTab()
     m.navigator.active = false
     m.primaryNavigation.focusId = tabId
     m.primaryNavigation.active = true
+    m.primaryReturnsToGrid = true
 end sub
 
 sub openProgramSearchPicker()
@@ -1645,6 +1689,7 @@ sub focusPrimaryNavigation()
     if not m.top.active then return
     cancelGuideHold()
     m.navigator.active = false
+    m.primaryReturnsToGrid = false
     m.primaryNavigation.active = true
 end sub
 
@@ -1664,5 +1709,6 @@ sub onPrimarySelection(event as object)
 end sub
 
 sub onPrimaryExit(event as object)
+    m.primaryReturnsToGrid = false
     if event.getData() = "down" and m.settings.groupLayout = "pills" then m.navigator.active = true else m.top.setFocus(true)
 end sub

@@ -181,7 +181,7 @@ were delivered, and `n8ie` remains separate.
 
 | Behavior | Upstream | Roku today | Bead |
 | --- | --- | --- | --- |
-| Exit prompt at the top of the Guide | Android TV `MainActivity.kt` exit prompt | Back toggles grid/top menu; only Home exits | `e3e.26` (owner decision) |
+| Exit prompt at the top of the Guide | Android TV `MainActivity.kt` exit prompt | Delivered: Back on the Guide top menu asks **Exit AerioTV?** (Exit / Stay, Stay focused) | `e3e.26` |
 | Info card on channel change can be turned off | tvOS `PlayerInfoCardSettings.swift`; Android `PlayerSettingsScreen.kt` | Banner always shown on tune | `e3e.27` |
 | Play channels into the mini-player | tvOS `RemoteControlStore.swift` `tuneInMiniKey` | Guide tunes go fullscreen | `e3e.28` |
 | Recording marker on Guide cells | tvOS `EPGGuideView.swift` `hasScheduledRecording` | None; reminders use a `REM \|` prefix | `e3e.29` |

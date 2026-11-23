@@ -951,8 +951,9 @@ preventing accidental reuse at a different server.
 | Guide | Instant Replay | Jump to Now |
 | Guide grid | Back (default) | Cancel a pending tune, stop an active mini-player, or focus the top menu if playback is stopped |
 | Guide grid | Play/Pause (default) | Expand an active mini-player, or show program details if playback is stopped |
+| Guide top menu | Back | **Exit AerioTV?** prompt: Exit leaves the app; Stay (focused) or Back returns to the top menu |
 | Menu | Back | Close and restore guide focus |
-| VOD, DVR, Settings (top level) | Back | First Back focuses that tab in the top menu; Back again returns to the Live TV guide |
+| VOD, DVR, Settings (top level) | Back | First Back focuses that tab in the top menu; Back again returns to the Live TV guide grid |
 | Player | OK | Show/hide now/next information without pausing |
 | Player | Hold OK | Open app player options; release before selecting an item |
 | Player | Play/Pause | Request native pause/resume; retained duration depends on stream/device |

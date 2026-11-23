@@ -93,7 +93,7 @@ sub main()
     if not onKeyEvent("back", true) or m.primaryNavigation.active then stop
     if not onKeyEvent("back", true) or m.primaryNavigation.active then stop
     if not onKeyEvent("back", false) or not m.primaryNavigation.active then stop
-    if instr(1, guideRemoteHint(), "Back  Guide grid") = 0 then stop
+    if instr(1, guideRemoteHint(), "Back  Exit") = 0 then stop
     if m.top.exitRequested <> invalid or m.selected <> 10 then stop
     m.primaryNavigation.active = false
     m.top.miniActive = true
@@ -116,7 +116,7 @@ sub main()
         if overlay = "details" and m.details.action <> "close" then stop
         if overlay = "searchView" and m.searchView.selection.action <> "close" then stop
         if overlay = "navigator" and m.navigator.closed <> true then stop
-        if overlay = "primaryNavigation" and m.primaryNavigation.exitRequested <> "back" then stop
+        if overlay = "primaryNavigation" then checkGuideExitPrompt()
         m[overlay].active = false
     end for
     if not onKeyEvent("back", true) then stop
@@ -284,6 +284,43 @@ function handleGuideSetting(kind as string, item as object) as boolean
     return true
 end function
 
+' e3e.26: Back on the top menu asks before leaving the app; Stay is focused
+' and returns to the top menu, and dismissing the prompt is Stay.
+sub checkGuideExitPrompt()
+    if m.primaryNavigation.exitRequested = "back" then stop ' no longer drops to the grid
+    if m.guideExitPromptOpen <> true or not m.primaryNavigation.active then stop
+    m.primaryNavigation.focused = false
+    m.primaryNavigation.setFocus = sub(focused as boolean)
+        m.focused = focused
+    end sub
+    prompt = guideExitPrompt()
+    if prompt.title <> "Exit AerioTV?" or prompt.buttons.count() <> 2 then stop
+    if prompt.buttons[0] <> "Exit" or prompt.buttons[1] <> "Stay" or prompt.focusButton <> 1 then stop
+    onGuideExitButton(guideExitEvent(1))
+    onGuideExitClosed()
+    if m.top.playerRequest <> invalid or not m.primaryNavigation.active or not m.primaryNavigation.focused then stop
+    tapBack()
+    onGuideExitClosed() ' Back on the prompt closes it without a button
+    if m.top.playerRequest <> invalid or not m.primaryNavigation.active then stop
+    tapBack()
+    onGuideExitButton(guideExitEvent(0))
+    if m.top.playerRequest <> invalid then stop ' leave only after the dialog closed
+    onGuideExitClosed()
+    if m.top.playerRequest <> "exitApp" then stop
+    onGuideExitClosed() ' a duplicate close cannot repeat the request
+    m.top.playerRequest = invalid
+    onGuideExitClosed()
+    if m.top.playerRequest <> invalid then stop
+end sub
+
+function guideExitEvent(index as integer) as object
+    return {index: index, node: {close: false}, getData: function() as integer
+        return m.index
+    end function, getRoSGNode: function() as object
+        return m.node
+    end function}
+end function
+
 ' 9jr0: Back from a DVR or Settings root lands on that tab in the top row.
 sub checkGuideFocusTab()
     m.ready = true
@@ -294,6 +331,21 @@ sub checkGuideFocusTab()
     onFocusTab()
     if m.primaryNavigation.active <> true or m.primaryNavigation.focusId <> "dvr" then stop
     if m.navigator.active <> false or m.top.focusTab <> "" then stop
+    tapBack()
+    if m.primaryNavigation.exitRequested <> "back" or m.guideExitPromptOpen = true then stop
+    onPrimaryExit({getData: function() as string
+        return "back"
+    end function})
+    m.primaryNavigation.exitRequested = ""
+    focusPrimaryNavigation()
+    tapBack() ' the regular top menu still asks before leaving
+    if m.primaryNavigation.exitRequested = "back" or m.guideExitPromptOpen <> true then stop
+    m.primaryNavigation.setFocus = sub(focused as boolean)
+        m.focused = focused
+    end sub
+    onGuideExitClosed()
+    if m.primaryNavigation.focused <> true then stop
+    m.primaryNavigation = {active: false, focusId: ""}
     m.primaryNavigation = {active: false, focusId: ""}
     m.top.active = false
     m.top.focusTab = "settings"

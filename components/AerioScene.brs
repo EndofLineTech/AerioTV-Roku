@@ -1856,6 +1856,10 @@ sub onGuidePlayerRequest(event as object)
         openUserProfileSwitcher()
         return
     end if
+    if event.getData() = "exitApp"
+        m.top.exitRequested = true
+        return
+    end if
     if event.getData() = "dvrHome"
         openDvrLibrary()
         return
