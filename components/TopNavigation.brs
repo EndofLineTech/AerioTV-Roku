@@ -76,7 +76,13 @@ end sub
 
 sub activateNavigation()
     if m.top.active
-        m.index = navigationFirst(m.items, m.top.selected)
+        ' focusId focuses another tab once without changing the current one.
+        target = m.top.selected
+        if m.top.focusId <> ""
+            target = m.top.focusId
+            m.top.focusId = ""
+        end if
+        m.index = navigationFirst(m.items, target)
         if m.index < 0
             m.top.active = false
             m.top.exitRequested = "down"

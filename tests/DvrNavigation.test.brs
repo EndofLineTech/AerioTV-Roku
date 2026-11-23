@@ -69,6 +69,7 @@ sub main()
         return m.testRequest
     end function})
     assertEqual(m.recordIntent, invalid, "guide cannot reopen scheduling while a submitted operation is still settling")
+    checkDvrTwoStepBack()
     print "ALL TESTS PASSED"
 end sub
 
@@ -77,4 +78,20 @@ sub assertEqual(actual as dynamic, expected as dynamic, label as string)
         print "FAIL: "; label; " expected="; expected; " actual="; actual
         stop
     end if
+end sub
+
+' 9jr0: Back from the DVR root returns to the Guide with the DVR tab focused.
+sub checkDvrTwoStepBack()
+    saved = {page: m.page, dvr: m.dvr, guide: m.guide}
+    m.page = "dvr"
+    m.dvr = {active: true, config: {}}
+    m.guide = {visible: false, active: false, focusTab: ""}
+    onDvrBack()
+    if m.page <> "guide" or m.guide.active <> true or m.guide.focusTab <> "dvr" then stop
+    m.guide.focusTab = ""
+    onDvrBack()
+    if m.guide.focusTab <> "" then stop ' a stale close cannot refocus the tab row
+    m.page = saved.page
+    m.dvr = saved.dvr
+    m.guide = saved.guide
 end sub

@@ -1089,7 +1089,8 @@ function onKeyEvent(key as string, press as boolean) as boolean
         saveLibraryBookmark()
         cancelVod()
         if textValue(m.top.config.providerType) = "xtream" and m.shelf = "categories"
-            m.top.exitRequested = true
+            ' Two-step Back: the root focuses the VOD tab before Live TV.
+            m.primaryNavigation.active = true
             return true
         end if
         if (m.shelf = "people" or m.shelf = "related" or m.shelf = "person") and m.discoveryStack.count() > 0
@@ -1126,7 +1127,7 @@ function onKeyEvent(key as string, press as boolean) as boolean
             m.index = 0
             loadVodPage()
         else
-            m.top.exitRequested = true
+            m.primaryNavigation.active = true
         end if
         return true
     else if key = "options"
@@ -1237,7 +1238,16 @@ sub onLibraryPrimarySelection(event as object)
 end sub
 
 sub onLibraryPrimaryExit(event as object)
-    if event.getData() = "down" then m.libraryNavigation.active = true else m.top.setFocus(true)
+    request = event.getData()
+    if request = "down"
+        m.libraryNavigation.active = true
+    else if request = "back"
+        saveLibraryBookmark()
+        cancelVod()
+        m.top.exitRequested = true
+    else
+        m.top.setFocus(true)
+    end if
 end sub
 
 sub onLibraryTabSelection(event as object)

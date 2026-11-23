@@ -262,6 +262,7 @@ sub main()
     onKeyEvent("down", false)
     if not onKeyEvent("OK", true) or m.top.watchChannel <> invalid then stop
     if not onKeyEvent("OK", false) or m.top.watchChannel.uuid <> "3" then stop
+    checkGuideFocusTab()
     print "ALL TESTS PASSED"
 end sub
 
@@ -282,3 +283,21 @@ function handleGuideSetting(kind as string, item as object) as boolean
     m.selectedLayout = item.value
     return true
 end function
+
+' 9jr0: Back from a DVR or Settings root lands on that tab in the top row.
+sub checkGuideFocusTab()
+    m.ready = true
+    m.top.active = true
+    m.navigator = {active: true}
+    m.primaryNavigation = {active: false, focusId: ""}
+    m.top.focusTab = "dvr"
+    onFocusTab()
+    if m.primaryNavigation.active <> true or m.primaryNavigation.focusId <> "dvr" then stop
+    if m.navigator.active <> false or m.top.focusTab <> "" then stop
+    m.primaryNavigation = {active: false, focusId: ""}
+    m.top.active = false
+    m.top.focusTab = "settings"
+    onFocusTab()
+    if m.primaryNavigation.active = true then stop ' an inactive guide cannot take focus
+    m.top.active = true
+end sub

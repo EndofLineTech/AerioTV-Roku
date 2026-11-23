@@ -57,6 +57,13 @@ sub closeSettingsHub()
     resumePendingVodDeepLink()
 end sub
 
+' Two-step Back: the Settings root returns to its tab before the Live TV grid.
+sub onSettingsHubBack()
+    if m.page <> "settings" then return
+    closeSettingsHub()
+    if m.page = "guide" then m.guide.focusTab = "settings"
+end sub
+
 sub onSettingsHubSelection(event as object)
     if userProfileGateClosed() then return
     if not m.settingsHub.isSameNode(event.getRoSGNode()) or m.page <> "settings" then return

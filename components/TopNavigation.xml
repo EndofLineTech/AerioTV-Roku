@@ -12,6 +12,7 @@
     <field id="selected" type="string" onChange="drawNavigation" />
     <field id="active" type="boolean" onChange="activateNavigation" />
     <field id="allowUp" type="boolean" />
+    <field id="focusId" type="string" />
     <field id="selection" type="string" alwaysNotify="true" />
     <field id="exitRequested" type="string" alwaysNotify="true" />
     <function name="handleNavigationKey" />

@@ -41,6 +41,7 @@ sub main()
     if m.libraryNavigation.items.count() <> 8 or m.libraryNavigation.items[2].id <> "continue" then stop
     testVodDisplayFrames()
     testVodUnsupportedBadge()
+    testVodTwoStepBack()
     print "ALL TESTS PASSED"
 end sub
 
@@ -209,4 +210,31 @@ sub testVodUnsupportedBadge()
     m.top.unsupportedTitles = {}
     renderDetailDescription()
     if instr(1, m.dialog.message, "Won't play on Roku") > 0 then stop
+end sub
+
+' Upstream parity (9jr0): the first Back at a library root focuses the VOD
+' tab; Back from that tab returns to Live TV.
+sub testVodTwoStepBack()
+    for each provider in ["dispatcharr", "xtream"]
+        m.top = {active: true, config: {providerType: provider, accountScope: "fixture"}}
+        m.fromUnifiedSearch = true
+        m.descriptionTask = invalid
+        m.task = invalid
+        m.kind = "movie"
+        m.parentPage = invalid
+        m.discoveryStack = []
+        m.shelf = "catalog"
+        if provider = "xtream" then m.shelf = "categories"
+        m.index = 7
+        m.primaryNavigation = {active: false}
+        m.libraryNavigation = {active: false}
+        if not onKeyEvent("back", true) then stop
+        if m.top.exitRequested = true then stop ' first Back must not leave the library
+        if m.primaryNavigation.active <> true then stop
+        onLibraryPrimaryExit(descriptionEvent(m.primaryNavigation, "back"))
+        if m.top.exitRequested <> true then stop
+        m.top.exitRequested = invalid
+        onLibraryPrimaryExit(descriptionEvent(m.primaryNavigation, "down"))
+        if m.top.exitRequested = true or m.libraryNavigation.active <> true then stop
+    end for
 end sub

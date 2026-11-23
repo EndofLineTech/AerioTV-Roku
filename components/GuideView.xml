@@ -24,6 +24,7 @@
     <field id="sleepActive" type="boolean" />
     <field id="pendingTune" type="boolean" onChange="updateGuideFooter" />
     <field id="playerRequest" type="string" alwaysNotify="true" />
+    <field id="focusTab" type="string" alwaysNotify="true" onChange="onFocusTab" />
     <field id="searchVodSelection" type="assocarray" alwaysNotify="true" />
     <field id="devicePreference" type="assocarray" alwaysNotify="true" />
     <field id="remotePreferences" type="assocarray" onChange="updateGuideFooter" />

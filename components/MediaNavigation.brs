@@ -23,6 +23,13 @@ sub closeDvrLibrary()
     resumePendingVodDeepLink()
 end sub
 
+' Two-step Back: the DVR root returns to its tab before the Live TV grid.
+sub onDvrBack()
+    if m.page <> "dvr" then return
+    closeDvrLibrary()
+    if m.page = "guide" then m.guide.focusTab = "dvr"
+end sub
+
 sub openVodLibrary(kind as string)
     if userProfileGateClosed() then return
     if m.accountPreferences.vodEnabled = false then return

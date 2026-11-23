@@ -947,6 +947,7 @@ preventing accidental reuse at a different server.
 | Guide grid | Back (default) | Cancel a pending tune, stop an active mini-player, or focus the top menu if playback is stopped |
 | Guide grid | Play/Pause (default) | Expand an active mini-player, or show program details if playback is stopped |
 | Menu | Back | Close and restore guide focus |
+| VOD, DVR, Settings (top level) | Back | First Back focuses that tab in the top menu; Back again returns to the Live TV guide |
 | Player | OK | Show/hide now/next information without pausing |
 | Player | Hold OK | Open app player options; release before selecting an item |
 | Player | Play/Pause | Request native pause/resume; retained duration depends on stream/device |

@@ -1624,6 +1624,19 @@ sub onGuideChromeFocus()
     if m.ready = true and m.top.active then drawGuide()
 end sub
 
+' Two-step Back from a DVR or Settings root lands on that tab; the next Back
+' leaves the tab row for the Live TV grid.
+sub onFocusTab()
+    tabId = textValue(m.top.focusTab)
+    if tabId = "" then return
+    m.top.focusTab = ""
+    if m.ready <> true or not m.top.active then return
+    cancelGuideHold()
+    m.navigator.active = false
+    m.primaryNavigation.focusId = tabId
+    m.primaryNavigation.active = true
+end sub
+
 sub focusPrimaryNavigation()
     if not m.top.active then return
     cancelGuideHold()

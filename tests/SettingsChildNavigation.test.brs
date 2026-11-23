@@ -39,6 +39,7 @@ sub main()
     check(currentUserSettingsRole() = "restricted", "matching local profile ID cannot borrow another authenticated account's role")
     m.scopedPreferencesRequired = false
     check(currentUserSettingsRole() = "user", "non-Dispatcharr provider Settings preserve their existing contract")
+    checkSettingsTwoStepBack()
     print "ALL TESTS PASSED"
 end sub
 
@@ -60,4 +61,20 @@ end sub
 
 sub check(passed as boolean, message as string)
     if not passed then print "FAIL: "; message : stop
+end sub
+
+' 9jr0: Back from the Settings root returns to the Guide with Settings focused.
+sub checkSettingsTwoStepBack()
+    saved = {page: m.page, settingsHub: m.settingsHub, guide: m.guide}
+    m.page = "settings"
+    m.settingsHub = {active: true}
+    m.guide = {visible: false, active: false, focusTab: ""}
+    onSettingsHubBack()
+    if m.page <> "guide" or m.guide.active <> true or m.guide.focusTab <> "settings" then stop
+    m.guide.focusTab = ""
+    onSettingsHubBack()
+    if m.guide.focusTab <> "" then stop
+    m.page = saved.page
+    m.settingsHub = saved.settingsHub
+    m.guide = saved.guide
 end sub
