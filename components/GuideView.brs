@@ -1181,10 +1181,7 @@ sub onPickerSelected(event as object)
             openPicker("Channel groups", items, "groups")
             return
         else if action = "programSearch"
-            scopes = [{title: "All permitted EPG + VOD", scope: "all"}, {title: "EPG title", scope: "epg"}, {title: "EPG description", scope: "description"}]
-            if m.top.vodEnabled and m.top.moviesPermission = "allowed" then scopes.push({title: "Movies", scope: "movie"})
-            if m.top.vodEnabled and m.top.seriesPermission = "allowed" then scopes.push({title: "TV Shows", scope: "series"})
-            openPicker("Unified TV search", scopes, "programSearchField")
+            openProgramSearchPicker()
             return
         else if action = "searchUnsupported"
             m.message = "Direct playlists do not provide Dispatcharr's shared EPG/VOD index. Search channels here, or use Xtream's category search."
@@ -1635,6 +1632,13 @@ sub onFocusTab()
     m.navigator.active = false
     m.primaryNavigation.focusId = tabId
     m.primaryNavigation.active = true
+end sub
+
+sub openProgramSearchPicker()
+    scopes = [{title: "All permitted EPG + VOD", scope: "all"}, {title: "EPG title", scope: "epg"}, {title: "EPG description", scope: "description"}]
+    if m.top.vodEnabled and m.top.moviesPermission = "allowed" then scopes.push({title: "Movies", scope: "movie"})
+    if m.top.vodEnabled and m.top.seriesPermission = "allowed" then scopes.push({title: "TV Shows", scope: "series"})
+    openPicker("Unified TV search", scopes, "programSearchField")
 end sub
 
 sub focusPrimaryNavigation()

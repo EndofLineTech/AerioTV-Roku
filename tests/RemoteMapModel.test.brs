@@ -37,7 +37,12 @@ sub main()
     playerActions = remoteActionChoices("player", "rightShort")
     if playerActions.count() < 3 or playerActions[0] <> "channelUp" then stop
     guideActions = remoteActionChoices("guide", "replay")
-    if guideActions.count() <> 3 or guideActions[1] <> "openOptions" then stop
+    if guideActions.count() <> 5 or guideActions[1] <> "openOptions" or guideActions[2] <> "openSearch" or guideActions[3] <> "jumpToDay" then stop
+    for each slot in ["rewind", "fastForward", "backShort"]
+        offered = FormatJson(remoteActionChoices("guide", slot))
+        if instr(1, offered, "openSearch") = 0 or instr(1, offered, "jumpToDay") = 0 then stop
+    end for
+    if remoteActionText("openSearch") <> "Search TV and movies" or remoteActionHint("jumpToDay") <> "Date" then stop
     if remoteActionChoices("guide", "upShort").count() <> 0 then stop
     print "ALL TESTS PASSED"
 end sub

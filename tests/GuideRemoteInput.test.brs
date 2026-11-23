@@ -225,6 +225,14 @@ sub showDetails()
     m.observed = "programDetails"
 end sub
 
+sub openProgramSearchPicker()
+    m.observed = "openSearch"
+end sub
+
+sub openDatePicker()
+    m.observed = "jumpToDay"
+end sub
+
 sub activateGuideSelection()
     m.observed = "activateSelection"
 end sub

@@ -33,6 +33,10 @@ sub executeGuideRemoteAction(action as string)
         if m.selected < 0 then m.selected = 0
     else if action = "resumePlayer" and m.top.miniActive
         m.top.playerRequest = "expandPlayer"
+    else if action = "openSearch"
+        if guideProfileActionAllowed(m.userRole, "programSearch") then openProgramSearchPicker()
+    else if action = "jumpToDay"
+        if guideProfileActionAllowed(m.userRole, "date") then openDatePicker()
     else if action = "programDetails"
         showDetails()
     else if action = "activateSelection"

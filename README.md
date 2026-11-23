@@ -975,8 +975,10 @@ channel goes full screen. Radio Mode channels still open their own screen.
 Use **Settings → Remote control → In the TV Guide → Back** to change what a
 single Back press does in the grid. Choices include watching the selected
 channel live, opening program details or groups, moving 2½ hours earlier or
-later, paging through channels, jumping to Now or the top channel, returning
-to fullscreen, and doing nothing. Return to fullscreen only acts when the
+later, paging through channels, jumping to Now or the top channel, opening
+search, jumping to a date and time, returning to fullscreen, and doing nothing.
+Rewind, Fast Forward and Instant Replay in the Guide can also open search or
+jump to a date and time. Return to fullscreen only acts when the
 mini-player is active; it does not start playback. If you change the default
 mapping, you can still stop the mini-player from the Guide's `*` menu.
 
