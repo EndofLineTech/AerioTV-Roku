@@ -925,6 +925,8 @@ sub onConnectionChoice(event as object)
         toggleDispatcharrSyncControls(syncContext, "enabled", choice.value)
     else if choice.action = "syncProfiles"
         toggleDispatcharrSyncControls(syncContext, "profiles", choice.value)
+    else if choice.action = "syncFavorites"
+        toggleDispatcharrSyncControls(syncContext, "favorites", choice.value)
     else if choice.action = "editAgent"
         openConnectionAgentEditor()
     else if choice.action = "resetAgent"

@@ -2,7 +2,7 @@
 ' receipt stores independently recheck exact roots, actor, credential and broker.
 sub activateProfileSyncScheduling()
     if m.profileSyncSchedulingReady <> true or m.profileSyncWriterReady <> true then return
-    if m.profileSyncEnabled <> true or m.profileRosterEnabled = false then return
+    if m.profileSyncEnabled <> true or not dispatcharrSyncCategoryOn() then return
     if m.profileSyncClock = invalid
         m.profileSyncClock = m.top.createChild("Timer")
         m.profileSyncClock.duration = 1
@@ -20,7 +20,7 @@ end function
 
 function scheduledProfileSyncAllowed() as boolean
     if m.profileSyncSchedulingReady <> true or m.profileSyncWriterReady <> true or m.profileSyncEnabled <> true then return false
-    if m.userProfileRecoveryRequired = true or m.profileRosterEnabled = false or m.busy = true then return false
+    if m.userProfileRecoveryRequired = true or not dispatcharrSyncCategoryOn() or m.busy = true then return false
     if m.profileSyncLinkKnown = true and m.profileSyncLinkUp <> true then return false
     if m.profileSwitchContext <> invalid or m.profileOwnSignInContext <> invalid or m.profileSyncWriteTask <> invalid then return false
     if m.profileSyncSettingsContext <> invalid then return false
@@ -93,7 +93,7 @@ sub onProfileSyncScheduleTick()
     end if
     if m.profileSyncSchedule = invalid then return
     store = loadUserProfileStore(m.registry, scope.playlistId)
-    m.profileSyncSchedule = dispatcharrSyncScheduleDirty(m.profileSyncSchedule, scope, dispatcharrSyncRosterIntentDigest(store), store.pendingRoster = true, now)
+    m.profileSyncSchedule = dispatcharrSyncScheduleDirty(m.profileSyncSchedule, scope, dispatcharrSyncSceneIntent(store), dispatcharrSyncScenePending(store), now)
     ' Absence of held siblings admits transport, not writes. Keep the durable
     ' fence through failure/backoff until the exact own pull commits.
     nextWork = dispatcharrSyncScheduleTake(m.profileSyncSchedule, scope, now, true, store.rosterPullRequired = true)
@@ -142,7 +142,21 @@ function startScheduledProfileSync(store as object, ticket as object, push as bo
     task.userScope = m.activeUserScope
     task.connectionRoot = m.registry.read("connectionsV1")
     task.storeRoot = m.registry.read(userProfileStoreKey(entry.id))
-    task.profilesEnabled = true
+    task.profilesEnabled = m.profileRosterEnabled <> false
+    task.favoritesEnabled = dispatcharrSyncFavoritesActive()
+    favoritesIntent = dispatcharrSyncFavoritesPendingIntent()
+    if push and favoritesIntent <> ""
+        ' Translation needs this session's current lineup; without it the
+        ' favorites stay pending rather than writing an untranslated list.
+        lineup = dispatcharrSyncSceneFavoritesLineup()
+        if lineup.count() > 0
+            task.favoritesPending = true
+            task.favorites = {ids: m.accountPreferences.favoriteIds, channels: lineup, acknowledgedAt: dispatcharrSyncFavoritesState(m.accountPreferences).acknowledgedAt}
+            task.favoritesIntent = favoritesIntent
+        else if not (m.profileRosterEnabled <> false and store.pendingRoster = true)
+            return false
+        end if
+    end if
     task.pullOnly = not push
     task.creationBlocked = m.profileSyncSchedule.creationBlocked = true
     task.expectedAuthorizationSignature = m.profileAuthorizationSignature
@@ -191,11 +205,22 @@ sub finishScheduledProfileSync(result as dynamic)
         end for
     end if
     saved = {ok: false}
-    if result.ok = true
+    profilesRebuilt = true
+    if type(result.rebuilt) = "roArray"
+        profilesRebuilt = false
+        for each name in result.rebuilt
+            if name = "profiles" then profilesRebuilt = true
+        end for
+    end if
+    if result.ok = true and profilesRebuilt
         saved = commitDispatcharrSyncRosterAck(m.registry, context.connection, context.store, result, m.activeUserScope, m.apiKey, memory)
-    else if result.state = "local-commit"
+    else if result.state = "local-commit" and m.profileRosterEnabled <> false
         saved = commitDispatcharrSyncRosterRead(m.registry, context.connection, context.store, result, m.activeUserScope, m.apiKey, memory, m.profileAuthorizationSignature, true, CreateObject("roDateTime").asSeconds())
         if saved.readCommitted <> true then saved.ok = false
+    else if result.ok = true or result.state = "local-commit"
+        ' Favorites-only write, or a pull while Profiles is Off: prove the same
+        ' own receipt without touching roster pending state or its highwater.
+        saved = dispatcharrSyncOwnReceiptAccess(m.registry, context.connection, context.store, result, m.activeUserScope, m.apiKey, memory, false)
     end if
     outcome = textValue(result.state)
     creationBlocked = false
@@ -207,7 +232,7 @@ sub finishScheduledProfileSync(result as dynamic)
         current = currentScheduledProfileSyncFeedbackStore(context, result, memory)
         outcome = "stale-context"
         if current <> invalid and result.status = 413 and result.rosterIntent <> "" and result.rosterIntent = context.ticket.intent
-            if dispatcharrSyncRosterIntentDigest(current) = result.rosterIntent then outcome = "too-large"
+            if dispatcharrSyncWriteIntentDigest(current, dispatcharrSyncFavoritesPendingIntent()) = result.rosterIntent then outcome = "too-large"
         end if
     end if
     m.profileSyncSchedule = dispatcharrSyncScheduleComplete(m.profileSyncSchedule, context.ticket, saved.ok = true, profileSyncSchedulingNow(), outcome, creationBlocked)
@@ -221,9 +246,11 @@ sub finishScheduledProfileSync(result as dynamic)
         return
     end if
     if not saved.ok then return
-    m.profileSyncSchedule = dispatcharrSyncScheduleDirty(m.profileSyncSchedule, m.activeUserScope, dispatcharrSyncRosterIntentDigest(saved.store), saved.store.pendingRoster = true, profileSyncSchedulingNow(), false)
     m.userProfileStore = saved.store
     if type(saved.preferenceStore) = "roAssociativeArray" then m.preferenceStore = saved.preferenceStore
+    ' After any roster settings publication, so its root is the one extended.
+    applyDispatcharrSyncFavoritesReceipt(result)
+    m.profileSyncSchedule = dispatcharrSyncScheduleDirty(m.profileSyncSchedule, m.activeUserScope, dispatcharrSyncSceneIntent(saved.store), dispatcharrSyncScenePending(saved.store), profileSyncSchedulingNow(), false)
     if type(saved.suggestions) = "roArray"
         m.profileRosterSuggestions = saved.suggestions
         m.profileRosterSuggestionScope = m.activeUserScope
@@ -272,4 +299,86 @@ sub closeScheduledProfileSync()
     end if
     m.profileScheduledSyncTask = invalid
     m.profileScheduledSyncContext = invalid
+end sub
+
+function dispatcharrSyncCategoryOn() as boolean
+    return m.profileRosterEnabled <> false or m.profileFavoritesEnabled = true
+end function
+
+' Favorites sync runs only while Sync and Favorites are both On for this Roku.
+function dispatcharrSyncFavoritesActive() as boolean
+    if m.profileSyncEnabled <> true or m.profileFavoritesEnabled <> true then return false
+    if m.activeUserScope = invalid or type(m.accountPreferences) <> "roAssociativeArray" then return false
+    return textValue(m.activeUserScope.preferenceIdentity) = textValue(m.accountIdentity)
+end function
+
+function dispatcharrSyncFavoritesPendingIntent() as string
+    if not dispatcharrSyncFavoritesActive() then return ""
+    if not dispatcharrSyncFavoritesState(m.accountPreferences).pending then return ""
+    return dispatcharrSyncFavoritesIntent(m.accountPreferences)
+end function
+
+function dispatcharrSyncSceneIntent(store as object) as string
+    return dispatcharrSyncWriteIntentDigest(store, dispatcharrSyncFavoritesPendingIntent())
+end function
+
+function dispatcharrSyncScenePending(store as object) as boolean
+    if m.profileRosterEnabled <> false and store.pendingRoster = true then return true
+    return dispatcharrSyncFavoritesPendingIntent() <> ""
+end function
+
+' Only this adopted session's Dispatcharr Guide lineup may translate ids.
+function dispatcharrSyncSceneFavoritesLineup() as object
+    if m.guide = invalid then return []
+    session = currentUserSessionId()
+    lineup = m.guide.callFunc("syncFavoritesLineup")
+    if session = "" or type(lineup) <> "roAssociativeArray" then return []
+    if userViewSession(lineup) <> session or type(lineup.channels) <> "roArray" then return []
+    return lineup.channels
+end function
+
+' A Guide favorite edit becomes durable pending intent for this profile.
+sub markDispatcharrSyncFavoritesEdit(previousIds as dynamic)
+    if not dispatcharrSyncFavoritesActive() then return
+    if FormatJson(compactIds(previousIds, 2000)) = dispatcharrSyncFavoritesIntent(m.accountPreferences) then return
+    state = dispatcharrSyncFavoritesState(m.accountPreferences)
+    m.accountPreferences = dispatcharrSyncFavoritesWithState(m.accountPreferences, true, state.acknowledgedAt)
+    print "[dispatcharr-sync] favorites pending count="; m.accountPreferences.favoriteIds.count()
+end sub
+
+' Rebuilt favorites are acknowledged by their exact intent; any other fresh
+' own read may apply a newer category. Untranslatable ids are never removed.
+sub applyDispatcharrSyncFavoritesReceipt(result as object)
+    if not dispatcharrSyncFavoritesActive() then return
+    if not userProfileSameSession(result.scope, m.activeUserScope) then return
+    rebuilt = false
+    if type(result.rebuilt) = "roArray"
+        for each name in result.rebuilt
+            if name = "favorites" then rebuilt = true
+        end for
+    end if
+    previous = m.accountPreferences
+    changed = false
+    if rebuilt
+        if result.ok <> true then return
+        staged = dispatcharrSyncFavoritesAcknowledge(previous, textValue(result.favoritesIntent), result.favoritesStamp)
+    else
+        plan = dispatcharrSyncFavoritesPullPlan(previous, result.favoritesCategory, dispatcharrSyncSceneFavoritesLineup())
+        if not plan.applied then return
+        staged = plan.preferences
+        changed = plan.changed
+    end if
+    if FormatJson(staged) = FormatJson(previous) then return
+    m.accountPreferences = staged
+    if not persistAccountPreferences()
+        m.accountPreferences = previous
+        return
+    end if
+    state = dispatcharrSyncFavoritesState(m.accountPreferences)
+    if rebuilt
+        print "[dispatcharr-sync] favorites acknowledged pending="; state.pending
+    else
+        print "[dispatcharr-sync] favorites applied count="; m.accountPreferences.favoriteIds.count(); " pending="; state.pending
+    end if
+    if changed and m.guide <> invalid then m.guide.callFunc("applySyncedFavorites", userViewEvent({favoriteIds: m.accountPreferences.favoriteIds}, currentUserSessionId()))
 end sub

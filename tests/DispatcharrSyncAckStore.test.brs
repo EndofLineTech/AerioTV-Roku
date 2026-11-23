@@ -415,8 +415,106 @@ sub main()
     before = FormatJson(m.registry.values)
     settleOutgoingUserProfileSyncRead(m.profileSwitchContext, m.receipt)
     check(m.ownRetirementRequests = 1 and m.flushResumes = 0 and m.flushRollbacks = 0 and FormatJson(m.registry.values) = before, "active-own tombstone dispatches distinct own retirement rather than staging a chosen-target proof")
+    syncFavoritesSceneChecks()
     print "ALL TESTS PASSED"
 end sub
+
+sub syncFavoritesSceneChecks()
+    syncFavoritesFixture()
+    m.profileFavoritesEnabled = false
+    previous = m.accountPreferences.favoriteIds
+    m.accountPreferences = mergeAccountPreferences(m.accountPreferences, {favoriteIds: ["11", "12"]})
+    markDispatcharrSyncFavoritesEdit(previous)
+    check(not dispatcharrSyncFavoritesState(m.accountPreferences).pending, "Favorites Off never marks or schedules a favorites write")
+    syncFavoritesFixture()
+    onProfileSyncScheduleTick()
+    task = m.profileScheduledSyncTask
+    check(task <> invalid and task.pullOnly and task.favoritesEnabled and task.favoritesPending <> true, "session start pulls with Favorites On and nothing pending")
+    onScheduledProfileSyncResult(syncFlushEvent(task, syncFavoritesReceipt(syncFlushReadReceipt({rows: []}), "2026-11-20T10:00:00Z", "[12,99]")))
+    state = dispatcharrSyncFavoritesState(m.accountPreferences)
+    check(FormatJson(m.accountPreferences.favoriteIds) = "[""11"",""12""]" and state.pending and state.acknowledgedAt = dispatcharrSyncIsoEpoch("2026-11-20T10:00:00Z"), "first pull merges existing local favorites with the server list and keeps the union pending")
+    check(m.guide.applied <> invalid and FormatJson(m.guide.applied.favoriteIds) = "[""11"",""12""]" and m.guide.applied.aeriosession = m.scope.sessionId and m.favoritesPersists = 1, "applied favorites persist to the active profile and refresh the Guide")
+    m.syncTestNow = 101
+    onProfileSyncScheduleTick()
+    task = m.profileScheduledSyncTask
+    check(task <> invalid and not task.pullOnly and task.favoritesPending and FormatJson(task.favorites.ids) = "[""11"",""12""]" and task.favorites.channels.count() = 2 and task.favoritesIntent = "[""11"",""12""]", "pending favorites schedule a debounced own write with the current lineup")
+    receipt = {ok: true, state: "written", submitted: true, rebuilt: ["favorites"], favoritesIntent: task.favoritesIntent, favoritesStamp: dispatcharrSyncIsoEpoch("2027-01-15T08:00:00Z"), scope: m.scope, storeRoot: task.storeRoot, connectionRoot: task.connectionRoot, credentialHash: string(64, "a")}
+    onScheduledProfileSyncResult(syncFlushEvent(task, receipt))
+    state = dispatcharrSyncFavoritesState(m.accountPreferences)
+    check(not state.pending and state.acknowledgedAt = dispatcharrSyncIsoEpoch("2027-01-15T08:00:00Z") and not m.registry.exists(userProfileSyncAckKey("slot-a")) and not loadUserProfileStore(m.registry, "slot-a").pendingRoster, "favorites-only acknowledgement clears only favorites pending, never the roster highwater")
+    m.syncTestNow = 102
+    onProfileSyncScheduleTick()
+    check(m.profileScheduledSyncTask = invalid, "acknowledged favorites do not loop")
+
+    syncFavoritesFixture()
+    m.accountPreferences = dispatcharrSyncFavoritesWithState(m.accountPreferences, true, 5)
+    onProfileSyncScheduleTick()
+    onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, syncFlushReadReceipt({rows: []})))
+    m.syncTestNow = 101
+    onProfileSyncScheduleTick()
+    task = m.profileScheduledSyncTask
+    m.accountPreferences = mergeAccountPreferences(m.accountPreferences, {favoriteIds: ["12"]})
+    receipt = {ok: true, state: "written", submitted: true, rebuilt: ["favorites"], favoritesIntent: task.favoritesIntent, favoritesStamp: dispatcharrSyncIsoEpoch("2027-01-15T08:00:00Z"), scope: m.scope, storeRoot: task.storeRoot, connectionRoot: task.connectionRoot, credentialHash: string(64, "a")}
+    onScheduledProfileSyncResult(syncFlushEvent(task, receipt))
+    check(dispatcharrSyncFavoritesState(m.accountPreferences).pending, "an edit during the write stays pending for the next write")
+
+    syncFavoritesFixture()
+    m.profileRosterEnabled = false
+    m.accountPreferences = dispatcharrSyncFavoritesWithState(m.accountPreferences, false, 5)
+    before = m.registry.values[userProfileStoreKey("slot-a")]
+    onProfileSyncScheduleTick()
+    task = m.profileScheduledSyncTask
+    check(task <> invalid and task.profilesEnabled = false and task.favoritesEnabled, "Favorites On schedules own Sync even while Profiles is Off")
+    onScheduledProfileSyncResult(syncFlushEvent(task, syncFavoritesReceipt(syncFlushReadReceipt({rows: [[7, "Alice", "Remote rename", "none", "", "", "user", 900]]}), "2026-11-20T10:00:00Z", "[12,99]")))
+    check(m.registry.values[userProfileStoreKey("slot-a")] = before and FormatJson(m.accountPreferences.favoriteIds) = "[""12""]" and not dispatcharrSyncFavoritesState(m.accountPreferences).pending, "Profiles Off never imports roster data while a clean favorites pull takes the server list")
+
+    syncFavoritesFixture()
+    m.profileFavoritesEnabled = false
+    onProfileSyncScheduleTick()
+    task = m.profileScheduledSyncTask
+    check(task.favoritesEnabled = false, "Favorites Off pulls never request favorites")
+    onScheduledProfileSyncResult(syncFlushEvent(task, syncFavoritesReceipt(syncFlushReadReceipt({rows: []}), "2026-11-20T10:00:00Z", "[12]")))
+    check(FormatJson(m.accountPreferences.favoriteIds) = "[""11""]" and m.guide.applied = invalid and m.favoritesPersists = 0, "Favorites Off never applies pulled favorites")
+
+    syncFavoritesFixture()
+    m.guide.lineup.aeriosession = "00000000-0000-4000-8000-000000000099"
+    onProfileSyncScheduleTick()
+    onScheduledProfileSyncResult(syncFlushEvent(m.profileScheduledSyncTask, syncFavoritesReceipt(syncFlushReadReceipt({rows: []}), "2026-11-20T10:00:00Z", "[12]")))
+    check(FormatJson(m.accountPreferences.favoriteIds) = "[""11""]" and m.favoritesPersists = 0, "a lineup from another session cannot translate or acknowledge a pull")
+end sub
+
+sub syncFavoritesFixture()
+    syncScheduledFixture()
+    m.busy = false
+    m.store = setCanonicalPreference(m.store, "pendingRoster", false)
+    m.registry.values[userProfileStoreKey("slot-a")] = FormatJson(m.store)
+    m.receipt.storeRoot = m.registry.values[userProfileStoreKey("slot-a")]
+    m.profileRosterEnabled = true
+    m.profileFavoritesEnabled = true
+    m.accountIdentity = m.scope.preferenceIdentity
+    m.accountPreferences = normalizeAccountPreferences({favoriteIds: ["11"]})
+    m.favoritesPersists = 0
+    m.guide = {active: true, applied: invalid, lineup: {aeriosession: m.scope.sessionId, channels: [{id: "11", uuid: "u-a"}, {id: "12", uuid: "u-b"}]}
+        callFunc: function(name as string, data = invalid as dynamic) as dynamic
+            if name = "syncFavoritesLineup" then return m.lineup
+            if name = "applySyncedFavorites"
+                m.applied = data
+                return true
+            end if
+            return invalid
+        end function
+    }
+end sub
+
+function syncFavoritesReceipt(receipt as object, stamp as string, ids as string) as object
+    receipt.favoritesCategory = ParseJson("{""updatedAt"":""" + stamp + """,""deviceId"":""peer"",""data"":{""ids"":" + ids + "}}")
+    return receipt
+end function
+
+function persistAccountPreferences() as boolean
+    m.favoritesPersists++
+    return true
+end function
 
 function syncMaxAppsReceipt(task as object) as object
     return {ok: false, state: "storage-full", phase: "put", status: 409, submitted: true, creationBlocked: true, scope: m.scope, connectionRoot: task.connectionRoot, credentialHash: requestGateCredentialHash(m.key), canonicalKey: "alice.aeriotv"}

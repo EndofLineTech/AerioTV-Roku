@@ -20,7 +20,8 @@ required; a phone payload never enables Sync. No production App Data upload or
 named Android/Apple interoperability is claimed.
 
 Profile spec §13.8 permits preserving categories Roku does not implement. The
-engine owns only `profiles`; general favorites/VOD/settings adapters and
+engine owns `profiles` and, since `e3e.7`, `favorites` (see
+[Favorites category](#favorites-category)); VOD/settings adapters and
 full-category legacy migration are **not delivered** and are not additional
 requirements invented for this profiles-only phase. Legacy-only discovery
 remains read-only.
@@ -423,3 +424,48 @@ Private explicit device-wide Sync/Profiles controls, exact-root persistence,
 real remote interaction and cold restore are now qualified separately in
 [DISPATCHARR-SYNC-CONTROLS.md](DISPATCHARR-SYNC-CONTROLS.md). This does not enable
 shipping readiness or establish general category/public acceptance.
+
+## Favorites category
+
+Owner decision 2026-11-23 (`e3e.7`). Host-tested only; no device, provider or
+peer qualification is claimed.
+
+- **Checked body.** `dispatcharrSyncCheckedWriteBody` accepts a rebuild of
+  `profiles`, `favorites`, or both (each at most once). Every other category,
+  envelope member and unknown member keeps the existing typed preservation
+  check. `dispatcharrSyncFavoritesCategoryWritable` requires an ISO `updatedAt`,
+  `deviceId` equal to the envelope, and `data.ids` of unique positive int32
+  values (at most 1,000). Other `data` members and `extra` must round-trip.
+  The reparsed body must still read as a valid favorites category.
+- **Preparation.** `dispatcharrSyncPrepareProfilesWrite` takes an optional
+  favorites plan and rebuilds both in one PUT; `dispatcharrSyncPrepareFavoritesWrite`
+  rebuilds favorites alone and never touches profiles. `dispatcharrSyncFavoritesWritePlan`
+  translates the local list through the supplied lineup and carries every
+  server id this lineup cannot translate (`dispatcharrSyncFavoritesWireIds`).
+  If the server category is newer than this profile's acknowledged stamp and
+  it holds lineup channels the local list lacks, the Task returns
+  `local-commit` instead of a PUT. The Scene merges first, then a fresh write
+  runs, so a write cannot drop another device's addition. Identical ids
+  return `unchanged` with no PUT.
+- **Task.** `DispatcharrSyncWriteTask` gains `favoritesEnabled`,
+  `favoritesPending`, `favorites` ({ids, channels: [{id, uuid}], acknowledgedAt})
+  and `favoritesIntent`. A category is rebuilt only when it is On and has its
+  own pending intent. Admission needs Profiles or Favorites On. A push needs
+  pending roster intent with Profiles On, or pending favorites. Receipts carry
+  `rebuilt`. When favorites were rebuilt, they also carry `favoritesIntent` and
+  `favoritesStamp`. Otherwise, with Favorites On, they carry the freshly read
+  `favoritesCategory`. The oversize intent digest includes the favorites
+  intent (`dispatcharrSyncWriteIntentDigest`). With no pending favorites it
+  equals the roster digest.
+- **Acknowledgement.** Roster acknowledgement (`syncProfilesAckV1_<slot>`)
+  runs only when `profiles` was rebuilt. A favorites-only receipt proves the
+  same own scope, roots and credential through `dispatcharrSyncOwnReceiptAccess`
+  without requiring or clearing roster pending state.
+  `dispatcharrSyncFavoritesAcknowledge` clears favorites pending only when the
+  current ordered list still equals the written intent. Its stamp never
+  regresses.
+
+Limits: the 1,000-id wire cap truncates a longer local list on write (local
+cap is 2,000). A persisted post-hold roster fence (`rosterPullRequired`) also
+blocks favorites writes, and with Profiles Off that fence is not cleared by
+favorites pulls. The outgoing profile-switch flush still writes profiles only.

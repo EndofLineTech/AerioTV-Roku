@@ -10,6 +10,10 @@
     <field id="connectionRoot" type="string" />
     <field id="storeRoot" type="string" />
     <field id="profilesEnabled" type="boolean" />
+    <field id="favoritesEnabled" type="boolean" />
+    <field id="favoritesPending" type="boolean" />
+    <field id="favorites" type="assocarray" />
+    <field id="favoritesIntent" type="string" />
     <field id="pullOnly" type="boolean" />
     <field id="creationBlocked" type="boolean" />
     <field id="expectedAuthorizationSignature" type="string" />
@@ -28,6 +32,8 @@
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncMerge.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncRosterWrite.brs" />
   <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncWriteBody.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncMapping.brs" />
+  <script type="text/brightscript" uri="pkg:/source/DispatcharrSyncFavorites.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileModel.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileStore.brs" />
   <script type="text/brightscript" uri="pkg:/source/UserProfileLifecycle.brs" />

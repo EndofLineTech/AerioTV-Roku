@@ -6,8 +6,10 @@ required. See [delivery status](MRR-DELIVERY-STATUS.md) for historical two-accou
 PUT/readback/acknowledgement/Off qualification. That qualification is not blanket
 permission for future writes and is not Apple or Android Sync acceptance.
 
-The approved delivery phase is **profiles-only**. Unsupported categories and
-settings lanes are preserved, not additional adapters required for this phase.
+The approved delivery phase was **profiles-only**. The owner extended it on
+2026-11-23 (`e3e.7`) with the Guide [favorites](#favorites) category. Other
+unsupported categories and settings lanes are still preserved, not additional
+adapters required for this phase.
 Neither that phase nor this document closes the broader `e3e.7` Shared/TV/Off
 settings-scope requirement or its direct blockers `e3e.4` and `e3e.6`.
 
@@ -40,9 +42,10 @@ The focused source-row regression is
 - The existing selected Connection manager offers **Dispatcharr Sync (this Roku)**
   only when the feature is ready and there is a current full-access Dispatcharr
   holder. There is no new Settings rail category.
-- Choices are device-wide: explicit Sync On/Off and Profiles On/Off. Sync defaults
-  Off. Only Profiles is owned by this writer; other categories are
-  preserved unchanged, not claimed implemented.
+- Choices are device-wide: explicit Sync On/Off, Profiles On/Off and
+  Favorites On/Off. Sync and Favorites default Off. Profiles and Favorites are
+  owned by this writer; other categories are preserved unchanged, not claimed
+  implemented.
 - The menu explains device scope and preservation. Scheduled sync waits until
   the menu closes. Off cancels scheduled work and stops its timer without
   clearing durable pending edits.
@@ -76,6 +79,56 @@ write/Flush failures refuse safely. Unknown root/device/account fields and nativ
 number kinds remain intact. Missing choices do not cause a normalization write;
 malformed opt-in never enables sync. A valid explicit Profiles Off is retained
 even if another sync choice is malformed.
+
+## Favorites
+
+The Sync menu (Connection manager → **Dispatcharr Sync (this Roku)**) shows,
+in order: **Turn On Dispatcharr Sync** / **Turn Off Dispatcharr Sync**,
+**Turn Off Profiles** / **Turn On Profiles**, **Turn On Favorites** /
+**Turn Off Favorites**, and **Back**. The choice is stored as
+`settingsV1.device.dispatcharrSyncFavorites` (exact case, boolean) in the same
+bounded transaction as the other choices. If the member is missing, Favorites
+is Off. A malformed value fails closed, like the other choices. A change that
+does not name Favorites keeps the stored member. Status shows
+`On — Profiles and Favorites`, `On — Favorites` (Profiles Off) or
+`Changes pending` when this profile has unsent favorites.
+
+Favorites work only while Sync **and** Favorites are On. Profiles may be Off.
+In that case the scheduler still runs its own pulls and writes, but it never
+imports roster data or writes the profiles category.
+
+- **Pending.** A Guide favorite toggle (`onPreferences`) marks the active
+  profile's favorites pending only while both switches are On. The existing
+  one-second dirty debounce schedules the write.
+- **Profile-owned state.** It lives in that profile's account preferences as
+  `dispatcharrSyncFavorites: {pending, acknowledgedAt}` beside `favoriteIds`.
+  It is never a device or wire field. Removing a profile removes it.
+- **Pulls.** Every scheduled own read (session start, 15-minute cadence,
+  picker and network return) returns the server category. A category newer
+  than `acknowledgedAt` is applied with `dispatcharrSyncFavoritesOnNewerPull`:
+  - Clean: the server order wins, but a local favorite outside the current
+    lineup is kept.
+  - Pending: union, local first. Untranslatable server ids stay on the server
+    and are carried on the next write.
+  - First sync: a profile with local favorites and no sync record merges
+    instead of replacing.
+- **Lineup.** Translation uses only the active session's Dispatcharr Guide
+  lineup (`syncFavoritesLineup`: channel `id` + `uuid`). Without one, nothing
+  is applied, acknowledged or written.
+- **Guide refresh.** Applied lists persist to the active profile and refresh
+  the favorites group and FAV badges (`applySyncedFavorites`) without
+  republishing them as a local edit.
+- **Off.** Off never applies pulled favorites and never rebuilds the category.
+  A whole-envelope PUT for profiles carries it unchanged.
+
+Console lines for QA (counts only, no ids):
+`[dispatcharr-sync] favorites pending count=`,
+`[dispatcharr-sync] favorites applied count= … pending=` and
+`[dispatcharr-sync] favorites acknowledged pending=`.
+
+Limit: edits made while Favorites or Sync is Off are not marked pending. A
+profile that already synced and is later re-enabled takes a newer clean server
+list for lineup channels; off-lineup favorites are still kept.
 
 ## Qualification
 

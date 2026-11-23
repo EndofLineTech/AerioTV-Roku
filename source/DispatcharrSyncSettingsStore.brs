@@ -8,11 +8,12 @@ function dispatcharrSyncLocalPendingAllowed(registry as object, context as objec
 end function
 
 function loadDispatcharrSyncSettings(registry as object) as object
-    denied = {ok: false, enabled: false, profiles: true}
+    denied = {ok: false, enabled: false, profiles: true, favorites: false}
     store = loadStrictPreferenceStore(registry)
     if store.readOnly = true then return denied
-    result = {ok: true, enabled: false, profiles: true, store: store}
-    for each field in ["dispatcharrSyncEnabled", "dispatcharrSyncProfiles"]
+    ' Favorites is an explicit opt-in: missing means Off.
+    result = {ok: true, enabled: false, profiles: true, favorites: false, store: store}
+    for each field in ["dispatcharrSyncEnabled", "dispatcharrSyncProfiles", "dispatcharrSyncFavorites"]
         count = 0
         value = invalid
         for each key in store.device
@@ -28,10 +29,14 @@ function loadDispatcharrSyncSettings(registry as object) as object
             else
                 if field = "dispatcharrSyncEnabled" then result.enabled = value
                 if field = "dispatcharrSyncProfiles" then result.profiles = value
+                if field = "dispatcharrSyncFavorites" then result.favorites = value
             end if
         end if
     end for
-    if not result.ok then result.enabled = false
+    if not result.ok
+        result.enabled = false
+        result.favorites = false
+    end if
     return result
 end function
 
@@ -77,9 +82,11 @@ function dispatcharrSyncSettingsAccess(registry as object, context as object, ac
     return {ok: true, connection: entry, store: store}
 end function
 
-function commitDispatcharrSyncSettings(registry as object, context as object, activeScope as dynamic, activeKey as string, memoryKeys as object, enabled as dynamic, profiles as dynamic) as object
+' An omitted Favorites choice keeps the stored member untouched.
+function commitDispatcharrSyncSettings(registry as object, context as object, activeScope as dynamic, activeKey as string, memoryKeys as object, enabled as dynamic, profiles as dynamic, favorites = invalid as dynamic) as object
     denied = {ok: false, recoveryRequired: false}
     if not userProfileBoolean(enabled) or not userProfileBoolean(profiles) then return denied
+    if favorites <> invalid and not userProfileBoolean(favorites) then return denied
     access = dispatcharrSyncSettingsAccess(registry, context, activeScope, activeKey, memoryKeys)
     if not access.ok then return denied
     settings = loadDispatcharrSyncSettings(registry)
@@ -87,6 +94,7 @@ function commitDispatcharrSyncSettings(registry as object, context as object, ac
     staged = settings.store
     device = setCanonicalPreference(staged.device, "dispatcharrSyncEnabled", enabled)
     device = setCanonicalPreference(device, "dispatcharrSyncProfiles", profiles)
+    if favorites <> invalid then device = setCanonicalPreference(device, "dispatcharrSyncFavorites", favorites)
     staged = setCanonicalPreference(staged, "device", device)
     encoded = strictJsonEncode(staged)
     if not encoded.ok then return denied
@@ -96,7 +104,8 @@ function commitDispatcharrSyncSettings(registry as object, context as object, ac
     saved = userProfileRegistryTransaction(registry, changes)
     if not saved.ok then return saved
     saved.preferenceStore = staged
-    saved.settings = {enabled: enabled, profiles: profiles}
+    if favorites = invalid then favorites = settings.favorites
+    saved.settings = {enabled: enabled, profiles: profiles, favorites: favorites}
     saved.settingsRoot = encoded.text
     return saved
 end function

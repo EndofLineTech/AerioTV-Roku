@@ -43,6 +43,51 @@ sub main()
     check(encoded.updatedAt = "2026-11-23T01:02:03Z" and encoded.deviceId = "roku-device", "category carries this write's stamp and device")
     check(FormatJson(encoded.data.ids) = "[13,11]" and encoded.data.doesExist("futureMember"), "only ids are replaced; unknown data members round-trip")
     check(category.data.ids.count() = 4, "the pulled category is not mutated")
+    ' Local carrier: favoriteIds hold lineup channel ids; off-lineup ids survive.
+    entries = dispatcharrSyncFavoritesLocalEntries(["13", "500", "11"], channels)
+    check(FormatJson(entries) = "[""u-c"",""#500"",""u-a""]", "local ids map to lineup UUIDs; an off-lineup id is kept as an opaque entry")
+    check(FormatJson(dispatcharrSyncFavoritesLocalIds(entries, channels)) = "[""13"",""500"",""11""]", "entries map back to the exact stored id text")
+
+    ' Profile-owned dirty/acknowledged state stays inside the account preferences.
+    prefs = {favoriteIds: ["11", "500"], other: "keep"}
+    state = dispatcharrSyncFavoritesState(prefs)
+    check(not state.known and not state.pending and state.acknowledgedAt = 0, "missing sync record is unknown, clean and unacknowledged")
+    marked = dispatcharrSyncFavoritesWithState(prefs, true, 7)
+    state = dispatcharrSyncFavoritesState(marked)
+    check(state.known and state.pending and state.acknowledgedAt = 7 and marked.other = "keep" and prefs.doesExist("dispatcharrSyncFavorites") = false, "state update keeps other preferences and does not mutate the input")
+    check(dispatcharrSyncFavoritesState({dispatcharrSyncFavorites: {pending: "yes", acknowledgedAt: 1.5}}).pending = false, "malformed state never invents pending intent")
+
+    ' Pulls: newer clean server list wins; never deletes untranslatable ids.
+    newer = ParseJson("{""updatedAt"":""2026-11-20T10:00:00Z"",""deviceId"":""peer"",""data"":{""ids"":[13,99,11]}}")
+    stamp = dispatcharrSyncIsoEpoch(newer.updatedAt)
+    clean = dispatcharrSyncFavoritesWithState({favoriteIds: ["12", "500", "11"]}, false, 1)
+    plan = dispatcharrSyncFavoritesPullPlan(clean, newer, channels)
+    check(plan.applied and plan.changed and FormatJson(plan.preferences.favoriteIds) = "[""13"",""11"",""500""]", "clean newer pull applies server order, drops a removed lineup channel and keeps an off-lineup favorite")
+    check(not dispatcharrSyncFavoritesState(plan.preferences).pending and dispatcharrSyncFavoritesState(plan.preferences).acknowledgedAt = stamp, "clean pull records the applied server stamp without pending intent")
+    again = dispatcharrSyncFavoritesPullPlan(plan.preferences, newer, channels)
+    check(not again.applied and not again.changed, "an already applied stamp is not reapplied")
+    dirty = dispatcharrSyncFavoritesWithState({favoriteIds: ["14", "11"]}, true, 1)
+    plan = dispatcharrSyncFavoritesPullPlan(dirty, newer, channels)
+    check(plan.applied and FormatJson(plan.preferences.favoriteIds) = "[""14"",""11"",""13""]" and dispatcharrSyncFavoritesState(plan.preferences).pending, "dirty newer pull unions local first and keeps the unsent change pending")
+    first = dispatcharrSyncFavoritesPullPlan({favoriteIds: ["14"]}, newer, channels)
+    check(first.applied and FormatJson(first.preferences.favoriteIds) = "[""14"",""13"",""11""]" and dispatcharrSyncFavoritesState(first.preferences).pending, "first sync of existing local favorites merges instead of replacing them")
+    empty = dispatcharrSyncFavoritesPullPlan({favoriteIds: []}, newer, channels)
+    check(empty.applied and FormatJson(empty.preferences.favoriteIds) = "[""13"",""11""]" and not dispatcharrSyncFavoritesState(empty.preferences).pending, "first sync with no local favorites takes the server list")
+    bad = ParseJson("{""updatedAt"":""2026-11-20T10:00:00Z"",""data"":{""ids"":[1.5]}}")
+    check(not dispatcharrSyncFavoritesPullPlan(clean, bad, channels).applied, "a malformed pulled category is ignored, never applied")
+    check(not dispatcharrSyncFavoritesPullPlan(clean, invalid, channels).applied, "an absent category changes nothing")
+    check(not dispatcharrSyncFavoritesPullPlan(clean, newer, []).applied, "without a current lineup nothing is applied or acknowledged")
+
+    ' Acknowledgement clears pending only for the exact written intent.
+    pending = dispatcharrSyncFavoritesWithState({favoriteIds: ["11"]}, true, 5)
+    intent = dispatcharrSyncFavoritesIntent(pending)
+    acked = dispatcharrSyncFavoritesAcknowledge(pending, intent, 9)
+    check(not dispatcharrSyncFavoritesState(acked).pending and dispatcharrSyncFavoritesState(acked).acknowledgedAt = 9, "matching acknowledgement clears pending and records the written stamp")
+    edited = mergeAccountPreferences(pending, {favoriteIds: ["11", "12"]})
+    acked = dispatcharrSyncFavoritesAcknowledge(edited, intent, 9)
+    check(dispatcharrSyncFavoritesState(acked).pending and dispatcharrSyncFavoritesState(acked).acknowledgedAt = 9, "an edit made during the write keeps pending intent")
+    check(dispatcharrSyncFavoritesState(dispatcharrSyncFavoritesAcknowledge(dispatcharrSyncFavoritesWithState(pending, true, 20), intent, 9)).acknowledgedAt = 20, "acknowledged stamp never regresses")
+    check(dispatcharrSyncFavoritesIntent({favoriteIds: ["11"]}) <> dispatcharrSyncFavoritesIntent({favoriteIds: ["12"]}), "intent follows the ordered favorites")
     print "ALL TESTS PASSED"
 end sub
 

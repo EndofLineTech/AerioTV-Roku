@@ -3,7 +3,8 @@ sub main()
     syncControlsFixture()
     openDispatcharrSyncControls()
     context = m.profileSyncSettingsContext
-    check(context <> invalid and m.connectionChoices.count() = 3 and m.connectionChoices[0].value = true and m.connectionChoices[1].value = false, "private selected-connection controls offer explicit opt-in and Profiles choices without enabling them")
+    check(context <> invalid and m.connectionChoices.count() = 4 and m.connectionChoices[0].value = true and m.connectionChoices[1].value = false, "private selected-connection controls offer explicit opt-in and Profiles choices without enabling them")
+    check(m.connectionChoices[2].action = "syncFavorites" and m.connectionChoices[2].title = "Turn On Favorites" and m.connectionChoices[2].value = true and m.connectionChoices[3].action = "cancel", "Favorites is a separate explicit opt-in next to Profiles, Off by default")
     check(toggleDispatcharrSyncControls(context, "enabled", true), "actual current full-access holder may explicitly enable device-wide sync")
     check(loadDispatcharrSyncSettings(m.registry).enabled and m.profileSyncEnabled and loadUserProfileStore(m.registry, "slot-a").pendingRoster, "explicit opt-in updates runtime choice but leaves durable dirty intent")
     check(m.devicePreferences.dispatcharrSyncEnabled and m.devicePreferences.dispatcharrSyncProfiles and m.devicePreferences.futureDevice = "keep", "controls update the cached device choices used by outgoing profile preference saves")
@@ -81,6 +82,25 @@ sub main()
         m.registry.values["settingsV1"] = "{""schema"":1,""device"":{""dispatcharrSyncEnabled"":true,""DispatcharrSyncEnabled"":false},""accounts"":{}}"
         check(not loadDispatcharrSyncSettings(m.registry).ok, "native ambiguous opt-in aliases fail closed rather than choosing a value")
     end if
+    syncControlsFixture()
+    openDispatcharrSyncControls()
+    context = m.profileSyncSettingsContext
+    check(toggleDispatcharrSyncControls(context, "favorites", true), "actual current full-access holder may turn Favorites On")
+    settings = loadDispatcharrSyncSettings(m.registry)
+    check(settings.ok and settings.favorites and not settings.enabled and settings.profiles and m.profileFavoritesEnabled and m.devicePreferences.dispatcharrSyncFavorites, "Favorites choice is device-wide, independent of Sync and Profiles, and updates the runtime cache")
+    check(m.connectionChoices[2].title = "Turn Off Favorites" and m.connectionChoices[2].value = false, "reopened controls offer to turn Favorites Off")
+    syncSettingsFixture()
+    saved = commitDispatcharrSyncSettings(m.registry, m.context, m.scope, m.key, {}, true, true, true)
+    check(saved.ok and saved.settings.favorites and loadDispatcharrSyncSettings(m.registry).favorites, "explicit Favorites On commits in the same settings transaction")
+    m.context.settingsRoot = m.registry.values["settingsV1"]
+    saved = commitDispatcharrSyncSettings(m.registry, m.context, m.scope, m.key, {}, false, true)
+    check(saved.ok and loadDispatcharrSyncSettings(m.registry).favorites, "a Sync or Profiles change without a Favorites choice keeps the stored Favorites choice")
+    syncSettingsFixture()
+    check(not loadDispatcharrSyncSettings(m.registry).favorites, "missing Favorites choice defaults Off")
+    check(not commitDispatcharrSyncSettings(m.registry, m.context, m.scope, m.key, {}, true, true, "true").ok, "a non-boolean Favorites choice is refused")
+    m.registry.values["settingsV1"] = "{""schema"":1,""device"":{""dispatcharrSyncEnabled"":true,""dispatcharrSyncFavorites"":1},""accounts"":{}}"
+    settings = loadDispatcharrSyncSettings(m.registry)
+    check(not settings.ok and not settings.enabled and not settings.favorites, "malformed Favorites choice fails closed")
     print "ALL TESTS PASSED"
 end sub
 
@@ -104,6 +124,7 @@ sub syncControlsFixture()
     m.busy = false
     m.profileSyncEnabled = false
     m.profileRosterEnabled = true
+    m.profileFavoritesEnabled = false
     m.profileSyncClock = invalid
     m.devicePreferences = {dispatcharrSyncEnabled: false, dispatcharrSyncProfiles: true, futureDevice: "keep"}
 end sub

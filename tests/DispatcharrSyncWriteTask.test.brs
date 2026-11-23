@@ -59,6 +59,24 @@ sub main()
             check(m.top.result.state <> "too-large", "typed oversize feedback cannot survive " + change)
         end if
     end for
+    for each scenario in ["favorites-only", "favorites-profiles-off", "favorites-both", "favorites-clean", "favorites-pull", "favorites-local-commit", "favorites-off-pending"]
+        syncWriterFixture(scenario)
+        writeDispatcharrSync()
+        puts = 0
+        for each call in m.calls
+            if call.method = "PUT" then puts++
+        end for
+        if scenario = "favorites-only" or scenario = "favorites-profiles-off"
+            check(m.top.result.ok and m.top.result.state = "written" and puts = 1 and FormatJson(m.top.result.rebuilt) = "[""favorites""]" and m.top.result.favoritesIntent = "[""11""]" and m.top.result.favoritesStamp = 300, "pending favorites alone are written through fresh own me/list/key and one checked PUT: " + scenario)
+            check(m.preparedFavorites.channels.count() = 1 and m.preparedRoster = false, "favorites-only write never rebuilds clean or Off profiles: " + scenario)
+        else if scenario = "favorites-both"
+            check(m.top.result.ok and puts = 1 and m.preparedRoster and m.preparedFavorites <> invalid and FormatJson(m.top.result.rebuilt) = "[""profiles"",""favorites""]", "dirty profiles and favorites share one checked PUT")
+        else if scenario = "favorites-clean" or scenario = "favorites-off-pending"
+            check(not m.top.result.ok and m.calls.count() = 0, "nothing pending for an enabled category sends no request: " + scenario)
+        else
+            check(m.top.result.state = "local-commit" and puts = 0 and m.top.result.favoritesCategory <> invalid and m.top.result.favoritesCategory.data.ids.count() = 2, "favorites pull returns the fresh server category for local application without a PUT: " + scenario)
+        end if
+    end for
     print "ALL TESTS PASSED"
 end sub
 
@@ -79,7 +97,7 @@ sub syncWriterFixture(scenario as string)
     store.profiles = [profile]
     store.active = profile.id
     store.pendingRoster = true
-    if scenario = "pull-clean" then store.pendingRoster = false
+    if scenario = "pull-clean" or scenario = "favorites-only" or scenario = "favorites-clean" or scenario = "favorites-pull" or scenario = "favorites-local-commit" or scenario = "favorites-off-pending" then store.pendingRoster = false
     values = {connectionsV1: FormatJson(connections)}
     values[userProfileStoreKey("slot-a")] = FormatJson(store)
     values["connKey_slot-a"] = "synthetic-own"
@@ -99,6 +117,15 @@ sub syncWriterFixture(scenario as string)
     m.top.pullOnly = scenario = "pull-clean" or scenario = "pull-dirty"
     m.top.creationBlocked = scenario = "missing-blocked" or scenario = "creation-blocked-existing"
     if scenario = "stale" then m.global.activeusersession = "00000000-0000-4000-8000-000000000091"
+    m.preparedFavorites = invalid
+    m.preparedRoster = false
+    favoritesScenario = left(scenario, 9) = "favorites"
+    m.top.favoritesEnabled = favoritesScenario and scenario <> "favorites-off-pending"
+    m.top.favoritesPending = favoritesScenario and scenario <> "favorites-clean" and scenario <> "favorites-pull"
+    m.top.favorites = {ids: ["11"], channels: [{id: "11", uuid: "u-a"}], acknowledgedAt: 0}
+    m.top.favoritesIntent = "[""11""]"
+    if scenario = "favorites-profiles-off" then m.top.profilesEnabled = false
+    if scenario = "favorites-pull" then m.top.pullOnly = true
 end sub
 
 function requestGateAccessAllowed(url as string, key as string) as boolean
@@ -155,7 +182,7 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
         if m.scenario = "advertised-quota" then response.body = FormatJson({apps: apps, total_bytes: 1024, limits: {max_value_bytes: 100, max_total_bytes: 900, max_apps: 25}})
         if m.scenario = "list-denied" then response.status = 403
     else
-        response.body = "{""schemaVersion"":3,""deviceId"":""fixture"",""platform"":""android"",""appVersion"":""1"",""updatedAt"":""2026-11-14T17:00:00Z"",""categories"":{""profiles"":{""updatedAt"":""2026-11-14T17:00:00Z"",""data"":{""rows"":[]}}}}"
+        response.body = "{""schemaVersion"":3,""deviceId"":""fixture"",""platform"":""android"",""appVersion"":""1"",""updatedAt"":""2026-11-14T17:00:00Z"",""categories"":{""profiles"":{""updatedAt"":""2026-11-14T17:00:00Z"",""data"":{""rows"":[]}},""favorites"":{""updatedAt"":""2026-11-14T17:00:00Z"",""data"":{""ids"":[11,99]}}}}"
         if m.scenario = "missing404" or m.scenario = "missing-blocked" or m.scenario = "listed404" or m.scenario = "legacy-listed404" or m.scenario = "advertised-cap-create" then response.status = 404 : response.body = "{""code"":""key_not_found""}"
         if m.scenario = "key-denied" then response.status = 403
         if m.scenario = "proxy404" then response.status = 404 : response.body = "<html>Not found</html>"
@@ -166,9 +193,19 @@ function httpTransferOnce(url as string, body as dynamic, bearer as string, time
     return response
 end function
 
-function dispatcharrSyncPrepareProfilesWrite(original as dynamic, store as object, enabled as boolean, now as integer, acknowledgedStamp as dynamic, deviceId as string, appVersion as string) as object
+function dispatcharrSyncPrepareProfilesWrite(original as dynamic, store as object, enabled as boolean, now as integer, acknowledgedStamp as dynamic, deviceId as string, appVersion as string, favorites = invalid as dynamic) as object
+    m.preparedRoster = true
+    m.preparedFavorites = favorites
     if m.scenario = "local-cap" then return {ok: false, state: "too-large", reason: "size"}
-    return {ok: true, allowWrite: false, body: "{""schemaVersion"":3,""synthetic"":true}", bytes: 36, localPlan: {store: store}, needsLocalCommit: m.scenario = "local-commit", unchanged: m.scenario = "unchanged", maximumSentStamp: 100}
+    rebuilt = ["profiles"]
+    if favorites <> invalid then rebuilt.push("favorites")
+    return {ok: true, allowWrite: false, body: "{""schemaVersion"":3,""synthetic"":true}", bytes: 36, localPlan: {store: store}, needsLocalCommit: m.scenario = "local-commit", unchanged: m.scenario = "unchanged", maximumSentStamp: 100, rebuilt: rebuilt, stamp: 300}
+end function
+
+function dispatcharrSyncPrepareFavoritesWrite(original as dynamic, favorites as dynamic, now as integer, deviceId as string, appVersion as string) as object
+    m.preparedFavorites = favorites
+    if m.scenario = "favorites-local-commit" then return {ok: true, allowWrite: false, body: "", needsLocalCommit: true, unchanged: false, rebuilt: []}
+    return {ok: true, allowWrite: false, body: "{""schemaVersion"":3,""synthetic"":true}", bytes: 36, needsLocalCommit: false, unchanged: false, rebuilt: ["favorites"], stamp: 300}
 end function
 
 sub check(passed as boolean, message as string)

@@ -49,15 +49,17 @@ sub openDispatcharrSyncControls()
     if settings.enabled then enabledTitle = "Turn Off Dispatcharr Sync"
     profilesTitle = "Turn Off Profiles"
     if not settings.profiles then profilesTitle = "Turn On Profiles"
-    choices = [{title: enabledTitle, action: "syncEnabled", value: not settings.enabled}, {title: profilesTitle, action: "syncProfiles", value: not settings.profiles}, {title: "Back", action: "cancel"}]
-    message = dispatcharrSyncStatusText(settings) + chr(10) + "These choices apply to this Roku, across all playlists and profiles. Sync starts after closing this menu; Off retains pending edits. Only Profiles is supported here. Other categories are preserved unchanged."
+    favoritesTitle = "Turn On Favorites"
+    if settings.favorites then favoritesTitle = "Turn Off Favorites"
+    choices = [{title: enabledTitle, action: "syncEnabled", value: not settings.enabled}, {title: profilesTitle, action: "syncProfiles", value: not settings.profiles}, {title: favoritesTitle, action: "syncFavorites", value: not settings.favorites}, {title: "Back", action: "cancel"}]
+    message = dispatcharrSyncStatusText(settings) + chr(10) + "These choices apply to this Roku, across all playlists and profiles. Sync starts after closing this menu; Off retains pending edits. Profiles and each profile's Guide favorites are supported here. Other categories are preserved unchanged."
     openConnectionDialog("Dispatcharr Sync", message, choices)
     if m.connectionDialog <> invalid then m.profileSyncSettingsContext = context
 end sub
 
 function dispatcharrSyncStatusText(settings as object) as string
     if not settings.enabled then return "Off"
-    if not settings.profiles then return "On — Profiles Off"
+    if not settings.profiles and not settings.favorites then return "On — Profiles Off"
     if m.profileSyncLinkKnown = true and m.profileSyncLinkUp <> true then return "Waiting for network"
     if type(m.profileSyncSchedule) = "roAssociativeArray"
         if userProfileSameSession(m.profileSyncSchedule.scope, m.activeUserScope)
@@ -71,8 +73,13 @@ function dispatcharrSyncStatusText(settings as object) as string
         for each profile in store.profiles
             if profile.addressHeld then return "Profiles paused while saved addresses are held"
         end for
-        if store.pendingRoster then return "Changes pending"
+        if store.pendingRoster and settings.profiles then return "Changes pending"
     end if
+    if settings.favorites and type(m.accountPreferences) = "roAssociativeArray"
+        if dispatcharrSyncFavoritesState(m.accountPreferences).pending then return "Changes pending"
+    end if
+    if not settings.profiles then return "On — Favorites"
+    if settings.favorites then return "On — Profiles and Favorites"
     return "On — Profiles"
 end function
 
@@ -87,15 +94,17 @@ function toggleDispatcharrSyncControls(context as dynamic, field as string, valu
     if userProfileGateClosed() or m.activeUserScope = invalid then return false
     if textValue(m.global.activeusersession) <> textValue(m.activeUserScope.sessionId) then return false
     if m.profileSwitchContext <> invalid or m.profileOwnSignInContext <> invalid then return false
-    if field <> "enabled" and field <> "profiles" then return false
+    if field <> "enabled" and field <> "profiles" and field <> "favorites" then return false
     if not userProfileBoolean(value) then return false
     settings = loadDispatcharrSyncSettings(m.registry)
     if not settings.ok then return false
     enabled = settings.enabled
     profiles = settings.profiles
+    favorites = settings.favorites
     if field = "enabled" then enabled = value
     if field = "profiles" then profiles = value
-    saved = commitDispatcharrSyncSettings(m.registry, context, m.activeUserScope, textValue(m.apiKey), dispatcharrSyncSettingsMemory(context), enabled, profiles)
+    if field = "favorites" then favorites = value
+    saved = commitDispatcharrSyncSettings(m.registry, context, m.activeUserScope, textValue(m.apiKey), dispatcharrSyncSettingsMemory(context), enabled, profiles, favorites)
     if not saved.ok
         if saved.recoveryRequired = true then coverScheduledProfileSync()
         showNotice("Could not safely save sync choices. Existing data was retained.")
@@ -106,6 +115,7 @@ function toggleDispatcharrSyncControls(context as dynamic, field as string, valu
     ' consent/category choices current so an outgoing save cannot revert them.
     m.devicePreferences = setCanonicalPreference(m.devicePreferences, "dispatcharrSyncEnabled", enabled)
     m.devicePreferences = setCanonicalPreference(m.devicePreferences, "dispatcharrSyncProfiles", profiles)
+    m.devicePreferences = setCanonicalPreference(m.devicePreferences, "dispatcharrSyncFavorites", favorites)
     applyDispatcharrSyncChoices()
     ' A new opt-in/category lifecycle starts with fresh own me/list/key discovery.
     m.profileSyncSchedule = invalid
@@ -118,12 +128,13 @@ sub applyDispatcharrSyncChoices()
     settings = loadDispatcharrSyncSettings(m.registry)
     m.profileSyncEnabled = settings.enabled = true
     m.profileRosterEnabled = settings.profiles = true
+    m.profileFavoritesEnabled = settings.favorites = true
     m.profileSyncSettingsValid = settings.ok = true
     if not m.profileRosterEnabled
         m.profileRosterSuggestions = []
         m.profileRosterSuggestionScope = invalid
     end if
-    if not m.profileSyncEnabled or not m.profileRosterEnabled
+    if not m.profileSyncEnabled or (not m.profileRosterEnabled and not m.profileFavoritesEnabled)
         closeScheduledProfileSync()
         if m.profileSyncClock <> invalid then m.profileSyncClock.control = "stop"
         m.profileSyncSchedule = invalid

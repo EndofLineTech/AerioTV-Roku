@@ -12,6 +12,14 @@ function dispatcharrSyncRosterIntentDigest(store as object) as string
     return requestGateCredentialHash(FormatJson([rows, store.removed]))
 end function
 
+' Combined write intent. Without pending favorites this is exactly the roster
+' digest, so profiles-only scheduling and oversize matching are unchanged.
+function dispatcharrSyncWriteIntentDigest(store as object, favoritesIntent as string) as string
+    roster = dispatcharrSyncRosterIntentDigest(store)
+    if favoritesIntent = "" then return roster
+    return requestGateCredentialHash(roster + "|" + favoritesIntent)
+end function
+
 function dispatcharrSyncScheduleBind(previous as dynamic, scope as dynamic, now as integer) as dynamic
     if type(scope) <> "roAssociativeArray" or now <= 0 then return invalid
     if userProfileLocalId(textValue(scope.sessionId)) = "" or userProfileLocalId(textValue(scope.profileId)) = "" then return invalid

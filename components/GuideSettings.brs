@@ -144,6 +144,27 @@ sub applyRefreshedLineup(data as object)
     if m.top.playbackChannel <> invalid then onPlaybackChannel()
 end sub
 
+' Sync translates favorites only through this session's authorized
+' Dispatcharr lineup. Only ids and UUIDs cross to the Scene.
+function syncFavoritesLineup() as object
+    result = {aeriosession: m.userSessionId, channels: []}
+    if m.providerType <> "dispatcharr" or type(m.channels) <> "roArray" then return result
+    for each channel in m.channels
+        result.channels.push({id: channel.id, uuid: channel.uuid})
+    end for
+    return result
+end function
+
+' Applies a pulled favorites list without publishing it back as a local edit.
+function applySyncedFavorites(data as object) as boolean
+    if type(data) <> "roAssociativeArray" or textValue(m.userSessionId) = "" then return false
+    if userViewSession(data) <> m.userSessionId or type(data.favoriteIds) <> "roArray" then return false
+    m.savedFavoriteIds = copyPreferenceValue(data.favoriteIds)
+    m.favorites = guideFavoriteSelection(m.savedFavoriteIds, m.channels)
+    rebuildGuideGroups(false)
+    return true
+end function
+
 sub openGuideSetting(kind as string)
     if not guideProfileActionAllowed(m.userRole, kind) then return
     items = []

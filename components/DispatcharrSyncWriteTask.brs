@@ -1,5 +1,5 @@
-' Qualified own-canonical profiles writer. Explicit user consent and live
-' Scene dirty/ack/protection/request gates remain mandatory.
+' Qualified own-canonical profiles/favorites writer. Explicit user consent and
+' live Scene dirty/ack/protection/request gates remain mandatory.
 sub init()
     m.top.functionName = "writeDispatcharrSync"
     m.syncWriterReady = false
@@ -51,7 +51,16 @@ sub writeDispatcharrSync()
         return
     end if
     preparedStore = m.writerStore
-    prepared = dispatcharrSyncPrepareProfilesWrite(latest.data, preparedStore, m.top.profilesEnabled, CreateObject("roDateTime").asSeconds(), m.top.acknowledgedStamp, m.top.deviceId, m.top.appVersion)
+    ' Each category is rebuilt only when it is On and has its own pending intent.
+    favorites = invalid
+    if syncWriterFavoritesPending() then favorites = m.top.favorites
+    now = CreateObject("roDateTime").asSeconds()
+    prepared = invalid
+    if m.top.profilesEnabled = true and preparedStore.pendingRoster = true
+        prepared = dispatcharrSyncPrepareProfilesWrite(latest.data, preparedStore, m.top.profilesEnabled, now, m.top.acknowledgedStamp, m.top.deviceId, m.top.appVersion, favorites)
+    else
+        prepared = dispatcharrSyncPrepareFavoritesWrite(latest.data, favorites, now, m.top.deviceId, m.top.appVersion)
+    end if
     if not prepared.ok
         if type(prepared.localPlan) = "roAssociativeArray"
             finishDispatcharrSyncWrite(syncWriterLocalReadReceipt(latest.data, user))
@@ -66,12 +75,12 @@ sub writeDispatcharrSync()
     end if
     if not syncWriterAccessCurrent() then finishDispatcharrSyncWrite({ok: false, state: "stale-context"}) : return
     if prepared.unchanged = true
-        finishDispatcharrSyncWrite({ok: true, state: "unchanged", submitted: false, readStatus: 200, maximumSentStamp: prepared.maximumSentStamp, storeRoot: m.top.storeRoot, connectionRoot: m.top.connectionRoot, credentialHash: requestGateCredentialHash(m.key), scope: m.top.userScope})
+        finishDispatcharrSyncWrite(syncWriterReceipt({ok: true, state: "unchanged", submitted: false, readStatus: 200, maximumSentStamp: prepared.maximumSentStamp, storeRoot: m.top.storeRoot, connectionRoot: m.top.connectionRoot, credentialHash: requestGateCredentialHash(m.key), scope: m.top.userScope}, prepared, latest.data, false))
         return
     end if
     budget = dispatcharrSyncWriteBudget(listing.data, key, prepared.bytes)
     if not budget.ok then finishDispatcharrSyncWrite(budget) : return
-    rosterIntent = dispatcharrSyncRosterIntentDigest(preparedStore)
+    rosterIntent = dispatcharrSyncWriteIntentDigest(preparedStore, syncWriterFavoritesIntent())
     response = httpTransferOnce(url, invalid, "", 10000, 65536, "PUT", prepared.body)
     failure = invalid
     if response.status = 409 or response.status = 413 then failure = syncWriterResponseFailure("put", response)
@@ -81,7 +90,7 @@ sub writeDispatcharrSync()
         if syncWriterAccessCurrent(false)
             sameIntent = false
             if failure.state = "too-large" and rosterIntent <> ""
-                sameIntent = dispatcharrSyncRosterIntentDigest(m.writerStore) = rosterIntent
+                sameIntent = dispatcharrSyncWriteIntentDigest(m.writerStore, syncWriterFavoritesIntent()) = rosterIntent
             end if
             if dispatcharrSyncUserKey(m.writerProfile.username) = key and (failure.creationBlocked = true or sameIntent)
                 failure.scope = m.top.userScope
@@ -105,13 +114,51 @@ sub writeDispatcharrSync()
         finishDispatcharrSyncWrite(failure)
         return
     end if
-    finishDispatcharrSyncWrite({ok: true, state: "written", submitted: true, maximumSentStamp: prepared.maximumSentStamp, storeRoot: m.top.storeRoot, connectionRoot: m.top.connectionRoot, credentialHash: requestGateCredentialHash(m.key), scope: m.top.userScope})
+    finishDispatcharrSyncWrite(syncWriterReceipt({ok: true, state: "written", submitted: true, maximumSentStamp: prepared.maximumSentStamp, storeRoot: m.top.storeRoot, connectionRoot: m.top.connectionRoot, credentialHash: requestGateCredentialHash(m.key), scope: m.top.userScope}, prepared, latest.data, true))
 end sub
+
+function syncWriterFavoritesPending() as boolean
+    return m.top.favoritesEnabled = true and m.top.favoritesPending = true and type(m.top.favorites) = "roAssociativeArray"
+end function
+
+function syncWriterFavoritesIntent() as string
+    if not syncWriterFavoritesPending() then return ""
+    return textValue(m.top.favoritesIntent)
+end function
+
+' Category bookkeeping for the Scene. A rebuilt favorites list is acknowledged
+' by its intent; otherwise the freshly read (and preserved) category may be
+' applied locally. Neither is a credential or a replayable body.
+function syncWriterReceipt(receipt as object, prepared as object, value as object, written as boolean) as object
+    receipt.rebuilt = ["profiles"]
+    if type(prepared.rebuilt) = "roArray" then receipt.rebuilt = prepared.rebuilt
+    favoritesRebuilt = false
+    for each name in receipt.rebuilt
+        if name = "favorites" then favoritesRebuilt = true
+    end for
+    if favoritesRebuilt
+        receipt.favoritesIntent = syncWriterFavoritesIntent()
+        receipt.favoritesStamp = prepared.stamp
+        ' Unchanged means the server already holds this exact list at its stamp.
+        if not written then receipt.favoritesStamp = dispatcharrSyncIsoEpoch(value["categories"]["favorites"]["updatedAt"])
+    else if m.top.favoritesEnabled = true
+        receipt.favoritesCategory = syncWriterFavoritesCategory(value)
+    end if
+    return receipt
+end function
+
+function syncWriterFavoritesCategory(value as object) as dynamic
+    if type(value["categories"]) <> "roAssociativeArray" then return invalid
+    category = value["categories"]["favorites"]
+    if type(category) <> "roAssociativeArray" then return invalid
+    return category
+end function
 
 ' Every request rechecks exact saved roots, actual selected holder, own key,
 ' current adopted request nonce and broker. No default/target scope is invented.
 function syncWriterAccessCurrent(requireRosterSnapshot = true as boolean) as boolean
-    if m.top.cancelRequested or m.top.profilesEnabled <> true then return false
+    if m.top.cancelRequested then return false
+    if m.top.profilesEnabled <> true and m.top.favoritesEnabled <> true then return false
     if type(m.top.userScope) <> "roAssociativeArray" then return false
     scope = m.top.userScope
     if userProfileLocalId(textValue(scope.sessionId)) = "" then return false
@@ -127,7 +174,9 @@ function syncWriterAccessCurrent(requireRosterSnapshot = true as boolean) as boo
     store = loadUserProfileStore(m.writerRegistry, entry.id)
     if store.readOnly = true or store.active <> scope.profileId then return false
     if requireRosterSnapshot and m.top.pullOnly <> true
-        if store.rosterPullRequired = true or store.pendingRoster <> true then return false
+        if store.rosterPullRequired = true then return false
+        rosterPending = m.top.profilesEnabled = true and store.pendingRoster = true
+        if not rosterPending and not syncWriterFavoritesPending() then return false
     end if
     target = invalid
     for each profile in store.profiles
@@ -161,7 +210,9 @@ function syncWriterLocalReadReceipt(value as object, user as object) as object
     if not read.ok or read.malformedCategories.count() > 0 then return denied
     data = {rows: []}
     if read.profilesState = "ready" then data = value["categories"]["profiles"]["data"]
-    return {ok: false, state: "local-commit", submitted: false, readStatus: 200, profileData: data, authorizationSignature: dispatcharrAuthorizationSignature(user), storeRoot: m.top.storeRoot, connectionRoot: m.top.connectionRoot, credentialHash: requestGateCredentialHash(m.key), scope: m.top.userScope}
+    receipt = {ok: false, state: "local-commit", submitted: false, readStatus: 200, profileData: data, authorizationSignature: dispatcharrAuthorizationSignature(user), storeRoot: m.top.storeRoot, connectionRoot: m.top.connectionRoot, credentialHash: requestGateCredentialHash(m.key), scope: m.top.userScope}
+    if m.top.favoritesEnabled = true then receipt.favoritesCategory = syncWriterFavoritesCategory(value)
+    return receipt
 end function
 
 function syncWriterReadObject(url as string, maxBytes as integer, allowMissing = false as boolean, phase = "key" as string) as object

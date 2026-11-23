@@ -8,27 +8,38 @@ function dispatcharrSyncCheckedWriteBody(original as dynamic, candidate as dynam
     if not before.ok or not after.ok then return denied
     if before.malformedCategories.count() > 0 or after.malformedCategories.count() > 0 then return denied
     if type(rebuilt) <> "roArray" then return denied
-    if rebuilt.count() <> 1 then return denied
-    ' Only profiles has a qualified typed decoder in this first private gate.
-    ' Unsupported categories must remain untouched, not claim rebuild ownership.
-    if type(rebuilt[0]) <> "String" and type(rebuilt[0]) <> "roString" then return denied
-    if rebuilt[0] <> "profiles" then return denied
+    if rebuilt.count() < 1 or rebuilt.count() > 2 then return denied
+    ' Only profiles and favorites have typed writers. Unsupported categories
+    ' must remain untouched, not claim rebuild ownership.
+    owned = {}
+    for each name in rebuilt
+        if type(name) <> "String" and type(name) <> "roString" then return denied
+        if name <> "profiles" and name <> "favorites" then return denied
+        if owned.doesExist(name) then return denied
+        owned[name] = true
+    end for
     denied.reason = "preservation"
     if not dispatcharrSyncWriteIso(candidate["updatedAt"]) then return denied
     if not dispatcharrSyncPreservedMembers(original, candidate, ["deviceId", "platform", "appVersion", "updatedAt", "categories"]) then return denied
     if not dispatcharrSyncPreservedMembers(original["categories"], candidate["categories"], rebuilt) then return denied
     denied.reason = "rebuilt-category"
-    category = candidate["categories"]["profiles"]
-    if type(category) <> "roAssociativeArray" then return denied
-    if not dispatcharrSyncWriteIso(category["updatedAt"]) then return denied
-    if not dispatcharrSyncRosterString(category["deviceId"]) then return denied
-    if category["deviceId"] <> candidate["deviceId"] then return denied
-    if after.profilesState <> "ready" then return denied
-    if not dispatcharrSyncWritableProfiles(category["data"]) then return denied
-    prior = original["categories"]["profiles"]
-    if prior <> invalid
-        if not dispatcharrSyncPreservedMembers(prior, category, ["updatedAt", "deviceId", "data"]) then return denied
-        if not dispatcharrSyncPreservedMembers(prior["data"], category["data"], ["rows", "removed"]) then return denied
+    if owned.doesExist("profiles")
+        category = candidate["categories"]["profiles"]
+        if type(category) <> "roAssociativeArray" then return denied
+        if not dispatcharrSyncWriteIso(category["updatedAt"]) then return denied
+        if not dispatcharrSyncRosterString(category["deviceId"]) then return denied
+        if category["deviceId"] <> candidate["deviceId"] then return denied
+        if after.profilesState <> "ready" then return denied
+        if not dispatcharrSyncWritableProfiles(category["data"]) then return denied
+        prior = original["categories"]["profiles"]
+        if prior <> invalid
+            if not dispatcharrSyncPreservedMembers(prior, category, ["updatedAt", "deviceId", "data"]) then return denied
+            if not dispatcharrSyncPreservedMembers(prior["data"], category["data"], ["rows", "removed"]) then return denied
+        end if
+    end if
+    if owned.doesExist("favorites")
+        if not dispatcharrSyncRosterString(candidate["deviceId"]) then return denied
+        if not dispatcharrSyncFavoritesCategoryWritable(original["categories"]["favorites"], candidate["categories"]["favorites"], candidate["deviceId"]) then return denied
     end if
     denied.reason = "encoding"
     encoded = strictJsonEncode(candidate)
@@ -50,7 +61,11 @@ function dispatcharrSyncCheckedWriteBody(original as dynamic, candidate as dynam
     end if
     readback = dispatcharrSyncEnvelopeRead(parsed)
     if not readback.ok then return denied
-    if readback.profilesState <> "ready" or readback.malformedCategories.count() > 0 then return denied
+    if readback.malformedCategories.count() > 0 then return denied
+    if owned.doesExist("profiles") and readback.profilesState <> "ready" then return denied
+    if owned.doesExist("favorites")
+        if not dispatcharrSyncFavoritesRead(parsed["categories"]["favorites"]).ok then return denied
+    end if
     denied.reason = "roundtrip"
     checked = strictJsonEncode(parsed)
     if not checked.ok then return denied
@@ -82,6 +97,32 @@ function dispatcharrSyncWritableProfiles(data as object) as boolean
                 end if
             end if
         end for
+    end if
+    return true
+end function
+
+' Mirrors dispatcharrSyncFavoritesRead, but strictly: a writer never emits
+' a duplicate, floating, non-positive or over-cap id it would drop on read.
+function dispatcharrSyncFavoritesCategoryWritable(prior as dynamic, category as dynamic, deviceId as string) as boolean
+    if type(category) <> "roAssociativeArray" then return false
+    if not dispatcharrSyncWriteIso(category["updatedAt"]) then return false
+    if not dispatcharrSyncRosterString(category["deviceId"]) then return false
+    if deviceId = "" or category["deviceId"] <> deviceId then return false
+    if not dispatcharrSyncCategoryValid(category) then return false
+    ids = category["data"]["ids"]
+    if type(ids) <> "roArray" then return false
+    if ids.count() > 1000 then return false
+    seen = {}
+    for each id in ids
+        if not dispatcharrSyncRosterInt32(id) then return false
+        if id <= 0 or seen.doesExist(id.toStr()) then return false
+        seen[id.toStr()] = true
+    end for
+    if prior <> invalid
+        if type(prior) <> "roAssociativeArray" then return false
+        if type(prior["data"]) <> "roAssociativeArray" then return false
+        if not dispatcharrSyncPreservedMembers(prior, category, ["updatedAt", "deviceId", "data"]) then return false
+        if not dispatcharrSyncPreservedMembers(prior["data"], category["data"], ["ids"]) then return false
     end if
     return true
 end function
@@ -151,7 +192,8 @@ end function
 
 ' Existing canonical-key preparation only. No absent-key creation, legacy
 ' migration or session/credential authority is inferred from this pure result.
-function dispatcharrSyncPrepareProfilesWrite(original as dynamic, store as object, enabled as boolean, now as integer, acknowledgedStamp as dynamic, deviceId as string, appVersion as string) as object
+' A favorites plan, when supplied, is rebuilt in the same checked body.
+function dispatcharrSyncPrepareProfilesWrite(original as dynamic, store as object, enabled as boolean, now as integer, acknowledgedStamp as dynamic, deviceId as string, appVersion as string, favorites = invalid as dynamic) as object
     denied = {ok: false, allowWrite: false, body: "", reason: "invalid"}
     read = dispatcharrSyncEnvelopeRead(original)
     if not read.ok then return denied
@@ -164,6 +206,65 @@ function dispatcharrSyncPrepareProfilesWrite(original as dynamic, store as objec
     end if
     plan = dispatcharrSyncProfilesWritePlan(store, data, enabled, now, acknowledgedStamp, categoryStamp)
     if not plan.ok then return plan
+    favoritesPlan = invalid
+    if favorites <> invalid
+        favoritesPlan = dispatcharrSyncFavoritesWritePlan(original, favorites)
+        if not favoritesPlan.ok then return denied
+    end if
+    staged = dispatcharrSyncWriteCandidate(original, now, deviceId, appVersion)
+    if not staged.ok then return denied
+    candidate = staged.candidate
+    category = candidate["categories"]["profiles"]
+    if category = invalid then category = ParseJson("{}")
+    category["data"] = plan.data
+    category["updatedAt"] = staged.stamp
+    category["deviceId"] = deviceId
+    candidate["categories"]["profiles"] = category
+    rebuilt = ["profiles"]
+    if favoritesPlan <> invalid and favoritesPlan.needsLocalCommit <> true
+        candidate["categories"]["favorites"] = dispatcharrSyncFavoritesCategory(favoritesPlan.previous, favoritesPlan.ids, staged.stamp, deviceId)
+        rebuilt.push("favorites")
+    end if
+    checked = dispatcharrSyncCheckedWriteBody(original, candidate, rebuilt)
+    if not checked.ok then return checked
+    checked.rebuilt = rebuilt
+    checked.stamp = dispatcharrSyncIsoEpoch(staged.stamp)
+    checked.localPlan = plan.localPlan
+    checked.maximumSentStamp = plan.maximumSentStamp
+    checked.unchanged = false
+    if read.profilesState = "ready" then checked.unchanged = dispatcharrSyncWireEqual(original["categories"]["profiles"]["data"], plan.data)
+    if favoritesPlan <> invalid then checked.unchanged = checked.unchanged and favoritesPlan.unchanged = true
+    cleaned = normalizeUserProfileStore(store, store.playlistId)
+    checked.needsLocalCommit = FormatJson(cleaned) <> FormatJson(plan.localPlan.store)
+    if favoritesPlan <> invalid and favoritesPlan.needsLocalCommit = true then checked.needsLocalCommit = true
+    return checked
+end function
+
+' Favorites-only preparation: profiles and every other category round-trip.
+function dispatcharrSyncPrepareFavoritesWrite(original as dynamic, favorites as dynamic, now as integer, deviceId as string, appVersion as string) as object
+    denied = {ok: false, allowWrite: false, body: "", reason: "invalid"}
+    read = dispatcharrSyncEnvelopeRead(original)
+    if not read.ok then return denied
+    if read.malformedCategories.count() > 0 or deviceId = "" or appVersion = "" or now <= 0 then return denied
+    plan = dispatcharrSyncFavoritesWritePlan(original, favorites)
+    if not plan.ok then return denied
+    if plan.needsLocalCommit = true then return {ok: true, allowWrite: false, body: "", needsLocalCommit: true, unchanged: false, rebuilt: []}
+    staged = dispatcharrSyncWriteCandidate(original, now, deviceId, appVersion)
+    if not staged.ok then return denied
+    candidate = staged.candidate
+    candidate["categories"]["favorites"] = dispatcharrSyncFavoritesCategory(plan.previous, plan.ids, staged.stamp, deviceId)
+    checked = dispatcharrSyncCheckedWriteBody(original, candidate, ["favorites"])
+    if not checked.ok then return checked
+    checked.rebuilt = ["favorites"]
+    checked.stamp = dispatcharrSyncIsoEpoch(staged.stamp)
+    checked.needsLocalCommit = false
+    checked.unchanged = plan.unchanged = true
+    return checked
+end function
+
+' Precision clone of the fresh value plus writer envelope metadata only.
+function dispatcharrSyncWriteCandidate(original as dynamic, now as integer, deviceId as string, appVersion as string) as object
+    denied = {ok: false}
     encoded = strictJsonEncode(original)
     if not encoded.ok then return denied
     candidate = invalid
@@ -177,23 +278,42 @@ function dispatcharrSyncPrepareProfilesWrite(original as dynamic, store as objec
     clock.fromSeconds(now)
     stamp = left(clock.toISOString(), 19) + "Z"
     if not dispatcharrSyncWriteIso(stamp) then return denied
-    category = candidate["categories"]["profiles"]
-    if category = invalid then category = ParseJson("{}")
-    category["data"] = plan.data
-    category["updatedAt"] = stamp
-    category["deviceId"] = deviceId
-    candidate["categories"]["profiles"] = category
     candidate["updatedAt"] = stamp
     candidate["deviceId"] = deviceId
     candidate["platform"] = "roku"
     candidate["appVersion"] = appVersion
-    checked = dispatcharrSyncCheckedWriteBody(original, candidate, ["profiles"])
-    if not checked.ok then return checked
-    checked.localPlan = plan.localPlan
-    checked.maximumSentStamp = plan.maximumSentStamp
-    checked.unchanged = false
-    if read.profilesState = "ready" then checked.unchanged = dispatcharrSyncWireEqual(original["categories"]["profiles"]["data"], plan.data)
-    cleaned = normalizeUserProfileStore(store, store.playlistId)
-    checked.needsLocalCommit = FormatJson(cleaned) <> FormatJson(plan.localPlan.store)
-    return checked
+    return {ok: true, candidate: candidate, stamp: stamp}
+end function
+
+' Plans the favorites ids for a write against the freshly read category.
+' A newer server list whose lineup channels are missing locally must first
+' be merged locally (needsLocalCommit) so a PUT can never drop them.
+function dispatcharrSyncFavoritesWritePlan(original as dynamic, favorites as dynamic) as object
+    denied = {ok: false, reason: "favorites"}
+    if type(favorites) <> "roAssociativeArray" or type(original) <> "roAssociativeArray" then return denied
+    channels = favorites.channels
+    if type(channels) <> "roArray" then return denied
+    if channels.count() = 0 then return denied
+    if type(original["categories"]) <> "roAssociativeArray" then return denied
+    prior = invalid
+    remote = []
+    stamp = 0
+    if original["categories"].doesExist("favorites")
+        prior = original["categories"]["favorites"]
+        read = dispatcharrSyncFavoritesRead(prior)
+        if not read.ok then return denied
+        remote = read.ids
+        stamp = dispatcharrSyncIsoEpoch(prior["updatedAt"])
+    end if
+    acknowledged = 0
+    if dispatcharrSyncInteger(favorites.acknowledgedAt) then acknowledged = favorites.acknowledgedAt
+    local = dispatcharrSyncFavoritesLocalEntries(favorites.ids, channels)
+    if prior <> invalid and stamp > acknowledged
+        merged = dispatcharrSyncFavoritesMerge(local, remote, channels)
+        if FormatJson(merged.uuids) <> FormatJson(local) then return {ok: true, needsLocalCommit: true, unchanged: false, ids: [], previous: prior}
+    end if
+    wire = dispatcharrSyncFavoritesWireIds(local, channels, remote)
+    unchanged = false
+    if prior <> invalid then unchanged = dispatcharrSyncWireEqual(prior["data"]["ids"], wire.ids)
+    return {ok: true, needsLocalCommit: false, unchanged: unchanged, ids: wire.ids, previous: prior}
 end function

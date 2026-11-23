@@ -1205,7 +1205,9 @@ sub onPreferences(event as object)
     if not m.guide.isSameNode(event.getRoSGNode()) then return
     if m.accountIdentity = "" then return
     if not userEventCurrent(event.getData()) then return
+    previousFavorites = m.accountPreferences.favoriteIds
     m.accountPreferences = mergeAccountPreferences(m.accountPreferences, userEventData(event.getData()))
+    markDispatcharrSyncFavoritesEdit(previousFavorites)
     persistAccountPreferences()
 end sub
 

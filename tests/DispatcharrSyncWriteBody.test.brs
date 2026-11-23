@@ -83,7 +83,75 @@ sub main()
     end function
     check(not dispatcharrSyncCheckedWriteBody(original, proposed, ["profiles"]).ok, "the exact encoded body must independently reparse and revalidate before transport")
     m.syncWriteParser = invalid
+    syncWriteFavoritesChecks()
     print "ALL TESTS PASSED"
+end sub
+
+sub syncWriteFavoritesChecks()
+    channels = [{uuid: "u-a", id: "11"}, {uuid: "u-b", id: "12"}, {uuid: "u-c", id: "13"}]
+    original = syncWriteBodyFixture()
+    original["categories"]["favorites"] = ParseJson("{""updatedAt"":""2026-11-14T17:00:00Z"",""deviceId"":""peer"",""data"":{""ids"":[13,99],""FutureMember"":1},""extra"":{""keep"":true}}")
+    favorites = {ids: ["11", "13", "500"], channels: channels, acknowledgedAt: dispatcharrSyncIsoEpoch("2026-11-14T17:00:00Z")}
+    plan = dispatcharrSyncFavoritesWritePlan(original, favorites)
+    check(plan.ok and not plan.needsLocalCommit and FormatJson(plan.ids) = "[11,13,99]" and not plan.unchanged, "acknowledged server list: local order translated, untranslatable server id carried, off-lineup local id not invented")
+    favorites.acknowledgedAt = 0
+    plan = dispatcharrSyncFavoritesWritePlan(original, favorites)
+    check(plan.ok and not plan.needsLocalCommit, "a newer server list already contained locally needs no local commit")
+    favorites.ids = ["11"]
+    plan = dispatcharrSyncFavoritesWritePlan(original, favorites)
+    check(plan.ok and plan.needsLocalCommit, "a newer server lineup favorite missing locally is merged locally before any PUT can drop it")
+    favorites.acknowledgedAt = dispatcharrSyncIsoEpoch("2026-11-14T17:00:00Z")
+    favorites.ids = ["13"]
+    plan = dispatcharrSyncFavoritesWritePlan(original, favorites)
+    check(plan.ok and FormatJson(plan.ids) = "[13,99]" and plan.unchanged, "identical wire ids acknowledge without a redundant PUT")
+    favorites.channels = []
+    check(not dispatcharrSyncFavoritesWritePlan(original, favorites).ok, "no current lineup cannot write favorites")
+    favorites.channels = channels
+    original["categories"]["favorites"]["data"]["ids"] = [1.5]
+    check(not dispatcharrSyncFavoritesWritePlan(original, favorites).ok, "a malformed peer favorites category is preserved, never rebuilt")
+    original["categories"].delete("favorites")
+    plan = dispatcharrSyncFavoritesWritePlan(original, favorites)
+    check(plan.ok and plan.previous = invalid and FormatJson(plan.ids) = "[13]" and not plan.unchanged, "absent category is created from local favorites")
+
+    base = syncWriteBodyFixture()
+    base["categories"]["favorites"] = ParseJson("{""updatedAt"":""2026-11-14T17:00:00Z"",""deviceId"":""peer"",""data"":{""ids"":[13],""FutureMember"":1},""extra"":{""keep"":true}}")
+    for each change in ["duplicate", "floating", "zero", "string", "over-cap", "device", "stamp", "future-data", "extra", "profiles-changed", "both-unknown", "missing-category"]
+        proposed = syncWriteBodyFixture()
+        proposed["categories"]["favorites"] = dispatcharrSyncFavoritesCategory(base["categories"]["favorites"], [11, 13], "2026-11-14T18:00:00Z", "roku-device")
+        rebuilt = ["favorites"]
+        if change = "duplicate" then proposed["categories"]["favorites"]["data"]["ids"] = [11, 11]
+        if change = "floating" then proposed["categories"]["favorites"]["data"]["ids"] = [11.5]
+        if change = "zero" then proposed["categories"]["favorites"]["data"]["ids"] = [0]
+        if change = "string" then proposed["categories"]["favorites"]["data"]["ids"] = ["11"]
+        if change = "over-cap"
+            many = []
+            for i = 1 to 1001
+                many.push(i)
+            end for
+            proposed["categories"]["favorites"]["data"]["ids"] = many
+        end if
+        if change = "device" then proposed["categories"]["favorites"]["deviceId"] = "other"
+        if change = "stamp" then proposed["categories"]["favorites"]["updatedAt"] = "2026-11-14T18:00:00+0000"
+        if change = "future-data" then proposed["categories"]["favorites"]["data"].delete("FutureMember")
+        if change = "extra" then proposed["categories"]["favorites"]["extra"] = {keep: false}
+        if change = "profiles-changed" then proposed["categories"]["profiles"]["data"]["rows"][0][2] = "Changed"
+        if change = "both-unknown" then rebuilt = ["favorites", "FutureCategory"]
+        if change = "missing-category" then proposed["categories"].delete("favorites")
+        check(not dispatcharrSyncCheckedWriteBody(base, proposed, rebuilt).ok, "favorites write refuses " + change)
+        if change <> "profiles-changed" and change <> "both-unknown" and change <> "missing-category"
+            check(not dispatcharrSyncFavoritesCategoryWritable(base["categories"]["favorites"], proposed["categories"]["favorites"], "roku-device"), "favorites category gate refuses " + change)
+        end if
+    end for
+    proposed = syncWriteBodyFixture()
+    proposed["categories"]["favorites"] = dispatcharrSyncFavoritesCategory(base["categories"]["favorites"], [11, 13], "2026-11-14T18:00:00Z", "roku-device")
+    ' Host keys are lowercased on assignment, so exact-name preservation is
+    ' asserted only by the native probe.
+    if not m.syncWriteHostInterpreter
+        check(dispatcharrSyncFavoritesCategoryWritable(base["categories"]["favorites"], proposed["categories"]["favorites"], "roku-device"), "rebuilt favorites keep unknown data members and extra with unique int32 ids")
+        check(dispatcharrSyncCheckedWriteBody(base, proposed, ["favorites"]).ok, "native favorites-only checked body passes with profiles and future data untouched")
+    end if
+    check(dispatcharrSyncFavoritesCategoryWritable(invalid, dispatcharrSyncFavoritesCategory(invalid, [11], "2026-11-14T18:00:00Z", "roku-device"), "roku-device"), "a new favorites category needs only strict ids, stamp and device")
+    check(not dispatcharrSyncCheckedWriteBody(base, proposed, ["favorites", "favorites"]).ok, "a duplicated rebuild claim is refused")
 end sub
 
 function syncWriteBodyFixture() as object

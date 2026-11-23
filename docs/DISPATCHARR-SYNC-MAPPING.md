@@ -44,7 +44,7 @@ local PKs become positive signed-32-bit integers; overflow/decimals refuse.
 Unresolved or ambiguous UUIDs are returned separately and make translation
 incomplete. Do not use an incomplete projection for full-category replacement.
 
-## Favorites adapter (not yet wired)
+## Favorites adapter
 
 `source/DispatcharrSyncFavorites.brs` is a pure adapter for the `favorites`
 category, matching Android's `DsyncFavorites` / `DsyncGate`:
@@ -60,8 +60,12 @@ category, matching Android's `DsyncFavorites` / `DsyncGate`:
   lineup cannot translate (carried, never deleted), capped at 1,000. Only
   `data.ids` is replaced; other `data` members and `extra` round-trip.
 
-The writer still owns **profiles only**. Category switches, scheduling and
-applying pulled favorites to the Guide are separate, reviewed steps.
+The writer now owns **profiles and favorites**. The Favorites switch,
+scheduling and Guide application are described in
+[Sync controls](DISPATCHARR-SYNC-CONTROLS.md#favorites) and
+[writer](DISPATCHARR-SYNC-WRITER.md#favorites-category). Local `favoriteIds`
+hold Dispatcharr channel id text; an id outside the current lineup is carried
+as an opaque entry, so it can never be removed by a pull.
 
 ## Settings lanes
 
