@@ -1326,7 +1326,21 @@ sub onWatchChannel(event as object)
     channel = event.getData()
     intent = "auto"
     if channel.watchVideo = true then intent = "video"
+    sameChannel = false
+    if m.playingChannel <> invalid then sameChannel = m.playingChannel.uuid = channel.uuid
     startPlayback(channel, false, false, false, 0, "", intent)
+    ' Play Channels In: Mini Player. Selecting the playing channel again still
+    ' expands it; Radio Mode keeps its own screen.
+    if m.devicePreferences.guideTuneInMini <> true or sameChannel then return
+    if radioPresentationActive() then return
+    if m.page = "player" and m.playingChannel <> invalid
+        if m.playingChannel.uuid = channel.uuid
+            minimizePlayback()
+            return
+        end if
+    end if
+    ' A deferred tune (for example AAC discovery) minimizes once it plays.
+    m.startMiniAfterPlayback = true
 end sub
 
 sub startPlayback(channel as object, forceRetune = false as boolean, useAac = false as boolean, preserveStartupBudget = false as boolean, tuneStartedAt = 0 as integer, coldToken = "" as string, presentation = "auto" as string)

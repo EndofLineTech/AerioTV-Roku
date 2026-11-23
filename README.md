@@ -967,6 +967,11 @@ preventing accidental reuse at a different server.
 | Archive / Restart / rewind | Up | Go Live, keep watching, or configure skip interval |
 | Guide header | Settings | Categorized Live TV, Player, Appearance, General and Connection settings |
 
+**Settings → Remote control → Play channels from the Guide in** chooses where a
+Guide selection plays. **Full screen** is the default. With **Mini-player**, OK on
+a channel tunes it in the corner while you keep browsing, and OK on the playing
+channel goes full screen. Radio Mode channels still open their own screen.
+
 Use **Settings → Remote control → In the TV Guide → Back** to change what a
 single Back press does in the grid. Choices include watching the selected
 channel live, opening program details or groups, moving 2½ hours earlier or

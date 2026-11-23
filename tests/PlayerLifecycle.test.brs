@@ -566,6 +566,7 @@ sub runPlayerLifecycleChecks()
     checkRecoveryReadyRadioClassification()
     checkOwnedHlsRetryLifecycle()
     checkOwnedHlsMissingReceipt()
+    checkGuideTuneIntoMini()
     checkOwnedHlsBusyMintRetry()
     checkTuneBannerPreference()
     checkRadioBackDuringAacRecovery()
@@ -1039,6 +1040,37 @@ sub checkXtreamDirectRoutes()
     assertEqual(startVodPlayback(movie, "library"), true, "HLS-only Live does not override a playable VOD container")
     assertEqual(m.mediaPlayer.request.url, m.baseUrl + "/movie/viewer/fixture/21.mp4", "movie keeps its own container path")
     assertEqual(m.mediaPlayer.request.streamFormat, "mp4", "movie uses its own Roku reader")
+end sub
+
+sub checkGuideTuneIntoMini()
+    for each intoMini in [false, true]
+        resetOwnedHlsFixture()
+        m.videoViewport = {}
+        m.screen = {}
+        m.miniFrame = {visible: false}
+        m.miniCaption = {text: ""}
+        m.guide = {visible: true, active: true, miniActive: false, isSameNode: function(other as object) as boolean
+            return true
+        end function, callFunc: function(name as string, value = invalid as dynamic, now = 0 as integer) as dynamic
+            return invalid
+        end function}
+        m.connectionStore = {entries: [{id: "tune-fixture", provider: "dispatcharr", authMode: "x-api-key", userAgent: ""}]}
+        m.selectedConnectionId = "tune-fixture"
+        m.devicePreferences.guideTuneInMini = intoMini
+        m.page = "guide"
+        m.playingChannel = invalid
+        m.mini = false
+        channel = userViewEvent({uuid: "b", name: "Fixture two", number: "2"}, "hls-test-owner")
+        onWatchChannel({node: m.guide, data: channel, getRoSGNode: function() as object
+            return m.node
+        end function, getData: function() as dynamic
+            return m.data
+        end function})
+        assertEqual(m.playingChannel <> invalid and m.playingChannel.uuid = "b", true, "Guide Select tunes the channel either way")
+        assertEqual(m.mini, intoMini, "Guide Select plays in the mini-player only when chosen")
+        if intoMini then assertEqual(m.page, "guide", "mini tune keeps the Guide in front")
+        if not intoMini then assertEqual(m.page, "player", "default tune goes fullscreen")
+    end for
 end sub
 
 sub checkOwnedHlsMissingReceipt()

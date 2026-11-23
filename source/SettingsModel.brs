@@ -84,6 +84,7 @@ function settingsHubAllEntries(page as string, model as object) as object
     if page = "remote" then return [
         {title: "While watching", page: "remotePlayer"}
         {title: "In the TV Guide", page: "remoteGuide"}
+        {title: "Play channels from the Guide in", scope: "device", key: "guideTuneInMini", values: [false, true]}
         {title: "Reset remote controls", action: "resetRemoteMap"}
     ]
     if page = "remotePlayer" then return remoteSlotEntries("player")
@@ -221,7 +222,7 @@ function settingsHubChangeAllowed(model as object, scope as string, key as strin
         if GetInterface(value, "ifString") = invalid then return false
         return value = "" or CreateObject("roRegex", "^[0-9A-Fa-f]{6}$", "").isMatch(value)
     end if
-    for each page in ["live", "player", "movies", "dvr", "appearance", "general"]
+    for each page in ["live", "player", "movies", "dvr", "appearance", "general", "remote"]
         for each entry in settingsHubEntries(page, model)
             if entry.scope = scope and entry.key = key
                 for each allowed in entry.values
@@ -288,6 +289,10 @@ function settingsValueText(value as dynamic, key = "" as string) as string
     end if
     if key = "networkTimeoutSeconds" then return value.toStr() + " seconds"
     if key = "refreshSeconds" then return (value \ 60).toStr() + " minutes"
+    if key = "guideTuneInMini"
+        if value = true then return "Mini-player (OK again for full screen)"
+        return "Full screen"
+    end if
     if key = "startupBehavior"
         if value = "mini" then return "Resume last channel in mini-player"
         return "Guide (no autoplay)"

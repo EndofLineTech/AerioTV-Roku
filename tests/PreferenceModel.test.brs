@@ -59,6 +59,7 @@ sub main()
     assertEqual(device.infoHints, true, "overlay hints default on")
     assertEqual(device.infoOnTune, true, "info card pops up on channel change by default")
     assertEqual(normalizeDevicePreferences({infoOnTune: false}).infoOnTune, false, "info card pop-up can be turned off")
+    assertEqual(device.guideTuneInMini, false, "Guide tunes go fullscreen by default")
     wrongCase = {}
     wrongCase.setModeCaseSensitive()
     wrongCase.audioGuide = false

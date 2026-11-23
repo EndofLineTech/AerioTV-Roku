@@ -108,7 +108,10 @@ sub main()
     if not settingsHubChangeAllowed(model, "device", "trueBlack", true) then stop
     if settingsHubChangeAllowed(model, "device", "trueBlack", "true") then stop
     remote = settingsHubEntries("remote", model)
-    if remote.count() <> 3 or remote[0].page <> "remotePlayer" then stop
+    if remote.count() <> 4 or remote[0].page <> "remotePlayer" then stop
+    if remote[2].key <> "guideTuneInMini" or remote[2].scope <> "device" or remote[2].values[0] <> false then stop
+    if settingsValueText(true, "guideTuneInMini") <> "Mini-player (OK again for full screen)" or settingsValueText(false, "guideTuneInMini") <> "Full screen" then stop
+    if not settingsHubChangeAllowed(model, "device", "guideTuneInMini", true) then stop
     remotePlayer = settingsHubEntries("remotePlayer", model)
     if remotePlayer.count() <> 9 or remotePlayer[0].slot <> "okShort" then stop
     remoteGuide = settingsHubEntries("remoteGuide", model)
