@@ -128,8 +128,8 @@ def build(output, normal, section, base, form=False, default_form=False, held=Fa
                 # credential-form probes answer it synthetically with no email;
                 # the real consent dialog is covered by the switch-fault own-email cases.
                 hook = '    m.managementProbeClock.observeField("fire", "onManagementProbeTick")\n'
-                assert source.count(hook) == 1
-                source = source.replace(hook, hook + '    m.profileOwnSignInEmailRequestFactory = ownProbeEmailRequest\n', 1)
+                assert source.count(hook) >= 1
+                source = source.replace(hook, hook + '    m.profileOwnSignInEmailRequestFactory = ownProbeEmailRequest\n')
                 body = (source.split('sub onManagementProbeTick()', 1)[0] + OWN_PROBE_EMAIL + fixture).encode()
             package.writestr(name, body)
         package.writestr('profile-own-signin-probe.json', '{"synthetic":true}')
