@@ -4,7 +4,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { createHash, createCipheriv, createPublicKey, diffieHellman, generateKeyPairSync, hkdfSync, randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import assert from 'node:assert/strict';
 import { PairingImageError, readPairingImage, withPairingScreenshot } from './pairing-image-worker.mjs';
@@ -17,7 +17,13 @@ assert.ok(!expiryOnly || discovery, '--expiry-only requires --discovery');
 assert.ok(!leaveInstalled || (discovery && !expiryOnly), '--leave-installed requires the complete --discovery smoke');
 const host = process.env.ROKU_HOST, password = process.env.ROKU_DEV_PASSWORD;
 assert.ok(host && password && candidate && restore, 'Supply developer environment, test ZIP and verified restore ZIP');
-assert.ok(createHash('sha256').update(readFileSync(restore)).digest('hex') === 'eb09f4b9705262d11efba05a7b27281ff6272f2b22ff0f003805d9e20224a610', 'Verified normal restore ZIP required');
+// Restore only a verified release ZIP: its digest must match the release's own
+// .sha256 file, so the runner follows the current exact-release discipline.
+const releaseDir = realpathSync('out/release');
+const restorePath = realpathSync(restore);
+assert.ok(restorePath.startsWith(releaseDir + '/') && /^aeriotv-roku-v\d+\.\d+\.\d+\.zip$/.test(basename(restorePath)), 'Restore must be a versioned release ZIP under out/release');
+const [releaseDigest, releaseName] = readFileSync(restorePath + '.sha256', 'utf8').trim().split(/\s+/);
+assert.ok(createHash('sha256').update(readFileSync(restorePath)).digest('hex') === releaseDigest && releaseName === basename(restorePath), 'Verified normal restore ZIP required');
 const marker = spawnSync('unzip', ['-p', candidate, 'pairing-test-build.json'], { encoding: 'utf8' });
 assert.ok(marker.status === 0 && JSON.parse(marker.stdout).kind === 'full-app-pairing-test', 'Explicit full-app test artifact required');
 const testBuild = JSON.parse(marker.stdout);
