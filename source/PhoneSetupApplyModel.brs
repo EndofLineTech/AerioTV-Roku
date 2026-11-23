@@ -64,7 +64,16 @@ function phoneSetupPrepareImport(payload as object, id as string, digest as stri
     storedUrl = url
     if sessionUrl then storedUrl = ""
     epg = textValue(playlist.xmltvUrl)
-    if epg <> "" and (len(epg) > 256 or normalizeBaseUrl(epg) = "") then return {ok: false, message: "This XMLTV URL is not supported by this build. Edit it on the sending device and send setup again. Saved connections were not changed."}
+    epgRejected = {ok: false, message: "This XMLTV URL is not supported by this build. Edit it on the sending device and send setup again. Saved connections were not changed."}
+    ' A credential-bearing Xtream guide (xmltv.php?username=...) is used for
+    ' this session only, like the Xtream credentials, and never stored.
+    sessionGuideUrl = ""
+    if playlist.type = "xtream" and instr(1, epg, "?") > 0
+        if not phoneSetupSessionGuideUrlValid(epg) then return epgRejected
+        sessionGuideUrl = epg
+        epg = ""
+    end if
+    if epg <> "" and (len(epg) > 256 or normalizeBaseUrl(epg) = "") then return epgRejected
     days = int(playlist.guideDays)
     offset = playlist.catchupOffsetMinutes
     if GetInterface(offset, "ifInt") = invalid
@@ -81,6 +90,7 @@ function phoneSetupPrepareImport(payload as object, id as string, digest as stri
     if payload.sync <> invalid then notes.push("Dispatcharr Sync will not be enabled.")
     if sessionUrl then notes.push("The token-bearing or long playlist URL is session-only; send it again after restarting the app.")
     if entry.localUrl <> "" then notes.push("Local URL retained; automatic LAN failover is not applied by this build.")
+    if sessionGuideUrl <> "" then notes.push("The XMLTV URL with credentials is session-only; send it again after restarting the app.")
     if days = 0
         limit = guideAllAvailableDays()
         notes.push("All Available Guide Days uses Roku's limit of " + limit.toStr() + " days each way.")
@@ -98,7 +108,12 @@ function phoneSetupPrepareImport(payload as object, id as string, digest as stri
         end if
     end if
     if entry.provider <> "dispatcharr" and entry.channelProfileIds.count() > 0 then notes.push("Channel Profile IDs are retained but only applied to Dispatcharr sources.")
-    return {ok: true, entry: entry, url: url, credential: credential, notes: notes, multipleProfiles: multipleProfiles}
+    return {ok: true, entry: entry, url: url, credential: credential, notes: notes, multipleProfiles: multipleProfiles, sessionGuideUrl: sessionGuideUrl}
+end function
+
+function phoneSetupSessionGuideUrlValid(value as string) as boolean
+    if len(value) > 1024 then return false
+    return CreateObject("roRegex", "^https?://[^/?#@\s]+(/[^?#\s]*)?\?[^#\s]+$", "i").isMatch(value)
 end function
 
 function phoneSetupVerifiedImport(prepared as object, result as dynamic) as object

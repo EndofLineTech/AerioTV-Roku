@@ -31,6 +31,7 @@ sub applySelectedConnection()
     entry = connectionStoreEntry(m.connectionStore, m.selectedConnectionId)
     m.baseUrl = ""
     m.guideUrl = ""
+    m.sessionGuideOverride = invalid
     m.remember = false
     m.apiKey = ""
     if entry <> invalid
@@ -585,6 +586,7 @@ end sub
 
 sub completeDirectConnection(result as object, entry as object, xcUsername = "" as string, xcPassword = "" as string)
     sessionUrl = m.baseUrl
+    sessionGuide = m.sessionGuideOverride
     if result.channels.count() = 0
         m.status = "This connection contains no supported live channels."
         drawSetup()
@@ -593,14 +595,24 @@ sub completeDirectConnection(result as object, entry as object, xcUsername = "" 
     if m.phoneCommittedId <> entry.id then resetConnectionRuntime()
     applySelectedConnection()
     if entry.sessionUrl = true then m.baseUrl = sessionUrl
+    if type(sessionGuide) = "roAssociativeArray"
+        if sessionGuide.id = entry.id then m.sessionGuideOverride = sessionGuide
+    end if
     m.startMiniAfterPlayback = false
     m.xcUsername = xcUsername
     m.xcPassword = xcPassword
     m.xcTimezone = textValue(result.timezone)
     if entry.provider = "xtream" then m.xcLiveFormat = textValue(result.liveFormat)
     guideUrl = m.guideUrl
+    guideCacheKey = ""
     guideBase = urlOrigin(m.baseUrl)
     if entry.provider = "xtream"
+        ' A credential-bearing override from phone setup lives only in this
+        ' session; its cache identity is the URL without the query.
+        if m.sessionGuideOverride <> invalid
+            guideUrl = m.sessionGuideOverride.url
+            guideCacheKey = left(guideUrl, instr(1, guideUrl, "?") - 1)
+        end if
         ' Keep the account URL volatile and out of the saved/setup guide field.
         if guideUrl = "" then guideUrl = textValue(result.guideUrl)
         guideBase = m.baseUrl
@@ -628,7 +640,7 @@ sub completeDirectConnection(result as object, entry as object, xcUsername = "" 
     m.guide.config = {
         userRole: "user"
         channels: result.channels, groups: result.groups, warning: result.warning
-        baseUrl: guideBase, apiKey: "", providerType: entry.provider, guideUrl: guideUrl
+        baseUrl: guideBase, apiKey: "", providerType: entry.provider, guideUrl: guideUrl, guideCacheKey: guideCacheKey
         preferences: m.accountPreferences, tmdbKey: ""
         scope: result.scope, generation: result.generation
     }

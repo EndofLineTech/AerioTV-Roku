@@ -97,6 +97,7 @@ sub configure()
     m.key = config.apiKey
     m.providerType = textValue(config.providerType)
     m.guideUrl = textValue(config.guideUrl)
+    m.guideCacheKey = textValue(config.guideCacheKey)
     m.tmdbKey = textValue(config.tmdbKey)
     m.favorites = {}
     m.allowedKeys = guideDictionary()
