@@ -319,6 +319,20 @@ sub onProfileBaselineProbeTick()
             if profile.id = m.pickerProbeAdded then m.pickerProbePinRemovalValid = profile.pinType = "none" and profile.pinHash = "" and profile.pinSalt = ""
         end for
         m.pickerProbeBeforeChild = store
+        ' An admin-level default (user_level >= 10) can never be a Child, so
+        ' mirror the flow: the added profile becomes the Child instead.
+        m.pickerProbeAdultDefault = false
+        for each profile in store.profiles
+            if profile.isDefault and userProfileResolveRole(profile.userLevel, "child") <> "child" then m.pickerProbeAdultDefault = true
+        end for
+        if m.pickerProbeAdultDefault
+            closeProfileManagementDialog()
+            if not openUserProfileSwitcher(m.pickerProbeA) then return
+            model = m.profileSwitcher.model
+            m.profileSwitcher.intent = {action: "switch", index: model.focus, uiNonce: model.uiNonce}
+            m.pickerProbeBaselineStage = 50
+            return
+        end if
         candidate = copyJson(store)
         for i = 0 to candidate.profiles.count() - 1
             target = candidate.profiles[i]
@@ -339,6 +353,98 @@ sub onProfileBaselineProbeTick()
         model = m.profileSwitcher.model
         m.profileSwitcher.intent = {action: "switch", index: model.focus, uiNonce: model.uiNonce}
         m.pickerProbeBaselineStage = 39
+        return
+    end if
+    if stage = 50
+        if m.busy or m.profileSwitchContext <> invalid or m.activeUserScope = invalid then return
+        if m.activeUserScope.profileId <> m.pickerProbeA then return
+        store = loadUserProfileStore(m.registry, "slot-a")
+        candidate = copyJson(store)
+        for i = 0 to candidate.profiles.count() - 1
+            target = candidate.profiles[i]
+            role = userProfileResolveRole(target.userLevel, "user")
+            if target.id = m.pickerProbeAdded then role = "child"
+            target = setCanonicalPreference(target, "role", role)
+            target = setCanonicalPreference(target, "pinType", "numbers")
+            target = setCanonicalPreference(target, "pinSalt", "00112233445566778899aabbccddeeff")
+            target = setCanonicalPreference(target, "pinHash", userProfilePinHash(target.pinSalt, "1234"))
+            target = setCanonicalPreference(target, "pinLength", 4)
+            candidate.profiles[i] = target
+        end for
+        if not commitUserProfileStore(m.registry, store, candidate, {}, true).ok then return
+        m.userProfileStore = candidate
+        m.profileChildAccessReady = true
+        if not openUserProfileSwitcher(m.pickerProbeAdded) then return
+        model = m.profileSwitcher.model
+        m.profileSwitcher.intent = {action: "switch", index: model.focus, uiNonce: model.uiNonce}
+        m.pickerProbeBaselineStage = 51
+        return
+    end if
+    if stage = 51 or stage = 55
+        if m.profilePinDialog = invalid then return
+        m.profilePinDialog.textEditBox.text = "1234"
+        onProfilePinSubmit(baselineProbeEvent(m.profilePinDialog, 0))
+        m.pickerProbeBaselineStage = stage + 1
+        return
+    end if
+    if stage = 52
+        if m.busy or m.profileSwitchContext <> invalid or m.activeUserScope = invalid then return
+        if m.activeUserScope.profileId <> m.pickerProbeAdded then return
+        m.pickerProbeChildLiveValid = currentUserSettingsRole() = "child" and m.guide.profileSwitcher = invalid and m.apiKey = "synthetic-b"
+        openSettingsHub()
+        openUserProfileManagement()
+        m.pickerProbeBaselineStage = 53
+        return
+    end if
+    if stage = 53
+        if m.adultPinDialog = invalid then return
+        m.adultPinDialog.textEditBox.text = "1234"
+        onAdultProfilePinSubmit(baselineProbeEvent(m.adultPinDialog, 0))
+        m.pickerProbeBaselineStage = 54
+        return
+    end if
+    if stage = 54
+        if m.profileManagementDialog = invalid then return
+        adultIndex = -1
+        for i = 0 to m.profileManagementChoices.count() - 1
+            if m.profileManagementChoices[i].id = m.pickerProbeA then adultIndex = i
+        end for
+        if adultIndex < 0 then return
+        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, adultIndex))
+        switchIndex = -1
+        for i = 0 to m.profileManagementChoices.count() - 1
+            if m.profileManagementChoices[i].action = "switch" then switchIndex = i
+        end for
+        if switchIndex < 0 then return
+        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, switchIndex))
+        m.pickerProbeBaselineStage = 55
+        return
+    end if
+    if stage = 56
+        if m.busy or m.profileSwitchContext <> invalid or m.activeUserScope = invalid then return
+        if m.activeUserScope.profileId <> m.pickerProbeA then return
+        adultRole = "user"
+        for each profile in m.pickerProbeBeforeChild.profiles
+            if profile.id = m.pickerProbeA then adultRole = userProfileResolveRole(profile.userLevel, "user")
+        end for
+        m.pickerProbeChildLiveValid = m.pickerProbeChildLiveValid and currentUserSettingsRole() = adultRole and m.apiKey = "synthetic-a"
+        current = loadUserProfileStore(m.registry, "slot-a")
+        restored = setCanonicalPreference(copyJson(m.pickerProbeBeforeChild), "active", m.pickerProbeA)
+        if not commitUserProfileStore(m.registry, current, restored, {}, true).ok then return
+        m.userProfileStore = restored
+        m.profileUnlockGrant = invalid
+        if not openUserProfileSwitcher(m.pickerProbeAdded) then return
+        model = m.profileSwitcher.model
+        m.profileSwitcher.intent = {action: "switch", index: model.focus, uiNonce: model.uiNonce}
+        m.pickerProbeBaselineStage = 57
+        return
+    end if
+    if stage = 57
+        if m.busy or m.profileSwitchContext <> invalid or m.activeUserScope = invalid then return
+        if m.activeUserScope.profileId <> m.pickerProbeAdded then return
+        openUserProfileManagement()
+        onProfileManagementChoice(baselineProbeEvent(m.profileManagementDialog, 0))
+        m.pickerProbeBaselineStage = 4
         return
     end if
     if stage = 39
