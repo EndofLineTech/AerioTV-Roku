@@ -3,6 +3,8 @@ sub seedProfilePickerLaunchProbe(base as string, mode as string)
     b = userProfileFromVerified("slot-a", "00000000-0000-4000-8000-000000000002", {id: 8, username: "Synthetic8", user_level: 1}, 1)
     b = setCanonicalPreference(b, "isDefault", false)
     m.pickerProbeMode = mode
+    ' Set only by the private live Child build to the real target account id.
+    m.pickerProbeLiveAccount = ""
     m.pickerProbePickerCount = 0
     m.pickerProbeChildTarget = left(mode, 6) = "child-"
     if m.pickerProbeChildTarget
@@ -675,6 +677,18 @@ sub onProfilePickerLaunchProbeTick()
     m.pickerProbeClock.control = "stop"
     store = loadUserProfileStore(m.registry, "slot-a")
     settings = loadStrictPreferenceStore(m.registry)
+    if m.pickerProbeLiveAccount <> ""
+        ' Live server: check own-key Child activation, not synthetic lineup data.
+        passed = m.activeUserScope <> invalid and m.profilePicker = invalid and m.profileStartupSelectionContext = invalid and m.profileStartupTask = invalid and not m.global.profilegateclosed and not m.global.profileswitchpending and m.playingChannel = invalid
+        if passed then passed = m.activeUserScope.profileId = m.pickerProbeB and m.activeUserScope.accountId = m.pickerProbeLiveAccount and m.activeUserScope.sessionId = m.global.activeusersession
+        passed = passed and store.active = m.pickerProbeB and m.apiKey = "synthetic-b" and m.registry.read(userProfileKeyName("slot-a", m.pickerProbeB)) = "synthetic-b" and m.registry.read("connKey_slot-a") = "synthetic-a"
+        passed = passed and currentUserSettingsRole() = "child" and m.guide.callFunc("profilePickerProbeRole") = "child" and not userProfileConnectionSetupAllowed() and m.guide.callFunc("profilePickerProbeLineup") <> ""
+        for each profile in store.profiles
+            if profile.id = m.pickerProbeB then passed = passed and profile.role = "child" and profile.pinType = "numbers" and profile.pinHash = userProfilePinHash("0123456789abcdef0123456789abcdef", "1234")
+        end for
+        print "[picker-launch] "; FormatJson({kind: "result", passed: passed, live: true})
+        return
+    end if
     if sourceLink
         expectedCount = 0
         if m.pickerProbeMode <> "cold-link" then expectedCount = 1

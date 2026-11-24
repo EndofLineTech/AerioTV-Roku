@@ -246,6 +246,51 @@ class ProfileProbeTest(unittest.TestCase):
         self.assertIn('m.profileOwnSignInContext.addKey = "example-key-b"', vod)
         self.assertNotIn('"synthetic-b"', vod)
 
+    def test_live_child_pin_probe_targets_real_server_read_only_with_request_trace(self):
+        root = Path(__file__).resolve().parent.parent
+        spec = importlib.util.spec_from_file_location('live_child', Path(__file__).with_name('test-profile-picker-launch-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        accounts = [
+            {"user": {"id": 23, "username": "ExampleA", "user_level": 10, "api_key": "example-key-a"}, "password": "example-password-a"},
+            {"user": {"id": 42, "username": "ExampleB", "user_level": 1, "api_key": "example-key-b"}, "password": "example-password-b"},
+        ]
+        with tempfile.TemporaryDirectory() as folder:
+            normal = Path(folder) / 'normal.zip'
+            with zipfile.ZipFile(normal, 'w') as package:
+                for name in PICKER_BASE_ENTRIES + PICKER_DIAGNOSTIC_ENTRIES:
+                    package.write(root / name, name)
+            target = Path(folder) / 'live-child.zip'
+            probe.build(target, normal, 'DisposablePicker', 'https://dispatcharr.test', 'child-select-pin', accounts)
+            with zipfile.ZipFile(target) as package:
+                scene = package.read('components/AerioScene.brs').decode()
+                transport = package.read('source/HttpTransport.brs').decode()
+        self.assertIn('seedProfilePickerLaunchProbe("https://dispatcharr.test", "child-select-pin")', scene)
+        self.assertIn('m.pickerProbeLiveAccount = "42"', scene)
+        self.assertIn('id: 23, username: "ExampleA", user_level: 10', scene)
+        self.assertNotIn('"synthetic-b"', scene)
+        self.assertIn('result.error = "qualification-read-only"', transport)
+        self.assertIn('kind: "live-request"', transport)
+        self.assertIn('if traceKey = "example-key-b" then traceAccount = 42', transport)
+        self.assertIn('stage: "transfer-start"', transport)
+        trace = transport.index('kind: "live-request"')
+        self.assertLess(transport.index('result.error = "qualification-read-only"'), trace)
+
+    def test_live_request_events_map_to_sanitized_read_hits(self):
+        spec = importlib.util.spec_from_file_location('live_hits', Path(__file__).with_name('test-profile-picker-launch-native.py'))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        accounts = {23: 7, 42: 8}
+        self.assertEqual(probe.live_request_hit({"kind": "live-request", "path": "/api/accounts/users/me/", "method": "GET", "account": 42}, accounts), {"user": 8, "path": "/api/accounts/users/me/", "method": "GET", "own_password_check": False})
+        self.assertEqual(probe.live_request_hit({"kind": "live-request", "path": "/api/channels/channels/", "method": "GET", "account": 0}, accounts)["user"], 0)
+        for bad in [
+            {"kind": "live-request", "path": "/api/x/?key=secret", "method": "GET", "account": 42},
+            {"kind": "live-request", "path": "https://host/api/x/", "method": "GET", "account": 42},
+            {"kind": "live-request", "path": "/api/x/", "method": "TRACE", "account": 42},
+            {"kind": "live-request", "path": "/api/x/", "method": "GET", "account": "42"},
+        ]:
+            self.assertIsNone(probe.live_request_hit(bad, accounts))
+
     def test_baseline_builder_changes_only_manifest_and_writes_checksum(self):
         spec = importlib.util.spec_from_file_location('baseline_builder', Path(__file__).with_name('build-profiles-baseline.py'))
         builder = importlib.util.module_from_spec(spec)

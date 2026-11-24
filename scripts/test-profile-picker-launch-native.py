@@ -160,6 +160,33 @@ def real_baseline_accounts(config):
     return base, accounts
 
 
+def live_request_hit(event, accounts):
+    """Map a live probe request trace to the fixture ledger shape, or refuse it."""
+    path, method, account = event.get("path"), event.get("method"), event.get("account")
+    if type(path) is not str or not path.startswith("/") or "?" in path or "://" in path or len(path) > 200:
+        return None
+    if method not in ("GET", "POST", "PUT", "PATCH", "DELETE") or type(account) is not int:
+        return None
+    return {"user": accounts.get(account, 0), "path": path, "method": method, "own_password_check": False}
+
+
+def live_child_transport_trace(accounts):
+    first, second = (account["user"] for account in accounts)
+    return f'''    traceKey = textValue(m.key)
+    if bearer <> "" then traceKey = ""
+    traceAccount = 0
+    if traceKey = {json.dumps(first["api_key"])} then traceAccount = {int(first["id"])}
+    if traceKey = {json.dumps(second["api_key"])} then traceAccount = {int(second["id"])}
+    tracePath = "/non-api"
+    traceStart = instr(1, url, "/api/")
+    if traceStart > 0 then tracePath = mid(url, traceStart)
+    traceQuery = instr(1, tracePath, "?")
+    if traceQuery > 0 then tracePath = left(tracePath, traceQuery - 1)
+    if left(tracePath, 32) = "/api/accounts/users/me/app-data/" and len(tracePath) > 32 then tracePath = "/api/accounts/users/me/app-data/<app>/"
+    print "[picker-launch] "; FormatJson({{kind: "live-request", path: tracePath, method: method, account: traceAccount}})
+'''
+
+
 def real_baseline_fixture(fixture, accounts):
     first, second = (account["user"] for account in accounts)
     for old, user in [(7, first), (8, second)]:
@@ -386,6 +413,7 @@ def write_picker_archive(path, original, section, base, mode, baseline_accounts,
             elif name == "source/HttpTransport.brs" and ordinary_live:
                 anchor = b"    method = ucase(method)"
                 require_patch_anchor(name, body, anchor)
+                trace = live_child_transport_trace(baseline_accounts).encode() if mode == "child-select-pin" else b""
                 body = body.replace(anchor, anchor + b'''
     ' Private qualification permits authenticating only at the token route.
     if method <> "GET" or body <> invalid or checkedJson <> invalid
@@ -395,7 +423,7 @@ def write_picker_archive(path, original, section, base, mode, baseline_accounts,
             return result
         end if
     end if
-''', 1)
+''' + trace, 1)
             elif name == "components/AerioScene.brs":
                 source = body.decode()
                 if mode.startswith("child-"):
@@ -454,6 +482,10 @@ def write_picker_archive(path, original, section, base, mode, baseline_accounts,
                     fixture += "\n" + (ROOT / ("tests/native/ProfileVodAcceptanceFixture.brs" if profile_vod else "tests/native/ProfileMediaAcceptanceFixture.brs")).read_text()
                 if baseline_accounts:
                     fixture = real_baseline_fixture(fixture, baseline_accounts)
+                    if mode == "child-select-pin":
+                        live = '    m.pickerProbeLiveAccount = ""'
+                        require_patch_anchor(name, fixture, live)
+                        fixture = fixture.replace(live, f'    m.pickerProbeLiveAccount = "{int(baseline_accounts[1]["user"]["id"])}"', 1)
                 body = (source + "\n" + fixture).encode()
             elif name == "components/ProfileServerAdminTask.brs" and admin_ui:
                 text = body.decode()
@@ -631,8 +663,13 @@ def main():
     if args.dispatcharr_credentials:
         if args.dispatcharr_credentials.resolve().is_relative_to(ROOT):
             raise RuntimeError("Keep real test credentials outside the repository")
-        args.baseline = True
+        args.baseline = args.mode != "child-select-pin"
+        if not args.baseline and any([args.admin_ui, args.phone_verify, args.phone_import, args.profile_media]):
+            parser.error("Live child-select-pin is its own focused flow")
         real_base, baseline_accounts = real_baseline_accounts(json.loads(args.dispatcharr_credentials.read_text()))
+    live_accounts = {}
+    if baseline_accounts and not args.baseline:
+        live_accounts = {int(account["user"]["id"]): label for account, label in zip(baseline_accounts, [7, 8])}
     host, password = os.environ["ROKU_HOST"], os.environ["ROKU_DEV_PASSWORD"]
     modules = {}
     for name in ["primitives", "recovery", "management"]:
@@ -801,6 +838,10 @@ def main():
             event = record_picker_output(report, line, protected=args.mode == "child-select-pin" and not args.baseline)
             if event is None:
                 continue
+            if event["kind"] == "live-request":
+                hit = live_request_hit(event, live_accounts)
+                hits.append(hit if hit is not None else {"method": "invalid-trace", "unexpected": True})
+                continue
             if event["kind"] == "profile-vod-visual":
                 image = str(Path(args.report).with_suffix(f'.account-{event["account"]}-{event["view"]}.jpg'))
                 captured = subprocess.run(["python3", "scripts/capture-roku-screenshot.py", "--developer-mode", "--output", image], cwd=ROOT, capture_output=True, timeout=40)
@@ -967,7 +1008,11 @@ def main():
         wanted_keys = [200] if args.mode in ["own-default", "own-default-pin"] else [200, 200]
         report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and report.get("pre_selection_requests") == [] and report.get("screenshot") is True and [k.get("status") for k in report["keys"]] == wanted_keys and [p["phase"] for p in phases] == expected_phases and all(p["no_actor"] and p["empty_key"] for p in phases) and all(h.get("user") == target_user and h["method"] == "GET" for h in hits) and listing >= 2 and heavy > listing and paths.count("/api/accounts/users/me/") >= 3 and pin_ok
         if args.mode in ["child-select", "child-select-pin"]:
-            report["passed"] = report["passed"] and report.get("child_guide_screenshot") is True and paths.count("/api/accounts/users/me/app-data/synthetic8.aeriotv/") == 1
+            app_reads = 1 if live_accounts else paths.count("/api/accounts/users/me/app-data/synthetic8.aeriotv/")
+            report["passed"] = report["passed"] and report.get("child_guide_screenshot") is True and app_reads == 1
+            if live_accounts:
+                report["real_dispatcharr"] = True
+                report["passed"] = report["passed"] and events[-1].get("live") is True
         if args.mode == "reorder":
             held = [event for event in events if event["kind"] == "reorder-held"]
             report["passed"] = code == 0 and bool(events) and events[-1].get("passed") is True and events[-1].get("reordered") is True and report.get("pre_selection_requests") == [] and hits == [] and phases == [] and report.get("screenshot") is True and report.get("reorder_screenshot") is True and [key.get("status") for key in report["keys"]] == [200] * 4 and len(held) == 1 and held[0].get("passed") is True
